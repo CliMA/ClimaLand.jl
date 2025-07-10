@@ -1,7 +1,7 @@
 export PModelParameters, 
     PModelDrivers, 
     PModelConstants, 
-    compute_pmodel_outputs, 
+    compute_full_pmodel_outputs, 
     set_historical_cache!,
     PModel,
     make_PModel_callback
@@ -34,9 +34,10 @@ Base.@kwdef struct PModelParameters{
     ϕa1::FT
     """Second order term in temp-dependent intrinsic quantum yield (K^-2)."""
     ϕa2::FT
-    """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless)."""
+    """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless).
+        Setting this to 0 represents no incorporation of past values"""
     α::FT 
-
+    # temporary so that autotrophic_respiration.jl doesn't complain (it still uses the original βm)
     sc::FT
     pc::FT 
 end
@@ -124,6 +125,7 @@ Base.eltype(::PModelParameters{FT}) where {FT} = FT
 Base.eltype(::PModelDrivers{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
+# make these custom structs broadcastable as tuples 
 Base.broadcastable(x::PModelParameters) = tuple(x)
 Base.broadcastable(x::PModelDrivers) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
@@ -174,6 +176,8 @@ struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
     constants::OPCT
 end
 
+Base.eltype(::PModel{FT, OPFT, OPCT}) where {FT, OPFT, OPCT} = FT
+
 function PModel{FT}(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT} = PModelConstants(FT),
@@ -215,17 +219,33 @@ ClimaLand.auxiliary_domain_names(::PModel) =
 
 
 """
-    compute_pmodel_outputs(
-        parameters::PModelParameters, 
-        drivers::PModelDrivers, 
-        constants::PModelConstants
-    )
+compute_full_pmodel_outputs(
+    parameters::PModelParameters{FT}, 
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT, 
+    βm::FT,
+    I_abs::FT,
+) where {FT}
 
 Performs the P-model computations as defined in Stocker et al. (2020) 
-and returns a dictionary of outputs. See https://github.com/geco-bern/rpmodel
-for a code reference.
+and returns a dictionary of full outputs. See https://github.com/geco-bern/rpmodel
+for a code reference. This should replicate the behavior of the `rpmodel` package. 
 
-Output name      Description (units)
+Args:
+- `parameters`:     PModelParameters object containing the model parameters.
+- `constants`:      PModelConstants object containing the model constants.
+- `T_canopy`:       Canopy temperature (K).
+- `P_air`:          Ambient air pressure (Pa).
+- `VPD`:            Vapor pressure deficit (Pa).
+- `ca`:             Ambient CO2 concentration (mol/mol).
+- `βm`:             Soil moisture stress factor (unitless).
+- `I_abs`:          Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
+
+Returns: named tuple with the following keys and descriptions:
+Output name         Description (units)
     "gpp"           Gross primary productivity (kg m^-2 s^-1)
     "gammastar"     CO2 compensation point (Pa)
     "kmm"           Effective MM coefficient for Rubisco-limited photosynthesis (Pa)
@@ -243,16 +263,18 @@ Output name      Description (units)
     "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
     "Rd"            Dark respiration rate (mol m^-2 s^-1)
 """
-function compute_pmodel_outputs(
+function compute_full_pmodel_outputs(
     parameters::PModelParameters{FT}, 
-    drivers::PModelDrivers{FT}, 
-    constants::PModelConstants{FT}
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT, 
+    βm::FT,
+    I_abs::FT,
 ) where {FT}
     # Unpack parameters
     (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
-
-    # Unpack drivers
-    (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
 
     # Unpack constants
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
@@ -314,7 +336,8 @@ function compute_pmodel_outputs(
 end
 
 
-function update_optimal_EMA(
+"""
+update_optimal_EMA(
     parameters::PModelParameters{FT}, 
     constants::PModelConstants{FT},
     OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}}, 
@@ -327,10 +350,49 @@ function update_optimal_EMA(
     local_noon_mask::FT,
     verbose::Bool = false, 
 ) where {FT} 
+
+This function updates the optimal photosynthetic capacities Vcmax25, Jmax25 and sensitivity of 
+stomatal conductance to dryness (ξ) using an exponential moving average (EMA) that computes new
+optimal values at local noon, following Mengoli et al. (2022). 
+
+Args:
+- `parameters`: PModelParameters object containing the model parameters.
+- `constants`: PModelConstants object containing the model constants.
+- `OptVars`: NamedTuple containing the current optimal values of ξ, Vcmax25, and Jmax25.
+- `T_canopy`: Canopy temperature (K).
+- `P_air`: Ambient air pressure (Pa).
+- `VPD`: Vapor pressure deficit (Pa).
+- `ca`: Ambient CO2 concentration (mol/mol).
+- `βm`: Soil moisture stress factor (unitless).
+- `I_abs`: Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
+- `local_noon_mask`: A mask (0 or 1) indicating whether the current time is within the local noon window. 
+- `verbose`: If true, prints intermediate values for debugging.
+
+Returns:
+- NamedTuple with updated optimal values of ξ, Vcmax25, and Jmax25
+
+Reference: 
+Mengoli, G., Agustí-Panareda, A., Boussetta, S., Harrison, S. P., Trotta, C., & Prentice, I. C. (2022). 
+Ecosystem photosynthesis in land-surface models: A first-principles approach incorporating acclimation. 
+Journal of Advances in Modeling Earth Systems, 14, e2021MS002767. https://doi.org/10.1029/2021MS002767
+"""
+function update_optimal_EMA(
+    parameters::PModelParameters{FT}, 
+    constants::PModelConstants{FT},
+    OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}}, 
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT, 
+    βm::FT,
+    I_abs::FT,
+    local_noon_mask::FT,
+    verbose::Bool = true, 
+) where {FT} 
     if local_noon_mask == FT(1.0)
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
-
+        
         # Unpack constants
         (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
             Drel, ΔHΓstar, Γstar25,
@@ -373,7 +435,7 @@ function update_optimal_EMA(
         Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
         verbose && print(
             "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n
-            ----------------------------------\n"
+            ----------------------------------\n\n"
         )
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
@@ -442,17 +504,24 @@ function set_historical_cache_pmodel!(p, Y0, model::PModel, canopy)
 
 The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
 To set the initial condition, we assume that the acclimation is to the initial conditions of the simulation.
+
+Note that if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are 
+zero, so it will take some weeks for the model to reach a physically meaningful state. An alternative
+to this approach is to initialize the initial optimal values to some reasonable values based on 
+a spun-up simulation. 
 """
 function set_historical_cache!(p, Y0, model::PModel, canopy) 
-    print("setting historical cache for p model\n")
-
-    drivers = extract_pmodel_drivers(p, Y0, canopy)
     parameters = model.parameters
     constants = model.constants
-    FT = eltype(parameters)
 
-    # TODO: replace this with modular soil moisture stress parameterization
-    βm = FT(1.0) #@. lazy(moisture_stress(drivers.ψ.:($$drivers.i_end) * drivers.ρ_l * drivers.grav, parameters.sc, parameters.pc)) 
+    # drivers 
+    FT = eltype(parameters)
+    βm = FT(1.0) # TODO: replace this with modular soil moisture stress parameterization
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
+        LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
+    I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
+        canopy.radiative_transfer.parameters.λ_γ_PAR))
 
     # Initialize OptVars with dummy values (will be overwritten since α=0)
     fill!(p.canopy.photosynthesis.OptVars, (;
@@ -469,7 +538,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ϕa0 = parameters.ϕa0,
         ϕa1 = parameters.ϕa1,
         ϕa2 = parameters.ϕa2,
-        α = FT(0),  # Override α to 0
+        α = FT(0),  # this allows us to use the initial values directly
         sc = parameters.sc,
         pc = parameters.pc
     )
@@ -480,12 +549,12 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         parameters_init, 
         constants, 
         p.canopy.photosynthesis.OptVars, 
-        drivers.T_canopy, 
-        drivers.P_air, 
-        drivers.VPD,
-        drivers.ca, 
+        T_canopy, 
+        p.drivers.P, 
+        VPD,
+        p.drivers.c_co2, 
         βm,
-        drivers.I_abs,
+        I_abs,
         local_noon_mask,
     )
 end
@@ -504,24 +573,28 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing)
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
     
     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
-    drivers = extract_pmodel_drivers(p, Y, canopy)
     parameters = canopy.photosynthesis.parameters
     constants = canopy.photosynthesis.constants
     
+    # drivers 
     FT = eltype(parameters)
-    # TODO: replace this with modular soil moisture stress parameterization
-    βm = FT(1.0) # @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
+    βm = FT(1.0) # TODO: replace this with modular soil moisture stress parameterization
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
+        LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
+    I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
+        canopy.radiative_transfer.parameters.λ_γ_PAR))
 
     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
         parameters, 
         constants, 
         p.canopy.photosynthesis.OptVars, 
-        drivers.T_canopy, 
-        drivers.P_air, 
-        drivers.VPD,
-        drivers.ca, 
+        T_canopy, 
+        p.drivers.P, 
+        VPD,
+        p.drivers.c_co2, 
         βm,
-        drivers.I_abs,
+        I_abs,
         local_noon_mask,
     )
 end 
@@ -573,15 +646,21 @@ dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), a
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::PModel, canopy)
-    drivers = extract_pmodel_drivers(p, Y, canopy)
     parameters = model.parameters
     constants = model.constants
+
+    # drivers 
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
+        LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
+    I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
+        canopy.radiative_transfer.parameters.λ_γ_PAR))
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
     Vcmax_inst = @. lazy(
         p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
-            drivers.T_canopy, 
-            drivers.T_canopy, 
+            T_canopy, 
+            T_canopy, 
             constants.To, 
             constants.Ha_Vcmax, 
             constants.Hd_Vcmax, 
@@ -593,8 +672,8 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     Jmax_inst = @. lazy(
         p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
-            drivers.T_canopy, 
-            drivers.T_canopy, 
+            T_canopy,
+            T_canopy,
             constants.To, 
             constants.Ha_Jmax, 
             constants.Hd_Jmax, 
@@ -607,22 +686,22 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     @. p.canopy.photosynthesis.IntVars = update_intermediate_vars(
         constants, 
         p.canopy.photosynthesis.OptVars.ξ_opt, 
-        drivers.T_canopy, 
-        drivers.P_air, 
-        drivers.VPD, 
-        drivers.ca
+        T_canopy, 
+        p.drivers.P, 
+        VPD, 
+        p.drivers.c_co2
     )
 
     # Note: this is different than the Smith 2019 formulation used in optimality_farquhar.jl
     J_inst = @. lazy(
         electron_transport_pmodel(
             isnan(parameters.ϕ0) ? intrinsic_quantum_yield(
-                drivers.T_canopy, 
+                T_canopy, 
                 parameters.ϕc, 
                 parameters.ϕa0, 
                 parameters.ϕa1, 
                 parameters.ϕa2) : parameters.ϕ0, 
-            drivers.I_abs, 
+            I_abs,
             Jmax_inst
         )
     )
@@ -646,13 +725,13 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     Rd = @. lazy(
         constants.fC3 * (
             inst_temp_scaling_rd(
-                drivers.T_canopy, 
+                T_canopy, 
                 constants.To, 
                 constants.aRd,
                 constants.bRd) / 
             inst_temp_scaling(
-                drivers.T_canopy, 
-                drivers.T_canopy, 
+                T_canopy, 
+                T_canopy, 
                 constants.To, 
                 constants.Ha_Vcmax, 
                 constants.Hd_Vcmax, 
@@ -664,67 +743,15 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     @. p.canopy.photosynthesis.Rd = Rd
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
-    @. p.canopy.photosynthesis.GPP = compute_GPP(p.canopy.photosynthesis.An, extinction_coeff(drivers.G_Function, p.drivers.cosθs), drivers.LAI, drivers.Ω)
+    @. p.canopy.photosynthesis.GPP = compute_GPP(
+        p.canopy.photosynthesis.An, 
+        extinction_coeff(canopy.radiative_transfer.parameters.G_Function, p.drivers.cosθs), 
+        p.canopy.hydraulics.area_index.leaf, 
+        canopy.radiative_transfer.parameters.Ω
+    )
     @. p.canopy.photosynthesis.Jmax = Jmax_inst
     @. p.canopy.photosynthesis.J = J_inst
 end
 
 get_Vcmax25(p, m::PModel) =
     p.canopy.photosynthesis.OptVars.Vcmax25_opt
-
-"""
-    extract_pmodel_drivers(p, Y, canopy)
-
-Unified function to extract common drivers and parameters needed for P-model computations.
-Returns a NamedTuple with all the commonly used variables across P-model functions.
-"""
-function extract_pmodel_drivers(p, Y, canopy)
-    # Extract earth parameters
-    earth_param_set = canopy.parameters.earth_param_set
-    lightspeed = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    grav = LP.grav(earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    
-    # Extract radiative transfer parameters
-    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-    
-    # Extract hydraulic parameters
-    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
-    ψ = p.canopy.hydraulics.ψ
-    
-    # Compute derived variables
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    f_abs = p.canopy.radiative_transfer.par.abs
-    ca = p.drivers.c_co2
-    P_air = p.drivers.P
-    par_d = p.canopy.radiative_transfer.par_d
-    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(
-        p.drivers.T, p.drivers.P, p.drivers.q, thermo_params
-    ))
-    LAI = p.canopy.hydraulics.area_index.leaf
-    I_abs = @. lazy(f_abs * par_d / energy_per_mole_photon_par)
-    
-    return (;
-        earth_param_set,
-        energy_per_mole_photon_par,
-        i_end,
-        ψ,
-        ρ_l,
-        grav,
-        T_canopy,
-        f_abs,
-        ca,
-        P_air,
-        par_d,
-        thermo_params,
-        VPD,
-        LAI,
-        I_abs,
-        G_Function,
-        Ω
-    )
-end
