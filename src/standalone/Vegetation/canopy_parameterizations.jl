@@ -228,6 +228,7 @@ function canopy_sw_rt_two_stream(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
+    n_layers = 1000
     α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
     cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
     G = compute_G(G_Function, cosθs)
