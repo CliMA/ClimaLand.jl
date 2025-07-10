@@ -115,7 +115,7 @@ photo_params = PModelParameters(
     ϕa0 = FT(0.352),
     ϕa1 = FT(0.022),
     ϕa2 = FT(-0.00034),
-    α = FT(0.067),
+    α = FT(0.933),
     sc = FT(2e-6),
     pc = FT(-2e6)
 )
@@ -256,58 +256,6 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 # if we are using the Pmodel 
 pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
 
-# TODO: add test using compute_pmodel_outputs
-# function check_optimal_outputs(p, Y, t; canopy, dt, longitude) 
-#     # update local noon mask 
-#     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
-    
-#     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
-#     drivers = extract_pmodel_drivers(p, Y, canopy)
-#     parameters = canopy.photosynthesis.parameters
-#     constants = canopy.photosynthesis.constants
-    
-#     FT = eltype(parameters)
-#     # TODO: replace this with modular soil moisture stress parameterization
-#     βm = FT(1.0) # @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
-
-#     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
-#         parameters, 
-#         constants, 
-#         p.canopy.photosynthesis.OptVars, 
-#         drivers.T_canopy, 
-#         drivers.P_air, 
-#         drivers.VPD,
-#         drivers.ca, 
-#         βm,
-#         drivers.I_abs,
-#         local_noon_mask,
-#     )
-# end 
-
-# function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
-
-#     function seconds_after_midnight(t)
-#         return Hour(t).value * 3600 +
-#             Minute(t).value * 60
-#     end 
-
-#     day = IP.day(IP.InsolationParameters(FT)) 
-#     start_t = FT(seconds_after_midnight(start_date))
-
-#     return FrequencyBasedCallback(
-#         FT(600.0), # 10 minutes
-#         start_date, # start datetime, UTC 
-#         dt; # timestep, in seconds
-#         func = (integrator; ) -> call_update_optimal_EMA(
-#             integrator.p, 
-#             integrator.u,
-#             (integrator.t + start_t) % (day), # current time in seconds UTC; 
-#             canopy=canopy, dt=dt, longitude=longitude
-#         ),
-#     )
-# end
-
-
 # unify callbacks 
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb, pmodel_cb);
 
@@ -362,25 +310,78 @@ fluxnet_gpp = drivers.GPP.values # type DataColumn
 # Create time array for plotting
 daily = sol.t ./ 3600 ./ 24
 
+# Interpolate fluxnet GPP to match model time grid
+# Original fluxnet time grid
+fluxnet_time_seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT))
+fluxnet_time_daily = fluxnet_time_seconds ./ 3600 ./ 24
+
+# Simple nearest neighbor interpolation function
+function nearest_neighbor_interp(x, y, x_new)
+    if x_new <= x[1]
+        return y[1]
+    elseif x_new >= x[end]
+        return y[end]
+    else
+        # Find closest point
+        distances = abs.(x .- x_new)
+        idx = argmin(distances)
+        return y[idx]
+    end
+end
+
+# Interpolate to model time grid using nearest neighbor
+fluxnet_gpp_remapped = [nearest_neighbor_interp(fluxnet_time_daily, fluxnet_gpp, t) for t in daily]
+
+# Convert from mol/m²/s to μmol/m²/s
+extracted_vars_gpp_micromol = extracted_vars.GPP .* 1e6
+fluxnet_gpp_remapped_micromol = fluxnet_gpp_remapped .* 1e6
+
 # Create plots for all extracted variables
 plots_array = []
 
-# GPP plot (convert to μmol/mol)
+# GPP plot with both modeled and fluxnet GPP
 plt_gpp = Plots.plot(
     daily, 
-    extracted_vars.GPP .* 1e6,
-    title = "GPP",
+    extracted_vars_gpp_micromol,
+    title = "GPP Comparison",
     xlabel = "Days",
-    ylabel = "GPP",
-    linewidth = 2
+    ylabel = "GPP (μmol/m²/s)",
+    linewidth = 2,
+    label = "Modeled GPP",
+    legend = :topright
+)
+Plots.plot!(plt_gpp,
+    daily,
+    fluxnet_gpp_remapped_micromol,
+    linewidth = 2,
+    label = "FluxNet GPP",
+    linestyle = :solid
 )
 push!(plots_array, plt_gpp)
+
+# Scatter plot: Modeled vs Actual GPP
+plt_scatter = Plots.scatter(
+    fluxnet_gpp_remapped_micromol,
+    extracted_vars_gpp_micromol,
+    title = "Modeled vs Actual GPP",
+    xlabel = "FluxNet GPP (μmol/m²/s)",
+    ylabel = "Modeled GPP (μmol/m²/s)",
+    alpha = 0.6,
+    markersize = 3,
+    label = "Data points"
+)
+# Add 1:1 line
+min_gpp = min(minimum(fluxnet_gpp_remapped_micromol), minimum(extracted_vars_gpp_micromol))
+max_gpp = max(maximum(fluxnet_gpp_remapped_micromol), maximum(extracted_vars_gpp_micromol))
+Plots.plot!(plt_scatter, [min_gpp, max_gpp], [min_gpp, max_gpp], 
+    color = :red, linestyle = :dash, linewidth = 2, label = "1:1 line")
+push!(plots_array, plt_scatter)
 
 # Vcmax25_opt plot
 plt_vcmax = Plots.plot(
     daily, 
     extracted_vars.Vcmax25_opt,
-    title = "Optimal Vcmax25",
+    title = "Model optimal Vcmax25 (mol/m²/s)",
     xlabel = "Days", 
     ylabel = "Vcmax25",
     linewidth = 2
@@ -391,7 +392,7 @@ push!(plots_array, plt_vcmax)
 plt_jmax = Plots.plot(
     daily, 
     extracted_vars.Jmax25_opt,
-    title = "Optimal Jmax25",
+    title = "Model optimal Jmax25 (mol/m²/s)",
     xlabel = "Days",
     ylabel = "Jmax25", 
     linewidth = 2
@@ -400,7 +401,7 @@ push!(plots_array, plt_jmax)
 
 
 # Combine all plots in a grid layout
-final_plot = Plots.plot(plots_array..., layout = (4, 2), size = (1200, 1600))
+final_plot = Plots.plot(plots_array..., layout = (2,2), size = (1200, 1200))
 
 # Save the output
 savefig("ozark_standalone_canopy_test.png")

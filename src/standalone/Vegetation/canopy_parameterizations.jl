@@ -1676,3 +1676,30 @@ function inst_temp_scaling_rd(
         aRd * (T_canopy - To) + bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2)
     )
 end
+
+
+"""
+compute_I_abs(
+    f_abs::FT, 
+    par_d::FT,
+    λ_γ_PAR::FT
+) where {FT} 
+
+Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
+given the fraction of absorbed PAR (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2), 
+and the wavelength of PAR (`λ_γ_PAR`, in m).
+"""
+function compute_I_abs(
+    f_abs::FT, 
+    par_d::FT,
+    λ_γ_PAR::FT
+) where {FT} 
+
+    earth_param_set = LP.LandParameters(FT)
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR 
+
+    return f_abs * par_d / energy_per_mole_photon_par
+end 
