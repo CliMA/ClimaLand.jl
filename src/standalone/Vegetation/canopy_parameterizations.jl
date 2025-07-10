@@ -71,7 +71,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
@@ -116,7 +116,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Two-stream model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
@@ -136,7 +136,7 @@ function compute_fractional_absorbances!(
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
     frac_diff = p.drivers.frac_diff
-    @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
+    @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream_analytical(
         RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
@@ -147,7 +147,7 @@ function compute_fractional_absorbances!(
         α_soil_PAR,
         frac_diff,
     )
-    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
+    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream_analytical(
         RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
@@ -228,7 +228,6 @@ function canopy_sw_rt_two_stream(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-    n_layers = 1000
     α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
     cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
     G = compute_G(G_Function, cosθs)
@@ -388,6 +387,106 @@ function canopy_sw_rt_two_stream(
     # @assert (1 - α_soil) * FT(F_trans) + FT(F_abs) + FT(F_refl) ≈ 1
     # This is tested in test/standalone/Vegetation/test_two_stream.jl
     return (; abs = FT(F_abs), refl = FT(F_refl), trans = FT(F_trans))
+end
+
+# todo: docstring
+function canopy_sw_rt_two_stream_analytical(
+    G_Function,
+    Ω::FT,
+    n_layers::UInt64,
+    α_leaf::FT,
+    τ_leaf::FT,
+    LAI::FT,
+    cosθs::FT,
+    α_soil::FT,
+    frac_diff::FT,
+) where {FT}
+    α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
+    cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
+    G = compute_G(G_Function, cosθs)
+    K = extinction_coeff(G_Function, cosθs)
+    # Compute μ̄, the average inverse diffuse optical length per LAI
+    μ̄ = 1 / max(2G, eps(FT))
+
+    # Clip this to prevent dividing by zero; the sum must also be < 1. Note that using eps(FT)
+    # as the threshold leads to numerical errors, so we use 1e-4
+    ω = min(max(α_leaf + τ_leaf, FT(1e-4)), 1 - FT(1e-4))
+    aₛ =
+        FT(0.5) *
+        ω *
+        (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), eps(FT))))
+    β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
+    diff = α_leaf - τ_leaf
+    # With uniform distribution, Dickinson integral becomes following:
+    c²θ̄ = FT(pi) * G / FT(4)
+    β = FT(0.5) * (ω + diff * c²θ̄) / ω
+    b = 1 - ω + ω * β
+    c = ω * β
+    d = ω * β₀ * μ̄ * K
+    f = ω * μ̄ * K * (1 - β₀)
+    h = √(b^2 - c^2) / μ̄
+    σ = (μ̄ * K)^2 + c^2 - b^2
+
+    u₁ = b - c / α_soil
+    u₂ = b - c * α_soil
+    u₃ = f + c * α_soil
+
+    s₁ = exp(-h * LAI * Ω)
+    s₂ = exp(-K * LAI * Ω)
+
+    p₁ = b + μ̄ * h
+    p₂ = b - μ̄ * h
+    p₃ = b + μ̄ * K
+    p₄ = b - μ̄ * K
+
+    d₁ = p₁ * (u₁ - μ̄ * h) / s₁ - p₂ * (u₁ + μ̄ * h) * s₁
+    d₂ = (u₂ + μ̄ * h) / s₁ - (u₂ - μ̄ * h) * s₁
+
+    # h coefficients for direct upward flux
+    h₁ = -d * p₄ - c * f
+    h₂ =
+        FT(1) / d₁ * (
+            (d - h₁ / σ * p₃) * (u₁ - μ̄ * h) / s₁ -
+            p₂ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+        )
+    h₃ =
+        FT(-1) / d₁ * (
+            (d - h₁ / σ * p₃) * (u₁ + μ̄ * h) * s₁ -
+            p₁ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+        )
+
+    # h coefficients for direct downward flux
+    h₄ = -f * p₃ - c * d
+    h₅ =
+        FT(-1) / d₂ *
+        (h₄ * (u₂ + μ̄ * h) / (σ * s₁) + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
+    h₆ =
+        FT(1) / d₂ *
+        (h₄ / σ * (u₂ - μ̄ * h) * s₁ + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
+    # h coefficients for diffuse upward flux
+    h₇ = c * (u₁ - μ̄ * h) / (d₁ * s₁)
+    h₈ = -c * s₁ * (u₁ + μ̄ * h) / d₁
+    h₉ = (u₂ + μ̄ * h) / (d₂ * s₁)
+    h₁₀ = -s₁ * (u₂ - μ̄ * h) / d₂
+    L = LAI
+    I_dir_up =
+        h₁ * exp(-K * L * Ω) / σ + h₂ * exp(-h * L * Ω) + h₃ * exp(h * L * Ω)
+    I_dir_dn =
+        h₄ * exp(-K * L * Ω) / σ + h₅ * exp(-h * L * Ω) + h₆ * exp(h * L * Ω)
+    I_dir_dn += exp(-K * L * Ω)
+
+    # Compute the diffuse fluxes into/out of the layer
+    I_dif_up = h₇ * exp(-h * L * Ω) + h₈ * exp(h * L * Ω)
+    I_dif_dn = h₉ * exp(-h * L * Ω) + h₁₀ * exp(h * L * Ω)
+    I_dir_abs = I_dir_up + I_dir_dn
+    I_dif_abs = I_dif_up + I_dif_dn
+    @assert I_dir_abs >= 0
+    @assert I_dif_abs >= 0
+    F_abs = (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
+    F_refl = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
+    F_trans = (1 - frac_diff) * I_dir_dn + (frac_diff) * I_dif_dn
+    # Main.@infiltrate
+    return (; abs = F_abs, refl = F_refl, trans = F_trans)
 end
 
 """
