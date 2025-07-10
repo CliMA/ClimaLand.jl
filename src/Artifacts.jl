@@ -532,4 +532,18 @@ function era5_surface_data_1979_2024_path(; context = nothing)
     )
 end
 
+"""
+    get_modis_lai_fluxnet_data(site_ID; context = nothing)
+Returns the path to the folder that contains MODIS LAI data at:
+    US-Ha1, US-Var, US-NR1, US-Ha1
+from 2002 to 2025.
+"""
+function get_modis_lai_fluxnet_data(site_ID; context = nothing)
+    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
+
+    folder_path = @clima_artifact("modis_lai_fluxnet_sites", context)
+    data_path = joinpath(folder_path, "modis_lai_$(site_ID).csv")
+    return data_path
+end
+
 end
