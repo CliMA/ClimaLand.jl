@@ -429,8 +429,8 @@ weakdeps = ["GeoMakie", "Makie"]
 
 [[deps.ClimaCalibrate]]
 deps = ["Dates", "Distributed", "Distributions", "EnsembleKalmanProcesses", "JLD2", "Logging", "Random", "TOML", "YAML"]
-git-tree-sha1 = "2408ba55a30ac0f67550ef9d87cebfc372af3cca"
-repo-rev = "main"
+git-tree-sha1 = "fe9ddc24349035098116663fd0136e960d3cbb3c"
+repo-rev = "kp/identity"
 repo-url = "https://github.com/CliMA/ClimaCalibrate.jl.git"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
 version = "0.1.2"

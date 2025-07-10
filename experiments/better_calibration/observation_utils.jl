@@ -83,6 +83,6 @@ function make_ocean_mask(nelements)
         landsea_var,
         NaN,
         1.0;
-        threshold = 0.99,
+        threshold = 0.5,
     )
 end

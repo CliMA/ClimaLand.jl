@@ -145,13 +145,20 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    # covar_estimator =
+    #     ClimaCalibrate.ObservationRecipe.SeasonalDiagonalCovariance(;
+    #         model_error_scale = Float32(0.05),
+    #         regularization = Float32(25.0),
+    #         ignore_nan = true,
+    #         use_latitude_weights = true,
+    #         min_cosd_lat = 0.1
+    #     )
     covar_estimator =
-        ClimaCalibrate.ObservationRecipe.SeasonalDiagonalCovariance(
-            model_error_scale = Float32(0.05),
-            regularization = Float32(25.0),
-            ignore_nan = true,
+        ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
+            scalar = 25.0,
+            use_latitude_weights = true,
+            min_cosd_lat = 0.1,
         )
-
     (; nelements, sample_date_ranges, short_names) = get_config()
     @info "The number of samples is $(length(sample_date_ranges))"
 
