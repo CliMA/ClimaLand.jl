@@ -74,14 +74,9 @@ function setup_model(
     calibrate_param_dict,
 )
     # TODO: This should be better when the interface improved
-    α_0 = FT(get(calibrate_param_dict, "α_0", 0.64))
-    Δα = FT(get(calibrate_param_dict, "Δα", 0.06))
-    k = FT(get(calibrate_param_dict, "k", 2))
-    beta_snow = FT(get(calibrate_param_dict, "beta_snow", 0.4))
-    x0_snow = FT(get(calibrate_param_dict, "x0_snow", 0.2))
+    α_0 = FT(get(calibrate_param_dict, "α_0", 0.7))
     beta_snow_cover = FT(get(calibrate_param_dict, "beta_snow_cover", 0.2))
     z0_snow_cover = FT(get(calibrate_param_dict, "z0_snow_cover", 0.2))
-    Δα = FT(get(calibrate_param_dict, "Δα", 0.2))
 
     time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
@@ -305,15 +300,15 @@ function setup_model(
     )
 
     # Snow model
-    #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
+    α_snow = Snow.ConstantAlbedoModel(FT(α_0))
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(α_0),
-        FT(Δα),
-        FT(k);
-        β = FT(beta_snow),
-        x0 = FT(x0_snow),
-    )
+    # α_snow = Snow.ZenithAngleAlbedoModel(
+    #     FT(α_0),
+    #     FT(Δα),
+    #     FT(k);
+    #     β = FT(beta_snow),
+    #     x0 = FT(x0_snow),
+    # )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
@@ -354,6 +349,12 @@ function setup_model(
         snow_model_type = snow_model_type,
     )
     return land
+end
+
+function close_diagnostics(sim)
+    for diagnostic in sim.diagnostics
+        close(diagnostic.output_writer)
+    end
 end
 
 function ClimaCalibrate.forward_model(iteration, member)
@@ -407,5 +408,6 @@ function ClimaCalibrate.forward_model(iteration, member)
     simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
     @info "Simulation is setted up. Going to solve the simulation."
     ClimaLand.Simulations.solve!(simulation)
+    close_diagnostics(simulation)
     return nothing
 end

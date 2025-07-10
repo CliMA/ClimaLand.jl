@@ -90,17 +90,18 @@ function process_member_data(
     vars = map(short_names) do short_name
         var = sim_var_dict[short_name]()
         var =
-            ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
+            ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         ocean_mask = make_ocean_mask(nelements)
         var = ocean_mask(var)
 
         # Replace all NaNs on land with the mean value
         # This is needed to stop small NaN values from stopping the calibration
-        nanmean_land_val = mean(filter(!isnan, var.data))
+        # TODO: This is a stopgap. It might be better to leave them as NaNs. As a temporary
+        # solution, we replace with 500.0
+        nanmean_land_val = 500.0 # mean(filter(!isnan, var.data))
         var = ClimaAnalysis.replace(val -> isnan(val) ? nanmean_land_val : val, var)
         var = ocean_mask(var)
-
 
         lons = ClimaAnalysis.longitudes(var)
         var = ClimaAnalysis.window(
@@ -172,16 +173,16 @@ function ClimaCalibrate.analyze_iteration(
     # EKP.TransformUnscented
     diagnostics_folder_path = joinpath(output_path, "global_diagnostics")
     try
-        # compute_monthly_leaderboard(
-        #     output_path,
-        #     diagnostics_folder_path,
-        #     "ERA5",
-        # )
-        # compute_seasonal_leaderboard(
-        #     output_path,
-        #     diagnostics_folder_path,
-        #     "ERA5",
-        # )
+        compute_monthly_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "ERA5",
+        )
+        compute_seasonal_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "ERA5",
+        )
     catch e
         @error "Error in `analyze_iteration`" error = e
     end

@@ -49,7 +49,7 @@ function get_config()
         # start of DJF and SON
         sample_date_ranges = [
             (Dates.DateTime(year, 12, 1), Dates.DateTime(year + 1, 9, 1)) for
-            year in 2000:2020
+            year in 2000:2009
         ],
         spinup = Dates.Month(3), # Dates.Year(1)
         # TODO: Not sure if sample_date_ranges is the best way of determining
@@ -75,7 +75,7 @@ Return a named tuple consisting of
 function get_calibration_config()
     rng_seed = 42
     rng = Random.MersenneTwister(rng_seed)
-    return (; minibatch_size = 3, n_iterations = 7, rng = rng) # TODO Change this!
+    return (; minibatch_size = 2, n_iterations = 6, rng = rng)
 end
 
 """
@@ -119,14 +119,14 @@ end
 """
 function get_prior()
     priors = [
-        # EKP.constrained_gaussian("α_0", 0.64, 0.05, 0.2, 0.8),
         # EKP.constrained_gaussian("Δα", 0.2, 0.1, 0.0, 1.0),
         # EKP.constrained_gaussian("k", 10, 5, 2, 25),
         # EKP.constrained_gaussian("beta_snow", 0.4, 0.2, 0.1, 0.8),
         # EKP.constrained_gaussian("x0_snow", 0.4, 0.2, 0.1, 0.8),
-        EKP.constrained_gaussian("beta_snow_cover", 1.77, 0.2, 0.1, 2.5);
-        EKP.constrained_gaussian("z0_snow_cover", 0.106, 0.03, 0.0, 0.3);
-        EKP.constrained_gaussian("Δα", 0.7, 0.2, 0.0, 1.0);
+        EKP.constrained_gaussian("beta_snow_cover", 1.77, 0.2, 0.1, 2.5),
+        EKP.constrained_gaussian("z0_snow_cover", 0.106, 0.03, 0.0, 0.3),
+        EKP.constrained_gaussian("α_0", 0.7, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("Δα", 0.7, 0.2, 0.0, 1.0);
         # EKP.constrained_gaussian("z0_snow", 0.106, 0.05, 0.01, 0.3),
     ]
     return EKP.combine_distributions(priors)
