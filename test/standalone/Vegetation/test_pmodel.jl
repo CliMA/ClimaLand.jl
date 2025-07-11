@@ -63,7 +63,7 @@ for the P-Model, handling unit conversions and optional soil moisture stress.
 function PModelDrivers(inputs::Dict{String, Any}, FT)
     T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
     VPD = FT(inputs["vpd"])
-    ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
+    ca = FT(inputs["co2"]) * FT(1e-6)  # Convert ppm to mol/mol
     P_air = FT(get(inputs, "patm", 101325.0))
     
     # Calculate I_abs directly from fapar and ppfd
@@ -260,7 +260,7 @@ end
             T_canopy = FT(303.15)
             I_abs = FT(1e-3)
             ca = FT(4e-4)
-            P_air = FT(101325.0)
+            P_air = FT(98000.0)
             VPD = FT(150)
             βm = FT(0.5)
 
@@ -270,7 +270,7 @@ end
                     T_canopy,
                     P_air,
                     VPD,
-                    ca .* P_air, # convert back to Pa
+                    ca,
                     βm,
                     I_abs
             )
