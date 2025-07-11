@@ -27,7 +27,6 @@ using ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaUtilities.TimeManager: ITime
-import ClimaParams as CP
 using ClimaCore
 using ClimaLand
 using ClimaLand.Soil
