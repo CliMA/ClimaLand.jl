@@ -7,7 +7,7 @@ using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeManager: ITime, date
-import LinearAlgebra: I
+import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 
@@ -38,6 +38,7 @@ include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
+include("./pmodel.jl")
 include("./radiation.jl")
 include("./solar_induced_fluorescence.jl")
 include("./pfts.jl")
@@ -45,7 +46,7 @@ include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
-include("./spatially_varying_parameters.jl")
+
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
 
