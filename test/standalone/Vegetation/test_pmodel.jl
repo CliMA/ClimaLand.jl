@@ -234,47 +234,45 @@ end
 end
 
 
-@testset "Test optimal params calculated by update_optimal_EMA" begin
+@testset "Test helper functions update_optimal_EMA and update_intermediate_vars" begin
     rtol = 1e-5
     atol = 1e-6
 
     for FT in (Float32, Float64)
-        # Test the update_optimal_EMA function
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41), 
+            β = FT(146), 
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN), 
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0),
+            sc = FT(2e-6),
+            pc = FT(-2e6)
+        )
+
+        constants = PModelConstants(FT)
+
+        T_canopy = FT(303.15)
+        I_abs = FT(1e-3)
+        ca = FT(4e-4)
+        P_air = FT(98000.0)
+        VPD = FT(150)
+        βm = FT(0.5)
+
+        outputs_full = compute_full_pmodel_outputs(
+                parameters, 
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                βm,
+                I_abs
+        )
+
         @testset "Test update_optimal_EMA optimality computation for $FT" begin
-
-            parameters = ClimaLand.Canopy.PModelParameters(
-                cstar = FT(0.41), 
-                β = FT(146), 
-                ϕc = FT(0.087),
-                ϕ0 = FT(NaN), 
-                ϕa0 = FT(0.352),
-                ϕa1 = FT(0.022),
-                ϕa2 = FT(-0.00034),
-                α = FT(0),
-                sc = FT(2e-6),
-                pc = FT(-2e6)
-            )
-
-            constants = PModelConstants(FT)
-
-            T_canopy = FT(303.15)
-            I_abs = FT(1e-3)
-            ca = FT(4e-4)
-            P_air = FT(98000.0)
-            VPD = FT(150)
-            βm = FT(0.5)
-
-            outputs_full = compute_full_pmodel_outputs(
-                    parameters, 
-                    constants,
-                    T_canopy,
-                    P_air,
-                    VPD,
-                    ca,
-                    βm,
-                    I_abs
-            )
-
             dummy_OptVars = (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
             outputs_from_EMA = update_optimal_EMA(
                 parameters, 
@@ -292,6 +290,20 @@ end
             @test isapprox(outputs_from_EMA.ξ_opt, outputs_full.xi, rtol=rtol, atol=atol)
             @test isapprox(outputs_from_EMA.Vcmax25_opt, outputs_full.vcmax25, rtol=rtol, atol=atol)
             @test isapprox(outputs_from_EMA.Jmax25_opt, outputs_full.jmax25, rtol=rtol, atol=atol)
+        end
+        @testset "Test compute_intermediate_pmodel_vars for $FT" begin
+            outputs_from_intermediate_vars = ClimaLand.Canopy.compute_intermediate_pmodel_vars(
+                constants, 
+                outputs_full.xi, 
+                T_canopy, 
+                P_air, 
+                VPD,
+                ca, 
+            )
+
+            @test isapprox(outputs_from_intermediate_vars.Γstar, outputs_full.gammastar, rtol=rtol, atol=atol)
+            @test isapprox(outputs_from_intermediate_vars.Kmm, outputs_full.kmm, rtol=rtol, atol=atol)
+            @test isapprox(outputs_from_intermediate_vars.ci, outputs_full.ci, rtol=rtol, atol=atol)
         end
     end
 end
