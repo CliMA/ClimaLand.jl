@@ -319,8 +319,7 @@ function compute_full_pmodel_outputs(
     inst_temp_scaling_vcmax25 = inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
     Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
-    Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
-    Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
+    Jmax = 4 * ϕ0 * I_abs / sqrt((mj / (βm * mprime))^2 - 1)
     Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
     J = electron_transport_pmodel(ϕ0, I_abs, Jmax)
 
@@ -453,7 +452,7 @@ function update_optimal_EMA(
         Vcmax = βm * ϕ0 * I_abs * mprime / mc
         Vcmax25 = Vcmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
 
-        Jmax = 4 * ϕ0 * I_abs / sqrt((mj / (βm * mprime)^2) - 1)
+        Jmax = 4 * ϕ0 * I_abs / sqrt((mj / (βm * mprime))^2 - 1)
         Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
         verbose && print(
             "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n
@@ -470,7 +469,7 @@ function update_optimal_EMA(
 end 
 
 
-function update_intermediate_vars(
+function compute_intermediate_pmodel_vars(
     constants::PModelConstants{FT},
     ξ_opt::FT,
     T_canopy::FT, 
@@ -704,7 +703,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         )
     )
 
-    @. p.canopy.photosynthesis.IntVars = update_intermediate_vars(
+    @. p.canopy.photosynthesis.IntVars = compute_intermediate_pmodel_vars(
         constants, 
         p.canopy.photosynthesis.OptVars.ξ_opt, 
         T_canopy, 
