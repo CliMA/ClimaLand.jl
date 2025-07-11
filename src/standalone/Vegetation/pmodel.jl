@@ -302,14 +302,17 @@ function compute_full_pmodel_outputs(
     aS_Vcmax, bS_Vcmax, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3,
     planck_h, lightspeed, N_a) = constants
 
+    # Convert ca from mol/mol to a partial pressure (Pa)
+    ca_pp = ca * P_air
+
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
-    ci = χ * ca
+    χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca_pp, VPD, β, Drel)
+    ci = χ * ca_pp
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
     Vcmax = βm * ϕ0 * I_abs * mprime / mc
@@ -328,8 +331,8 @@ function compute_full_pmodel_outputs(
     GPP = I_abs * LUE 
 
     # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
-    iWUE = (ca - ci) / Drel
-    gs = pmodel_gs(χ, ca, Ac) 
+    iWUE = (ca_pp - ci) / Drel
+    gs = pmodel_gs(χ, ca_pp, Ac) 
 
     # dark respiration 
     rd = fC3 * (inst_temp_scaling_rd(T_canopy, To, aRd, bRd) / inst_temp_scaling_vcmax25) * Vcmax
@@ -338,7 +341,7 @@ function compute_full_pmodel_outputs(
         gpp = GPP,
         gammastar = Γstar,
         kmm = Kmm,
-        ca = ca,
+        ca = ca_pp,
         ns_star = ηstar,
         chi = χ,
         xi = ξ,
