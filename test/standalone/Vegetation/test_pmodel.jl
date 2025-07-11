@@ -111,7 +111,10 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕ0 = ϕ0,
         ϕa0 = ϕa0,
         ϕa1 = ϕa1,
-        ϕa2 = ϕa2
+        ϕa2 = ϕa2,
+        α = FT(0),
+        sc = FT(2e-6),
+        pc = FT(-2e6)
     )
 end
 
@@ -188,7 +191,16 @@ end
                 parameters = PModelParameters(inputs, FT)
                 
                 # Run the model
-                outputs = compute_pmodel_outputs(parameters, drivers, constants)
+                outputs = compute_full_pmodel_outputs(
+                    parameters, 
+                    constants,
+                    drivers.T_canopy,
+                    drivers.P_air,
+                    drivers.VPD,
+                    drivers.ca,
+                    drivers.βm,
+                    drivers.I_abs
+                )
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)
@@ -217,6 +229,69 @@ end
                     end
                 end
             end
+        end
+    end
+end
+
+
+@testset "Test optimal params calculated by update_optimal_EMA" begin
+    rtol = 1e-5
+    atol = 1e-6
+
+    for FT in (Float32, Float64)
+        # Test the update_optimal_EMA function
+        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+
+            parameters = ClimaLand.Canopy.PModelParameters(
+                cstar = FT(0.41), 
+                β = FT(146), 
+                ϕc = FT(0.087),
+                ϕ0 = FT(NaN), 
+                ϕa0 = FT(0.352),
+                ϕa1 = FT(0.022),
+                ϕa2 = FT(-0.00034),
+                α = FT(0),
+                sc = FT(2e-6),
+                pc = FT(-2e6)
+            )
+
+            constants = PModelConstants(FT)
+
+            T_canopy = FT(303.15)
+            I_abs = FT(1e-3)
+            ca = FT(4e-4)
+            P_air = FT(101325.0)
+            VPD = FT(150)
+            βm = FT(0.5)
+
+            outputs_full = compute_full_pmodel_outputs(
+                    parameters, 
+                    constants,
+                    T_canopy,
+                    P_air,
+                    VPD,
+                    ca .* P_air, # convert back to Pa
+                    βm,
+                    I_abs
+            )
+
+            dummy_OptVars = (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            outputs_from_EMA = update_optimal_EMA(
+                parameters, 
+                constants, 
+                dummy_OptVars, 
+                T_canopy, 
+                P_air, 
+                VPD,
+                ca, 
+                βm,
+                I_abs,
+                FT(1.0), # force update 
+            )
+
+            @test isapprox(outputs_from_EMA.ξ_opt, outputs_full.xi, rtol=rtol, atol=atol)
+            @test isapprox(outputs_from_EMA.Vcmax25_opt, outputs_full.vcmax25, rtol=rtol, atol=atol)
+            @test isapprox(outputs_from_EMA.Jmax25_opt, outputs_full.jmax25, rtol=rtol, atol=atol)
         end
     end
 end

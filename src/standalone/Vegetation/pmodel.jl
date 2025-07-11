@@ -1,9 +1,10 @@
 export PModelParameters, 
     PModelDrivers, 
     PModelConstants, 
+    PModel,
     compute_full_pmodel_outputs, 
     set_historical_cache!,
-    PModel,
+    update_optimal_EMA,
     make_PModel_callback
 
 """
