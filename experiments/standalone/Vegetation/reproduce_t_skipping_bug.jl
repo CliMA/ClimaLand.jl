@@ -105,25 +105,15 @@ rt_params = TwoStreamParameters(
 rt_model = TwoStreamModel{FT}(rt_params);
 
 # Arguments for conductance model:
-cond_params = PModelConductanceParameters(Drel = FT(1.6))
+cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
 
-stomatal_model = PModelConductance{FT}(cond_params);
+stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
 # Arguments for photosynthesis model:
-photo_params = PModelParameters(
-    cstar = FT(0.41), 
-    β = FT(146), 
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN), 
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
-    α = FT(0.933),
-    sc = FT(2e-6),
-    pc = FT(-2e6)
-)
+is_c3 = FT(1) # set the photosynthesis mechanism to C3
+photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
 
-photosynthesis_model = PModel{FT}(photo_params);
+photosynthesis_model = FarquharModel{FT}(photo_params);
 
 # Arguments for autotrophic respiration model:
 AR_params = AutotrophicRespirationParameters(FT)
@@ -233,34 +223,34 @@ end;
 
 # Run the simulation for 60 days with a timestep of 10 minutes 
 t0 = FT(0.0)
-N_days = 60
+N_days = 20
 tf = t0 + 3600 * 24 * N_days
 dt = FT(600.0);
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
-# Save every 30 mins 
-n = 18
-saveat = Array(t0:(n * dt):tf)
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-
 # Create the callback function which updates the forcing variables,
-# or drivers.
 updateat = Array(t0:1800:tf)
 model_drivers = ClimaLand.get_drivers(canopy)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
-# p model specific callback. Eventually we will need to make this automatically applied
-# if we are using the Pmodel 
-pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+# set up a vector to store callback times and a function to save them
+callback_times = Float32[]
+
+function save_time(t)
+    push!(callback_times, t)
+end
+
+dummy_cb = FrequencyBasedCallback(
+    dt, # period is same as dt
+    start_date, # start datetime, UTC
+    dt;
+    func = (integrator;) -> save_time(integrator.t)
+)
 
 # unify callbacks 
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb, pmodel_cb);
+cb = SciMLBase.CallbackSet(driver_cb, dummy_cb);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -288,85 +278,28 @@ prob = SciMLBase.ODEProblem(
 # using [`SciMLBase.jl`](https://github.com/SciML/SciMLBase.jl) and
 # [`ClimaTimeSteppers.jl`](https://github.com/CliMA/ClimaTimeSteppers.jl).
 
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
-pmodel_vars = [
-    "canopy.photosynthesis.GPP",
-    "canopy.photosynthesis.OptVars.Vcmax25_opt", 
-    "canopy.photosynthesis.OptVars.Jmax25_opt", 
-    "canopy.photosynthesis.OptVars.ξ_opt", 
-    "canopy.photosynthesis.IntVars.ci",
-    "canopy.photosynthesis.Jmax",
-    "canopy.photosynthesis.J",
-    "canopy.conductance.r_stomata_canopy",
-    "canopy.radiative_transfer.par.abs",
-    "canopy.radiative_transfer.par_d"
-]
-
-
-# get the pmodel variables and drivers
-extracted_vars = extract_variables(sv, pmodel_vars)
-
-
-if save_outputs
-    # Save outputs to NetCDF files
-    # Convert UTC time to local time and create time array
-    # Use sol.t which contains the actual simulation times in seconds
-    local_datetime = UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
-    time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
-
-    # Remove existing NetCDF files if they exist
-    canopy_file = "outputs/canopy_integration_outputs.nc"
-    drivers_file = "outputs/US_Oz_fluxnet_drivers.nc"
-    if isfile(canopy_file)
-        rm(canopy_file)
-    end
-    if isfile(drivers_file)
-        rm(drivers_file)
-    end
-
-    # Create canopy integration outputs NetCDF file
-    NCDatasets.Dataset(canopy_file, "c") do ds
-        # Create time dimension
-        NCDatasets.defDim(ds, "time", length(time_seconds))
-        
-        # Create time variable
-        time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = time_seconds
-        
-        # Save each extracted variable
-        for (var_name, var_data) in pairs(extracted_vars)
-            var_clean_name = replace(string(var_name), "." => "_")
-            nc_var = NCDatasets.defVar(ds, var_clean_name, Float64, ("time",))
-            nc_var[:] = var_data
-        end
-    end
-
-    # Create fluxnet drivers NetCDF file
-    NCDatasets.Dataset(drivers_file, "c") do ds
-        # Create time dimension (fluxnet data is on 30-min intervals)
-        # Match the same time grid as the model outputs
-        fluxnet_time_local = local_datetime
-        fluxnet_time_seconds = time_seconds
-        
-        NCDatasets.defDim(ds, "time", length(fluxnet_time_seconds))
-        
-        # Create time variable
-        time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = fluxnet_time_seconds
-        
-        # Save each driver variable
-        driver_names = fieldnames(typeof(drivers))
-        for driver_name in driver_names
-            driver_data = getfield(drivers, driver_name)
-            # Sample the driver data at the same intervals as the model output
-            driver_indices = Int.(round.(sol.t ./ DATA_DT)) .+ 1
-            # Ensure indices are within bounds
-            driver_indices = clamp.(driver_indices, 1, length(driver_data.values))
-            var_data = driver_data.values[driver_indices]
-            
-            nc_var = NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
-            nc_var[:] = var_data
-        end
-    end
+# Validate that the callback was called correctly every dt
+if length(callback_times) > 1
+    time_differences = diff(callback_times)
+    
+    # Count differences that equal dt (within numerical tolerance)
+    tolerance = FT(1e-6)
+    correct_diffs = sum(abs.(time_differences .- dt) .< tolerance)
+    incorrect_diffs = length(time_differences) - correct_diffs
+    
+    println("Total callback calls: ", length(callback_times))
+    println("Number of correct time differences (≈ dt): ", correct_diffs)
+    println("Number of incorrect time differences (≠ dt): ", incorrect_diffs)
+    println("Expected dt: ", dt)
+    println("Actual time differences: ", time_differences)
+    
+    # Assert that all differences should equal dt
+    @assert incorrect_diffs == 0 "Callback was not called correctly every dt! Found $incorrect_diffs incorrect time differences."
+    
+    println("✓ Callback validation passed: All time differences equal dt within tolerance")
+else
+    println("Warning: Less than 2 callback times recorded, cannot validate time differences")
 end
+

@@ -409,9 +409,14 @@ function update_optimal_EMA(
     βm::FT,
     I_abs::FT,
     local_noon_mask::FT,
+    t,
     verbose::Bool = false, 
 ) where {FT} 
     if local_noon_mask == FT(1.0)
+        # convert t from seconds UTC to local time (HH:MM:SS)
+        local_time = unix2datetime(t) - Hour(7) # assuming UTC-7 for local noon calculation
+        println("It is local noon at $(t) seconds UTC which is local time $(Hour(local_time)) $(Minute(local_time)) $(Second(local_time))")
+
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
         
@@ -510,12 +515,9 @@ See https://clima.github.io/Insolation.jl/dev/ZenithAngleEquations/#Hour-Angle
 function get_local_noon_mask(
     t,
     dt, 
-    lon::FT
-) where {FT}    
-    day = IP.day(IP.InsolationParameters(FT)) 
-
-    # local noon in seconds UTC 
-    local_noon = day * (1/2 - lon/360)
+    local_noon::FT
+) where {FT}
+    print("$t ")
     return FT(FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2) 
 end
 
@@ -576,21 +578,13 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         βm,
         I_abs,
         local_noon_mask,
+        0
     )
 end
 
 
-function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing) 
-    # update local noon mask 
-    if isnothing(longitude) 
-        try 
-            longitude = ClimaCore.Fields.coordinate_field(axes(p.drivers.T)).long
-        catch e
-            error("Longitude must be provided explicitly if the domain you are working on does not \
-                    have axes that specify longitude $e")
-        end
-    end 
-    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
+function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon) 
+    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
     
     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
     parameters = canopy.photosynthesis.parameters
@@ -616,6 +610,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing)
         βm,
         I_abs,
         local_noon_mask,
+        t
     )
 end 
 
@@ -635,24 +630,33 @@ Args
     the longitude at each point can be automatically extracted from the field axes (THIS STILL NEEDS TO BE TESTED)
 """
 function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
-
     function seconds_after_midnight(t)
         return Hour(t).value * 3600 +
             Minute(t).value * 60
     end 
 
+    if isnothing(longitude) 
+        try 
+            error("Not implemented yet")
+        catch e
+            error("Longitude must be provided explicitly if the domain you are working on does not \
+                    have axes that specify longitude $e")
+        end
+    end 
+
     day = IP.day(IP.InsolationParameters(FT)) 
     start_t = FT(seconds_after_midnight(start_date))
+    local_noon = FT(day * (1/2 - longitude/360))
 
     return FrequencyBasedCallback(
-        FT(600.0), # 10 minutes
+        Dates.Second(600), # 10 minutes
         start_date, # start datetime, UTC 
         dt; # timestep, in seconds
         func = (integrator; ) -> call_update_optimal_EMA(
             integrator.p, 
             integrator.u,
             (integrator.t + start_t) % (day), # current time in seconds UTC; 
-            canopy=canopy, dt=dt, longitude=longitude
+            canopy=canopy, dt=dt, local_noon=local_noon
         ),
     )
 end
