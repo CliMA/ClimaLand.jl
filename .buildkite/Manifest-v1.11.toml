@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.5"
+julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "c057205b5dfa45d173ab89f45dff9c1d2ab4a915"
+project_hash = "acaaffaaac229b13d375a67bbaf146c0a0ce520e"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -1243,9 +1243,9 @@ weakdeps = ["Makie"]
 
 [[deps.GeoMakie]]
 deps = ["Colors", "CoordinateTransformations", "Downloads", "GeoFormatTypes", "GeoInterface", "GeoInterfaceMakie", "GeoJSON", "Geodesy", "GeometryBasics", "GeometryOps", "ImageIO", "LinearAlgebra", "Makie", "NaturalEarth", "Proj", "Reexport", "Statistics", "StructArrays"]
-git-tree-sha1 = "8ef9756e37ca5bc892e920551f9aa683d5b8fab3"
+git-tree-sha1 = "2db1d309af35a1ad440e75b9275e4b3b4715ed39"
 uuid = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
-version = "0.7.13"
+version = "0.7.12"
 
 [[deps.Geodesy]]
 deps = ["CoordinateTransformations", "Dates", "LinearAlgebra", "StaticArrays"]
