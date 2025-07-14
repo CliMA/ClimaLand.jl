@@ -54,7 +54,8 @@ end
 """
     pmodel_unittests_path(; context = nothing)
 
-Returns the filepaths for input-output pairs for the P-model. 
+Returns the filepaths for input-output pairs for the P-model. This data is generated from the R
+implementation of the P-model and is used to test the ClimaLand P-model.
     
 Experiment details are in `test/standalone/Vegetation/test_pmodel.jl`.
 """

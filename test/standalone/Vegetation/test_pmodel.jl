@@ -190,14 +190,23 @@ end
                 verbose &&
                     println("Running test case: $testcase_name with FT = $FT")
 
-                # Create constants, drivers, and parameters for the current FT
+                # prepare constants, parameters, and drivers for the current FT
                 constants = PModelConstants(FT)
-                drivers = PModelDrivers(inputs, FT)
                 parameters = PModelParameters(inputs, FT)
+
+                T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
+                VPD = FT(inputs["vpd"])
+                ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
+                P_air = FT(get(inputs, "patm", 101325.0))
+                I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
+                βm =
+                    Bool(inputs["do_soilmstress"]) ?
+                    quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
 
                 # Run the model
                 outputs =
-                    compute_full_pmodel_outputs(parameters, drivers, constants)
+                    compute_full_pmodel_outputs(parameters, constants, 
+                        T_canopy, I_abs, ca, P_air, VPD, βm)
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)

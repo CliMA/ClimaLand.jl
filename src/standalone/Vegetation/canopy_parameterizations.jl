@@ -845,7 +845,7 @@ end
           R::FT) where {FT}
 
 Computes the Michaelis-Menten coefficient for CO2 (`Kc`),
-in units of mol/mol,
+in units of mol/mol or Pa (depending on the units of `Kc25`),
 as a function of its value at 25 °C (`Kc25`),
 a constant (`ΔHkc`), a standard temperature (`To`),
 the unversal gas constant (`R`), and the temperature (`T`).
@@ -866,7 +866,7 @@ end
           R::FT) where {FT}
 
 Computes the Michaelis-Menten coefficient for O2 (`Ko`),
-in units of mol/mol,
+in units of mol/mol or Pa (depending on the units of `Ko25`),
 as a function of its value at 25 °C (`Ko25`),
 a constant (`ΔHko`), a standard temperature (`To`),
 the universal gas constant (`R`), and the temperature (`T`).
@@ -1142,59 +1142,6 @@ end
 
 
 """
-    density_h20(
-        T::FT, 
-        p::FT
-    ) where {FT}
-
-    Computes the density of water in kg/m^3 given temperature T (K) and pressure p (Pa)
-    according to F.H. Fisher and O.E Dial, Jr. (1975) Equation of state of pure water and 
-    sea water, Tech. Rept., Marine Physical Laboratory, San Diego, CA.
-
-    (can consider removing the higher order terms?) 
-"""
-function density_h2o(T::FT, p::FT) where {FT}
-    # Convert temperature to Celsius
-    T = T - FT(273.15)
-    # Convert pressure to bar (1 bar = 1e5 Pa)
-    pbar = FT(1e-5) * p
-
-    # λ(T): bar cm3/g
-    λ =
-        FT(1788.316) + FT(21.55053) * T - FT(0.4695911) * T^2 +
-        FT(3.096363e-3) * T^3 - FT(7.341182e-6) * T^4
-
-    # p0(T): bar
-    p0 =
-        FT(5918.499) + FT(58.05267) * T - FT(1.1253317) * T^2 +
-        FT(6.6123869e-3) * T^3 - FT(1.4661625e-5) * T^4
-
-    # v_inf(T): cm3/g
-    T_powers = (T .^ (0:9))  # T^0 to T^9
-    coeffs_vinf =
-        FT.([
-            0.6980547,
-            -7.435626e-4,
-            3.704258e-5,
-            -6.315724e-7,
-            9.829576e-9,
-            -1.197269e-10,
-            1.005461e-12,
-            -5.437898e-15,
-            1.69946e-17,
-            -2.295063e-20,
-        ])
-    v_inf = dot(coeffs_vinf, T_powers)
-
-    # Specific volume [cm3/g]
-    v = v_inf + λ / (p0 + pbar)
-
-    # Convert to density [kg/m3]
-    return FT(1e3) / v
-end
-
-
-"""
     viscosity_h20(
         T::FT, 
         p::FT,
@@ -1206,7 +1153,7 @@ end
 
     Can consider simplifying if this level of precision is not needed
 """
-function viscosity_h2o(T::FT, p::FT, constant_density::Bool) where {FT}
+function viscosity_h2o(T::FT, p::FT) where {FT}
     # Reference constants
     tk_ast = FT(647.096)    # K
     ρ_ast = FT(322.0)      # kg/m^3
@@ -1214,8 +1161,7 @@ function viscosity_h2o(T::FT, p::FT, constant_density::Bool) where {FT}
 
     # Get density of water [kg/m^3]
     earth_param_set = LP.LandParameters(FT)
-    ρ0 = LP.ρ_cloud_liq(earth_param_set)
-    constant_density ? ρ = ρ0 : ρ = density_h2o(T, p)
+    ρ = LP.ρ_cloud_liq(earth_param_set)
 
     # Dimensionless variables
     tbar = T / tk_ast
@@ -1278,10 +1224,9 @@ end
 function compute_viscosity_ratio(
     T::FT,
     p::FT,
-    constant_density::Bool,
 ) where {FT}
-    η25 = viscosity_h2o(FT(298.15), FT(101325.0), constant_density)
-    ηstar = viscosity_h2o(T, p, constant_density) / η25
+    η25 = viscosity_h2o(FT(298.15), FT(101325.0))
+    ηstar = viscosity_h2o(T, p) / η25
     return FT(ηstar)
 end
 
@@ -1434,7 +1379,6 @@ end
     is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
     at STP and using Vcmax/Jmax = 1.88. 
 """
-# TODO: test if cstar should be made a free parameter? 
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
     return FT(mj * sqrt(1 - (cstar / mj)^(FT(2 / 3))))
 end

@@ -1,5 +1,7 @@
-export PModelParameters,
-    PModelDrivers, PModelConstants, compute_full_pmodel_outputs, PModel
+export PModelParameters, 
+    PModelConstants, 
+    compute_full_pmodel_outputs, 
+    PModel
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -29,42 +31,26 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     ϕa2::FT
 end
 
-"""
-    PModelDrivers{FT<:AbstractFloat}
-
-The required drivers for P-model (Stocker et al. 2020). Drivers are defined as
-external variables used to compute the optimal photosynthetic capacities. 
-$(DocStringExtensions.FIELDS)
-"""
-Base.@kwdef struct PModelDrivers{FT <: AbstractFloat}
-    "Canopy temperature (K)"
-    T_canopy::FT
-    "Absorbed PAR in moles of photons (mol m^-2 s^-1)"
-    I_abs::FT
-    "Ambient CO2 partial pressure (Pa)"
-    ca::FT
-    "Ambient air pressure (Pa)"
-    P_air::FT
-    "Vapor pressure deficit (Pa)"
-    VPD::FT
-    """Soil moisture stress factor (unitless)"""
-    βm::FT
-end
-
 
 """
     PModelConstants{FT<:AbstractFloat}
 
 The required constants for P-model (Stocker et al. 2020). These are physical
 or biochemical constants that are not expected to change with time or space.
+
+IMPORTANT NOTE: the dimensions of the Michaelis-Menten parameters Kc and Ko and compensation
+point Γstar correspond to gaseous concentrations, so they can either be expressed as a mixing
+ratio (mol mol^-1) or as a partial pressure (Pa) of 1 atm. These are equivalent up to a constant
+factor of P_atm = 101325 Pa. As long as you are consistent with which convention you use,
+the model will work correctly. By default, these constants are set using the Pa convention. 
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct PModelConstants{FT}
     """Gas constant (J mol^-1 K^-1)"""
     R::FT
-    """Michaelis-Menten parameter for carboxylation at 25°C (μmol mol^-1)"""
+    """Michaelis-Menten parameter for carboxylation at 25°C (mol mol^-1 or Pa)"""
     Kc25::FT
-    """Michaelis-Menten parameter for oxygenation at 25°C (μmol mol^-1)"""
+    """Michaelis-Menten parameter for oxygenation at 25°C (mol mol^-1 or Pa)"""
     Ko25::FT
     """Reference temperature equal to 25˚C (K)"""
     To::FT
@@ -76,7 +62,7 @@ Base.@kwdef struct PModelConstants{FT}
     Drel::FT
     """Effective energy of activation for Γstar (J mol^-1)"""
     ΔHΓstar::FT
-    """Γstar at 25 °C (Pa)"""
+    """Γstar at 25 °C (mol mol^-1 or Pa)"""
     Γstar25::FT
     """Effective energy of activation for Vcmax (J mol^-1)"""
     Ha_Vcmax::FT
@@ -96,7 +82,7 @@ Base.@kwdef struct PModelConstants{FT}
     bS_Jmax::FT
     """Molar mass of carbon (kg mol^-1)"""
     Mc::FT
-    """Intercellular O2 mixing ratio (unitless)"""
+    """Intercellular O2 mixing ratio (mol mol^-1)"""
     oi::FT
     """First order coefficient for temp-dependent Rd (K^-1)"""
     aRd::FT
@@ -107,11 +93,9 @@ Base.@kwdef struct PModelConstants{FT}
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
-Base.eltype(::PModelDrivers{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
 Base.broadcastable(m::PModelParameters) = tuple(m)
-Base.broadcastable(m::PModelDrivers) = tuple(m)
 Base.broadcastable(m::PModelConstants) = tuple(m)
 
 """
@@ -178,10 +162,15 @@ ClimaLand.auxiliary_domain_names(::PModel) =
 
 """
     compute_full_pmodel_outputs(
-        parameters::PModelParameters, 
-        drivers::PModelDrivers, 
-        constants::PModelConstants
-    )
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        T_canopy::FT,
+        I_abs::FT,
+        ca::FT,
+        P_air::FT,
+        VPD::FT,
+        βm::FT
+    ) where {FT}
 
 Performs the P-model computations as defined in Stocker et al. (2020) 
 and returns a dictionary of outputs. See https://github.com/geco-bern/rpmodel
@@ -207,14 +196,16 @@ Output name      Description (units)
 """
 function compute_full_pmodel_outputs(
     parameters::PModelParameters{FT},
-    drivers::PModelDrivers{FT},
     constants::PModelConstants{FT},
+    T_canopy::FT,
+    I_abs::FT,
+    ca::FT,
+    P_air::FT,
+    VPD::FT,
+    βm::FT
 ) where {FT}
     # Unpack parameters
     (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
-
-    # Unpack drivers
-    (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
 
     # Unpack constants
     (;
@@ -246,7 +237,7 @@ function compute_full_pmodel_outputs(
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
+    ηstar = compute_viscosity_ratio(T_canopy, P_air)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
     ci = χ * ca

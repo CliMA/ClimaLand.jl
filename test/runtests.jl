@@ -83,6 +83,9 @@ end
 @safetestset "Soil integrated water and energy content" begin
     include("standalone/Soil/conservation.jl")
 end
+@safetestset "Soil spatial parameters" begin
+    include("standalone/Soil/spatial_parameters.jl")
+end
 
 # Standalone Surface Water model tests
 @safetestset "Pond module tests" begin
@@ -104,6 +107,9 @@ end
 end
 @safetestset "Canopy integrated water and energy content" begin
     include("standalone/Vegetation/conservation.jl")
+end
+@safetestset "Canopy spatial parameters" begin
+    include("standalone/Vegetation/spatial_parameters.jl")
 end
 @safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
