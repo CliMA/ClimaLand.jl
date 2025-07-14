@@ -336,7 +336,7 @@ Please see Issue #644
 or PR #645 for details.
 For now, this clipping is similar to what CLM and NOAH MP do.
 """
-function ClimaLand.Canopy.set_canopy_prescribed_field!(
+NVTX.@annotate function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
     t,
