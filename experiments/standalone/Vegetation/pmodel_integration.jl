@@ -15,7 +15,7 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-save_outputs = false 
+save_outputs = true 
 save_directory = "outputs"
 
 const FT = Float32;
@@ -233,14 +233,14 @@ end;
 
 # Run the simulation for 60 days with a timestep of 10 minutes 
 t0 = FT(0.0)
-N_days = 60
+N_days = 364
 tf = t0 + 3600 * 24 * N_days
 dt = FT(600.0);
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
 # Save every 30 mins 
-n = 18
+n = 3 
 saveat = Array(t0:(n * dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
@@ -298,9 +298,14 @@ pmodel_vars = [
     "canopy.photosynthesis.IntVars.ci",
     "canopy.photosynthesis.Jmax",
     "canopy.photosynthesis.J",
+    "canopy.photosynthesis.Vcmax",
+    "canopy.photosynthesis.Ac",
+    "canopy.photosynthesis.Aj",
+    "canopy.photosynthesis.I_abs",
+    "canopy.photosynthesis.VPD",
     "canopy.conductance.r_stomata_canopy",
     "canopy.radiative_transfer.par.abs",
-    "canopy.radiative_transfer.par_d"
+    "canopy.radiative_transfer.par_d",
 ]
 
 

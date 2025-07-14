@@ -226,7 +226,12 @@ ClimaLand.auxiliary_vars(model::PModel) =
     :OptVars,
     :IntVars,
     :Jmax,
-    :J)
+    :J,
+    :Vcmax,
+    :Ac,
+    :Aj,
+    :I_abs,
+    :VPD)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
     (FT,
     FT,
@@ -234,9 +239,15 @@ ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
     NamedTuple{(:Γstar, :Kmm, :ci), Tuple{FT, FT, FT}},
     FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT, 
     FT)
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface,
+    :surface, :surface, :surface, :surface, :surface)
 
 
 """
@@ -413,10 +424,6 @@ function update_optimal_EMA(
     verbose::Bool = false, 
 ) where {FT} 
     if local_noon_mask == FT(1.0)
-        # convert t from seconds UTC to local time (HH:MM:SS)
-        local_time = unix2datetime(t) - Hour(7) # assuming UTC-7 for local noon calculation
-        println("It is local noon at $(t) seconds UTC which is local time $(Hour(local_time)) $(Minute(local_time)) $(Second(local_time))")
-
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
         
@@ -517,8 +524,10 @@ function get_local_noon_mask(
     dt, 
     local_noon::FT
 ) where {FT}
-    print("$t ")
-    return FT(FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2) 
+    # temporary fix 
+    strict_noon_mask = FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2
+    wider_noon_mask = FT(t) >= local_noon - FT(dt) && FT(t) <= local_noon + FT(dt)
+    return FT(wider_noon_mask) # return wider mask for now
 end
 
 """
@@ -775,6 +784,11 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
     @. p.canopy.photosynthesis.Jmax = Jmax_inst
     @. p.canopy.photosynthesis.J = J_inst
+    @. p.canopy.photosynthesis.Vcmax = Vcmax_inst
+    @. p.canopy.photosynthesis.Ac = Ac
+    @. p.canopy.photosynthesis.Aj = Aj
+    @. p.canopy.photosynthesis.I_abs = I_abs
+    @. p.canopy.photosynthesis.VPD = VPD
 end
 
 get_Vcmax25(p, m::PModel) =
