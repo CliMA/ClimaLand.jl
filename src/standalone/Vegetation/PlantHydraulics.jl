@@ -11,6 +11,7 @@ using ..ClimaLand.Canopy:
     AbstractGroundConditions,
     PrescribedGroundConditions
 using ClimaCore
+using NVTX
 using DocStringExtensions
 
 import ClimaLand:

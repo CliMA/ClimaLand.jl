@@ -63,6 +63,11 @@ function parse_commandline()
         arg_type = String
         default = "flamegraph"
     end
+    @add_arg_table s begin
+        "--nan_cb"
+        help = "enable NaN check callback"
+        nargs = 0
+    end
     return parse_args(s)
 end
 
@@ -72,7 +77,12 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-outdir = "snowy_land_benchmark_$(device_suffix)"
+parsed_args = parse_commandline()
+profiler = parsed_args["profiler"]
+enable_nan_cb = parsed_args["nan_cb"]
+outdir =
+    enable_nan_cb ? "snowy_land_nan_cb_benchmark_$(device_suffix)" :
+    "snowy_land_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
@@ -364,7 +374,18 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    cb =
+        enable_nan_cb ?
+        SciMLBase.CallbackSet(
+            ClimaLand.NaNCheckCallback(
+                Dates.Hour(1),
+                start_date,
+                3600.0,
+                mask = ClimaLand.landsea_mask(bucket_domain),
+            ),
+            driver_cb,
+        ) : driver_cb
     return prob, cb
 end
 
@@ -393,8 +414,7 @@ function setup_simulation(; greet = false)
     )
     return prob, ode_algo, Δt, cb
 end
-parsed_args = parse_commandline()
-profiler = parsed_args["profiler"]
+
 @info "Starting profiling with $profiler"
 if profiler == "flamegraph"
     prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
@@ -475,7 +495,8 @@ if profiler == "flamegraph"
         @info "Saved allocation flame to $alloc_flame_file"
     end
     if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark" &&
-       ClimaComms.device() isa ClimaComms.CUDADevice
+       ClimaComms.device() isa ClimaComms.CUDADevice &&
+       !enable_nan_cb
         PREVIOUS_BEST_TIME = 0.74
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"

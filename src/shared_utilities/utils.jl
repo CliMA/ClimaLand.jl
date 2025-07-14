@@ -2,6 +2,7 @@ import ClimaCore
 import SciMLBase
 import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule
 import Dates
+using NVTX
 
 using ClimaComms
 using ClimaUtilities.ClimaArtifacts
@@ -661,7 +662,9 @@ function NaNCheckCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
+    NVTX.@annotate function affect!(integrator)
+        call_count_nans_state(integrator.u; mask)
+    end
 
     SciMLBase.DiscreteCallback(cond, affect!)
 end
