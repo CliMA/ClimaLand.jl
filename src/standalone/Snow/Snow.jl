@@ -5,6 +5,7 @@ import ...Parameters as LP
 using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
+using NVTX
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
