@@ -382,7 +382,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
                 Dates.Hour(1),
                 start_date,
                 3600.0,
-                mask = ClimaLand.landsea_mask(bucket_domain),
+                mask = ClimaLand.landsea_mask(surface_space),
             ),
             driver_cb,
         ) : driver_cb
