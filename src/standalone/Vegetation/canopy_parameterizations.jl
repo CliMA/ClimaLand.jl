@@ -71,7 +71,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
@@ -116,7 +116,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Two-stream model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
@@ -126,7 +126,7 @@ Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_fractional_absorbances!(
+NVTX.@annotate function compute_fractional_absorbances!(
     p,
     RT::TwoStreamModel{FT},
     LAI,

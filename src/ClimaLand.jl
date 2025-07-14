@@ -156,7 +156,7 @@ function make_imp_tendency(land::AbstractLandModel)
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
     update_boundary_fluxes! = make_update_boundary_fluxes(land)
-    NVTX.@annotate "model imp" function imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate "model imp_tendency!" function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
         for f! in compute_imp_tendency_list
@@ -172,7 +172,7 @@ function make_exp_tendency(land::AbstractLandModel)
         map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
     update_boundary_fluxes! = make_update_boundary_fluxes(land)
-    NVTX.@annotate "model exp" function exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate "model exp_tendency!" function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
         for f! in compute_exp_tendency_list
@@ -186,7 +186,7 @@ function make_update_aux(land::AbstractLandModel)
     components = land_components(land)
     update_aux_function_list =
         map(x -> make_update_aux(getproperty(land, x)), components)
-    NVTX.@annotate "model aux" function update_aux!(p, Y, t)
+    NVTX.@annotate "model update_aux!" function update_aux!(p, Y, t)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
@@ -198,7 +198,7 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
     components = land_components(land)
     update_fluxes_function_list =
         map(x -> make_update_boundary_fluxes(getproperty(land, x)), components)
-    NVTX.@annotate "model boundary fluxes" function update_boundary_fluxes!(
+    NVTX.@annotate "model update_boundary_fluxes!" function update_boundary_fluxes!(
         p,
         Y,
         t,

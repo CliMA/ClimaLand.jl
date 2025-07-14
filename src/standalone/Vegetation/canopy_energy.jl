@@ -97,7 +97,7 @@ function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,
 ) where {FT}
-    NVTX.@annotate "canopy en imp tend" function compute_imp_tendency!(
+    NVTX.@annotate "Canopy compute_imp_tendency!" function compute_imp_tendency!(
         dY,
         Y,
         p,
@@ -168,7 +168,7 @@ function ClimaLand.make_compute_jacobian(
     model::BigLeafEnergyModel{FT},
     canopy,
 ) where {FT}
-    function compute_jacobian!(
+    NVTX.@annotate "Canopy compute_jacobian!" function compute_jacobian!(
         jacobian::MatrixFields.FieldMatrixWithSolver,
         Y,
         p,
