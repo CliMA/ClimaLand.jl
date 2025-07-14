@@ -4,6 +4,10 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.17.1
+-------
+- Fix bug in soil boundary var types for coupled atmos PR[#1228](https://github.com/CliMA/ClimaLand.jl/pull/1228)
+
 v0.17.0
 -------
 - Fix texure norm bug (soil composition) PR[#1217](https://github.com/CliMA/ClimaLand.jl/pull/1217)
