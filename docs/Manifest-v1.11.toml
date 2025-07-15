@@ -400,13 +400,12 @@ uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
 version = "0.2.15"
 
 [[deps.ClimaLand]]
-deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
+deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.17.1"
 
     [deps.ClimaLand.extensions]
-    CreateParametersExt = "ClimaParams"
     LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
@@ -415,7 +414,6 @@ version = "0.17.1"
     CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
     CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
     ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
-    ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
     DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
     Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
     GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"

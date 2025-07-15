@@ -1,4 +1,5 @@
 module Canopy
+import ClimaParams as CP
 using DocStringExtensions
 using Thermodynamics
 using ClimaLand
