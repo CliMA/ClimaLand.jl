@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Create the extension LandSimulationsVisualization  PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1199)
 
 v0.17.1
 -------

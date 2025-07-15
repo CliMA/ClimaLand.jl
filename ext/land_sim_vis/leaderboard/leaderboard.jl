@@ -1,11 +1,3 @@
-import ClimaAnalysis
-import GeoMakie
-import CairoMakie
-import Dates
-import Statistics: mean
-
-include("data_sources.jl")
-
 """
     compute_monthly_leaderboard(leaderboard_base_path,
                                 diagnostics_folder_path,
