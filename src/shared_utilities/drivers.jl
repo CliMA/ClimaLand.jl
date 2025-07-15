@@ -966,12 +966,14 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
         T_air,
         Thermodynamics.Liquid(),
     )
-    ea = Thermodynamics.partial_pressure_vapor(
-        thermo_params,
-        P_air,
-        Thermodynamics.PhasePartition(q_air),
-    )
-    return es - ea
+    # print("$P_air, $q_air ")
+    ea = P_air * q_air / (q_air + (1 / Thermodynamics.Parameters.molmass_ratio(thermo_params)) * (1 - q_air))
+    # ea = Thermodynamics.partial_pressure_vapor(
+    #     thermo_params,
+    #     P_air,
+    #     Thermodynamics.PhasePartition(q_air),
+    # )
+    return max(es - ea, 0)
 end
 
 """

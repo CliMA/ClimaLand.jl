@@ -260,7 +260,7 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
 
 # unify callbacks 
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb, pmodel_cb);
+cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -296,6 +296,8 @@ pmodel_vars = [
     "canopy.photosynthesis.OptVars.Jmax25_opt", 
     "canopy.photosynthesis.OptVars.ξ_opt", 
     "canopy.photosynthesis.IntVars.ci",
+    "canopy.photosynthesis.IntVars.Γstar",
+    "canopy.photosynthesis.IntVars.Kmm",
     "canopy.photosynthesis.Jmax",
     "canopy.photosynthesis.J",
     "canopy.photosynthesis.Vcmax",
@@ -320,6 +322,10 @@ if save_outputs
     local_datetime = UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
     time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
 
+    # Skip the first timestep for canopy integration outputs
+    local_datetime_skip_first = local_datetime[2:end]
+    time_seconds_skip_first = time_seconds[2:end]
+
     # Remove existing NetCDF files if they exist
     canopy_file = "outputs/canopy_integration_outputs.nc"
     drivers_file = "outputs/US_Oz_fluxnet_drivers.nc"
@@ -332,33 +338,25 @@ if save_outputs
 
     # Create canopy integration outputs NetCDF file
     NCDatasets.Dataset(canopy_file, "c") do ds
-        # Create time dimension
-        NCDatasets.defDim(ds, "time", length(time_seconds))
-        
-        # Create time variable
+        NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = time_seconds
+        time_var[:] = time_seconds_skip_first
         
-        # Save each extracted variable
+        # Save each extracted variable (excluding first timestep)
         for (var_name, var_data) in pairs(extracted_vars)
             var_clean_name = replace(string(var_name), "." => "_")
             nc_var = NCDatasets.defVar(ds, var_clean_name, Float64, ("time",))
-            nc_var[:] = var_data
+            nc_var[:] = var_data[2:end]
         end
     end
 
     # Create fluxnet drivers NetCDF file
-    NCDatasets.Dataset(drivers_file, "c") do ds
-        # Create time dimension (fluxnet data is on 30-min intervals)
-        # Match the same time grid as the model outputs
-        fluxnet_time_local = local_datetime
-        fluxnet_time_seconds = time_seconds
-        
-        NCDatasets.defDim(ds, "time", length(fluxnet_time_seconds))
+    NCDatasets.Dataset(drivers_file, "c") do ds        
+        NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
         
         # Create time variable
         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = fluxnet_time_seconds
+        time_var[:] = time_seconds_skip_first
         
         # Save each driver variable
         driver_names = fieldnames(typeof(drivers))
@@ -369,6 +367,8 @@ if save_outputs
             # Ensure indices are within bounds
             driver_indices = clamp.(driver_indices, 1, length(driver_data.values))
             var_data = driver_data.values[driver_indices]
+            # Skip last timestep to match canopy outputs length
+            var_data = var_data[1:end-1]
             
             nc_var = NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
             nc_var[:] = var_data
