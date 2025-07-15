@@ -253,7 +253,7 @@ function EnergyHydrology(
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
     z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
     z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
-    emissivity = LP.get_default_parameter(FT, :soil_bare_soil),
+    emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
     additional_sources = (),
 )
     top_bc = AtmosDrivenFluxBC(
@@ -273,7 +273,7 @@ function EnergyHydrology(
         albedo,
         S_s,
         z_0m,
-        z_b,
+        z_0b,
         emissivity,
     )
     return EnergyHydrology{FT}(;

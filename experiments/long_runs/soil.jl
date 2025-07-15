@@ -18,13 +18,14 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
-using ClimaCore
+
 using ClimaDiagnostics
 using ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaUtilities.TimeManager: ITime
+import ClimaParams as CP
 using ClimaCore
 using ClimaLand
 using ClimaLand.Soil

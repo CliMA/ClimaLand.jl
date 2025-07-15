@@ -74,46 +74,45 @@ include(
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
+forcing = (; atmos, radiation)
 
-
-# Soil Model
-albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
     PAR_albedo = FT(0.25),
-    NIR_albedo = FT(0.25)
-                                            )
+    NIR_albedo = FT(0.25),
+)
 runoff = ClimaLand.Soil.SurfaceRunoff()
-retention_params = (; ν = FT(0.5), K_sat = FT(0.45 / 3600 / 100),    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(2)),
-                    θ_r = FT(0.09))
+retention_parameters = (;
+    ν = FT(0.5),
+    K_sat = FT(0.45 / 3600 / 100),
+    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(2)),
+    θ_r = FT(0.09),
+)
+composition_parameters =
+    (; ν_ss_quartz = FT(0.2), ν_ss_om = FT(0.0), ν_ss_gravel = FT(0.4))
 S_s = FT(1e-3)
-composition_params = (;ν_ss_quartz = FT(0.2), ν_ss_om = FT(0.0), ν_ss_gravel = FT(0.4))
 z_0m = FT(0.01)
 z_0b = FT(0.001)
 emissivity = FT(0.98)
 soil_model = Soil.EnergyHydrology(
-
-ρ = 300.0
-α = 0.8
-snow_parameters = SnowParameters{FT}(
-    dt;
-    α_snow = Snow.ConstantAlbedoModel(α),
-    density = Snow.MinimumDensityModel(ρ),
-    earth_param_set = earth_param_set,
-);
-snow_args = (; parameters = snow_parameters);
-snow_model_type = Snow.SnowModel
-land_input = (
-    atmos = atmos,
-    radiation = radiation,
-    domain = land_domain,
-
+    FT,
+    domain,
+    forcing,
+    earth_param_set;
+    albedo = α_soil,
+    runoff,
+    retention_parameters,
+    S_s,
+    composition_parameters,
+    z_0m,
+    z_0b,
+    emissivity,
 )
-land = ClimaLand.SoilSnowModel{FT}(;
-    land_args = land_input,
-    soil_model_type = soil_model_type,
-    soil_args = soil_args,
-    snow_args = snow_args,
-    snow_model_type = snow_model_type,
-)
+α_snow = Snow.ConstantAlbedoModel(0.8)
+density = Snow.MinimumDensityModel(300.0)
+snow_model =
+    Snow.SnowModel(FT, domain, forcing, earth_param_set, dt; α_snow, density)
+
+land = ClimaLand.SoilSnowModel(snow_model, soil_model)
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
@@ -136,7 +135,7 @@ T_0 =
     volumetric_heat_capacity.(
         Y.soil.ϑ_l,
         Y.soil.θ_i,
-        soil_ps.ρc_ds,
+        soil_model.parameters.ρc_ds,
         earth_param_set,
     )
 Y.soil.ρe_int =

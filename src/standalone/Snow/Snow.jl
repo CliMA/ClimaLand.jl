@@ -423,15 +423,47 @@ function SnowModel(;
     SnowModel{FT, typeof.(args)...}(args...)
 end
 
+"""
+    SnowModel(
+        FT,
+        domain,
+        forcing,
+        earth_param_set,
+        Δt;
+        prognostic_land_components = (:snow,),
+        z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
+        z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
+        ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
+        α_snow = ConstantAlbedo(LP.get_default_parameter(FT, :snow_albedo)),
+        density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
+        scf = WuWuSnowCoverFractionModel(
+            FT(0.106),
+            FT(1.81),
+            FT(0.08),
+            FT(1.77),
+            FT(1),
+            FT(1),
+        ),
+        θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
+        Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
+        ΔS = FT(0.1)
+    )
+
+A constructor for the snow model which sets default values for all parameters,
+constructs the right boundary conditions based on the `forcing`...
+"""
 function SnowModel(
     FT,
     domain,
     forcing,
     earth_param_set,
     Δt;
-    prognostic_land_components = (:snow,)
-    α_snow = ConstantAlbedo(FT(0.8)),
-    density = MinimumDensityModel(FT(200)),
+    prognostic_land_components = (:snow,),
+    z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
+    z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
+    ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
+    α_snow = ConstantAlbedo(LP.get_default_parameter(FT, :snow_albedo)),
+    density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
     scf = WuWuSnowCoverFractionModel(
         FT(0.106),
         FT(1.81),
@@ -439,22 +471,30 @@ function SnowModel(
         FT(1.77),
         FT(1),
         FT(1),
-    )
-    roughness_lengths = (; z_0m = FT(0.0024), z_0b =FT(0.0024)),
-    ϵ_snow = FT(0.99),
-    θ_r = FT(0.08),
-    Ksat = FT(1e-3),
-    κ_ice = FT(2.21),
-    ΔS = FT(0.1)
+    ),
+    θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
+    Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
+    ΔS = FT(0.1),
 )
-    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set, scf, α_snow, ϵ_snow, density, roughness_lengths...,
-                                    θ_r, Ksat, κ_ice, ΔS)
+    parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set,
+        scf,
+        α_snow,
+        ϵ_snow,
+        density,
+        z_0m,
+        z_0b,
+        θ_r,
+        Ksat,
+        ΔS,
+    )
     boundary_conditions = AtmosDrivenSnowBC(
         forcing.atmos,
         forcing.radiation;
         prognostic_land_components,
     )
-    return SnowModel{FT}(; boundary_conditions, domain, parameters)
+    return SnowModel(; boundary_conditions, domain, parameters)
 end
 
 """
