@@ -52,6 +52,23 @@ include("./spatially_varying_parameters.jl")
 # Convenience constructors for Canopy model components
 ########################################################
 
+## Autotrophic respiration models
+"""
+    AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+
+Creates a AutotrophicRespirationModel using default parameters of type FT.
+"""
+
+function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+    parameters = AutotrophicRespirationParameters(FT)
+    return AutotrophicRespirationModel{FT, typeof(parameters)}(parameters)
+end
+
+## Energy models
+
+## Photosynthesis models
+
+## Radiative transfer models
 """
     TwoStreamModel{FT}(
         domain;
@@ -127,6 +144,13 @@ function BeerLambertModel{FT}(
         BeerLambertParameters(FT, radiation_parameters..., ϵ_canopy, λ_γ_PAR)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
+
+## Stomatal conductance models
+
+
+########################################################
+# End component model convenience constructors
+########################################################
 
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
