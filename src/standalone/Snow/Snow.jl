@@ -449,8 +449,10 @@ end
         ΔS = FT(0.1)
     )
 
-A constructor for the snow model which sets default values for all parameters,
-constructs the right boundary conditions based on the `forcing`...
+A constructor for the snow model, which sets default values for all parameters,
+and which constructs the right boundary conditions based on the `forcing`.
+
+Default parameters or parameterizations can be overwritten using keyword arguments.
 """
 function SnowModel(
     FT,
