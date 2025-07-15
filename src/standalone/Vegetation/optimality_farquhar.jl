@@ -142,7 +142,7 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
     Γstar = @. lazy(co2_compensation(Γstar25, ΔHΓstar, T, To, R))
-    ci = @. lazy(intercellular_co2(c_co2, Γstar, medlyn_factor))# may change?
+    ci = @. lazy(intercellular_co2(c_co2_air, Γstar, medlyn_factor))# may change?
     rates = @. lazy(
         optimality_max_photosynthetic_rates(
             f_abs * par_d / energy_per_mole_photon_par,
@@ -151,8 +151,8 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
             oi,
             ci,
             Γstar,
-            MM_Kc(Kc25, ΔHkc, T, To, R),
-            MM_Ko(Ko25, ΔHko, T, To, R),
+            MM_Kc(Kc25, ΔHkc, T_canopy, To, R),
+            MM_Ko(Ko25, ΔHko, T_canopy, To, R),
             c,
         ),
     )
@@ -173,14 +173,14 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
             Vcmax,
             ci,
             Γstar,
-            MM_Kc(Kc25, ΔHkc, T, To, R),
-            MM_Ko(Ko25, ΔHko, T, To, R),
+            MM_Kc(Kc25, ΔHkc, T_canopy, To, R),
+            MM_Ko(Ko25, ΔHko, T_canopy, To, R),
             oi,
         ),
     )
 
-    @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
-    @. Rd = dark_respiration(is_c3, Vcmax25, β, T, R, To, fC3, ΔHRd)
+    @. Vcmax25 = Vcmax / arrhenius_function(T_canopy, To, R, ΔHVcmax)
+    @. Rd = dark_respiration(is_c3, Vcmax25, β, T_canopy, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
     # Compute GPP: TODO - move to diagnostics only
     @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
