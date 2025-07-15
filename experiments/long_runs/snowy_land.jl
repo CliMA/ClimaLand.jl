@@ -332,7 +332,7 @@ function setup_simulation(; greet = false)
         FT;
         context,
         nelements,
-        threshold = FT(0.99),
+        mask_threshold = FT(0.99),
     )
     params = LP.LandParameters(FT)
     model = setup_model(FT, start_date, stop_date, Δt, domain, params)
