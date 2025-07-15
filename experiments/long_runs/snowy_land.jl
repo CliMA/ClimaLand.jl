@@ -328,7 +328,12 @@ function setup_simulation(; greet = false)
         @info "Stop Date: $stop_date"
     end
 
-    domain = ClimaLand.Domains.global_domain(FT; context, nelements)
+    domain = ClimaLand.Domains.global_domain(
+        FT;
+        context,
+        nelements,
+        threshold = FT(0.99),
+    )
     params = LP.LandParameters(FT)
     model = setup_model(FT, start_date, stop_date, Δt, domain, params)
 
