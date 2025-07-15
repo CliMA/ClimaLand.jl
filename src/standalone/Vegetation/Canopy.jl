@@ -53,35 +53,78 @@ include("./spatially_varying_parameters.jl")
 ########################################################
 
 """
-    TwoStreamModel{FT}(surface_space)
+    TwoStreamModel{FT}(
+        domain;
+        radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
+        ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+        λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
+        n_layers::Int = 20,
+    )
 
-Radiative transfer
-TODO fill out
+Creates a Two Stream model for canopy radiative transfer on the provided domain.
+
+Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
+In particular, this function returns a field for
+- clumping index Ω
+- albedo and transmissitivy in PAR and NIR bands
+- leaf angle distribution G function parameter χl
+
+Canopy emissivity and wavelength per PAR photon are currently treated
+as constants; these can be passed in as Floats by kwarg.
+Otherwise the default values from ClimaParams.jl are used.
+
+The number of layers in the canopy is set by `n_layers`, which defaults to 20.
 """
 function TwoStreamModel{FT}(
-    surface_space,
-    scalar_params = (; ϵ_canopy, λ_γ_PAR, n_layers), # TODO add default values here if we want them to be controllable
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
+    n_layers::Int = 20,
 ) where {FT <: AbstractFloat}
-    parameters = TwoStreamParameters{FT}(
-        clm_canopy_radiation_parameters(surface_space)...,
+    parameters = TwoStreamParameters(
+        FT,
+        radiation_parameters...,
+        ϵ_canopy,
+        λ_γ_PAR,
+        n_layers,
     )
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
 end
 
 """
 
-    BeerLambertModel{FT}(surface_space)
+    BeerLambertModel{FT}(
+        domain;
+        radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
+        ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+        λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
+    ) where {FT <: AbstractFloat}
 
-Radiative transfer part 2
-TODO fill out
+Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
+
+Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
+In particular, this function returns a field for
+- clumping index Ω
+- albedo and transmissitivy in PAR and NIR bands
+- leaf angle distribution G function parameter χl
+
+Canopy emissivity and wavelength per PAR photon are currently treated
+as constants; these can be passed in as Floats by kwarg.
+Otherwise the default values from ClimaParams.jl are used.
 """
 function BeerLambertModel{FT}(
-    surface_space;
-    scalar_params = (; ϵ_canopy, λ_γ_PAR), # TODO add default values here if we want them to be controllable
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
 ) where {FT <: AbstractFloat}
-    parameters = BeerLambertParameters{FT}(
-        clm_canopy_radiation_parameters(surface_space)...,
-    )
+    parameters =
+        BeerLambertParameters(FT, radiation_parameters..., ϵ_canopy, λ_γ_PAR)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 
