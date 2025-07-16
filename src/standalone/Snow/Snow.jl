@@ -462,7 +462,7 @@ function SnowModel(
     z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
     z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
     ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
-    α_snow = ConstantAlbedo(LP.get_default_parameter(FT, :snow_albedo)),
+    α_snow = ConstantAlbedoModel(LP.get_default_parameter(FT, :snow_albedo)),
     density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
     scf = WuWuSnowCoverFractionModel(
         FT(0.106),

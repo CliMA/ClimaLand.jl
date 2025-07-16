@@ -15,7 +15,11 @@ using ClimaCore.Operators: column_integral_definite!
     end
 
 A concrete type of land model used for simulating systems with
-snow and soil (and eventually rivers).
+snow and soil.
+
+The inner constructor checks that the two models are consistent with
+respect to the forcing (atmos, radiation), the parameters, the domain,
+and the prognostic land components of the model.
 $(DocStringExtensions.FIELDS)
 """
 struct SoilSnowModel{
@@ -27,76 +31,27 @@ struct SoilSnowModel{
     snow::SnM
     "The soil model to be used"
     soil::SoM
-end
+    function SoilSnowModel(; snow, soil)
+        prognostic_land_components = (:snow, :soil)
+        top_soil_bc = soil.boundary_conditions.top
+        snow_bc = snow.boundary_conditions
+        @assert top_soil_bc.prognostic_land_components ==
+                prognostic_land_components
+        @assert snow_bc.prognostic_land_components == prognostic_land_components
 
-"""
-    SoilSnowModel{FT}(;
-        land_args::NamedTuple = (;),
-        snow_model_type::Type{SnM},
-        snow_args::NamedTuple = (;),
-        soil_model_type::Type{SoM},
-        soil_args::NamedTuple = (;),
-        ) where {
-            FT,
-            SnM <: Snow.SnowModel{FT},
-            SoM <: Soil.EnergyHydrology{FT},
-            }
+        @assert top_soil_bc.atmos == snow_bc.atmos
+        @assert top_soil_bc.radiation == snow_bc.radiation
 
-A constructor for the `LandHydrology`, which takes in the concrete model
-type and required arguments for each component, constructs those models,
-and constructs the `SoilSnowModel` from them.
+        @assert Domains.obtain_surface_domain(soil.domain) == snow.domain
 
-Each component model is constructed with everything it needs to be stepped
-forward in time, including boundary conditions, source terms, and interaction
-terms.
-"""
-function SoilSnowModel{FT}(;
-    land_args::NamedTuple = (;),
-    snow_model_type::Type{SnM},
-    snow_args::NamedTuple = (;),
-    soil_model_type::Type{SoM},
-    soil_args::NamedTuple = (;),
-) where {FT, SnM <: Snow.SnowModel, SoM <: Soil.EnergyHydrology}
-    (; atmos, radiation, domain) = land_args
-    prognostic_land_components = (:snow, :soil)
-    if :runoff ∈ propertynames(land_args)
-        runoff_model = land_args.runoff
-    else
-        runoff_model = ClimaLand.Soil.Runoff.NoRunoff()
+        @assert soil.parameters.earth_param_set ==
+                snow.parameters.earth_param_set
+        FT = eltype(soil.parameters.earth_param_set)
+        new{FT, typeof(snow), typeof(soil)}(snow, soil)
     end
-    top_bc = ClimaLand.AtmosDrivenFluxBC(
-        atmos,
-        radiation,
-        runoff_model,
-        prognostic_land_components,
-    )
-    sources = (Soil.PhaseChange{FT}(),)
-    zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions = (;
-        top = top_bc,
-        bottom = Soil.WaterHeatBC(;
-            water = Soil.FreeDrainage(),
-            heat = zero_flux,
-        ),
-    )
-    soil = soil_model_type{FT}(;
-        boundary_conditions = boundary_conditions,
-        sources = sources,
-        domain = domain,
-        soil_args...,
-    )
-    snow = snow_model_type(;
-        boundary_conditions = Snow.AtmosDrivenSnowBC(
-            atmos,
-            radiation,
-            prognostic_land_components,
-        ),
-        domain = Domains.obtain_surface_domain(domain),
-        snow_args...,
-    )
 
-    return SoilSnowModel{FT, typeof(snow), typeof(soil)}(snow, soil)
 end
+
 
 """
     lsm_aux_vars(m::SoilSnowModel)

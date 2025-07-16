@@ -109,8 +109,15 @@ soil_model = Soil.EnergyHydrology(
 )
 α_snow = Snow.ConstantAlbedoModel(0.8)
 density = Snow.MinimumDensityModel(300.0)
-snow_model =
-    Snow.SnowModel(FT, domain, forcing, earth_param_set, dt; α_snow, density)
+snow_model = Snow.SnowModel(
+    FT,
+    ClimaLand.Domains.obtain_surface_domain(domain),
+    forcing,
+    earth_param_set,
+    dt;
+    α_snow,
+    density,
+)
 
 land = ClimaLand.SoilSnowModel(snow_model, soil_model)
 Y, p, cds = initialize(land)
