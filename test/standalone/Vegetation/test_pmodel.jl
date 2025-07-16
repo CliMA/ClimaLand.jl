@@ -254,12 +254,12 @@ end
 
         constants = PModelConstants(FT)
 
-        T_canopy = FT(303.15)
-        I_abs = FT(1e-3)
-        ca = FT(4e-4)
-        P_air = FT(98000.0)
-        VPD = FT(150)
-        βm = FT(0.5)
+        T_canopy = FT(281.25)
+        I_abs = FT(0.0013948839623481035)
+        ca = FT(0.00039482)
+        P_air = FT(99230.0)
+        VPD = FT(756.2)
+        βm = FT(1.0)
 
         outputs_full = compute_full_pmodel_outputs(
                 parameters, 
@@ -286,7 +286,6 @@ end
                 I_abs,
                 FT(1.0), # force update 
             )
-
             @test isapprox(outputs_from_EMA.ξ_opt, outputs_full.xi, rtol=rtol, atol=atol)
             @test isapprox(outputs_from_EMA.Vcmax25_opt, outputs_full.vcmax25, rtol=rtol, atol=atol)
             @test isapprox(outputs_from_EMA.Jmax25_opt, outputs_full.jmax25, rtol=rtol, atol=atol)
