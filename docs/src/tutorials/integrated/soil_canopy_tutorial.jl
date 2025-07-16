@@ -52,6 +52,9 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+using DelimitedFiles
+FluxnetSimulationsExt =
+    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
@@ -65,8 +68,6 @@ nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
 f_root_to_shoot = FT(3.5)
-SAI = FT(0.00242)
-maxLAI = FT(4.2)
 plant_ν = FT(2.46e-4)
 n_stem = Int64(1)
 n_leaf = Int64(1)
@@ -82,14 +83,12 @@ land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
-# Use the data tools for reading FLUXNET data sets
-include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
-);
 
 # First provide some information about the site
+site_ID = "US-MOz"
 # Timezone (offset from UTC in hrs)
 time_offset = 7
+start_date = DateTime(2010) + Hour(time_offset)
 
 # Site latitude and longitude
 lat = FT(38.7441) # degree
@@ -98,17 +97,17 @@ long = FT(-92.2000) # degree
 # Height of the sensor at the site
 atmos_h = FT(32) # m
 
-# Provide the site site ID and the path to the data file:
-site_ID = "US-MOz"
-data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
+# Forcing data
+(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
 );
-
 # # Setup the Coupled Canopy and Soil Physics Model
 
 # We want to simulate the canopy-soil system together, so the model type
@@ -224,9 +223,13 @@ photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5)));
 
 K_sat_plant = FT(1.8e-8)
+(; LAI, maxLAI) =
+    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+maxLAI = FT(maxLAI) # convert to the float type of our simulation
+SAI = FT(0.00242)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
