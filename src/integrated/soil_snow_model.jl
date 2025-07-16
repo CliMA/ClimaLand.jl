@@ -52,7 +52,6 @@ struct SoilSnowModel{
 
 end
 
-
 """
     lsm_aux_vars(m::SoilSnowModel)
 

@@ -75,7 +75,7 @@ include(
     ),
 )
 forcing = (; atmos, radiation)
-
+prognostic_land_components = (:snow, :soil)
 α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
     PAR_albedo = FT(0.25),
     NIR_albedo = FT(0.25),
@@ -98,6 +98,7 @@ soil_model = Soil.EnergyHydrology(
     domain,
     forcing,
     earth_param_set;
+    prognostic_land_components,
     albedo = α_soil,
     runoff,
     retention_parameters,
@@ -115,11 +116,12 @@ snow_model = Snow.SnowModel(
     forcing,
     earth_param_set,
     dt;
+    prognostic_land_components,
     α_snow,
     density,
 )
 
-land = ClimaLand.SoilSnowModel(;snow = snow_model, soil = soil_model)
+land = ClimaLand.SoilSnowModel(; snow = snow_model, soil = soil_model)
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
