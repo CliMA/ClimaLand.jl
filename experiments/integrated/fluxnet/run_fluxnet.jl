@@ -21,19 +21,19 @@ import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
+using DelimitedFiles
+FluxnetSimulations =
+    Base.get_extension(
+        ClimaLand,
+        :FluxnetSimulations,
+    ).FluxnetSimulations;
+
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
-
-# Read in the site to be run from the command line
-if length(ARGS) < 1
-    error("Must provide site ID on command line")
-end
-
-site_ID = ARGS[1]
+site_ID = "US-MOz"
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
@@ -63,13 +63,10 @@ include(
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
-
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
-)
+start_date = DateTime(2010)
+(;atmos, radiation, LAI, maxLAI) = FluxnetSimulations.prescribed_forcing_fluxnet(site_ID, lat, long, time_offset, atmos_h, start_date, earth_param_set, FT)
+RAI = maxLAI * f_root_to_shoot
+capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
