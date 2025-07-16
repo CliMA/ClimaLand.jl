@@ -1,3 +1,9 @@
+"""
+This script runs a standalone canopy model with the P-model for photosynthesis and stomatal
+conductance. We use the US-MOz (Ozark) site from the FLUXNET dataset for atmospheric forcing. 
+We integrate the canopy model for one year and save the outputs to a NetCDF file. 
+"""
+
 import SciMLBase
 using Plots
 using Statistics
@@ -15,12 +21,13 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-save_outputs = true 
+save_outputs = true
 save_directory = "outputs"
 
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
+# Set constants for the simulation 
 nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
@@ -48,9 +55,6 @@ lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 land_domain = Point(; z_sfc = FT(0.0))
 
-# Height of the sensor at the site
-atmos_h = FT(32)
-
 # Provide the site site ID and the path to the data file:
 site_ID = "US-MOz"
 data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
@@ -66,18 +70,14 @@ include(
 # shared between all different components of the canopy model.
 z0_m = FT(2)
 z0_b = FT(0.2)
-
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     z0_m,
     z0_b,
     earth_param_set,
 );
 
-# For this canopy, we are running in standalone mode, which means we need to
-# use a prescribed soil driver, defined as follows:
-
+# Prescribed soil 
 ψ_soil0 = FT(0.0)
-
 soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
@@ -88,9 +88,7 @@ soil_driver = PrescribedGroundConditions(
     ϵ = FT(0.99),
 );
 
-# Now, setup the canopy model by component.
-# Provide arguments to each component, beginning with radiative transfer:
-
+# Set the radiative transfer model
 rt_params = TwoStreamParameters(
     FT;
     G_Function = ConstantGFunction(FT(0.5)),
@@ -104,12 +102,11 @@ rt_params = TwoStreamParameters(
 
 rt_model = TwoStreamModel{FT}(rt_params);
 
-# Arguments for conductance model:
+# Set the conductance model 
 cond_params = PModelConductanceParameters(Drel = FT(1.6))
-
 stomatal_model = PModelConductance{FT}(cond_params);
 
-# Arguments for photosynthesis model:
+# Set the photosynthesis model 
 photo_params = PModelParameters(
     cstar = FT(0.41), 
     β = FT(146), 
@@ -122,31 +119,22 @@ photo_params = PModelParameters(
     sc = FT(2e-6),
     pc = FT(-2e6)
 )
-
 photosynthesis_model = PModel{FT}(photo_params);
 
-# Arguments for autotrophic respiration model:
+# Set the autotrophic respiration model
 AR_params = AutotrophicRespirationParameters(FT)
 AR_model = AutotrophicRespirationModel{FT}(AR_params);
 
-# Arguments for plant hydraulics model are more complicated.
-
-# Begin by providing general plant parameters. For the area
-# indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
+# Set the plant hydraulics model
+# Begin by providing general plant parameters. For the area indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-LAI = 4.2
-LAIfunction = (t) -> LAI
+
+# LAIfunction is a TimeVaryingInput that we read from met_drivers_FLUXNET.jl 
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
-RAI = FT((SAI + LAI) * f_root_to_shoot)
-ai_parameterization =
-    PrescribedSiteAreaIndex{FT}(TimeVaryingInput(LAIfunction), SAI, RAI)
+RAI = FT((SAI + maxLAI) * f_root_to_shoot)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
-
-
-# Create the component conductivity and retention models of the hydraulics
-# model. In ClimaLand, a Weibull parameterization is used for the conductivity as
-# a function of potential, and a linear retention curve is used.
 
 K_sat_plant = FT(1.8e-8)
 ψ63 = FT(-4 / 0.0098)
@@ -155,14 +143,9 @@ a = FT(0.05 * 0.0098)
 
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
-
-# Use these values to populate the parameters of the PlantHydraulics model:
-
 ν = FT(0.7)
 S_s = FT(1e-2 * 0.0098)
-
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = ν,
@@ -182,12 +165,7 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_midpoints = compartment_midpoints,
 );
 
-# Now, instantiate the canopy model, using the atmospheric and radiative
-# drivers included from the external file, as well as the soil driver we
-# instantiated above. This contains every piece of information needed to
-# generate the set of ODEs modeling the canopy biophysics, ready to be passed
-# off to a timestepper.
-
+# instantiate the canopy model with all the components defined above.
 canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     parameters = shared_params,
     domain = land_domain,
@@ -203,10 +181,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     ),
 );
 
-# Initialize the state vectors and obtain the model coordinates, then get the
-# explicit time stepping tendency that updates auxiliary and prognostic
-# variables that are stepped explicitly.
-
 Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy);
 imp_tendency! = make_imp_tendency(canopy)
@@ -215,7 +189,6 @@ jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 # Provide initial conditions for the canopy hydraulics model
-
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
@@ -232,10 +205,10 @@ for i in 1:2
 end;
 
 # Run the simulation for 60 days with a timestep of 10 minutes 
-t0 = FT(0.0)
+t0 = 0.0
 N_days = 364
 tf = t0 + 3600 * 24 * N_days
-dt = FT(600.0);
+dt = 600.0;
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
@@ -308,12 +281,12 @@ pmodel_vars = [
     "canopy.conductance.r_stomata_canopy",
     "canopy.radiative_transfer.par.abs",
     "canopy.radiative_transfer.par_d",
+    "canopy.hydraulics.area_index.leaf"
 ]
 
 
 # get the pmodel variables and drivers
 extracted_vars = extract_variables(sv, pmodel_vars)
-
 
 if save_outputs
     # Save outputs to NetCDF files

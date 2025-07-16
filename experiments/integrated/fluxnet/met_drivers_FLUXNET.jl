@@ -205,5 +205,5 @@ LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
 # Note that f_root_to_shoot, capacity, and h_leaf are site-specific parameters
 # defined in the parameters file for each site
 maxLAI = FT(maximum(MODIS_LAI[:, 2]))
-RAI = maxLAI * f_root_to_shoot
-capacity = plant_ν * maxLAI * h_leaf * FT(1000)
+# RAI = maxLAI * f_root_to_shoot
+# capacity = plant_ν * maxLAI * h_leaf * FT(1000)
