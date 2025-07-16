@@ -114,7 +114,7 @@ end
 @safetestset "Canopy integrated water and energy content" begin
     include("standalone/Vegetation/conservation.jl")
 end
-@safetestset "P model tests" begin 
+@safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
 end
 

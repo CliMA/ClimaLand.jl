@@ -506,11 +506,11 @@ function c3_rubisco_assimilation(
     Vcmax::FT,
     ci::FT,
     Γstar::FT,
-    Kmm::FT
+    Kmm::FT,
 ) where {FT}
-    Ac = Vcmax * (ci - Γstar) / (ci + Kmm) 
+    Ac = Vcmax * (ci - Γstar) / (ci + Kmm)
     return Ac
-end 
+end
 
 """
     c4_rubisco_assimilation(Vcmax::FT,_...) where {FT}
@@ -1148,7 +1148,13 @@ enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
     et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0, 
     ϕa1, and ϕa2.
 """
-function intrinsic_quantum_yield(T::FT, c::FT, ϕa0::FT, ϕa1::FT, ϕa2::FT) where {FT}
+function intrinsic_quantum_yield(
+    T::FT,
+    c::FT,
+    ϕa0::FT,
+    ϕa1::FT,
+    ϕa2::FT,
+) where {FT}
     # convert to C
     T = T - FT(273.15)
     ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
@@ -1170,38 +1176,35 @@ end
 """
 function density_h2o(T::FT, p::FT) where {FT}
     # Convert temperature to Celsius
-    T = T - FT(273.15) 
+    T = T - FT(273.15)
     # Convert pressure to bar (1 bar = 1e5 Pa)
     pbar = FT(1e-5) * p
 
     # λ(T): bar cm3/g
-    λ = FT(1788.316) +
-        FT(21.55053) * T -
-        FT(0.4695911) * T^2 +
-        FT(3.096363e-3) * T^3 -
-        FT(7.341182e-6) * T^4
+    λ =
+        FT(1788.316) + FT(21.55053) * T - FT(0.4695911) * T^2 +
+        FT(3.096363e-3) * T^3 - FT(7.341182e-6) * T^4
 
     # p0(T): bar
-    p0 = FT(5918.499) +
-         FT(58.05267) * T -
-         FT(1.1253317) * T^2 +
-         FT(6.6123869e-3) * T^3 -
-         FT(1.4661625e-5) * T^4
+    p0 =
+        FT(5918.499) + FT(58.05267) * T - FT(1.1253317) * T^2 +
+        FT(6.6123869e-3) * T^3 - FT(1.4661625e-5) * T^4
 
     # v_inf(T): cm3/g
     T_powers = (T .^ (0:9))  # T^0 to T^9
-    coeffs_vinf = FT.([
-        0.6980547,
-       -7.435626e-4,
-        3.704258e-5,
-       -6.315724e-7,
-        9.829576e-9,
-       -1.197269e-10,
-        1.005461e-12,
-       -5.437898e-15,
-        1.69946e-17,
-       -2.295063e-20
-    ])
+    coeffs_vinf =
+        FT.([
+            0.6980547,
+            -7.435626e-4,
+            3.704258e-5,
+            -6.315724e-7,
+            9.829576e-9,
+            -1.197269e-10,
+            1.005461e-12,
+            -5.437898e-15,
+            1.69946e-17,
+            -2.295063e-20,
+        ])
     v_inf = dot(coeffs_vinf, T_powers)
 
     # Specific volume [cm3/g]
@@ -1226,9 +1229,9 @@ end
 """
 function viscosity_h2o(T::FT, p::FT, constant_density::Bool) where {FT}
     # Reference constants
-    tk_ast  = FT(647.096)    # K
+    tk_ast = FT(647.096)    # K
     ρ_ast = FT(322.0)      # kg/m^3
-    μ_ast  = FT(1e-6)       # Pa s
+    μ_ast = FT(1e-6)       # Pa s
 
     # Get density of water [kg/m^3]
     earth_param_set = LP.LandParameters(FT)
@@ -1236,26 +1239,31 @@ function viscosity_h2o(T::FT, p::FT, constant_density::Bool) where {FT}
     constant_density ? ρ = ρ0 : ρ = density_h2o(T, p)
 
     # Dimensionless variables
-    tbar  = T / tk_ast
+    tbar = T / tk_ast
     tbarx = sqrt(tbar)
     tbar2 = tbar^2
     tbar3 = tbar^3
-    ρbar  = ρ / ρ_ast
-    
+    ρbar = ρ / ρ_ast
+
     # Calculate μ0 (Eq. 11 & Table 2)
-    μ0 = FT(1.67752) + FT(2.20462) / tbar + FT(0.6366564) / tbar2 - FT(0.241605) / tbar3
+    μ0 =
+        FT(1.67752) + FT(2.20462) / tbar + FT(0.6366564) / tbar2 -
+        FT(0.241605) / tbar3
     μ0 = FT(1e2) * tbarx / μ0
 
     # Coefficients h_array from Table 3
-    h_array = FT.([
-        0.520094    0.0850895   -1.08374   -0.289555   0.0         0.0;
-        0.222531    0.999115     1.88797    1.26613    0.0         0.120573;
-       -0.281378   -0.906851    -0.772479  -0.489837  -0.257040    0.0;
-        0.161913    0.257399     0.0        0.0        0.0         0.0;
-       -0.0325372   0.0          0.0        0.0698452  0.0         0.0;
-        0.0         0.0          0.0        0.0        0.00872102  0.0;
-        0.0         0.0          0.0       -0.00435673 0.0        -0.000593264
-    ])
+    h_array =
+        FT.(
+            [
+                0.520094 0.0850895 -1.08374 -0.289555 0.0 0.0
+                0.222531 0.999115 1.88797 1.26613 0.0 0.120573
+                -0.281378 -0.906851 -0.772479 -0.489837 -0.257040 0.0
+                0.161913 0.257399 0.0 0.0 0.0 0.0
+                -0.0325372 0.0 0.0 0.0698452 0.0 0.0
+                0.0 0.0 0.0 0.0 0.00872102 0.0
+                0.0 0.0 0.0 -0.00435673 0.0 -0.000593264
+            ]
+        )
 
     # Compute μ1 (Eq. 12 & Table 3)
     μ1 = FT(0.0)
@@ -1288,7 +1296,11 @@ end
     is taken to be constant (1000.0 kg/m^3). Otherwise we use an EOS to compute the density
     at the given temperature and pressure. 
 """
-function compute_viscosity_ratio(T::FT, p::FT, constant_density::Bool) where {FT} 
+function compute_viscosity_ratio(
+    T::FT,
+    p::FT,
+    constant_density::Bool,
+) where {FT}
     η25 = viscosity_h2o(FT(298.15), FT(101325.0), constant_density)
     ηstar = viscosity_h2o(T, p, constant_density) / η25
     return FT(ηstar)
@@ -1304,8 +1316,8 @@ end
     Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure (`P_air`)
     and a constant mixing ratio of O2 (`oi`), typically 0.209. 
 """
-function po2(P_air::FT, oi::FT) where {FT} 
-    return oi * P_air 
+function po2(P_air::FT, oi::FT) where {FT}
+    return oi * P_air
 end
 
 """
@@ -1325,9 +1337,9 @@ function co2_compensation_p(
     T::FT,
     To::FT,
     p::FT,
-    R::FT, 
+    R::FT,
     ΔHΓstar::FT,
-    Γstar25::FT 
+    Γstar25::FT,
 ) where {FT}
     Γstar = Γstar25 * p / FT(101325.0) * arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
@@ -1354,20 +1366,20 @@ end
     typically 0.209).
 """
 function compute_Kmm(
-    T::FT, 
-    p::FT, 
-    Kc25::FT, 
-    Ko25::FT, 
-    ΔHkc::FT, 
-    ΔHko::FT, 
-    To::FT, 
+    T::FT,
+    p::FT,
+    Kc25::FT,
+    Ko25::FT,
+    ΔHkc::FT,
+    ΔHko::FT,
+    To::FT,
     R::FT,
-    oi::FT
+    oi::FT,
 ) where {FT}
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
 
-    return Kc * (1 + po2(p, oi) / Ko) 
+    return Kc * (1 + po2(p, oi) / Ko)
 end
 
 """
@@ -1395,65 +1407,44 @@ end
 """
 function optimal_co2_ratio_c3(
     Kmm::FT,
-    Γstar::FT, 
-    ηstar::FT, 
-    ca::FT, 
-    VPD::FT, 
+    Γstar::FT,
+    ηstar::FT,
+    ca::FT,
+    VPD::FT,
     β::FT,
-    Drel::FT 
+    Drel::FT,
 ) where {FT}
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
 
     # define some auxiliary variables 
-    γ = Γstar / ca 
-    κ = Kmm / ca 
+    γ = Γstar / ca
+    κ = Kmm / ca
 
     mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
     mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
 
     return χ, ξ, mj, mc
-end 
+end
 
-function optimal_ξ_c3(
-    Kmm::FT,
-    Γstar::FT, 
-    ηstar::FT, 
-    β::FT,
-    Drel::FT 
-) where {FT}
+function optimal_ξ_c3(Kmm::FT, Γstar::FT, ηstar::FT, β::FT, Drel::FT) where {FT}
     return sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-end 
+end
 
-function compute_mj(
-    ξ::FT,
-    Γstar::FT,
-    ca::FT,
-    VPD::FT
-) where {FT}
-    γ = Γstar / ca 
-    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+function compute_mj(ξ::FT, Γstar::FT, ca::FT, VPD::FT) where {FT}
+    γ = Γstar / ca
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
     return (χ - γ) / (χ + 2 * γ)
 end
 
-function compute_mc(
-    ξ::FT,
-    Kmm::FT,
-    Γstar::FT,
-    ca::FT
-) where {FT}
-    γ = Γstar / ca 
-    κ = Kmm / ca 
-    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+function compute_mc(ξ::FT, Kmm::FT, Γstar::FT, ca::FT) where {FT}
+    γ = Γstar / ca
+    κ = Kmm / ca
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
     return (χ - γ) / (χ + κ)
 end
 
-function compute_ci(
-    ξ::FT,
-    ca::FT, 
-    Γstar::FT,
-    VPD::FT
-) where {FT}
+function compute_ci(ξ::FT, ca::FT, Γstar::FT, VPD::FT) where {FT}
     return (ca * ξ + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
 end
 
@@ -1470,12 +1461,8 @@ end
     assimilation rate (`A`). This is related to the conductance of H2O by a 
     factor Drel = 1.6. 
 """
-function pmodel_gs(
-    χ::FT, 
-    ca::FT,
-    A::FT
-) where {FT}
-    return A / (ca * (1 - χ)) 
+function pmodel_gs(χ::FT, ca::FT, A::FT) where {FT}
+    return A / (ca * (1 - χ))
 end
 
 """
@@ -1489,14 +1476,11 @@ end
     at STP and using Vcmax/Jmax = 1.88. 
 """
 # TODO: test if cstar should be made a free parameter? 
-function compute_mj_with_jmax_limitation(
-    mj::FT, 
-    cstar::FT
-) where {FT}
-    arg = 1 - (cstar / mj)^(FT(2/3))
+function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
+    arg = 1 - (cstar / mj)^(FT(2 / 3))
     sqrt_arg = ifelse(arg < 0, FT(0.0), sqrt(arg)) # avoid complex numbers
     return FT(mj * sqrt_arg)
-end 
+end
 
 
 """
@@ -1511,14 +1495,9 @@ end
     moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
     in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
 """
-function compute_LUE(
-    ϕ0::FT, 
-    β::FT,
-    mprime::FT,
-    Mc::FT 
-) where {FT} 
-    return ϕ0 * β * mprime * Mc 
-end 
+function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
+    return ϕ0 * β * mprime * Mc
+end
 
 
 """
@@ -1535,14 +1514,8 @@ end
     (`mprime`), a Rubisco-limited capacity (`mc`), and empirical soil moisture stress factor
     (`βm`). See Eqns 16 and 6 in Stocker et al. (2020). 
 """
-function pmodel_vcmax(
-    ϕ0::FT, 
-    I_abs::FT,
-    mprime::FT,
-    mc::FT,
-    βm::FT
-) where {FT}
-    Vcmax = βm * ϕ0 * I_abs * mprime / mc 
+function pmodel_vcmax(ϕ0::FT, I_abs::FT, mprime::FT, mc::FT, βm::FT) where {FT}
+    Vcmax = βm * ϕ0 * I_abs * mprime / mc
     return Vcmax
 end
 
@@ -1567,7 +1540,7 @@ function quadratic_soil_moisture_stress(
     a_hat::FT = FT(0.0),
     b_hat::FT = FT(0.733),
     θ0::FT = FT(0.0),
-    θ1::FT = FT(0.6) 
+    θ1::FT = FT(0.6),
 ) where {FT}
     β0 = a_hat + b_hat * meanalpha
     q = (FT(1.0) - β0) / (θ0 - θ1)^2
@@ -1591,12 +1564,10 @@ end
     
     Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
 """
-function electron_transport_pmodel(
-    ϕ0::FT,
-    I_abs::FT,
-    Jmax::FT 
-) where {FT}
-    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / max(Jmax, eps(FT)))^2) 
+function electron_transport_pmodel(ϕ0::FT, I_abs::FT, Jmax::FT) where {FT}
+    J =
+        FT(4) * ϕ0 * I_abs /
+        sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / max(Jmax, eps(FT)))^2)
     return J
 end
 
@@ -1635,20 +1606,20 @@ function inst_temp_scaling(
     Hd::FT,
     aS::FT,
     bS::FT,
-    R::FT
- ) where {FT}
+    R::FT,
+) where {FT}
     T_acclim = T_acclim - FT(273.15)    # °C for ΔS(T)
-    ΔS        = aS - bS * T_acclim      # entropy term (J mol⁻¹ K⁻¹)
+    ΔS = aS - bS * T_acclim      # entropy term (J mol⁻¹ K⁻¹)
 
     # Arrhenius-type activation scaling factor
     f_act = arrhenius_function(T_canopy, To, R, Ha)
 
     # high temperature deactivation scaling factor
-    num = 1 + exp( (To * ΔS - Hd) / (R * To) )
-    den = 1 + exp( (T_canopy * ΔS - Hd) / (R * T_canopy) )
+    num = 1 + exp((To * ΔS - Hd) / (R * To))
+    den = 1 + exp((T_canopy * ΔS - Hd) / (R * T_canopy))
     f_deact = num / den
 
-    return f_act * f_deact 
+    return f_act * f_deact
 end
 
 
@@ -1667,14 +1638,10 @@ coefficient `aRd`, and the second order coefficient `bRd`.
 Usees the log-quadratic functional form of Heskel et al. (2016) 
 https://www.pnas.org/doi/full/10.1073/pnas.1520282113
 """
-function inst_temp_scaling_rd(
-    T_canopy::FT,
-    To::FT, 
-    aRd::FT, 
-    bRd::FT
-) where {FT}
+function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
     return exp(
-        aRd * (T_canopy - To) + bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2)
+        aRd * (T_canopy - To) +
+        bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2),
     )
 end
 
@@ -1695,13 +1662,13 @@ and the wavelength of PAR (`λ_γ_PAR`, in m), and the physical constants necess
 the energy per mol PAR photons. 
 """
 function compute_I_abs(
-    f_abs::FT, 
+    f_abs::FT,
     par_d::FT,
     λ_γ_PAR::FT,
     lightspeed::FT,
     planck_h::FT,
-    N_a::FT
-) where {FT} 
-    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR 
+    N_a::FT,
+) where {FT}
+    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR
     return f_abs * par_d / energy_per_mole_photon_par
-end 
+end

@@ -694,11 +694,12 @@ function FrequencyBasedCallback(
     start_date,
     dt;
     func,
-    func_args...
+    func_args...,
 )
     # Normalize frequency to a Dates.Period
-    frequency_period = frequency isa AbstractFloat ?
-        Dates.Millisecond(1000 * frequency) : frequency
+    frequency_period =
+        frequency isa AbstractFloat ? Dates.Millisecond(1000 * frequency) :
+        frequency
 
     schedule = EveryCalendarDtSchedule(
         frequency_period;

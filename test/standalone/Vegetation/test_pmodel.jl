@@ -65,19 +65,21 @@ function PModelDrivers(inputs::Dict{String, Any}, FT)
     VPD = FT(inputs["vpd"])
     ca = FT(inputs["co2"]) * FT(1e-6)  # Convert ppm to mol/mol
     P_air = FT(get(inputs, "patm", 101325.0))
-    
-    # Calculate I_abs directly from fapar and ppfd
-    I_abs = FT(inputs["fapar"]) *  FT(inputs["ppfd"])
 
-    βm = Bool(inputs["do_soilmstress"]) ? quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
-    
+    # Calculate I_abs directly from fapar and ppfd
+    I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
+
+    βm =
+        Bool(inputs["do_soilmstress"]) ?
+        quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
+
     return ClimaLand.Canopy.PModelDrivers(
         T_canopy = T_canopy,
         I_abs = I_abs,
         ca = ca,
         P_air = P_air,
         VPD = VPD,
-        βm = βm
+        βm = βm,
     )
 end
 
@@ -89,15 +91,15 @@ Constructs the parameter structure for the P-Model
 function PModelParameters(inputs::Dict{String, Any}, FT)
     # these are default values used in Stocker 2020
     β = FT(inputs["beta"])
-    cstar = FT(0.41) 
+    cstar = FT(0.41)
 
     # handle temperature-dependent quantum yield 
     if Bool(inputs["do_ftemp_kphio"])
-        ϕ0 = FT(NaN) 
-        ϕc = FT(inputs["kphio"]) 
+        ϕ0 = FT(NaN)
+        ϕc = FT(inputs["kphio"])
         # Eqn 20 from Stocker 2020
         ϕa0 = FT(0.352)
-        ϕa1 = FT(0.022) 
+        ϕa1 = FT(0.022)
         ϕa2 = FT(-0.00034)
     else
         ϕ0 = FT(inputs["kphio"])
@@ -114,7 +116,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa2 = ϕa2,
         α = FT(0),
         sc = FT(2e-6),
-        pc = FT(-2e6)
+        pc = FT(-2e6),
     )
 end
 
@@ -129,7 +131,7 @@ function csv_to_dict(data, header, row_idx)
     for (col_idx, col_name) in enumerate(header)
         col_name_str = string(col_name)
         value = data[row_idx, col_idx]
-        
+
         # Skip testcase column and missing values
         if col_name_str != "testcase" && !ismissing(value)
             dict[col_name_str] = value
@@ -153,60 +155,66 @@ end
     rtol = 1e-3
 
     # read inputs and outputs from CSV files
-    inputs_data, inputs_header = readdlm(inputs_file, ',', header=true)
-    outputs_data, outputs_header = readdlm(outputs_file, ',', header=true)
+    inputs_data, inputs_header = readdlm(inputs_file, ',', header = true)
+    outputs_data, outputs_header = readdlm(outputs_file, ',', header = true)
     inputs_header = vec(inputs_header)
     outputs_header = vec(outputs_header)
-    
+
     # Get testcase column indices
     inputs_testcase_idx = findfirst(h -> string(h) == "testcase", inputs_header)
-    outputs_testcase_idx = findfirst(h -> string(h) == "testcase", outputs_header)
-    
+    outputs_testcase_idx =
+        findfirst(h -> string(h) == "testcase", outputs_header)
+
     # Process each test case
     for row_idx in 1:size(inputs_data, 1)
         testcase_name = inputs_data[row_idx, inputs_testcase_idx]
-        
+
         # Find corresponding output row
-        output_row_idx = findfirst(r -> outputs_data[r, outputs_testcase_idx] == testcase_name, 1:size(outputs_data, 1))
-        
+        output_row_idx = findfirst(
+            r -> outputs_data[r, outputs_testcase_idx] == testcase_name,
+            1:size(outputs_data, 1),
+        )
+
         if output_row_idx === nothing
             @warn "No output data found for testcase: $testcase_name"
             continue
         end
-        
+
         # Create inputs and outputs dictionaries using helper function
         inputs = csv_to_dict(inputs_data, inputs_header, row_idx)
         ref_outputs = csv_to_dict(outputs_data, outputs_header, output_row_idx)
 
         for FT in (Float32, Float64)
             # Convert ref_outputs to the correct FT
-            ref_outputs_typed = Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
+            ref_outputs_typed =
+                Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
 
             @testset "Test $testcase_name, FT = $FT" begin
-                verbose && println("Running test case: $testcase_name with FT = $FT")
+                verbose &&
+                    println("Running test case: $testcase_name with FT = $FT")
 
                 # Create constants, drivers, and parameters for the current FT
                 constants = PModelConstants(FT)
                 drivers = PModelDrivers(inputs, FT)
                 parameters = PModelParameters(inputs, FT)
-                
+
                 # Run the model
                 outputs = compute_full_pmodel_outputs(
-                    parameters, 
+                    parameters,
                     constants,
                     drivers.T_canopy,
                     drivers.P_air,
                     drivers.VPD,
                     drivers.ca,
                     drivers.βm,
-                    drivers.I_abs
+                    drivers.I_abs,
                 )
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)
                     # Convert string key to symbol for named tuple access
                     key_symbol = Symbol(key)
-                    
+
                     if haskey(outputs, key_symbol)
                         r_out = ref_outputs_typed[key]
                         # convert gpp to kg/m^2/s   
@@ -223,7 +231,7 @@ end
                             println("  Percent Difference: $diff%")
                         end
                         # Test for approximate equality
-                        @test isapprox(j_out, r_out, rtol=rtol, atol=atol)
+                        @test isapprox(j_out, r_out, rtol = rtol, atol = atol)
                     else
                         verbose && @warn "Missing key $key in Julia outputs"
                     end
@@ -240,16 +248,16 @@ end
 
     for FT in (Float32, Float64)
         parameters = ClimaLand.Canopy.PModelParameters(
-            cstar = FT(0.41), 
-            β = FT(146), 
+            cstar = FT(0.41),
+            β = FT(146),
             ϕc = FT(0.087),
-            ϕ0 = FT(NaN), 
+            ϕ0 = FT(NaN),
             ϕa0 = FT(0.352),
             ϕa1 = FT(0.022),
             ϕa2 = FT(-0.00034),
             α = FT(0),
             sc = FT(2e-6),
-            pc = FT(-2e6)
+            pc = FT(-2e6),
         )
 
         constants = PModelConstants(FT)
@@ -262,47 +270,79 @@ end
         βm = FT(1.0)
 
         outputs_full = compute_full_pmodel_outputs(
-                parameters, 
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            I_abs,
+        )
+
+        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+            dummy_OptVars =
+                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            outputs_from_EMA = update_optimal_EMA(
+                parameters,
                 constants,
+                dummy_OptVars,
                 T_canopy,
                 P_air,
                 VPD,
                 ca,
                 βm,
-                I_abs
-        )
-
-        @testset "Test update_optimal_EMA optimality computation for $FT" begin
-            dummy_OptVars = (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
-            outputs_from_EMA = update_optimal_EMA(
-                parameters, 
-                constants, 
-                dummy_OptVars, 
-                T_canopy, 
-                P_air, 
-                VPD,
-                ca, 
-                βm,
                 I_abs,
                 FT(1.0), # force update 
             )
-            @test isapprox(outputs_from_EMA.ξ_opt, outputs_full.xi, rtol=rtol, atol=atol)
-            @test isapprox(outputs_from_EMA.Vcmax25_opt, outputs_full.vcmax25, rtol=rtol, atol=atol)
-            @test isapprox(outputs_from_EMA.Jmax25_opt, outputs_full.jmax25, rtol=rtol, atol=atol)
+            @test isapprox(
+                outputs_from_EMA.ξ_opt,
+                outputs_full.xi,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Vcmax25_opt,
+                outputs_full.vcmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Jmax25_opt,
+                outputs_full.jmax25,
+                rtol = rtol,
+                atol = atol,
+            )
         end
         @testset "Test compute_intermediate_pmodel_vars for $FT" begin
-            outputs_from_intermediate_vars = ClimaLand.Canopy.compute_intermediate_pmodel_vars(
-                constants, 
-                outputs_full.xi, 
-                T_canopy, 
-                P_air, 
-                VPD,
-                ca, 
-            )
+            outputs_from_intermediate_vars =
+                ClimaLand.Canopy.compute_intermediate_pmodel_vars(
+                    constants,
+                    outputs_full.xi,
+                    T_canopy,
+                    P_air,
+                    VPD,
+                    ca,
+                )
 
-            @test isapprox(outputs_from_intermediate_vars.Γstar, outputs_full.gammastar, rtol=rtol, atol=atol)
-            @test isapprox(outputs_from_intermediate_vars.Kmm, outputs_full.kmm, rtol=rtol, atol=atol)
-            @test isapprox(outputs_from_intermediate_vars.ci, outputs_full.ci, rtol=rtol, atol=atol)
+            @test isapprox(
+                outputs_from_intermediate_vars.Γstar,
+                outputs_full.gammastar,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.Kmm,
+                outputs_full.kmm,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.ci,
+                outputs_full.ci,
+                rtol = rtol,
+                atol = atol,
+            )
         end
     end
 end

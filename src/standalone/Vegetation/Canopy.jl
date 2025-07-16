@@ -1015,8 +1015,8 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
     return set_initial_cache!
 end
 
-function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy) 
-    return 
+function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return
 end
 
 end

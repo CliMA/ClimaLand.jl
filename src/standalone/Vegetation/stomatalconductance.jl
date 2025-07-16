@@ -1,5 +1,5 @@
-export MedlynConductanceParameters, MedlynConductanceModel, 
-         PModelConductanceParameters, PModelConductance
+export MedlynConductanceParameters,
+    MedlynConductanceModel, PModelConductanceParameters, PModelConductance
 
 abstract type AbstractStomatalConductanceModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -117,9 +117,7 @@ end
 The required parameters for the Medlyn stomatal conductance model.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct PModelConductanceParameters{
-    FT <: AbstractFloat,
-}
+Base.@kwdef struct PModelConductanceParameters{FT <: AbstractFloat}
     "Relative diffusivity of water vapor (unitless)"
     Drel::FT
 end
@@ -134,9 +132,7 @@ end
 function PModelConductance{FT}(
     parameters::PModelConductanceParameters{FT},
 ) where {FT <: AbstractFloat}
-    return PModelConductance{eltype(parameters), typeof(parameters)}(
-        parameters,
-    )
+    return PModelConductance{eltype(parameters), typeof(parameters)}(parameters)
 end
 
 ClimaLand.auxiliary_vars(model::PModelConductance) = (:r_stomata_canopy,)
@@ -165,9 +161,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
 
     @. p.canopy.conductance.r_stomata_canopy =
         1 / upscale_leaf_conductance(
-            pmodel_gs(ci / ca_pp, 
-                ca_pp, 
-                An) * Drel, # leaf level conductance in mol H2O Pa^-1
+            pmodel_gs(ci / ca_pp, ca_pp, An) * Drel, # leaf level conductance in mol H2O Pa^-1
             LAI,
             T_air,
             R,
