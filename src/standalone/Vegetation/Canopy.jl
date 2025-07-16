@@ -8,6 +8,7 @@ using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeManager: ITime, date
+import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
@@ -78,6 +79,88 @@ end
 
 ## Photosynthesis models
 
+## Plant hydraulics models
+"""
+    PlantHydraulicsModel{FT}(
+        domain;
+        start_date = Dates.DateTime(2008, 1, 1),
+        LAIfunction::TVI = ClimaLand.prescribed_lai_modis(
+            ClimaLand.Artifacts.modis_lai_single_year_path(;
+                year = Dates.year(start_date),
+            ),
+            domain.space.surface,
+            start_date,
+        ),
+        SAI::FT = FT(0),
+        RAI::FT = FT(1),
+        ν::FT = FT(1.44e-4),
+        S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
+        conductivity_model = Weibull{FT}(
+            K_sat = FT(7e-8),
+            ψ63 = FT(-4 / 0.0098),
+            c = FT(4),
+        ),
+        retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
+        rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
+    ) where {FT <: AbstractFloat, TVI <: AbstractTimeVaryingInput}
+
+Creates a PlantHydraulicsModel on the provided domain, using default parameters.
+
+By default the LAI is set to the MODIS LAI data for the year of the start date,
+or 2008 if a start date is not provided. Different types of LAI functions can be used -
+see the ClimaUtilities.jl documentation of `AbstractTimeVaryingInput` for more information.
+
+The following default parameters are used:
+- SAI = 0 (m2/m2) - stem area index
+- RAI = 1 (m2/m2) - root area index
+- ν = 1.44e-4 (m3/m3) - porosity
+- S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
+- K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
+- ψ63 = -4 / 0.0098 (MPa to m) - xylem percentage loss of conductivity curve parameters; Holtzman's original value
+- c = 4 (unitless) - Weibull parameter; Holtzman's original value
+- a = 0.05 * 0.0098 (m) - bulk modulus of elasticity; Holtzman's original value
+
+Citation:
+Holtzman, N., Wang, Y., Wood, J. D., Frankenberg, C., & Konings, A. G. (2023).
+Constraining plant hydraulics with microwave radiometry in a land surface model:
+Impacts of temporal resolution. Water Resources Research, 59, e2023WR035481.
+https://doi.org/10.1029/2023WR035481
+"""
+function PlantHydraulicsModel{FT}(
+    domain;
+    start_date = Dates.DateTime(2008, 1, 1),
+    LAIfunction::TVI = ClimaLand.prescribed_lai_modis(
+        ClimaLand.Artifacts.modis_lai_single_year_path(;
+            year = Dates.year(start_date),
+        ),
+        domain.space.surface,
+        start_date,
+    ),
+    SAI::FT = FT(0),
+    RAI::FT = FT(1),
+    ν::FT = FT(1.44e-4),
+    S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
+    conductivity_model = Weibull{FT}(
+        K_sat = FT(7e-8),
+        ψ63 = FT(-4 / 0.0098),
+        c = FT(4),
+    ),
+    retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
+    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
+) where {FT <: AbstractFloat, TVI <: AbstractTimeVaryingInput}
+    ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+
+    parameters = PlantHydraulicsParameters(
+        ai_parameterization,
+        ν,
+        S_s,
+        conductivity_model,
+        retention_model,
+        rooting_depth,
+    )
+    return PlantHydraulicsModel{FT, typeof(parameters)}(parameters)
+end
+
 ## Radiative transfer models
 """
     TwoStreamModel{FT}(
@@ -122,7 +205,6 @@ function TwoStreamModel{FT}(
 end
 
 """
-
     BeerLambertModel{FT}(
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),

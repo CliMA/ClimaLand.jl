@@ -173,7 +173,7 @@ function PlantHydraulicsParameters(;
     S_s::FT,
     conductivity_model,
     retention_model,
-    rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field},
+    rooting_depth::Union{FT, ClimaCore.Fields.Field},
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
