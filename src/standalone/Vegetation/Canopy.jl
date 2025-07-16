@@ -58,13 +58,23 @@ include("./spatially_varying_parameters.jl")
 
 Creates a AutotrophicRespirationModel using default parameters of type FT.
 """
-
 function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
     parameters = AutotrophicRespirationParameters(FT)
     return AutotrophicRespirationModel{FT, typeof(parameters)}(parameters)
 end
 
 ## Energy models
+"""
+    BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
+
+Creates a BigLeafEnergyModel using default parameters of type FT.
+"""
+function BigLeafEnergyModel{FT}(;
+    ac_canopy = FT(2e3),
+) where {FT <: AbstractFloat}
+    parameters = BigLeafEnergyParameters{FT}(ac_canopy)
+    return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
+end
 
 ## Photosynthesis models
 
