@@ -27,21 +27,6 @@ save_directory = "outputs"
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
-# Set constants for the simulation 
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-f_root_to_shoot = FT(3.5)
-SAI = FT(0.00242)
-maxLAI = FT(4.2)
-plant_ν = FT(2.46e-4) # kg/m^2
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
 );
@@ -128,8 +113,6 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # Set the plant hydraulics model
 # Begin by providing general plant parameters. For the area indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-
-# LAIfunction is a TimeVaryingInput that we read from met_drivers_FLUXNET.jl 
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + maxLAI) * f_root_to_shoot)
@@ -144,23 +127,25 @@ a = FT(0.05 * 0.0098)
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
-ν = FT(0.7)
-S_s = FT(1e-2 * 0.0098)
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
-    ν = ν,
-    S_s = S_s,
+    ν = FT(0.7),
+    S_s = FT(1e-2 * 0.0098),
     rooting_depth = rooting_depth,
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 );
 
 # Define the remaining variables required for the plant hydraulics model.
-
+zmax = FT(0)
+h_stem = FT(9)
+h_leaf = FT(9.5)
+compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
+compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
 plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
+    n_stem = 1,
+    n_leaf = 1,
     compartment_surfaces = compartment_surfaces,
     compartment_midpoints = compartment_midpoints,
 );
