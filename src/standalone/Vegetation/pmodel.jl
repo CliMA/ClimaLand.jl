@@ -420,7 +420,6 @@ function update_optimal_EMA(
     βm::FT,
     I_abs::FT,
     local_noon_mask::FT,
-    t,
     verbose::Bool = false, 
 ) where {FT} 
     if local_noon_mask == FT(1.0)
@@ -438,7 +437,11 @@ function update_optimal_EMA(
         Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
         ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
         Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-        
+
+        verbose && print("Historical cache values:\n",
+            "ξ_opt: $(OptVars.ξ_opt), Vcmax25_opt: $(OptVars.Vcmax25_opt), Jmax25_opt: $(OptVars.Jmax25_opt)\n\n",
+        )
+
         verbose && print("Drivers: \n",
             "T_canopy: $T_canopy, P_air: $P_air, VPD: $VPD, ca: $ca, βm: $βm, I_abs: $I_abs\n\n"
         )
@@ -467,8 +470,11 @@ function update_optimal_EMA(
         Jmax = 4 * ϕ0 * I_abs / sqrt((mj / (βm * mprime))^2 - 1)
         Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
         verbose && print(
-            "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n
-            ----------------------------------\n\n"
+            "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n",
+            "ξ_opt: $(α * OptVars.ξ_opt + (1 - α) * ξ), 
+            Vcmax25_opt: $(α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25), 
+            Jmax25_opt: $(α * OptVars.Jmax25_opt + (1 - α) * Jmax25)\n",
+            "----------------------------------\n\n"
         )
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
@@ -524,10 +530,8 @@ function get_local_noon_mask(
     dt, 
     local_noon::FT
 ) where {FT}
-    # temporary fix 
     strict_noon_mask = FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2
-    wider_noon_mask = FT(t) >= local_noon - FT(dt) && FT(t) <= local_noon + FT(dt)
-    return FT(wider_noon_mask) # return wider mask for now
+    return FT(strict_noon_mask)
 end
 
 """
@@ -587,12 +591,11 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         βm,
         I_abs,
         local_noon_mask,
-        0
     )
 end
 
 
-function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon) 
+function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon, verbose=false) 
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
     
     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
@@ -608,6 +611,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
         canopy.radiative_transfer.parameters.λ_γ_PAR, constants.lightspeed, constants.planck_h, constants.N_a))
 
+    verbose && println("t = $t")
     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
         parameters, 
         constants, 
@@ -619,7 +623,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         βm,
         I_abs,
         local_noon_mask,
-        t
+        verbose
     )
 end 
 
