@@ -166,11 +166,7 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
 )
 
 function make_update_boundary_fluxes(model::SoilCO2Model)
-    NVTX.@annotate "SC02 update_boundary_fluxes!" function update_boundary_fluxes!(
-        p,
-        Y,
-        t,
-    )
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
         boundary_flux!(
@@ -207,12 +203,7 @@ with that value. These quantities will be stepped explicitly.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
-    NVTX.@annotate "SC02 compute_exp_tendency!" function compute_exp_tendency!(
-        dY,
-        Y,
-        p,
-        t,
-    )
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
@@ -395,7 +386,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
-    NVTX.@annotate "BGC update_aux!" function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         params = model.parameters
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)

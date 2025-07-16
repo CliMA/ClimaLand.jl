@@ -14,6 +14,7 @@ using Insolation
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
 using StaticArrays
+using NVTX
 import ..Parameters as LP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
@@ -1207,7 +1208,7 @@ function make_update_drivers(driver_tuple::Tuple)
         update_driver_list = map(driver_tuple) do (driver)
             make_update_drivers(driver)
         end
-        function update_drivers!(p, t)
+        NVTX.@annotate function update_drivers!(p, t)
             for ud! in update_driver_list
                 ud!(p, t)
             end
@@ -1354,8 +1355,8 @@ The argument `era5_ncdata_path` is either a list of nc files, each with all of t
 
 ########## WARNING ##########
 
-High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5 
-reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed, 
+High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5
+reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed,
 with a value give in m/s,
 is used to clip these if it is not `nothing`.
 See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds
