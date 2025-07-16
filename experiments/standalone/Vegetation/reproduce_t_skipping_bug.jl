@@ -15,7 +15,7 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-save_outputs = false 
+save_outputs = false
 save_directory = "outputs"
 
 const FT = Float32;
@@ -246,7 +246,7 @@ dummy_cb = FrequencyBasedCallback(
     dt, # period is same as dt
     start_date, # start datetime, UTC
     dt;
-    func = (integrator;) -> save_time(integrator.t)
+    func = (integrator) -> save_time(integrator.t),
 )
 
 # unify callbacks 
@@ -283,23 +283,26 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 # Validate that the callback was called correctly every dt
 if length(callback_times) > 1
     time_differences = diff(callback_times)
-    
+
     # Count differences that equal dt (within numerical tolerance)
     tolerance = FT(1e-6)
     correct_diffs = sum(abs.(time_differences .- dt) .< tolerance)
     incorrect_diffs = length(time_differences) - correct_diffs
-    
+
     println("Total callback calls: ", length(callback_times))
     println("Number of correct time differences (≈ dt): ", correct_diffs)
     println("Number of incorrect time differences (≠ dt): ", incorrect_diffs)
     println("Expected dt: ", dt)
     println("Actual time differences: ", time_differences)
-    
+
     # Assert that all differences should equal dt
     @assert incorrect_diffs == 0 "Callback was not called correctly every dt! Found $incorrect_diffs incorrect time differences."
-    
-    println("✓ Callback validation passed: All time differences equal dt within tolerance")
-else
-    println("Warning: Less than 2 callback times recorded, cannot validate time differences")
-end
 
+    println(
+        "✓ Callback validation passed: All time differences equal dt within tolerance",
+    )
+else
+    println(
+        "Warning: Less than 2 callback times recorded, cannot validate time differences",
+    )
+end

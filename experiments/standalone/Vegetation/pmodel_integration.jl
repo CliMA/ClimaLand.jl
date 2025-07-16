@@ -108,16 +108,16 @@ stomatal_model = PModelConductance{FT}(cond_params);
 
 # Set the photosynthesis model 
 photo_params = PModelParameters(
-    cstar = FT(0.41), 
-    β = FT(146), 
+    cstar = FT(0.41),
+    β = FT(146),
     ϕc = FT(0.087),
-    ϕ0 = FT(NaN), 
+    ϕ0 = FT(NaN),
     ϕa0 = FT(0.352),
     ϕa1 = FT(0.022),
     ϕa2 = FT(-0.00034),
     α = FT(0.933),
     sc = FT(2e-6),
-    pc = FT(-2e6)
+    pc = FT(-2e6),
 )
 photosynthesis_model = PModel{FT}(photo_params);
 
@@ -213,7 +213,7 @@ set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
 # Save every 30 mins 
-n = 3 
+n = 3
 saveat = Array(t0:(n * dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
@@ -230,7 +230,8 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 # p model specific callback. Eventually we will need to make this automatically applied
 # if we are using the Pmodel 
-pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+pmodel_cb =
+    ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
 
 # unify callbacks 
 cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb);
@@ -265,9 +266,9 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
 pmodel_vars = [
     "canopy.photosynthesis.GPP",
-    "canopy.photosynthesis.OptVars.Vcmax25_opt", 
-    "canopy.photosynthesis.OptVars.Jmax25_opt", 
-    "canopy.photosynthesis.OptVars.ξ_opt", 
+    "canopy.photosynthesis.OptVars.Vcmax25_opt",
+    "canopy.photosynthesis.OptVars.Jmax25_opt",
+    "canopy.photosynthesis.OptVars.ξ_opt",
     "canopy.photosynthesis.IntVars.ci",
     "canopy.photosynthesis.IntVars.Γstar",
     "canopy.photosynthesis.IntVars.Kmm",
@@ -281,7 +282,7 @@ pmodel_vars = [
     "canopy.conductance.r_stomata_canopy",
     "canopy.radiative_transfer.par.abs",
     "canopy.radiative_transfer.par_d",
-    "canopy.hydraulics.area_index.leaf"
+    "canopy.hydraulics.area_index.leaf",
 ]
 
 
@@ -292,7 +293,8 @@ if save_outputs
     # Save outputs to NetCDF files
     # Convert UTC time to local time and create time array
     # Use sol.t which contains the actual simulation times in seconds
-    local_datetime = UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
+    local_datetime =
+        UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
     time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
 
     # Skip the first timestep for canopy integration outputs
@@ -314,7 +316,7 @@ if save_outputs
         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
         time_var[:] = time_seconds_skip_first
-        
+
         # Save each extracted variable (excluding first timestep)
         for (var_name, var_data) in pairs(extracted_vars)
             var_clean_name = replace(string(var_name), "." => "_")
@@ -324,13 +326,13 @@ if save_outputs
     end
 
     # Create fluxnet drivers NetCDF file
-    NCDatasets.Dataset(drivers_file, "c") do ds        
+    NCDatasets.Dataset(drivers_file, "c") do ds
         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
-        
+
         # Create time variable
         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
         time_var[:] = time_seconds_skip_first
-        
+
         # Save each driver variable
         driver_names = fieldnames(typeof(drivers))
         for driver_name in driver_names
@@ -338,12 +340,14 @@ if save_outputs
             # Sample the driver data at the same intervals as the model output
             driver_indices = Int.(round.(sol.t ./ DATA_DT)) .+ 1
             # Ensure indices are within bounds
-            driver_indices = clamp.(driver_indices, 1, length(driver_data.values))
+            driver_indices =
+                clamp.(driver_indices, 1, length(driver_data.values))
             var_data = driver_data.values[driver_indices]
             # Skip last timestep to match canopy outputs length
-            var_data = var_data[1:end-1]
-            
-            nc_var = NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
+            var_data = var_data[1:(end - 1)]
+
+            nc_var =
+                NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
             nc_var[:] = var_data
         end
     end

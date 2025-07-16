@@ -73,7 +73,7 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     R = LP.gas_constant(earth_param_set)
 
     sif_parameters = sif_model.parameters
-    
+
     # Check if photosynthesis model is PModel and use cached Jmax and J values
     if isa(canopy.photosynthesis, PModel)
         Jmax = p.canopy.photosynthesis.Jmax

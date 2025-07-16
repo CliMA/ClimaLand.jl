@@ -189,11 +189,11 @@ Returns:
 """
 function extract_variables(sv, variable_paths::Vector{String})
     results = NamedTuple()
-    
+
     for path in variable_paths
         # Split the path into parts
         parts = split(path, ".")
-        
+
         variable_data = []
         for k in 1:length(sv.saveval)
             try
@@ -209,10 +209,10 @@ function extract_variables(sv, variable_paths::Vector{String})
                 println("Warning: Could not extract $path at timestep $k: $e")
             end
         end
-        
+
         result_name = Symbol(parts[end])
         results = merge(results, NamedTuple{(result_name,)}((variable_data,)))
     end
-    
+
     return results
 end
