@@ -451,9 +451,9 @@ end
 
 Creates a SnowModel model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
 
-When running the snow model in standalone mode, `prognostic_land_components = (:snow,)`, while for running integrated 
+When running the snow model in standalone mode, provide `prognostic_land_components = (:snow,)`, while for running integrated 
 land models, this should be a list of the component models. This value of this argument must be the same across all 
-components in the land model.
+components in the integrated land model.
 
 Default parameterizations and parameters can be overwritten using keyword arguments.
 """
