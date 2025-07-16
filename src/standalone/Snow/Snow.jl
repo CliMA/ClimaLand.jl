@@ -424,6 +424,85 @@ function SnowModel(;
 end
 
 """
+    SnowModel(
+        FT,
+        domain,
+        forcing,
+        earth_param_set,
+        Δt;
+        prognostic_land_components = (:snow,),
+        z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
+        z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
+        ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
+        α_snow = ConstantAlbedo(LP.get_default_parameter(FT, :snow_albedo)),
+        density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
+        scf = WuWuSnowCoverFractionModel(
+            FT(0.106),
+            FT(1.81),
+            FT(0.08),
+            FT(1.77),
+            FT(1),
+            FT(1),
+        ),
+        θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
+        Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
+        ΔS = FT(0.1)
+    )
+
+Creates a SnowModel model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
+
+When running the snow model in standalone mode, provide `prognostic_land_components = (:snow,)`, while for running integrated 
+land models, this should be a list of the component models. This value of this argument must be the same across all 
+components in the integrated land model.
+
+Default parameterizations and parameters can be overwritten using keyword arguments.
+"""
+function SnowModel(
+    FT,
+    domain,
+    forcing,
+    earth_param_set,
+    Δt;
+    prognostic_land_components = (:snow,),
+    z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
+    z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
+    ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
+    α_snow = ConstantAlbedoModel(LP.get_default_parameter(FT, :snow_albedo)),
+    density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
+    scf = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    ),
+    θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
+    Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
+    ΔS = FT(0.1),
+)
+    parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set,
+        scf,
+        α_snow,
+        ϵ_snow,
+        density,
+        z_0m,
+        z_0b,
+        θ_r,
+        Ksat,
+        ΔS,
+    )
+    boundary_conditions = AtmosDrivenSnowBC(
+        forcing.atmos,
+        forcing.radiation;
+        prognostic_land_components,
+    )
+    return SnowModel(; boundary_conditions, domain, parameters)
+end
+
+"""
     prognostic_vars(::SnowModel)
 
 Returns the prognostic variable names of the snow model.
@@ -808,4 +887,5 @@ function ClimaLand.total_energy_per_area!(
     surface_field .= Y.snow.U
     return nothing
 end
+
 end
