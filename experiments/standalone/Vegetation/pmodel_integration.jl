@@ -1,110 +1,143 @@
 """
 This script runs a standalone canopy model with the P-model for photosynthesis and stomatal
-conductance. We use the US-MOz (Ozark) site from the FLUXNET dataset for atmospheric forcing. 
-We integrate the canopy model for one year and save the outputs to a NetCDF file. 
+conductance with prescribed atmosphere and soil. 
 """
 
 import SciMLBase
-using Plots
+import ClimaTimeSteppers as CTS
+import ClimaComms
+ClimaComms.@import_required_backends
+using ClimaCore
+import ClimaParams as CP
 using Statistics
 using Dates
 using Insolation
-using ClimaCore
-import ClimaParams as CP
-import ClimaTimeSteppers as CTS
-using StaticArrays
+using StatsBase
+
 using ClimaLand
-import NCDatasets
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
+using ClimaDiagnostics
+using ClimaUtilities
+const FT = Float64
+earth_param_set = LP.LandParameters(FT)
+climaland_dir = pkgdir(ClimaLand)
 
-save_outputs = true
-save_directory = "outputs"
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-const FT = Float32;
-earth_param_set = LP.LandParameters(FT);
 
+# Read in the site to be run from the command line
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
+
+site_ID = ARGS[1]
+photo_model = ARGS[2] 
+
+@assert photo_model in ("pmodel", "farquhar") "Photo model must be either 'pmodel' or 'farquhar'"
+
+# Read all site-specific domain parameters from the simulation file for the site
 include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
-);
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+    ),
+)
 
-# First provide some information about the site
-# Timezone (offset from UTC in hrs)
-time_offset = 7
+# Read all site-specific parameters from the parameter file for the site
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
+    ),
+)
 
-# Site latitude and longitude
-lat = FT(38.7441) # degree
-long = FT(-92.2000) # degree
-land_domain = Point(; z_sfc = FT(0.0))
-
-# Provide the site site ID and the path to the data file:
-site_ID = "US-MOz"
-data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+    ),
+)
 
 include(
     joinpath(
-        pkgdir(ClimaLand),
+        climaland_dir,
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
+)
+
+# Prescribed soil conditions
+ψ_soil0 = FT(0.0)
+soil_driver = PrescribedGroundConditions(
+    FT;
+    root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
+    ψ = t -> ψ_soil0,
+    α_PAR = soil_α_PAR,
+    α_NIR = soil_α_NIR,
+    T = t -> 298.0,
+    ϵ = FT(0.99),
 );
 
 # Populate the SharedCanopyParameters struct, which holds the parameters
 # shared between all different components of the canopy model.
-z0_m = FT(2)
-z0_b = FT(0.2)
+z0_m = FT(2) # m, roughness length for momentum
+z0_b = FT(0.2) # m, roughness length for scalars 
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     z0_m,
     z0_b,
     earth_param_set,
 );
 
-# Prescribed soil 
-ψ_soil0 = FT(0.0)
-soil_driver = PrescribedGroundConditions(
-    FT;
-    root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
-    ψ = t -> ψ_soil0,
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
-    T = t -> 298.0,
-    ϵ = FT(0.99),
-);
-
 # Set the radiative transfer model
 rt_params = TwoStreamParameters(
     FT;
     G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
-    Ω = FT(0.69),
-    λ_γ_PAR = FT(5e-7),
+    α_PAR_leaf = α_PAR_leaf,
+    α_NIR_leaf = α_NIR_leaf,
+    τ_PAR_leaf = τ_PAR_leaf,
+    τ_NIR_leaf = τ_NIR_leaf,
+    Ω = Ω,
+    λ_γ_PAR = λ_γ_PAR,
 )
 
 rt_model = TwoStreamModel{FT}(rt_params);
 
-# Set the conductance model 
-cond_params = PModelConductanceParameters(Drel = FT(1.6))
-stomatal_model = PModelConductance{FT}(cond_params);
+if photo_model == "pmodel"
+    # Set the conductance model 
+    cond_params = PModelConductanceParameters(Drel = FT(1.6))
+    stomatal_model = PModelConductance{FT}(cond_params);
 
-# Set the photosynthesis model 
-photo_params = PModelParameters(
-    cstar = FT(0.41),
-    β = FT(146),
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN),
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
-    α = FT(0.933),
-    sc = FT(2e-6),
-    pc = FT(-2e6),
-)
-photosynthesis_model = PModel{FT}(photo_params);
+    # Set the photosynthesis model (P-model currently only supports C3) 
+    photo_params = PModelParameters(
+        cstar = FT(0.41),
+        β = FT(146),
+        ϕc = FT(0.087),
+        ϕ0 = FT(NaN),
+        ϕa0 = FT(0.352),
+        ϕa1 = FT(0.022),
+        ϕa2 = FT(-0.00034),
+        α = FT(0.933),
+        sc = FT(2e-6),
+        pc = FT(-2e6),
+    )
+    photosynthesis_model = PModel{FT}(photo_params);
+else
+    # Set the conductance model 
+    cond_params = (; parameters = MedlynConductanceParameters(FT; g1))
+    stomatal_model = MedlynConductanceModel{FT}(cond_params);
+
+    # Set the photosynthesis model 
+    is_c3 = FT(1) # set the photosynthesis mechanism to C3
+    photo_params = (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    photosynthesis_model = FarquharModel{FT}(photo_params);
+end
 
 # Set the autotrophic respiration model
 AR_params = AutotrophicRespirationParameters(FT)
@@ -113,16 +146,11 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # Set the plant hydraulics model
 # Begin by providing general plant parameters. For the area indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-SAI = FT(0.00242)
-f_root_to_shoot = FT(3.5)
-RAI = FT((SAI + maxLAI) * f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-rooting_depth = FT(1.0);
 
-K_sat_plant = FT(1.8e-8)
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
+# Note: SAI is defined in parameters.jl for each site. maxLAI is calculated when we read in the MODIS LAI data in met_drivers_FLUXNET.jl
+# LAIfunction is also defined in met_drivers_FLUXNET.jl
+RAI = FT((SAI + maxLAI) * f_root_to_shoot) 
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
@@ -137,9 +165,6 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
 );
 
 # Define the remaining variables required for the plant hydraulics model.
-zmax = FT(0)
-h_stem = FT(9)
-h_leaf = FT(9.5)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
 compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
 plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -151,9 +176,10 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
 );
 
 # instantiate the canopy model with all the components defined above.
+canopy_domain = Point(; z_sfc = FT(0.0))
 canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     parameters = shared_params,
-    domain = land_domain,
+    domain = canopy_domain,
     autotrophic_respiration = AR_model,
     radiative_transfer = rt_model,
     photosynthesis = photosynthesis_model,
@@ -189,7 +215,8 @@ for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
 
-# Run the simulation for 60 days with a timestep of 10 minutes 
+# Run the simulation for 364 days with a timestep of 10 minutes 
+# Note that this overrides the different timesteps specified in the {site}_simulation.jl files 
 t0 = 0.0
 N_days = 364
 tf = t0 + 3600 * 24 * N_days
@@ -197,6 +224,28 @@ dt = 600.0;
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
+# outdir = joinpath(pkgdir(ClimaLand), "outputs")
+# output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+# start_date = DateTime(2010) # 2010-01-01T:00:00:00
+
+# nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+#     canopy_domain.space.surface, 
+#     output_dir;
+#     start_date,
+# )
+
+# diags = ClimaLand.default_diagnostics(
+#     canopy,
+#     start_date;
+#     output_writer = d_writer,
+#     output_vars = :long,
+#     average_period = :hourly,
+# )
+
+# diagnostic_handler =
+#     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+
+# diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 # Save every 30 mins 
 n = 3
 saveat = Array(t0:(n * dt):tf)
@@ -208,19 +257,17 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
-updateat = Array(t0:1800:tf)
+updateat = Array(t0:DATA_DT:tf)
 model_drivers = ClimaLand.get_drivers(canopy)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
-# p model specific callback. Eventually we will need to make this automatically applied
-# if we are using the Pmodel 
-pmodel_cb =
-    ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
-
-# unify callbacks 
-cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb);
-
+if photo_model == "pmodel" 
+    pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+    cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb)
+else
+    cb = SciMLBase.CallbackSet(saving_cb, driver_cb)
+end
 
 # Select a timestepping algorithm and setup the ODE problem.
 timestepper = CTS.ARS111();
@@ -270,9 +317,17 @@ pmodel_vars = [
     "canopy.hydraulics.area_index.leaf",
 ]
 
+farquhar_vars = [
+    "canopy.photosynthesis.GPP",
+    "canopy.photosynthesis.Vcmax25",
+    "canopy.conductance.r_stomata_canopy"
+]
 
-# get the pmodel variables and drivers
-extracted_vars = extract_variables(sv, pmodel_vars)
+if photo_model == "pmodel"
+    extracted_vars = extract_variables(sv, pmodel_vars)
+else
+    extracted_vars = extract_variables(sv, farquhar_vars)
+end
 
 if save_outputs
     # Save outputs to NetCDF files
@@ -287,8 +342,8 @@ if save_outputs
     time_seconds_skip_first = time_seconds[2:end]
 
     # Remove existing NetCDF files if they exist
-    canopy_file = "outputs/canopy_integration_outputs.nc"
-    drivers_file = "outputs/US_Oz_fluxnet_drivers.nc"
+    canopy_file = "outputs/$(site_ID)_canopy_integration_outputs_$(photo_model).nc"
+    drivers_file = "outputs/$(site_ID)_fluxnet_drivers.nc"
     if isfile(canopy_file)
         rm(canopy_file)
     end
