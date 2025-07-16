@@ -119,7 +119,7 @@ snow_model = Snow.SnowModel(
     density,
 )
 
-land = ClimaLand.SoilSnowModel(snow_model, soil_model)
+land = ClimaLand.SoilSnowModel(;snow = snow_model, soil = soil_model)
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
