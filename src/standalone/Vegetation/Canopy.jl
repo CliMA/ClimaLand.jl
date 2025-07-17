@@ -8,7 +8,6 @@ using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeManager: ITime, date
-import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
@@ -69,6 +68,9 @@ end
     BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
+
+The following default parameter is used:
+- ac_canopy = FT(2e3) (J m^-2 K^-1) - canopy specific heat per area
 """
 function BigLeafEnergyModel{FT}(;
     ac_canopy = FT(2e3),
@@ -82,17 +84,15 @@ end
 ## Plant hydraulics models
 """
     PlantHydraulicsModel{FT}(
-        domain;
-        start_date = Dates.DateTime(2008, 1, 1),
-        LAIfunction::TVI = ClimaLand.prescribed_lai_modis(
-            ClimaLand.Artifacts.modis_lai_single_year_path(;
-                year = Dates.year(start_date),
-            ),
-            domain.space.surface,
-            start_date,
-        ),
+        domain,
+        forcing::NamedTuple;
+        n_stem::Int = 0,
+        n_leaf::Int = 1,
+        h_stem::FT = FT(0),
+        h_leaf::FT = FT(1),
         SAI::FT = FT(0),
         RAI::FT = FT(1),
+        ai_parameterization = PrescribedSiteAreaIndex{FT}(forcing.LAI, SAI, RAI),
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
@@ -102,15 +102,19 @@ end
         ),
         retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
         rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
-    ) where {FT <: AbstractFloat, TVI <: AbstractTimeVaryingInput}
+        transpiration::AbstractTranspiration{FT} = DefaultTranspirationModel{FT}(),
+    ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using default parameters.
 
-By default the LAI is set to the MODIS LAI data for the year of the start date,
-or 2008 if a start date is not provided. Different types of LAI functions can be used -
-see the ClimaUtilities.jl documentation of `AbstractTimeVaryingInput` for more information.
+The required argument `forcing` should be a NamedTuple with the following field:
+- `LAI`: a function or ClimaUtilities TimeVaryingInput for leaf area index
 
 The following default parameters are used:
+- n_stem = 0 (unitless) - number of stem compartments
+- n_leaf = 1 (unitless) - number of leaf compartments
+- h_stem = 0 (m) - height of the stem compartment
+- h_leaf = 1 (m) - height of the leaf compartment
 - SAI = 0 (m2/m2) - stem area index
 - RAI = 1 (m2/m2) - root area index
 - ν = 1.44e-4 (m3/m3) - porosity
@@ -127,17 +131,15 @@ Impacts of temporal resolution. Water Resources Research, 59, e2023WR035481.
 https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
-    domain;
-    start_date = Dates.DateTime(2008, 1, 1),
-    LAIfunction::TVI = ClimaLand.prescribed_lai_modis(
-        ClimaLand.Artifacts.modis_lai_single_year_path(;
-            year = Dates.year(start_date),
-        ),
-        domain.space.surface,
-        start_date,
-    ),
+    domain,
+    forcing::NamedTuple;
+    n_stem::Int = 0,
+    n_leaf::Int = 1,
+    h_stem::FT = FT(0),
+    h_leaf::FT = FT(1),
     SAI::FT = FT(0),
     RAI::FT = FT(1),
+    ai_parameterization = PrescribedSiteAreaIndex{FT}(forcing.LAI, SAI, RAI),
     ν::FT = FT(1.44e-4),
     S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
     conductivity_model = Weibull{FT}(
@@ -147,8 +149,14 @@ function PlantHydraulicsModel{FT}(
     ),
     retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
     rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
-) where {FT <: AbstractFloat, TVI <: AbstractTimeVaryingInput}
-    ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+    transpiration::AbstractTranspiration{FT} = DefaultTranspirationModel{FT}(),
+) where {FT <: AbstractFloat}
+    @assert n_stem >= 0 "Stem number must be non-negative"
+    @assert n_leaf >= 0 "Leaf number must be non-negative"
+    @assert h_stem >= 0 "Stem height must be non-negative"
+    @assert h_leaf >= 0 "Leaf height must be non-negative"
+    compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
+    compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
 
     parameters = PlantHydraulicsParameters(
         ai_parameterization,
@@ -158,7 +166,14 @@ function PlantHydraulicsModel{FT}(
         retention_model,
         rooting_depth,
     )
-    return PlantHydraulicsModel{FT, typeof(parameters)}(parameters)
+    return PlantHydraulicsModel{FT}(
+        n_stem,
+        n_leaf,
+        compartment_midpoints,
+        compartment_surfaces,
+        parameters,
+        transpiration,
+    )
 end
 
 ## Radiative transfer models
