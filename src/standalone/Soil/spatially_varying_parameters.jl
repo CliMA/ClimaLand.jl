@@ -50,6 +50,7 @@ function clm_soil_albedo_parameters(
     ),
     lowres = use_lowres_clm(surface_space),
 )
+    interpolation_method = Interpolations.Constant()
     context = ClimaComms.context(surface_space)
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
@@ -60,7 +61,7 @@ function clm_soil_albedo_parameters(
             s,
             surface_space;
             regridder_type,
-            regridder_kwargs = (; extrapolation_bc,),
+            regridder_kwargs = (; extrapolation_bc, interpolation_method),
         ),
         (
             "PAR_albedo_dry",
@@ -69,12 +70,33 @@ function clm_soil_albedo_parameters(
             "NIR_albedo_wet",
         ),
     )
-    return (;
+    soil_colors = SpaceVaryingInput(
+            "/home/kphan/Desktop/work_tree/random_stuff/clm_colors/soil_colors.nc",
+            "soil_color",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        )
+    albedo_nt = (;
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
     )
+    param_dict = Dict()
+    albedo_param_replace!(albedo_nt, soil_colors, param_dict)
+    return albedo_nt
+end
+
+function albedo_param_replace!(albedo_nt, soil_colors, param_dict)
+    replace_param_of_color(soil, soil_color, target_soil, target_color) = soil_color == target_color ? target_soil : soil
+    albedo_params = (name for name in keys(param_dict) if any(contains.(name, ("PAR_albedo_wet", "NIR_albedo_wet", "PAR_albedo_dry", "NIR_albedo_dry"))))
+    for name in albedo_params
+        albedo_quantity, color = rsplit(name, "_", limit = 2)
+        color = parse(Int, color)
+        @. albedo_nt[Symbol(albedo_quantity)] = replace_param_of_color(albedo_nt[Symbol(albedo_quantity)], soil_colors, param_dict[name] , color)
+    end
+    return nothing
 end
 
 """
