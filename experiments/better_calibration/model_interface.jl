@@ -74,9 +74,9 @@ function setup_model(
     calibrate_param_dict,
 )
     # TODO: This should be better when the interface improved
-    α_0 = FT(get(calibrate_param_dict, "α_0", 0.7))
-    beta_snow_cover = FT(get(calibrate_param_dict, "beta_snow_cover", 0.2))
-    z0_snow_cover = FT(get(calibrate_param_dict, "z0_snow_cover", 0.2))
+    # α_0 = FT(get(calibrate_param_dict, "α_0", 0.7))
+    # beta_snow_cover = FT(get(calibrate_param_dict, "beta_snow_cover", 0.2))
+    # z0_snow_cover = FT(get(calibrate_param_dict, "z0_snow_cover", 0.2))
 
     time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
@@ -104,33 +104,14 @@ function setup_model(
         time_interpolation_method,
     )
 
-    spatially_varying_soil_params =
-        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        f_max,
-    ) = spatially_varying_soil_params
+    (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
+        ClimaLand.Soil.soil_composition_parameters(subsurface_space, FT)
+    (; ν, hydrology_cm, K_sat, θ_r) =
+        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
     soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,
     )
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -147,24 +128,17 @@ function setup_model(
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
-        f_max = f_max,
+        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
         R_sb = R_sb,
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
+    g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
+    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(surface_space)
+    (; is_c3, Vcmax25) =
+        ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+    (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
+        ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space)
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -172,7 +146,7 @@ function setup_model(
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(7e-8) # m/s 
+    K_sat_plant = FT(7e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
     a = FT(0.2 * 0.0098) # 1/m
@@ -300,23 +274,22 @@ function setup_model(
     )
 
     # Snow model
-    α_snow = Snow.ConstantAlbedoModel(FT(α_0))
+    # α_snow = Snow.ConstantAlbedoModel(FT(α_0))
     # Set β = 0 in order to regain model without density dependence
-    # α_snow = Snow.ZenithAngleAlbedoModel(
-    #     FT(α_0),
-    #     FT(Δα),
-    #     FT(k);
-    #     β = FT(beta_snow),
-    #     x0 = FT(x0_snow),
-    # )
+    α_snow = Snow.ZenithAngleAlbedoModel(
+        FT(0.64),
+        FT(0.06),
+        FT(2);
+        β = FT(0.4),
+        x0 = FT(0.2),
+    )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
-        FT(1e-4),
-        beta_snow_cover,
-        FT(1e-4),
-        horz_degree_res;
-        z0 = z0_snow_cover
+        FT(0.08),
+        FT(1.77),
+        FT(1.0),
+        horz_degree_res,
     )
     snow_parameters = SnowParameters{FT}(
         Δt;
@@ -349,12 +322,6 @@ function setup_model(
         snow_model_type = snow_model_type,
     )
     return land
-end
-
-function close_diagnostics(sim)
-    for diagnostic in sim.diagnostics
-        close(diagnostic.output_writer)
-    end
 end
 
 function ClimaCalibrate.forward_model(iteration, member)
@@ -408,6 +375,5 @@ function ClimaCalibrate.forward_model(iteration, member)
     simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
     @info "Simulation is setted up. Going to solve the simulation."
     ClimaLand.Simulations.solve!(simulation)
-    close_diagnostics(simulation)
     return nothing
 end

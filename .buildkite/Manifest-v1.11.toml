@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "55c55a1c8b475869d4bb069be5aa7bbf8ba540bb"
+project_hash = "6273e7e1dd01c701360e596c3107e71a78aa4bb4"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -509,8 +509,8 @@ weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables", "Sta
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "5a1a32069c2e6ba68a8e41e049701d64f4f9996e"
-repo-rev = "main"
+git-tree-sha1 = "9974d5352cb4243410eb5d89d3a1918e558ec05b"
+repo-rev = "kp/more-interpolate"
 repo-url = "https://github.com/CliMA/ClimaUtilities.jl.git"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.24"

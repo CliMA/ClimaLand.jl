@@ -11,13 +11,13 @@ include(
 include(
     joinpath(
         pkgdir(ClimaLand),
-        "experiments/long_runs/leaderboard/data_sources.jl",
+        "ext/land_sim_vis/leaderboard/data_sources.jl",
     ),
 )
 include(
     joinpath(
         pkgdir(ClimaLand),
-        "experiments/long_runs/leaderboard/leaderboard.jl",
+        "ext/land_sim_vis/leaderboard/leaderboard.jl",
     ),
 )
 
