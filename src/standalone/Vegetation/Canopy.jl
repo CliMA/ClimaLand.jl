@@ -38,6 +38,7 @@ include("./component_models.jl")
 include("./ground_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
+include("./soil_moisture_stress.jl")
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./pmodel.jl")
@@ -137,6 +138,7 @@ end
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
+        soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = NoMoistureStressModel{FT}(),
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
@@ -161,6 +163,7 @@ function CanopyModel{FT}(;
     radiative_transfer::AbstractRadiationModel{FT},
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
+    soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = NoMoistureStressModel{FT}(),
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -186,6 +189,7 @@ function CanopyModel{FT}(;
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -216,6 +220,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :soil_moisture_stress,
 )
 
 """
@@ -432,6 +437,7 @@ function ClimaLand.make_update_aux(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -540,6 +546,9 @@ function ClimaLand.make_update_aux(
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 
+        # Update soil moisture stress, used in photosynthesis and conductance 
+        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
+
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
 
@@ -602,6 +611,7 @@ function make_compute_imp_tendency(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -632,6 +642,7 @@ function ClimaLand.make_compute_jacobian(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },

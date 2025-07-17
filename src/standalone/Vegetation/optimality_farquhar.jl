@@ -139,7 +139,7 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
         c,
     ) = model.parameters
 
-    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    β = p.canopy.soil_moisture_stress.βm
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
     Γstar = @. lazy(co2_compensation(Γstar25, ΔHΓstar, T, To, R))
     ci = @. lazy(intercellular_co2(c_co2_air, Γstar, medlyn_factor))# may change?

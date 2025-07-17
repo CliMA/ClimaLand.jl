@@ -85,5 +85,5 @@ ClimaLand.auxiliary_types(model::NoMoistureStressModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::NoMoistureStressModel) = (:surface,) 
 
 function update_soil_moisture_stress!(p, Y, model::NoMoistureStressModel, canopy)
-    # do nothing 
+    @. p.canopy.soil_moisture_stress.βm = 1.0
 end
