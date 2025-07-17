@@ -147,7 +147,13 @@ function compute_piecewise_moisture_stress(
 end
 
 function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel, canopy)
-    θ = Y.soil.ϑ_l
+    if :soil in canopy.boundary_conditions.prognostic_land_components 
+        ϑ_l = Y.soil.ϑ_l
+        # TODO: we need to calculate an effective aggregate root zone water content
+        error("not implemented yet")
+    else
+        ϑ_root = canopy.boundary_conditions.ground.ϑ_l
+    end
 
-    @. p.canopy.soil_moisture_stress.βm = compute_piecewise_moisture_stress(model.parameters, θ)
+    @. p.canopy.soil_moisture_stress.βm = compute_piecewise_moisture_stress(model.parameters, ϑ_root)
 end
