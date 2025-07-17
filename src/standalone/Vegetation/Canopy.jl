@@ -54,27 +54,25 @@ include("./spatially_varying_parameters.jl")
 
 ## Autotrophic respiration models
 """
-    AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+    AutotrophicRespirationModel(FT)
 
 Creates a AutotrophicRespirationModel using default parameters of type FT.
 """
-function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+function AutotrophicRespirationModel(FT)
     parameters = AutotrophicRespirationParameters(FT)
     return AutotrophicRespirationModel{FT, typeof(parameters)}(parameters)
 end
 
 ## Energy models
 """
-    BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
+    BigLeafEnergyModel(FT; ac_canopy = FT(2e3))
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
 
 The following default parameter is used:
 - ac_canopy = FT(2e3) (J m^-2 K^-1) - canopy specific heat per area
 """
-function BigLeafEnergyModel{FT}(;
-    ac_canopy = FT(2e3),
-) where {FT <: AbstractFloat}
+function BigLeafEnergyModel(FT; ac_canopy = FT(2e3))
     parameters = BigLeafEnergyParameters{FT}(ac_canopy)
     return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
 end
@@ -83,7 +81,7 @@ end
 
 ## Plant hydraulics models
 """
-    PlantHydraulicsModel{FT}(
+    PlantHydraulicsModel(
         domain,
         forcing::NamedTuple;
         n_stem::Int = 0,
@@ -103,7 +101,7 @@ end
         retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
         rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
         transpiration::AbstractTranspiration{FT} = DefaultTranspirationModel{FT}(),
-    ) where {FT <: AbstractFloat}
+    )
 
 Creates a PlantHydraulicsModel on the provided domain, using default parameters.
 
@@ -130,7 +128,8 @@ Constraining plant hydraulics with microwave radiometry in a land surface model:
 Impacts of temporal resolution. Water Resources Research, 59, e2023WR035481.
 https://doi.org/10.1029/2023WR035481
 """
-function PlantHydraulicsModel{FT}(
+function PlantHydraulicsModel(
+    FT,
     domain,
     forcing::NamedTuple;
     n_stem::Int = 0,
@@ -150,7 +149,7 @@ function PlantHydraulicsModel{FT}(
     retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
     rooting_depth = ClimaLand.Canopy.clm_rooting_depth(domain.space.surface),
     transpiration::AbstractTranspiration{FT} = DefaultTranspirationModel{FT}(),
-) where {FT <: AbstractFloat}
+)
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
     @assert h_stem >= 0 "Stem height must be non-negative"
@@ -178,7 +177,8 @@ end
 
 ## Radiative transfer models
 """
-    TwoStreamModel{FT}(
+    TwoStreamModel(
+        FT,
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
@@ -199,25 +199,27 @@ Otherwise the default values from ClimaParams.jl are used.
 
 The number of layers in the canopy is set by `n_layers`, which defaults to 20.
 """
-function TwoStreamModel{FT}(
+function TwoStreamModel(
+    FT,
     domain;
     radiation_parameters = clm_canopy_radiation_parameters(
         domain.space.surface,
     ),
     ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
     n_layers::Int = 20,
-) where {FT <: AbstractFloat}
+)
     parameters =
         TwoStreamParameters(FT, radiation_parameters..., ϵ_canopy, n_layers)
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
 end
 
 """
-    BeerLambertModel{FT}(
+    BeerLambertModel(
+        FT,
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-    ) where {FT <: AbstractFloat}
+    )
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
 
@@ -231,13 +233,14 @@ Canopy emissivity and wavelength per PAR photon are currently treated
 as constants; these can be passed in as Floats by kwarg.
 Otherwise the default values from ClimaParams.jl are used.
 """
-function BeerLambertModel{FT}(
+function BeerLambertModel(
+    FT,
     domain;
     radiation_parameters = clm_canopy_radiation_parameters(
         domain.space.surface,
     ),
     ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-) where {FT <: AbstractFloat}
+)
     parameters = BeerLambertParameters(FT, radiation_parameters..., ϵ_canopy)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
