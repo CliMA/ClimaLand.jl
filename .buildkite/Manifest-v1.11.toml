@@ -505,7 +505,7 @@ weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables", "Sta
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "420fe76968208ac2eb2837e9e0f0974456ebec78"
+path = "/home/kphan/Desktop/work_tree/mainRepos/ClimaUtilities.jl/more-interpolate"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.24"
 
