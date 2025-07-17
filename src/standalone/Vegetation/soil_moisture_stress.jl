@@ -33,7 +33,7 @@ function TuzetMoistureStressModel{FT}(
 end
 
 ClimaLand.name(model::AbstractSoilMoistureStressModel) = :soil_moisture_stress
-ClimaLand.auxiliary_vars(model::TuzetMoistureStressModel) = (:βm)
+ClimaLand.auxiliary_vars(model::TuzetMoistureStressModel) = (:βm,)
 ClimaLand.auxiliary_types(model::TuzetMoistureStressModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::TuzetMoistureStressModel) = (:surface,) 
 
@@ -75,12 +75,7 @@ end
 
 struct NoMoistureStressModel{FT} <: AbstractSoilMoistureStressModel{FT} end
 
-function NoMoistureStressModel{FT}(
-) where {FT <: AbstractFloat}
-    return NoMoistureStressModel{FT}()
-end
-
-ClimaLand.auxiliary_vars(model::NoMoistureStressModel) = (:βm)
+ClimaLand.auxiliary_vars(model::NoMoistureStressModel) = (:βm,)
 ClimaLand.auxiliary_types(model::NoMoistureStressModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::NoMoistureStressModel) = (:surface,) 
 

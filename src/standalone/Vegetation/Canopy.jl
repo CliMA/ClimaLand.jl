@@ -351,7 +351,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, SMSM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -359,11 +359,16 @@ an extended surface (plane/spherical surface) for regional or global simulations
 - subcomponent model type for radiative transfer. This is of type
 `AbstractRadiationModel`.
 - subcomponent model type for photosynthesis. This is of type
-`AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
-is supported.
+`AbstractPhotosynthesisModel` and supports `FarquharModel`, `OptimalityFarquharModel`,
+and `PModel`. 
 - subcomponent model type for stomatal conductance. This is of type
- `AbstractStomatalConductanceModel` and currently only the `MedlynModel`
-is supported
+ `AbstractStomatalConductanceModel` and supports `MedlynConductanceModel` and 
+ `PModelConductance`. Note if `PModel` is used for photosynthesis, then you 
+ must also use `PModelConductance` for stomatal conductance, since these two models
+ are derived from the same set of conditions. 
+- subcomponent model type for soil moisture stress. This is of type
+ `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel`
+ and `NoMoistureStressModel` (which sets the stress factor to 1). 
 - subcomponent model type for plant hydraulics. This is of type
  `AbstractPlantHydraulicsModel` and currently only a version which
 prognostically solves Richards equation in the plant is available.
@@ -393,7 +398,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -403,6 +408,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
     photosynthesis::PM
     "Stomatal conductance model, a canopy component model"
     conductance::SM
+    "Soil moisture stress parameterization, a canopy component model"
+    soil_moisture_stress::SMSM
     "Plant hydraulics model, a canopy component model"
     hydraulics::PHM
     "Energy balance model, a canopy component model"

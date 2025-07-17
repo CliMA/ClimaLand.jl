@@ -160,6 +160,7 @@ end
                                 <:Union{BeerLambertModel, TwoStreamModel},
                                 <:Union{FarquharModel, OptimalityFarquharModel, PModel},
                                 <:Union{MedlynConductanceModel, PModelConductance},
+                                <:Union{TuzetMoistureStressModel, NoMoistureStressModel},
                                 <:PlantHydraulicsModel,
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
@@ -186,6 +187,7 @@ function canopy_boundary_fluxes!(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{TuzetMoistureStressModel, NoMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
