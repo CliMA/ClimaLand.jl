@@ -182,7 +182,6 @@ end
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-        λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
         n_layers::Int = 20,
     )
 
@@ -206,16 +205,10 @@ function TwoStreamModel{FT}(
         domain.space.surface,
     ),
     ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-    λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
     n_layers::Int = 20,
 ) where {FT <: AbstractFloat}
-    parameters = TwoStreamParameters(
-        FT,
-        radiation_parameters...,
-        ϵ_canopy,
-        λ_γ_PAR,
-        n_layers,
-    )
+    parameters =
+        TwoStreamParameters(FT, radiation_parameters..., ϵ_canopy, n_layers)
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
 end
 
@@ -224,7 +217,6 @@ end
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-        λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
     ) where {FT <: AbstractFloat}
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
@@ -245,10 +237,8 @@ function BeerLambertModel{FT}(
         domain.space.surface,
     ),
     ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
-    λ_γ_PAR::FT = LP.get_default_parameter(FT, :wavelength_per_PAR_photon),
 ) where {FT <: AbstractFloat}
-    parameters =
-        BeerLambertParameters(FT, radiation_parameters..., ϵ_canopy, λ_γ_PAR)
+    parameters = BeerLambertParameters(FT, radiation_parameters..., ϵ_canopy)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 
