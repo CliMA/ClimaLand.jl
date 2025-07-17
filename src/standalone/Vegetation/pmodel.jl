@@ -214,6 +214,11 @@ New cache variables:
     computed each timestep for instantaneous assimilation 
 - `Jmax`: the instantaneous (temperature-adjusted) maximum electron transport rate (mol m^-2 s^-1)
 - `J`: the instantaneous electron transport rate (mol m^-2 s^-1)
+- `Vcmax`: the instantaneous (temperature-adjusted) maximum rate of carboxylation (mol m^-2 s^-1)
+- `Ac`: the instantaneous Rubisco-limited assimilation rate (mol m^-2 s^-1)
+- `Aj`: the instantaneous light-limited assimilation rate (mol m^-2 s^-1)
+
+Note that these fluxes are all relative to leaf area, not ground area. 
 """
 ClimaLand.auxiliary_vars(model::PModel) = (
     :An,
@@ -226,8 +231,6 @@ ClimaLand.auxiliary_vars(model::PModel) = (
     :Vcmax,
     :Ac,
     :Aj,
-    :I_abs,
-    :VPD,
 )
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
@@ -240,12 +243,8 @@ ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
 )
 ClimaLand.auxiliary_domain_names(::PModel) = (
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -794,7 +793,11 @@ end
 function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
 
 This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
-using the EMA equation at local noon every 10 minutes. 
+using the EMA equation at local noon. We check for local noon using the provided `longitude` (once passing 
+in lat/lon for point/column domains, this can be automatically extracted from the domain axes) every 10 minutes.
+The time of local noon is expressed in seconds UTC and neglects the effects of obliquity and eccentricity, so
+it is constant throughout the year. This presents an error of up to ~20 minutes, but it is sufficient for our 
+application here (since meteorological drivers are often updated at coarser time intervals anyway). 
 
 Args
 - `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
@@ -983,8 +986,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     @. p.canopy.photosynthesis.Vcmax = Vcmax_inst
     @. p.canopy.photosynthesis.Ac = Ac
     @. p.canopy.photosynthesis.Aj = Aj
-    @. p.canopy.photosynthesis.I_abs = I_abs
-    @. p.canopy.photosynthesis.VPD = VPD
 end
 
 get_Vcmax25(p, m::PModel) = p.canopy.photosynthesis.OptVars.Vcmax25_opt
