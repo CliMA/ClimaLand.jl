@@ -1,7 +1,7 @@
-"""
+export TuzetMoistureStressParameters, TuzetMoistureStressModel,
+    NoMoistureStressModel
 
-"""
-
+# define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
 
 Base.@kwdef struct TuzetMoistureStressParameters{
@@ -37,6 +37,16 @@ ClimaLand.auxiliary_vars(model::TuzetMoistureStressModel) = (:βm)
 ClimaLand.auxiliary_types(model::TuzetMoistureStressModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::TuzetMoistureStressModel) = (:surface,) 
 
+
+"""
+compute_tuzet_moisture_stress(
+    parameters::TuzetMoistureStressParameters{FT},
+    p_leaf::FT
+) where {FT}
+
+This function computes the soil moisture stress factor using the leaf water potential (Pa) and two
+parameters `sc` (sensitivity to low water potential, Pa^-1) and `pc` (reference water potential, Pa).
+"""
 function compute_tuzet_moisture_stress(
     parameters::TuzetMoistureStressParameters{FT},
     p_leaf::FT
@@ -56,9 +66,24 @@ function update_soil_moisture_stress!(p, Y, model::TuzetMoistureStressModel, can
     i_end = n_stem + n_leaf
 
     ψ = p.canopy.hydraulics.ψ
-    p_leaf = @. lazy(ψ.:($$i_end) * ρ_water * grav) # converts height to hydrostatic pressure 
+    p_leaf = @. lazy(ψ.:($$i_end) * ρ_water * grav) # converts head to hydrostatic pressure 
 
     # Compute the moisture stress factor
     @. p.canopy.soil_moisture_stress.βm = compute_tuzet_moisture_stress(model.parameters, p_leaf)
 end
 
+
+struct NoMoistureStressModel{FT} <: AbstractSoilMoistureStressModel{FT} end
+
+function NoMoistureStressModel{FT}(
+) where {FT <: AbstractFloat}
+    return NoMoistureStressModel{FT}()
+end
+
+ClimaLand.auxiliary_vars(model::NoMoistureStressModel) = (:βm)
+ClimaLand.auxiliary_types(model::NoMoistureStressModel{FT}) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::NoMoistureStressModel) = (:surface,) 
+
+function update_soil_moisture_stress!(p, Y, model::NoMoistureStressModel, canopy)
+    # do nothing 
+end
