@@ -12,7 +12,9 @@ import ClimaParams as CP
 using Statistics
 using Dates
 using Insolation
+using StaticArrays
 using StatsBase
+using NCDatasets
 
 using ClimaLand
 using ClimaLand.Domains: Point
@@ -27,6 +29,8 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
+save_outputs = true
+
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
@@ -38,7 +42,6 @@ end
 
 site_ID = ARGS[1]
 photo_model = ARGS[2] 
-
 @assert photo_model in ("pmodel", "farquhar") "Photo model must be either 'pmodel' or 'farquhar'"
 
 # Read all site-specific domain parameters from the simulation file for the site
@@ -48,6 +51,7 @@ include(
         "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
     ),
 )
+h_canopy = h_stem + h_leaf
 
 # Read all site-specific parameters from the parameter file for the site
 include(
@@ -130,12 +134,12 @@ if photo_model == "pmodel"
     photosynthesis_model = PModel{FT}(photo_params);
 else
     # Set the conductance model 
-    cond_params = (; parameters = MedlynConductanceParameters(FT; g1))
+    cond_params = MedlynConductanceParameters(FT; g1 = g1, g0 = g0, Drel = Drel)
     stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
     # Set the photosynthesis model 
     is_c3 = FT(1) # set the photosynthesis mechanism to C3
-    photo_params = (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    photo_params = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25)
     photosynthesis_model = FarquharModel{FT}(photo_params);
 end
 
@@ -207,12 +211,12 @@ S_l_ini =
     inverse_water_retention_curve.(
         retention_model,
         [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
+        soil_ν,
+        plant_S_s,
     )
 
 for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
+    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(soil_ν, S_l_ini[i])
 end;
 
 # Run the simulation for 364 days with a timestep of 10 minutes 
@@ -220,10 +224,11 @@ end;
 t0 = 0.0
 N_days = 364
 tf = t0 + 3600 * 24 * N_days
-dt = 600.0;
+dt = 225.0;
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
+@info "Using timestep of $(dt) seconds"
 # outdir = joinpath(pkgdir(ClimaLand), "outputs")
 # output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 # start_date = DateTime(2010) # 2010-01-01T:00:00:00
@@ -247,8 +252,8 @@ set_initial_cache!(p, Y, t0);
 
 # diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 # Save every 30 mins 
-n = 3
-saveat = Array(t0:(n * dt):tf)
+save_period = 1800.0
+saveat = Array(t0:save_period:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -319,8 +324,8 @@ pmodel_vars = [
 
 farquhar_vars = [
     "canopy.photosynthesis.GPP",
-    "canopy.photosynthesis.Vcmax25",
-    "canopy.conductance.r_stomata_canopy"
+    "canopy.conductance.r_stomata_canopy",
+    "canopy.hydraulics.area_index.leaf"
 ]
 
 if photo_model == "pmodel"
