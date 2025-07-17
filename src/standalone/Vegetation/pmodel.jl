@@ -1,5 +1,4 @@
 export PModelParameters,
-    PModelDrivers,
     PModelConstants,
     PModel,
     compute_full_pmodel_outputs,
@@ -36,31 +35,6 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless).
         Setting this to 0 represents no incorporation of past values"""
     α::FT
-    # temporary so that autotrophic_respiration.jl doesn't complain (it still uses the original βm)
-    sc::FT
-    pc::FT
-end
-
-"""
-    PModelDrivers{FT<:AbstractFloat}
-
-The required drivers for P-model (Stocker et al. 2020). Drivers are defined as
-external variables used to compute the optimal photosynthetic capacities. 
-$(DocStringExtensions.FIELDS)
-"""
-Base.@kwdef struct PModelDrivers{FT <: AbstractFloat}
-    "Canopy temperature (K)"
-    T_canopy::FT
-    "Absorbed PAR in moles of photons (mol m^-2 s^-1)"
-    I_abs::FT
-    "Ambient CO2 partial pressure (Pa)"
-    ca::FT
-    "Ambient air pressure (Pa)"
-    P_air::FT
-    "Vapor pressure deficit (Pa)"
-    VPD::FT
-    """Soil moisture stress factor (unitless)"""
-    βm::FT
 end
 
 
@@ -125,12 +99,10 @@ Base.@kwdef struct PModelConstants{FT}
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
-Base.eltype(::PModelDrivers{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
 # make these custom structs broadcastable as tuples 
 Base.broadcastable(x::PModelParameters) = tuple(x)
-Base.broadcastable(x::PModelDrivers) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
 
 """
@@ -678,7 +650,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     # drivers 
     FT = eltype(parameters)
-    βm = FT(1.0) # TODO: replace this with modular soil moisture stress parameterization
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -752,7 +724,7 @@ function call_update_optimal_EMA(
 
     # drivers 
     FT = eltype(parameters)
-    βm = FT(1.0) # TODO: replace this with modular soil moisture stress parameterization
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
