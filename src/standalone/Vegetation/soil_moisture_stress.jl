@@ -57,8 +57,7 @@ function compute_tuzet_moisture_stress(
 end
 
 function update_soil_moisture_stress!(p, Y, model::TuzetMoistureStressModel, canopy)
-    # unpack parameters and constants
-    (; sc, pc) = model.parameters
+    # unpack constants
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     n_stem = canopy.hydraulics.n_stem
@@ -81,4 +80,74 @@ ClimaLand.auxiliary_domain_names(::NoMoistureStressModel) = (:surface,)
 
 function update_soil_moisture_stress!(p, Y, model::NoMoistureStressModel, canopy)
     @. p.canopy.soil_moisture_stress.βm = 1.0
+end
+
+
+Base.@kwdef struct PiecewiseMoistureStressParameters{
+    TC <: Union{FT, ClimaCore.Fields.Field},
+    TW <: Union{FT, ClimaCore.Fields.Field},
+    CP <: Union{FT, ClimaCore.Fields.Field}
+}
+    """Field capacity volumetric water content (m^3 / m^3)"""
+    θ_c::TC
+    """Wilting point volumetric water content (m^3 / m^3)"""
+    θ_w::TW
+    """Curvature parameter (unitless)"""
+    c::CP
+end
+
+Base.eltype(::PiecewiseMoistureStressParameters{FT}) where {FT} = FT
+
+"""
+    PiecewiseMoistureStressModel{FT, TMSP <: PiecewiseMoistureStressParameters{FT}}
+    <: AbstractSoilMoistureStressModel{FT}
+
+"""
+struct PiecewiseMoistureStressModel{FT, TMSP <: PiecewiseMoistureStressParameters{FT}} <:
+       AbstractSoilMoistureStressModel{FT}
+    parameters::TMSP
+end
+
+function PiecewiseMoistureStressModel{FT}(
+    parameters::PiecewiseMoistureStressParameters{FT},
+) where {FT <: AbstractFloat}
+    return PiecewiseMoistureStressModel{eltype(parameters), typeof(parameters)}(parameters)
+end
+
+ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
+ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface,)
+
+
+"""
+compute_piecewise_moisture_stress(
+    parameters::PiecewiseMoistureStressParameters{FT},
+    θ::FT,
+) where {FT}
+
+This function computes the soil moisture stress factor using the volumetric water content θ (m^3/m^3) 
+and three parameters: `θ_c` (field capacity, m^3/m^3), `θ_w` (wilting point, m^3/m^3), and `c` (curvature 
+parameter, unitless). We follow the piecewise formulation defined in Egea et al. (2011). 
+
+Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
+"""
+function compute_piecewise_moisture_stress(
+    parameters::PiecewiseMoistureStressParameters{FT},
+    θ::FT,
+) where {FT}
+    (; θ_c, θ_w, c) = parameters
+
+    return max(
+        FT(0),
+        min(
+            FT(1),
+            ((θ - θ_w) / (θ_c - θ_w))^c,
+        )
+    )
+end
+
+function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel, canopy)
+    θ = Y.soil.ϑ_l
+
+    @. p.canopy.soil_moisture_stress.βm = compute_piecewise_moisture_stress(model.parameters, θ)
 end
