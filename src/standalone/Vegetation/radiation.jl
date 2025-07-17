@@ -113,6 +113,20 @@ end
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
+function initialize_auxiliary(
+    component::AbstractRadiationModel{FT},
+    state,
+) where {FT}
+    model_name = name(component)
+    ClimaLand.initialize_vars(
+        auxiliary_vars(component),
+        auxiliary_types(component),
+        auxiliary_domain_names(component),
+        state,
+        model_name,
+    )[model_name]
+end
+
 struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}} <:
        AbstractRadiationModel{FT}
     parameters::TSP
@@ -174,21 +188,29 @@ end
 Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
-ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ)
-ClimaLand.auxiliary_types(
-    model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (
-    FT,
-    FT,
-    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
-    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
-    FT,
-    FT,
-    FT,
+function ClimaLand.auxiliary_vars(
+    model::Union{BeerLambertModel, TwoStreamModel},
 )
+    (ClimaLand.name(model),)
+    # (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ)
+end
+
+function ClimaLand.auxiliary_types(
+    model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
+) where {FT}
+    Tuple([@NamedTuple begin
+        nir_d::FT
+        par_d::FT
+        nir::NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}}
+        par::NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}}
+        LW_n::FT
+        SW_n::FT
+        ϵ::FT
+    end])
+end
+
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface,)
 
 """
     canopy_radiant_energy_fluxes!(p::NamedTuple,

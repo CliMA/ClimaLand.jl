@@ -337,19 +337,33 @@ Please see Issue #644
 or PR #645 for details.
 For now, this clipping is similar to what CLM and NOAH MP do.
 """
+function ClimaLand.Canopy.set_canopy_prescribed_field!(
+    SAI,
+    RAI,
+    area_index::P,
+    t,
+    ::Type{FT},
+) where {FT, P}
+    P((RAI, SAI, clip(area_index.leaf, FT(0.05))))
+end
+
 NVTX.@annotate function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
     t,
 ) where {FT}
-    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
+    area_index = p.canopy.hydraulics.area_index
+    LAIfunction = component.parameters.ai_parameterization.LAIfunction
     evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
-    p.canopy.hydraulics.area_index.leaf .=
-        clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
-    @. p.canopy.hydraulics.area_index.stem = SAI
-    @. p.canopy.hydraulics.area_index.root = RAI
+    area_index .=
+        ClimaLand.Canopy.set_canopy_prescribed_field!.(
+            component.parameters.ai_parameterization.SAI,
+            component.parameters.ai_parameterization.RAI,
+            area_index,
+            t,
+            FT,
+        )
 end
-
 """
     harmonic_mean(x::FT,y::FT) where {FT}
 

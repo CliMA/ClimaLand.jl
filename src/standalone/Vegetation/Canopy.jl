@@ -342,7 +342,7 @@ end
     ) where {FT}
 
 Creates the auxiliary state vector of the `CanopyModel` and returns
- it as a ClimaCore.Fields.FieldVector.
+ it as a ClimaCore.Fields.FieldVector. #TODO: this is not accurate
 
 The input `coords` is usually a ClimaCore Field object.
 
@@ -396,6 +396,42 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
     return NamedTuple{vars}(additional_aux)
 end
 
+function rt_update_col(
+    RT::NT,
+    ϵ_canopy::FT,
+    LAI::FT,
+    SAI::FT,
+    SW_d::FT,
+    cosθs::FT,
+    G_Function::GF,
+    Ω::FT,
+    α_PAR_leaf::FT,
+    α_NIR_leaf::FT,
+    α_soil_PAR::FT,
+    α_soil_NIR::FT,
+) where {NT, FT, GF}
+    ϵ = ϵ_canopy * (1 - exp(-(LAI + SAI)))
+    par_d = SW_d / 2
+    nir_d = SW_d / 2
+    par = canopy_sw_rt_beer_lambert(
+        G_Function,
+        cosθs,
+        Ω,
+        α_PAR_leaf,
+        LAI,
+        α_soil_PAR,
+    )
+    nir = canopy_sw_rt_beer_lambert(
+        G_Function,
+        cosθs,
+        Ω,
+        α_NIR_leaf,
+        LAI,
+        α_soil_NIR,
+    )
+    return NT((nir_d, par_d, nir, par, RT.LW_n, RT.SW_n, ϵ))
+end
+
 """
      ClimaLand.make_update_aux(canopy::CanopyModel{FT,
                                                   <:AutotrophicRespirationModel,
@@ -443,8 +479,8 @@ function ClimaLand.make_update_aux(
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-        par_d = p.canopy.radiative_transfer.par_d
-        nir_d = p.canopy.radiative_transfer.nir_d
+        # par_d = p.canopy.radiative_transfer.par_d
+        # nir_d = p.canopy.radiative_transfer.nir_d
         cosθs = p.drivers.cosθs
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
@@ -453,33 +489,34 @@ function ClimaLand.make_update_aux(
         bc = canopy.boundary_conditions
 
         # update radiative transfer
-        NVTX.@range "radiative transfer" begin
-            (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
-            @. p.canopy.radiative_transfer.ϵ =
-                canopy.radiative_transfer.parameters.ϵ_canopy *
-                (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-            RT = canopy.radiative_transfer
-            compute_PAR!(par_d, RT, bc.radiation, p, t)
-            compute_NIR!(nir_d, RT, bc.radiation, p, t)
-
-            compute_fractional_absorbances!(
-                p,
-                RT,
+        α_soil_PAR = ground_albedo_PAR(
+            Val(bc.prognostic_land_components),
+            bc.ground,
+            Y,
+            p,
+            t,
+        )
+        α_soil_NIR = ground_albedo_NIR(
+            Val(bc.prognostic_land_components),
+            bc.ground,
+            Y,
+            p,
+            t,
+        )
+        NVTX.@range "rad aux" begin
+            @. p.canopy.radiative_transfer = rt_update_col(
+                p.canopy.radiative_transfer,
+                canopy.radiative_transfer.parameters.ϵ_canopy,
                 LAI,
-                ground_albedo_PAR(
-                    Val(bc.prognostic_land_components),
-                    bc.ground,
-                    Y,
-                    p,
-                    t,
-                ),
-                ground_albedo_NIR(
-                    Val(bc.prognostic_land_components),
-                    bc.ground,
-                    Y,
-                    p,
-                    t,
-                ),
+                SAI,
+                p.drivers.SW_d,
+                p.drivers.cosθs,
+                canopy.radiative_transfer.parameters.G_Function,
+                canopy.radiative_transfer.parameters.Ω,
+                canopy.radiative_transfer.parameters.α_PAR_leaf,
+                canopy.radiative_transfer.parameters.α_NIR_leaf,
+                α_soil_PAR,
+                α_soil_NIR,
             )
         end
 
