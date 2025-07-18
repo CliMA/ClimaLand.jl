@@ -118,9 +118,9 @@ function PiecewiseMoistureStressModel{FT}(
     return PiecewiseMoistureStressModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
-ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
-ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} = (FT,)
-ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface,)
+ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm, ϑ_root)
+ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} = (FT, FT,)
+ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface, :subsurface,)
 
 
 """
@@ -153,8 +153,17 @@ end
 function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel, canopy)
     if :soil in canopy.boundary_conditions.prognostic_land_components 
         ϑ_l = Y.soil.ϑ_l
-        # TODO: we need to calculate an effective aggregate root zone water content
-        error("not implemented yet")
+
+        # compute the root zone-averaged volumetric water content 
+        z = Y.soil.domain.fields.z 
+
+        # normalized distribution for root density 
+        root_distribution = @. lazy(Canopy.PlantHydraulics.root_distribution(
+            z, canopy.hydraulics.parameters.rooting_depth))
+        
+        # compute the root zone-averaged volumetric water content
+        ClimaCore.Operators.column_integral_definite!(p.canopy.soil_moisture_stress.ϑ_root,
+            ϑ_l .* root_distribution)
     else
         ϑ_root = canopy.boundary_conditions.ground.ϑ_root
     end
