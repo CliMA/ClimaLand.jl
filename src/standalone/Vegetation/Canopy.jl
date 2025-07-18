@@ -700,13 +700,18 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-     ClimaLand.make_update_aux(canopy::CanopyModel{FT,
-                                                  <:AutotrophicRespirationModel,
-                                                  <:Union{BeerLambertModel, TwoStreamModel},
-                                                  <:FarquharModel,
-                                                  <:MedlynConductanceModel,
-                                                  <:PlantHydraulicsModel,},
-                              ) where {FT}
+     ClimaLand.make_update_aux(
+        canopy::CanopyModel{
+            FT,
+            <:AutotrophicRespirationModel,
+            <:Union{BeerLambertModel, TwoStreamModel},
+            <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+            <:Union{MedlynConductanceModel, PModelConductance},
+            <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
+            <:PlantHydraulicsModel,
+            <:AbstractCanopyEnergyModel,
+        },
+    ) where {FT}
 
 Creates the `update_aux!` function for the `CanopyModel`; a specific
 method for `update_aux!` for the case where the canopy model components
@@ -729,7 +734,7 @@ function ClimaLand.make_update_aux(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
-        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -873,6 +878,7 @@ function make_compute_exp_tendency(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -903,7 +909,7 @@ function make_compute_imp_tendency(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
-        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },

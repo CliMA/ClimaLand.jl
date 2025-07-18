@@ -1,5 +1,6 @@
 export TuzetMoistureStressParameters, TuzetMoistureStressModel,
-    NoMoistureStressModel
+    NoMoistureStressModel, 
+    PiecewiseMoistureStressParameters, PiecewiseMoistureStressModel
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
@@ -14,6 +15,7 @@ Base.@kwdef struct TuzetMoistureStressParameters{
 end
 
 Base.eltype(::TuzetMoistureStressParameters{FT}) where {FT} = FT
+Base.broadcastable(x::TuzetMoistureStressParameters) = tuple(x)
 
 """
     TuzetMoistureStressModel{FT, TMSP <: TuzetMoistureStressParameters{FT}}
@@ -84,6 +86,7 @@ end
 
 
 Base.@kwdef struct PiecewiseMoistureStressParameters{
+    FT <: AbstractFloat,
     TC <: Union{FT, ClimaCore.Fields.Field},
     TW <: Union{FT, ClimaCore.Fields.Field},
     CP <: Union{FT, ClimaCore.Fields.Field}
@@ -97,6 +100,7 @@ Base.@kwdef struct PiecewiseMoistureStressParameters{
 end
 
 Base.eltype(::PiecewiseMoistureStressParameters{FT}) where {FT} = FT
+Base.broadcastable(x::PiecewiseMoistureStressParameters) = tuple(x) 
 
 """
     PiecewiseMoistureStressModel{FT, TMSP <: PiecewiseMoistureStressParameters{FT}}
@@ -152,7 +156,7 @@ function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel,
         # TODO: we need to calculate an effective aggregate root zone water content
         error("not implemented yet")
     else
-        ϑ_root = canopy.boundary_conditions.ground.ϑ_l
+        ϑ_root = canopy.boundary_conditions.ground.ϑ_root
     end
 
     @. p.canopy.soil_moisture_stress.βm = compute_piecewise_moisture_stress(model.parameters, ϑ_root)
