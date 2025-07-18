@@ -3,13 +3,13 @@ module Domains
 import ..compat_add_mask, ..compat_set_mask!
 import ..Artifacts.landseamask_file_path
 
-
 using ClimaCore
 using ClimaComms
 using DocStringExtensions
 using Interpolations
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import StaticArrays: SMatrix
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
 import ClimaCore.Meshes: Uniform
@@ -73,27 +73,54 @@ struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
 end
 
 """
-    Point(;z_sfc::FT,
-           comms = ClimaComms.SingletonCommsContext()
-          ) where {FT}
+    Point(; z_sfc::FT,
+        longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
+        comms = ClimaComms.SingletonCommsContext()
+        ) where {FT}
 
 Constructor for the `Point` domain using keyword arguments.
 
-All other ClimaLand domains rely on default comms set internally
-by ClimaCore. However, the Point space is unique in this context,
-and does not have the same default defined in ClimaCore.
-Because of this, we set the default here
-in ClimaLand. In long term, we will repeat the same for all ClimaLand domains
-and not rely on any internal defaults set in ClimaCore.
+If `longlat` is provided, the domain's space contains those coordinates.
+This should be used for simulations at a point that require reading in spatial data
+from a file defined on a lat/long grid, such as CLM data.
+Note that constructing a Point with lat/long requires first constructing a 3D HybridBox
+domain centered at `longlat`, then extracting a point from the intermediate 3D space.
+
+The latitude and longitude of the returned domain can be accessed as follows:
+- lat = ClimaLand.Domains.get_lat(domain.space.surface)
+- long = ClimaLand.Domains.get_long(domain.space.surface)
 """
 function Point(;
     z_sfc::FT,
-    comms = ClimaComms.SingletonCommsContext(),
+    longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
+    context = ClimaComms.SingletonCommsContext(),
 ) where {FT}
-    coord = ClimaCore.Geometry.ZPoint(z_sfc)
-    space = (; surface = ClimaCore.Spaces.PointSpace(comms, coord))
+    if isnothing(longlat)
+        coord = ClimaCore.Geometry.ZPoint(z_sfc)
+        space = (; surface = ClimaCore.Spaces.PointSpace(context, coord))
+    else
+        long, lat = longlat
+        zlim = FT.((z_sfc - 1, z_sfc))
+        nelements = 2
+        box_domain = HybridBox(;
+            xlim = FT.((long, long)),
+            ylim = FT.((lat, lat)),
+            zlim = zlim,
+            longlat = longlat,
+            nelements = (1, 1, nelements),
+        )
+        # Extract a point at the surface from the 3D space
+        column_space =
+            ClimaCore.Spaces.column(box_domain.space.subsurface_face, 1, 1, 1)
+        point_space = ClimaCore.Spaces.level(
+            column_space,
+            nelements + ClimaCore.Utilities.half,
+        )
+        space = (; surface = point_space)
+    end
     return Point{FT, typeof(space)}(z_sfc, space)
 end
+
 
 """
     Column{FT} <: AbstractDomain{FT}
@@ -129,50 +156,78 @@ end
         nelements::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing) where {FT}
 
-Outer constructor for the `Column` type.
+Outer constructor for the 1D `Column` domain.
 
-Using `ClimaCore` tools, the coordinate
-mesh can be stretched such that the top of the domain has finer resolution
-than the bottom of the domain. In order to activate this, a tuple with the
-target dz_bottom and dz_top should be passed via keyword argument. The default is
-uniform spacing. Please note that in order to use this feature, ClimaCore requires that
-the elements of zlim be <=0. Additionally, the dz_tuple you supply may not be compatible
-with the domain boundaries in some cases, in which case you may need to choose
+Using `ClimaCore` tools, the coordinate mesh can be stretched such that the top
+of the domain has finer resolution than the bottom of the domain. To activate this,
+a tuple with the target dz_bottom and dz_top should be passed via keyword argument.
+The default is uniform spacing. Please note that in order to use this feature, ClimaCore
+requires that the elements of zlim be <=0. Additionally, the dz_tuple you supply may not
+be compatible with the domain boundaries in some cases, in which case you may need to choose
 different values.
 
 The `boundary_names` field values are used to label the boundary faces
 at the top and bottom of the domain.
+
+If `longlat` is provided, the column is created at those coordinates.
+This should be used for simulations on a column that require reading in spatial data
+from a file defined on a lat/long grid, such as CLM data.
+Note that constructing a Column with lat/long requires first constructing a 3D HybridBox
+domain centered at `longlat`, then extracting a column from the intermediate 3D space.
+
+The latitude and longitude of the returned domain can be accessed as follows:
+- lat = get_lat(domain.space.surface)
+- long = get_long(domain.space.surface)
 """
 function Column(;
     zlim::Tuple{FT, FT},
     nelements::Int,
+    longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert zlim[1] < zlim[2]
+    device = ClimaComms.device()
     boundary_names = (:bottom, :top)
-    column = ClimaCore.Domains.IntervalDomain(
-        ClimaCore.Geometry.ZPoint{FT}(zlim[1]),
-        ClimaCore.Geometry.ZPoint{FT}(zlim[2]);
-        boundary_names = boundary_names,
-    )
-    if dz_tuple isa Nothing
-        mesh = ClimaCore.Meshes.IntervalMesh(column; nelems = nelements)
-    else
-        @assert zlim[2] <= 0
-        mesh = ClimaCore.Meshes.IntervalMesh(
-            column,
-            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
-                dz_tuple[1],
-                dz_tuple[2],
-            );
-            nelems = nelements,
-            reverse_mode = true,
+
+    if isnothing(longlat)
+        column = ClimaCore.Domains.IntervalDomain(
+            ClimaCore.Geometry.ZPoint{FT}(zlim[1]),
+            ClimaCore.Geometry.ZPoint{FT}(zlim[2]);
+            boundary_names = boundary_names,
         )
+        if isnothing(dz_tuple)
+            mesh = ClimaCore.Meshes.IntervalMesh(column; nelems = nelements)
+        else
+            @assert zlim[2] <= 0
+            mesh = ClimaCore.Meshes.IntervalMesh(
+                column,
+                ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                    dz_tuple[1],
+                    dz_tuple[2],
+                );
+                nelems = nelements,
+                reverse_mode = true,
+            )
+        end
+        subsurface_space =
+            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
+    else
+        # Set limits at the longlat coordinates
+        long, lat = longlat
+        box_domain = HybridBox(;
+            xlim = FT.((long, long)),
+            ylim = FT.((lat, lat)),
+            zlim = zlim,
+            longlat = longlat,
+            nelements = (1, 1, nelements),
+            dz_tuple = dz_tuple,
+        )
+        # Extract a column from the 3D space
+        colidx = ClimaCore.Grids.ColumnIndex((1, 1), 1)
+        subsurface_space =
+            ClimaCore.Spaces.column(box_domain.space.subsurface, colidx)
     end
 
-    device = ClimaComms.device()
-    subsurface_space =
-        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
     subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
     space = (;
@@ -281,8 +336,8 @@ function Plane(;
         @assert periodic == (false, false)
         radius_earth = FT(radius_earth)
         long, lat = longlat
-        dxlim = xlim # long bounds
-        dylim = ylim # lat bounds
+        dxlim = abs.(xlim) # long bounds
+        dylim = abs.(ylim) # lat bounds
         # Now make x refer to lat, and y refer to long,
         # for compatibility with ClimaCore
         xlim = (
@@ -293,6 +348,7 @@ function Plane(;
             long - dxlim[1] / FT(2π * radius_earth) * 360,
             long + dxlim[2] / FT(2π * radius_earth) * 360,
         )
+
         @assert xlim[1] < xlim[2]
         @assert ylim[1] < ylim[2]
 
@@ -771,11 +827,11 @@ function obtain_surface_space(
 end
 
 """
-    obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
+    obtain_surface_space(cs::ClimaCore.Spaces.FiniteDifferenceSpace)
 
-Returns the top level of the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
+Returns the top level of the face space corresponding to the input space `cs`.
 """
-function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
+function obtain_surface_space(cs::ClimaCore.Spaces.FiniteDifferenceSpace)
     fs = ClimaCore.Spaces.face_space(cs)
     return ClimaCore.Spaces.level(
         fs,
@@ -894,6 +950,66 @@ function get_Δz(z::ClimaCore.Fields.Field)
 end
 
 """
+    get_lat(surface_space::ClimaCore.Spaces.PointSpace)
+    get_lat(subsurface_space::ClimaCore.Spaces.FiniteDifferenceSpace)
+
+Returns the latitude of provided surface space as a Field defined on the space.
+If the space does not have latitude information, an error is thrown.
+
+This function is not implemented for subsurface spaces, since we want latitude
+as a 2D Field, not 3D.
+"""
+function get_lat(
+    surface_space::Union{
+        ClimaCore.Spaces.PointSpace,
+        ClimaCore.Spaces.SpectralElementSpace2D,
+    },
+)
+    if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :lat)
+        return ClimaCore.Fields.coordinate_field(surface_space).lat
+    else
+        error("Surface space does not have latitude information")
+    end
+end
+get_lat(
+    _::Union{
+        ClimaCore.Spaces.FiniteDifferenceSpace,
+        ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+    },
+) = error("`get_lat` is not implemented for subsurface spaces")
+
+"""
+    get_long(surface_space::ClimaCore.Spaces.PointSpace)
+    get_long(subsurface_space::ClimaCore.Spaces.FiniteDifferenceSpace)
+
+Returns the longitude of the provided surface space as a Field defined on the space.
+If the space does not have longitude information, an error is thrown.
+
+This function is not implemented for subsurface spaces, since we want longitude
+as a 2D Field, not 3D.
+"""
+function get_long(
+    surface_space::Union{
+        ClimaCore.Spaces.PointSpace,
+        ClimaCore.Spaces.SpectralElementSpace2D,
+    },
+)
+    if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)
+        return ClimaCore.Fields.coordinate_field(surface_space).long
+    else
+        error("Surface space does not have longitude information")
+    end
+end
+get_long(
+    _::Union{
+        ClimaCore.Spaces.FiniteDifferenceSpace,
+        ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+    },
+) = error("`get_long` is not implemented for subsurface spaces")
+
+"""
     top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
 
 Creates and returns a ClimaCore.Fields.Field defined on the space
@@ -963,16 +1079,17 @@ will need to be modified upon the introduction of
 Since the depth will be a field in this case, it should be allocated and
 stored in domain.fields, which is why we store it there now even though it is not a field.
 """
-depth(space::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace) =
-    (
-        space.grid.vertical_grid.topology.mesh.domain.coord_max -
-        space.grid.vertical_grid.topology.mesh.domain.coord_min
-    ).z
-depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
-    (
-        space.grid.topology.mesh.domain.coord_max -
-        space.grid.topology.mesh.domain.coord_min
-    ).z
+function depth(
+    space::Union{
+        ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace,
+    },
+)
+    zmin, zmax = extrema(
+        ClimaCore.Fields.coordinate_field(ClimaCore.Spaces.face_space(space)).z,
+    )
+    return zmax - zmin
+end
 
 """
     horizontal_resolution_degrees(domain::AbstractDomain)
@@ -1179,9 +1296,9 @@ end
 """
     use_lowres_clm(space)
 
-Returns true if the simulation space is closer in resolution to the low 
-resolution  CLM data (at 0.9x1.25 degree lat/long) compared with the 
-high resolution CLM data ( 0.125x0.125 degree lat/long). 
+Returns true if the simulation space is closer in resolution to the low
+resolution  CLM data (at 0.9x1.25 degree lat/long) compared with the
+high resolution CLM data ( 0.125x0.125 degree lat/long).
 
 If the simulation space is closer to the low resolution CLM data,
 that data will be used, and vice versa. The high resolution data

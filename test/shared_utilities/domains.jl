@@ -16,7 +16,9 @@ using ClimaLand.Domains:
     obtain_surface_domain,
     get_Δz,
     top_face_to_surface,
-    average_horizontal_resolution_degrees
+    average_horizontal_resolution_degrees,
+    get_lat,
+    get_long
 
 FT = Float32
 @testset "Clima Core Domains, FT = $FT" begin
@@ -86,6 +88,23 @@ FT = Float32
     @test abs(dz[end] - 0.03) < 1e-2
     @test shell.fields.Δz_min == minimum(shell.fields.Δz)
 
+    @test get_lat(shell.space.surface) ==
+          ClimaCore.Fields.coordinate_field(shell.space.surface).lat
+    @test get_long(shell.space.surface) ==
+          ClimaCore.Fields.coordinate_field(shell.space.surface).long
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        shell.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        shell.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        shell.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        shell.space.subsurface_face,
+    )
+
 
     # Spherical Surface
     shell_surface =
@@ -103,6 +122,11 @@ FT = Float32
 
     @test average_horizontal_resolution_degrees(shell_surface) ==
           (180 / (2 * n_elements_sphere[1]), 180 / (2n_elements_sphere[1]))
+    @test get_lat(shell_surface.space.surface) ==
+          ClimaCore.Fields.coordinate_field(shell_surface.space.surface).lat
+    @test get_long(shell_surface.space.surface) ==
+          ClimaCore.Fields.coordinate_field(shell_surface.space.surface).long
+
 
     # HybridBox
     box = HybridBox(;
@@ -148,6 +172,25 @@ FT = Float32
         (; surface = box.space.surface),
     )
 
+    @test_throws "Surface space does not have latitude information" get_lat(
+        box.space.surface,
+    )
+    @test_throws "Surface space does not have longitude information" get_long(
+        box.space.surface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        box.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        box.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        box.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        box.space.subsurface_face,
+    )
+
     stretch_box = HybridBox(;
         xlim = xlim,
         ylim = ylim,
@@ -161,6 +204,7 @@ FT = Float32
         Array(parent(box_coords_stretch.z))[:][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
+
 
     # Plane
     xy_plane = Plane(;
@@ -183,6 +227,13 @@ FT = Float32
           ClimaCore.Spaces.SpectralElementSpace2D
 
     @test_throws ErrorException average_horizontal_resolution_degrees(xy_plane)
+    @test_throws "Surface space does not have latitude information" get_lat(
+        xy_plane.space.surface,
+    )
+    @test_throws "Surface space does not have longitude information" get_long(
+        xy_plane.space.surface,
+    )
+
 
     # Plane latlong
     dxlim = (FT(50_000), FT(80_000))
@@ -216,6 +267,11 @@ FT = Float32
 
     @test average_horizontal_resolution_degrees(longlat_plane) ==
           (expected_resolution_x, expected_resolution_y)
+
+    @test Array(parent(get_lat(longlat_plane.space.surface)))[1, 1, 1, 1] ≈
+          (xlim_longlat[1] + xlim_longlat[2]) / 2
+    @test Array(parent(get_long(longlat_plane.space.surface)))[1, 1, 1, 1] ≈
+          (ylim_longlat[1] + ylim_longlat[2]) / 2
 
     # Box latlong
     longlat_box = HybridBox(;
@@ -267,6 +323,23 @@ FT = Float32
     @test average_horizontal_resolution_degrees(longlat_box) ==
           (expected_resolution_x, expected_resolution_y)
 
+    @test Array(parent(get_lat(longlat_box.space.surface)))[1, 1, 1, 1] ≈
+          (xlim_longlat[1] + xlim_longlat[2]) / 2
+    @test Array(parent(get_long(longlat_box.space.surface)))[1, 1, 1, 1] ≈
+          (ylim_longlat[1] + ylim_longlat[2]) / 2
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_box.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_box.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_box.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_box.space.subsurface_face,
+    )
+
     # Column
 
     z_column = Column(; zlim = zlim, nelements = nelements[3])
@@ -304,6 +377,26 @@ FT = Float32
         zlim[2],
         (; surface = z_column.space.surface),
     )
+
+    @test_throws "Surface space does not have latitude information" get_lat(
+        z_column.space.surface,
+    )
+    @test_throws "Surface space does not have longitude information" get_long(
+        z_column.space.surface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        z_column.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        z_column.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        z_column.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        z_column.space.subsurface_face,
+    )
+
     z_column_stretch =
         Column(; zlim = zlim, nelements = 10, dz_tuple = FT.((0.3, 0.03)))
     column_coords = coordinates(z_column_stretch).subsurface
@@ -326,8 +419,132 @@ end
     coords = coordinates(point).surface
     @test coords isa ClimaCore.Fields.Field
     @test eltype(coords) == ClimaCore.Geometry.ZPoint{FT}
-    @test Array(parent(ClimaCore.Fields.field_values(coords)))[] ==
-          ClimaCore.Geometry.ZPoint(zmin).z[]
+    @test Array(parent(point.space.surface.local_geometry.coordinates.z)) ==
+          [zmin]
+    @test_throws "Surface space does not have latitude information" get_lat(
+        point_space,
+    )
+    @test_throws "Surface space does not have longitude information" get_long(
+        point_space,
+    )
+
+    # Point with lat/long
+    lat = FT(34.14778)
+    long = FT(-118.14452)
+    longlat_point = Point(z_sfc = zmin, longlat = (long, lat))
+    @test ClimaComms.context(longlat_point) == ClimaComms.context()
+    @test ClimaComms.device(longlat_point) == ClimaComms.device()
+    @test longlat_point.z_sfc == zmin
+    point_space = longlat_point.space.surface
+    @test point_space isa ClimaCore.Spaces.PointSpace
+    coords = coordinates(longlat_point).surface
+    @test coords isa ClimaCore.Fields.Field
+    @test eltype(coords) == ClimaCore.Geometry.LatLongZPoint{FT}
+    @test Array(
+        parent(longlat_point.space.surface.local_geometry.coordinates.z),
+    ) == [zmin]
+    @test Array(
+        parent(longlat_point.space.surface.local_geometry.coordinates.lat),
+    ) == [lat]
+    @test Array(
+        parent(longlat_point.space.surface.local_geometry.coordinates.long),
+    ) == [long]
+
+    @test get_lat(point_space) == ClimaCore.Fields.zeros(point_space) .+ lat
+    @test get_long(point_space) == ClimaCore.Fields.zeros(point_space) .+ long
+end
+
+
+@testset "Column Domain with lat/lon, FT = $FT" begin
+    lat = FT(34.14778)
+    long = FT(-118.14452)
+    zlim = FT.((-1, 0))
+    nelements = 10
+
+    # Construct a Column with longlat, no vertical stretching
+    longlat_column = Column(; zlim, nelements, longlat = (long, lat))
+    @test ClimaComms.context(longlat_column) == ClimaComms.context()
+    @test ClimaComms.device(longlat_column) == ClimaComms.device()
+    @test longlat_column.fields.z ==
+          ClimaCore.Fields.coordinate_field(longlat_column.space.subsurface).z
+    @test longlat_column.fields.depth == zlim[2] - zlim[1]
+    face_space = ClimaCore.Spaces.face_space(longlat_column.space.subsurface)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    @test longlat_column.fields.z_sfc ==
+          top_face_to_surface(z_face, longlat_column.space.surface)
+    Δz_top, Δz_bottom, Δz = get_Δz(longlat_column.fields.z)
+    z = ClimaCore.Fields.coordinate_field(longlat_column.space.subsurface).z
+    @test longlat_column.fields.z == z
+    @test longlat_column.fields.Δz_top == Δz_top
+    @test longlat_column.fields.Δz_bottom == Δz_bottom
+    column_coords = coordinates(longlat_column).subsurface
+    @test longlat_column.zlim == FT.(zlim)
+    @test longlat_column.nelements[1] == nelements
+    @test eltype(column_coords) == ClimaCore.Geometry.LatLongZPoint{FT}
+    @test typeof(column_coords) <: ClimaCore.Fields.Field
+    @test typeof(longlat_column.space.subsurface) <:
+          ClimaCore.Spaces.CenterFiniteDifferenceSpace
+    @test typeof(longlat_column.space.surface) <: ClimaCore.Spaces.PointSpace
+    @test any(
+        Array(parent(column_coords))[:][2:end] .-
+        Array(parent(column_coords))[:][1:(end - 1)] .≈
+        (zlim[2] - zlim[1]) / nelements,
+    )
+    @test obtain_surface_space(longlat_column.space.subsurface) ==
+          longlat_column.space.surface
+    @test obtain_surface_domain(longlat_column) ==
+          Point{FT, typeof((; surface = longlat_column.space.surface))}(
+        zlim[2],
+        (; surface = longlat_column.space.surface),
+    )
+    @test get_lat(longlat_column.space.surface) ==
+          ClimaCore.Fields.zeros(longlat_column.space.surface) .+ lat
+    @test get_long(longlat_column.space.surface) ==
+          ClimaCore.Fields.zeros(longlat_column.space.surface) .+ long
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_column.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_column.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_column.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_column.space.subsurface_face,
+    )
+
+    # Construct Column with longlat and vertical stretching
+    longlat_column_stretch = Column(;
+        zlim,
+        nelements,
+        longlat = (long, lat),
+        dz_tuple = FT.((0.3, 0.03)),
+    )
+    column_coords = coordinates(longlat_column_stretch).subsurface
+    @test longlat_column_stretch.zlim == FT.(zlim)
+    dz =
+        Array(parent(column_coords.z))[:][2:end] .-
+        Array(parent(column_coords.z))[:][1:(end - 1)]
+    @test abs(dz[1] - 0.3) < 1e-1
+    @test abs(dz[end] - 0.03) < 1e-2
+
+    @test get_lat(longlat_column_stretch.space.surface) ==
+          ClimaCore.Fields.zeros(longlat_column_stretch.space.surface) .+ lat
+    @test get_long(longlat_column_stretch.space.surface) ==
+          ClimaCore.Fields.zeros(longlat_column_stretch.space.surface) .+ long
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_column_stretch.space.subsurface,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_column_stretch.space.subsurface,
+    )
+    @test_throws "`get_lat` is not implemented for subsurface spaces" get_lat(
+        longlat_column_stretch.space.subsurface_face,
+    )
+    @test_throws "`get_long` is not implemented for subsurface spaces" get_long(
+        longlat_column_stretch.space.subsurface_face,
+    )
 end
 
 @testset "use_clm_lowres" begin
