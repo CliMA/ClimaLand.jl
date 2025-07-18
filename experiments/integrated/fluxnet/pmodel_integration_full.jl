@@ -35,6 +35,7 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
+ARGS = ["US-MOz", "pmodel"]
 if length(ARGS) < 1
     error("Must provide site ID on command line")
 end
@@ -117,17 +118,37 @@ soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
 # photosynthesis model 
 if photo_model == "pmodel"
     photosynthesis_model = Canopy.PModel{FT}
+    conductance_model = Canopy.PModelConductance{FT}
+
+    conductance_args = (; parameters = PModelConductanceParameters(Drel = FT(1.6)))
+    photosynthesis_args = (; parameters = PModelParameters(
+        cstar = FT(0.41),
+        β = FT(146),
+        ϕc = FT(0.087),
+        ϕ0 = FT(NaN),
+        ϕa0 = FT(0.352),
+        ϕa1 = FT(0.022),
+        ϕa2 = FT(-0.00034),
+        α = FT(0.933)
+    ))
 else
     photosynthesis_model = Canopy.FarquharModel{FT}
     conductance_model = Canopy.MedlynConductanceModel{FT}
 
-    # Set up conductance
     conductance_args = (; parameters = MedlynConductanceParameters(FT; g1))
-    # Set up photosynthesis
-    is_c3 = FT(1) # set the photosynthesis mechanism to C3
+    is_c3 = FT(1) 
     photosynthesis_args =
         (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 end
+
+# soil moisture stress model
+SM_params = PiecewiseMoistureStressParameters(
+    θ_c = FT(0.5), # Field capacity
+    θ_w = FT(0.1), # Wilting point
+    c = FT(1), # Curvature parameter
+)
+
+soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}(SM_params)
 
 # Component Types
 canopy_component_types = (;
@@ -135,6 +156,7 @@ canopy_component_types = (;
     radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = photosynthesis_model,
     conductance = conductance_model,
+    soil_moisture_stress = soil_moisture_stress_model,
     hydraulics = Canopy.PlantHydraulicsModel{FT},
     energy = Canopy.BigLeafEnergyModel{FT},
 )
@@ -154,6 +176,8 @@ radiative_transfer_args = (;
         G_Function,
     )
 )
+
+soil_moisture_stress_args = (parameters = SM_params)
 
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
@@ -182,6 +206,7 @@ canopy_component_args = (;
     radiative_transfer = radiative_transfer_args,
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,
+    soil_moisture_stress = soil_moisture_stress_args,
     hydraulics = plant_hydraulics_args,
     energy = energy_args,
 )
