@@ -83,6 +83,15 @@ function AtmosDrivenCanopyBC(
     return AtmosDrivenCanopyBC(args...)
 end
 
+function ClimaLand.get_drivers(bc::AtmosDrivenCanopyBC)
+    if typeof(bc.ground) <: PrescribedGroundConditions
+        return (bc.atmos, bc.radiation, bc.ground)
+    else
+        return (bc.atmos, bc.radiation)
+    end
+end
+
+
 """
     ClimaLand.displacment_height(model::CanopyModel, Y, p)
 

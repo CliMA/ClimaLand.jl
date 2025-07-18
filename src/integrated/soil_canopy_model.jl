@@ -464,56 +464,6 @@ function Soil.compute_liquid_influx(
     return p.drivers.P_liq
 end
 
-"""
-     PrognosticSoilConditions <: Canopy.AbstractGroundConditions
-
- A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is used for dispatch
-"""
-struct PrognosticSoilConditions <: Canopy.AbstractGroundConditions end
-
-"""
-    Canopy.ground_albedo_PAR(
-        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-        ground::PrognosticSoilConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_PAR for a prognostic soil.
-"""
-function Canopy.ground_albedo_PAR(
-    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    ground::PrognosticSoilConditions,
-    Y,
-    p,
-    t,
-)
-    return p.soil.PAR_albedo
-end
-
-"""
-    Canopy.ground_albedo_NIR(
-        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-        ground::PrognosticSoilConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_NIR for a prognostic soil.
-"""
-function Canopy.ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    ground::PrognosticSoilConditions,
-    Y,
-    p,
-    t,
-)
-    return p.soil.NIR_albedo
-end
-
 function ClimaLand.Soil.sublimation_source(
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
     FT,

@@ -636,68 +636,6 @@ function ClimaLand.Soil.sublimation_source(
 end
 
 """
-     PrognosticGroundConditions <: Canopy.AbstractGroundConditions
-
-A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`, and the snow model is prognostic and included.
-
-Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
-soil model, we might need to construct a different `PrognosticGroundConditions` because
-the fields may be stored in different places.
-"""
-struct PrognosticGroundConditions <: Canopy.AbstractGroundConditions end
-
-"""
-    Canopy.ground_albedo_PAR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
-"""
-function Canopy.ground_albedo_PAR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground.PAR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
-    return p.α_ground.PAR
-end
-
-"""
-    Canopy.ground_albedo_NIR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
-"""
-function Canopy.ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground.NIR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
-    return p.α_ground.NIR
-end
-
-"""
     ClimaLand.get_drivers(model::LandModel)
 
 Returns the "drivers", or forcing variables, for the LandModel.

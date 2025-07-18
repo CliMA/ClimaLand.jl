@@ -143,18 +143,8 @@ for FT in (Float32, Float64)
             )
         )
 
-    ψ_soil0 = FT(0.0)
-    T_soil0 = FT(290)
-    root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
+    soil_driver = PrescribedGroundConditions(FT)
 
-    soil_driver = PrescribedGroundConditions(
-        root_depths,
-        (t) -> ψ_soil0,
-        (t) -> T_soil0,
-        FT(0.2),
-        FT(0.4),
-        FT(0.98),
-    )
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
         n_stem = n_stem,

@@ -235,3 +235,30 @@ end
     update_cosθs_only(p, 60 * 60 * 12) # populate with cos(zenith) at night
     @test all((<)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # zenith angle at nighttime should be > 90 degrees
 end
+
+@testset "Ground Conditions" begin
+    for FT in (Float32, Float64)
+        soil_driver = PrescribedGroundConditions(FT)
+        @test ClimaLand.Canopy.ground_albedo_PAR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.2)
+        @test ClimaLand.Canopy.ground_albedo_NIR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.4)
+        dest = [-1.0]
+        t = 2.0
+
+        evaluate!(dest, soil_driver.ψ, t)
+        @test dest[1] == FT(0.0)
+        evaluate!(dest, soil_driver.T, t)
+        @test dest[1] == FT(298.0)
+    end
+end

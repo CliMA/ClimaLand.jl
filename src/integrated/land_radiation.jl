@@ -46,3 +46,96 @@ function Canopy.canopy_radiant_energy_fluxes!(
 ) where {PSE}
     nothing
 end
+
+"""
+    Canopy.ground_albedo_PAR(
+        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+        ground::PrognosticSoilConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.Canopy.ground_albedo_PAR for a prognostic soil.
+"""
+function Canopy.ground_albedo_PAR(
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    ground::PrognosticSoilConditions,
+    Y,
+    p,
+    t,
+)
+    return p.soil.PAR_albedo
+end
+
+"""
+    Canopy.ground_albedo_NIR(
+        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+        ground::PrognosticSoilConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.ground_albedo_NIR for a prognostic soil.
+"""
+function Canopy.ground_albedo_NIR(
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    ground::PrognosticSoilConditions,
+    Y,
+    p,
+    t,
+)
+    return p.soil.NIR_albedo
+end
+
+
+"""
+    Canopy.ground_albedo_PAR(
+        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+        ground::PrognosticGroundConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function is called in
+the Canopy update_aux! function.
+"""
+function Canopy.ground_albedo_PAR(
+    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    ground::PrognosticGroundConditions,
+    Y,
+    p,
+    t,
+)
+    @. p.α_ground.PAR =
+        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
+        p.snow.snow_cover_fraction * p.snow.α_snow
+    return p.α_ground.PAR
+end
+
+"""
+    Canopy.ground_albedo_NIR(
+        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+        ground::PrognosticGroundConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function is called in
+the Canopy update_aux! function.
+"""
+function Canopy.ground_albedo_NIR(
+    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    ground::PrognosticGroundConditions,
+    Y,
+    p,
+    t,
+)
+    @. p.α_ground.NIR =
+        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
+        p.snow.snow_cover_fraction * p.snow.α_snow
+    return p.α_ground.NIR
+end
