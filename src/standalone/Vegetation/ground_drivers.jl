@@ -20,14 +20,17 @@ struct PrescribedGroundConditions{
     FT,
     F1 <: Function,
     F2 <: Function,
+    F3 <: Function,
     VEC <: AbstractArray{FT},
 } <: AbstractGroundConditions
     "The depth of the root tips, in meters"
     root_depths::VEC
     "Prescribed soil potential (m) in the root zone as a function of time"
     ψ::F1
+    "Prescribed soil water content (m^3 / m^3) in the root zone as a function of time"
+    ϑ_root::F2
     "Prescribed ground surface temperature (K) as a function of time"
-    T::F2
+    T::F3
     "Ground albedo for PAR"
     α_PAR::FT
     "Ground albedo for NIR"
@@ -55,6 +58,7 @@ function PrescribedGroundConditions(
         -(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0,
     )),
     ψ::Function = t -> 0.0,
+    ϑ_root::Function = t -> 0.0,
     T::Function = t -> 298.0,
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
@@ -63,11 +67,13 @@ function PrescribedGroundConditions(
     return PrescribedGroundConditions{
         FT,
         typeof(ψ),
+        typeof(ϑ_root),
         typeof(T),
         typeof(root_depths),
     }(
         root_depths,
         ψ,
+        ϑ_root,
         T,
         α_PAR,
         α_NIR,
