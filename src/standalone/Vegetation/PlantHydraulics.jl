@@ -5,11 +5,8 @@ import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime
 import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
-using ..ClimaLand.Canopy:
-    AbstractCanopyComponent,
-    set_canopy_prescribed_field!,
-    AbstractGroundConditions,
-    PrescribedGroundConditions
+using ..ClimaLand.Canopy: AbstractCanopyComponent, set_canopy_prescribed_field!
+using ClimaLand: AbstractGroundConditions, PrescribedGroundConditions
 using ClimaCore
 using DocStringExtensions
 
@@ -657,45 +654,25 @@ function root_water_flux_per_ground_area!(
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
-    root_depths = ground.root_depths
-    n_root_layers = length(root_depths)
-    ψ_soil::FT = ground.ψ(t)
-    fa .= FT(0.0)
-    @inbounds for i in 1:n_root_layers
-        above_ground_area_index =
-            harmonic_mean.(
-                getproperty(area_index, model.compartment_labels[1]),
-                getproperty(area_index, :root),
-            )
-
-        if i != n_root_layers
-            @. fa +=
-                water_flux(
-                    root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(root_depths[i], rooting_depth) *
-                (root_depths[i + 1] - root_depths[i]) *
-                above_ground_area_index
-        else
-            @. fa +=
-                water_flux(
-                    root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(root_depths[i], rooting_depth) *
-                (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
-                above_ground_area_index
-        end
-    end
+    ψ_soil = p.drivers.ψ
+    above_ground_area_index =
+        harmonic_mean.(
+            getproperty(area_index, model.compartment_labels[1]),
+            getproperty(area_index, :root),
+        )
+    # since rooting_depth is positive by convention, add the sign in here to
+    # convert it to a coordinate: z_roots = -rooting_depth
+    @. fa .=
+        water_flux(
+            -rooting_depth,
+            model.compartment_midpoints[1],
+            ψ_soil,
+            ψ_base,
+            hydraulic_conductivity(conductivity_model, ψ_soil),
+            hydraulic_conductivity(conductivity_model, ψ_base),
+        ) *
+        (model.compartment_surfaces[1] - (-rooting_depth)) *
+        above_ground_area_index
 end
 
 """

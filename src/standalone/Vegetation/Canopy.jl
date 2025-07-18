@@ -30,11 +30,10 @@ import ClimaLand:
     get_drivers,
     total_liq_water_vol_per_area!,
     total_energy_per_area!
-
+using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
-include("./ground_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
@@ -929,10 +928,7 @@ end
 
 
 function ClimaLand.get_drivers(model::CanopyModel)
-    return (
-        model.boundary_conditions.atmos,
-        model.boundary_conditions.radiation,
-    )
+    ClimaLand.get_drivers(model.boundary_conditions)
 end
 include("./canopy_boundary_fluxes.jl")
 #Make the canopy model broadcastable
