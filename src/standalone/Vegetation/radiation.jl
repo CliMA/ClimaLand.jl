@@ -40,7 +40,11 @@ end
 Base.broadcastable(G::CLMGFunction) = tuple(G)
 
 """
-    BeerLambertParameters{FT <: AbstractFloat}
+    BeerLambertParameters{
+        FT <: AbstractFloat,
+        G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
+        F <: Union{FT, ClimaCore.Fields.Field},
+    }
 
 The required parameters for the Beer-Lambert radiative transfer model.
 $(DocStringExtensions.FIELDS)
