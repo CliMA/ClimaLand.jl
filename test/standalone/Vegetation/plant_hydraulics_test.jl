@@ -279,7 +279,7 @@ for FT in (Float32, Float64)
                         if i == 1
                             fa =
                                 water_flux.(
-                                    RD,
+                                    -1 .* RD,
                                     plant_hydraulics.compartment_midpoints[i],
                                     ψ_soil0,
                                     Y[i],
