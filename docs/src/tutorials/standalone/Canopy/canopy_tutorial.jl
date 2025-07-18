@@ -146,7 +146,7 @@ soil_driver = PrescribedGroundConditions(
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     T = TimeVaryingInput(t -> T_soil),
-    ψ_soil = TimeVaryingInput(t -> ψ_soil),
+    ψ = TimeVaryingInput(t -> ψ_soil),
     ϵ = FT(0.99),
 );
 
