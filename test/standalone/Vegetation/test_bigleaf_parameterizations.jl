@@ -140,7 +140,7 @@ for FT in (Float32, Float64)
 
         m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
 
-        @test m_t == 1 + stomatal_g_params.g1 / sqrt(VPD)
+        @test m_t == 1 + stomatal_g_params.g1 / sqrt(max(FT(1e-2), VPD))
         ci = intercellular_co2(ca, Γstar, m_t)
         @test ci == ca * (1 - 1 / m_t)
         @test intercellular_co2(ca, FT(1), m_t) == FT(1)

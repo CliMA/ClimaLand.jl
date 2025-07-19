@@ -946,6 +946,13 @@ where `VPD` is the vapor pressure deficit in the atmosphere
 (Pa), and `g_1` is a constant with units of `sqrt(Pa)`.
 
 `thermo_params` is the Thermodynamics.jl parameter set.
+
+Note that in supersaturated conditions the vapor pressure deficit will be negative,
+which leads to an imaginary Medlyn term `m`. Clipping to zero is not an option, because
+this leads to divison by zero. An alternative is to compute the inverse of this quantity
+and stomatal resistance instead of conductance.
+
+Since g1 ~ O(100) √Pa, a floor of VPD = 1e-2 Pa yields g1/√VPD ~ 1000.
 """
 function medlyn_term(
     g1::FT,
@@ -954,7 +961,10 @@ function medlyn_term(
     q_air::FT,
     thermo_params,
 ) where {FT}
-    VPD = ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+    VPD = max(
+        ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params),
+        FT(1e-2),
+    )
     return 1 + g1 / sqrt(VPD)
 end
 
