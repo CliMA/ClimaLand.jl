@@ -77,7 +77,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         )
     else
         era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context, lowres = true)
+            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
     end
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
@@ -317,7 +317,7 @@ end
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
-nelements = (101, 15)
+nelements = (30, 15)
 domain = ClimaLand.Domains.global_domain(
     FT;
     context,
