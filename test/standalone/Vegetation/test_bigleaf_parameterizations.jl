@@ -75,7 +75,8 @@ for FT in (Float32, Float64)
         T = FT(290) # K
         P = FT(101250) #Pa
         q = FT(0.02)
-        VPD = ClimaLand.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
+        VPD =
+            max(ClimaLand.vapor_pressure_deficit(T, P, q, thermo_params), FT(0))#Pa
         p_l = FT(-2e6) # Pa
         ca = FT(4.11e-4) # mol/mol
         R = FT(LP.gas_constant(earth_param_set))
@@ -140,7 +141,7 @@ for FT in (Float32, Float64)
 
         m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
 
-        @test m_t == 1 + stomatal_g_params.g1 / sqrt(max(FT(1e-2), VPD))
+        @test m_t == 1 + stomatal_g_params.g1 / sqrt(sqrt(eps(FT)) + VPD)
         ci = intercellular_co2(ca, Γstar, m_t)
         @test ci == ca * (1 - 1 / m_t)
         @test intercellular_co2(ca, FT(1), m_t) == FT(1)
