@@ -224,7 +224,7 @@ end;
 t0 = 0.0
 N_days = 364
 tf = t0 + 3600 * 24 * N_days
-dt = 225.0;
+dt = 600.0;
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
@@ -314,8 +314,8 @@ pmodel_vars = [
     "canopy.photosynthesis.Vcmax",
     "canopy.photosynthesis.Ac",
     "canopy.photosynthesis.Aj",
-    "canopy.photosynthesis.I_abs",
-    "canopy.photosynthesis.VPD",
+    "canopy.photosynthesis.An",
+    "canopy.photosynthesis.Rd",
     "canopy.conductance.r_stomata_canopy",
     "canopy.radiative_transfer.par.abs",
     "canopy.radiative_transfer.par_d",
@@ -324,6 +324,8 @@ pmodel_vars = [
 
 farquhar_vars = [
     "canopy.photosynthesis.GPP",
+    "canopy.photosynthesis.Rd",
+    "canopy.photosynthesis.An", 
     "canopy.conductance.r_stomata_canopy",
     "canopy.hydraulics.area_index.leaf"
 ]
