@@ -948,8 +948,8 @@ where `VPD` is the vapor pressure deficit in the atmosphere
 `thermo_params` is the Thermodynamics.jl parameter set.
 
 Note that in supersaturated conditions the vapor pressure deficit will be negative,
-which leads to an imaginary Medlyn term `m`. Clipping to zero solve this, but this leads
-to divison by zero, so we regularize the division by adding a small quantity. 
+which leads to an imaginary Medlyn term `m`. Clipping to zero solves this, but this leads
+to division by zero, so we regularize the division by adding a small quantity. 
 
 An alternative to consider in the future is to compute the inverse of this quantity
 and stomatal resistance instead of conductance.
