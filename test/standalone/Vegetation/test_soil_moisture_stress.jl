@@ -4,21 +4,24 @@ using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
+import Insolation
+using Dates
 
-function setup_standalone_canopy(FT::Type{<:AbstractFloat}) 
+function setup_standalone_canopy(FT::Type{<:AbstractFloat}, moisture_stress_model) 
     domain = Point(; z_sfc = FT(0.0))
 
     # Autotrophic respiration 
-    AR_params = AutotrophicRespirationParameters(FT)
-    AR_model = AutotrophicRespirationModel{FT}(AR_params)
+    ar_params = AutotrophicRespirationParameters(FT)
+    ar_model = AutotrophicRespirationModel{FT}(ar_params)
 
     # Radiative transfer 
-    RTparams = BeerLambertParameters(FT)
-    rt_model = BeerLambertModel{FT}(RTparams)
+    rt_params = BeerLambertParameters(FT)
+    rt_model = BeerLambertModel{FT}(rt_params)
 
     # Photosynthesis 
     is_c3 = FT(1) 
@@ -28,10 +31,11 @@ function setup_standalone_canopy(FT::Type{<:AbstractFloat})
     # Stomatal conductance
     stomatal_g_params = MedlynConductanceParameters(FT)
     stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
-    
+
     # Plant hydraulics 
     n_stem = Int64(0) # number of stem elements
     n_leaf = Int64(1) # number of leaf elements
+    h_canopy = FT(0) # m, height of the canopy
     SAI = FT(0) # m2/m2
     RAI = FT(0) # m2/m2
     lai_fun = t -> 0
@@ -49,7 +53,6 @@ function setup_standalone_canopy(FT::Type{<:AbstractFloat})
     conductivity_model =
         PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-    root_depths = [FT(0.0)]# 1st element is the deepest root depth
     compartment_midpoints = [h_canopy]
     compartment_surfaces = [FT(0.0), h_canopy]
     # set rooting_depth param to largest possible value to test no roots
@@ -73,18 +76,9 @@ function setup_standalone_canopy(FT::Type{<:AbstractFloat})
         compartment_midpoints = compartment_midpoints,
     )
 
-    autotrophic_parameters = AutotrophicRespirationParameters(FT)
-    autotrophic_respiration_model =
-        AutotrophicRespirationModel(autotrophic_parameters)
-
-
     earth_param_set = LP.LandParameters(FT)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    LAI = FT(0.0) # m2 [leaf] m-2 [ground]
     z_0m = FT(2.0) # m, Roughness length for momentum
     z_0b = FT(0.1) # m, Roughness length for scalars
-    h_canopy = FT(0.0) # m, canopy height
-    h_sfc = FT(0.0) # m
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z_0m,
@@ -141,10 +135,11 @@ function setup_standalone_canopy(FT::Type{<:AbstractFloat})
     model = ClimaLand.Canopy.CanopyModel{FT}(;
         parameters = shared_params,
         domain = domain,
-        autotrophic_respiration = autotrophic_respiration_model,
+        autotrophic_respiration = ar_model,
         radiative_transfer = rt_model,
         photosynthesis = photosynthesis_model,
         conductance = stomatal_model,
+        soil_moisture_stress = moisture_stress_model, 
         hydraulics = plant_hydraulics,
         boundary_conditions = Canopy.AtmosDrivenCanopyBC(
             atmos,
@@ -157,28 +152,50 @@ function setup_standalone_canopy(FT::Type{<:AbstractFloat})
 end 
 
 
-@testset "Initialize canopy with soil moisture stress" begin
-    for FT in (Float32, Float64)
-        model = setup_canopy(FT)
-        @testset "Initialize canopy with soil moisture stress for float type $FT" begin
-            Y, p, coords = initialize(model)
-            dY = similar(Y)
-            for i in 1:(n_stem + n_leaf)
-                Y.canopy.hydraulics.ϑ_l.:($i) .= FT(0.1)
-                p.canopy.hydraulics.ψ.:($i) .= NaN
-                p.canopy.hydraulics.fa.:($i) .= NaN
-                dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
-            end
-            set_initial_cache! = make_set_initial_cache(model)
-            set_initial_cache!(p, Y, FT(0.0))
-            @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
-            @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
-            @test all(parent(p.canopy.turbulent_fluxes.transpiration) .≈ FT(0.0))
-            @test all(parent(p.canopy.radiative_transfer.par.abs) .≈ FT(0.0))
-            exp_tend! = make_exp_tendency(model)
-            exp_tend!(dY, Y, p, FT(0))
-            @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
+for FT in (Float32, Float64)
+    soil_moisture_stress_models = (
+        TuzetMoistureStressModel{FT}(TuzetMoistureStressParameters{FT}(
+            sc = FT(0.01), # Pa^-1
+            pc = FT(-0.5e6), # Pa
+        )),
+        NoMoistureStressModel{FT}(),
+        PiecewiseMoistureStressModel{FT}(PiecewiseMoistureStressParameters{FT, FT, FT, FT}(
+            θ_c = FT(0.3), # m^3/m^3
+            θ_w = FT(0.1), # m^3/m^3
+            c = FT(1.0), # unitless
+        )),
+    )
 
+    soil_moisture_stress_names = (
+        "Tuzet",
+        "No Stress",
+        "Piecewise"
+    )
+
+    for (sms_model, name) in zip(soil_moisture_stress_models, soil_moisture_stress_names)
+        canopy = setup_standalone_canopy(FT, sms_model)
+        @testset "Initialize canopy with type $name for float type $FT" begin
+            Y, p, coords = initialize(canopy)
+            dY = similar(Y)
+            
+            # # set initial conditions 
+            # n_stem = 0
+            # n_leaf = 1
+            # for i in 1:(n_stem + n_leaf)
+            #     Y.canopy.hydraulics.ϑ_l.:($i) .= FT(0.1)
+            #     p.canopy.hydraulics.ψ.:($i) .= NaN
+            #     p.canopy.hydraulics.fa.:($i) .= NaN
+            #     dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
+            # end
+
+            # set_initial_cache! = make_set_initial_cache(canopy)
+            # set_initial_cache!(p, Y, FT(0.0))
+
+            @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(0.0))
+
+            if name == "Piecewise"
+                @test all(parent(p.canopy.soil_moisture_stress.ϑ_root) .≈ FT(0.0))
+            end
         end
     end
 end

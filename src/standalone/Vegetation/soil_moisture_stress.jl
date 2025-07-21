@@ -60,6 +60,7 @@ end
 
 function update_soil_moisture_stress!(p, Y, model::TuzetMoistureStressModel, canopy)
     # unpack constants
+    earth_param_set = canopy.parameters.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     n_stem = canopy.hydraulics.n_stem
@@ -118,9 +119,9 @@ function PiecewiseMoistureStressModel{FT}(
     return PiecewiseMoistureStressModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
-ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm, ϑ_root)
+ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm, :ϑ_root,)
 ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} = (FT, FT,)
-ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface, :subsurface,)
+ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface, :surface,)
 
 
 """
