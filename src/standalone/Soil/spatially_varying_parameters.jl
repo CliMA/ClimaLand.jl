@@ -51,12 +51,10 @@ function clm_soil_albedo_parameters(
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
+    new_path = "/home/kdeck/soil_properties_map.nc"
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
-            joinpath(
-                Artifacts.clm_data_folder_path(; context, lowres),
-                "soil_properties_map.nc",
-            ),
+	    new_path,
             s,
             surface_space;
             regridder_type,
