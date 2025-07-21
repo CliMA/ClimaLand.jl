@@ -163,8 +163,8 @@ function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel,
             z, canopy.hydraulics.parameters.rooting_depth))
         
         # compute the root zone-averaged volumetric water content
-        ClimaCore.Operators.column_integral_definite!(p.canopy.soil_moisture_stress.ϑ_root,
-            ϑ_l .* root_distribution)
+        @. ClimaCore.Operators.column_integral_definite!(p.canopy.soil_moisture_stress.ϑ_root,
+            ϑ_l * root_distribution)
     else
         ϑ_root = canopy.boundary_conditions.ground.ϑ_root
     end

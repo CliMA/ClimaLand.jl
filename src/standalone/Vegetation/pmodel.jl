@@ -801,7 +801,7 @@ function make_PModel_callback(FT, start_date, dt, canopy, longitude = nothing)
     local_noon = FT(day * (1 / 2 - longitude / 360))
 
     return FrequencyBasedCallback(
-        Dates.Second(600), # 10 minutes
+        dt, # callback frequency = dt 
         start_date, # start datetime, UTC 
         dt; # timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(
