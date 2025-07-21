@@ -34,7 +34,7 @@ save_outputs = true
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-
+ARGS = ["US-MOz", "farquhar", "moisturestress1"]
 # Read in the site to be run from the command line
 if length(ARGS) < 1
     error("Must provide site ID on command line")
@@ -42,6 +42,7 @@ end
 
 site_ID = ARGS[1]
 photo_model = ARGS[2] 
+exp_name = ARGS[3]
 @assert photo_model in ("pmodel", "farquhar") "Photo model must be either 'pmodel' or 'farquhar'"
 
 # Read all site-specific domain parameters from the simulation file for the site
@@ -79,10 +80,12 @@ include(
 
 # Prescribed soil conditions
 ψ_soil0 = FT(0.0)
+ϑ_root0 = FT(0.4) 
 soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
+    ϑ_root = t -> ϑ_root0,
     α_PAR = soil_α_PAR,
     α_NIR = soil_α_NIR,
     T = t -> 298.0,
@@ -179,6 +182,15 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_midpoints = compartment_midpoints,
 );
 
+# Define the soil moisture stress model 
+SM_params = PiecewiseMoistureStressParameters(
+    θ_c = FT(0.5), # Field capacity
+    θ_w = FT(0.1), # Wilting point
+    c = FT(1), # Curvature parameter
+)
+
+soil_moisture_stress = PiecewiseMoistureStressModel{FT}(SM_params)
+
 # instantiate the canopy model with all the components defined above.
 canopy_domain = Point(; z_sfc = FT(0.0))
 canopy = ClimaLand.Canopy.CanopyModel{FT}(;
@@ -188,6 +200,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     radiative_transfer = rt_model,
     photosynthesis = photosynthesis_model,
     conductance = stomatal_model,
+    soil_moisture_stress = soil_moisture_stress,
     hydraulics = plant_hydraulics,
     boundary_conditions = Canopy.AtmosDrivenCanopyBC(
         atmos,
@@ -348,8 +361,7 @@ if save_outputs
     local_datetime_skip_first = local_datetime[2:end]
     time_seconds_skip_first = time_seconds[2:end]
 
-    # Remove existing NetCDF files if they exist
-    canopy_file = "outputs/$(site_ID)_canopy_integration_outputs_$(photo_model).nc"
+    canopy_file = "outputs/$(site_ID)_canopy_integration_outputs_$(photo_model)_$(exp_name).nc"
     drivers_file = "outputs/$(site_ID)_fluxnet_drivers.nc"
     if isfile(canopy_file)
         rm(canopy_file)

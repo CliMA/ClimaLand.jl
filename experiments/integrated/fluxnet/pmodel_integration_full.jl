@@ -245,6 +245,7 @@ land = LandModel{FT}(;
 )
 
 Y, p, cds = initialize(land)
+@info "Land model initialized" 
 
 #Initial conditions
 Y.soil.ϑ_l =
@@ -287,6 +288,7 @@ Y.snow.U .= 0.0
 
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
+@info "Initial cache set"
 
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
@@ -296,25 +298,13 @@ jac_kwargs =
 
 
 # Callbacks
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
-d_writer = ClimaDiagnostics.Writers.DictWriter()
-
-ref_time = DateTime(2010)
-
-diags = ClimaLand.default_diagnostics(
-    land,
-    ref_time;
-    output_writer = d_writer,
-    output_vars = :long,
-    average_period = :hourly,
+save_period = 1800.0
+saveat = Array(t0:save_period:tf)
+sv = (;
+    t = Array{Float64}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
-
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
 ## defined in the simulatons file
@@ -322,8 +312,13 @@ updateat = Array(t0:DATA_DT:tf)
 model_drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
 
+if photo_model == "pmodel" 
+    pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+    cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb)
+else
+    cb = SciMLBase.CallbackSet(saving_cb, driver_cb)
+end
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
@@ -338,317 +333,3 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
-# Extract model output from the saved diagnostics
-short_names_1D = [
-    "sif", # SIF
-    "ra", # AR
-    "gs", # g_stomata
-    "gpp", # GPP
-    "ct", # canopy_T
-    "swu", # SW_u
-    "lwu", # LW_u
-    "er", # ER
-    "et", # ET
-    "msf", # β
-    "shf", # SHF
-    "lhf", # LHF
-    "rn", # Rn
-    "swe",
-]
-short_names_2D = [
-    "swc", # swc_sfc or swc_5 or swc_10
-    "tsoil", # soil_T_sfc or soil_T_5 or soil_T_10
-    "si", # si_sfc or si_5 or si_10
-]
-
-hourly_diag_name = short_names_1D .* "_1h_average"
-hourly_diag_name_2D = short_names_2D .* "_1h_average"
-
-
-# diagnostic_as_vectors()[2] is a vector of a variable,
-# whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
-# We index to only extract the period post-spinup.
-SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, Rn, SWE = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
-    for diag_name in hourly_diag_name
-]
-
-swc, soil_T, si = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(
-        d_writer,
-        diag_name;
-        layer = nelements, #surface layer
-    )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D
-]
-dt_save = 3600.0 # hourly diagnostics
-# Number of days to plot post spinup
-num_days = N_days - N_spinup_days
-model_times = Array(0:dt_save:(num_days * S_PER_DAY)) .+ t_spinup # post spin-up
-
-# convert units for GPP and ET
-GPP = GPP .* 1e6 # mol to μmol
-AR = AR .* 1e6
-ET = ET .* 24 .* 3600
-
-# For the data, we also restrict to post-spinup period
-data_id_post_spinup = Array(Int64(t_spinup ÷ DATA_DT):1:Int64(tf ÷ DATA_DT))
-data_times = Array(0:DATA_DT:(num_days * S_PER_DAY)) .+ t_spinup
-# Plotting
-savedir = generate_output_path("experiments/integrated/fluxnet/$site_ID/out/")
-
-if !isdir(savedir)
-    mkdir(savedir)
-end
-
-# Plot model diurnal cycles without data comparisons
-# Autotrophic Respiration
-plot_daily_avg(
-    "AutoResp",
-    AR,
-    dt_save,
-    num_days,
-    "μmol/m^2/s",
-    savedir,
-    "Model",
-)
-
-# Plot all comparisons of model diurnal cycles to data diurnal cycles
-# GPP
-if drivers.GPP.status == absent
-    plot_daily_avg(
-        "GPP",
-        GPP,
-        dt_save,
-        num_days,
-        "μmol/m^2/s",
-        savedir,
-        "Model",
-    )
-else
-    GPP_data = drivers.GPP.values[data_id_post_spinup] .* 1e6
-    plot_avg_comp(
-        "GPP",
-        GPP,
-        dt_save,
-        GPP_data,
-        FT(DATA_DT),
-        num_days,
-        drivers.GPP.units,
-        savedir,
-    )
-end
-
-# Upwelling shortwave radiation is referred to as outgoing in the data
-if drivers.SW_OUT.status == absent
-    plot_daily_avg("SW up", SW_u, dt_save, num_days, "w/m^2", savedir, "model")
-else
-    SW_u_data = drivers.SW_OUT.values[data_id_post_spinup]
-    plot_avg_comp(
-        "SW up",
-        SW_u,
-        dt_save,
-        SW_u_data,
-        FT(DATA_DT),
-        num_days,
-        drivers.SW_OUT.units,
-        savedir,
-    )
-end
-
-# Upwelling longwave radiation is referred to outgoing in the data
-if drivers.LW_OUT.status == absent
-    plot_daily_avg("LW up", LW_u, dt_save, num_days, "w/m^2", savedir, "model")
-else
-    LW_u_data = drivers.LW_OUT.values[data_id_post_spinup]
-    plot_avg_comp(
-        "LW up",
-        LW_u,
-        dt_save,
-        LW_u_data,
-        FT(DATA_DT),
-        num_days,
-        drivers.LW_OUT.units,
-        savedir,
-    )
-end
-
-# ET
-if drivers.LE.status == absent
-    plot_daily_avg("ET", ET, dt_save, num_days, "mm/day", savedir, "Model")
-else
-    measured_T =
-        drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
-        (1e3 * 24 * 3600)
-    ET_data = measured_T[data_id_post_spinup]
-    plot_avg_comp(
-        "ET",
-        ET,
-        dt_save,
-        ET_data,
-        FT(DATA_DT),
-        num_days,
-        "mm/day",
-        savedir,
-    )
-end
-
-# Sensible Heat Flux
-if drivers.H.status == absent
-    plot_daily_avg("SHF", SHF, dt_save, num_days, "w/m^2", savedir, "Model")
-else
-    SHF_data = drivers.H.values[data_id_post_spinup]
-    plot_avg_comp(
-        "SHF",
-        SHF,
-        dt_save,
-        SHF_data,
-        FT(DATA_DT),
-        num_days,
-        drivers.H.units,
-        savedir,
-    )
-end
-
-# Latent Heat Flux
-if drivers.LE.status == absent
-    plot_daily_avg("LHF", LHF, dt_save, num_days, "w/m^2", savedir)
-else
-    LHF_data = drivers.LE.values[data_id_post_spinup]
-    plot_avg_comp(
-        "LHF",
-        LHF,
-        dt_save,
-        LHF_data,
-        FT(DATA_DT),
-        num_days,
-        drivers.LE.units,
-        savedir,
-    )
-end
-
-# Water stress factor
-plot_daily_avg("moisture_stress", β, dt_save, num_days, "", savedir, "Model")
-
-# Stomatal conductance
-plot_daily_avg(
-    "stomatal_conductance",
-    g_stomata,
-    dt_save,
-    num_days,
-    "m s^-1",
-    savedir,
-    "Model",
-)
-
-if isfile(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
-    ),
-)
-    rm(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
-        ),
-    )
-end
-
-# Water content in soil and snow
-# Soil water content
-# Current resolution has the first layer at 0.1 cm, the second at 5cm.
-fig = Figure(size = (1500, 800), fontsize = 20)
-ax1 = Axis(fig[3, 1], xlabel = "Days", ylabel = "SWC [m/m]")
-limits!(
-    ax1,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    0.05,
-    0.6,
-)
-lines!(ax1, model_times ./ 3600 ./ 24, swc, label = "1.25cm", color = "blue")
-lines!(
-    ax1,
-    model_times ./ 3600 ./ 24,
-    si,
-    color = "cyan",
-    label = "Ice, 1.25cm",
-)
-
-if drivers.SWC.status != absent
-    lines!(
-        ax1,
-        data_times ./ 3600 ./ 24,
-        drivers.SWC.values[data_id_post_spinup],
-        label = "Data",
-    )
-end
-ax2 =
-    Axis(fig[2, 1], xlabel = "", ylabel = "SWE [m]", xticklabelsvisible = false)
-limits!(
-    ax2,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    0.0,
-    maximum(SWE),
-)
-
-lines!(ax2, model_times ./ 3600 ./ 24, SWE, label = "Model", color = "blue")
-ax3 = Axis(
-    fig[1, 1],
-    xlabel = "",
-    ylabel = "Precipitation [mm/day]",
-    xticklabelsvisible = false,
-)
-limits!(
-    ax3,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    -500,
-    0.0,
-)
-
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
-    label = "Rain (data)",
-)
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
-    label = "Snow (data)",
-)
-CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
-
-
-
-fig2 = Figure(size = (1500, 800))
-ax12 = Axis(fig2[1, 1], xlabel = "Days", ylabel = "Temperature (K)")
-limits!(
-    ax12,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    265,
-    315,
-)
-
-lines!(
-    ax12,
-    model_times ./ 3600 ./ 24,
-    soil_T,
-    label = "1.25cm",
-    color = "blue",
-)
-
-if drivers.TS.status != absent
-    lines!(
-        ax12,
-        data_times ./ 3600 ./ 24,
-        drivers.TS.values[data_id_post_spinup],
-        label = "Data",
-    )
-end
-
-CairoMakie.save(joinpath(savedir, "soil_temperature.png"), fig2)

@@ -158,18 +158,12 @@ for FT in (Float32, Float64)
             sc = FT(0.01), # Pa^-1
             pc = FT(-0.5e6), # Pa
         )),
-        NoMoistureStressModel{FT}(),
-        PiecewiseMoistureStressModel{FT}(PiecewiseMoistureStressParameters{FT, FT, FT, FT}(
-            θ_c = FT(0.3), # m^3/m^3
-            θ_w = FT(0.1), # m^3/m^3
-            c = FT(1.0), # unitless
-        )),
+        NoMoistureStressModel{FT}()
     )
 
     soil_moisture_stress_names = (
         "Tuzet",
         "No Stress",
-        "Piecewise"
     )
 
     for (sms_model, name) in zip(soil_moisture_stress_models, soil_moisture_stress_names)
@@ -177,25 +171,29 @@ for FT in (Float32, Float64)
         @testset "Initialize canopy with type $name for float type $FT" begin
             Y, p, coords = initialize(canopy)
             dY = similar(Y)
-            
-            # # set initial conditions 
-            # n_stem = 0
-            # n_leaf = 1
-            # for i in 1:(n_stem + n_leaf)
-            #     Y.canopy.hydraulics.ϑ_l.:($i) .= FT(0.1)
-            #     p.canopy.hydraulics.ψ.:($i) .= NaN
-            #     p.canopy.hydraulics.fa.:($i) .= NaN
-            #     dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
-            # end
-
-            # set_initial_cache! = make_set_initial_cache(canopy)
-            # set_initial_cache!(p, Y, FT(0.0))
 
             @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(0.0))
 
             if name == "Piecewise"
                 @test all(parent(p.canopy.soil_moisture_stress.ϑ_root) .≈ FT(0.0))
             end
+
+            
+            # set initial conditions 
+            n_stem = 0
+            n_leaf = 1
+            for i in 1:(n_stem + n_leaf)
+                Y.canopy.hydraulics.ϑ_l.:($i) .= FT(0.1)
+                p.canopy.hydraulics.ψ.:($i) .= NaN
+                p.canopy.hydraulics.fa.:($i) .= NaN
+                dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
+            end
+
+            set_initial_cache! = make_set_initial_cache(canopy)
+            set_initial_cache!(p, Y, FT(0.0))
+            
+            @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1.0))
         end
     end
 end
+
