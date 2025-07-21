@@ -149,23 +149,24 @@ The moisture stress factor is applied to `An` already.
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
-    ca_pp = @. lazy(c_co2_air * P_air) # partial pressure of CO2 in Pa
     T_air = p.drivers.T
     earth_param_set = canopy.parameters.earth_param_set
     (; Drel) = canopy.conductance.parameters
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
-    ci = p.canopy.photosynthesis.IntVars.ci
-    An = p.canopy.photosynthesis.An
+    ci = p.canopy.photosynthesis.IntVars.ci     # internal CO2 partial pressure, Pa 
+    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
     R = LP.gas_constant(earth_param_set)
+    FT = eltype(model.parameters)
 
+    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
     @. p.canopy.conductance.r_stomata_canopy =
-        1 / upscale_leaf_conductance(
-            pmodel_gs(ci / ca_pp, ca_pp, An) * Drel, # leaf level conductance in mol H2O Pa^-1
+        1 / (upscale_leaf_conductance(
+            pmodel_gs_h2o(χ, c_co2_air, An, Drel), # leaf level conductance in mol H2O Pa^-1
             LAI,
             T_air,
             R,
             P_air,
-        )
+        ) + eps(FT)) # avoids division by zero, since conductance is zero when An is zero 
 
 end

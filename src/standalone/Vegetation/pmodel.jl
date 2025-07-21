@@ -393,7 +393,7 @@ function compute_full_pmodel_outputs(
 
     # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
     iWUE = (ca_pp - ci) / Drel
-    gs = pmodel_gs(χ, ca_pp, Ac)
+    gs = pmodel_gs_co2(χ, ca, Ac)
 
     # dark respiration 
     rd =
@@ -854,6 +854,7 @@ productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 function update_photosynthesis!(p, Y, model::PModel, canopy)
     parameters = model.parameters
     constants = model.constants
+    FT = eltype(parameters)
 
     # drivers 
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
@@ -971,7 +972,10 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
 
     @. p.canopy.photosynthesis.Rd = Rd
-    @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd
+    
+    # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
+    # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here. 
+    @. p.canopy.photosynthesis.An = net_photosynthesis(Ac, Aj, Rd, FT(1.0)) 
     @. p.canopy.photosynthesis.GPP = compute_GPP(
         p.canopy.photosynthesis.An,
         extinction_coeff(
