@@ -597,13 +597,13 @@ function count_nans_state(
         num_nans = count(isnan, parent(state))
     else
         num_nans = mapreduce(
-            (s, m) -> m != 0 && isnan(s), 
-            Base.add_sum, 
-            parent(state), 
-            parent(mask)
+            (s, m) -> m != 0 && isnan(s),
+            Base.add_sum,
+            parent(state),
+            parent(mask),
         )
-    end    
-    if num_nans == 0 
+    end
+    if num_nans == 0
         verbose && @info "No NaNs found"
     else
         @warn "$num_nans NaNs found"
