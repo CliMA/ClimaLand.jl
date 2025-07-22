@@ -157,7 +157,9 @@ SM_params = PiecewiseMoistureStressParameters(
     c = FT(1), # Curvature parameter
 )
 
-soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}(SM_params)
+soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}
+
+soil_moisture_stress_args = (; parameters = SM_params)
 
 # Component Types
 canopy_component_types = (;
@@ -185,8 +187,6 @@ radiative_transfer_args = (;
         G_Function,
     )
 )
-
-soil_moisture_stress_args = (parameters = SM_params)
 
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
