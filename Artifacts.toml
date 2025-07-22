@@ -185,3 +185,10 @@ git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
     [[mizoguchi_soil_freezing_data.download]]
     sha256 = "0027cc080ba45ba33dc790b176ec2854353ce7dce4eae4bef72963b0dd944e0b"
     url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"
+
+[modis_lai_fluxnet_sites]
+git-tree-sha1 = "cdcc1708832654d2209d267e01a3893c4b25c085"
+
+    [[modis_lai_fluxnet_sites.download]]
+    sha256 = "c74780775d98b56eed74222377604272658f59686d4d7881c7b815b6c230080b"
+    url = "https://caltech.box.com/shared/static/g6vubma6vcxulb9fl0pvzq6v0oto4iu3.gz"

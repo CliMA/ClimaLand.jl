@@ -1,4 +1,4 @@
-1# # Global run of land model
+# # Global run of land model
 
 # The code sets up and runs ClimaLand v1, which
 # includes soil, canopy, and snow, on a spherical domain,
@@ -22,15 +22,13 @@ using ClimaUtilities.ClimaArtifacts
 import ClimaUtilities.TimeManager: ITime, date
 
 import ClimaDiagnostics
-import ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
-
+using ClimaCore
 using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
@@ -39,13 +37,14 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 
-using Statistics
-using CairoMakie
-import GeoMakie
 using Dates
-import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
@@ -310,76 +309,31 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     return land
 end
 
-function setup_simulation(; greet = false)
-    # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-    # If LONGER run, run for 19 years, with the correct forcing each year.
-    # Note that since the Northern hemisphere's winter season is defined as DJF,
-    # we simulate from and until the beginning of
-    # March so that a full season is included in seasonal metrics.
-    start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
-    Δt = 450.0
-    nelements = (101, 15)
-    if greet
-        @info "Run: Global Soil-Canopy-Snow Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Start Date: $start_date"
-        @info "Stop Date: $stop_date"
-    end
-
-    domain = ClimaLand.Domains.global_domain(FT; context, nelements)
-    params = LP.LandParameters(FT)
-    model = setup_model(FT, start_date, stop_date, Δt, domain, params)
-
-    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
-    return simulation
-end
-
-simulation = setup_simulation(; greet = true);
+# If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
+# If LONGER run, run for 19 years, with the correct forcing each year.
+# Note that since the Northern hemisphere's winter season is defined as DJF,
+# we simulate from and until the beginning of
+# March so that a full season is included in seasonal metrics.
+start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
+stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+Δt = 450.0
+nelements = (101, 15)
+domain = ClimaLand.Domains.global_domain(
+    FT;
+    context,
+    nelements,
+    mask_threshold = FT(0.99),
+)
+params = LP.LandParameters(FT)
+model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+@info "Run: Global Soil-Canopy-Snow Model"
+@info "Resolution: $nelements"
+@info "Timestep: $Δt s"
+@info "Start Date: $start_date"
+@info "Stop Date: $stop_date"
 ClimaLand.Simulations.solve!(simulation)
 
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names = [
-    "gpp",
-    "swc",
-    "et",
-    "shf",
-    "swu",
-    "lwu",
-    "swe",
-    "si",
-    "lwp",
-    "iwc",
-    "trans",
-    "msf",
-    "snowc",
-]
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
-make_figures(root_path, outdir, short_names)
-
-include("leaderboard/leaderboard.jl")
-diagnostics_folder_path = outdir
-leaderboard_base_path = root_path
-for data_source in ("ERA5", "ILAMB")
-    compute_monthly_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-    compute_seasonal_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-end
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
+LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)

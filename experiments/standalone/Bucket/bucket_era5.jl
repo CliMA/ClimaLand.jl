@@ -213,6 +213,8 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     callback = cb,
 );
 
+ClimaLand.Diagnostics.close_output_writers(diags)
+
 simdir = ClimaAnalysis.SimDir(output_dir)
 short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
 for short_name in short_names

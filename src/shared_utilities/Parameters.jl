@@ -1,4 +1,9 @@
 module Parameters
+import Thermodynamics.Parameters.ThermodynamicsParameters
+import Insolation.Parameters.InsolationParameters
+import SurfaceFluxes.Parameters.SurfaceFluxesParameters
+import SurfaceFluxes.UniversalFunctions as UF
+import ClimaParams as CP
 
 abstract type AbstractLandParameters end
 const ALP = AbstractLandParameters
@@ -56,5 +61,97 @@ LH_f0(ps::ALP) = LH_s0(ps) - LH_v0(ps)
 thermodynamic_parameters(ps::ALP) = ps.thermo_params
 surface_fluxes_parameters(ps::ALP) = ps.surf_flux_params
 insolation_parameters(ps::ALP) = ps.insol_params
+
+
+# interfacing with ClimaParams
+"""
+    LandParameters(::Type{FT})
+
+A constructor for the ClimaLand ``earth_param_set`` (LandParameters)
+struct which contains the default values defined in ClimaParamsm
+with type FT (Float32, Float64)
+
+As these parameters are constants and not for calibrating, there
+is no option to change them individually.
+"""
+LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
+    LandParameters(CP.create_toml_dict(FT))
+
+function LandParameters(toml_dict::CP.AbstractTOMLDict)
+    thermo_params = ThermodynamicsParameters(toml_dict)
+    TP = typeof(thermo_params)
+
+    insol_params = InsolationParameters(toml_dict)
+    IP = typeof(insol_params)
+
+    surf_flux_params = SurfaceFluxesParameters(toml_dict, UF.BusingerParams)
+    SFP = typeof(surf_flux_params)
+
+    name_map = (;
+        :light_speed => :light_speed,
+        :planck_constant => :h_Planck,
+        :density_ice_water => :ρ_cloud_ice,
+        :avogadro_constant => :avogad,
+        :thermodynamics_temperature_reference => :T_0,
+        :temperature_water_freeze => :T_freeze,
+        :density_liquid_water => :ρ_cloud_liq,
+        :isobaric_specific_heat_ice => :cp_i,
+        :latent_heat_sublimation_at_reference => :LH_s0,
+        :molar_mass_water => :molmass_water,
+        :mean_sea_level_pressure => :MSLP,
+        :diffusivity_of_water_vapor => :D_vapor,
+        :isobaric_specific_heat_liquid => :cp_l,
+        :latent_heat_vaporization_at_reference => :LH_v0,
+        :gas_constant => :gas_constant,
+        :thermal_conductivity_of_air => :K_therm,
+        :gravitational_acceleration => :grav,
+        :stefan_boltzmann_constant => :Stefan,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    return LandParameters{FT, TP, SFP, IP}(;
+        parameters...,
+        thermo_params,
+        surf_flux_params,
+        insol_params,
+    )
+end
+
+"""
+    get_default_parameter(FT, climaparams_name)
+
+Helper function for accessing and returning the default 
+parameter value (a float of type `FT`) from  the ClimaParams 
+dictionary. To look up the value, you must use the name
+of the parameter from ClimaParams (`climaparams_name`).
+For example, the following keys in the ClimaParams dictionary map
+to the variables in the parameter structs as noted below:
+
+:soil_momentum_roughness_length => :z_0m (EnergyHydrologyParameters)
+:soil_scalar_roughness_length => :z_0b (EnergyHydrologyParameters)
+:emissivity_bare_soil => :emissivity (EnergyHydrologyParameters)
+
+:snow_momentum_roughness_length => :z_0m (SnowParameters)
+:snow_scalar_roughness_length => :z_0b (SnowParameters)
+:snow_emissivity => :ϵ_snow (SnowParameters)
+:holding_capacity_of_water_in_snow => :θ_r (SnowParameters)
+:wet_snow_hydraulic_conductivity => :Ksat (SnowParameters)
+
+:canopy_emissivity => :ϵ_canopy (TwoStreamParameters, BeerLambertParameters)
+:min_stomatal_conductance => :g0 (MedlynConductanceParameters)
+
+:soil_conductivity => :κ_soil (BucketModelParameters)
+:soil_heat_capacity => :ρc_soil (BucketModelParameters)
+:critical_snow_water_equivalent => :σS_c (BucketModelParameters)
+:land_bucket_capacity => :W_f (BucketModelParameters)
+:critical_snow_fraction => :f_snow (BucketModelParameters)
+:bucket_capacity_fraction => :f_bucket (BucketModelParameters)
+:bucket_beta_decay_exponent => :p (BucketModelParameters)
+"""
+function get_default_parameter(FT, climaparams_name)
+    toml_dict = CP.create_toml_dict(FT)
+    return CP.get_parameter_values(toml_dict, string(climaparams_name))[climaparams_name]
+end
 
 end # module

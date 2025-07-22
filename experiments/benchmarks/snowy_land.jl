@@ -449,7 +449,7 @@ if profiler == "flamegraph"
         @info "Saved allocation flame to $alloc_flame_file"
     end
     if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-        PREVIOUS_BEST_TIME = 0.74
+        PREVIOUS_BEST_TIME = 0.67
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
         elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

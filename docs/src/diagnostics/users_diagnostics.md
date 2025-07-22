@@ -4,14 +4,19 @@ When running a ClimaLand simulations, you have multiple options on how to write 
 You may want all variables, or just a selected few.
 You may want instantaneous values, at the highest temporal and spatial resolution, or you may want to get averages at hourly or monthly time scale, and integrate in space
 (for example soil moisture from 0 to 1 meter depth).
-You may want to get more specific reductions, such as 10 days maximums, or compute a new variables that is a function of others.
-You may want to get your outputs in memory in a Julia Dict, or write them in a NetCDF file.
+You may want to get more specific reductions, such as 10 days maximums, or compute a new variables as a function of others.
+You may want to get your outputs in memory in a Julia dictionary, or write them in a NetCDF file.
 
 This is where ClimaLand Diagnostics comes in for users.
 
 In this documentation page, we first explain how to use default diagnostics and what are the defaults, and then explain how to define your own diagnostics for more advanced users.
 
 ## Default Diagnostics
+
+Diagnostics refer to output saved during the simulation, which may be prognostic or diagnostic variables.
+Note that this is different from checkpointing the simulation, which has specific requirements.
+For information about checkpointing and restarting simulations, please see the page titled
+[Restarting Simulations](@ref).
 
 Once you have defined your model and are ready to run a simulation, and after adding ClimaDiagnostics (using ClimaDiagnostics),
  you can add default diagnostics to it by doing the following steps:
@@ -161,4 +166,3 @@ viz.plot!(fig, var) # creates an axis inside fig, and plot your var in it.
 
 CairoMakie.save(fig) # saves the figure in current working directory
 ```
-

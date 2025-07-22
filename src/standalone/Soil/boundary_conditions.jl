@@ -54,9 +54,9 @@ end
 
 A concrete type of soil boundary condition, for use at
 the BottomBoundary only, where the flux is set to be
-`F = -K∇h = -K`. 
+`F = -K∇h = -K`.
 
-This is not tied to any boundary condition for the heat equation. 
+This is not tied to any boundary condition for the heat equation.
 To account for the energy flux resulting from free drainage of liquid
 water, please see `EnergyWaterFreeDrainage`.
 """
@@ -841,7 +841,6 @@ boundary_var_types(
     FT,
     FT,
     FT,
-    FT,
     Runoff.runoff_var_types(bc.runoff, FT)...,
 )
 
@@ -896,7 +895,7 @@ flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
 Here, the soil boundary fluxes are computed as if the soil is run
-in standalone mode, indicated by the value of 
+in standalone mode, indicated by the value of
 `prognostic_land_components`.
 """
 function soil_boundary_fluxes!(
@@ -940,7 +939,7 @@ end
    compute_liquid_influx(p,
                          model,
                          prognostic_land_components::Val{(:soil,)},
-    ) 
+    )
 
 Returns the liquid water volume flux at the surface of the soil; this
 will then be partitioned into surface runoff and infiltration:
@@ -977,9 +976,9 @@ If the source of the infiltration is purely liquid precipitation,
 we approximate the volumetric internal energy with the volumetric
 internal energy of liquid water at the air temperature at the surface.
 
-Future runoff parameterizations may require allowing for exfiltration of 
+Future runoff parameterizations may require allowing for exfiltration of
 liquid water from the soil, which would have a different energy. To accomodate
-this, the runoff is passed as an argument and this can be used for dispatch in the 
+this, the runoff is passed as an argument and this can be used for dispatch in the
 future.
 
 Furthermore, in coupled simulations, the energy flux may be provided directly,

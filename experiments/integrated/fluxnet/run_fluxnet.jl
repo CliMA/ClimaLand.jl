@@ -254,15 +254,33 @@ jac_kwargs =
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
-d_writer = ClimaDiagnostics.Writers.DictWriter()
+output_writer = ClimaDiagnostics.Writers.DictWriter()
 
 ref_time = DateTime(2010)
 
+short_names_1D = [
+    "sif",
+    "ra",
+    "gs",
+    "gpp",
+    "ct",
+    "swu",
+    "lwu",
+    "er",
+    "et",
+    "msf",
+    "shf",
+    "lhf",
+    "rn",
+    "swe",
+]
+short_names_2D = ["swc", "tsoil", "si"]
+output_vars = [short_names_1D..., short_names_2D...]
 diags = ClimaLand.default_diagnostics(
     land,
     ref_time;
-    output_writer = d_writer,
-    output_vars = :long,
+    output_writer,
+    output_vars,
     average_period = :hourly,
 )
 
@@ -291,31 +309,9 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
+@time sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
-# Extract model output from the saved diagnostics
-short_names_1D = [
-    "sif", # SIF
-    "ra", # AR
-    "gs", # g_stomata
-    "gpp", # GPP
-    "ct", # canopy_T
-    "swu", # SW_u
-    "lwu", # LW_u
-    "er", # ER
-    "et", # ET
-    "msf", # β
-    "shf", # SHF
-    "lhf", # LHF
-    "rn", # Rn
-    "swe",
-]
-short_names_2D = [
-    "swc", # swc_sfc or swc_5 or swc_10
-    "tsoil", # soil_T_sfc or soil_T_5 or soil_T_10
-    "si", # si_sfc or si_5 or si_10
-]
-
+ClimaLand.Diagnostics.close_output_writers(diags)
 hourly_diag_name = short_names_1D .* "_1h_average"
 hourly_diag_name_2D = short_names_2D .* "_1h_average"
 
@@ -324,13 +320,13 @@ hourly_diag_name_2D = short_names_2D .* "_1h_average"
 # whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
 # We index to only extract the period post-spinup.
 SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, Rn, SWE = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
+    ClimaLand.Diagnostics.diagnostic_as_vectors(output_writer, diag_name)[2][(N_spinup_days * 24):end]
     for diag_name in hourly_diag_name
 ]
 
 swc, soil_T, si = [
     ClimaLand.Diagnostics.diagnostic_as_vectors(
-        d_writer,
+        output_writer,
         diag_name;
         layer = nelements, #surface layer
     )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D

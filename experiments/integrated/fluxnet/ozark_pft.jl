@@ -324,6 +324,8 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
+ClimaLand.Diagnostics.close_output_writers(diags)
+
 # Extract model output from the saved diagnostics
 short_names_1D = [
     "sif", # SIF

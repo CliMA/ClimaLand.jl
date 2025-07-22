@@ -19,9 +19,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
-
-import ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
@@ -29,7 +26,7 @@ import ClimaUtilities.TimeVaryingInputs:
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
-
+using ClimaCore
 using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
@@ -38,13 +35,14 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 
-using Statistics
-using GeoMakie
-using CairoMakie
 using Dates
-import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 const FT = Float64;
 context = ClimaComms.context()
@@ -278,66 +276,31 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
     return land
 end
 
-function setup_simulation(; greet = false)
-    start_date = DateTime(2008)
-    stop_date = DateTime(2010)
-    Δt = 450.0
-    nelements = (10, 10, 15)
-    if greet
-        @info "Run: Regional Soil-Canopy-Snow Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Start Date: $start_date"
-        @info "Stop Date: $stop_date"
-    end
+start_date = DateTime(2008)
+stop_date = DateTime(2010)
+Δt = 450.0
+nelements = (10, 10, 15)
+@info "Run: Regional Soil-Canopy-Snow Model"
+@info "Resolution: $nelements"
+@info "Timestep: $Δt s"
+@info "Start Date: $start_date"
+@info "Stop Date: $stop_date"
 
-    radius = FT(6378.1e3)
-    depth = FT(50)
-    center_long, center_lat = FT(-117.59736), FT(34.23375)
-    delta_m = FT(200_000) # in meters
-    domain = ClimaLand.Domains.HybridBox(;
-        xlim = (delta_m, delta_m),
-        ylim = (delta_m, delta_m),
-        zlim = (-depth, FT(0)),
-        nelements = nelements,
-        longlat = (center_long, center_lat),
-        dz_tuple = FT.((10.0, 0.05)),
-    )
-    params = LP.LandParameters(FT)
-    model = setup_model(FT, context, start_date, Δt, domain, params)
-    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
-    return simulation
-end
-
-simulation = setup_simulation(; greet = true);
+radius = FT(6378.1e3)
+depth = FT(50)
+center_long, center_lat = FT(-117.59736), FT(34.23375)
+delta_m = FT(200_000) # in meters
+domain = ClimaLand.Domains.HybridBox(;
+    xlim = (delta_m, delta_m),
+    ylim = (delta_m, delta_m),
+    zlim = (-depth, FT(0)),
+    nelements = nelements,
+    longlat = (center_long, center_lat),
+    dz_tuple = FT.((10.0, 0.05)),
+)
+params = LP.LandParameters(FT)
+model = setup_model(FT, context, start_date, Δt, domain, params)
+simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
 ClimaLand.Simulations.solve!(simulation)
 
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "si"]
-mktempdir(root_path) do tmpdir
-    for short_name in short_names
-        var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
-        for t in times
-            fig = CairoMakie.Figure(size = (600, 400))
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            tmp = ClimaAnalysis.slice(var, time = t; kwargs...)
-            if !all(isnan.(tmp.data))
-                viz.heatmap2D!(
-                    fig,
-                    tmp,
-                    more_kwargs = Dict(
-                        :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
-                    ),
-                )
-                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
-            end
-        end
-    end
-    figures = readdir(tmpdir, join = true)
-    pdfunite() do unite
-        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
-    end
-end
+LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)

@@ -65,6 +65,7 @@ import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
+import ClimaParams as CP
 using SurfaceFluxes
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
@@ -188,4 +189,147 @@ include("./soil_hydrology_parameterizations.jl")
 include("./spatially_varying_parameters.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
+
+
+# Soil model constructor useful for working with simulations forced by
+# the atmosphere
+"""
+    EnergyHydrology(FT, domain, forcing, earth_param_set;
+                         prognostic_land_components = (:soil),
+                         albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
+                         runoff =  Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
+                                                                            R_sb = FT(1.484e-4 / 1000),
+                                                                            f_max = topmodel_fmax(domain.space.surface,FT),
+                                                                            ),
+                         retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
+                         composition_parameters = soil_composition_parameters(domain.space.subsurface, FT),
+                         S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+                         z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
+                         z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
+                         emissivity = LP.get_default_parameter(FT, :soil_bare_soil),
+                         additional_sources = (),
+                         )
+
+Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
+
+When running the soil model in standalone mode, `prognostic_land_components = (:soil,)`, while for running integrated land models,
+this should be a list of the component models. This value of this argument must be the same across all components in the land model.
+
+Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
+changed with keyword arguments. 
+
+The runoff and albedo parameterizations are also provided and can be changed via keyword argument; 
+additional sources may be required in your model if the soil model will be composed with other 
+component models.
+
+Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
+by kwarg; otherwise the default values are used.
+
+TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
+roughness, and emissivity.
+"""
+function EnergyHydrology(
+    FT,
+    domain,
+    forcing,
+    earth_param_set;
+    prognostic_land_components = (:soil,),
+    albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
+        clm_soil_albedo_parameters(domain.space.surface)...,
+    ),
+    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
+        f_over = FT(3.28), # extract from EPS
+        R_sb = FT(1.484e-4 / 1000),# extract from EPS
+        f_max = topmodel_fmax(domain.space.surface, FT),
+    ),
+    retention_parameters = soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    composition_parameters = soil_composition_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
+    z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
+    emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
+    additional_sources = (),
+)
+    top_bc = AtmosDrivenFluxBC(
+        forcing.atmos,
+        forcing.radiation,
+        runoff;
+        prognostic_land_components,
+    )
+    bottom_bc = EnergyWaterFreeDrainage()
+    boundary_conditions = (; top = top_bc, bottom = bottom_bc)
+    # sublimation and subsurface runoff are added automatically
+    sources = (additional_sources..., PhaseChange{FT}())
+    parameters = EnergyHydrologyParameters(
+        FT;
+        retention_parameters...,
+        composition_parameters...,
+        albedo,
+        S_s,
+        z_0m,
+        z_0b,
+        emissivity,
+    )
+    return EnergyHydrology{FT}(;
+        parameters,
+        domain,
+        boundary_conditions,
+        sources,
+    )
+end
+
+
+"""
+    RichardsModel(FT, domain, forcing;
+                         runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
+                                                                            R_sb = FT(1.484e-4 / 1000),
+                                                                            f_max = topmodel_fmax(domain.space.surface,FT),
+                                                                            ),
+                         retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
+                         S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+                         )
+
+Creates a RichardsModel model with the given float type FT, domain, earth_param_set and forcing.
+
+Default spatially varying parameters (for retention curve parameters and specific storativity) are provided but can be
+changed with keyword arguments. 
+
+The runoff parameterization is also provided and can be changed via keyword argument.
+
+TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention argument.
+"""
+function RichardsModel(
+    FT,
+    domain,
+    forcing;
+    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
+        f_over = FT(3.28), # extract from EPS
+        R_sb = FT(1.484e-4 / 1000),# extract from EPS
+        f_max = topmodel_fmax(domain.space.surface, FT),
+    ),
+    retention_parameters = soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+)
+    top_bc = RichardsAtmosDrivenFluxBC(forcing.atmos, runoff)
+    bottom_bc = WaterFluxBC((p, t) -> 0.0)
+    boundary_conditions = (; top = top_bc, bottom = bottom_bc)
+    parameters = RichardsParameters(retention_parameters..., S_s)
+    return RichardsModel{FT}(;
+        parameters,
+        domain,
+        boundary_conditions,
+        sources = (),
+        lateral_flow = false,
+    )
+end
+
 end
