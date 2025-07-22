@@ -17,6 +17,10 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+using DelimitedFiles
+FluxnetSimulations =
+    Base.get_extension(ClimaLand, :FluxnetSimulations).FluxnetSimulations;
+
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)

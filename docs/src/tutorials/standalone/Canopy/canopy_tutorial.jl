@@ -52,6 +52,9 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+using DelimitedFiles
+FluxnetSimulations =
+    Base.get_extension(ClimaLand, :FluxnetSimulations).FluxnetSimulations;
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
