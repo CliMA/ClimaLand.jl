@@ -940,7 +940,7 @@ function ClimaLand.make_compute_jacobian(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
-        <:Union{NoMoistureStressModel, TuzetMoistureStressModel},
+        <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
