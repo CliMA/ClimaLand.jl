@@ -47,9 +47,10 @@ function get_config()
         # Time ranges of each sample which is typically is a single year. Because we are
         # dealing with seasons, we use December and September because those are the
         # start of DJF and SON
+        # TODO: Repeat the same year because we are using the same year anyway
         sample_date_ranges = [
             (Dates.DateTime(year, 12, 1), Dates.DateTime(year + 1, 9, 1)) for
-            year in 2000:2009
+            year in [2007] # 2000:2009
         ],
         spinup = Dates.Month(3), # Dates.Year(1)
         # TODO: Not sure if sample_date_ranges is the best way of determining
@@ -75,7 +76,7 @@ Return a named tuple consisting of
 function get_calibration_config()
     rng_seed = 42
     rng = Random.MersenneTwister(rng_seed)
-    return (; minibatch_size = 2, n_iterations = 6, rng = rng)
+    return (; minibatch_size = 1, n_iterations = 10, rng = rng)
 end
 
 """
@@ -118,16 +119,30 @@ end
     and use `α_0` in the land model.
 """
 function get_prior()
+    # Standard deviation -> 0.15 - 0.25 or 0.1 or 0.05 if it is too close to the bounds
+    # first three colors
     priors = [
         # EKP.constrained_gaussian("Δα", 0.2, 0.1, 0.0, 1.0),
         # EKP.constrained_gaussian("k", 10, 5, 2, 25),
         # EKP.constrained_gaussian("beta_snow", 0.4, 0.2, 0.1, 0.8),
         # EKP.constrained_gaussian("x0_snow", 0.4, 0.2, 0.1, 0.8),
-        EKP.constrained_gaussian("beta_snow_cover", 1.77, 0.2, 0.1, 2.5),
-        EKP.constrained_gaussian("z0_snow_cover", 0.106, 0.03, 0.0, 0.3),
-        EKP.constrained_gaussian("α_0", 0.7, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("beta_snow_cover", 1.77, 0.2, 0.1, 2.5),
+        # EKP.constrained_gaussian("z0_snow_cover", 0.106, 0.03, 0.0, 0.3),
+        # EKP.constrained_gaussian("α_0", 0.7, 0.2, 0.0, 1.0),
         # EKP.constrained_gaussian("Δα", 0.7, 0.2, 0.0, 1.0);
         # EKP.constrained_gaussian("z0_snow", 0.106, 0.05, 0.01, 0.3),
+        EKP.constrained_gaussian("PAR_albedo_dry_1", 0.36, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_dry_1", 0.61, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("PAR_albedo_wet_1", 0.25, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_wet_1", 0.5, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("PAR_albedo_dry_2", 0.34, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_dry_2", 0.57, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("PAR_albedo_wet_2", 0.23, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_wet_2", 0.46, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("PAR_albedo_dry_3", 0.32, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_dry_3", 0.53, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("PAR_albedo_wet_3", 0.21, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("NIR_albedo_wet_3", 0.42, 0.2, 0.0, 1.0),
     ]
     return EKP.combine_distributions(priors)
 end

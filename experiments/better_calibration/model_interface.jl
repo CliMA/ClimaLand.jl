@@ -31,6 +31,7 @@ import ClimaUtilities.TimeVaryingInputs:
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
+using ClimaCore
 using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
@@ -109,7 +110,7 @@ function setup_model(
     (; ν, hydrology_cm, K_sat, θ_r) =
         ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
     soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,
+        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space, param_dict = calibrate_param_dict)...,
     )
     S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
@@ -348,8 +349,12 @@ function ClimaCalibrate.forward_model(iteration, member)
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
 
-    domain =
-        ClimaLand.ModelSetup.global_domain(FT; context = context, nelements)
+    domain = ClimaLand.Domains.global_domain(
+        FT;
+        context,
+        nelements,
+        mask_threshold = FT(0.99))
+
     params = LP.LandParameters(FT)
 
     # TODO: This code is a hack to get parameters loaded and can be improved

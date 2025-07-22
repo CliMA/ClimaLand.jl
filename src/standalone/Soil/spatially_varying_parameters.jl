@@ -49,6 +49,7 @@ function clm_soil_albedo_parameters(
         Interpolations.Flat(),
     ),
     lowres = use_lowres_clm(surface_space),
+    param_dict = Dict()
 )
     interpolation_method = Interpolations.Constant()
     context = ClimaComms.context(surface_space)
@@ -71,7 +72,7 @@ function clm_soil_albedo_parameters(
         ),
     )
     soil_colors = SpaceVaryingInput(
-            "/home/kphan/Desktop/work_tree/random_stuff/clm_colors/soil_colors.nc",
+            "/home/ext_kphan2_caltech_edu/worktree/ClimaLand/pipeline/soil_colors.nc",
             "soil_color",
             surface_space;
             regridder_type,
@@ -83,7 +84,6 @@ function clm_soil_albedo_parameters(
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
     )
-    param_dict = Dict()
     albedo_param_replace!(albedo_nt, soil_colors, param_dict)
     return albedo_nt
 end
@@ -95,6 +95,7 @@ function albedo_param_replace!(albedo_nt, soil_colors, param_dict)
         albedo_quantity, color = rsplit(name, "_", limit = 2)
         color = parse(Int, color)
         @. albedo_nt[Symbol(albedo_quantity)] = replace_param_of_color(albedo_nt[Symbol(albedo_quantity)], soil_colors, param_dict[name] , color)
+        @info albedo_quantity, color, param_dict[name]
     end
     return nothing
 end

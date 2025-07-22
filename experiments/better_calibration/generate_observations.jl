@@ -15,7 +15,12 @@ include("observation_utils.jl")
 # the easiest option, but it would be better to make your own `data_source.jl`
 # and preprocess the observational data to match the simulation data as opposed
 # to processing both the simulation and observational data (e.g. with ILAMB data).
-include("../long_runs/leaderboard/data_sources.jl")
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "ext/land_sim_vis/leaderboard/data_sources.jl",
+    ),
+)
 
 """
     make_observation(short_name, start_date, end_date, nelements)

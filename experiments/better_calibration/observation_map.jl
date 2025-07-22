@@ -8,18 +8,15 @@ include(
         "experiments/better_calibration/observation_utils.jl",
     ),
 )
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "ext/land_sim_vis/leaderboard/data_sources.jl",
-    ),
-)
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "ext/land_sim_vis/leaderboard/leaderboard.jl",
-    ),
-)
+
+# TODO: Clean this up, especially since we don't need Poppler_jll, Printf, and
+# StatsBase
+using CairoMakie, GeoMakie, Poppler_jll, Printf, StatsBase
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 """
     ClimaCalibrate.observation_map(iteration)
@@ -81,7 +78,7 @@ function process_member_data(
         )
     end
 
-    sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
+    sim_var_dict = LandSimVis.get_sim_var_dict(diagnostics_folder_path)
     # TODO: This is annoying to keep track of how observational and simulational
     # data is processed differently even though they are mostly similar
     # Process each variable to be seasonal averages across time
@@ -118,6 +115,20 @@ function process_member_data(
             left = 2,
             right = length(lats) - 1,
             by = ClimaAnalysis.Index(),
+        )
+
+        var = ClimaAnalysis.window(
+            var,
+            "latitude",
+            left = 0.0,
+            right = 45.0
+        )
+
+        var = ClimaAnalysis.window(
+            var,
+            "longitude",
+            left = -60.0,
+            right = 60.0
         )
     end
     # Flatten and concatenate the data for each minibatch
@@ -171,14 +182,14 @@ function ClimaCalibrate.analyze_iteration(
     # We choose the first ensemble member because the parameters are supposed to
     # be the mean of the parameters of the ensemble members if it is
     # EKP.TransformUnscented
-    diagnostics_folder_path = joinpath(output_path, "global_diagnostics")
+    diagnostics_folder_path = joinpath(output_path, "global_diagnostics", "output_active")
     try
-        compute_monthly_leaderboard(
+        LandSimVis.compute_monthly_leaderboard(
             output_path,
             diagnostics_folder_path,
             "ERA5",
         )
-        compute_seasonal_leaderboard(
+        LandSimVis.compute_seasonal_leaderboard(
             output_path,
             diagnostics_folder_path,
             "ERA5",
@@ -200,8 +211,8 @@ function plot_constrained_params_and_errors(output_dir, ekp, prior)
     for i in 1:dim_size
         EKP.Visualize.plot_ϕ_over_iters(fig[1, i], ekp, prior, i)
     end
-    EKP.Visualize.plot_error_over_iters(fig[1, dim_size + 1], ekp)
-    EKP.Visualize.plot_error_over_time(fig[1, dim_size + 2], ekp)
+    EKP.Visualize.plot_error_over_iters(fig[1, dim_size + 1], ekp, error_metric = "loss")
+    EKP.Visualize.plot_error_over_time(fig[1, dim_size + 2], ekp, error_metric = "loss")
     CairoMakie.save(
         joinpath(output_dir, "constrained_params_and_error.png"),
         fig,

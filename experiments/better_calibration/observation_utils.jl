@@ -54,7 +54,7 @@ function make_ocean_mask(nelements)
     # We need the mask in order to determine which points were treated as land
     # by the simulation. We set the threshold of fractional area of land to be
     # 0.99 here - cells with > 1% ocean are ignored in calibration.
-    mask = ClimaLand.landsea_mask(domain; threshold = 0.99)
+    mask = ClimaLand.Domains.landsea_mask(domain; threshold = 0.99)
 
     # Interpolate the ClimaLand land sea mask (Field) to the diagnostics grid
     # (matrix)
