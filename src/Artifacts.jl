@@ -313,6 +313,10 @@ function fluxnet2015_data_path(; context = nothing)
     return @clima_artifact("fluxnet2015", context)
 end
 
+function fluxnet2015_data_path(; context = nothing)
+    return @clima_artifact("fluxnet2015", context)
+end
+
 """
     esm_snowmip_data_path(; context = nothing)
 

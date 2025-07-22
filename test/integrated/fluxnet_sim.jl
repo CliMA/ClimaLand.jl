@@ -6,7 +6,10 @@ using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
 using ClimaLand.Domains
+<<<<<<< HEAD
 using ClimaLand.Soil
+=======
+>>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
 
 const FT = Float64
 
@@ -456,5 +459,10 @@ end
     @test χl == FT(-0.3)
     @test h_leaf == FT(0.5)
     @test Vcmax25 == FT(2.4e-5)
+<<<<<<< HEAD
 end
 nothing
+=======
+
+end
+>>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)

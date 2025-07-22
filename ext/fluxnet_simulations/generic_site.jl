@@ -60,6 +60,7 @@ function FluxnetSimulations.get_parameters(
         domain.space.subsurface,
         FT,
     ),
+<<<<<<< HEAD
     soil_ν = ClimaCore.Fields.field2array(soil_params_gupta[:ν])[1],
     soil_K_sat = ClimaCore.Fields.field2array(soil_params_gupta[:K_sat])[1],
     soil_S_s = FT(1e-2),
@@ -85,6 +86,21 @@ function FluxnetSimulations.get_parameters(
             ClimaCore.Fields.field2array(v)[1] for
             v in values(soil_albedo_params)
         ))...,
+=======
+    soil_ν = soil_params_gupta[:ν],
+    soil_K_sat = soil_params_gupta[:K_sat],
+    soil_S_s = FT(1e-2),
+    soil_hydrology_cm = soil_params_gupta[:hydrology_cm],
+    θ_r = soil_params_gupta[:θ_r],
+    ν_ss_quartz = soil_params_grids[:ν_ss_quartz],
+    ν_ss_om = soil_params_grids[:ν_ss_om],
+    ν_ss_gravel = soil_params_grids[:ν_ss_gravel],
+    z_0m_soil = FT(0.01),
+    z_0b_soil = FT(0.01),
+    soil_ϵ = FT(0.98),
+    soil_albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
+        ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface)...,
+>>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
     ),
     Ω = pft.parameters.Ω,
     χl = pft.parameters.χl,
@@ -125,7 +141,11 @@ function FluxnetSimulations.get_parameters(
         ClimaLand.Canopy.clm_z_top(domain.space.surface),
     )[1],
     h_canopy = FluxnetSimulationsExt.get_canopy_height(site_ID),
+<<<<<<< HEAD
     h_stem = ((h_canopy - h_leaf)) > 0 ? h_canopy - h_leaf : FT(0.0),
+=======
+    h_stem = h_canopy - h_leaf,
+>>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
     z0_m = FT(0.13) * h_canopy,
     z0_b = FT(0.1) * z0_m,
 )
