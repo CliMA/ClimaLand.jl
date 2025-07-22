@@ -60,7 +60,7 @@ function time_varying_input_from_data(
     column_name_map,
     time_in_seconds::Vector;
     preprocess_func = identity,
-    val = -9999
+    val = -9999,
 )
     var_data = driver_data[:, column_name_map[varname]]
     # The time varying input object interpolates over gaps
@@ -107,17 +107,14 @@ function time_varying_input_from_data(
     column_name_map,
     time_in_seconds::Vector;
     preprocess_func = identity,
-    val = -9999
-    )
+    val = -9999,
+)
     var_ids = [column_name_map[varname] for varname in varnames]
     var_data = driver_data[:, var_ids]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
-    return TimeVaryingInput(
-        t,
-        preprocess_func.(eachcol(v)...),
-    )
+    return TimeVaryingInput(t, preprocess_func.(eachcol(v)...))
 end
 
 """
@@ -139,7 +136,7 @@ function get_data_at_start_date(
     v::Vector,
     Δ_date::Vector;
     preprocess_func = identity,
-    val = -9999
+    val = -9999,
 )
     Δ_date, v = mask_data(Δ_date, v; val)
     idx_start = argmin(abs.(Δ_date))

@@ -53,11 +53,12 @@ function prescribed_forcing_fluxnet(
 
     # Determine which column index corresponds to which varname
     varnames = ("TA_F", "VPD_F", "PA_F", "P_F", "WS_F", "LW_IN_F", "SW_IN_F")
-    Dict(varname => findfirst(columns .== varname) for varname in varnames)
-
+    column_name_map = Dict(
+        varname => findfirst(columns[:] .== varname) for varname in varnames
+    )
     # If any of these are missing, error, because we need all of them
     # to run a simulation
-    nothing_id = findall(indices .== nothing)
+    nothing_id = findall(collect(values(column_name_map)) .== nothing)
     if !isempty(nothing_id)
         @error("$(labels[nothing_id]) is missing in the data, but required.")
     end
@@ -65,7 +66,7 @@ function prescribed_forcing_fluxnet(
     # Convert the local timestamp to UTC
     # Since it was read in as Float64 type, convert to a string before
     # converting to a DateTime
-    local_datetime = DateTime.(string.(Int.(data[:,1])), "yyyymmddHHMM")
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
 
     # The TimeVaryingInput interface for columns expects the time in seconds
@@ -326,7 +327,9 @@ function get_comparison_data(
         "TS_F_MDS_1",
         "P_F",
     )
-    Dict(varname => findfirst(columns .== varname) for varname in varnames)
+    column_name_map = Dict(
+        varname => findfirst(columns[:] .== varname) for varname in varnames
+    )
 
     # Convert the local timestamp to UTC
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
@@ -366,5 +369,6 @@ function get_comparison_data(
         column_name_map;
         preprocess_func = (x) -> -x / 1000 / data_dt,
     )
-    return (; GPP, LE, H, SW_u, LW_u, SWC, TS, P)
+    seconds = seconds_since_start_date
+    return (; seconds, GPP, LE, H, SW_u, LW_u, SWC, TS, P)
 end

@@ -30,7 +30,13 @@ earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
-site_ID = "US-MOz"
+
+# Read in the site to be run from the command line
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
+
+site_ID = ARGS[1]
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
@@ -206,7 +212,6 @@ land = LandModel{FT}(;
 Y, p, cds = initialize(land)
 
 FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
