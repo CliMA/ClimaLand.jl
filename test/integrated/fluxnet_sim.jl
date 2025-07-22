@@ -385,3 +385,87 @@ end
     @test h_stem == FT(0)
     @test z0_m == FT(0.13) * h_canopy
 end
+
+
+# @testset "generic site domain info + parameters" begin
+#     site_ID = Symbol("generic")
+
+#     # domain information
+#     (; dz_tuple, nelements, zmin, zmax) =
+#         FluxnetSimulationsExt.get_domain_info(FT, Symbol(site_ID))
+
+#     @test dz_tuple == (FT(1.5), FT(0.1))
+#     @test nelements == 20
+#     @test zmin == FT(-10)
+#     @test zmax == FT(0)
+
+#     # parameters
+#     (;
+#         time_offset,
+#         lat,
+#         long,
+#         atmos_h,
+#         soil_ν,
+#         soil_K_sat,
+#         soil_S_s,
+#         soil_vg_n,
+#         soil_vg_α,
+#         θ_r,
+#         ν_ss_quartz,
+#         ν_ss_om,
+#         ν_ss_gravel,
+#         z_0m_soil,
+#         z_0b_soil,
+#         soil_ϵ,
+#         soil_α_PAR,
+#         soil_α_NIR,
+#         Ω,
+#         ld,
+#         G_Function,
+#         α_PAR_leaf,
+#         λ_γ_PAR,
+#         τ_PAR_leaf,
+#         α_NIR_leaf,
+#         τ_NIR_leaf,
+#         ϵ_canopy,
+#         ac_canopy,
+#         g1,
+#         Drel,
+#         g0,
+#         Vcmax25,
+#         SAI,
+#         f_root_to_shoot,
+#         K_sat_plant,
+#         ψ63,
+#         Weibull_param,
+#         a,
+#         conductivity_model,
+#         retention_model,
+#         plant_ν,
+#         plant_S_s,
+#         rooting_depth,
+#         n_stem,
+#         n_leaf,
+#         h_leaf,
+#         h_stem,
+#         h_canopy,
+#         z0_m,
+#         z0_b,
+#     ) = FluxnetSimulations.get_parameters(site_ID)
+
+#     # selected parameters from each "model group" for testing
+#     @test time_offset == 7
+#     @test atmos_h == FT(32)
+#     @test lat == FT(38.7441)
+#     @test long == FT(-92.2000)
+#     @test soil_ν == FT(0.55)
+#     @test soil_ϵ == FT(0.98)
+#     @test Ω == FT(0.69)
+#     @test ac_canopy == FT(5e2)
+#     @test g0 == FT(1e-4)
+#     @test Vcmax25 == FT(6e-5)
+#     @test SAI == FT(1.0)
+#     @test h_stem == FT(9)
+#     @test z0_m == FT(0.13) * h_canopy
+
+# end
