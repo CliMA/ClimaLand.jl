@@ -260,6 +260,21 @@ function get_data_dt(site_ID)
     return Float64(Δts[1])
 end
 
+"""
+    get_data_dates(site_ID, hour_offset_from_UTC)
+
+A helper function to get the first and last dates, in UTC, for which we have 
+Fluxnet data at `site_ID`, given the offset in hours of local time
+from UTC.
+"""
+function get_data_dates(site_ID, hour_offset_from_UTC)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    return extrema(UTC_datetime)
+end
+
 
 """
     snow_precip_fraction(T_in_C, VPD_in_hPa; thermo_params)
@@ -307,11 +322,31 @@ function compute_q(P, VPD, T; thermo_params)
     return q
 end
 
+"""
+     get_comparison_data(
+        site_ID,
+        hour_offset_from_UTC,
+        start_date, # in UTC
+        FT;
+        val = -9999
+)
+
+Gets and returns the a NamedTuple with the data identified 
+by `varname`. Each element in the tuple is itself a NamedTuple,
+with two keys: absent, and values. If the data column
+is missing completely, the value of absent is true, and no values
+are returned. If the data column is present, absent is set to false,
+and the data is returned with the key values. If the column is present
+but the data is missing in each row, absent is set to true.
+
+Individual missing values are replace by the mean.
+"""
 function get_comparison_data(
     site_ID,
     hour_offset_from_UTC,
     start_date, # in UTC
-    FT,
+    FT;
+    val = -9999,
 )
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
@@ -346,28 +381,32 @@ function get_comparison_data(
         "GPP_DT_VUT_REF",
         column_name_map;
         preprocess_func = (x) -> x * 1e-6,
+        val,
     )
-    LE = get_comparison_data(data, "LE_CORR", column_name_map)
-    H = get_comparison_data(data, "H_CORR", column_name_map)
-    SW_u = get_comparison_data(data, "SW_OUT", column_name_map)
-    LW_u = get_comparison_data(data, "LW_OUT", column_name_map)
+    LE = get_comparison_data(data, "LE_CORR", column_name_map; val)
+    H = get_comparison_data(data, "H_CORR", column_name_map; val)
+    SW_u = get_comparison_data(data, "SW_OUT", column_name_map; val)
+    LW_u = get_comparison_data(data, "LW_OUT", column_name_map; val)
     SWC = get_comparison_data(
         data,
         "SWC_F_MDS_1",
         column_name_map;
         preprocess_func = (x) -> x / 100,
+        val,
     )
     TS = get_comparison_data(
         data,
         "TS_F_MDS_1",
         column_name_map;
         preprocess_func = (x) -> x + 273.15,
+        val,
     )
     P = get_comparison_data(
         data,
         "P_F",
         column_name_map;
         preprocess_func = (x) -> -x / 1000 / data_dt,
+        val,
     )
     seconds = seconds_since_start_date
     return (; seconds, GPP, LE, H, SW_u, LW_u, SWC, TS, P)

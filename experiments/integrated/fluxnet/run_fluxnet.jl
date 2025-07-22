@@ -66,7 +66,7 @@ include(
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
-start_date = DateTime(2010) + Hour(time_offset)
+(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -531,13 +531,15 @@ limits!(
     -500,
     0.0,
 )
+if !comparison_data.P.absent
+    lines!(
+        ax3,
+        data_times ./ 3600 ./ 24,
+        (comparison_data.P.values .* (-1e3 * 24 * 3600))[data_id_post_spinup],
+        label = "Total precip (data)",
+    )
+end
 
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (comparison_data.P.values .* (-1e3 * 24 * 3600))[data_id_post_spinup],
-    label = "Total precip (data)",
-)
 
 CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
 

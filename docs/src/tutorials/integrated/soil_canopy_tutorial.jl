@@ -227,7 +227,7 @@ K_sat_plant = FT(1.8e-8)
 SAI = FT(0.00242)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)

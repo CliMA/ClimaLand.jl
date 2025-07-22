@@ -52,7 +52,8 @@ function set_fluxnet_ic!(
     data,
     columns,
     Δ_date,
-    model::ClimaLand.Soil.EnergyHydrology,
+    model::ClimaLand.Soil.EnergyHydrology;
+    val = -9999,
 )
     # Determine which column index corresponds to which varname
     varnames = ("SWC_F_MDS_1", "TS_F_MDS_1", "TA_F")
@@ -62,11 +63,14 @@ function set_fluxnet_ic!(
 
     if isnothing(column_name_map["SWC_F_MDS_1"])
         θ_l_0 = model.parameters.ν / 2
+    elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
+        θ_l_0 = model.parameters.ν / 2
     else
         θ_l_0 = get_data_at_start_date(
             data[:, column_name_map["SWC_F_MDS_1"]],
             Δ_date;
             preprocess_func = x -> x / 100,
+            val,
         )
     end
 
@@ -78,12 +82,21 @@ function set_fluxnet_ic!(
             data[:, column_name_map["TA_F"]],
             Δ_date;
             preprocess_func = x -> x + 273.15,
+            val,
+        )
+    elseif unique(data[:, column_name_map["TS_F_MDS_1"]]) == [val]
+        T_soil_0 = get_data_at_start_date(
+            data[:, column_name_map["TA_F"]],
+            Δ_date;
+            preprocess_func = x -> x + 273.15,
+            val,
         )
     else
         T_soil_0 = get_data_at_start_date(
             data[:, column_name_map["TS_F_MDS_1"]],
             Δ_date;
             preprocess_func = x -> x + 273.15,
+            val,
         )
     end
 
@@ -118,7 +131,8 @@ function set_fluxnet_ic!(
     data,
     columns,
     Δ_date,
-    model::ClimaLand.Canopy.CanopyModel,
+    model::ClimaLand.Canopy.CanopyModel;
+    val = -9999,
 )
     # Determine which column index corresponds to air temperature
     idx = findfirst(columns[:] .== "TA_F")
@@ -126,6 +140,7 @@ function set_fluxnet_ic!(
         data[:, idx],
         Δ_date;
         preprocess_func = x -> x + 273.15,
+        val,
     )
 
     Y.canopy.energy.T .= T_air_0

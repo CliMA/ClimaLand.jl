@@ -34,7 +34,7 @@ end
 
 """
     time_varying_input_from_data(
-        driver_data,
+        data,
         varname::String,
         column_name_map,
         time_in_seconds::Vector;
@@ -43,10 +43,10 @@ end
     )
 
 Returns the TimeVaryingInput object corresponding
-to `varname` in the driver_data matrix, the `column_name_map`
+to `varname` in the data matrix, the `column_name_map`
 should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
-simulation corresponding to each row of driver_data.
+simulation corresponding to each row of data.
 
 If you need to preprocess the data (e.g., unit conversion), you must pass 
 a pointwise function preprocess_func(var) as a keyword argument.
@@ -55,14 +55,14 @@ Note that this function handles missing data by removing it (assuming it is mark
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
-    driver_data,
+    data,
     varname::String,
     column_name_map,
     time_in_seconds::Vector;
     preprocess_func = identity,
     val = -9999,
 )
-    var_data = driver_data[:, column_name_map[varname]]
+    var_data = data[:, column_name_map[varname]]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
@@ -71,7 +71,7 @@ end
 
 """
     time_varying_input_from_data(
-        driver_data,
+        data,
         varnames::Vector{String},
         column_name_map,
         time_in_seconds::Vector,
@@ -81,7 +81,7 @@ end
 
 Returns a TimeVaryingInput object which is computing using
 `preprocess_func` as a pointwise function of -in order - the columns in
-`driver_data` specified by `varnames`. 
+`data` specified by `varnames`. 
 
 For example, if you wish to compute specific humidity from temperature,
 pressure, and vpd, you would do:
@@ -96,13 +96,13 @@ end
 The `column_name_map`
 should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
-simulation corresponding to each row of driver_data.
+simulation corresponding to each row of data.
 
 Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
-    driver_data,
+    data,
     varnames::Vector{String},
     column_name_map,
     time_in_seconds::Vector;
@@ -110,7 +110,7 @@ function time_varying_input_from_data(
     val = -9999,
 )
     var_ids = [column_name_map[varname] for varname in varnames]
-    var_data = driver_data[:, var_ids]
+    var_data = data[:, var_ids]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
@@ -145,13 +145,15 @@ end
 
 """
     get_comparison_data(
-        driver_data,
+        data,
         varname,
         column_name_map;
         preprocess_func = identity,
+        val = -9999
+)
 
 Gets and returns the a NamedTuple with the data identified 
-by `varname` in the `driver_data` matrix by looking up the 
+by `varname` in the `data` matrix by looking up the 
 column index of varname
 using the column_name_map, replacing missing data with the mean
 of the non-missing data, and preprocessing the data using the
@@ -160,7 +162,8 @@ of the non-missing data, and preprocessing the data using the
 The NamedTuple has two keys: absent, and values. If the data column
 is missing completely, the value of absent is true, and no values
 are returned. If the data column is present, absent is set to false,
-and the data is returned with the key values.
+and the data is returned with the key values. If the column is present
+but the data is missing in each row, absent is set to true.
 
 In the future, we can explore dropping the missing values to be
 consistent with what we do above, but this is consistent with the
@@ -168,19 +171,25 @@ current Fluxnet runs.
 )
 """
 function get_comparison_data(
-    driver_data,
+    data,
     varname,
     column_name_map;
     preprocess_func = identity,
+    val = -9999,
 )
     idx = column_name_map[varname]
     if isnothing(idx)
         return (; absent = true)
     else
-        v = driver_data[:, idx]
-        missing_mask = var_missing.(v)
+        v = data[:, idx]
+        missing_mask = var_missing.(v; val)
         not_missing_mask = .~missing_mask
-        v[missing_mask] .= sum(v[not_missing_mask]) / sum(not_missing_mask)
-        return (; absent = false, values = preprocess_func.(v))
+        n_missing = sum(not_missing_mask)
+        if n_missing < length(v) # some data are present
+            v[missing_mask] .= sum(v[not_missing_mask]) / sum(not_missing_mask)
+            return (; absent = false, values = preprocess_func.(v))
+        else
+            return (; absent = true)
+        end
     end
 end

@@ -58,7 +58,7 @@ tf = t0 + FT(3600 * 24 * N_days)
 # Height of sensor on flux tower
 atmos_h = FT(32)
 start_date = DateTime(2010) + Hour(time_offset)
-forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,

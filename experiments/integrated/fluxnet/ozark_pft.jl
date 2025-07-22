@@ -189,7 +189,7 @@ is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,

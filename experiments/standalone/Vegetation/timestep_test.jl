@@ -87,7 +87,7 @@ start_date = DateTime(2010) + Hour(time_offset)
     earth_param_set,
     FT,
 )
-(; LAI, _) = FluxnetSimulations.prescribed_LAI_fluxnet(site_ID, start_date)
+(; LAI, maxLAI) = FluxnetSimulations.prescribed_LAI_fluxnet(site_ID, start_date)
 z0_m = FT(2)
 z0_b = FT(0.2)
 

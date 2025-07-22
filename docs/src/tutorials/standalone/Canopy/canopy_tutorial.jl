@@ -84,8 +84,6 @@ nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
 f_root_to_shoot = FT(3.5)
-SAI = FT(0.00242)
-maxLAI = FT(4.2)
 plant_ν = FT(2.46e-4) # kg/m^2
 n_stem = Int64(1)
 n_leaf = Int64(1)
@@ -189,10 +187,10 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # Begin by providing general plant parameters. For the area
 # indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-(; LAI, _) = FluxnetSimulations.prescribed_LAI_fluxnet(site_ID, start_date)
+(; LAI, maxLAI) = FluxnetSimulations.prescribed_LAI_fluxnet(site_ID, start_date)
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
-RAI = FT((SAI + LAI) * f_root_to_shoot)
+RAI = FT((SAI + maxLAI) * f_root_to_shoot)
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 rooting_depth = FT(1.0);
 
