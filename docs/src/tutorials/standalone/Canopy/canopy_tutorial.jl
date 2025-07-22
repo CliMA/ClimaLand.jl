@@ -98,14 +98,10 @@ land_domain = Point(; z_sfc = FT(0.0))
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
-# Use the data tools for reading FLUXNET data sets
-include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
-);
-
 # First provide some information about the site
 # Timezone (offset from UTC in hrs)
 time_offset = 7
+start_date = DateTime(2010) + Hour(time_offset)
 
 # Site latitude and longitude
 lat = FT(38.7441) # degree
@@ -113,17 +109,20 @@ long = FT(-92.2000) # degree
 
 # Height of the sensor at the site
 atmos_h = FT(32)
+# Site ID
+site_ID = "US-MOz";
 
-# Provide the site site ID and the path to the data file:
-site_ID = "US-MOz"
-data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
-);
+# Forcing data
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
+)
 
 # Populate the SharedCanopyParameters struct, which holds the parameters
 # shared between all different components of the canopy model.
@@ -187,13 +186,11 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # Begin by providing general plant parameters. For the area
 # indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-LAI = 4.2
-LAIfunction = (t) -> LAI
+(; LAI, _) = FluxnetSimulations.prescribed_LAI_fluxnet(site_ID, start_date)
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + LAI) * f_root_to_shoot)
-ai_parameterization =
-    PrescribedSiteAreaIndex{FT}(TimeVaryingInput(LAIfunction), SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 rooting_depth = FT(1.0);
 
 
