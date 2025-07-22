@@ -154,17 +154,19 @@ end
 function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel, canopy)
     if :soil in canopy.boundary_conditions.prognostic_land_components 
         ϑ_l = Y.soil.ϑ_l
-
-        # compute the root zone-averaged volumetric water content 
-        z = Y.soil.domain.fields.z 
+        z = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
 
         # normalized distribution for root density 
         root_distribution = @. lazy(Canopy.PlantHydraulics.root_distribution(
             z, canopy.hydraulics.parameters.rooting_depth))
         
         # compute the root zone-averaged volumetric water content
-        @. ClimaCore.Operators.column_integral_definite!(p.canopy.soil_moisture_stress.ϑ_root,
-            ϑ_l * root_distribution)
+        ClimaCore.Operators.column_integral_definite!(p.canopy.soil_moisture_stress.ϑ_root,
+            ϑ_l .* root_distribution)
+
+        # Note: right now, if we do a column integral over root_distribution, we get something that isn't 
+        # quite normalized 
+        ϑ_root = p.canopy.soil_moisture_stress.ϑ_root
     else
         ϑ_root = canopy.boundary_conditions.ground.ϑ_root
     end
