@@ -3,7 +3,23 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- Fix texure norm bug (soil composition) PR[#1217](https://github.com/CliMA/ClimaLand.jl/pull/1217)
+- Rename LandSimulationVisualization to LandSimulationVisualizationExt; add template for FluxnetSimulationsExt PR[#1259](https://github.com/CliMA/ClimaLand.jl/pull/1259)
+- Remove root_depths from the PrescribeGroundConditions struct, and treat these ground ``drivers" consistently with how we handle atmospheric forcing PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1240)
+- Add constructors with default values for Canopy components PR[#1233](https://github.com/CliMA/ClimaLand.jl/pull/1233)
+
+v0.17.2
+-------
+- ![][badge-🐛bugfix] Clip VPD to fix bug in medlyn term computation PR[#1242](https://github.com/CliMA/ClimaLand.jl/pull/1242)
+- Create the extension LandSimulationsVisualization PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1199)
+- Enable constructing Point and Column domains with latitude and longitude PR[#1237](https://github.com/CliMA/ClimaLand.jl/pull/1237)
+
+v0.17.1
+-------
+- ![][badge-🐛bugfix] Fix bug in soil boundary var types for coupled atmos PR[#1228](https://github.com/CliMA/ClimaLand.jl/pull/1228)
+
+v0.17.0
+-------
+- ![][badge-🐛bugfix] Fix texure norm bug (soil composition) PR[#1217](https://github.com/CliMA/ClimaLand.jl/pull/1217)
 - ![breaking change][badge-💥breaking] Remove ModelSetup.jl and split spatial parameter functions up PR[#1211](https://github.com/CliMA/ClimaLand.jl/pull/1211)
 - ![breaking change][badge-💥breaking] Rename all `comms_ctx` to `context` PR[#1207](https://github.com/CliMA/ClimaLand.jl/pull/1207)
 - Output NaNs in diagnostics where the ocean is PR[#1200](https://github.com/CliMA/ClimaLand.jl/pull/1200)

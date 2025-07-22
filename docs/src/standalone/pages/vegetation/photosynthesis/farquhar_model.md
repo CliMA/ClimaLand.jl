@@ -5,22 +5,7 @@ The biochemical processes within a leaf determine the rate of photosynthesis, pa
 
 The net assimilation by a leaf (An) is calculated based on the biochemistry of C3 and C4 photosynthesis
 to determine potential (unstressed by water availability) leaf-level photosynthesis. This is calculated in terms of two potentially-limiting rates:
-
-An vs. air Temperature (T, °C) and Photosynthetically Active Radiation (PAR, μmol m⁻² s⁻¹)
-
-```@raw html
-<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/leaf_An"
-   style="height:1200px;width:90%;">
-</iframe>
-```
-
-An vs. air Temperature (T, °C) and intra-cellular CO2 (ci, ppm)
-
-```@raw html
-<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/leaf_An_ci"
-   style="height:1400px;width:100%;">
-</iframe>
-```
+the Rubisco-limited rate and light-limited rate.
 
 ## Rubisco limited rate
 
@@ -57,7 +42,7 @@ a_2 =
 \begin{cases}
       J(T, PAR) (c_i - \Gamma^*)/4(c_i + 2  \Gamma^*) & \text{for C3}\\
       J(T, PAR) & \text{for C4}
-\end{cases}       
+\end{cases}
 \end{equation}
 ```
 
@@ -81,7 +66,7 @@ A_n(T, PAR, VPD, c_a) = \text{max}(0, \text{min}(a_1 \beta, a_2) - R_d)
 \end{align}
 ```
 
-where $\beta$ is the moisture stress factor which is related to the mean soil moisture concentration in the root zone and R$_d$ is the leaf dark respiration calculated as 
+where $\beta$ is the moisture stress factor which is related to the mean soil moisture concentration in the root zone and R$_d$ is the leaf dark respiration calculated as
 ```math
 \begin{align}
     R_{d,25}(\psi_l) &= f V_{cmax,25}\beta(\psi_l), \nonumber \\
@@ -89,8 +74,8 @@ where $\beta$ is the moisture stress factor which is related to the mean soil mo
 \end{align}
 ```
 
-where $f = 0.015$ is a constant, $\Delta H_{R_d}$ is the energy of activation for $R_d$, and finally 
-Vcmax is calculated as 
+where $f = 0.015$ is a constant, $\Delta H_{R_d}$ is the energy of activation for $R_d$, and finally
+Vcmax is calculated as
 ```math
 \begin{equation}
 V_{cmax}(T) = V_{cmax,25} \exp\left(\Delta H_{Vcmax}\frac{T - T_o}{T_o R T}\right)\\
@@ -119,7 +104,7 @@ We need to supply the following parameters and “drivers"
 - ``K_{c,25}`` and $K_{o,25}$, $V_{cmax, 25}$, $\Gamma^*_{25},\phi$, $\theta_j$, $o_i$, $s_c$, $\psi_c$
 - ``\psi_l``, to compute $\beta$
 - Temperature $T$, $PAR$, $c_a$, VPD, $\theta_s$.
- 
+
 | Output | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Total net carbon assimilation | $A_n$   | μmol CO$_2$ m$^{-2}$ s$^{-1}$  | 0--25 |
@@ -135,7 +120,7 @@ We need to supply the following parameters and “drivers"
 | Leaf Area Index   | LAI   | m² m⁻² | 1--10 |
 | $CO_2$ concentration | $c_a$   | ppm | 300e--500 |
 | Vapor pressure deficit | VPD | kPa  | 1-10 |
-  
+
 | Constants | Symbol | Unit | Value |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Zenith angle | $θ_s$  | rad | 0.6 |

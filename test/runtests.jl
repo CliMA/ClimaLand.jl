@@ -53,6 +53,11 @@ end
     include("standalone/Snow/conservation.jl")
 end
 
+@safetestset "Snow parameter constructors" begin
+    include("standalone/Snow/parameters.jl")
+end
+
+
 # Standalone Soil model tests
 @safetestset "Soil Biogeochemistry module tests" begin
     include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
@@ -83,9 +88,12 @@ end
 @safetestset "Soil integrated water and energy content" begin
     include("standalone/Soil/conservation.jl")
 end
-
 @safetestset "Soil spatial parameters" begin
     include("standalone/Soil/spatial_parameters.jl")
+end
+
+@safetestset "Soil spatial parameters and parameter constructors" begin
+    include("standalone/Soil/parameters.jl")
 end
 
 # Standalone Surface Water model tests
@@ -109,9 +117,11 @@ end
 @safetestset "Canopy integrated water and energy content" begin
     include("standalone/Vegetation/conservation.jl")
 end
-
 @safetestset "Canopy spatial parameters" begin
     include("standalone/Vegetation/spatial_parameters.jl")
+end
+@safetestset "P model tests" begin
+    include("standalone/Vegetation/test_pmodel.jl")
 end
 
 # Integrated LSM tests

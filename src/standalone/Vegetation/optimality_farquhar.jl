@@ -85,7 +85,7 @@ ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
     update_photosynthesis!(p, Y, model::OptimalityFarquharModel,canopy)
 
 Computes the net photosynthesis rate `An` (mol CO2/m^2/s)for the Optimality Farquhar model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary 
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
@@ -142,7 +142,7 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
     Γstar = @. lazy(co2_compensation(Γstar25, ΔHΓstar, T, To, R))
-    ci = @. lazy(intercellular_co2(c_co2, Γstar, medlyn_factor))# may change?
+    ci = @. lazy(intercellular_co2(c_co2_air, Γstar, medlyn_factor))# may change?
     rates = @. lazy(
         optimality_max_photosynthetic_rates(
             f_abs * par_d / energy_per_mole_photon_par,
@@ -151,8 +151,8 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
             oi,
             ci,
             Γstar,
-            MM_Kc(Kc25, ΔHkc, T, To, R),
-            MM_Ko(Ko25, ΔHko, T, To, R),
+            MM_Kc(Kc25, ΔHkc, T_canopy, To, R),
+            MM_Ko(Ko25, ΔHko, T_canopy, To, R),
             c,
         ),
     )
@@ -173,14 +173,14 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
             Vcmax,
             ci,
             Γstar,
-            MM_Kc(Kc25, ΔHkc, T, To, R),
-            MM_Ko(Ko25, ΔHko, T, To, R),
+            MM_Kc(Kc25, ΔHkc, T_canopy, To, R),
+            MM_Ko(Ko25, ΔHko, T_canopy, To, R),
             oi,
         ),
     )
 
-    @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
-    @. Rd = dark_respiration(is_c3, Vcmax25, β, T, R, To, fC3, ΔHRd)
+    @. Vcmax25 = Vcmax / arrhenius_function(T_canopy, To, R, ΔHVcmax)
+    @. Rd = dark_respiration(is_c3, Vcmax25, β, T_canopy, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
     # Compute GPP: TODO - move to diagnostics only
     @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
@@ -189,3 +189,62 @@ end
 get_Vcmax25(p, m::OptimalityFarquharParameters) =
     p.canopy.photosynthesis.Vcmax25
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
+
+## For interfacing with ClimaParams
+
+"""
+    function OptimalityFarquharParameters(
+        ::Type{FT},
+        kwargs...  # For individual parameter overrides
+    )
+
+    function OptimalityFarquharParameters(
+        toml_dict::CP.AbstractTOMLDict,
+        kwargs...  # For individual parameter overrides
+    )
+
+Constructors for the OptimalityFarquharParameters struct. Two variants:
+1. Pass in the float-type and retrieve parameter values from the default TOML dict.
+2. Pass in a TOML dictionary to retrieve parameter values.Possible calls:
+```julia
+ClimaLand.Canopy.OptimalityFarquharParameters(Float64)
+# Kwarg overrides
+ClimaLand.Canopy.OptimalityFarquharParameters(Float64; pc = 444444444)
+# Toml Dictionary:
+import ClimaParams as CP
+toml_dict = CP.create_toml_dict(Float32);
+ClimaLand.Canopy.OptimalityFarquharParameters(toml_dict; pc = 444444444)
+```
+"""
+OptimalityFarquharParameters(
+    ::Type{FT};
+    kwargs...,
+) where {FT <: AbstractFloat} =
+    OptimalityFarquharParameters(CP.create_toml_dict(FT); kwargs...)
+
+function OptimalityFarquharParameters(toml_dict; kwargs...)
+    name_map = (;
+        :Jmax_activation_energy => :ΔHJmax,
+        :intercellular_O2_concentration => :oi,
+        :CO2_compensation_point_25c => :Γstar25,
+        :Farquhar_curvature_parameter => :θj,
+        :kelvin_25C => :To,
+        :photosystem_II_quantum_yield => :ϕ,
+        :O2_michaelis_menten => :Ko25,
+        :CO2_michaelis_menten => :Kc25,
+        :dark_respiration_factor => :fC3,
+        :O2_activation_energy => :ΔHko,
+        :low_water_pressure_sensitivity => :sc,
+        :Rd_activation_energy => :ΔHRd,
+        :Vcmax_activation_energy => :ΔHVcmax,
+        :electron_transport_maintenance => :c,
+        :Γstar_activation_energy => :ΔHΓstar,
+        :CO2_activation_energy => :ΔHkc,
+        :moisture_stress_ref_water_pressure => :pc,
+    )
+
+    params = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    is_c3 = FT(1)
+    return OptimalityFarquharParameters{FT, FT}(; params..., kwargs..., is_c3)
+end

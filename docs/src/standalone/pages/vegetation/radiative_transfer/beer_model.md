@@ -1,6 +1,6 @@
 # Radiative transfer scheme
-This section describes multiple models of radiative transfer 
-through the vegetation canopy, implemented in ClimaLand. 
+This section describes multiple models of radiative transfer
+through the vegetation canopy, implemented in ClimaLand.
 
 ## Beer's law
 Plants utilize Photosynthetically Active Radiation (PAR) for the process of photosynthesis, during which they convert light energy into chemical energy, fueling the synthesis of sugars and other organic compounds. PAR refers to the portion of the electromagnetic spectrum that is essential for photosynthesis in plants. PAR includes wavelengths ranging from approximately 400 to 700 nanometers and corresponds to the visible light spectrum. The unit used to measure PAR is called micromoles per square meter per second (μmol/m²/s), representing the number of photons within the PAR range that strike a square meter of a surface per second.
@@ -45,15 +45,7 @@ The model has the following parameters:
 | Extinction coefficient  | $K$   | - | 0.0--1.0 |
 | Clumping index | $Ω$  | -  | 0.0--1.0 |
 | Zenith angle | $θ_s$  | rad | 0--π |
-  
+
 | Constants | Symbol | Unit | Value |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Leaf angle distribution | $l_d$ | - | 0.5 |
-
-### Interactive APAR(PAR, LAI, $ρ_{leaf}$, $K$, $Ω$)
-
-```@raw html
-<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/beer_APAR"
-   style="height:1400px;width:100%;">
-</iframe>
-```

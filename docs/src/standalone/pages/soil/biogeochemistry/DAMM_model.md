@@ -1,14 +1,8 @@
 # Microbial respiration
 This section describes multiple models of soil organic decomposition
-by microbes, implemented in ClimaLand. 
+by microbes, implemented in ClimaLand.
 
 ## Dual Arrhenius Michaelis-Menten
-
-```@raw html
-<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/Rh"
-   style="height:1500px;width:100%;">
-</iframe>
-```
 
 The Dual Arrhenius and Michaelis-Menten (DAMM) kinetics model in ClimaLand.jl follows Davidson et al. 2012. DAMM models heterotrophic respiration ($Rh$) as a function of soil temperature ($T_s$) and soil moisture ($\theta$).
 
@@ -82,7 +76,7 @@ To sum up, the model has the following parameters:
 | Volumetric fraction of $O_2$ in the soil air content  | $O_{2_a}$   | - | 0.005--0.5 |
 | Fraction of soil carbon that is considered soluble | $p_{s_x}$ | - | 0.005--0.5 |
 | Soil organic C | $C_{som}$  | kg C $m^{-3}$ | 1.0--10.0 |
-  
+
 | Constants | Symbol | Unit | Value |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa) | $O_{a100}$ | - | 0.1816 |

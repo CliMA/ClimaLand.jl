@@ -50,20 +50,20 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-density_model = NeuralSnow.NeuralDepthModel(FT)
-#density_model = Snow.MinimumDensityModel(ρ)
+density = NeuralSnow.NeuralDepthModel(FT)
+#density = Snow.MinimumDensityModel(ρ)
+α_snow = Snow.ConstantAlbedoModel(α)
 
-parameters = SnowParameters{FT}(
-    Δt;
-    α_snow = Snow.ConstantAlbedoModel(α),
-    density = density_model,
-    earth_param_set = param_set,
-)
 model = ClimaLand.Snow.SnowModel(
-    parameters = parameters,
-    domain = domain,
-    boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, radiation),
+    FT,
+    domain,
+    forcing,
+    earth_param_set,
+    Δt;
+    density,
+    α_snow,
 )
+
 Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions
@@ -71,7 +71,7 @@ Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
 Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
 Y.snow.U .=
-    ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
+    ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
 
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)

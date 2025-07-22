@@ -19,8 +19,6 @@ import Interpolations
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.TimeManager: ITime
-using ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
@@ -32,12 +30,15 @@ import ClimaLand.Parameters as LP
 
 import ClimaLand.Simulations: LandSimulation, solve!
 using Statistics
-import GeoMakie
-using CairoMakie
 using Dates
 import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
@@ -92,85 +93,76 @@ function setup_model(FT, start_date, domain, earth_param_set, bucket_params)
     return bucket
 end
 
-function setup_simulation(; greet = false)
-    Δt = 900.0
-    start_date = DateTime(2008)
-    stop_date = DateTime(2010)
-    nelements = (101, 7)
-    if greet
-        @info "Run: Global Bucket Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Start Date: $start_date"
-        @info "Stop Date: $stop_date"
-    end
-    # Domain
-    depth = FT(3.5)
-    dz_tuple = FT.((1.0, 0.05))
-    domain =
-        ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
+Δt = 900.0
+start_date = DateTime(2008)
+stop_date = DateTime(2010)
+nelements = (101, 7)
+@info "Run: Global Bucket Model"
+@info "Resolution: $nelements"
+@info "Timestep: $Δt s"
+@info "Start Date: $start_date"
+@info "Stop Date: $stop_date"
+# Domain
+depth = FT(3.5)
+dz_tuple = FT.((1.0, 0.05))
+domain =
+    ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
 
-    # Parameters
-    params = LP.LandParameters(FT)
-    σS_c = FT(0.2)
-    W_f = FT(0.2)
-    z_0m = FT(1e-3)
-    z_0b = FT(1e-3)
-    κ_soil = FT(1.5)
-    ρc_soil = FT(2e6)
-    τc = FT(float(Δt))
-    α_snow = FT(0.8)
-    depth = FT(3.5)
-    bucket_params = (; σS_c, W_f, z_0m, z_0b, κ_soil, ρc_soil, τc, α_snow)
+# Parameters
+params = LP.LandParameters(FT)
+σS_c = FT(0.2)
+W_f = FT(0.2)
+z_0m = FT(1e-3)
+z_0b = FT(1e-3)
+κ_soil = FT(1.5)
+ρc_soil = FT(2e6)
+τc = FT(float(Δt))
+α_snow = FT(0.8)
+depth = FT(3.5)
+bucket_params = (; σS_c, W_f, z_0m, z_0b, κ_soil, ρc_soil, τc, α_snow)
 
-    # Model
-    model = setup_model(FT, start_date, domain, params, bucket_params)
+# Model
+model = setup_model(FT, start_date, domain, params, bucket_params)
 
-    # IC function
-    function set_ic!(Y, p, t, bucket)
-        temp_anomaly_amip(coord) = 40 * cosd(coord.lat)^4
-        # Set temperature IC including anomaly, based on atmospheric setup
-        T_sfc_0 = 271.0
-        cds = ClimaCore.Fields.coordinate_field(Y.bucket.T)
-        @. Y.bucket.T = T_sfc_0 + temp_anomaly_amip(cds)
-        Y.bucket.W .= 0.15
-        Y.bucket.Ws .= 0.0
-        Y.bucket.σS .= 0.0
-    end
-
-    # Define timestepper and ODE algorithm
-    timestepper = CTS.RK4()
-    timestepper = CTS.ExplicitAlgorithm(timestepper)
-
-    # Create the simulation
-    simulation = LandSimulation(
-        FT,
-        start_date,
-        stop_date,
-        Δt,
-        model;
-        set_ic!,
-        timestepper,
-        outdir,
-    )
-    return simulation
+# IC function
+function set_ic!(Y, p, t, bucket)
+    temp_anomaly_amip(coord) = 40 * cosd(coord.lat)^4
+    # Set temperature IC including anomaly, based on atmospheric setup
+    T_sfc_0 = 271.0
+    cds = ClimaCore.Fields.coordinate_field(Y.bucket.T)
+    @. Y.bucket.T = T_sfc_0 + temp_anomaly_amip(cds)
+    Y.bucket.W .= 0.15
+    Y.bucket.Ws .= 0.0
+    Y.bucket.σS .= 0.0
 end
 
-simulation = setup_simulation(; greet = true);
+# Define timestepper and ODE algorithm
+timestepper = CTS.RK4()
+timestepper = CTS.ExplicitAlgorithm(timestepper)
+
+# Create the simulation
+simulation = LandSimulation(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    model;
+    set_ic!,
+    timestepper,
+    outdir,
+)
+@info "Run: Global Bucket Model"
+@info "Resolution: $nelements"
+@info "Timestep: $Δt s"
+@info "Start Date: $start_date"
+@info "Stop Date: $stop_date"
 solve!(simulation);
 
-# Eventually replace the below with:
-#ClimaLand.Simulations.plot!(simulation, simulation.model, simulation.domain)
-
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
+LandSimVis.make_heatmaps(
+    simulation;
+    savedir = root_path,
+    short_names,
+    date = stop_date,
 )
-make_figures(root_path, outdir, short_names)

@@ -153,3 +153,41 @@ function compute_autrophic_respiration(
 end
 
 Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
+
+## For interfacing with ClimaParams
+
+"""
+    AutotrophicRespirationParameters(FT; kwargs...)
+    AutotrophicRespirationParameters(toml_dict; kwargs...)
+
+Constructors for the AutotrophicRespirationParameters struct. Two variants:
+1. Pass in the float-type and retrieve parameter values from the default TOML dict.
+2. Pass in a TOML dictionary to retrieve parameter values.
+With either constructor, you can manually override any parameter via kwargs:
+```julia
+AutotrophicRespirationParameters(FT; ne = 99999)
+AutotrophicRespirationParameters(toml_dict; ne = 99999)
+```
+"""
+AutotrophicRespirationParameters(
+    ::Type{FT};
+    kwargs...,
+) where {FT <: AbstractFloat} =
+    AutotrophicRespirationParameters(CP.create_toml_dict(FT); kwargs...)
+
+function AutotrophicRespirationParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    kwargs...,
+)
+    name_map = (;
+        :N_factor_Vcmax25 => :ne,
+        :live_stem_wood_coeff => :ηsl,
+        :specific_leaf_density => :σl,
+        :root_leaf_nitrogen_ratio => :μr,
+        :relative_contribution_factor => :Rel,
+        :stem_leaf_nitrogen_ratio => :μs,
+    )
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    AutotrophicRespirationParameters{FT}(; parameters..., kwargs...)
+end

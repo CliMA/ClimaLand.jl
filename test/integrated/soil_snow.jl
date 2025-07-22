@@ -38,8 +38,8 @@ atmos = PrescribedAtmosphere(
     h_atmos,
     earth_param_set,
 )
+forcing = (; atmos, radiation)
 
-# Required to make soil model
 ν = FT(0.495)
 K_sat = FT(0.0443 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
@@ -48,9 +48,11 @@ vg_α = FT(2.6) # inverse meters
 vg_m = FT(1) - FT(1) / vg_n
 hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = vg_α, n = vg_n)
 θ_r = FT(0.1)
+retention_parameters = (; hydrology_cm = hcm, K_sat, θ_r, ν)
 ν_ss_om = FT(0.0)
 ν_ss_quartz = FT(1.0)
 ν_ss_gravel = FT(0.0)
+composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 emissivity = FT(0.99)
 PAR_albedo_dry = FT(0.2)
 NIR_albedo_dry = FT(0.4)
@@ -64,34 +66,32 @@ albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
 )
 z_0m = FT(0.001)
 z_0b = z_0m
-soil_params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
-    ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm = hcm,
-    K_sat,
-    S_s,
-    θ_r,
+prognostic_land_components = (:snow, :soil)
+
+soil = ClimaLand.Soil.EnergyHydrology{FT}(
+    domain,
+    forcing,
+    earth_param_set;
+    prognostic_land_components,
+    runoff = ClimaLand.Soil.Runoff.NoRunoff(),
     albedo,
-    emissivity,
+    retention_parameters,
+    composition_parameters,
+    S_s,
     z_0m,
     z_0b,
+    emissivity,
 )
-# Required snow model parameters
 Δt = FT(180.0)
-snow_params =
-    ClimaLand.Snow.SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
-
-# Land model
-land_model = ClimaLand.SoilSnowModel{FT}(;
-    land_args = (atmos = atmos, radiation = radiation, domain = domain),
-    snow_model_type = ClimaLand.Snow.SnowModel,
-    snow_args = (parameters = snow_params,),
-    soil_model_type = ClimaLand.Soil.EnergyHydrology,
-    soil_args = (parameters = soil_params,),
+snow = ClimaLand.Snow.SnowModel(
+    FT,
+    ClimaLand.Domains.obtain_surface_domain(domain),
+    forcing,
+    earth_param_set,
+    Δt;
+    prognostic_land_components,
 )
+land_model = ClimaLand.SoilSnowModel{FT}(; snow, soil)
 
 Y, p, coords = ClimaLand.initialize(land_model)
 p_soil_alone = deepcopy(p)
@@ -138,11 +138,11 @@ function init_snow!(Y, S)
     Y.snow.S .= S
     Y.snow.S_l .= 0
     @. Y.snow.U =
-        ClimaLand.Snow.energy_from_q_l_and_swe(Y.snow.S, 1.0f0, snow_params)
+        ClimaLand.Snow.energy_from_q_l_and_swe(Y.snow.S, 1.0f0, snow.parameters)
 end
 
 t = Float64(0)
-init_soil!(Y, coords.subsurface.z, land_model.soil.parameters)
+init_soil!(Y, coords.subsurface.z, soil.parameters)
 init_snow!(Y, 0.0f0)
 
 set_initial_cache! = make_set_initial_cache(land_model)
@@ -151,7 +151,7 @@ set_initial_cache!(p, Y, t)
 @test all(parent(p.snow.total_energy_flux) .≈ 0)
 @test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
-set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
+set_soil_initial_cache! = make_set_initial_cache(soil)
 set_soil_initial_cache!(p_soil_alone, Y, t)
 @test p.soil.top_bc == p_soil_alone.soil.top_bc
 dY_soil_snow = deepcopy(Y) .* 0
@@ -161,9 +161,9 @@ ClimaLand.source!(
     ClimaLand.Soil.SoilSublimation{FT}(),
     Y,
     p_soil_alone,
-    land_model.soil,
+    soil,
 )
-ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
+ClimaLand.source!(dY_soil_snow, src, Y, p, soil)
 @test dY_soil_alone.soil == dY_soil_snow.soil
 
 
@@ -182,7 +182,7 @@ set_initial_cache!(p, Y, t)
     ),
 )
 dY_soil_snow = deepcopy(Y) .* 0
-ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
+ClimaLand.source!(dY_soil_snow, src, Y, p, soil)
 @test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
 
 # Make sure soil boundary flux method also worked
@@ -191,7 +191,7 @@ p_snow_alone = deepcopy(p)
 ClimaLand.Snow.snow_boundary_fluxes!(
     land_model.snow.boundary_conditions,
     Val((:snow,)),
-    land_model.snow,
+    snow,
     Y,
     p_snow_alone,
     t,
@@ -199,7 +199,7 @@ ClimaLand.Snow.snow_boundary_fluxes!(
 ClimaLand.Snow.snow_boundary_fluxes!(
     land_model.snow.boundary_conditions,
     Val((:snow, :soil)),
-    land_model.snow,
+    snow,
     Y,
     p,
     t,

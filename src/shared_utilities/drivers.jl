@@ -20,6 +20,7 @@ export AbstractAtmosphericDrivers,
     PrescribedAtmosphere,
     PrescribedPrecipitation,
     PrescribedSoilOrganicCarbon,
+    PrescribedGroundConditions,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
@@ -41,7 +42,7 @@ export AbstractAtmosphericDrivers,
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
 
-An abstract type of radiative drivers of land models.
+An abstract type of drivers (forcing) for land models.
 """
 abstract type AbstractClimaLandDrivers{FT <: AbstractFloat} end
 
@@ -1062,6 +1063,109 @@ function rh_from_dewpoint(Td_C::FT, T_C::FT) where {FT <: Real}
     return rh
 end
 
+"""
+An abstract type of ground conditions for the canopy model;
+we support prescribed (canopy run in standalone mode)
+or prognostic ground conditions (integrated land models).
+"""
+abstract type AbstractGroundConditions{FT} <: AbstractClimaLandDrivers{FT} end
+
+"""
+     PrescribedGroundConditions <: AbstractGroundConditions
+
+A container for holding prescribed ground conditions needed by the canopy model
+when running the canopy in standalone mode, including the soil pressure, surface
+temperature, albedo, and emissivity.
+$(DocStringExtensions.FIELDS)
+"""
+struct PrescribedGroundConditions{
+    FT,
+    F1 <: AbstractTimeVaryingInput,
+    F2 <: AbstractTimeVaryingInput,
+} <: AbstractGroundConditions{FT}
+    "Prescribed soil potential (m) in the root zone as a function of time"
+    ψ::F1
+    "Prescribed ground surface temperature (K) as a function of time"
+    T::F2
+    "Ground albedo for PAR"
+    α_PAR::FT
+    "Ground albedo for NIR"
+    α_NIR::FT
+    "Ground emissivity"
+    ϵ::FT
+end
+
+"""
+     function PrescribedGroundConditions{FT}(;
+         ψ::TimeVaryingInput,
+         T::TimeVaryingInput,
+         α_PAR::FT,
+         α_NIR::FT,
+         ϵ::FT
+     ) where {FT}
+
+An outer constructor for the PrescribedGroundConditions allowing the user to
+specify the ground parameters by keyword arguments.
+"""
+function PrescribedGroundConditions{FT}(;
+    ψ = TimeVaryingInput((t) -> 0.0),
+    T = TimeVaryingInput((t) -> 298.0),
+    α_PAR = FT(0.2),
+    α_NIR = FT(0.4),
+    ϵ = FT(0.99),
+) where {FT <: AbstractFloat}
+    return PrescribedGroundConditions{FT, typeof(ψ), typeof(T)}(
+        ψ,
+        T,
+        α_PAR,
+        α_NIR,
+        ϵ,
+    )
+end
+
+"""
+     PrognosticSoilConditions <: AbstractGroundConditions
+
+ A type of AbstractGroundConditions to use when the soil model is prognostic and
+of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is used for dispatch
+with the canopy model.
+"""
+struct PrognosticSoilConditions{FT} <: AbstractGroundConditions{FT} end
+
+"""
+     PrognosticGroundConditions <: Canopy.AbstractGroundConditions
+
+A type of AbstractGroundConditions to use when the soil model is prognostic and
+of type `EnergyHydrology`, and the snow model is prognostic and included.
+
+Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
+soil model, we might need to construct a different `PrognosticGroundConditions` because
+the fields may be stored in different places.
+"""
+struct PrognosticGroundConditions{FT} <: AbstractGroundConditions{FT} end
+
+"""
+    initialize_drivers(a::PrescribedGroundConditions{FT}, coords) where {FT}
+
+Creates and returns a NamedTuple for the `PrescribedGroundConditions` driver,
+with variables `ψ` (matric potential in the soil in the root zone), `T` (temperature
+of the surface of the ground).
+"""
+function initialize_drivers(
+    a::PrescribedGroundConditions{FT},
+    coords,
+) where {FT}
+    keys = (:ψ, :T_ground)
+    types = (FT, FT)
+    domain_names = (:surface, :surface)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
+end
 
 """
     initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
@@ -1216,6 +1320,19 @@ function make_update_drivers(driver_tuple::Tuple)
     end
 end
 
+"""
+    make_update_drivers(a::PrescribedGroundConditions{FT}) where {FT}
+
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedGroundConditions.
+"""
+function make_update_drivers(a::PrescribedGroundConditions{FT}) where {FT}
+    function update_drivers!(p, t)
+        evaluate!(p.drivers.ψ, a.ψ, t)
+        evaluate!(p.drivers.T_ground, a.T, t)
+    end
+    return update_drivers!
+end
 
 """
     make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
@@ -1354,8 +1471,8 @@ The argument `era5_ncdata_path` is either a list of nc files, each with all of t
 
 ########## WARNING ##########
 
-High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5 
-reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed, 
+High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5
+reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed,
 with a value give in m/s,
 is used to clip these if it is not `nothing`.
 See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds

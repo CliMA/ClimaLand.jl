@@ -123,7 +123,7 @@ function LandModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions = PrognosticGroundConditions()
+    ground_conditions = PrognosticGroundConditions{FT}()
     if :energy in propertynames(canopy_component_args)
         energy_model = canopy_component_types.energy(
             canopy_component_args.energy.parameters,
@@ -186,7 +186,7 @@ end
 """
    ClimaLand.land_components(land::LandModel)
 
-Returns the components of the `LandModel`. 
+Returns the components of the `LandModel`.
 
 Currently, this method is required in order to preserve an ordering in how
 we update the component models' auxiliary states. The canopy update_aux! step
@@ -383,7 +383,7 @@ function lsm_radiant_energy_fluxes!(
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
     Y,
     t,
-) where {(FT)}
+) where {FT}
     canopy = land.canopy
     canopy_bc = canopy.boundary_conditions
     radiation = canopy_bc.radiation
@@ -535,7 +535,7 @@ end
    compute_liquid_influx(p,
                          model,
                          prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ) 
+    )
 
 Returns the liquid water volume flux at the surface of the soil; uses
 the same method as the soil+snow integrated model.
@@ -633,68 +633,6 @@ function ClimaLand.Soil.sublimation_source(
     FT,
 )
     return SoilSublimationwithSnow{FT}()
-end
-
-"""
-     PrognosticGroundConditions <: Canopy.AbstractGroundConditions
-
-A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`, and the snow model is prognostic and included.
-
-Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
-soil model, we might need to construct a different `PrognosticGroundConditions` because
-the fields may be stored in different places.
-"""
-struct PrognosticGroundConditions <: Canopy.AbstractGroundConditions end
-
-"""
-    Canopy.ground_albedo_PAR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
-"""
-function Canopy.ground_albedo_PAR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground.PAR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
-    return p.α_ground.PAR
-end
-
-"""
-    Canopy.ground_albedo_NIR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
-"""
-function Canopy.ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground.NIR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
-    return p.α_ground.NIR
 end
 
 """
