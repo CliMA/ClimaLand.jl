@@ -187,6 +187,7 @@ SM_params = PiecewiseMoistureStressParameters(
     θ_c = FT(0.5), # Field capacity
     θ_w = FT(0.1), # Wilting point
     c = FT(1), # Curvature parameter
+    β0 = FT(1) # Intrinsic moisture stress factor
 )
 
 soil_moisture_stress = PiecewiseMoistureStressModel{FT}(SM_params)

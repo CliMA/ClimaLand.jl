@@ -151,10 +151,13 @@ else
 end
 
 # soil moisture stress model
-SM_params = PiecewiseMoistureStressParameters(
-    θ_c = FT(0.5), # Field capacity
-    θ_w = FT(0.1), # Wilting point
-    c = FT(1), # Curvature parameter
+SM_params = PiecewiseMoistureStressParametersFromHydrology(
+    soil_ps.hydrology_cm,
+    soil_ps.ν,
+    soil_ps.θ_r;
+    c = FT(1.0),
+    β0 = FT(1.0),
+    verbose = true
 )
 
 soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}
