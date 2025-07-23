@@ -4,7 +4,9 @@ export BeerLambertParameters,
     TwoStreamModel,
     canopy_radiant_energy_fluxes!,
     ConstantGFunction,
-    CLMGFunction
+    CLMGFunction,
+    ground_albedo_PAR,
+    ground_albedo_NIR
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
@@ -230,7 +232,7 @@ function canopy_radiant_energy_fluxes!(
     @. p.canopy.radiative_transfer.SW_n = f_abs_par * par_d + f_abs_nir * nir_d
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver
-    T_ground::FT = ground.T(t)
+    T_ground = p.drivers.T_ground
     ϵ_ground = ground.ϵ
     _σ = FT(LP.Stefan(earth_param_set))
     LW_d = p.drivers.LW_d
@@ -241,6 +243,38 @@ function canopy_radiant_energy_fluxes!(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_ground
 end
+
+
+"""
+    ground_albedo_PAR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
+
+Returns the ground albedo in the PAR for a PrescribedGroundConditions driver. In this case,
+the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
+mode.
+"""
+function ground_albedo_PAR(
+    prognostic_land_components::Val{(:canopy,)},
+    ground::PrescribedGroundConditions,
+    _...,
+)
+    return ground.α_PAR
+end
+
+"""
+    ground_albedo_NIR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
+
+Returns the ground albedo in the NIR for a PrescribedGroundConditions driver. In this case,
+the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
+mode.
+"""
+function ground_albedo_NIR(
+    prognostic_land_components::Val{(:canopy,)},
+    ground::PrescribedGroundConditions,
+    _...,
+)
+    return ground.α_NIR
+end
+
 
 ## For interfacing with ClimaParams
 

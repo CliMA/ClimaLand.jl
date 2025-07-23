@@ -148,8 +148,6 @@ import ClimaParams
             conductivity_model =
                 PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
             retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-            root_depths =
-                SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
             param_set = PlantHydraulics.PlantHydraulicsParameters(;
                 ai_parameterization = ai_parameterization,
                 ν = plant_ν,
@@ -182,7 +180,6 @@ import ClimaParams
                     )
                 )
 
-            ψ_soil0 = FT(0.0)
             soil_driver = PrescribedGroundConditions(FT)
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
@@ -208,7 +205,7 @@ import ClimaParams
             @test ClimaComms.context(canopy) == ClimaComms.context()
             @test ClimaComms.device(canopy) == ClimaComms.device()
             drivers = ClimaLand.get_drivers(canopy)
-            @test drivers == (atmos, radiation)
+            @test drivers == (atmos, radiation, soil_driver)
             Y, p, coords = ClimaLand.initialize(canopy)
             @test propertynames(p.drivers) == (
                 :P_liq,
@@ -223,6 +220,8 @@ import ClimaParams
                 :LW_d,
                 :cosθs,
                 :frac_diff,
+                :ψ,
+                :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
             @test !isnothing(zero(Y))
@@ -298,7 +297,7 @@ import ClimaParams
                   @. f_abs_par * par_d + f_abs_nir * nir_d
             ϵ_canopy = p.canopy.radiative_transfer.ϵ
             T_canopy = FT.(T_atmos(t0))
-            T_soil = FT.(soil_driver.T(t0))
+            T_soil = FT(298) # we are using the default value
             ϵ_soil = FT.(soil_driver.ϵ)
             LW_d = FT.(longwave_radiation(t0))
             LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
@@ -451,7 +450,6 @@ end
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
             ai_parameterization = ai_parameterization,
             ν = plant_ν,
@@ -547,30 +545,6 @@ end
         @test all(
             Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
         )
-    end
-end
-
-@testset "PrescribedGroundConditions" begin
-    for FT in (Float32, Float64)
-        soil_driver = PrescribedGroundConditions(FT)
-        @test ground_albedo_PAR(
-            Val((:canopy,)),
-            soil_driver,
-            nothing,
-            nothing,
-            nothing,
-        ) == FT(0.2)
-        @test ground_albedo_NIR(
-            Val((:canopy,)),
-            soil_driver,
-            nothing,
-            nothing,
-            nothing,
-        ) == FT(0.4)
-        @test soil_driver.root_depths ==
-              SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
-        @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
-        @test FT.(soil_driver.T(2.0)) == FT.(298.0)
     end
 end
 
@@ -702,8 +676,6 @@ end
             conductivity_model =
                 PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
             retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-            root_depths =
-                SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
             param_set = PlantHydraulics.PlantHydraulicsParameters(;
                 ai_parameterization = ai_parameterization,
                 ν = plant_ν,
@@ -736,16 +708,7 @@ end
                     )
                 )
 
-            ψ_soil0 = FT(0.0)
-            T_soil0 = FT(290)
-            soil_driver = PrescribedGroundConditions(
-                root_depths,
-                (t) -> ψ_soil0,
-                (t) -> T_soil0,
-                FT(0.2),
-                FT(0.4),
-                FT(0.98),
-            )
+            soil_driver = PrescribedGroundConditions(FT)
 
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
@@ -955,7 +918,6 @@ end
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         rooting_depth = FT(0.5)
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
             ai_parameterization = ai_parameterization,
@@ -989,17 +951,7 @@ end
                 )
             )
 
-        ψ_soil0 = FT(0.0)
-        T_soil0 = FT(290)
-        soil_driver = PrescribedGroundConditions(
-            root_depths,
-            (t) -> ψ_soil0,
-            (t) -> T_soil0,
-            FT(0.2),
-            FT(0.4),
-            FT(0.98),
-        )
-
+        soil_driver = PrescribedGroundConditions(FT)
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             n_stem = n_stem,
@@ -1300,8 +1252,6 @@ end
             conductivity_model =
                 PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
             retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-            root_depths =
-                SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
             param_set = PlantHydraulics.PlantHydraulicsParameters(;
                 ai_parameterization = ai_parameterization,
                 ν = plant_ν,
@@ -1334,16 +1284,7 @@ end
                     )
                 )
 
-            ψ_soil0 = FT(0.0)
-            T_soil0 = FT(290)
-            soil_driver = PrescribedGroundConditions(
-                root_depths,
-                (t) -> ψ_soil0,
-                (t) -> T_soil0,
-                FT(0.2),
-                FT(0.4),
-                FT(0.98),
-            )
+            soil_driver = PrescribedGroundConditions(FT)
 
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
@@ -1478,7 +1419,8 @@ end
             # Check that the canopy model was created correctly
             @test ClimaComms.context(canopy) == ClimaComms.context()
             @test ClimaComms.device(canopy) == ClimaComms.device()
-            @test ClimaLand.get_drivers(canopy) == (atmos, radiation)
+            @test ClimaLand.get_drivers(canopy) ==
+                  (atmos, radiation, soil_driver)
             Y, p, coords = ClimaLand.initialize(canopy)
             @test propertynames(p.drivers) == (
                 :P_liq,
@@ -1493,6 +1435,8 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
+                :ψ,
+                :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
             @test !isnothing(zero(Y))

@@ -211,7 +211,6 @@ for FT in (Float32, Float64)
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = FT.(-Array{FT}(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         compartment_midpoints = Vector{FT}(
             range(
                 start = Δz / 2,
@@ -279,29 +278,20 @@ for FT in (Float32, Float64)
                     for i in 1:(n_leaf + n_stem)
                         if i == 1
                             fa =
-                                sum(
-                                    water_flux.(
-                                        root_depths,
-                                        plant_hydraulics.compartment_midpoints[i],
+                                water_flux.(
+                                    -1 .* RD,
+                                    plant_hydraulics.compartment_midpoints[i],
+                                    ψ_soil0,
+                                    Y[i],
+                                    PlantHydraulics.hydraulic_conductivity(
+                                        conductivity_model,
                                         ψ_soil0,
-                                        Y[i],
-                                        PlantHydraulics.hydraulic_conductivity(
-                                            conductivity_model,
-                                            ψ_soil0,
-                                        ),
-                                        PlantHydraulics.hydraulic_conductivity(
-                                            conductivity_model,
-                                            Y[i],
-                                        ),
-                                    ) .*
-                                    ClimaLand.Canopy.PlantHydraulics.root_distribution.(
-                                        root_depths,
-                                        RD,
-                                    ) .* (
-                                        vcat(root_depths, [0.0])[2:end] -
-                                        vcat(root_depths, [0.0])[1:(end - 1)]
                                     ),
-                                ) * AI[:stem]
+                                    PlantHydraulics.hydraulic_conductivity(
+                                        conductivity_model,
+                                        Y[i],
+                                    ),
+                                ) .* AI[:stem]
                         else
                             fa =
                                 water_flux(
@@ -491,7 +481,6 @@ for FT in (Float32, Float64)
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = [FT(0.0)]# 1st element is the deepest root depth
         compartment_midpoints = [h_canopy]
         compartment_surfaces = [FT(0.0), h_canopy]
         # set rooting_depth param to largest possible value to test no roots
