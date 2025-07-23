@@ -216,17 +216,14 @@ When running the soil model in standalone mode, `prognostic_land_components = (:
 this should be a list of the component models. This value of this argument must be the same across all components in the land model.
 
 Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
-changed with keyword arguments. 
+changed with keyword arguments.
 
-The runoff and albedo parameterizations are also provided and can be changed via keyword argument; 
-additional sources may be required in your model if the soil model will be composed with other 
+The runoff and albedo parameterizations are also provided and can be changed via keyword argument;
+additional sources may be required in your model if the soil model will be composed with other
 component models.
 
 Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
 by kwarg; otherwise the default values are used.
-
-TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
-roughness, and emissivity.
 """
 function EnergyHydrology(
     FT,
@@ -256,6 +253,8 @@ function EnergyHydrology(
     emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
     additional_sources = (),
 )
+    # TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
+    #  roughness, and emissivity.
     top_bc = AtmosDrivenFluxBC(
         forcing.atmos,
         forcing.radiation,
@@ -298,11 +297,9 @@ end
 Creates a RichardsModel model with the given float type FT, domain, earth_param_set and forcing.
 
 Default spatially varying parameters (for retention curve parameters and specific storativity) are provided but can be
-changed with keyword arguments. 
+changed with keyword arguments.
 
 The runoff parameterization is also provided and can be changed via keyword argument.
-
-TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention argument.
 """
 function RichardsModel(
     FT,
@@ -319,6 +316,7 @@ function RichardsModel(
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
 )
+    # TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention argument.
     top_bc = RichardsAtmosDrivenFluxBC(forcing.atmos, runoff)
     bottom_bc = WaterFluxBC((p, t) -> 0.0)
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)

@@ -71,7 +71,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
@@ -116,7 +116,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Two-stream model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
@@ -799,9 +799,6 @@ This currently takes a leaf conductance (moles per leaf area per second)
 and (1) converts it to m/s, (2) upscales to the entire canopy, by assuming
 the leaves in the canopy are in parallel and hence multiplying
 by LAI.
-
-TODO: Check what CLM does, and check if we can use the same function
-for GPP from An, and make more general.
 """
 function upscale_leaf_conductance(
     gs::FT,
@@ -810,6 +807,8 @@ function upscale_leaf_conductance(
     R::FT,
     P::FT,
 ) where {FT}
+    # TODO: Check what CLM does, and check if we can use the same function
+    #  for GPP from An, and make more general.
     canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
     return canopy_conductance
 end
@@ -949,7 +948,7 @@ where `VPD` is the vapor pressure deficit in the atmosphere
 
 Note that in supersaturated conditions the vapor pressure deficit will be negative,
 which leads to an imaginary Medlyn term `m`. Clipping to zero solves this, but this leads
-to division by zero, so we regularize the division by adding a small quantity. 
+to division by zero, so we regularize the division by adding a small quantity.
 
 An alternative to consider in the future is to compute the inverse of this quantity
 and stomatal resistance instead of conductance.

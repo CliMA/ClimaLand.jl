@@ -121,8 +121,8 @@ end
 """
     get_default_parameter(FT, climaparams_name)
 
-Helper function for accessing and returning the default 
-parameter value (a float of type `FT`) from  the ClimaParams 
+Helper function for accessing and returning the default
+parameter value (a float of type `FT`) from  the ClimaParams
 dictionary. To look up the value, you must use the name
 of the parameter from ClimaParams (`climaparams_name`).
 For example, the following keys in the ClimaParams dictionary map
@@ -140,6 +140,8 @@ to the variables in the parameter structs as noted below:
 
 :canopy_emissivity => :ϵ_canopy (TwoStreamParameters, BeerLambertParameters)
 :min_stomatal_conductance => :g0 (MedlynConductanceParameters)
+:low_water_pressure_sensitivity => :sc (FarquharParameters, OptimalityFarquharParameters)
+:moisture_stress_ref_water_pressure => :pc (FarquharParameters, OptimalityFarquharParameters)
 
 :soil_conductivity => :κ_soil (BucketModelParameters)
 :soil_heat_capacity => :ρc_soil (BucketModelParameters)
