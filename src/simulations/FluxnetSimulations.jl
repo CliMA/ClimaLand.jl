@@ -8,7 +8,6 @@ using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
 using ClimaLand
-const FT = Float64
 
 include("initial_conditions.jl")
 
@@ -32,7 +31,8 @@ Xu and Baldocchi, 2003
 https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 
 """
-function get_parameters(::Val{:US_Ha1};
+function get_parameters(
+    ::Val{:US_Ha1};
     time_offset = 5,
     lat = FT(42.5378), # degree
     long = FT(-72.1715), # degree
@@ -71,8 +71,11 @@ function get_parameters(::Val{:US_Ha1};
     ψ63 = FT(-4 / 0.0098), # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4), # unitless, Holtzman's original c param value
     a = FT(0.05 * 0.0098), # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+    ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(2.46e-4),
     plant_S_s = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
@@ -83,18 +86,61 @@ function get_parameters(::Val{:US_Ha1};
     h_stem = FT(0), # m
     h_canopy = h_leaf + h_stem,
     z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m
-)
+    z0_b = FT(0.1) * z0_m,
+) where {FT}
 
-    return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
-        soil_S_s, soil_vg_n, soil_vg_α, θ_r, ν_ss_quartz, ν_ss_om,
-        ν_ss_gravel, z_0m_soil, z_0b_soil, soil_ϵ, soil_α_PAR, soil_α_NIR,
-        Ω, ld, G_Function, α_PAR_leaf, λ_γ_PAR, τ_PAR_leaf,
-        α_NIR_leaf, τ_NIR_leaf, ϵ_canopy, ac_canopy, g1, Drel,
-        g0, Vcmax25, SAI, f_root_to_shoot, K_sat_plant, ψ63,
-        Weibull_param, a, conductivity_model, retention_model,
-        plant_ν, plant_S_s, rooting_depth, n_stem, n_leaf,
-        h_leaf, h_stem, h_canopy, z0_m, z0_b)
+    return (;
+        time_offset,
+        lat,
+        long,
+        atmos_h,
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_vg_n,
+        soil_vg_α,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_α_PAR,
+        soil_α_NIR,
+        Ω,
+        ld,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    )
 
 end
 
@@ -112,7 +158,8 @@ Xu and Baldocchi, 2003
 https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 
 """
-function get_parameters(::Val{:US_MOz};
+function get_parameters(
+    ::Val{:US_MOz};
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -172,8 +219,11 @@ function get_parameters(::Val{:US_MOz};
     ψ63 = FT(-4 / 0.0098), # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4), # unitless, Holtzman's original c param value
     a = FT(0.1 * 0.0098), # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+    ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(1.44e-4),
     plant_S_s = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
@@ -184,20 +234,64 @@ function get_parameters(::Val{:US_MOz};
     h_leaf = FT(9.5), # m
     h_canopy = h_stem + h_leaf,
     z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m
-)
-    return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
-        soil_S_s, soil_vg_n, soil_vg_α, θ_r, ν_ss_quartz, ν_ss_om,
-        ν_ss_gravel, z_0m_soil, z_0b_soil, soil_ϵ, soil_α_PAR, soil_α_NIR,
-        Ω, ld, G_Function, α_PAR_leaf, λ_γ_PAR, τ_PAR_leaf,
-        α_NIR_leaf, τ_NIR_leaf, ϵ_canopy, ac_canopy, g1, Drel,
-        g0, Vcmax25, SAI, f_root_to_shoot, K_sat_plant, ψ63,
-        Weibull_param, a, conductivity_model, retention_model,
-        plant_ν, plant_S_s, rooting_depth, n_stem, n_leaf,
-        h_leaf, h_stem, h_canopy, z0_m, z0_b)
+    z0_b = FT(0.1) * z0_m,
+) where {FT}
+    return (;
+        time_offset,
+        lat,
+        long,
+        atmos_h,
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_vg_n,
+        soil_vg_α,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_α_PAR,
+        soil_α_NIR,
+        Ω,
+        ld,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    )
 end
 
-function get_parameters(::Val{:US_NR1};
+function get_parameters(
+    ::Val{:US_NR1};
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -259,8 +353,11 @@ function get_parameters(::Val{:US_NR1};
     ψ63 = FT(-4 / 0.0098), # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4), # unitless, Holtzman's original c param value
     a = FT(0.05 * 0.0098), # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+    ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(8.06e-4),
     plant_S_s = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
@@ -270,18 +367,61 @@ function get_parameters(::Val{:US_NR1};
     h_stem = FT(7.5), # m
     h_canopy = h_leaf + h_stem,
     z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m
-)
+    z0_b = FT(0.1) * z0_m,
+) where {FT}
 
-    return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
-        soil_S_s, soil_vg_n, soil_vg_α, θ_r, ν_ss_quartz, ν_ss_om,
-        ν_ss_gravel, z_0m_soil, z_0b_soil, soil_ϵ, soil_α_PAR, soil_α_NIR,
-        Ω, ld, G_Function, α_PAR_leaf, λ_γ_PAR, τ_PAR_leaf,
-        α_NIR_leaf, τ_NIR_leaf, ϵ_canopy, ac_canopy, g1, Drel,
-        g0, Vcmax25, SAI, f_root_to_shoot, K_sat_plant, ψ63,
-        Weibull_param, a, conductivity_model, retention_model,
-        plant_ν, plant_S_s, rooting_depth, n_stem, n_leaf,
-        h_leaf, h_stem, h_canopy, z0_m, z0_b)
+    return (;
+        time_offset,
+        lat,
+        long,
+        atmos_h,
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_vg_n,
+        soil_vg_α,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_α_PAR,
+        soil_α_NIR,
+        Ω,
+        ld,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    )
 
 end
 
@@ -297,7 +437,8 @@ And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2
 CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 """
-function get_parameters(::Val{:US_Var};
+function get_parameters(
+    ::Val{:US_Var};
     # Timezone (offset from UTC in hrs)
     time_offset = 8,
 
@@ -357,8 +498,11 @@ function get_parameters(::Val{:US_Var};
     ψ63 = FT(-2.7 / 0.0098), # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4), # unitless, Holtzman's original c param value
     a = FT(0.05 * 0.0098), # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+    ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(8.93e-3),
     plant_S_s = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
@@ -369,21 +513,65 @@ function get_parameters(::Val{:US_Var};
     h_stem = FT(0), # m
     h_canopy = h_leaf + h_stem,
     z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m
-)
-    return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
-        soil_S_s, soil_vg_n, soil_vg_α, θ_r, ν_ss_quartz, ν_ss_om,
-        ν_ss_gravel, z_0m_soil, z_0b_soil, soil_ϵ, soil_α_PAR, soil_α_NIR,
-        Ω, ld, G_Function, α_PAR_leaf, λ_γ_PAR, τ_PAR_leaf,
-        α_NIR_leaf, τ_NIR_leaf, ϵ_canopy, ac_canopy, g1, Drel,
-        g0, Vcmax25, SAI, f_root_to_shoot, K_sat_plant, ψ63,
-        Weibull_param, a, conductivity_model, retention_model,
-        plant_ν, plant_S_s, rooting_depth, n_stem, n_leaf,
-        h_leaf, h_stem, h_canopy, z0_m, z0_b)
+    z0_b = FT(0.1) * z0_m,
+) where {FT}
+    return (;
+        time_offset,
+        lat,
+        long,
+        atmos_h,
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_vg_n,
+        soil_vg_α,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_α_PAR,
+        soil_α_NIR,
+        Ω,
+        ld,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    )
 end
 
 # fallback function, get generic values (decide later)
-function get_parameters(site_ID;
+function get_parameters(
+    site_ID;
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -443,8 +631,11 @@ function get_parameters(site_ID;
     ψ63 = FT(-4 / 0.0098), # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4), # unitless, Holtzman's original c param value
     a = FT(0.1 * 0.0098), # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+    ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(1.44e-4),
     plant_S_s = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
@@ -455,21 +646,64 @@ function get_parameters(site_ID;
     h_leaf = FT(9.5), # m
     h_canopy = h_stem + h_leaf,
     z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m
-)
-    return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
-        soil_S_s, soil_vg_n, soil_vg_α, θ_r, ν_ss_quartz, ν_ss_om,
-        ν_ss_gravel, z_0m_soil, z_0b_soil, soil_ϵ, soil_α_PAR, soil_α_NIR,
-        Ω, ld, G_Function, α_PAR_leaf, λ_γ_PAR, τ_PAR_leaf,
-        α_NIR_leaf, τ_NIR_leaf, ϵ_canopy, ac_canopy, g1, Drel,
-        g0, Vcmax25, SAI, f_root_to_shoot, K_sat_plant, ψ63,
-        Weibull_param, a, conductivity_model, retention_model,
-        plant_ν, plant_S_s, rooting_depth, n_stem, n_leaf,
-        h_leaf, h_stem, h_canopy, z0_m, z0_b)
+    z0_b = FT(0.1) * z0_m,
+) where {FT}
+    return (;
+        time_offset,
+        lat,
+        long,
+        atmos_h,
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_vg_n,
+        soil_vg_α,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_α_PAR,
+        soil_α_NIR,
+        Ω,
+        ld,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    )
 end
 
 """
-    get_domain_info(::Val{:US_Ha1}; dz_bottom = FT(1.5), dz_top = FT(0.025),
+    get_domain_info(FT, ::Val{:US_Ha1}; dz_bottom = FT(1.5), dz_top = FT(0.025),
         nelements = 20, zmin = FT(-10), zmax = FT(0)
 
 Gets and returns primary domain information for the US-Ha1 (Massachusetts
@@ -478,24 +712,27 @@ Harvard Forest) Fluxnet site.
 The data source comes from: Unknown.
 """
 # for US-Ha1
-function get_domain_info(::Val{:US_Ha1};
+function get_domain_info(
+    FT,
+    ::Val{:US_Ha1};
     dz_bottom = FT(1.5),
     dz_top = FT(0.025),
     nelements = 20,
     zmin = FT(-10),
-    zmax = FT(0)
+    zmax = FT(0),
 )
 
-    dz_tuple = (dz_bottom, dz_top),
-
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+    dz_tuple = (dz_bottom, dz_top)
+    return (
+        dz_tuple = dz_tuple,
+        nelements = nelements,
+        zmin = zmin,
+        zmax = zmax,
+    )
 end
 
 """
-    get_domain_info(::Val{:US_MOz}; dz_bottom = FT(1.5), dz_top = FT(0.1),
+    get_domain_info(FT, ::Val{:US_MOz}; dz_bottom = FT(1.5), dz_top = FT(0.1),
         nelements = 20, zmin = FT(-10), zmax = FT(0))
 
 Gets and returns primary domain information for the US-MOz (Missouri Ozark)
@@ -503,24 +740,28 @@ Fluxnet site.
 
 The data source comes from: Unknown.
 """
-function get_domain_info(::Val{:US_MOz};
+function get_domain_info(
+    FT,
+    ::Val{:US_MOz};
     dz_bottom = FT(1.5),
     dz_top = FT(0.1),
     nelements = 20,
     zmin = FT(-10),
-    zmax = FT(0)
+    zmax = FT(0),
 )
-    
+
     dz_tuple = (dz_bottom, dz_top)
 
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+    return (
+        dz_tuple = dz_tuple,
+        nelements = nelements,
+        zmin = zmin,
+        zmax = zmax,
+    )
 end
 
 """
-    get_domain_info(::Val{:US_NR1}; dz_bottom = FT(1.25),
+    get_domain_info(FT, ::Val{:US_NR1}; dz_bottom = FT(1.25),
         dz_top = FT(0.05), nelements = 20, zmin = FT(-10), zmax = FT(0))
 
 Gets and returns primary domain information for the US-NR1 (Colorado Niwot Ridge)
@@ -528,64 +769,76 @@ Fluxnet site.
 
 The data source comes from: Unknown.
 """
-function get_domain_info(::Val{:US_NR1};
+function get_domain_info(
+    FT,
+    ::Val{:US_NR1};
     dz_bottom = FT(1.25),
     dz_top = FT(0.05),
     nelements = 20,
     zmin = FT(-10),
-    zmax = FT(0)
+    zmax = FT(0),
 )
 
     dz_tuple = (dz_bottom, dz_top)
 
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+    return (
+        dz_tuple = dz_tuple,
+        nelements = nelements,
+        zmin = zmin,
+        zmax = zmax,
+    )
 end
 
 """
-    function get_domain_info(::Val{:US_Var}; dz_tuple = nothing,
+    function get_domain_info(FT, ::Val{:US_Var}; dz_tuple = nothing,
         nelements = 14, zmin = FT(-0.5), zmax = FT(0)
 Gets and returns primary domain information for the US-Var (California Vaira
 Ranch Ione) Fluxnet site.
 
 The data source comes from: Xu and Baldocchi, 2003.
 """
-function get_domain_info(::Val{:US_Var};
+function get_domain_info(
+    FT,
+    ::Val{:US_Var};
     dz_tuple = nothing,
     nelements = 14,
     zmin = FT(-0.5),
-    zmax = FT(0)
-), where Val{:US_Var}
+    zmax = FT(0),
+)
 
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+    return (
+        dz_tuple = dz_tuple,
+        nelements = nelements,
+        zmin = zmin,
+        zmax = zmax,
+    )
 end
 
 """
-    get_domain_info(site_ID::Symbol; dz_bottom = FT(1.5), dz_top = FT(0.1),
+    get_domain_info(FT, site_ID::Symbol; dz_bottom = FT(1.5), dz_top = FT(0.1),
         nelements = 20, zmin = FT(-10),  zmax = FT(0))
 
 Gets and returns primary domain information for a generic Fluxnet site,
 using autofilled values from US-MOz (Missouri Ozark) site.
 """
-function get_domain_info(site_ID::Symbol;
+function get_domain_info(
+    FT,
+    site_ID::Symbol;
     dz_bottom = FT(1.5),
     dz_top = FT(0.1),
     nelements = 20,
     zmin = FT(-10),
-    zmax = FT(0)
-)
-    
+    zmax = FT(0),
+) where {FT}
+
     dz_tuple = (dz_bottom, dz_top)
 
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+    return (
+        dz_tuple = dz_tuple,
+        nelements = nelements,
+        zmin = zmin,
+        zmax = zmax,
+    )
 end
 
 ###################################
@@ -603,14 +856,16 @@ function replace_hyphen(old_site_ID::String)
 
     return Symbol(new_site_ID)
 end
+end # module
 
-# Things to consider:
-# - fluxnet_domain.jl + fluxnet_simulation.jl - IGNORE
-# - any imports? - LATER ISSUE
-# - how to test - SEE TO DO
-# - syntax issue for site ID - SEE TO DO
 
-# TO DO
-# make hypen replacing function in this file - DONE
+# # Things to consider:
+# # - fluxnet_domain.jl + fluxnet_simulation.jl - IGNORE
+# # - any imports? - LATER ISSUE
+# # - how to test - SEE TO DO
+# # - syntax issue for site ID - SEE TO DO
 
-# test parameters in a new file in test/fluxnet_sim.jl
+# # TO DO
+# # make hypen replacing function in this file - DONE
+
+# # test parameters in a new file in test/fluxnet_sim.jl
