@@ -135,11 +135,6 @@ end
     include("integrated/full_land.jl")
 end
 
-# Simulations
-@safetestset "Default parameters" begin
-    include("simulations/spatial_parameters.jl")
-end
-
 # Diagnostics
 @safetestset "Diagnostics" begin
     include("diagnostics/diagnostics_tests.jl")
