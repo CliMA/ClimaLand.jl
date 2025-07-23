@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add convenience constructors for CanopyModel and integrated models PR[#1255](https://github.com/CliMA/ClimaLand.jl/pull/1255)
 - Rename LandSimulationVisualization to LandSimulationVisualizationExt; add template for FluxnetSimulationsExt PR[#1259](https://github.com/CliMA/ClimaLand.jl/pull/1259)
 - Remove root_depths from the PrescribeGroundConditions struct, and treat these ground ``drivers" consistently with how we handle atmospheric forcing PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1240)
 - Add constructors with default values for Canopy components PR[#1233](https://github.com/CliMA/ClimaLand.jl/pull/1233)

@@ -7,6 +7,7 @@ using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
+import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
@@ -125,7 +126,7 @@ end
 """
     PlantHydraulicsModel{FT}(
         domain,
-        forcing::NamedTuple;
+        LAI::AbstractTimeVaryingInput;
         n_stem::Int = 0,
         n_leaf::Int = 1,
         h_stem::FT = FT(0),
@@ -147,8 +148,7 @@ end
 
 Creates a PlantHydraulicsModel on the provided domain, using default parameters.
 
-The required argument `forcing` should be a NamedTuple with the following field:
-- `LAI`: a function or ClimaUtilities TimeVaryingInput for leaf area index
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
 The following default parameters are used:
 - n_stem = 0 (unitless) - number of stem compartments
@@ -172,7 +172,7 @@ https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
     domain,
-    forcing::NamedTuple;
+    LAI::AbstractTimeVaryingInput;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
@@ -180,7 +180,7 @@ function PlantHydraulicsModel{FT}(
     SAI::FT = FT(0),
     RAI::FT = FT(1),
     ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-        forcing.LAI,
+        LAI,
         SAI,
         RAI,
     ),
@@ -461,6 +461,118 @@ function CanopyModel{FT}(;
         @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
     end
 
+    args = (
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        hydraulics,
+        energy,
+        sif,
+        boundary_conditions,
+        parameters,
+        domain,
+    )
+    return CanopyModel{FT, typeof.(args)...}(args...)
+end
+
+"""
+    function CanopyModel{FT}(
+        domain::Union{
+            ClimaLand.Domains.Point,
+            ClimaLand.Domains.Plane,
+            ClimaLand.Domains.SphericalSurface,
+        },
+        forcing::NamedTuple,
+        LAI::AbstractTimeVaryingInput,
+        earth_param_set;
+        z_0m = FT(2),
+        z_0b = FT(0.2),
+        prognostic_land_components = (:canopy,),
+        autotrophic_respiration = AutotrophicRespirationModel{FT}(),
+        radiative_transfer = TwoStreamModel{FT}(domain),
+        photosynthesis = FarquharModel{FT}(domain),
+        conductance = MedlynConductanceModel{FT}(domain),
+        hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
+        energy = BigLeafEnergyModel{FT}(),
+        sif = Lee2015SIFModel{FT}(),
+    ) where {FT, PSE}
+
+Creates a CanopyModel with the provided domain, forcing, and parameters.
+
+Defaults are provided for each canopy component model, which can be overridden
+by passing in a different instance of that type of model. Default parameters are also provided
+for each canopy component, and can be changed with keyword arguments. Please see the documentation
+of each component model for details on the default parameters.
+
+The required argument `forcing` should be a NamedTuple with the following field:
+- `atmos`: a PrescribedAtmosphere or CoupledAtmosphere object
+- `radiation`: a PrescribedRadiativeFluxes or CoupledRadiativeFluxes object
+- `ground`: a PrescribedGroundConditions, PrognosticGroundConditions, or PrognosticSoilConditions object
+
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
+
+When running the canopy model in standalone mode, set `prognostic_land_components = (:canopy,)`,
+while for running integrated land models, this should be a list of the individual models.
+This value of this argument must be the same across all components in the land model.
+"""
+function CanopyModel{FT}(
+    domain::Union{
+        ClimaLand.Domains.Point,
+        ClimaLand.Domains.Plane,
+        ClimaLand.Domains.SphericalSurface,
+    },
+    forcing::NamedTuple,
+    LAI::AbstractTimeVaryingInput,
+    earth_param_set;
+    z_0m = FT(2),
+    z_0b = FT(0.2),
+    prognostic_land_components = (:canopy,),
+    autotrophic_respiration = AutotrophicRespirationModel{FT}(),
+    radiative_transfer = TwoStreamModel{FT}(domain),
+    photosynthesis = FarquharModel{FT}(domain),
+    conductance = MedlynConductanceModel{FT}(domain),
+    hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
+    energy = BigLeafEnergyModel{FT}(),
+    sif = Lee2015SIFModel{FT}(),
+) where {FT}
+    (; atmos, radiation, ground) = forcing
+
+    if typeof(energy) <: PrescribedCanopyTempModel{FT}
+        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
+        @assert typeof(atmos) <: PrescribedAtmosphere{FT}
+    end
+
+    # Confirm that each spatially-varying parameter is on the correct domain
+    for p in map(
+        component -> propertynames(component.parameters),
+        [
+            autotrophic_respiration,
+            radiative_transfer,
+            photosynthesis,
+            conductance,
+            hydraulics,
+            energy,
+            sif,
+        ],
+    )
+        @assert !(p isa ClimaCore.Fields.Field) ||
+                axes(p) == domain.space.surface
+    end
+
+    boundary_conditions = AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        ground,
+        prognostic_land_components,
+    )
+
+    # TODO: move z_0m, z_0b to ClimaParams so we can call `get_default_parameter`.
+    parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+        z_0m,
+        z_0b,
+        earth_param_set,
+    )
     args = (
         autotrophic_respiration,
         radiative_transfer,

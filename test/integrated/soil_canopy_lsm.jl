@@ -11,6 +11,59 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
 for FT in (Float32, Float64)
+    @testset "Default constructors, FT = $FT" begin
+        domain = ClimaLand.Domains.global_domain(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        forcing = (; atmos, radiation)
+        earth_param_set = LP.LandParameters(FT)
+        prognostic_land_components = (:canopy, :soil, :soilco2)
+
+        # Soil model
+        soil = EnergyHydrology{FT}(
+            domain,
+            forcing,
+            earth_param_set;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+
+        # SoilCO2 model
+        co2_prognostic_soil = Biogeochemistry.PrognosticMet(soil.parameters)
+        soil_organic_carbon = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        )
+        soilco2_drivers = Biogeochemistry.SoilDrivers(
+            co2_prognostic_soil,
+            soil_organic_carbon,
+            atmos,
+        )
+        soilco2 = Biogeochemistry.SoilCO2Model{FT}(;
+            domain,
+            drivers = soilco2_drivers,
+        )
+
+        # Canopy model
+        canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        ground = ClimaLand.PrognosticSoilConditions{FT}()
+        canopy_forcing = (; atmos, radiation, ground)
+        canopy = Canopy.CanopyModel{FT}(
+            canopy_domain,
+            canopy_forcing,
+            LAI,
+            earth_param_set;
+            prognostic_land_components,
+        )
+
+        model = SoilCanopyModel{FT}(soilco2, soil, canopy)
+
+        # The constructor has many asserts that check the model
+        # components, so we don't need to check them again here.
+        @test model.soil == soil
+        @test model.soilco2 == soilco2
+        @test model.canopy == canopy
+    end
+
     @testset "PrognosticSoil, FT = $FT" begin
         # Only care about PAR and NIR albedo values
         NIR_albedo = FT(0.4)
