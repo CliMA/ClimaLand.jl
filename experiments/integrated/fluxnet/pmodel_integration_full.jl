@@ -43,7 +43,6 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
-ARGS = ["US-MOz", "pmodel", "testsms1"]
 if length(ARGS) < 1
     error("Must provide site ID on command line")
 end
@@ -358,6 +357,10 @@ common_vars = [
     "canopy.turbulent_fluxes.shf",
     "canopy.soil_moisture_stress.βm",
     "canopy.soil_moisture_stress.ϑ_root",
+    "soil.infiltration",
+    "soil.total_water",
+    "LW_u",
+    "SW_u",
 ]
 
 pmodel_vars = [
