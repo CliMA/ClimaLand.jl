@@ -1419,7 +1419,8 @@ end
             # Check that the canopy model was created correctly
             @test ClimaComms.context(canopy) == ClimaComms.context()
             @test ClimaComms.device(canopy) == ClimaComms.device()
-            @test ClimaLand.get_drivers(canopy) == (atmos, radiation)
+            @test ClimaLand.get_drivers(canopy) ==
+                  (atmos, radiation, soil_driver)
             Y, p, coords = ClimaLand.initialize(canopy)
             @test propertynames(p.drivers) == (
                 :P_liq,
@@ -1434,6 +1435,8 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
+                :ψ,
+                :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
             @test !isnothing(zero(Y))
