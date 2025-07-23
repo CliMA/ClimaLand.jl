@@ -246,7 +246,7 @@ function EnergyHydrology{FT}(
         domain.space.subsurface,
         FT,
     ),
-    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
     z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
     z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
     emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),

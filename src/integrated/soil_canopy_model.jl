@@ -30,9 +30,50 @@ struct SoilCanopyModel{
     soil::SM
     "The canopy model to be used"
     canopy::VM
+    function SoilCanopyModel{FT}(
+        soilco2::MM,
+        soil::SM,
+        canopy::VM,
+    ) where {
+        FT,
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        SM <: Soil.EnergyHydrology{FT},
+        VM <: Canopy.CanopyModel{FT},
+    }
+        prognostic_land_components = (:canopy, :soil, :soilco2)
+        top_soil_bc = soil.boundary_conditions.top
+        canopy_bc = canopy.boundary_conditions
+
+        # Integrated model checks
+        @assert top_soil_bc.prognostic_land_components ==
+                prognostic_land_components
+        @assert canopy_bc.prognostic_land_components ==
+                prognostic_land_components
+
+        @assert top_soil_bc.atmos == soilco2.drivers.atmos
+        @assert top_soil_bc.atmos == canopy_bc.atmos
+        @assert top_soil_bc.radiation == canopy_bc.radiation
+
+        @assert Domains.obtain_surface_domain(soil.domain) == canopy.domain
+        @assert Domains.obtain_surface_domain(soilco2.domain) == canopy.domain
+
+        @assert soil.parameters.earth_param_set ==
+                soilco2.parameters.earth_param_set
+        @assert soil.parameters.earth_param_set ==
+                canopy.parameters.earth_param_set
+
+        # SoilCanopyModel-specific checks
+        # Runoff and sublimation are also automatically included in the soil model
+        @assert RootExtraction{FT}() in soil.sources
+        @assert Soil.PhaseChange{FT}() in soil.sources
+        @assert canopy.hydraulics.transpiration isa
+                Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
+        @assert canopy_bc.ground isa PrognosticSoilConditions{FT}
+        @assert soilco2.drivers.met isa Soil.Biogeochemistry.PrognosticMet
+
+        return new{FT, MM, SM, VM}(soilco2, soil, canopy)
+    end
 end
-
-
 
 """
     SoilCanopyModel{FT}(;
@@ -155,11 +196,7 @@ function SoilCanopyModel{FT}(;
         drivers = soilco2_drivers,
     )
 
-    return SoilCanopyModel{FT, typeof(soilco2), typeof(soil), typeof(canopy)}(
-        soilco2,
-        soil,
-        canopy,
-    )
+    return SoilCanopyModel{FT}(soilco2, soil, canopy)
 end
 
 """
