@@ -1221,10 +1221,7 @@ end
     is taken to be constant (1000.0 kg/m^3). Otherwise we use an EOS to compute the density
     at the given temperature and pressure. 
 """
-function compute_viscosity_ratio(
-    T::FT,
-    p::FT,
-) where {FT}
+function compute_viscosity_ratio(T::FT, p::FT) where {FT}
     η25 = viscosity_h2o(FT(298.15), FT(101325.0))
     ηstar = viscosity_h2o(T, p) / η25
     return FT(ηstar)

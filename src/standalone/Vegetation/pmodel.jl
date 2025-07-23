@@ -1,7 +1,4 @@
-export PModelParameters, 
-    PModelConstants, 
-    compute_full_pmodel_outputs, 
-    PModel
+export PModelParameters, PModelConstants, compute_full_pmodel_outputs, PModel
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -202,7 +199,7 @@ function compute_full_pmodel_outputs(
     ca::FT,
     P_air::FT,
     VPD::FT,
-    βm::FT
+    βm::FT,
 ) where {FT}
     # Unpack parameters
     (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters

@@ -201,12 +201,20 @@ end
                 I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
                 βm =
                     Bool(inputs["do_soilmstress"]) ?
-                    quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
+                    quadratic_soil_moisture_stress(FT(inputs["soilm"])) :
+                    FT(1.0)
 
                 # Run the model
-                outputs =
-                    compute_full_pmodel_outputs(parameters, constants, 
-                        T_canopy, I_abs, ca, P_air, VPD, βm)
+                outputs = compute_full_pmodel_outputs(
+                    parameters,
+                    constants,
+                    T_canopy,
+                    I_abs,
+                    ca,
+                    P_air,
+                    VPD,
+                    βm,
+                )
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)
