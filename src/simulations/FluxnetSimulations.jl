@@ -14,7 +14,25 @@ include("initial_conditions.jl")
 
 import ..Diagnostics: close_output_writers
 
-function get_parameters(::Val{:US-Ha1},
+###################################
+#     SIMULATION MODULE CODE      #
+###################################
+
+"""
+    get_parameters(::Val{:US_Ha1}; kwargs...)
+
+Gets parameters for the Fluxnet site US-Ha1 (Massachusetts Harvard Forest)
+and returns them as a Named Tuple. Default parameters are provided and
+can be overriden using keyword arguments.
+
+Data sources:
+
+Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
+Xu and Baldocchi, 2003
+https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+
+"""
+function get_parameters(::Val{:US_Ha1};
     time_offset = 5,
     lat = FT(42.5378), # degree
     long = FT(-72.1715), # degree
@@ -80,7 +98,21 @@ function get_parameters(::Val{:US-Ha1},
 
 end
 
-function get_parameters(::Val{:US_MOz},
+
+"""
+    get_parameters(::Val{:US_Ha1}; kwargs...)
+
+Gets parameters for the Fluxnet site US-Ha1 (Massachusetts Harvard Forest)
+and returns them as a Named Tuple.
+
+Data sources:
+
+Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
+Xu and Baldocchi, 2003
+https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+
+"""
+function get_parameters(::Val{:US_MOz};
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -165,7 +197,7 @@ function get_parameters(::Val{:US_MOz},
         h_leaf, h_stem, h_canopy, z0_m, z0_b)
 end
 
-function get_parameters(::Val{:US_NR1},
+function get_parameters(::Val{:US_NR1};
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -253,7 +285,19 @@ function get_parameters(::Val{:US_NR1},
 
 end
 
-function get_parameters(::Val{:US_Var},
+
+"""
+
+
+Some site parameters have been taken from
+Ma, S., Baldocchi, D. D., Xu, L., Hehn, T. (2007)
+Inter-Annual Variability In Carbon Dioxide Exchange Of An
+Oak/Grass Savanna And Open Grassland In California, Agricultural
+And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008 
+CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
+"""
+function get_parameters(::Val{:US_Var};
     # Timezone (offset from UTC in hrs)
     time_offset = 8,
 
@@ -324,7 +368,7 @@ function get_parameters(::Val{:US_Var},
     h_leaf = FT(0.5), # m, Xu and Baldocchi, 2003
     h_stem = FT(0), # m
     h_canopy = h_leaf + h_stem,
-    z0_m = FT(0.13) * h_canopy
+    z0_m = FT(0.13) * h_canopy,
     z0_b = FT(0.1) * z0_m
 )
     return (; time_offset, lat, long, atmos_h, soil_ν, soil_K_sat,
@@ -339,7 +383,7 @@ function get_parameters(::Val{:US_Var},
 end
 
 # fallback function, get generic values (decide later)
-function get_parameters(site_ID,
+function get_parameters(site_ID;
     # Timezone (offset from UTC in hrs)
     time_offset = 7,
 
@@ -424,20 +468,50 @@ function get_parameters(site_ID,
         h_leaf, h_stem, h_canopy, z0_m, z0_b)
 end
 
+"""
+    get_domain_info(::Val{:US_Ha1}; dz_bottom = FT(1.5), dz_top = FT(0.025),
+        nelements = 20, zmin = FT(-10), zmax = FT(0)
+
+Gets and returns primary domain information for the US-Ha1 (Massachusetts
+Harvard Forest) Fluxnet site.
+
+The data source comes from: Unknown.
+"""
 # for US-Ha1
-function get_domain_info(::Val{:US-Ha1})
-    # Column dimensions - separation of layers at the top and bottom of the column:
-    dz_bottom = FT(1.5)
-    dz_top = FT(0.025)
+function get_domain_info(::Val{:US_Ha1};
+    dz_bottom = FT(1.5),
+    dz_top = FT(0.025),
+    nelements = 20,
+    zmin = FT(-10),
+    zmax = FT(0)
+)
+
+    dz_tuple = (dz_bottom, dz_top),
+
+    return (dz_tuple=dz_tuple,
+        nelements=nelements,
+        zmin=zmin,
+        zmax=zmax)
+end
+
+"""
+    get_domain_info(::Val{:US_MOz}; dz_bottom = FT(1.5), dz_top = FT(0.1),
+        nelements = 20, zmin = FT(-10), zmax = FT(0))
+
+Gets and returns primary domain information for the US-MOz (Missouri Ozark)
+Fluxnet site.
+
+The data source comes from: Unknown.
+"""
+function get_domain_info(::Val{:US_MOz};
+    dz_bottom = FT(1.5),
+    dz_top = FT(0.1),
+    nelements = 20,
+    zmin = FT(-10),
+    zmax = FT(0)
+)
+    
     dz_tuple = (dz_bottom, dz_top)
-    nelements = 20
-    zmin = FT(-10)
-    zmax = FT(0)
-    # Stem and leaf compartments and their heights:
-    # n_stem = Int64(1)
-    # n_leaf = Int64(1)
-    # h_leaf = FT(12) # m
-    # h_stem = FT(14) # m
 
     return (dz_tuple=dz_tuple,
         nelements=nelements,
@@ -445,19 +519,24 @@ function get_domain_info(::Val{:US-Ha1})
         zmax=zmax)
 end
 
-function get_domain_info(::Val{:US-MOz})
-    # Column dimensions - separation of layers at the top and bottom of the column:
-    dz_bottom = FT(1.5)
-    dz_top = FT(0.1)
+"""
+    get_domain_info(::Val{:US_NR1}; dz_bottom = FT(1.25),
+        dz_top = FT(0.05), nelements = 20, zmin = FT(-10), zmax = FT(0))
+
+Gets and returns primary domain information for the US-NR1 (Colorado Niwot Ridge)
+Fluxnet site.
+
+The data source comes from: Unknown.
+"""
+function get_domain_info(::Val{:US_NR1};
+    dz_bottom = FT(1.25),
+    dz_top = FT(0.05),
+    nelements = 20,
+    zmin = FT(-10),
+    zmax = FT(0)
+)
+
     dz_tuple = (dz_bottom, dz_top)
-    nelements = 20
-    zmin = FT(-10)
-    zmax = FT(0)
-    # Stem and leaf compartments and their heights:
-    # n_stem = Int64(1)
-    # n_leaf = Int64(1)
-    # h_stem = FT(9) # m
-    # h_leaf = FT(9.5) # m
 
     return (dz_tuple=dz_tuple,
         nelements=nelements,
@@ -465,19 +544,43 @@ function get_domain_info(::Val{:US-MOz})
         zmax=zmax)
 end
 
-function get_domain_info(::Val{:US-NR1})
-    # Column dimensions - separation of layers at the top and bottom of the column:
-    dz_bottom = FT(1.25)
-    dz_top = FT(0.05)
+"""
+    function get_domain_info(::Val{:US_Var}; dz_tuple = nothing,
+        nelements = 14, zmin = FT(-0.5), zmax = FT(0)
+Gets and returns primary domain information for the US-Var (California Vaira
+Ranch Ione) Fluxnet site.
+
+The data source comes from: Xu and Baldocchi, 2003.
+"""
+function get_domain_info(::Val{:US_Var};
+    dz_tuple = nothing,
+    nelements = 14,
+    zmin = FT(-0.5),
+    zmax = FT(0)
+), where Val{:US_Var}
+
+    return (dz_tuple=dz_tuple,
+        nelements=nelements,
+        zmin=zmin,
+        zmax=zmax)
+end
+
+"""
+    get_domain_info(site_ID::Symbol; dz_bottom = FT(1.5), dz_top = FT(0.1),
+        nelements = 20, zmin = FT(-10),  zmax = FT(0))
+
+Gets and returns primary domain information for a generic Fluxnet site,
+using autofilled values from US-MOz (Missouri Ozark) site.
+"""
+function get_domain_info(site_ID::Symbol;
+    dz_bottom = FT(1.5),
+    dz_top = FT(0.1),
+    nelements = 20,
+    zmin = FT(-10),
+    zmax = FT(0)
+)
+    
     dz_tuple = (dz_bottom, dz_top)
-    nelements = 20
-    zmin = FT(-10)
-    zmax = FT(0)
-    # Stem and leaf compartments and their heights:
-    # n_stem = Int64(1)
-    # n_leaf = Int64(1)
-    # h_leaf = FT(6.5) # m
-    # h_stem = FT(7.5) # m
 
     return (dz_tuple=dz_tuple,
         nelements=nelements,
@@ -485,36 +588,29 @@ function get_domain_info(::Val{:US-NR1})
         zmax=zmax)
 end
 
-function get_domain_info(::Val{:US-Var})
-    # Column dimensions - separation of layers at the top and bottom of the column:
-    dz_tuple = nothing
-    nelements = 14
-    zmin = FT(-0.5) #m, Xu and Baldocchi, 2003
-    zmax = FT(0)
-    # Stem and leaf compartments and their heights:
-    # n_stem = Int64(0)
-    # n_leaf = Int64(1)
-    # h_leaf = FT(0.5) # m, Xu and Baldocchi, 2003
-    # h_stem = FT(0) # m
+###################################
+#            UTILITIES            #
+###################################
 
-    return (dz_tuple=dz_tuple,
-        nelements=nelements,
-        zmin=zmin,
-        zmax=zmax)
+"""
+    replace_hyphen(old_site_ID::String)
+
+Replaces all instances of hyphens in a given site ID string with underscores
+and returns a Symbol of the reformatted site ID to be used as a Val{} type.
+"""
+function replace_hyphen(old_site_ID::String)
+    new_site_ID = replace(old_site_ID, "-" => "_")
+
+    return Symbol(new_site_ID)
 end
-
-# fallback function, get generic values (decide later)
-function get_domain_info(::Val{site_ID}) where {site_ID}
-end
-
 
 # Things to consider:
-# - fluxnet_domain.jl + fluxnet_simulation.jl
-# - any imports?
-# - how to test
-# - syntax issue for site ID
+# - fluxnet_domain.jl + fluxnet_simulation.jl - IGNORE
+# - any imports? - LATER ISSUE
+# - how to test - SEE TO DO
+# - syntax issue for site ID - SEE TO DO
 
 # TO DO
-# make hypen replacing function in this file
+# make hypen replacing function in this file - DONE
 
 # test parameters in a new file in test/fluxnet_sim.jl
