@@ -1,4 +1,4 @@
-module LandSimulationVisualization
+module LandSimulationVisualizationExt
 import ClimaDiagnostics
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
@@ -56,7 +56,7 @@ end
 )
 
 Creates the leaderboard plots a global LandModel simulations with diagnostics output
-as defined by `diagnostics` using `leaderboard_data_sources` as the source of truth; 
+as defined by `diagnostics` using `leaderboard_data_sources` as the source of truth;
 saves the output to files in `savedir`.
 
 The first two arguments are used for dispatch only.
@@ -103,8 +103,8 @@ specifically for the list of variables `short_names`, at the date
 given by `date`, and at the layers defined by `levels`; the output
 plots are saved in `savedir`.
 
-Please note that 
-- `date` must be a DateTime, and the output closest to this date will be used 
+Please note that
+- `date` must be a DateTime, and the output closest to this date will be used
 for plotting
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
 case all possible variables will be plotted
@@ -213,12 +213,12 @@ end
 	plot_name = "annual_timeseries.pdf",
 )
 
-Makes timeseries of the domain-averaged variable, 
+Makes timeseries of the domain-averaged variable,
  using the diagnostics output of the `sim` simulation,
 specifically for the list of variables `short_names; the output
 plots are saved in `savedir`.
 
-Please note that 
+Please note that
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
 case all possible variables will be plotted
 - The top layer of 3D variables is used for plotting.

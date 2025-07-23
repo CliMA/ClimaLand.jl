@@ -41,8 +41,8 @@ using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
 LandSimVis =
     Base.get_extension(
         ClimaLand,
-        :LandSimulationVisualization,
-    ).LandSimulationVisualization;
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 
 const FT = Float64;
 context = ClimaComms.context()
@@ -115,7 +115,7 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(7e-8) # m/s 
+    K_sat_plant = FT(7e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
     a = FT(0.2 * 0.0098) # 1/m

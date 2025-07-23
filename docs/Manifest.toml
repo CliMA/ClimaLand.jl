@@ -409,7 +409,7 @@ uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.17.2"
 
     [deps.ClimaLand.extensions]
-    LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
+    LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
     [deps.ClimaLand.weakdeps]

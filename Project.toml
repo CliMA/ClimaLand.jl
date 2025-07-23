@@ -29,6 +29,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
@@ -37,13 +38,14 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [extensions]
-LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
+FluxnetSimulationsExt = ["DelimitedFiles"]
+LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
 NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [compat]
 BSON = "0.3.9"
-CairoMakie = "0.12"
 CSV = "0.10.14"
+CairoMakie = "0.12"
 ClimaAnalysis = "0.5.17"
 ClimaComms = "0.6.2"
 ClimaCore = "0.14.23"
@@ -53,6 +55,7 @@ ClimaTimeSteppers = "0.8"
 ClimaUtilities = "0.1.24"
 DataFrames = "1.4"
 Dates = "1"
+DelimitedFiles = "1.9"
 DocStringExtensions = "0.9"
 Flux = "0.15, 0.16"
 GeoMakie = "< 0.7.13"
