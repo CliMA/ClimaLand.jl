@@ -1627,7 +1627,6 @@ function prescribed_forcing_era5(
     return (; atmos, radiation)
 end
 
-
 """
      prescribed_lai_era5(era5_lai_ncdata_path,
                          era5_lai_cover_ncdata_path,
