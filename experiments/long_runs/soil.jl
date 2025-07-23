@@ -20,8 +20,6 @@ import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
 
 using ClimaDiagnostics
-using ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
@@ -34,13 +32,14 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
-using Statistics
-import GeoMakie
-using CairoMakie
 using Dates
-import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
@@ -60,81 +59,59 @@ outdir =
 time_interpolation_method =
     LONGER_RUN ? LinearInterpolation() : LinearInterpolation(PeriodicCalendar())
 
-function setup_simulation(; greet = false)
-    # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-    # If LONGER run, run for 20 years, with the correct forcing each year.
-    start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
-    stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
-    Δt = 450.0
-    nelements = (101, 15)
-    if greet
-        @info "Run: Global Soil Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Start Date: $start_date"
-        @info "Stop Date: $stop_date"
-    end
-    domain = ClimaLand.Domains.global_domain(FT; context, nelements)
-    earth_param_set = LP.LandParameters(FT)
-    # Forcing data
-    if LONGER_RUN
-        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
-            start_date,
-            stop_date;
-            context,
-        )
-    else
-        era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
-    end
-    forcing = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        domain.space.surface,
-        start_date,
-        earth_param_set,
-        FT;
-        max_wind_speed = 25.0,
-        time_interpolation_method,
-    )
-    model = ClimaLand.Soil.EnergyHydrology(FT, domain, forcing, earth_param_set)
-    diagnostics = ClimaLand.default_diagnostics(
-        model,
-        start_date;
-        output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-            domain.space.subsurface,
-            outdir;
-            start_date,
-        ),
-        conservation = true,
-        conservation_period = Day(10),
-    )
-    simulation = LandSimulation(
-        FT,
-        start_date,
-        stop_date,
-        Δt,
-        model;
-        outdir,
-        diagnostics,
-    )
-    return simulation
+# If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
+# If LONGER run, run for 20 years, with the correct forcing each year.
+start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
+stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
+Δt = 450.0
+nelements = (101, 15)
+domain = ClimaLand.Domains.global_domain(FT; context, nelements)
+params = LP.LandParameters(FT)
+# Forcing data
+if LONGER_RUN
+    era5_ncdata_path =
+        ClimaLand.Artifacts.find_era5_year_paths(start_date, stop_date; context)
+else
+    era5_ncdata_path =
+        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 end
+forcing = ClimaLand.prescribed_forcing_era5(
+    era5_ncdata_path,
+    domain.space.surface,
+    start_date,
+    params,
+    FT;
+    max_wind_speed = 25.0,
+    time_interpolation_method,
+)
+model = ClimaLand.Soil.EnergyHydrology(FT, domain, forcing, params)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date;
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        outdir;
+        start_date,
+    ),
+    conservation = true,
+    conservation_period = Day(10),
+)
+simulation =
+    LandSimulation(FT, start_date, stop_date, Δt, model; outdir, diagnostics)
 
-simulation = setup_simulation(; greet = true);
+@info "Run: Global Soil Model"
+@info "Resolution: $nelements"
+@info "Timestep: $Δt s"
+@info "Start Date: $start_date"
+@info "Stop Date: $stop_date"
 ClimaLand.Simulations.solve!(simulation)
 
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-short_names = ["swc", "si", "sie"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
+short_names = ["swc", "sie", "si", "et"]
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
+LandSimVis.make_heatmaps(
+    simulation;
+    savedir = root_path,
+    date = stop_date,
+    short_names,
 )
-make_figures(root_path, outdir, short_names)
-
-## Conservation
-check_conservation(root_path, outdir)
+LandSimVis.check_conservation(simulation; savedir = root_path)

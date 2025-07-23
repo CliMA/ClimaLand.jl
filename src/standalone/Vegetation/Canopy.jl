@@ -1,4 +1,5 @@
 module Canopy
+import ClimaParams as CP
 using DocStringExtensions
 using Thermodynamics
 using ClimaLand
@@ -29,11 +30,10 @@ import ClimaLand:
     get_drivers,
     total_liq_water_vol_per_area!,
     total_energy_per_area!
-
+using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
-include("./ground_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
@@ -47,6 +47,291 @@ include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
+
+
+########################################################
+# Convenience constructors for Canopy model components
+########################################################
+
+## Autotrophic respiration models
+"""
+    AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+
+Creates a AutotrophicRespirationModel using default parameters of type FT.
+"""
+function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+    parameters = AutotrophicRespirationParameters(FT)
+    return AutotrophicRespirationModel{FT, typeof(parameters)}(parameters)
+end
+
+## Energy models
+"""
+    BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
+
+Creates a BigLeafEnergyModel using default parameters of type FT.
+
+The following default parameter is used:
+- ac_canopy = FT(2e3) (J m^-2 K^-1) - canopy specific heat per area
+"""
+function BigLeafEnergyModel{FT}(;
+    ac_canopy::FT = FT(2e3),
+) where {FT <: AbstractFloat}
+    # TODO: move `ac_canopy` to ClimaParams.jl so we can call `get_default_parameter`.
+    parameters = BigLeafEnergyParameters{FT}(ac_canopy)
+    return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
+end
+
+## Photosynthesis models
+"""
+    FarquharModel{FT}(
+        domain;
+        photosynthesis_parameters = clm_photosynthesis_parameters(
+            domain.space.surface,
+        ),
+        sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+        pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+    ) where {
+        FT <: AbstractFloat,
+        MECH <: Union{FT, ClimaCore.Fields.Field},
+        VC <: Union{FT, ClimaCore.Fields.Field},
+    }
+
+Creates a FarquharModel using default parameters of type FT.
+
+The `photosynthesis_parameters` argument is a NamedTuple that contains
+- `is_c3`: a Float or Field indicating if plants are C3 (1) or C4 (0) (unitless)
+- `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
+By default, these parameters are set by the `clm_photosynthesis_parameters` function,
+which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.
+
+The following additional default parameters are used:
+- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
+- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
+"""
+function FarquharModel{FT}(
+    domain;
+    photosynthesis_parameters = clm_photosynthesis_parameters(
+        domain.space.surface,
+    ),
+    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+) where {FT <: AbstractFloat}
+    (; is_c3, Vcmax25) = photosynthesis_parameters
+    parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
+    return FarquharModel{FT, typeof(parameters)}(parameters)
+end
+
+## Plant hydraulics models
+"""
+    PlantHydraulicsModel{FT}(
+        domain,
+        forcing::NamedTuple;
+        n_stem::Int = 0,
+        n_leaf::Int = 1,
+        h_stem::FT = FT(0),
+        h_leaf::FT = FT(1),
+        SAI::FT = FT(0),
+        RAI::FT = FT(1),
+        ai_parameterization = PrescribedSiteAreaIndex{FT}(forcing.LAI, SAI, RAI),
+        ν::FT = FT(1.44e-4),
+        S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
+        conductivity_model = Weibull{FT}(
+            K_sat = FT(7e-8),
+            ψ63 = FT(-4 / 0.0098),
+            c = FT(4),
+        ),
+        retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
+    ) where {FT <: AbstractFloat}
+
+Creates a PlantHydraulicsModel on the provided domain, using default parameters.
+
+The required argument `forcing` should be a NamedTuple with the following field:
+- `LAI`: a function or ClimaUtilities TimeVaryingInput for leaf area index
+
+The following default parameters are used:
+- n_stem = 0 (unitless) - number of stem compartments
+- n_leaf = 1 (unitless) - number of leaf compartments
+- h_stem = 0 (m) - height of the stem compartment
+- h_leaf = 1 (m) - height of the leaf compartment
+- SAI = 0 (m2/m2) - stem area index
+- RAI = 1 (m2/m2) - root area index
+- ν = 1.44e-4 (m3/m3) - porosity
+- S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
+- K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
+- ψ63 = -4 / 0.0098 (MPa to m) - xylem percentage loss of conductivity curve parameters; Holtzman's original value
+- c = 4 (unitless) - Weibull parameter; Holtzman's original value
+- a = 0.05 * 0.0098 (m) - bulk modulus of elasticity; Holtzman's original value
+
+Citation:
+Holtzman, N., Wang, Y., Wood, J. D., Frankenberg, C., & Konings, A. G. (2023).
+Constraining plant hydraulics with microwave radiometry in a land surface model:
+Impacts of temporal resolution. Water Resources Research, 59, e2023WR035481.
+https://doi.org/10.1029/2023WR035481
+"""
+function PlantHydraulicsModel{FT}(
+    domain,
+    forcing::NamedTuple;
+    n_stem::Int = 0,
+    n_leaf::Int = 1,
+    h_stem::FT = FT(0),
+    h_leaf::FT = FT(1),
+    SAI::FT = FT(0),
+    RAI::FT = FT(1),
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+        forcing.LAI,
+        SAI,
+        RAI,
+    ),
+    ν::FT = FT(1.44e-4),
+    S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
+    conductivity_model = PlantHydraulics.Weibull{FT}(
+        FT(7e-8), # K_sat
+        FT(-4 / 0.0098), # ψ63
+        FT(4), # c
+    ),
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(
+        FT(0.05 * 0.0098), # a
+    ),
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
+) where {FT <: AbstractFloat}
+    # TODO: move hydraulics paramters to ClimaParams.jl so we can call `get_default_parameter`.
+    @assert n_stem >= 0 "Stem number must be non-negative"
+    @assert n_leaf >= 0 "Leaf number must be non-negative"
+    @assert h_stem >= 0 "Stem height must be non-negative"
+    @assert h_leaf >= 0 "Leaf height must be non-negative"
+
+    zmax = FT(0)
+    compartment_midpoints =
+        n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+    compartment_surfaces =
+        n_stem > 0 ? [zmax, h_stem, h_stem + h_leaf] : [zmax, h_leaf]
+
+    parameters = PlantHydraulics.PlantHydraulicsParameters(;
+        ai_parameterization,
+        ν,
+        S_s,
+        conductivity_model,
+        retention_model,
+        rooting_depth,
+    )
+    return PlantHydraulics.PlantHydraulicsModel{FT}(;
+        n_stem,
+        n_leaf,
+        compartment_midpoints,
+        compartment_surfaces,
+        parameters,
+        transpiration,
+    )
+end
+
+## Radiative transfer models
+"""
+    TwoStreamModel{FT}(
+        domain;
+        radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
+        ϵ_canopy = LP.get_default_parameter(FT, :canopy_emissivity),
+        n_layers::Int = 20,
+    )
+
+Creates a Two Stream model for canopy radiative transfer on the provided domain.
+
+Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
+In particular, this function returns a field for
+- clumping index Ω
+- albedo and transmissitivy in PAR and NIR bands
+- leaf angle distribution G function parameter χl
+
+Canopy emissivity and wavelength per PAR photon are currently treated
+as constants; these can be passed in as Floats by kwarg.
+Otherwise the default values from ClimaParams.jl are used.
+
+The number of layers in the canopy is set by `n_layers`, which defaults to 20.
+"""
+function TwoStreamModel{FT}(
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    n_layers::Int = 20,
+) where {FT <: AbstractFloat}
+    parameters =
+        TwoStreamParameters(FT; radiation_parameters..., ϵ_canopy, n_layers)
+    return TwoStreamModel{FT, typeof(parameters)}(parameters)
+end
+
+"""
+    BeerLambertModel{FT}(
+        domain;
+        radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
+        ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    ) where {FT <: AbstractFloat}
+
+Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
+
+Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
+In particular, this function returns a field for
+- clumping index Ω
+- albedo and transmissitivy in PAR and NIR bands
+- leaf angle distribution G function parameter χl
+
+Canopy emissivity and wavelength per PAR photon are currently treated
+as constants; these can be passed in as Floats by kwarg.
+Otherwise the default values from ClimaParams.jl are used.
+"""
+function BeerLambertModel{FT}(
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+) where {FT <: AbstractFloat}
+    # Filter out radiation parameters that are not needed for Beer-Lambert model
+    radiation_parameters = NamedTuple{
+        filter(
+            k -> k in (:α_PAR_leaf, :α_NIR_leaf),
+            keys(radiation_parameters),
+        ),
+    }(
+        radiation_parameters,
+    )
+    parameters = BeerLambertParameters(FT; radiation_parameters..., ϵ_canopy)
+    return BeerLambertModel{FT, typeof(parameters)}(parameters)
+end
+
+## Stomatal conductance models
+"""
+    MedlynConductanceModel{FT}(;
+        g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
+        g1 = clm_medlyn_g1(domain.space.surface),
+    ) where {FT <: AbstractFloat}
+
+Creates a MedlynConductanceModel using default parameters of type FT.
+
+The `conductance_parameters` argument is a NamedTuple that contains
+- `g1`: a Float or ClimaCore Field representing the slope parameter (PA^{1/2})
+By default, this parameter is set by the `clm_medlyn_g1` function,
+which reads in CLM data onto the surface space as a ClimaUtilities SpaceVaryingInput.
+
+The following default parameter is used:
+- g0 = FT(1e-4) (mol m^-2 s^-1) - minimum stomatal conductance
+"""
+function MedlynConductanceModel{FT}(
+    domain;
+    g1 = clm_medlyn_g1(domain.space.surface),
+    g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
+) where {FT <: AbstractFloat}
+    parameters = MedlynConductanceParameters(FT; g0, g1)
+    return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
+end
+
+
+########################################################
+# End component model convenience constructors
+########################################################
 
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
@@ -647,10 +932,7 @@ end
 
 
 function ClimaLand.get_drivers(model::CanopyModel)
-    return (
-        model.boundary_conditions.atmos,
-        model.boundary_conditions.radiation,
-    )
+    ClimaLand.get_drivers(model.boundary_conditions)
 end
 include("./canopy_boundary_fluxes.jl")
 #Make the canopy model broadcastable

@@ -235,3 +235,65 @@ end
     update_cosθs_only(p, 60 * 60 * 12) # populate with cos(zenith) at night
     @test all((<)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # zenith angle at nighttime should be > 90 degrees
 end
+
+@testset "Ground Conditions" begin
+    for FT in (Float32, Float64)
+        soil_driver = PrescribedGroundConditions(FT)
+        prognostic_soil_driver = ClimaLand.PrognosticGroundConditions{FT}()
+        @test ClimaLand.Canopy.ground_albedo_PAR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.2)
+        @test ClimaLand.Canopy.ground_albedo_NIR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.4)
+        dest = [-1.0]
+        t = 2.0
+
+        evaluate!(dest, soil_driver.ψ, t)
+        @test dest[1] == FT(0.0)
+        evaluate!(dest, soil_driver.T, t)
+        @test dest[1] == FT(298.0)
+
+        domain = ClimaLand.Domains.Plane(;
+            xlim = FT.((1.0, 2.0)),
+            ylim = FT.((1.0, 2.0)),
+            nelements = (1, 1),
+            periodic = (true, true),
+        )
+        coords = ClimaLand.Domains.coordinates(domain)
+        zero_instance = ClimaCore.Fields.zeros(axes(coords.surface))
+        p_soil_driver = (;
+            drivers = (;
+                ψ = copy(zero_instance),
+                T_ground = copy(zero_instance),
+            )
+        )
+        @test ClimaLand.initialize_drivers((soil_driver,), coords) ==
+              p_soil_driver.drivers
+        update_drivers! = make_update_drivers((soil_driver,))
+        update_drivers!(p_soil_driver, 0.0)
+        @test p_soil_driver.drivers.ψ == zero_instance
+        @test p_soil_driver.drivers.T_ground == zero_instance .+ 298
+
+        @test ClimaLand.initialize_drivers((prognostic_soil_driver,), coords) ==
+              (;)
+        update_drivers! = make_update_drivers((prognostic_soil_driver,))
+        p_soil_driver.drivers.ψ .= -1
+        p_soil_driver.drivers.T_ground .= -1
+        update_drivers!(p_soil_driver, 0.0)
+        # no change
+        @test p_soil_driver.drivers.ψ == (zero_instance .- 1)
+        @test p_soil_driver.drivers.T_ground == (zero_instance .- 1)
+
+
+
+    end
+end

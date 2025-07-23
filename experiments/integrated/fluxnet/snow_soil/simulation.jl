@@ -1,3 +1,11 @@
+## Some site parameters have been taken from
+## Ma, S., Baldocchi, D. D., Xu, L., Hehn, T. (2007)
+## Inter-Annual Variability In Carbon Dioxide Exchange Of An
+## Oak/Grass Savanna And Open Grassland In California, Agricultural
+## And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008 
+## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+# Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
+
 import SciMLBase
 import ClimaTimeSteppers as CTS
 import ClimaComms
@@ -19,6 +27,11 @@ import ClimaParams
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float64
+site_ID = "US-MOz"
+time_offset = 7 # offset from UTC in hrs
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
 earth_param_set = LP.LandParameters(FT)
 # Utility functions for reading in and filling fluxnet data
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
@@ -30,7 +43,7 @@ zmax = FT(0)
 dz_bottom = FT(1.0)
 dz_top = FT(0.04)
 
-land_domain = Column(;
+domain = Column(;
     zlim = (zmin, zmax),
     nelements = nelements,
     dz_tuple = (dz_bottom, dz_top),
@@ -43,13 +56,16 @@ N_days = N_days_spinup + 360
 dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
-# Read in the parameters for the site
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/snow_soil/parameters_fluxnet.jl",
-    ),
-)
+
+data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+# Height of sensor on flux tower
+atmos_h = FT(32)
+
+# Required to use the same met_drivers_FLUXNET script, even though we currently have no canopy
+h_leaf = FT(0)
+f_root_to_shoot = FT(0)
+plant_ν = FT(0)
+
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(
@@ -58,57 +74,54 @@ include(
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
-
-
-# Now we set up the model. For the soil model, we pick
-# a model type and model args:
-soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+forcing = (; atmos, radiation)
+prognostic_land_components = (:snow, :soil)
+α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = FT(0.25),
+    NIR_albedo = FT(0.25),
 )
-soil_ps = Soil.EnergyHydrologyParameters(
-    FT;
-    ν = soil_ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-    K_sat = soil_K_sat,
-    S_s = soil_S_s,
-    θ_r,
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
-    albedo = soil_albedo,
+runoff = ClimaLand.Soil.SurfaceRunoff()
+retention_parameters = (;
+    ν = FT(0.5),
+    K_sat = FT(0.45 / 3600 / 100),
+    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(2)),
+    θ_r = FT(0.09),
 )
-
-soil_args = (parameters = soil_ps,)
-soil_model_type = Soil.EnergyHydrology
-
-ρ = 300.0
-α = 0.8
-snow_parameters = SnowParameters{FT}(
+composition_parameters =
+    (; ν_ss_quartz = FT(0.2), ν_ss_om = FT(0.0), ν_ss_gravel = FT(0.4))
+S_s = FT(1e-3)
+z_0m = FT(0.01)
+z_0b = FT(0.001)
+emissivity = FT(0.98)
+soil_model = Soil.EnergyHydrology(
+    FT,
+    domain,
+    forcing,
+    earth_param_set;
+    prognostic_land_components,
+    albedo = α_soil,
+    runoff,
+    retention_parameters,
+    S_s,
+    composition_parameters,
+    z_0m,
+    z_0b,
+    emissivity,
+)
+α_snow = Snow.ConstantAlbedoModel(0.8)
+density = Snow.MinimumDensityModel(300.0)
+snow_model = Snow.SnowModel(
+    FT,
+    ClimaLand.Domains.obtain_surface_domain(domain),
+    forcing,
+    earth_param_set,
     dt;
-    α_snow = Snow.ConstantAlbedoModel(α),
-    density = Snow.MinimumDensityModel(ρ),
-    earth_param_set = earth_param_set,
-);
-snow_args = (; parameters = snow_parameters);
-snow_model_type = Snow.SnowModel
-land_input = (
-    atmos = atmos,
-    radiation = radiation,
-    domain = land_domain,
-    runoff = ClimaLand.Soil.SurfaceRunoff(),
+    prognostic_land_components,
+    α_snow,
+    density,
 )
-land = ClimaLand.SoilSnowModel{FT}(;
-    land_args = land_input,
-    soil_model_type = soil_model_type,
-    soil_args = soil_args,
-    snow_args = snow_args,
-    snow_model_type = snow_model_type,
-)
+
+land = ClimaLand.SoilSnowModel(; snow = snow_model, soil = soil_model)
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
@@ -131,7 +144,7 @@ T_0 =
     volumetric_heat_capacity.(
         Y.soil.ϑ_l,
         Y.soil.θ_i,
-        soil_ps.ρc_ds,
+        soil_model.parameters.ρc_ds,
         earth_param_set,
     )
 Y.soil.ρe_int =
