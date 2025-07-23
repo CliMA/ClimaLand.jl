@@ -1096,7 +1096,7 @@ struct PrescribedGroundConditions{
 end
 
 """
-     function PrescribedGroundConditions(FT;
+     function PrescribedGroundConditions{FT}(;
          ψ::TimeVaryingInput,
          T::TimeVaryingInput,
          α_PAR::FT,
@@ -1107,14 +1107,13 @@ end
 An outer constructor for the PrescribedGroundConditions allowing the user to
 specify the ground parameters by keyword arguments.
 """
-function PrescribedGroundConditions(
-    FT;
+function PrescribedGroundConditions{FT}(;
     ψ = TimeVaryingInput((t) -> 0.0),
     T = TimeVaryingInput((t) -> 298.0),
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),
-)
+) where {FT <: AbstractFloat}
     return PrescribedGroundConditions{FT, typeof(ψ), typeof(T)}(
         ψ,
         T,
@@ -1472,8 +1471,8 @@ The argument `era5_ncdata_path` is either a list of nc files, each with all of t
 
 ########## WARNING ##########
 
-High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5 
-reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed, 
+High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5
+reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed,
 with a value give in m/s,
 is used to clip these if it is not `nothing`.
 See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds

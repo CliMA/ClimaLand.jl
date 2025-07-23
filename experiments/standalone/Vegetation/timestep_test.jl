@@ -93,8 +93,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     earth_param_set,
 );
 
-soil_driver = PrescribedGroundConditions(
-    FT;
+soil_driver = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),

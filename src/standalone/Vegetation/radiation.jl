@@ -344,7 +344,7 @@ function TwoStreamParameters(
 end
 
 """
-    function BeerLambertParameters(FT::AbstractFloat;
+    function BeerLambertParameters(::Type{FT};
         ld = (_) -> 0.5,
         α_PAR_leaf = 0.1,
         α_NIR_leaf = 0.4,

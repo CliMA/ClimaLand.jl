@@ -71,7 +71,7 @@ end
 
 
 """
-    SoilCO2ModelParameters(FT; kwargs...)
+    SoilCO2ModelParameters(::Type{FT}; kwargs...)
     SoilCO2ModelParameters(toml_dict; kwargs...)
 
 SoilCO2ModelParameters has two constructors: float-type and toml dict based.
