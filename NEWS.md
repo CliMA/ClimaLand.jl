@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Use ClimaUtilities v0.1.25 to read in spatial data to a point using lat/lon PR[#1279](https://github.com/CliMA/ClimaLand.jl/pull/1279)
 - Add data handling tools to FluxnetSimulationsExt and use throughout docs and experiments PR[#1238](https://github.com/CliMA/ClimaLand.jl/pull/1238)
 - Add convenience constructors for CanopyModel and integrated models PR[#1255](https://github.com/CliMA/ClimaLand.jl/pull/1255)
 - Rename LandSimulationVisualization to LandSimulationVisualizationExt; add template for FluxnetSimulationsExt PR[#1259](https://github.com/CliMA/ClimaLand.jl/pull/1259)
