@@ -74,6 +74,7 @@ The following default parameter is used:
 function BigLeafEnergyModel{FT}(;
     ac_canopy::FT = FT(2e3),
 ) where {FT <: AbstractFloat}
+    # TODO: move `ac_canopy` to ClimaParams.jl so we can call `get_default_parameter`.
     parameters = BigLeafEnergyParameters{FT}(ac_canopy)
     return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
 end
@@ -85,8 +86,8 @@ end
         photosynthesis_parameters = clm_photosynthesis_parameters(
             domain.space.surface,
         ),
-        pc::FT = -2e6,
-        sc::FT = 5e-6,
+        sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+        pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
     ) where {
         FT <: AbstractFloat,
         MECH <: Union{FT, ClimaCore.Fields.Field},
@@ -110,8 +111,8 @@ function FarquharModel{FT}(
     photosynthesis_parameters = clm_photosynthesis_parameters(
         domain.space.surface,
     ),
-    sc::FT = FT(5e-6),
-    pc::FT = FT(-2e6),
+    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
     parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
@@ -194,6 +195,7 @@ function PlantHydraulicsModel{FT}(
     rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
+    # TODO: move hydraulics paramters to ClimaParams.jl so we can call `get_default_parameter`.
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
     @assert h_stem >= 0 "Stem height must be non-negative"
@@ -301,7 +303,7 @@ end
 ## Stomatal conductance models
 """
     MedlynConductanceModel{FT}(;
-        g0::FT = FT(1e-4),
+        g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
         g1 = clm_medlyn_g1(domain.space.surface),
     ) where {FT <: AbstractFloat}
 
@@ -317,8 +319,8 @@ The following default parameter is used:
 """
 function MedlynConductanceModel{FT}(
     domain;
-    g0::FT = FT(1e-4),
     g1 = clm_medlyn_g1(domain.space.surface),
+    g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
 ) where {FT <: AbstractFloat}
     parameters = MedlynConductanceParameters(FT; g0, g1)
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
