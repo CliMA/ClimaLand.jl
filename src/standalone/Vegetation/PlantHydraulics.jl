@@ -405,6 +405,10 @@ function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
     return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
 end
 
+function root_distribution_CDF(z::FT, rooting_depth::FT) where {FT}
+    return 1 - exp(z / rooting_depth)
+end
+
 """
     AbstractConductivityModel{FT <: AbstractFloat}
 
