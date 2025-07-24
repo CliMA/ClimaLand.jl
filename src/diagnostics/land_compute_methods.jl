@@ -148,15 +148,14 @@ function compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model::
     P_air = p.drivers.P
     ci = p.canopy.photosynthesis.IntVars.ci     # internal CO2 partial pressure, Pa 
     An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
-    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
 
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = pmodel_gs_h2o(χ, c_co2_air, An, Drel)
+        @. out = pmodel_gs_h2o(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
         return out
     else
-        @. out = pmodel_gs_h2o(χ, c_co2_air, An, Drel)
+        @. out = pmodel_gs_h2o(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
     end
 end
 
@@ -234,7 +233,7 @@ end
 # Canopy - Photosynthesis (P-model only vars)
 @diagnostic_compute "photosynthesis_carboxylation_limited" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Ac 
 @diagnostic_compute "photosynthesis_light_limited" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Aj 
-@diagnostic_compute "vcmax" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.vcmax
+@diagnostic_compute "vcmax" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax
 
 # Canopy - Radiative Transfer
 @diagnostic_compute "near_infrared_radiation_down" Union{

@@ -320,13 +320,12 @@ jac_kwargs =
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
+start_date = UTC_DATETIME[1] - Dates.Hour(time_offset)
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
     land_domain.space.subsurface,
     output_dir;
     start_date,
 )
-
-ref_time = DateTime(2010)
 
 short_names_1D = [
     "sif",
@@ -351,8 +350,8 @@ short_names_2D = ["swc", "tsoil"]
 output_vars = [short_names_1D..., short_names_2D...]
 diags = ClimaLand.default_diagnostics(
     land,
-    ref_time;
-    nc_writer,
+    start_date;
+    output_writer = nc_writer,
     output_vars,
     average_period = :hourly,
 )
@@ -387,7 +386,7 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
 # common_vars = [
 #     "canopy.photosynthesis.GPP",

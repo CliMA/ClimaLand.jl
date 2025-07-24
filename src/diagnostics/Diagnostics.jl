@@ -14,7 +14,7 @@ import ..LandModel
 
 import ..Soil: EnergyHydrology
 
-import ..Canopy: medlyn_conductance, medlyn_term
+import ..Canopy: medlyn_conductance, medlyn_term, pmodel_gs_h2o, get_Vcmax25, MedlynConductanceModel, PModelConductance
 import ..Domains:
     top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
 
