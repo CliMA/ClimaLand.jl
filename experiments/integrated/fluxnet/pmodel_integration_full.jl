@@ -309,13 +309,58 @@ jac_kwargs =
 
 
 # Callbacks
-save_period = 1800.0
-saveat = Array(t0:save_period:tf)
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
+# save_period = 1800.0
+# saveat = Array(t0:save_period:tf)
+# sv = (;
+#     t = Array{Float64}(undef, length(saveat)),
+#     saveval = Array{NamedTuple}(undef, length(saveat)),
+# )
+# saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
+
+outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+    land_domain.space.subsurface,
+    output_dir;
+    start_date,
 )
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
+
+ref_time = DateTime(2010)
+
+short_names_1D = [
+    "sif",
+    "ra", # autotrophic respiration
+    "gs",
+    "gpp",
+    "ct", # canopy temperature 
+    "swu",
+    "lwu",
+    "er", # ecosystem respiration
+    "et",
+    "msf",
+    "shf",
+    "lhf",
+    "rn", # net radiation 
+    "vcmax25",
+    "vcmax",
+    "ac",
+    "aj",
+]
+short_names_2D = ["swc", "tsoil"]
+output_vars = [short_names_1D..., short_names_2D...]
+diags = ClimaLand.default_diagnostics(
+    land,
+    ref_time;
+    nc_writer,
+    output_vars,
+    average_period = :hourly,
+)
+
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
 ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
 ## defined in the simulatons file
@@ -326,9 +371,9 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 if photo_model == "pmodel" 
     pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, land.canopy, long)
-    cb = SciMLBase.CallbackSet(saving_cb, driver_cb, pmodel_cb)
+    cb = SciMLBase.CallbackSet(diag_cb, driver_cb, pmodel_cb)
 else
-    cb = SciMLBase.CallbackSet(saving_cb, driver_cb)
+    cb = SciMLBase.CallbackSet(diag_cb, driver_cb)
 end
 
 prob = SciMLBase.ODEProblem(
@@ -344,101 +389,101 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
-common_vars = [
-    "canopy.photosynthesis.GPP",
-    "canopy.photosynthesis.An",
-    "canopy.photosynthesis.Rd",
-    "canopy.conductance.r_stomata_canopy",
-    "canopy.radiative_transfer.par.abs",
-    "canopy.radiative_transfer.par_d",
-    "canopy.hydraulics.area_index.leaf",
-    "canopy.turbulent_fluxes.transpiration",
-    "canopy.turbulent_fluxes.lhf",
-    "canopy.turbulent_fluxes.shf",
-    "canopy.soil_moisture_stress.βm",
-    "canopy.soil_moisture_stress.ϑ_root",
-    "soil.infiltration",
-    "soil.total_water",
-    "LW_u",
-    "SW_u",
-]
+# common_vars = [
+#     "canopy.photosynthesis.GPP",
+#     "canopy.photosynthesis.An",
+#     "canopy.photosynthesis.Rd",
+#     "canopy.conductance.r_stomata_canopy",
+#     "canopy.radiative_transfer.par.abs",
+#     "canopy.radiative_transfer.par_d",
+#     "canopy.hydraulics.area_index.leaf",
+#     "canopy.turbulent_fluxes.transpiration",
+#     "canopy.turbulent_fluxes.lhf",
+#     "canopy.turbulent_fluxes.shf",
+#     "canopy.soil_moisture_stress.βm",
+#     "canopy.soil_moisture_stress.ϑ_root",
+#     "soil.infiltration",
+#     "soil.total_water",
+#     "LW_u",
+#     "SW_u",
+# ]
 
-pmodel_vars = [
-    "canopy.photosynthesis.OptVars.Vcmax25_opt",
-    "canopy.photosynthesis.OptVars.Jmax25_opt",
-    "canopy.photosynthesis.IntVars.ci",
-    "canopy.photosynthesis.Jmax",
-    "canopy.photosynthesis.J",
-    "canopy.photosynthesis.Vcmax",
-    "canopy.photosynthesis.Ac",
-    "canopy.photosynthesis.Aj",
-]
+# pmodel_vars = [
+#     "canopy.photosynthesis.OptVars.Vcmax25_opt",
+#     "canopy.photosynthesis.OptVars.Jmax25_opt",
+#     "canopy.photosynthesis.IntVars.ci",
+#     "canopy.photosynthesis.Jmax",
+#     "canopy.photosynthesis.J",
+#     "canopy.photosynthesis.Vcmax",
+#     "canopy.photosynthesis.Ac",
+#     "canopy.photosynthesis.Aj",
+# ]
 
-if photo_model == "pmodel"
-    extracted_vars = extract_variables(sv, [common_vars; pmodel_vars])
-else
-    extracted_vars = extract_variables(sv, common_vars)
-end
+# if photo_model == "pmodel"
+#     extracted_vars = extract_variables(sv, [common_vars; pmodel_vars])
+# else
+#     extracted_vars = extract_variables(sv, common_vars)
+# end
 
-if save_outputs
-    # Save outputs to NetCDF files
-    # Convert UTC time to local time and create time array
-    # Use sol.t which contains the actual simulation times in seconds
-    local_datetime =
-        UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
-    time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
+# if save_outputs
+#     # Save outputs to NetCDF files
+#     # Convert UTC time to local time and create time array
+#     # Use sol.t which contains the actual simulation times in seconds
+#     local_datetime =
+#         UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
+#     time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
 
-    # Skip the first timestep for canopy integration outputs
-    local_datetime_skip_first = local_datetime[2:end]
-    time_seconds_skip_first = time_seconds[2:end]
+#     # Skip the first timestep for canopy integration outputs
+#     local_datetime_skip_first = local_datetime[2:end]
+#     time_seconds_skip_first = time_seconds[2:end]
 
-    canopy_file = joinpath(save_dir, "$(site_ID)_canopy_integration_outputs_$(photo_model)_$(exp_name).nc")
-    drivers_file = joinpath(save_dir, "$(site_ID)_fluxnet_drivers.nc")
-    if isfile(canopy_file)
-        rm(canopy_file)
-    end
-    if isfile(drivers_file)
-        rm(drivers_file)
-    end
+#     canopy_file = joinpath(save_dir, "$(site_ID)_canopy_integration_outputs_$(photo_model)_$(exp_name).nc")
+#     drivers_file = joinpath(save_dir, "$(site_ID)_fluxnet_drivers.nc")
+#     if isfile(canopy_file)
+#         rm(canopy_file)
+#     end
+#     if isfile(drivers_file)
+#         rm(drivers_file)
+#     end
 
-    # Create canopy integration outputs NetCDF file
-    NCDatasets.Dataset(canopy_file, "c") do ds
-        NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
-        time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = time_seconds_skip_first
+#     # Create canopy integration outputs NetCDF file
+#     NCDatasets.Dataset(canopy_file, "c") do ds
+#         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
+#         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
+#         time_var[:] = time_seconds_skip_first
 
-        # Save each extracted variable (excluding first timestep)
-        for (var_name, var_data) in pairs(extracted_vars)
-            var_clean_name = replace(string(var_name), "." => "_")
-            nc_var = NCDatasets.defVar(ds, var_clean_name, Float64, ("time",))
-            nc_var[:] = var_data[2:end]
-        end
-    end
+#         # Save each extracted variable (excluding first timestep)
+#         for (var_name, var_data) in pairs(extracted_vars)
+#             var_clean_name = replace(string(var_name), "." => "_")
+#             nc_var = NCDatasets.defVar(ds, var_clean_name, Float64, ("time",))
+#             nc_var[:] = var_data[2:end]
+#         end
+#     end
 
-    # Create fluxnet drivers NetCDF file
-    NCDatasets.Dataset(drivers_file, "c") do ds
-        NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
+#     # Create fluxnet drivers NetCDF file
+#     NCDatasets.Dataset(drivers_file, "c") do ds
+#         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
 
-        # Create time variable
-        time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-        time_var[:] = time_seconds_skip_first
+#         # Create time variable
+#         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
+#         time_var[:] = time_seconds_skip_first
 
-        # Save each driver variable
-        driver_names = fieldnames(typeof(drivers))
-        for driver_name in driver_names
-            driver_data = getfield(drivers, driver_name)
-            # Sample the driver data at the same intervals as the model output
-            driver_indices = Int.(round.(sol.t ./ DATA_DT)) .+ 1
-            # Ensure indices are within bounds
-            driver_indices =
-                clamp.(driver_indices, 1, length(driver_data.values))
-            var_data = driver_data.values[driver_indices]
-            # Skip last timestep to match canopy outputs length
-            var_data = var_data[1:(end - 1)]
+#         # Save each driver variable
+#         driver_names = fieldnames(typeof(drivers))
+#         for driver_name in driver_names
+#             driver_data = getfield(drivers, driver_name)
+#             # Sample the driver data at the same intervals as the model output
+#             driver_indices = Int.(round.(sol.t ./ DATA_DT)) .+ 1
+#             # Ensure indices are within bounds
+#             driver_indices =
+#                 clamp.(driver_indices, 1, length(driver_data.values))
+#             var_data = driver_data.values[driver_indices]
+#             # Skip last timestep to match canopy outputs length
+#             var_data = var_data[1:(end - 1)]
 
-            nc_var =
-                NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
-            nc_var[:] = var_data
-        end
-    end
-end
+#             nc_var =
+#                 NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
+#             nc_var[:] = var_data
+#         end
+#     end
+# end

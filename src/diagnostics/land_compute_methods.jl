@@ -98,13 +98,18 @@ function compute_stomatal_conductance!(
     t,
     land_model::Union{SoilCanopyModel, LandModel},
 )
-    canopy = land_model.canopy
-    (; g1, g0, Drel) = canopy.conductance.parameters
+    conductance_model = land_model.canopy.conductance
+    compute_stomatal_conductance!(out, Y, p, t, land_model.canopy, conductance_model)
+end
+
+
+function compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model::MedlynConductanceModel)
+    (; g1, g0, Drel) = conductance_model.parameters
     earth_param_set = canopy.parameters.earth_param_set
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = medlyn_conductance(
             g0,
@@ -134,6 +139,24 @@ function compute_stomatal_conductance!(
             p.canopy.photosynthesis.An,
             p.drivers.c_co2,
         )
+    end
+end
+
+function compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model::PModelConductance)
+    (; Drel) = conductance_model.parameters
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    ci = p.canopy.photosynthesis.IntVars.ci     # internal CO2 partial pressure, Pa 
+    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
+    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
+
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = pmodel_gs_h2o(χ, c_co2_air, An, Drel)
+        return out
+    else
+        @. out = pmodel_gs_h2o(χ, c_co2_air, An, Drel)
     end
 end
 
@@ -206,6 +229,12 @@ end
 } p.canopy.photosynthesis.GPP
 @diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.An
 @diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Rd
+@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25(p, land_model.canopy.photosynthesis)
+
+# Canopy - Photosynthesis (P-model only vars)
+@diagnostic_compute "photosynthesis_carboxylation_limited" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Ac 
+@diagnostic_compute "photosynthesis_light_limited" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Aj 
+@diagnostic_compute "vcmax" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.vcmax
 
 # Canopy - Radiative Transfer
 @diagnostic_compute "near_infrared_radiation_down" Union{
