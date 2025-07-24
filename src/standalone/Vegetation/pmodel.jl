@@ -99,31 +99,56 @@ Base.broadcastable(m::PModelConstants) = tuple(m)
     PModelConstants(FT)
 
 Creates a `PModelConstants` object with default values for the P-model constants.
+See Stocker et al. (2020) Table A2 and references within for more information. 
 """
-function PModelConstants(FT)
-    return PModelConstants(
-        R = LP.gas_constant(LP.LandParameters(FT)),
-        Kc25 = FT(39.97),
-        Ko25 = FT(27480),
-        To = FT(298.15),
-        ΔHkc = FT(79430),
-        ΔHko = FT(36380),
-        Drel = FT(1.6),
-        ΔHΓstar = FT(37830),
-        Γstar25 = FT(4.332),
-        Ha_Vcmax = FT(71513),
-        Hd_Vcmax = FT(200000),
-        aS_Vcmax = FT(668.39),
-        bS_Vcmax = FT(1.07),
-        Ha_Jmax = FT(49884),
-        Hd_Jmax = FT(200000),
-        aS_Jmax = FT(659.70),
-        bS_Jmax = FT(0.75),
-        Mc = FT(0.0120107),
-        oi = FT(0.2095),
-        aRd = FT(0.1012),
-        bRd = FT(-0.0005),
-        fC3 = FT(0.015),
+function PModelConstants{FT}(;
+    R = LP.gas_constant(LP.LandParameters(FT)),
+    Kc25 = FT(39.97), # Pa (see note on line 38 above)
+    Ko25 = FT(27480), # Pa (see note on line 38 above)
+    To = FT(298.15),
+    ΔHkc = FT(79430),
+    ΔHko = FT(36380),
+    Drel = FT(1.6),
+    ΔHΓstar = FT(37830),
+    Γstar25 = FT(4.332), # Pa (see note on line 38 above)
+    Ha_Vcmax = FT(71513),
+    Hd_Vcmax = FT(200000),
+    aS_Vcmax = FT(668.39),
+    bS_Vcmax = FT(1.07),
+    Ha_Jmax = FT(49884),
+    Hd_Jmax = FT(200000),
+    aS_Jmax = FT(659.70),
+    bS_Jmax = FT(0.75),
+    Mc = FT(0.0120107),
+    oi = FT(0.2095),
+    aRd = FT(0.1012),
+    bRd = FT(-0.0005),
+    fC3 = FT(0.015),
+) where {FT <: AbstractFloat}
+
+    return PModelConstants{FT}(
+        R,
+        Kc25,
+        Ko25,
+        To,
+        ΔHkc,
+        ΔHko,
+        Drel,
+        ΔHΓstar,
+        Γstar25,
+        Ha_Vcmax,
+        Hd_Vcmax,
+        aS_Vcmax,
+        bS_Vcmax,
+        Ha_Jmax,
+        Hd_Jmax,
+        aS_Jmax,
+        bS_Jmax,
+        Mc,
+        oi,
+        aRd,
+        bRd,
+        fC3,
     )
 end
 
@@ -132,6 +157,13 @@ end
                 OPFT <: PModelParameters{FT},
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
+
+    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
+
+    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
+        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
+        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
+        https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 """
 struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
@@ -231,6 +263,9 @@ function compute_full_pmodel_outputs(
     ) = constants
 
     # Compute intermediate values
+
+    # The quantum yield ϕ0 can either be taken as a constant or computed from the temperature
+    # dependent function. If ϕ0 is not NaN, it is used directly. 
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)

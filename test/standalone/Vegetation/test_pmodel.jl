@@ -54,36 +54,6 @@ function percent_difference(a, b)
 end
 
 """
-    create_pmodel_drivers(inputs::Dict{String, Any}, FT)
-
-Create P-Model driver variables from test input data.
-Converts input data from the test CSV files into the appropriate driver structure
-for the P-Model, handling unit conversions and optional soil moisture stress.
-"""
-function PModelDrivers(inputs::Dict{String, Any}, FT)
-    T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
-    VPD = FT(inputs["vpd"])
-    ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
-    P_air = FT(get(inputs, "patm", 101325.0))
-
-    # Calculate I_abs directly from fapar and ppfd
-    I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
-
-    βm =
-        Bool(inputs["do_soilmstress"]) ?
-        quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
-
-    return ClimaLand.Canopy.PModelDrivers(
-        T_canopy = T_canopy,
-        I_abs = I_abs,
-        ca = ca,
-        P_air = P_air,
-        VPD = VPD,
-        βm = βm,
-    )
-end
-
-"""
     create_pmodel_parameters(inputs::Dict{String, Any}, FT)
 
 Constructs the parameter structure for the P-Model
@@ -191,7 +161,7 @@ end
                     println("Running test case: $testcase_name with FT = $FT")
 
                 # prepare constants, parameters, and drivers for the current FT
-                constants = PModelConstants(FT)
+                constants = PModelConstants{FT}()
                 parameters = PModelParameters(inputs, FT)
 
                 T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
