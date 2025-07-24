@@ -1481,9 +1481,9 @@ end
 # TODO: test if cstar should be made a free parameter? 
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
     arg = cstar / mj
-    arg = ifelse(arg < 0, FT(0), arg)
+    arg = arg < 0 ? FT(0) : arg
     arg = 1 - arg^(FT(2/3))
-    sqrt_arg = ifelse(arg < 0, FT(0.0), sqrt(arg)) # avoid complex numbers
+    sqrt_arg = arg < 0 ? FT(0) : sqrt(arg) # avoid complex numbers
     return FT(mj * sqrt_arg)
 end
 
