@@ -231,7 +231,7 @@ for FT in (Float32, Float64)
         ψ_soil0 = FT(0.0)
         transpiration = PrescribedTranspiration{FT}(leaf_transpiration)
 
-        soil_driver = PrescribedGroundConditions(FT)
+        soil_driver = PrescribedGroundConditions{FT}()
 
         autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
@@ -494,7 +494,7 @@ for FT in (Float32, Float64)
         )
 
         transpiration = DiagnosticTranspiration{FT}()
-        soil_driver = PrescribedGroundConditions(FT)
+        soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             transpiration = transpiration,

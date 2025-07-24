@@ -276,7 +276,7 @@ include("./optimality_farquhar.jl")
 
 """
     function FarquharParameters(
-        FT,
+        ::Type{FT},
         is_c3::Union{FT, ClimaCore.Fields.Field};
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides

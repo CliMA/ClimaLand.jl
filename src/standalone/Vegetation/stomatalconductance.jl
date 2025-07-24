@@ -76,7 +76,7 @@ end
 # For interfacing with ClimaParams
 
 """
-    function MedlynConductanceParameters(FT::AbstractFloat;
+    function MedlynConductanceParameters(::Type{FT};
         g1 = 790,
         kwargs...
     )

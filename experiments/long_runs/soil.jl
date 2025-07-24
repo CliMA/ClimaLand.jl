@@ -84,7 +84,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     max_wind_speed = 25.0,
     time_interpolation_method,
 )
-model = ClimaLand.Soil.EnergyHydrology(FT, domain, forcing, params)
+model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, params)
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;

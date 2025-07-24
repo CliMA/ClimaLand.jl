@@ -68,8 +68,7 @@ z_0m = FT(0.001)
 z_0b = z_0m
 prognostic_land_components = (:snow, :soil)
 
-soil = ClimaLand.Soil.EnergyHydrology(
-    FT,
+soil = ClimaLand.Soil.EnergyHydrology{FT}(
     domain,
     forcing,
     earth_param_set;
@@ -92,7 +91,7 @@ snow = ClimaLand.Snow.SnowModel(
     Δt;
     prognostic_land_components,
 )
-land_model = ClimaLand.SoilSnowModel(; snow, soil)
+land_model = ClimaLand.SoilSnowModel{FT}(; snow, soil)
 
 Y, p, coords = ClimaLand.initialize(land_model)
 p_soil_alone = deepcopy(p)

@@ -238,7 +238,7 @@ end
 
 @testset "Ground Conditions" begin
     for FT in (Float32, Float64)
-        soil_driver = PrescribedGroundConditions(FT)
+        soil_driver = PrescribedGroundConditions{FT}()
         prognostic_soil_driver = ClimaLand.PrognosticGroundConditions{FT}()
         @test ClimaLand.Canopy.ground_albedo_PAR(
             Val((:canopy,)),

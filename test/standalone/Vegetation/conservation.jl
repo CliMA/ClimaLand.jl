@@ -143,7 +143,7 @@ for FT in (Float32, Float64)
             )
         )
 
-    soil_driver = PrescribedGroundConditions(FT)
+    soil_driver = PrescribedGroundConditions{FT}()
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,

@@ -292,7 +292,7 @@ function lsm_radiant_energy_fluxes!(
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
     Y,
     t,
-) where {(FT)}
+) where {FT}
     canopy = land.canopy
     earth_param_set = canopy.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
@@ -450,7 +450,7 @@ end
    compute_liquid_influx(p,
                          model,
                          prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    ) 
+    )
 
 Returns the liquid water volume flux at the surface of the soil; in
  a model without snow as a prognostic variable, the influx is

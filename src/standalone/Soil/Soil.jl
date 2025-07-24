@@ -194,7 +194,7 @@ using .Biogeochemistry
 # Soil model constructor useful for working with simulations forced by
 # the atmosphere
 """
-    EnergyHydrology(FT, domain, forcing, earth_param_set;
+    EnergyHydrology{FT}(domain, forcing, earth_param_set;
                          prognostic_land_components = (:soil),
                          albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
                          runoff =  Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
@@ -208,7 +208,7 @@ using .Biogeochemistry
                          z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
                          emissivity = LP.get_default_parameter(FT, :soil_bare_soil),
                          additional_sources = (),
-                         )
+                         ) where {FT <: AbstractFloat}
 
 Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
 
@@ -225,8 +225,7 @@ component models.
 Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
 by kwarg; otherwise the default values are used.
 """
-function EnergyHydrology(
-    FT,
+function EnergyHydrology{FT}(
     domain,
     forcing,
     earth_param_set;
@@ -252,7 +251,7 @@ function EnergyHydrology(
     z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
     emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
     additional_sources = (),
-)
+) where {FT <: AbstractFloat}
     # TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
     #  roughness, and emissivity.
     top_bc = AtmosDrivenFluxBC(
@@ -285,7 +284,7 @@ end
 
 
 """
-    RichardsModel(FT, domain, forcing;
+    RichardsModel{FT}(domain, forcing;
                          runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
                                                                             R_sb = FT(1.484e-4 / 1000),
                                                                             f_max = topmodel_fmax(domain.space.surface,FT),
@@ -301,8 +300,7 @@ changed with keyword arguments.
 
 The runoff parameterization is also provided and can be changed via keyword argument.
 """
-function RichardsModel(
-    FT,
+function RichardsModel{FT}(
     domain,
     forcing;
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
@@ -315,7 +313,7 @@ function RichardsModel(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
-)
+) where {FT}
     # TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention argument.
     top_bc = RichardsAtmosDrivenFluxBC(forcing.atmos, runoff)
     bottom_bc = WaterFluxBC((p, t) -> 0.0)

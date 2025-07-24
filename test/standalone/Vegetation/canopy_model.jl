@@ -180,7 +180,7 @@ import ClimaParams
                     )
                 )
 
-            soil_driver = PrescribedGroundConditions(FT)
+            soil_driver = PrescribedGroundConditions{FT}()
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
                 n_stem = n_stem,
@@ -708,7 +708,7 @@ end
                     )
                 )
 
-            soil_driver = PrescribedGroundConditions(FT)
+            soil_driver = PrescribedGroundConditions{FT}()
 
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
@@ -951,7 +951,7 @@ end
                 )
             )
 
-        soil_driver = PrescribedGroundConditions(FT)
+        soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             n_stem = n_stem,
@@ -1284,7 +1284,7 @@ end
                     )
                 )
 
-            soil_driver = PrescribedGroundConditions(FT)
+            soil_driver = PrescribedGroundConditions{FT}()
 
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
@@ -1389,7 +1389,7 @@ end
 
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT)
-        soil_driver = PrescribedGroundConditions(FT)
+        soil_driver = PrescribedGroundConditions{FT}()
         boundary_conditions =
             Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
 

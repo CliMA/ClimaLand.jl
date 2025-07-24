@@ -186,7 +186,7 @@ end
 """
    ClimaLand.land_components(land::LandModel)
 
-Returns the components of the `LandModel`. 
+Returns the components of the `LandModel`.
 
 Currently, this method is required in order to preserve an ordering in how
 we update the component models' auxiliary states. The canopy update_aux! step
@@ -383,7 +383,7 @@ function lsm_radiant_energy_fluxes!(
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
     Y,
     t,
-) where {(FT)}
+) where {FT}
     canopy = land.canopy
     canopy_bc = canopy.boundary_conditions
     radiation = canopy_bc.radiation
@@ -535,7 +535,7 @@ end
    compute_liquid_influx(p,
                          model,
                          prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ) 
+    )
 
 Returns the liquid water volume flux at the surface of the soil; uses
 the same method as the soil+snow integrated model.

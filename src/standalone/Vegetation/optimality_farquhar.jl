@@ -85,7 +85,7 @@ ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
     update_photosynthesis!(p, Y, model::OptimalityFarquharModel,canopy)
 
 Computes the net photosynthesis rate `An` (mol CO2/m^2/s)for the Optimality Farquhar model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary 
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
@@ -194,7 +194,7 @@ Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
 
 """
     function OptimalityFarquharParameters(
-        FT,
+        ::Type{FT},
         kwargs...  # For individual parameter overrides
     )
 

@@ -31,7 +31,7 @@ struct SoilSnowModel{
     snow::SnM
     "The soil model to be used"
     soil::SoM
-    function SoilSnowModel(; snow, soil)
+    function SoilSnowModel{FT}(; snow, soil) where {FT <: AbstractFloat}
         prognostic_land_components = (:snow, :soil)
         top_soil_bc = soil.boundary_conditions.top
         snow_bc = snow.boundary_conditions
@@ -46,7 +46,6 @@ struct SoilSnowModel{
 
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
-        FT = eltype(soil.parameters.earth_param_set)
         new{FT, typeof(snow), typeof(soil)}(snow, soil)
     end
 
@@ -154,7 +153,7 @@ see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–69
 
 However, this is for a multi-layer snow model, with
 T_snow and Δz_snow related to the bottom layer.
-We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep. 
+We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep.
 Due to this, we cap Δz_snow at 10 cm.
 """
 function update_soil_snow_ground_heat_flux!(
@@ -321,7 +320,7 @@ end
    compute_liquid_influx(p,
                          model,
                          prognostic_land_components::Val{(:snow, :soil,)},
-    ) 
+    )
 
 Returns the liquid water volume flux at the surface of the soil,
 accounting for snowmelt and rainfall.

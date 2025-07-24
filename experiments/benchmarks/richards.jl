@@ -99,7 +99,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip),
     )
 
-    model = ClimaLand.Soil.RichardsModel(FT, domain, forcing)
+    model = ClimaLand.Soil.RichardsModel{FT}(domain, forcing)
 
     Y, p, cds = initialize(model)
     z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
