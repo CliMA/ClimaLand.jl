@@ -37,8 +37,8 @@ using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
 LandSimVis =
     Base.get_extension(
         ClimaLand,
-        :LandSimulationVisualization,
-    ).LandSimulationVisualization;
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())

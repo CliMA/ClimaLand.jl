@@ -484,7 +484,7 @@ version = "0.17.2"
 weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "DataFrames", "Flux", "GeoMakie", "HTTP", "Poppler_jll", "Printf", "StatsBase"]
 
     [deps.ClimaLand.extensions]
-    LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
+    LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [[deps.ClimaParams]]
