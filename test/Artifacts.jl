@@ -49,3 +49,16 @@ function water_conservation_test_data_path(; context = nothing)
     dirichlet_datapath = joinpath(folder_path, "ref_soln_dirichlet.csv")
     return flux_datapath, dirichlet_datapath
 end
+
+
+"""
+    pmodel_unittests_path(; context = nothing)
+
+Returns the filepaths for input-output pairs for the P-model. This data is generated from the R
+implementation of the P-model and is used to test the ClimaLand P-model.
+    
+Experiment details are in `test/standalone/Vegetation/test_pmodel.jl`.
+"""
+function pmodel_unittests_path(; context = nothing)
+    return @clima_artifact("pmodel_unittests", context)
+end
