@@ -4,6 +4,7 @@ using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
+using ClimaLand.Soil
 using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
@@ -194,6 +195,132 @@ for FT in (Float32, Float64)
             
             @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1.0))
         end
+    end
+
+    @testset "Test correctness for piecewise soil moisture stress for float type $FT" begin
+        # construct piecewise moisture stress parameters from hydrology
+        hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2))
+        ν = FT(0.5)
+        θ_r = FT(0.1)
+        c = FT(0.5)
+        β0 = FT(0.87)
+        sms_params = PiecewiseMoistureStressParametersFromHydrology(
+            hydrology_cm,
+            ν,
+            θ_r,
+            c = c,
+            β0 = β0
+        )
+        θ_w = sms_params.θ_w
+        θ_c = sms_params.θ_c
+        println("Wilting point = $θ_w, field capacity = $θ_c, c = $c, β0 = $β0")
+        
+        # check that \theta_w and \theta_c are physical
+        @test θ_w < θ_c
+        @test θ_w > FT(0.0)
+        @test θ_c > FT(0.0)
+        @test θ_w < FT(1.0)
+        @test θ_c < FT(1.0)
+
+        # check correctness
+        θ_root = (θ_w + θ_c) / 2 # midpoint
+        βm_expected = β0 * ((θ_root - θ_w) / (θ_c - θ_w))^c
+        βm_computed = compute_piecewise_moisture_stress(
+            sms_params,
+            θ_root
+        )
+        @test βm_computed ≈ βm_expected
+
+        θ_root = (θ_w) / 2 # drier than wilting point
+        βm_expected = FT(0)
+        βm_computed = compute_piecewise_moisture_stress(
+            sms_params,
+            θ_root
+        )
+        @test βm_computed ≈ βm_expected
+
+        θ_root = (1 + θ_c) / 2 # wetter than field capacity
+        βm_expected = β0
+        βm_computed = compute_piecewise_moisture_stress(
+            sms_params,
+            θ_root
+        )
+        @test βm_computed ≈ βm_expected
+    end 
+    
+    @testset "Test parameter domain validation for piecewise soil moisture stress for float type $FT" begin
+        # Test direct constructor with invalid parameters
+        θ_c = FT(0.3)
+        θ_w = FT(0.1)
+        
+        # Test negative c parameter
+        @test_throws ArgumentError PiecewiseMoistureStressParameters(
+            θ_c = θ_c,
+            θ_w = θ_w,
+            c = FT(-1.0),
+            β0 = FT(1.0)
+        )
+        
+        # Test zero c parameter
+        @test_throws ArgumentError PiecewiseMoistureStressParameters(
+            θ_c = θ_c,
+            θ_w = θ_w,
+            c = FT(0.0),
+            β0 = FT(1.0)
+        )
+        
+        # Test negative β0 parameter
+        @test_throws ArgumentError PiecewiseMoistureStressParameters(
+            θ_c = θ_c,
+            θ_w = θ_w,
+            c = FT(1.0),
+            β0 = FT(-0.5)
+        )
+        
+        # Test zero β0 parameter
+        @test_throws ArgumentError PiecewiseMoistureStressParameters(
+            θ_c = θ_c,
+            θ_w = θ_w,
+            c = FT(1.0),
+            β0 = FT(0.0)
+        )
+        
+        # Test validation in helper function
+        hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2))
+        ν = FT(0.5)
+        θ_r = FT(0.1)
+        
+        # Test negative c parameter in helper function
+        @test_throws ArgumentError PiecewiseMoistureStressParametersFromHydrology(
+            hydrology_cm,
+            ν,
+            θ_r;
+            c = FT(-1.0)
+        )
+        
+        # Test negative β0 parameter in helper function
+        @test_throws ArgumentError PiecewiseMoistureStressParametersFromHydrology(
+            hydrology_cm,
+            ν,
+            θ_r;
+            β0 = FT(-0.5)
+        )
+        
+        # Test that valid parameters work correctly
+        @test isa(PiecewiseMoistureStressParameters(
+            θ_c = θ_c,
+            θ_w = θ_w,
+            c = FT(1.0),
+            β0 = FT(1.0)
+        ), PiecewiseMoistureStressParameters)
+        
+        @test isa(PiecewiseMoistureStressParametersFromHydrology(
+            hydrology_cm,
+            ν,
+            θ_r;
+            c = FT(1.0),
+            β0 = FT(1.0)
+        ), PiecewiseMoistureStressParameters)
     end
 end
 

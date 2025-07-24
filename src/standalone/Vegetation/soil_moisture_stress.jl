@@ -1,9 +1,8 @@
-export TuzetMoistureStressParameters, 
-    TuzetMoistureStressModel,
-    NoMoistureStressModel, 
-    PiecewiseMoistureStressParameters, 
-    PiecewiseMoistureStressModel, 
-    PiecewiseMoistureStressParametersFromHydrology
+export TuzetMoistureStressParameters, TuzetMoistureStressModel
+export NoMoistureStressModel
+export PiecewiseMoistureStressParameters, PiecewiseMoistureStressModel, PiecewiseMoistureStressParametersFromHydrology
+
+export compute_piecewise_moisture_stress
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
@@ -103,6 +102,24 @@ Base.@kwdef struct PiecewiseMoistureStressParameters{
     c::CP
     """Intrinsic moisture stress factor (unitless)"""
     β0::FT
+    
+    function PiecewiseMoistureStressParameters(θ_c::TC, θ_w::TW, c::CP, β0::FT) where {FT <: AbstractFloat, TC <: Union{FT, ClimaCore.Fields.Field}, TW <: Union{FT, ClimaCore.Fields.Field}, CP <: Union{FT, ClimaCore.Fields.Field}}
+        if isa(c, ClimaCore.Fields.Field)
+            if any(<=(0), c)
+                throw(ArgumentError("Curvature parameter `c` must be greater than zero"))
+            end
+        else
+            if c <= 0
+                throw(ArgumentError("Curvature parameter `c` must be greater than zero"))
+            end
+        end
+        
+        if β0 <= 0
+            throw(ArgumentError("Intrinsic moisture stress factor `β0` must be greater than zero"))
+        end
+        
+        new{FT, TC, TW, CP}(θ_c, θ_w, c, β0)
+    end
 end
 
 Base.eltype(::PiecewiseMoistureStressParameters{FT}) where {FT} = FT
@@ -164,6 +181,13 @@ function PiecewiseMoistureStressParametersFromHydrology(
     ψ_wp::FT = FT(-153.06122449),  # -1500 kPa, equivalent in m H2O
     verbose::Bool = false
 ) where {FT <: AbstractFloat}
+    if c <= 0
+        throw(ArgumentError("Curvature parameter `c` must be greater than zero"))
+    end
+    if β0 <= 0
+        throw(ArgumentError("Intrinsic moisture stress factor `β0` must be greater than zero"))
+    end
+    
     # Calculate effective saturation at field capacity and wilting point
     S_fc = ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_fc)
     S_wp = ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_wp)
@@ -199,14 +223,11 @@ function compute_piecewise_moisture_stress(
     θ::FT,
 ) where {FT}
     (; θ_c, θ_w, c, β0) = parameters
+    
+    # avoid taking e.g. sqrt of negative numbers for rational c
+    arg = max((θ - θ_w) / (θ_c - θ_w), FT(0))
 
-    return β0 * max(
-        FT(0),
-        min(
-            FT(1),
-            ((θ - θ_w) / (θ_c - θ_w))^c,
-        )
-    )
+    return β0 * max(FT(0), min(FT(1), arg^c))
 end
 
 function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel, canopy)
