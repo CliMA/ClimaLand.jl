@@ -11,6 +11,79 @@ import ClimaParams as CP
 using ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaCore
+
+for FT in (Float32, Float64)
+    @testset "Default LandModel constructor, FT=$FT" begin
+        domain = ClimaLand.Domains.global_domain(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        forcing = (; atmos, radiation)
+        earth_param_set = LP.LandParameters(FT)
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+        # Soil model
+        soil = EnergyHydrology{FT}(
+            domain,
+            forcing,
+            earth_param_set;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+
+        # SoilCO2 model
+        co2_prognostic_soil = Biogeochemistry.PrognosticMet(soil.parameters)
+        soil_organic_carbon = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        )
+        soilco2_drivers = Biogeochemistry.SoilDrivers(
+            co2_prognostic_soil,
+            soil_organic_carbon,
+            atmos,
+        )
+        soilco2 = Biogeochemistry.SoilCO2Model{FT}(;
+            domain,
+            drivers = soilco2_drivers,
+        )
+
+        # Canopy model
+        surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        canopy_parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+            FT(2.0), # z_0m
+            FT(0.1), # z_0b
+            earth_param_set,
+        )
+        ground = ClimaLand.PrognosticSoilConditions{FT}()
+        canopy_forcing = (; atmos, radiation, ground)
+        canopy = Canopy.CanopyModel{FT}(
+            surface_domain,
+            canopy_forcing,
+            LAI,
+            canopy_parameters;
+            prognostic_land_components,
+        )
+
+        # Snow model
+        dt = FT(180)
+        snow = ClimaLand.Snow.SnowModel(
+            FT,
+            surface_domain,
+            forcing,
+            earth_param_set,
+            dt;
+            prognostic_land_components,
+        )
+
+        model = LandModel{FT}(canopy, snow, soil, soilco2)
+
+        # The constructor has many asserts that check the model
+        # components, so we don't need to check them again here.
+        @test model.soil == soil
+        @test model.soilco2 == soilco2
+        @test model.canopy == canopy
+        @test model.snow == snow
+    end
+end
+
 include("full_land_utils.jl");
 
 context = ClimaComms.context()
