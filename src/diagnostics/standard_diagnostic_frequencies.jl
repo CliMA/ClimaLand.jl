@@ -238,3 +238,26 @@ Return a `ScheduledDiagnostics` that computes the hourly average for the given v
 """
 hourly_average(FT, short_names; output_writer, start_date) =
     hourly_averages(FT, short_names; output_writer, start_date)[1]
+
+"""
+    halfhourly_averages(FT, short_names...; output_writer,  start_date)
+
+Return a list of `ScheduledDiagnostics` that compute the 30 minute average for the given variables.
+"""
+halfhourly_averages(FT, short_names...; output_writer, start_date) =
+    common_diagnostics(
+        Minute(30),
+        (+),
+        output_writer,
+        start_date,
+        short_names...;
+        pre_output_hook! = average_pre_output_hook!,
+    )
+
+"""
+    halfhourly_average(FT, short_names...; output_writer,  start_date)
+
+Return a `ScheduledDiagnostics` that computes the 30 minute average for the given variable.
+"""
+halfhourly_average(FT, short_names; output_writer, start_date) =
+    halfhourly_averages(FT, short_names; output_writer, start_date)[1]

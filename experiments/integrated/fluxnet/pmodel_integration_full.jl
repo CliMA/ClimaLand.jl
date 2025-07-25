@@ -328,36 +328,29 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
 )
 
 short_names_1D = [
-    "sif",
-    "ra", # autotrophic respiration
     "gs",
     "gpp",
     "ct", # canopy temperature 
-    "swu",
-    "lwu",
-    "er", # ecosystem respiration
     "et",
     "msf",
-    "shf",
     "lhf",
-    "rn", # net radiation 
-    "vcmax25",
-    "vcmax",
-    "ac",
-    "aj",
 ]
-short_names_2D = ["swc", "tsoil"]
+
+if photo_model == "pmodel"
+    short_names_1D = vcat(short_names_1D, ["vcmax25", "vcmax", "ac", "aj"])
+end
+
+short_names_2D = ["swc"]
 output_vars = [short_names_1D..., short_names_2D...]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
     output_writer = nc_writer,
     output_vars,
-    average_period = :hourly,
+    average_period = :halfhourly,
 )
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
