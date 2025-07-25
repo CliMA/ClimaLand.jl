@@ -1,11 +1,13 @@
 module FluxnetSimulationsExt
 using ClimaLand
+using ClimaLand.Canopy
 import DelimitedFiles
 
 using ClimaTimeSteppers
 using ClimaComms
 import ClimaComms: context, device
 using SciMLBase
+
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
