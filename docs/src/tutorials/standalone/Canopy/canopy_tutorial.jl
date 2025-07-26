@@ -2,7 +2,7 @@
 
 # This tutorial shows how to instantiate and run a simulation of the
 # canopy biophysics model in ClimaLand. A
-# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs)
+# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/canopy/Canopy/#Canopy-Model-Structs)
 # including all component
 # models is initialized, then an example simulation is run. The initial conditions,
 # atmospheric and radiative flux conditions, and canopy properties are set up
@@ -90,7 +90,7 @@ site_ID = "US-MOz";
 
 # We want to simulate a vegetative canopy in standalone mode, without coupling
 # the canopy to atmospheric or soil physics models, so we choose a
-# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # Here we will use the default parameterizations and parameters for ease of setting up
 # the model, but these can be overridden by constructing and passing canopy
 # components to the `CanopyModel` constructor. This will be explored in a later tutorial.
@@ -99,7 +99,7 @@ site_ID = "US-MOz";
 # by some of the component models. Here we are performing a 1-dimensional
 # simulation in a `Point` domain and will use
 # single stem and leaf compartments, but for 2D simulations, the parameters of
-# the [`domain`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#Domains)
+# the [`domain`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#Domains)
 # would change.
 domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
 

@@ -2,9 +2,9 @@
 
 `ITime`, or _integer time_, is a time type used by CliMA simulations to keep
 track of simulation time. For more information, refer to the
-[TimeManager section](https://clima.github.io/ClimaUtilities.jl/dev/timemanager/)
+[TimeManager section](https://clima.github.io/ClimaUtilities.jl/stable/timemanager/)
 in ClimaUtilities and the
-[ITime section](https://clima.github.io/ClimaAtmos.jl/dev/itime/) in ClimaAtmos.
+[ITime section](https://clima.github.io/ClimaAtmos.jl/stable/itime/) in ClimaAtmos.
 
 ### How do I use ITime?
 
@@ -70,7 +70,7 @@ chosen for the `ITime`.
     If no period is provided, then the constructor for `ITime` will assume the
     provided value is in seconds and choose a reasonable value for the period.
     See
-    [TimeManager section](https://clima.github.io/ClimaUtilities.jl/dev/timemanager/)
+    [TimeManager section](https://clima.github.io/ClimaUtilities.jl/stable/timemanager/)
     in ClimaUtilities for more information.
 
 Next, the different types of `dt1`, `dt2`, and `dt3` can lead to problems as

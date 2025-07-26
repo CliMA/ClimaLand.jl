@@ -1,61 +1,119 @@
-# Getting Started
-
 ## Installation of Julia and ClimaLand
 
 ClimaLand is provided as a Julia package, so it requires having Julia installed. Information about Julia packages is available on the [Julia website](https://julialang.org/packages/).
 
 First, download and install Julia by following the instructions at [https://julialang.org/downloads/](https://julialang.org/downloads/).
-Then, you can launch a [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) and install the
-ClimaLand.jl package by running:
+Then, you can launch a [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) by running `julia --project` and install the
+ClimaLand.jl package by running the following within the REPL:
 
 ```julia
-julia> using Pkg
-julia> Pkg.add(ClimaLand)
-julia> using ClimaLand
+using Pkg
+Pkg.add(ClimaLand)
 ```
 
-A typical land simulation employs several different parameterizations to model the various land-surface processes. Let's start our journey into ClimaLand by looking at one of those.
+## Running a simple soil model
 
-### Parameterization
+Now that we have Julia installed, let's set up and run a simple ClimaLand simulation!
+You can follow along by copying the following code segments into your REPL.
 
-Let's start with a basic example: compute canopy gross photosynthesis (GPP).
-
-```@repl
+First we import the necessary Julia packages:
+```julia
+import ClimaParams as CP
 using ClimaLand
-@doc ClimaLand.Canopy.compute_GPP
+using ClimaLand.Domains
+using ClimaLand.Soil
+import ClimaLand.Simulations: LandSimulation, solve!
+import ClimaLand.Parameters as LP
+using Dates
 ```
 
-As you can see, our parameterization for GPP is located in the [`Canopy`](@ref Photosynthesis) Module, and requires four arguments.
-For example, with An = 5 µmol m⁻² s⁻¹, K = 0.5, LAI = 3 m² m⁻², Ω = 0.7, you can compute GPP like below:
-
-```@repl
-import ClimaLand.Canopy as canopy
-canopy.compute_GPP(5.0, 0.5, 3.0, 0.7)
+Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models.
+Note: we use SI units unless otherwise specified.
+See our [Physical Units](https://clima.github.io/ClimaLand.jl/stable/physical_units/) documentation for more information.
+```julia
+FT = Float32
+earth_param_set = LP.LandParameters(FT);
 ```
 
-Et voilà!
+We will run this simulation on a column domain with 1 meter depth, at a lat/lon location
+near Pasadena, California.
 
-Note that our package [ParamViz](https://github.com/CliMA/ParamViz.jl) allows interactive visualisation of
-our parameterizations. See examples in the standalone models pages.
-
-### ClimaLand structure
-
-ClimaLand contains multiple modules. They are listed below:
-
-```@repl
-using MethodAnalysis, ClimaLand
-child_modules(ClimaLand)
+```julia
+zmax = FT(0)
+zmin = FT(-1.0)
+longlat = FT.((34.1, -118.1))
+domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
+surface_space = domain.space.surface;
 ```
 
-To explore what modules, functions and types are exported in a particular module, you can use [About.jl](https://github.com/tecosaur/About.jl):
-
-```@repl
-using ClimaLand
-using About
-about(ClimaLand.Soil.Biogeochemistry)
+We choose the initial and final simulation times as `DateTime`s, and a timestep in seconds.
+```julia
+start_date = DateTime(2008);
+end_date = start_date + Second(60 * 60 * 72);
+dt = 1000.0;
 ```
 
-Where modules are shown in red, functions are shown in blue, and types are shown in yellow.
+The soil model takes in 2 forcing objects, atmosphere and radiation,
+which we read in from ERA5 data.
+```julia
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
+atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    era5_ncdata_path,
+    surface_space,
+    start_date,
+    earth_param_set,
+    FT,
+);
+```
 
-To see the documentation about a particular module, function or type, you can use ? to go in help mode
-in the REPL, or `@doc` as in [Parameterization above](#Parameterization).
+Now, we can create the [`EnergyHydrology`](@ref ClimaLand.Soil.EnergyHydrology) model.
+This constructor uses default parameters and parameterizations, but these can also be
+overwritten, which we'll demonstrate in later tutorials.
+```julia
+model = Soil.EnergyHydrology{FT}(
+    domain,
+    (; atmos, radiation),
+    earth_param_set,
+);
+```
+
+Define a function to set initial conditions for the prognostic variables.
+```julia
+function set_ic!(Y, p, t0, model)
+    Y.soil.ϑ_l .= FT(0.24);
+    Y.soil.θ_i .= FT(0.0);
+    T = FT(290.15);
+    ρc_s = Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        model.parameters.ρc_ds,
+        model.parameters.earth_param_set,
+    );
+    Y.soil.ρe_int .=
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            model.parameters.earth_param_set,
+        );
+end
+```
+
+Now construct the `LandSimulation` object, which contains the model
+and additional timestepping information.
+```julia
+simulation = LandSimulation(start_date, end_date, dt, model; set_ic!, user_callbacks = ());
+```
+
+Now we can run the simulation!
+```julia
+solve!(simulation);
+```
+
+That's it! For more complex examples and pretty plots,
+please see the tutorial section of our docs.
+
+Atmospheric forcing data citation:
+Hersbach, Hans, et al. "The ERA5 global reanalysis."
+Quarterly journal of the royal meteorological society 146.730 (2020): 1999-2049.
