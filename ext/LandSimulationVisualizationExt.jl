@@ -8,6 +8,7 @@ using Dates
 import NCDatasets
 using ClimaLand
 using StatsBase
+using Interpolations
 using Printf
 using Poppler_jll: pdfunite
 
@@ -272,6 +273,99 @@ function make_annual_timeseries(
         diagdir,
         short_names;
         plot_name,
+    )
+end
+
+function write_diagnostics_to_csv(
+    sim::ClimaLand.Simulations.LandSimulation;
+    outpath = "climaland_output.csv"
+)
+    model = sim.model
+    domain = ClimaLand.get_domain(model)
+    @assert typeof(domain) <: Union{ClimaLand.Domains.Point, ClimaLand.Domains.Column}
+    diags = sim.diagnostics
+    #@assert diagnostics are the correct type
+    output_writer = diags[1].output_writer
+    # write to csv
+    diagnostic_names = [x * "_1h_average" for x in short_names]
+    diagnostic_vectors = [ClimaLand.Diagnostics.diagnostic_as_vectors(output_writer, diag_name; layer = X)[2] for diag_name in diagnostic_names]
+    model_data = Dict(zip(short_names, diagnostic_vectors))
+end
+    
+"""
+     make_diurnal_timeseries(
+        sim::ClimaLand.Simulations.LandSimulation;
+        savedir = ".",
+        short_names = nothing,
+	plot_name = "diurnal_timeseries.pdf",
+        comparison_data = nothing,
+)
+
+Makes timeseries of a variable,
+ using the diagnostics output of the `sim` simulation,
+specifically for the list of variables `short_names; the output
+plots are saved in `savedir`. Optionally pass in the comparison
+data for plotting.
+
+Please note that
+- `short_names` can be a string (single variable), a list, or `nothing`, in which
+case all possible variables will be plotted
+- The top layer of 3D variables is used for plotting.
+"""
+function make_diurnal_timeseries(
+    sim::ClimaLand.Simulations.LandSimulation;
+    savedir = ".",
+    short_names = nothing,
+    plot_name = "diurnal_timeseries.pdf",
+    comparison_data = nothing
+)
+    model = sim.model
+    make_diurnal_timeseries(
+        ClimaLand.get_domain(model),
+        sim.diagnostics;
+        plot_name,
+        savedir,
+        short_names,
+        comparison_data
+    )
+end
+
+function make_diurnal_timeseries(
+    domain::ClimaLand.Domains.AbstractDomain,
+    diagnostics;
+    plot_name = "diurnal_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+)
+    @info "No method matching make_diurnal_timeseries for $domain."
+end
+
+function make_diurnal_timeseries(
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.Point,
+    },
+    diagnostics;
+    plot_name = "diurnal_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+)
+    output_writer = first(diagnostics).output_writer
+    avail_short_names = [d.variable.short_name for d in diagnostics]
+    if short_names isa String
+        @assert short_names in avail_short_names
+        short_names = [short_names]
+    elseif short_names isa Nothing
+        short_names = avail_short_names
+    end
+    make_diurnal_timeseries(
+        savedir,
+        output_writer,
+        short_names;
+        plot_name,
+        comparison_data
     )
 end
 
