@@ -3,6 +3,7 @@ import ClimaDiagnostics
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using CairoMakie
+import ClimaCore.Spaces: nlevels, PointSpace
 import GeoMakie
 using Dates
 import NCDatasets
@@ -20,7 +21,7 @@ include("land_sim_vis/leaderboard/leaderboard.jl")
 
 
 Uses the diagnostic output of the `sim` to create leaderboard plots, comparing the output of the simulation to the ``observations"
-from ERA5 or ILAMB. In the future, other observations can be included - see the leadboard directory included here for details.
+from ERA5 or ILAMB. 
 """
 function make_leaderboard_plots(
     sim::ClimaLand.Simulations.LandSimulation;
@@ -272,6 +273,184 @@ function make_annual_timeseries(
         diagdir,
         short_names;
         plot_name,
+    )
+end
+
+"""
+     make_diurnal_timeseries(
+        sim::ClimaLand.Simulations.LandSimulation;
+        savedir = ".",
+        short_names = nothing,
+	plot_name = "diurnal_timeseries.pdf",
+        comparison_data = nothing,
+        spinup_date = sim.start_date
+)
+
+Computes and plots the average diurnal cycle of the diagnostic
+output of the simulation `sim`,
+specifically for the list of variables `short_names; the output
+plots are saved in `savedir` under the name `plot_name`. 
+Only data after the spinup_date is considered.
+
+The comparison data can optionally be provided as a NamedTuple; the data must 
+be labeled with a key equal to the same name as in `short_names`, 
+or no comparison will be plotted. The value at each key is the timeseries of
+the variable. The timestamp of each is passed as another key `UTC_datetime`,
+with values equal to the time at which the observations where made.
+
+Please note that
+- `short_names` can be a string (single variable), a list, or `nothing`, in which
+case all possible variables will be plotted
+- The top layer of 3D variables is used for plotting.
+"""
+function make_diurnal_timeseries(
+    sim::ClimaLand.Simulations.LandSimulation;
+    savedir = ".",
+    short_names = nothing,
+    plot_name = "diurnal_timeseries.pdf",
+    comparison_data = nothing,
+    spinup_date = sim.start_date,
+)
+    model = sim.model
+    make_diurnal_timeseries(
+        ClimaLand.get_domain(model),
+        sim.diagnostics,
+        sim.start_date;
+        plot_name,
+        savedir,
+        short_names,
+        comparison_data,
+        spinup_date,
+    )
+end
+
+function make_diurnal_timeseries(
+    domain::ClimaLand.Domains.AbstractDomain,
+    diagnostics,
+    start_date;
+    plot_name = "diurnal_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+    spinup_date = start_date,
+)
+    @info "No method matching make_diurnal_timeseries for $domain."
+end
+
+function make_diurnal_timeseries(
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
+    diagnostics,
+    start_date;
+    plot_name = "diurnal_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+    spinup_date = start_date,
+)
+    avail_short_names = [d.variable.short_name for d in diagnostics]
+    if short_names isa String
+        @assert short_names in avail_short_names
+        short_names = [short_names]
+    elseif short_names isa Nothing
+        short_names = avail_short_names
+    end
+    diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
+    make_diurnal_timeseries(
+        savedir,
+        diagnostics[diag_ids], # To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
+        start_date;
+        plot_name,
+        comparison_data,
+        spinup_date,
+    )
+end
+
+"""
+     make_timeseries(
+        sim::ClimaLand.Simulations.LandSimulation;
+        savedir = ".",
+        short_names = nothing,
+	plot_name = "variable_timeseries.pdf",
+        comparison_data = nothing,
+        spinup_date = sim.start_date
+)
+
+Computes and plots the timeseries of the diagnostic
+output of the simulation `sim`,
+specifically for the list of variables `short_names; the output
+plots are saved in `savedir` under the name `plot_name`. 
+Only data after the spinup_date is considered.
+
+The comparison data can optionally be provided as a NamedTuple; the data must 
+be labeled with a key equal to the same name as in `short_names`, 
+or no comparison will be plotted. The value at each key is the timeseries of
+the variable. The timestamp of each is passed as another key `UTC_datetime`,
+with values equal to the time at which the observations where made.
+
+Please note that
+- `short_names` can be a string (single variable), a list, or `nothing`, in which
+case all possible variables will be plotted
+- The top layer of 3D variables is used for plotting.
+"""
+function make_timeseries(
+    sim::ClimaLand.Simulations.LandSimulation;
+    savedir = ".",
+    short_names = nothing,
+    plot_name = "variable_timeseries.pdf",
+    comparison_data = nothing,
+    spinup_date = sim.start_date,
+)
+    model = sim.model
+    make_timeseries(
+        ClimaLand.get_domain(model),
+        sim.diagnostics,
+        sim.start_date;
+        plot_name,
+        savedir,
+        short_names,
+        comparison_data,
+        spinup_date,
+    )
+end
+
+function make_timeseries(
+    domain::ClimaLand.Domains.AbstractDomain,
+    diagnostics,
+    start_date;
+    plot_name = "variable_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+    spinup_date = start_date,
+)
+    @info "No method matching make_timeseries for $domain."
+end
+
+function make_timeseries(
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
+    diagnostics,
+    start_date;
+    plot_name = "variable_timeseries.pdf",
+    savedir = ".",
+    short_names = nothing,
+    comparison_data = nothing,
+    spinup_date = start_date,
+)
+    avail_short_names = [d.variable.short_name for d in diagnostics]
+    if short_names isa String
+        @assert short_names in avail_short_names
+        short_names = [short_names]
+    elseif short_names isa Nothing
+        short_names = avail_short_names
+    end
+    diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
+    make_timeseries(
+        savedir,
+        diagnostics[diag_ids],# To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
+        start_date;
+        plot_name,
+        comparison_data,
+        spinup_date,
     )
 end
 

@@ -319,27 +319,17 @@ end
 """
      get_comparison_data(
         site_ID,
-        hour_offset_from_UTC,
-        start_date, # in UTC
-        FT;
+        hour_offset_from_UTC;
         val = -9999
 )
 
-Gets and returns the a NamedTuple with the data identified 
-by `varname`. Each element in the tuple is itself a NamedTuple,
-with two keys: absent, and values. If the data column
-is missing completely, the value of absent is true, and no values
-are returned. If the data column is present, absent is set to false,
-and the data is returned with the key values. If the column is present
-but the data is missing in each row, absent is set to true.
-
-Individual missing values are replace by the mean.
+Gets and returns the a NamedTuple with the comparison
+data for the Fluxnet `site_ID`, given its hour offset from
+UTC, and the value used to indicate missing data (`val`)
 """
 function get_comparison_data(
-    site_ID,
-    hour_offset_from_UTC,
-    start_date, # in UTC
-    FT;
+    site_ID::String,
+    hour_offset_from_UTC::Int;
     val = -9999,
 )
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
@@ -363,45 +353,53 @@ function get_comparison_data(
     # Convert the local timestamp to UTC
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
-
-    # The TimeVaryingInput interface for columns expects the time in seconds
-    # from the start date of the simulation
-    seconds_since_start_date =
-        [Second(UTC - start_date).value for UTC in UTC_datetime]
     data_dt = Second(local_datetime[2] - local_datetime[1]).value # seconds
 
-    GPP = get_comparison_data(
+    gpp = get_comparison_data(
         data,
         "GPP_DT_VUT_REF",
-        column_name_map;
+        column_name_map,
+        "gpp";
         preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol/m^2/s
         val,
     )
-    LE = get_comparison_data(data, "LE_CORR", column_name_map; val)
-    H = get_comparison_data(data, "H_CORR", column_name_map; val)
-    SW_u = get_comparison_data(data, "SW_OUT", column_name_map; val)
-    LW_u = get_comparison_data(data, "LW_OUT", column_name_map; val)
-    SWC = get_comparison_data(
+    lhf = get_comparison_data(data, "LE_CORR", column_name_map, "lhf"; val)
+    shf = get_comparison_data(data, "H_CORR", column_name_map, "shf"; val)
+    swu = get_comparison_data(data, "SW_OUT", column_name_map, "swu"; val)
+    lwu = get_comparison_data(data, "LW_OUT", column_name_map, "lwu"; val)
+    swc = get_comparison_data(
         data,
         "SWC_F_MDS_1",
-        column_name_map;
+        column_name_map,
+        "swc";
         preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
         val,
     )
-    TS = get_comparison_data(
+    tsoil = get_comparison_data(
         data,
         "TS_F_MDS_1",
-        column_name_map;
+        column_name_map,
+        "tsoil";
         preprocess_func = (x) -> x + 273.15, # converts degrees C to K
         val,
     )
-    P = get_comparison_data(
+    precip = get_comparison_data(
         data,
         "P_F",
-        column_name_map;
+        column_name_map,
+        "precip";
         preprocess_func = (x) -> -x / 1000 / data_dt, # converts accumulated mm to m/s
         val,
     )
-    seconds = seconds_since_start_date
-    return (; seconds, GPP, LE, H, SW_u, LW_u, SWC, TS, P)
+    return merge(
+        (; UTC_datetime = UTC_datetime),
+        gpp,
+        lhf,
+        shf,
+        swu,
+        lwu,
+        swc,
+        tsoil,
+        precip,
+    )
 end

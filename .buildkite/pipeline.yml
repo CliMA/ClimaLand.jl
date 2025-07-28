@@ -73,23 +73,23 @@ steps:
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
-        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/output_active/*png"
+        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*pdf"
 
       - label: "ozark_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/output_active/*png"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*pdf"
 
       - label: "niwot_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
-        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/output_active/*png"
+        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*pdf"
 
       - label: "harvard_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
-        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/output_active/*png"
+        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*pdf"
 
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/pft/output_active/*png"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*pdf"
 
       - label: "ozark_conservation"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
