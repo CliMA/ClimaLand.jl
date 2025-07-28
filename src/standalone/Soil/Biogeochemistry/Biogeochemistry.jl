@@ -134,21 +134,29 @@ end
 
 """
 SoilCO2Model{FT}(;
-        parameters::SoilCO2ModelParameters{FT},
         domain::ClimaLand.AbstractDomain,
-        boundary_conditions::NamedTuple,
-        sources::Tuple,
         drivers::DT,
+        parameters = SoilCO2ModelParameters(FT),
+        boundary_conditions::BC = (
+            top = AtmosCO2StateBC(),
+            bottom = SoilCO2FluxBC((p, t) -> 0.0) # no flux
+        ),
+        sources::Tuple = (MicrobeProduction{FT}(),),
     ) where {FT, BC, DT}
 
 A constructor for `SoilCO2Model`.
+Defaults are provided for the parameters, boundary conditions, and sources.
+These can be overridden by providing the appropriate keyword arguments.
 """
 function SoilCO2Model{FT}(;
-    parameters::SoilCO2ModelParameters{FT},
     domain::ClimaLand.AbstractDomain,
-    boundary_conditions::BC,
-    sources::Tuple,
     drivers::DT,
+    parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(FT),
+    boundary_conditions::BC = (
+        top = AtmosCO2StateBC(),
+        bottom = SoilCO2FluxBC((p, t) -> 0.0), # no flux
+    ),
+    sources::Tuple = (MicrobeProduction{FT}(),),
 ) where {FT, BC, DT}
     args = (parameters, domain, boundary_conditions, sources, drivers)
     SoilCO2Model{FT, typeof.(args)...}(args...)

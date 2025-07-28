@@ -1365,15 +1365,8 @@ end
             nelements = 10,
         )
 
-        # Create a field with both 1.0s and 0.0s
-        mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
-        ClimaCore.Fields.set!(
-            x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
-            mechanism_field,
-        )
-
         # Create a simple forcing function for LAI
-        forcing = (; LAI = TimeVaryingInput(t -> FT(8)))
+        LAI = TimeVaryingInput(t -> FT(8))
 
         # Set up component models
         autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}()
@@ -1383,7 +1376,7 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain)
         conductance = Canopy.MedlynConductanceModel{FT}(domain)
-        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, forcing)
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI)
         energy = Canopy.BigLeafEnergyModel{FT}()
         sif = Canopy.Lee2015SIFModel{FT}()
 
@@ -1421,6 +1414,18 @@ end
             @test ClimaComms.device(canopy) == ClimaComms.device()
             @test ClimaLand.get_drivers(canopy) ==
                   (atmos, radiation, soil_driver)
+
+            @test canopy.autotrophic_respiration == autotrophic_respiration
+            @test canopy.radiative_transfer == radiative_transfer
+            @test canopy.photosynthesis == photosynthesis
+            @test canopy.conductance == conductance
+            @test canopy.hydraulics == hydraulics
+            @test canopy.energy == energy
+            @test canopy.sif == sif
+            @test canopy.boundary_conditions == boundary_conditions
+            @test canopy.parameters == parameters
+            @test canopy.domain == domain
+
             Y, p, coords = ClimaLand.initialize(canopy)
             @test propertynames(p.drivers) == (
                 :P_liq,
@@ -1471,6 +1476,76 @@ end
                 @test getproperty(prognostic_types(canopy), component) ==
                       prognostic_types(getproperty(canopy, component))
             end
+        end
+    end
+end
+
+@testset "CanopyModel convenience constructor" begin
+    for FT in (Float32, Float64)
+        domain = ClimaLand.Domains.SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 10,
+        )
+
+        # Create a simple functions for LAI and forcings
+        LAI = TimeVaryingInput(t -> FT(8))
+        atmos, radiation = prescribed_analytic_forcing(FT)
+        ground = PrescribedGroundConditions{FT}()
+        forcing = (; atmos, radiation, ground)
+        earth_param_set = LP.LandParameters(FT)
+
+        canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, earth_param_set)
+
+        # Check that the canopy model was created correctly
+        @test ClimaComms.context(canopy) == ClimaComms.context()
+        @test ClimaComms.device(canopy) == ClimaComms.device()
+        @test ClimaLand.get_drivers(canopy) == (atmos, radiation, ground)
+        Y, p, coords = ClimaLand.initialize(canopy)
+        @test propertynames(p.drivers) == (
+            :P_liq,
+            :P_snow,
+            :T,
+            :P,
+            :u,
+            :q,
+            :c_co2,
+            :thermal_state,
+            :SW_d,
+            :LW_d,
+            :cosθs,
+            :frac_diff,
+            :ψ,
+            :T_ground,
+        )
+        # Check that structure of Y is valid (will error if not)
+        @test !isnothing(zero(Y))
+        @test propertynames(p) == (:canopy, :drivers)
+        @test propertynames(p.canopy) == (
+            :hydraulics,
+            :conductance,
+            :photosynthesis,
+            :radiative_transfer,
+            :autotrophic_respiration,
+            :energy,
+            :sif,
+            :turbulent_fluxes,
+        )
+        for component in ClimaLand.Canopy.canopy_components(canopy)
+            # Only hydraulics has a prognostic variable
+            if component == :hydraulics
+                @test propertynames(getproperty(Y.canopy, component)) ==
+                      ClimaLand.prognostic_vars(getproperty(canopy, component))
+            end
+            @test propertynames(getproperty(p.canopy, component)) ==
+                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
+            @test getproperty(auxiliary_types(canopy), component) ==
+                  auxiliary_types(getproperty(canopy, component))
+            @test getproperty(auxiliary_vars(canopy), component) ==
+                  auxiliary_vars(getproperty(canopy, component))
+            @test getproperty(prognostic_types(canopy), component) ==
+                  prognostic_types(getproperty(canopy, component))
+            @test getproperty(prognostic_types(canopy), component) ==
+                  prognostic_types(getproperty(canopy, component))
         end
     end
 end
