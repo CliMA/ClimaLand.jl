@@ -16,10 +16,7 @@ include("observation_utils.jl")
 # and preprocess the observational data to match the simulation data as opposed
 # to processing both the simulation and observational data (e.g. with ILAMB data).
 include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "ext/land_sim_vis/leaderboard/data_sources.jl",
-    ),
+    joinpath(pkgdir(ClimaLand), "ext/land_sim_vis/leaderboard/data_sources.jl"),
 )
 
 """
@@ -144,6 +141,10 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
         by = ClimaAnalysis.Index(),
     )
 
+    var = ClimaAnalysis.window(var, "latitude", left = 0.0, right = 45.0)
+
+    var = ClimaAnalysis.window(var, "longitude", left = -60.0, right = 60.0)
+
     # Want the covariance matrix to be Float32
     var = ClimaCalibrate.ObservationRecipe.change_data_type(var, Float32)
     return var
@@ -158,12 +159,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
     #         use_latitude_weights = true,
     #         min_cosd_lat = 0.1
     #     )
-    covar_estimator =
-        ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
-            scalar = 25.0,
-            use_latitude_weights = true,
-            min_cosd_lat = 0.1,
-        )
+    covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
+        scalar = 25.0,
+        use_latitude_weights = true,
+        min_cosd_lat = 0.1,
+    )
     (; nelements, sample_date_ranges, short_names) = get_config()
     @info "The number of samples is $(length(sample_date_ranges))"
 

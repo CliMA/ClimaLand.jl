@@ -110,7 +110,10 @@ function setup_model(
     (; ν, hydrology_cm, K_sat, θ_r) =
         ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
     soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space, param_dict = calibrate_param_dict)...,
+        ClimaLand.Soil.clm_soil_albedo_parameters(
+            surface_space,
+            param_dict = calibrate_param_dict,
+        )...,
     )
     S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
@@ -353,7 +356,8 @@ function ClimaCalibrate.forward_model(iteration, member)
         FT;
         context,
         nelements,
-        mask_threshold = FT(0.99))
+        mask_threshold = FT(0.99),
+    )
 
     params = LP.LandParameters(FT)
 

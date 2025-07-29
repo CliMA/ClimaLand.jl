@@ -86,8 +86,7 @@ function process_member_data(
     # different files which make it difficult to follow due to code locality
     vars = map(short_names) do short_name
         var = sim_var_dict[short_name]()
-        var =
-            ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
+        var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         ocean_mask = make_ocean_mask(nelements)
         var = ocean_mask(var)
@@ -97,7 +96,10 @@ function process_member_data(
         # TODO: This is a stopgap. It might be better to leave them as NaNs. As a temporary
         # solution, we replace with 500.0
         nanmean_land_val = 500.0 # mean(filter(!isnan, var.data))
-        var = ClimaAnalysis.replace(val -> isnan(val) ? nanmean_land_val : val, var)
+        var = ClimaAnalysis.replace(
+            val -> isnan(val) ? nanmean_land_val : val,
+            var,
+        )
         var = ocean_mask(var)
 
         lons = ClimaAnalysis.longitudes(var)
@@ -117,19 +119,10 @@ function process_member_data(
             by = ClimaAnalysis.Index(),
         )
 
-        var = ClimaAnalysis.window(
-            var,
-            "latitude",
-            left = 0.0,
-            right = 45.0
-        )
+        var =
+            ClimaAnalysis.window(var, "latitude", left = 0.0, right = 45.0)
 
-        var = ClimaAnalysis.window(
-            var,
-            "longitude",
-            left = -60.0,
-            right = 60.0
-        )
+        var = ClimaAnalysis.window(var, "longitude", left = -60.0, right = 60.0)
     end
     # Flatten and concatenate the data for each minibatch
     # Note that we implicitly remove spinup when windowing is done
@@ -182,7 +175,8 @@ function ClimaCalibrate.analyze_iteration(
     # We choose the first ensemble member because the parameters are supposed to
     # be the mean of the parameters of the ensemble members if it is
     # EKP.TransformUnscented
-    diagnostics_folder_path = joinpath(output_path, "global_diagnostics", "output_active")
+    diagnostics_folder_path =
+        joinpath(output_path, "global_diagnostics", "output_active")
     try
         LandSimVis.compute_monthly_leaderboard(
             output_path,
@@ -211,8 +205,16 @@ function plot_constrained_params_and_errors(output_dir, ekp, prior)
     for i in 1:dim_size
         EKP.Visualize.plot_ϕ_over_iters(fig[1, i], ekp, prior, i)
     end
-    EKP.Visualize.plot_error_over_iters(fig[1, dim_size + 1], ekp, error_metric = "loss")
-    EKP.Visualize.plot_error_over_time(fig[1, dim_size + 2], ekp, error_metric = "loss")
+    EKP.Visualize.plot_error_over_iters(
+        fig[1, dim_size + 1],
+        ekp,
+        error_metric = "loss",
+    )
+    EKP.Visualize.plot_error_over_time(
+        fig[1, dim_size + 2],
+        ekp,
+        error_metric = "loss",
+    )
     CairoMakie.save(
         joinpath(output_dir, "constrained_params_and_error.png"),
         fig,

@@ -99,7 +99,13 @@ function get_ekp()
 
     # TODO: I feel like the constructor should be consistent, but they
     # are not :(
-    eki = EKP.EnsembleKalmanProcess(obs_series, EKP.TransformUnscented(prior, impose_prior = true), verbose = true, rng = rng, scheduler = EKP.DataMisfitController(terminate_at = 100))
+    eki = EKP.EnsembleKalmanProcess(
+        obs_series,
+        EKP.TransformUnscented(prior, impose_prior = true),
+        verbose = true,
+        rng = rng,
+        scheduler = EKP.DataMisfitController(terminate_at = 100),
+    )
     ensemble_size = EKP.get_N_ens(eki)
     return eki
 end
@@ -131,18 +137,26 @@ function get_prior()
         # EKP.constrained_gaussian("α_0", 0.7, 0.2, 0.0, 1.0),
         # EKP.constrained_gaussian("Δα", 0.7, 0.2, 0.0, 1.0);
         # EKP.constrained_gaussian("z0_snow", 0.106, 0.05, 0.01, 0.3),
-        EKP.constrained_gaussian("PAR_albedo_dry_1", 0.36, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_dry_1", 0.61, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("PAR_albedo_wet_1", 0.25, 0.1, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_wet_1", 0.5, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("PAR_albedo_dry_2", 0.34, 0.1, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_dry_2", 0.57, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("PAR_albedo_wet_2", 0.23, 0.1, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_wet_2", 0.46, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("PAR_albedo_dry_3", 0.32, 0.1, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_dry_3", 0.53, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("PAR_albedo_wet_3", 0.21, 0.1, 0.0, 1.0),
-        EKP.constrained_gaussian("NIR_albedo_wet_3", 0.42, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_dry_1", 0.36, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_dry_1", 0.61, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_wet_1", 0.25, 0.1, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_wet_1", 0.5, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_dry_2", 0.34, 0.1, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_dry_2", 0.57, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_wet_2", 0.23, 0.1, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_wet_2", 0.46, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_dry_3", 0.32, 0.1, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_dry_3", 0.53, 0.2, 0.0, 1.0),
+        # EKP.constrained_gaussian("PAR_albedo_wet_3", 0.21, 0.1, 0.0, 1.0),
+        # EKP.constrained_gaussian("NIR_albedo_wet_3", 0.42, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("wet_1", 0.375, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("dry_1", 0.485, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("wet_2", 0.345, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("dry_2", 0.455, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("wet_3", 0.315, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("dry_3", 0.425, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("wet_4", 0.3, 0.1, 0.0, 1.0),
+        EKP.constrained_gaussian("dry_4", 0.41, 0.2, 0.0, 1.0),
     ]
     return EKP.combine_distributions(priors)
 end

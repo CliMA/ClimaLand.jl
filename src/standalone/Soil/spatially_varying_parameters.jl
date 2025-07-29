@@ -49,7 +49,7 @@ function clm_soil_albedo_parameters(
         Interpolations.Flat(),
     ),
     lowres = use_lowres_clm(surface_space),
-    param_dict = Dict()
+    param_dict = Dict(),
 )
     interpolation_method = Interpolations.Constant()
     context = ClimaComms.context(surface_space)
@@ -72,12 +72,12 @@ function clm_soil_albedo_parameters(
         ),
     )
     soil_colors = SpaceVaryingInput(
-            "/home/ext_kphan2_caltech_edu/worktree/ClimaLand/pipeline/soil_colors.nc",
-            "soil_color",
-            surface_space;
-            regridder_type,
-            regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        )
+        "/home/ext_kphan2_caltech_edu/worktree/ClimaLand/pipeline/soil_colors.nc",
+        "soil_color",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
     albedo_nt = (;
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
@@ -89,13 +89,33 @@ function clm_soil_albedo_parameters(
 end
 
 function albedo_param_replace!(albedo_nt, soil_colors, param_dict)
-    replace_param_of_color(soil, soil_color, target_soil, target_color) = soil_color == target_color ? target_soil : soil
-    albedo_params = (name for name in keys(param_dict) if any(contains.(name, ("PAR_albedo_wet", "NIR_albedo_wet", "PAR_albedo_dry", "NIR_albedo_dry"))))
+    replace_param_of_color(soil, soil_color, target_soil, target_color) =
+        soil_color == target_color ? target_soil : soil
+    albedo_params = (
+        name for
+        name in keys(param_dict) if any(contains.(name, ("wet", "dry")))
+    )
     for name in albedo_params
-        albedo_quantity, color = rsplit(name, "_", limit = 2)
+        wet_or_dry, color = rsplit(name, "_", limit = 2)
         color = parse(Int, color)
-        @. albedo_nt[Symbol(albedo_quantity)] = replace_param_of_color(albedo_nt[Symbol(albedo_quantity)], soil_colors, param_dict[name] , color)
-        @info albedo_quantity, color, param_dict[name]
+
+        albedo_quantity1 = Symbol("PAR_albedo_" * wet_or_dry)
+        albedo_quantity2 = Symbol("NIR_albedo_" * wet_or_dry)
+
+        @. albedo_nt[albedo_quantity1] = replace_param_of_color(
+            albedo_nt[albedo_quantity1],
+            soil_colors,
+            param_dict[name],
+            color,
+        )
+        @. albedo_nt[albedo_quantity2] = replace_param_of_color(
+            albedo_nt[albedo_quantity2],
+            soil_colors,
+            param_dict[name],
+            color,
+        )
+        @info param_dict[name], color
+        @info albedo_quantity1, albedo_quantity2
     end
     return nothing
 end
