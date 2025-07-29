@@ -228,7 +228,8 @@ jac_kwargs =
 
 
 # Callbacks
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
+outdir =
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 output_vars = [
     "sif",
@@ -288,10 +289,12 @@ prob = SciMLBase.ODEProblem(
 ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data =
     FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+savedir = output_dir
 LandSimulationVisualizationExt.make_diurnal_timeseries(
     land_domain,
     diags,
     start_date;
+    savedir,
     short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,
@@ -300,6 +303,7 @@ LandSimulationVisualizationExt.make_timeseries(
     land_domain,
     diags,
     start_date;
+    savedir,
     short_names = ["swc", "tsoil", "swe"],
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,

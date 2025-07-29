@@ -282,14 +282,20 @@ end
         short_names = nothing,
 	plot_name = "diurnal_timeseries.pdf",
         comparison_data = nothing,
-        spinup_date - sim.start_date
+        spinup_date = sim.start_date
 )
 
-Computes the  average diurnal cycle,
-using the diagnostics output of the `sim` simulation,
+Computes and plots the average diurnal cycle of the diagnostic
+output of the simulation `sim`,
 specifically for the list of variables `short_names; the output
-plots are saved in `savedir`. Optionally pass in the comparison
-data for plotting. Only data after the spinup_date is considered.
+plots are saved in `savedir` under the name `plot_name`. 
+Only data after the spinup_date is considered.
+
+The comparison data can optionally be provided as a NamedTuple; the data must 
+be labeled with a key equal to the same name as in `short_names`, 
+or no comparison will be plotted. The value at each key is the timeseries of
+the variable. The timestamp of each is passed as another key `UTC_datetime`,
+with values equal to the time at which the observations where made.
 
 Please note that
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
@@ -350,8 +356,8 @@ function make_diurnal_timeseries(
     diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
     make_diurnal_timeseries(
         savedir,
-        diagnostics[diag_ids],
-        start_date; # eventually diagdir, where a CSV is saved? Currently a vector
+        diagnostics[diag_ids], # To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
+        start_date;
         plot_name,
         comparison_data,
         spinup_date,
@@ -365,14 +371,20 @@ end
         short_names = nothing,
 	plot_name = "variable_timeseries.pdf",
         comparison_data = nothing,
-        spinup_date - sim.start_date
+        spinup_date = sim.start_date
 )
 
-Plots the timeseries,
-using the diagnostics output of the `sim` simulation,
+Computes and plots the timeseries of the diagnostic
+output of the simulation `sim`,
 specifically for the list of variables `short_names; the output
-plots are saved in `savedir`. Optionally pass in the comparison
-data for plotting. Only data after the spinup_date is considered.
+plots are saved in `savedir` under the name `plot_name`. 
+Only data after the spinup_date is considered.
+
+The comparison data can optionally be provided as a NamedTuple; the data must 
+be labeled with a key equal to the same name as in `short_names`, 
+or no comparison will be plotted. The value at each key is the timeseries of
+the variable. The timestamp of each is passed as another key `UTC_datetime`,
+with values equal to the time at which the observations where made.
 
 Please note that
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
@@ -433,8 +445,8 @@ function make_timeseries(
     diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
     make_timeseries(
         savedir,
-        diagnostics[diag_ids],
-        start_date; # eventually diagdir, where a CSV is saved? Currently a vector
+        diagnostics[diag_ids],# To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
+        start_date;
         plot_name,
         comparison_data,
         spinup_date,
