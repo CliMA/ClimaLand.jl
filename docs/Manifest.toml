@@ -409,6 +409,7 @@ uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.17.2"
 
     [deps.ClimaLand.extensions]
+    FluxnetSimulationsExt = ["DelimitedFiles"]
     LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
@@ -418,6 +419,7 @@ version = "0.17.2"
     CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
     ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
     DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
     Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
     GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
     HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
@@ -455,9 +457,9 @@ version = "0.8.5"
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "420fe76968208ac2eb2837e9e0f0974456ebec78"
+git-tree-sha1 = "4402148693a5096c28cb09e544ce92b049b33e41"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
-version = "0.1.24"
+version = "0.1.25"
 
     [deps.ClimaUtilities.extensions]
     ClimaUtilitiesClimaCoreExt = "ClimaCore"
