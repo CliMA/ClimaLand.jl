@@ -136,7 +136,7 @@ function enforce_porosity_constraint(ϑ_l::FT, ν::FT) where {FT}
 end
 """
         enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
-    
+
 Enforces the constraint that ϑ_l + θ_i <= ν, by clipping the ice content to be
 99% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
 """
@@ -266,11 +266,14 @@ function make_set_initial_state_from_file(
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
         evaluate!(p.drivers.T, atmos.T, t0)
+        T_bounds = extrema(p.drivers.T)
 
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-        T_bounds = extrema(Y.canopy.energy.T)
+
+        # If the canopy model has an energy model, we need to set the initial temperature
+        hasproperty(Y.canopy, :energy) &&
+            evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
         set_soil_initial_conditions!(
             Y,

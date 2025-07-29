@@ -20,7 +20,7 @@
 # in which the intensity of light absorbed is a negative exponential function of
 # depth in the canopy and an exinction coefficient determined by optical depth.
 
-# The model of photosynthesis in Clima Land is the Farquar Model in which GPP is
+# The model of photosynthesis in Clima Land is the Farquhar Model in which GPP is
 # calculated based on C3 and C4 photosynthesis, which determines potential
 # leaf-level photosynthesis.
 
@@ -61,18 +61,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
-# # Setup the Canopy Model
-
-# We want to simulate a vegetative canopy in standalone mode, without coupling
-# the canopy to atmospheric or soil physics models, so we choose a
-# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
-# From the linked
-# documentation, we can see that we need to provide shared parameters, a domain,
-# a radiative transfer model, photosynthesis model, plant hydraulics model,
-# stomatal conductance model, and atmospheric and radiative flux conditions
-# which may be either prescribed or simulated.
-
-# First provide some information about the site
+# First provide some information about the site:
 # Timezone (offset from UTC in hrs)
 time_offset = 7
 start_date = DateTime(2010) + Hour(time_offset)
@@ -86,42 +75,35 @@ atmos_h = FT(32)
 # Site ID
 site_ID = "US-MOz";
 
+# # Setup the Canopy Model
+
+# We want to simulate a vegetative canopy in standalone mode, without coupling
+# the canopy to atmospheric or soil physics models, so we choose a
+# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# Here we will use the default parameterizations and parameters for ease of setting up
+# the model, but these can be overridden by constructing and passing canopy
+# components to the `CanopyModel` constructor. This will be explored in a later tutorial.
+
 # Now we define the parameters of the model domain. These values are needed
 # by some of the component models. Here we are performing a 1-dimensional
 # simulation in a `Point` domain and will use
 # single stem and leaf compartments, but for 2D simulations, the parameters of
 # the [`domain`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#Domains)
 # would change.
-
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-f_root_to_shoot = FT(3.5)
-plant_ν = FT(2.46e-4) # kg/m^2
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
+domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
 
 # Select a time range to perform time stepping over, and a dt. As usual,
 # the timestep depends on the problem you are solving, the accuracy of the
 # solution required, and the timestepping algorithm you are using.
-
 t0 = 0.0
 N_days = 364
 tf = t0 + 3600 * 24 * N_days
-dt = 225.0
+dt = 225.0;
 
-# - We will be using prescribed atmospheric and radiative drivers from the
-#   US-MOz tower, which we read in here. We are using prescribed
-#   atmospheric and radiative flux conditions, but it is also possible to couple
-#   the simulation with atmospheric and radiative flux models. We also
-# read in the observed LAI and let that vary in time in a prescribed manner.
-
-# Forcing data
+# We will be using prescribed atmospheric and radiative drivers from the
+# US-MOz tower, which we read in here. We are using prescribed
+# atmospheric and radiative flux conditions, but it is also possible to couple
+# the simulation with atmospheric and radiative flux models.
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -133,68 +115,22 @@ dt = 225.0
     FT,
 );
 
-# Populate the SharedCanopyParameters struct, which holds the parameters
-# shared between all different components of the canopy model.
-z0_m = FT(2)
-z0_b = FT(0.2)
-
-shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    z0_m,
-    z0_b,
-    earth_param_set,
-);
 
 # For this canopy, we are running in standalone mode, which means we need to
 # use a prescribed soil driver, defined as follows:
-
 ψ_soil = FT(0.0)
 T_soil = FT(298.0)
-soil_driver = PrescribedGroundConditions{FT}(;
+ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     T = TimeVaryingInput(t -> T_soil),
     ψ = TimeVaryingInput(t -> ψ_soil),
     ϵ = FT(0.99),
 );
+forcing = (; atmos, radiation, ground);
 
-# Now, setup the canopy model by component.
-# Provide arguments to each component, beginning with radiative transfer:
-
-rt_params = TwoStreamParameters(
-    FT;
-    G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
-    Ω = FT(0.69),
-    λ_γ_PAR = FT(5e-7),
-)
-
-rt_model = TwoStreamModel{FT}(rt_params);
-
-# Arguments for conductance model:
-cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
-
-stomatal_model = MedlynConductanceModel{FT}(cond_params);
-
-# Arguments for photosynthesis model:
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
-photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
-
-photosynthesis_model = FarquharModel{FT}(photo_params);
-
-# Arguments for autotrophic respiration model:
-AR_params = AutotrophicRespirationParameters(FT)
-AR_model = AutotrophicRespirationModel{FT}(AR_params);
-
-# Arguments for plant hydraulics model are more complicated.
-
-# Begin by providing general plant parameters. For the area
-# indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
-# which supports LAI as a function of time, with RAI and SAI as constant.
-# Read in LAI from MODIS data
-surface_space = land_domain.space.surface;
+# Now we read in time-varying LAI from a global MODIS dataset.
+surface_space = domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
     start_date = start_date + Second(t0),
     end_date = start_date + Second(t0) + Second(tf),
@@ -208,85 +144,83 @@ LAI = ClimaLand.prescribed_lai_modis(
 maxLAI =
     FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
 
+# Construct radiative transfer model, overwriting some default parameters.
+radiation_parameters = (;
+    Ω = FT(0.69),
+    G_Function = ConstantGFunction(FT(0.5)),
+    α_PAR_leaf = FT(0.1),
+    α_NIR_leaf = FT(0.45),
+    τ_PAR_leaf = FT(0.05),
+    τ_NIR_leaf = FT(0.25),
+)
+radiative_transfer =
+    Canopy.TwoStreamModel{FT}(domain; radiation_parameters, ϵ_canopy = FT(0.99));
+
+# Construct canopy hydraulics with 1 stem and 1 leaf compartment.
+# By default, the model is constructed with a single leaf compartment and no stem.
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9)
+h_leaf = FT(9.5)
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + maxLAI) * f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
-rooting_depth = FT(1.0);
-
-
-# Create the component conductivity and retention models of the hydraulics
-# model. In ClimaLand, a Weibull parameterization is used for the conductivity as
-# a function of potential, and a linear retention curve is used.
-
+plant_ν = FT(0.7)
+plant_S_s = FT(1e-2 * 0.0098)
 K_sat_plant = FT(1.8e-8)
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
-
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-
-retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
-
-# Use these values to populate the parameters of the PlantHydraulics model:
-
-ν = FT(0.7)
-S_s = FT(1e-2 * 0.0098)
-
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
-    ν = ν,
-    S_s = S_s,
-    rooting_depth = rooting_depth,
-    conductivity_model = conductivity_model,
-    retention_model = retention_model,
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
+    domain,
+    LAI;
+    n_stem,
+    n_leaf,
+    h_stem,
+    h_leaf,
+    SAI,
+    RAI,
+    ν = plant_ν,
+    S_s = plant_S_s,
+    conductivity_model,
+    rooting_depth = FT(1),
 );
 
-# Define the remaining variables required for the plant hydraulics model.
+# Construct the conductance model.
+conductance = Canopy.MedlynConductanceModel{FT}(domain; g1 = FT(141));
 
-plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_surfaces = compartment_surfaces,
-    compartment_midpoints = compartment_midpoints,
-);
+# Construct the photosynthesis model.
+photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
+photosynthesis = Canopy.FarquharModel{FT}(domain; photosynthesis_parameters)
 
-# Now, instantiate the canopy model, using the atmospheric and radiative
-# drivers included from the external file, as well as the soil driver we
-# instantiated above. This contains every piece of information needed to
-# generate the set of ODEs modeling the canopy biophysics, ready to be passed
-# off to a timestepper.
 
-canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-    parameters = shared_params,
-    domain = land_domain,
-    autotrophic_respiration = AR_model,
-    radiative_transfer = rt_model,
-    photosynthesis = photosynthesis_model,
-    conductance = stomatal_model,
-    hydraulics = plant_hydraulics,
-    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
-        atmos,
-        radiation,
-        soil_driver,
-    ),
+# Set up the canopy model using defaults for all parameterizations and parameters,
+# except for the hydraulics model defined above.
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    domain,
+    forcing,
+    LAI,
+    earth_param_set;
+    hydraulics,
+    radiative_transfer,
+    conductance,
+    photosynthesis,
 );
 
 # Initialize the state vectors and obtain the model coordinates, then get the
 # explicit time stepping tendency that updates auxiliary and prognostic
 # variables that are stepped explicitly.
 
-Y, p, coords = ClimaLand.initialize(canopy)
+Y, p, coords = ClimaLand.initialize(canopy);
 exp_tendency! = make_exp_tendency(canopy);
-imp_tendency! = make_imp_tendency(canopy)
+imp_tendency! = make_imp_tendency(canopy);
 jacobian! = make_jacobian(canopy);
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 # Provide initial conditions for the canopy hydraulics model
-
+(; retention_model, ν, S_s) = canopy.hydraulics.parameters
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
@@ -297,10 +231,10 @@ S_l_ini =
         ν,
         S_s,
     )
-
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
-end;
+end
+evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
 # Initialize the cache variables for the canopy using the initial
 # conditions and initial time.

@@ -120,20 +120,13 @@ device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set the model domain
 dz_bottom = FT(2.0)
 dz_top = FT(0.2)
 soil_depth = FT(5)
 z_sfc = FT(0)
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9) # m
-h_leaf = FT(9.5) # m
-
-h_canopy = h_stem + h_leaf
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [z_sfc, h_stem, h_canopy]
 
 land_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
@@ -147,18 +140,16 @@ sfc_cds = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
 # First pick the start date and time of the simulation, since time varying input depends on that
 t0 = Float64(0) # start at start date
 start_date = DateTime("202001010000", "yyyymmddHHMM")
-# Time varying input
-LAIfunction = TimeVaryingInput((t) -> 2.0)
+
 # Atmospheric and radiative forcing
 precip = TimeVaryingInput((t) -> -1.0e-7)
 atmos_q = TimeVaryingInput((t) -> 0.002)
 atmos_T = TimeVaryingInput((t) -> 298.0)
 atmos_p = TimeVaryingInput((t) -> 101320)
 atmos_u = TimeVaryingInput((t) -> 3.0)
-LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
-SW_IN = TimeVaryingInput((t) -> 500.0)
 snow_precip = TimeVaryingInput((t) -> 0.0)
 atmos_h = FT(32)
+
 # Construct the drivers. For the start date we will use the UTC time at the
 # start of the simulation
 atmos = ClimaLand.PrescribedAtmosphere(
@@ -170,35 +161,21 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_p,
     start_date,
     atmos_h,
-    earth_param_set;
-)
-function zenith_angle(
-    t,
-    start_date;
-    cd_field = sfc_cds,
-    insol_params::Insolation.Parameters.InsolationParameters{_FT} = earth_param_set.insol_params,
-) where {_FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        _FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    Insolation.instantaneous_zenith_angle.(
-        d,
-        δ,
-        η_UTC,
-        sfc_cds.long,
-        sfc_cds.lat,
-    ).:1
-end
+    earth_param_set,
+);
+LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
+SW_IN = TimeVaryingInput((t) -> 500.0)
+insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
+coords = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
+zenith_angle =
+    (t, s) ->
+        default_zenith_angle.(
+            t,
+            s;
+            insol_params,
+            longitude = coords.long,
+            latitude = coords.lat,
+        );
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,
@@ -206,145 +183,125 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     start_date,
     θs = zenith_angle,
     earth_param_set = earth_param_set,
-)
+);
 
-# Model parameters
+# Soil model setup
 # Soil parameters
 soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(4e-7) # m/
-soil_S_s = FT(1e-3) # 1/m
+soil_S_s = FT(1e-3)
 soil_vg_n = FT(2.05) # unitless
 soil_vg_α = FT(0.04) # inverse meters
 θ_r = FT(0.067)
 ν_ss_quartz = FT(0.1)
 ν_ss_om = FT(0.1)
 ν_ss_gravel = FT(0.0);
-# Energy Balance model
-ac_canopy = FT(2.5e3)
-# Conductance Model
-g1 = FT(141)
-#Photosynthesis model
+
+soil_forcing = (; atmos, radiation)
+soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = FT(0.2),
+    NIR_albedo = FT(0.2),
+)
+runoff = ClimaLand.Soil.Runoff.SurfaceRunoff()
+retention_parameters = (;
+    ν = soil_ν,
+    θ_r,
+    K_sat = soil_K_sat,
+    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
+)
+composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
+soil = Soil.EnergyHydrology{FT}(
+    land_domain,
+    soil_forcing,
+    earth_param_set;
+    prognostic_land_components,
+    albedo = soil_albedo,
+    runoff,
+    retention_parameters,
+    composition_parameters,
+    S_s = soil_S_s,
+    additional_sources = (ClimaLand.RootExtraction{FT}(),),
+)
+
+# Soil microbes model setup
+soil_organic_carbon =
+    ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+drivers = Soil.Biogeochemistry.SoilDrivers(
+    co2_prognostic_soil,
+    soil_organic_carbon,
+    atmos,
+)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; domain = land_domain, drivers)
+
+# Canopy model setup
+# Radiative transfer model
+radiative_transfer = Canopy.TwoStreamModel{FT}(Canopy.TwoStreamParameters(FT))
+
+# Photosynthesis model
 Vcmax25 = FT(9e-5)
-# Plant Hydraulics and general plant parameters
-K_sat_plant = 5e-9
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-plant_ν = FT(1.44e-4)
+photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
+photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
+
+# Conductance model
+g1 = FT(141)
+conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
+
+# Hydraulics model
+LAI = TimeVaryingInput((t) -> 2.0)
 SAI = FT(1.0)
 maxLAI = FT(2.0)
 f_root_to_shoot = FT(3.5)
 RAI = maxLAI * f_root_to_shoot
-capacity = plant_ν * maxLAI * h_leaf * FT(1000)
+plant_ν = FT(1.44e-4)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-z0_m = FT(0.13) * h_canopy
-z0_b = FT(0.1) * z0_m
-
-# Set up model
-# Now we set up the model. For the soil model, we pick
-# a model type and model args:
-soil_domain = land_domain
-soil_ps = Soil.EnergyHydrologyParameters(
-    FT;
-    ν = soil_ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-    K_sat = soil_K_sat,
-    S_s = soil_S_s,
-    θ_r,
-)
-
-soil_args = (domain = soil_domain, parameters = soil_ps)
-soil_model_type = Soil.EnergyHydrology{FT}
-
-# Soil microbes model
-soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
-
-# Now we set up the canopy model, which we set up by component:
-# Component Types
-canopy_component_types = (;
-    autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
-    radiative_transfer = Canopy.TwoStreamModel{FT},
-    photosynthesis = Canopy.FarquharModel{FT},
-    conductance = Canopy.MedlynConductanceModel{FT},
-    hydraulics = Canopy.PlantHydraulicsModel{FT},
-    energy = Canopy.BigLeafEnergyModel{FT},
-)
-# Individual Component arguments
-energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
-
-# Set up autotrophic respiration
-autotrophic_respiration_args =
-    (; parameters = AutotrophicRespirationParameters(FT))
-# Set up radiative transfer
-radiative_transfer_args = (; parameters = TwoStreamParameters(FT))
-# Set up conductance
-conductance_args = (; parameters = MedlynConductanceParameters(FT; g1))
-# Set up photosynthesis
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
-photosynthesis_args =
-    (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
-# Set up plant hydraulics
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
+K_sat_plant = 5e-9
+ψ63 = FT(-4 / 0.0098)
+Weibull_param = FT(4)
+conductivity_model =
+    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9) # m
+h_leaf = FT(9.5) # m
+h_canopy = h_stem + h_leaf
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
+    canopy_domain,
+    LAI;
+    SAI,
+    RAI,
+    n_stem,
+    n_leaf,
+    h_stem,
+    h_leaf,
     ν = plant_ν,
     S_s = plant_S_s,
+    conductivity_model,
     rooting_depth = FT(0.5),
-    conductivity_model = conductivity_model,
-    retention_model = retention_model,
-)
-plant_hydraulics_args = (
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_midpoints = compartment_midpoints,
-    compartment_surfaces = compartment_surfaces,
 )
 
-# Canopy component args
-canopy_component_args = (;
-    autotrophic_respiration = autotrophic_respiration_args,
-    radiative_transfer = radiative_transfer_args,
-    photosynthesis = photosynthesis_args,
-    conductance = conductance_args,
-    hydraulics = plant_hydraulics_args,
-    energy = energy_args,
-)
-# Other info needed
-shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    z0_m,
-    z0_b,
-    earth_param_set,
+# Put all the components together to form the canopy model
+z_0m = FT(0.13) * h_canopy
+z_0b = FT(0.1) * z_0m
+canopy_domain = obtain_surface_domain(land_domain)
+ground = ClimaLand.PrognosticSoilConditions{FT}()
+canopy_forcing = (; atmos, radiation, ground)
+canopy = Canopy.CanopyModel{FT}(
+    canopy_domain,
+    canopy_forcing,
+    LAI,
+    earth_param_set;
+    z_0m,
+    z_0b,
+    prognostic_land_components,
+    radiative_transfer,
+    photosynthesis,
+    conductance,
+    hydraulics,
 )
 
-canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
-
-# Integrated plant hydraulics and soil model
-land_input = (
-    atmos = atmos,
-    radiation = radiation,
-    soil_organic_carbon = Csom,
-    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
-)
-land = SoilCanopyModel{FT}(;
-    soilco2_type = soilco2_type,
-    soilco2_args = soilco2_args,
-    land_args = land_input,
-    soil_model_type = soil_model_type,
-    soil_args = soil_args,
-    canopy_component_types = canopy_component_types,
-    canopy_component_args = canopy_component_args,
-    canopy_model_args = canopy_model_args,
-)
+# Integrated plant and soil model
+land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
 # Define explicit and implicit tendencies, and the jacobian
 exp_tendency! = make_exp_tendency(land)
@@ -380,7 +337,6 @@ p99_err = []
 sol_err = []
 T_states = []
 times = []
-ΔT = FT(0)
 for dt in dts
     @info dt
     # Initialize model and set initial conditions before each simulation
