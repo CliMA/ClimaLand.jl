@@ -239,10 +239,11 @@ end
 Creates a Two Stream model for canopy radiative transfer on the provided domain.
 
 Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
-In particular, this function returns a field for
-- clumping index Ω
-- albedo and transmissitivy in PAR and NIR bands
-- leaf angle distribution G function parameter χl
+In particular, this function returns a NamedTuple containing:
+- `Ω`: clumping index
+- `G_Function`: a G function for leaf angle distribution
+- `α_PAR_leaf`, `τ_PAR_leaf`: albedo and transmissivity in the PAR band
+- `α_NIR_leaf`, `τ_NIR_leaf`: albedo and transmissivity in the NIR band
 
 Canopy emissivity and wavelength per PAR photon are currently treated
 as constants; these can be passed in as Floats by kwarg.
