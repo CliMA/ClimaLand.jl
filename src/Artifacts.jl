@@ -31,18 +31,18 @@ function era5_land_forcing_data_forty_years_folder_path(; context = nothing)
 end
 
 """
-    find_era5_year_paths(start_date, final_date, start_date, context = nothing)
+    find_era5_year_paths(start_date, end_date; context = nothing)
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
-`start_date` and ending on `final_date`.
+`start_date` and ending on `end_date`.
 
 We add 1 year to the final date to ensure that everything between
-start_date and final_date is covered. (This is needed, e.g., if the last file
+start_date and end_date is covered. (This is needed, e.g., if the last file
 is up to Dec 15th but we want to simulate past that date.)
 """
-function find_era5_year_paths(start_date, final_date; context = nothing)
+function find_era5_year_paths(start_date, end_date; context = nothing)
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date) + 1
+    yearf = Dates.year(end_date) + 1
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
@@ -63,7 +63,7 @@ end
 Return the path to the file that contains the ERA5 forcing data for 2008.
 
 Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data and return the path to that file.
- If the high resolution data is not 
+ If the high resolution data is not
 available locally, we also return the path to the low res data.
 """
 function era5_land_forcing_data2008_path(; context = nothing, lowres = false)
@@ -131,6 +131,11 @@ function modis_lai_forcing_data_path(; context = nothing)
     return @clima_artifact("modis_lai", context)
 end
 
+"""
+    modis_lai_single_year_path(; context = nothing, year = Dates.year(DateTime(2008)))
+
+Return the path to the file that contains the MODIS LAI data for the provided single year.
+"""
 function modis_lai_single_year_path(;
     context = nothing,
     year = Dates.year(DateTime(2008)),
@@ -140,29 +145,32 @@ function modis_lai_single_year_path(;
 end
 
 """
-    find_modis_year_paths(start_date, final_date; context = nothing)
+    modis_lai_multiyear_paths(; start_date, end_date, context = nothing)
 
-Find the appropriate files of MODIS LAI data to run a simuation starting on
-`start_date` and ending on `final_date`.
+Return the appropriate files of MODIS LAI data to run a simuation starting on
+`start_date` and ending on `end_date`. The artifact contains data from 2000 to 2020.
 
-We add 1 year to the final date to ensure that everything between
-start_date and final_date is covered. (This is needed, e.g., if the last file
-is up to Dec 15th but we want to simulate past that date.)
+If the final date falls in the month of December, we add 1 year to the final date
+to ensure that everything between start_date and end_date is covered.
+This is needed, e.g., if the last file is up to Dec 15th but we want to
+simulate past that date.
 """
-function find_modis_year_paths(start_date, final_date; context = nothing)
+function modis_lai_multiyear_paths(; start_date, end_date, context = nothing)
     # Get the year of the start and final dates
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date) + 1
+    yearf =
+        Dates.month(end_date) == 12 ? Dates.year(end_date) + 1 :
+        Dates.year(end_date)
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
-    years = collect(
+    paths = collect(
         joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
         year in year0:yearf
     )
-    for year in years
-        isfile(year) ||
-            error("The file $year does not exist in the MODIS LAI artifact")
+    for path in paths
+        isfile(path) ||
+            error("The file $path does not exist in the MODIS LAI artifact")
     end
-    return years
+    return paths
 end
 
 """
@@ -530,20 +538,6 @@ function era5_surface_data_1979_2024_path(; context = nothing)
         "era5_monthly_averages_surface_single_level_1979_2024",
         context
     )
-end
-
-"""
-    get_modis_lai_fluxnet_data(site_ID; context = nothing)
-Returns the path to the folder that contains MODIS LAI data at:
-    US-Ha1, US-Var, US-NR1, US-Ha1
-from 2002 to 2025.
-"""
-function get_modis_lai_fluxnet_data(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
-
-    folder_path = @clima_artifact("modis_lai_fluxnet_sites", context)
-    data_path = joinpath(folder_path, "modis_lai_$(site_ID).csv")
-    return data_path
 end
 
 end
