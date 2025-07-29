@@ -21,15 +21,15 @@ import ClimaLand
                                                                    DateTime(2008),
                                                                    earth_param_set,
                                                                    FT),
-                       LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_forcing_data_path(DateTime(2008); context),
+                       LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_single_year_path(DateTime(2008); context),
                                                             domain.space.surface,
                                                             DateTime(2008))
                            )
 
 An helper function for creating a land model corresponding to a global simulation of the snow, soil, and canopy models.
 
-While not explicitly an outer constructor, this creates and returns `LandModel` struct. This is meant as a helper for setting up a standard 
-global land model easily, and is useful for testing. Note that the user can construct any land model they 
+While not explicitly an outer constructor, this creates and returns `LandModel` struct. This is meant as a helper for setting up a standard
+global land model easily, and is useful for testing. Note that the user can construct any land model they
 wish by using the default (inner) constructor method for `LandModel`, or using the alternate outer constructor method defined in src/integrated/land.jl.
 
 Over time, all scalar parameters will be moved to ClimaParameters, so that only a single parameter set `earth_param_set` is passed.
@@ -258,7 +258,7 @@ its values (where binary_mask == 1) equal to  `val`. Note that
 this is meant to be used with the full land model (canopy,
 snow, soil, soilco2).
 
-Useful for checking if land model functions are updating the 
+Useful for checking if land model functions are updating the
 values over the ocean.
 """
 function check_ocean_values_p(p, binary_mask; val = 0.0)
@@ -319,7 +319,7 @@ its values (where binary_mask == 1) equal to  `val`. Note that
 this is meant to be used with the full land model (canopy,
 snow, soil, soilco2).
 
-Useful for checking if land model functions are updating the 
+Useful for checking if land model functions are updating the
 values over the ocean.
 """
 function check_ocean_values_Y(Y, binary_mask; val = 0.0)

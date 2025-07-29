@@ -1,3 +1,5 @@
+using NCDatasets
+
 """
      prescribed_forcing_fluxnet(site_ID,
                                 lat,
@@ -16,7 +18,7 @@ the hour offset of the site from UTC (local_time + offset = time in UTC),
 and the earth_param_set.
 
 This requires (1) reading in the data, (2) removing missing values,
- (3) converting units, (4) computing the specific humidity and percent of 
+ (3) converting units, (4) computing the specific humidity and percent of
 precipitation that is in snow (if split_precip ==true), and (5)
 making the TimeVaryingInput objects.
 
@@ -198,32 +200,30 @@ function prescribed_forcing_fluxnet(
 end
 
 """
-    prescribed_LAI_fluxnet(site_ID, start_date)
+    get_maxLAI_at_site(ncd_path, lat, long)
 
+A helper function to get the maximum LAI at a site from the MODIS LAI data.
+This is used in site-level simulations to set the initial RAI value.
 
-Obtains the MODIS LAI data for the site `site_ID`, and returns a TimeVaryingInput
-object for this LAI. This object can interpolate in time in units of seconds since 
-`start_date`.
+The file at `ncd_path` is expected to contain latitude and longitude in variables
+"lat" and "lon", and LAI in the variable "lai". The function finds the maximum LAI
+at the closest latitude and longitude to the given `lat` and `long` values over all dates
+in the dataset.
 
-This also returns the maximum LAI over all of the MODIS data.
+This works well with the artifact `modis_lai_multiyear_paths`, but has not been
+tested with other datasets.
 """
-function prescribed_LAI_fluxnet(site_ID, start_date)
-    # Repeat the same for MODIS LAI
-    # For MODIS LAI, there is no missing data and no unit conversion to make
-    MODIS_LAI_path = ClimaLand.Artifacts.get_modis_lai_fluxnet_data(site_ID)
-    MODIS_LAI, _ = readdlm(MODIS_LAI_path, ',', header = true)
-    dates = DateTime.(MODIS_LAI[:, 1])
+function get_maxLAI_at_site(ncd_path, lat, long)
+    NCDataset(ncd_path) do ds
+        # Find the indices of the closest latitude and longitude in the dataset
+        # to the given lat and long
+        j = findmin(x -> abs(x - lat), ds["lat"][:])[2]
+        i = findmin(x -> abs(x - long), ds["lon"][:])[2]
 
-    LAI_dt = Second(dates[2] - dates[1]).value
-    LAI_seconds_since_start_date =
-        [Second(date - start_date).value for date in dates]
-    LAI = TimeVaryingInput(
-        LAI_seconds_since_start_date,
-        Float64.(MODIS_LAI[:, 2]),
-    )
-    maxLAI = Float64(maximum(MODIS_LAI[:, 2]))
-
-    return (; LAI, maxLAI)
+        # Get the maximum LAI value for the given site and time period
+        max_lai = maximum(ds["lai"][i, j, :])
+        return max_lai
+    end
 end
 
 """
@@ -249,7 +249,7 @@ end
 """
     get_data_dates(site_ID, hour_offset_from_UTC)
 
-A helper function to get the first and last dates, in UTC, for which we have 
+A helper function to get the first and last dates, in UTC, for which we have
 Fluxnet data at `site_ID`, given the offset in hours of local time
 from UTC.
 """

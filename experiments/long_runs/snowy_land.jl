@@ -198,15 +198,16 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
     if LONGER_RUN
-        modis_lai_ncdata_path = ClimaLand.Artifacts.find_modis_year_paths(
+        modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
             start_date,
             stop_date;
             context,
         )
     else
-        modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_single_year_path(;
+        modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
             context = nothing,
-            year = Dates.year(start_date),
+            start_date = start_date + Second(t0),
+            end_date = start_date + Second(t0) + Second(tf),
         )
     end
     LAIfunction = ClimaLand.prescribed_lai_modis(

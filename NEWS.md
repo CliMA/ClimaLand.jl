@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Use global MODIS LAI for all simulations; remove `modis_lai_fluxnet_sites` artifact PR[#1282](https://github.com/CliMA/ClimaLand.jl/pull/1282)
 - Use ClimaUtilities v0.1.25 to read in spatial data to a point using lat/lon PR[#1279](https://github.com/CliMA/ClimaLand.jl/pull/1279)
 - Add data handling tools to FluxnetSimulationsExt and use throughout docs and experiments PR[#1238](https://github.com/CliMA/ClimaLand.jl/pull/1238)
 - Add convenience constructors for CanopyModel and integrated models PR[#1255](https://github.com/CliMA/ClimaLand.jl/pull/1255)
