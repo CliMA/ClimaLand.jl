@@ -9,11 +9,8 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
-using CairoMakie
-using Statistics
 using Dates
 using Insolation
-using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -26,11 +23,16 @@ import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
+
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
 LandSimulationVisualizationExt =
-    Base.get_extension(ClimaLand, :LandSimulationVisualizationExt).LandSimulationVisualizationExt;
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
@@ -319,6 +321,21 @@ prob = SciMLBase.ODEProblem(
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
 ClimaLand.Diagnostics.close_output_writers(diags)
-LandSimulationVisualizationExt.write_diagnostics_to_csv(diags)
-LandSimulationVisualizationExt.make_diurnal_timeseries(diags)
-LandSimulationVisualizationExt.make_timeseries(diags)
+comparison_data =
+    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+LandSimulationVisualizationExt.make_diurnal_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
+)
+LandSimulationVisualizationExt.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    short_names = ["swc", "tsoil"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
+)

@@ -322,40 +322,73 @@ function make_ocean_masked_annual_timeseries(
     return nothing
 end
 
-function make_diurnal_timeseries(savedir, output_writer, short_names;
-                                 plot_name, comparison_data, spinup_dt)
-    
-    diag_names = collect(keys(output_writer.dict))
+function make_diurnal_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name,
+    comparison_data,
+    spinup_date,
+)
+    short_names = [d.variable.short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_units = [d.variable.units for d in diagnostics]
     mktempdir(savedir) do tmpdir
-        for short_name in short_names
-            diag_name = diag_names[findfirst(occursin.(short_name, diag_names))]
-            diag_units = ;
-            model_time, model_output =  ClimaLand.Diagnostics.diagnostic_as_vectors(output_writer, diag_name; layer = 1) # generalize to 2d
-            dt_save = model_time[2] - model_time[1]
-            spinup_idx = Int(floor(spinup_dt/dt_save)+1)
-            num_days = ;
-            if comparison_data isa Nothing
-                plot_daily_avg(
-                    short_name,
-                    model_output[spinup_idx:end],
-                    dt_save,
-                    num_days,
-                    diag_units,
-                    savedir,
-                    "Model",
+        for i in 1:length(diag_names)
+            dn = diag_names[i]
+            unit = diag_units[i]
+            sn = short_names[i]
+            model_time, model_output =
+                ClimaLand.Diagnostics.diagnostic_as_vectors(
+                    diagnostics[1].output_writer,
+                    dn;
+                    layer = 1,
                 )
-            else
-                plot_avg_comp(
-                    short_name,
-                    model_output[spinup_idx:end],
-                    dt_save,
-                    getproperty(comparison_data, short_name),
-                    data_dt,
-                    num_days,
-                    diag_units
-                    savedir,
+            save_Δt = model_time[2] - model_time[1] # in seconds
+            model_dates = Second.(model_time) .+ start_date
+            spinup_idx = findfirst(spinup_date .<= model_dates)
+            hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+            )
+            fig = CairoMakie.Figure(size = (800, 400))
+            ax = CairoMakie.Axis(
+                fig[1, 1],
+                xlabel = "Hour of day (UTC)",
+                ylabel = "$sn $(unit)",
+            )
+            CairoMakie.lines!(
+                ax,
+                hour_of_day,
+                model_diurnal_cycle,
+                label = "Model",
+                color = "blue",
+            )
+            axislegend(ax, position = :lt)
+            if ~(comparison_data isa Nothing) &&
+               (Symbol(sn) ∈ propertynames(comparison_data))
+                data = getproperty(comparison_data, Symbol(sn))
+                data_dates = getproperty(comparison_data, :UTC_datetime)
+                spinup_idx = findfirst(spinup_date .<= data_dates)
+                hour_of_day, data_diurnal_cycle = compute_diurnal_cycle(
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
                 )
+                fractional_RMSD =
+                    StatsBase.rmsd(model_diurnal_cycle, data_diurnal_cycle) ./
+                    median(data_diurnal_cycle)
+                R² = StatsBase.cor(model_diurnal_cycle, data_diurnal_cycle)^2
+                CairoMakie.lines!(
+                    ax,
+                    hour_of_day,
+                    data_diurnal_cycle,
+                    label = "Data",
+                    color = "yellow",
+                )
+                ax.title = "$(sn): RMSD/median = $(round(fractional_RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))"
             end
+
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_avg.png"), fig)
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
@@ -365,40 +398,75 @@ function make_diurnal_timeseries(savedir, output_writer, short_names;
     return nothing
 end
 
-function make_timeseries(savedir, output_writer, short_names;
-                                 plot_name, comparison_data, spinup_dt)
-    
-    diag_names = collect(keys(output_writer.dict))
+function compute_diurnal_cycle(dates, data)
+    hour_of_day = Hour.(dates)
+    mean_by_hour = [mean(data[hour_of_day .== Hour(i)]) for i in 0:23]
+    return [Hour(i) for i in 0:23], mean_by_hour
+end
+
+
+function make_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name,
+    comparison_data,
+    spinup_date,
+)
+    short_names = [d.variable.short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_units = [d.variable.units for d in diagnostics]
     mktempdir(savedir) do tmpdir
-        for short_name in short_names
-            diag_name = diag_names[findfirst(occursin.(short_name, diag_names))]
-            diag_units = ;
-            model_time, model_output =  ClimaLand.Diagnostics.diagnostic_as_vectors(output_writer, diag_name; layer = 1) # generalize to 2d
-            dt_save = model_time[2] - model_time[1]
-            spinup_idx = Int(floor(spinup_dt/dt_save)+1)
-            num_days = ;
-            if comparison_data isa Nothing
-                plot!(
-                    short_name,
-                    model_output[spinup_idx:end],
-                    dt_save,
-                    num_days,
-                    diag_units,
-                    savedir,
-                    "Model",
+        for i in 1:length(diag_names)
+            dn = diag_names[i]
+            unit = diag_units[i]
+            sn = short_names[i]
+            model_time, model_output =
+                ClimaLand.Diagnostics.diagnostic_as_vectors(
+                    diagnostics[1].output_writer,
+                    dn;
+                    layer = 1,
                 )
-            else
-                plot!(
-                    short_name,
-                    model_output[spinup_idx:end],
-                    dt_save,
-                    getproperty(comparison_data, short_name),
-                    data_dt,
-                    num_days,
-                    diag_units
-                    savedir,
+            save_Δt = model_time[2] - model_time[1] # in seconds
+            model_dates = Second.(model_time) .+ start_date
+            spinup_idx = findfirst(spinup_date .<= model_dates)
+            hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+            )
+            fig = CairoMakie.Figure(size = (800, 400))
+            ax = CairoMakie.Axis(
+                fig[1, 1],
+                xlabel = "Date (UTC)",
+                ylabel = "$sn $(unit)",
+            )
+            CairoMakie.lines!(
+                ax,
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+                label = "Model",
+                color = "blue",
+            )
+            axislegend(ax, position = :lt)
+            if ~(comparison_data isa Nothing) &&
+               (Symbol(sn) ∈ propertynames(comparison_data))
+                data = getproperty(comparison_data, Symbol(sn))
+                data_dates = getproperty(comparison_data, :UTC_datetime)
+                spinup_idx = findfirst(spinup_date .<= data_dates)
+                hour_of_day, data_diurnal_cycle = compute_diurnal_cycle(
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
+                )
+                CairoMakie.lines!(
+                    ax,
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
+                    label = "Data",
+                    color = "yellow",
                 )
             end
+
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_ts.png"), fig)
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
@@ -406,224 +474,4 @@ function make_timeseries(savedir, output_writer, short_names;
         end
     end
     return nothing
-end    
-    
-
-"""Plotting utilities for the integrated fluxnet site experiments"""
-
-using Interpolations
-using CairoMakie
-using StatsBase
-
-S_PER_DAY = 86400 # Number of seconds in a day
-
-"""This function uses interpolation to convert a time series of data at 
-any regular time interval to half hourly data. It takes in the data, the 
-vector giving the time stamps of the data in seconds, and the number of days 
-in the data series. It returns a vector of the data interpolated to half
-hourly intervals."""
-function interp_to_hh(data::Vector, timeseries::Vector, num_days::Int64)
-    # Rescale the data to a half hourly interval by linear interpolation
-    interp = LinearInterpolation(timeseries, data)
-    half_hourly = (0.5 * 3600):(0.5 * 3600):(24 * num_days * 3600)
-    hh_data = [interp[i] for i in half_hourly]
-    return hh_data
-end
-
-"""This function takes in a vector of half-hourly data and the number of days 
-in the data series and returns the vector giving the diurnal average of 
-the data over the time period. (For data which is not half-hourly, use 
-interp_hh first.)"""
-function hh_to_diurnal_avg(hh_series::Vector, num_days::Int64)
-    # Reshape the data into a matrix with each column representing a day
-    daily_data = reshape(hh_series, 48, num_days)
-
-    # Average each row over all days to get diurnal average
-    hh_avgs = mean(daily_data, dims = 2)
-    return hh_avgs
-end
-
-"""Given a time series of data, the corresponding time axis, and the number 
-of days in the data, linearly interpolates the data to a half hourly time 
-scale, and returns a vector giving the diurnal average of the data over the time
-period."""
-function compute_diurnal_avg(data::Vector, timeseries::Vector, num_days::Int64)
-    # Rescale the data to a half hourly interval by linear interpolation
-    hh_data = interp_to_hh(data, timeseries, num_days)
-
-    # Get the average of the data over each day
-    hh_avgs = hh_to_diurnal_avg(hh_data, num_days)
-    return hh_avgs
-end
-
-"""This function will be used to plot the average diurnal cycle of a single 
-variable. Saves the plot to the directory specified by savedir."""
-function plot_daily_avg(
-    var_name::String,
-    data::Vector,
-    data_dt::AbstractFloat,
-    num_days::Int64,
-    unit::String,
-    savedir::String,
-    label::String = "data",
-)
-    # Rescale the data and take the average diurnal cycle
-    data_hh_avg =
-        compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
-
-    # Plot the data diurnal cycle
-    fig = CairoMakie.Figure(size = (800, 400))
-    ax = CairoMakie.Axis(
-        fig[1, 1],
-        xlabel = "Hour of day",
-        ylabel = "$var_name $(unit)",
-        title = "$var_name",
-    )
-    CairoMakie.lines!(
-        ax,
-        Array(0.5:0.5:24),
-        data_hh_avg[:],
-        label = label,
-        color = "blue",
-    )
-    axislegend(ax, position = :lt)
-    CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
-end
-
-"""This function will be used to plot the comparison of the diurnal average of a 
-variable between the model and the data. Saves the plot to the directory
-specified by savedir."""
-function plot_avg_comp(
-    var_name::String,
-    model::Vector,
-    model_dt::AbstractFloat,
-    data::Vector,
-    data_dt::AbstractFloat,
-    num_days::Int64,
-    units::String,
-    savedir::String,
-)
-    # Rescale teh data and take the average diurnal cycle
-    model_hh_avg = compute_diurnal_avg(
-        model,
-        [0:model_dt:(num_days * S_PER_DAY);],
-        num_days,
-    )
-    data_hh_avg =
-        compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
-
-    # Compute the GOF stats
-    RMSD = StatsBase.rmsd(model_hh_avg, data_hh_avg)
-    R² = StatsBase.cor(model_hh_avg, data_hh_avg)^2
-
-    # Plot the model and data diurnal cycles
-    fig = CairoMakie.Figure(size = (800, 400))
-    ax = CairoMakie.Axis(
-        fig[1, 1],
-        xlabel = "Hour of day",
-        ylabel = "$var_name $(units)",
-        title = "$var_name: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))",
-    )
-    CairoMakie.lines!(
-        ax,
-        Array(0.5:0.5:24),
-        model_hh_avg[:],
-        label = "Model",
-        color = "blue",
-    )
-
-    CairoMakie.lines!(
-        ax,
-        Array(0.5:0.5:24),
-        data_hh_avg[:],
-        label = "Data",
-        color = "yellow",
-    )
-    axislegend(ax, position = :lt)
-
-    CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
-end
-
-"""
-This function will be used to plot the comparison of the monthly average of a 
-variable between the model and the data. Saves the plot to the directory
-specified by savedir.
-"""
-function plot_monthly_avg_comp(
-    var_name::String,
-    ref_time,
-    model::Vector,
-    model_times::Vector,
-    data::Vector,
-    data_times::Vector,
-    units::String,
-    savedir::String,
-)
-    model_avg = compute_monthly_avg(model, model_times)
-    data_avg = compute_monthly_avg(data, data_times)
-
-    # Plot the model and data monthly cycles
-    fig = CairoMakie.Figure(size = (800, 400))
-    ax = CairoMakie.Axis(
-        fig[1, 1],
-        xlabel = "Month of Year",
-        ylabel = "$var_name $(units)",
-        xticks = (
-            1:1:12,
-            [
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-                "Nov",
-                "Dev",
-            ],
-        ),
-    )
-
-    CairoMakie.lines!(
-        ax,
-        Array(1:1:12),
-        model_avg[:],
-        label = "Model",
-        color = "blue",
-    )
-
-    CairoMakie.lines!(
-        ax,
-        Array(1:1:12),
-        data_avg[:],
-        label = "Data",
-        color = "yellow",
-    )
-    axislegend(ax, position = :lt)
-
-    CairoMakie.save(joinpath(savedir, "$(var_name)_monthly_avg.png"), fig)
-end
-
-"""
-    compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.DateTime)
-
-Computes the average per month of the `data` measured at `times`, where `times` is in units of seconds past the reference date `ref_date`.
-"""
-function compute_monthly_avg(
-    data::Vector,
-    times::Vector,
-    ref_date::Dates.DateTime,
-)
-    months = Dates.month.(ref_date .+ Dates.Second.(times))
-    # group by month
-    unique_months = unique(months)
-    output = zeros(length(unique_months))
-    for i in unique_months
-        mask = months .== i
-        output[i] = mean(data[mask])
-    end
-    return output, months
 end

@@ -4,10 +4,8 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
-using Statistics
 using Dates
 using Insolation
-using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -21,11 +19,16 @@ import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
+
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
 LandSimulationVisualizationExt =
-    Base.get_extension(ClimaLand, :LandSimulationVisualizationExt).LandSimulationVisualizationExt;
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
@@ -244,7 +247,7 @@ output_vars = [
     "swe",
     "swc",
     "tsoil",
-    "si"
+    "si",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -252,7 +255,7 @@ diags = ClimaLand.default_diagnostics(
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
     output_vars,
     average_period = :hourly,
-)
+);
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
@@ -261,12 +264,12 @@ diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
 ## How often we want to update the drivers. Note that this uses the defined `t0`, and `tf`
 ## defined in the simulatons file
-data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID))
-updateat = Array(t0:data_dt:tf)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
+data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID));
+updateat = Array(t0:data_dt:tf);
+model_drivers = ClimaLand.get_drivers(land);
+updatefunc = ClimaLand.make_update_drivers(model_drivers);
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc);
+cb = SciMLBase.CallbackSet(driver_cb, diag_cb);
 
 
 prob = SciMLBase.ODEProblem(
@@ -283,6 +286,21 @@ prob = SciMLBase.ODEProblem(
 @time sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
 ClimaLand.Diagnostics.close_output_writers(diags)
-LandSimulationVisualizationExt.write_diagnostics_to_csv(diags)
-LandSimulationVisualizationExt.make_diurnal_timeseries(diags)
-LandSimulationVisualizationExt.make_timeseries(diags)
+comparison_data =
+    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+LandSimulationVisualizationExt.make_diurnal_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
+)
+LandSimulationVisualizationExt.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    short_names = ["swc", "tsoil", "swe"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
+)
