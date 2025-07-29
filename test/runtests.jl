@@ -141,6 +141,11 @@ end
     include("integrated/full_land.jl")
 end
 
+# FluxnetSimulations extension tests
+@safetestset "Fluxnet simulation setup unit tests" begin
+    include("integrated/fluxnet_sim.jl")
+end
+
 # Diagnostics
 @safetestset "Diagnostics" begin
     include("diagnostics/diagnostics_tests.jl")
