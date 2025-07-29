@@ -15,6 +15,9 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+using DelimitedFiles
+FluxnetSimulationsExt =
+    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
 
 global climaland_dir = pkgdir(ClimaLand)
 global site_ID = "US-MOz"

@@ -1,6 +1,3 @@
-# Utility functions for reading in and filling fluxnet data
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-
 # Column dimensions - separation of layers at the top and bottom of the column:
 dz_bottom = FT(1.5)
 dz_top = FT(0.025)
@@ -46,16 +43,22 @@ include(
         "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
     ),
 )
-# This reads in the data from the flux tower site and creates
-# the atmospheric and radiative driver structs for the model
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
+(start_date, end_date) =
+    FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
+(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
 )
-
-
+(; LAI, maxLAI) =
+    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
+capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -124,7 +127,7 @@ is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
@@ -180,40 +183,5 @@ Y, p, cds = initialize(land)
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-#Initial conditions
-Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water content at t0
-# recalling that the data is in intervals of 1800 seconds. Both the data
-# and simulation are reference to 2005-01-01-00 (LOCAL)
-# or 2005-01-01-06 (UTC)
-Y.soil.θ_i = FT(0.0)
-T_0 = FT(drivers.TS.values[1 + Int(round(t0 / 1800))]) # Get soil temperature at t0
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        earth_param_set,
-    )
-Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
-
-Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-
-ψ_stem_0 = FT(-1e5 / 9800)
-ψ_leaf_0 = FT(-2e5 / 9800)
-
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        plant_ν,
-        plant_S_s,
-    )
-
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
-end
-
-Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
+FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache!(p, Y, t0)

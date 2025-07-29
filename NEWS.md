@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add data handling tools to FluxnetSimulationsExt and use throughout docs and experiments PR[#1238](https://github.com/CliMA/ClimaLand.jl/pull/1238)
 - Add convenience constructors for CanopyModel and integrated models PR[#1255](https://github.com/CliMA/ClimaLand.jl/pull/1255)
 - Rename LandSimulationVisualization to LandSimulationVisualizationExt; add template for FluxnetSimulationsExt PR[#1259](https://github.com/CliMA/ClimaLand.jl/pull/1259)
 - Remove root_depths from the PrescribeGroundConditions struct, and treat these ground ``drivers" consistently with how we handle atmospheric forcing PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1240)

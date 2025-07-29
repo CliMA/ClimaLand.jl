@@ -23,9 +23,10 @@ using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
-
+using DelimitedFiles
+FluxnetSimulationsExt =
+    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
 climaland_dir = pkgdir(ClimaLand)
-
 FT = Float64
 site_ID = "US-MOz"
 time_offset = 7 # offset from UTC in hrs
@@ -33,8 +34,6 @@ lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 
 earth_param_set = LP.LandParameters(FT)
-# Utility functions for reading in and filling fluxnet data
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 
 # Column dimensions - separation of layers at the top and bottom of the column:
 nelements = 10
@@ -56,25 +55,21 @@ N_days = N_days_spinup + 360
 dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
-
-data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
 # Height of sensor on flux tower
 atmos_h = FT(32)
-
-# Required to use the same met_drivers_FLUXNET script, even though we currently have no canopy
-h_leaf = FT(0)
-f_root_to_shoot = FT(0)
-plant_ν = FT(0)
-
-# This reads in the data from the flux tower site and creates
-# the atmospheric and radiative driver structs for the model
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
+start_date = DateTime(2010) + Hour(time_offset)
+forcing = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
 )
-forcing = (; atmos, radiation)
+
+
 prognostic_land_components = (:snow, :soil)
 α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
     PAR_albedo = FT(0.25),
@@ -131,27 +126,7 @@ set_initial_cache! = make_set_initial_cache(land)
 
 
 #Initial conditions
-# Find data index corresponds to t0
-t0_idx = 1 + Int(round(t0 / DATA_DT))
-Y.soil.ϑ_l =
-    drivers.SWC.status != absent ? drivers.SWC.values[t0_idx] : soil_ν / 2
-Y.soil.θ_i = 0
-T_0 =
-    drivers.TS.status != absent ? drivers.TS.values[t0_idx] :
-    drivers.TA.values[t0_idx]
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_model.parameters.ρc_ds,
-        earth_param_set,
-    )
-Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
-
-Y.snow.S .= 0.0
-Y.snow.S_l .= 0.0
-Y.snow.U .= 0.0
+FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache!(p, Y, t0)
 
 saveat = Array(t0:dt:tf)
@@ -199,9 +174,14 @@ sol = SciMLBase.solve(
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
 
-
+comparison_data = FluxnetSimulationsExt.get_comparison_data(
+    site_ID,
+    time_offset,
+    start_date,
+    FT,
+)
 # Water content
-
+seconds = comparison_data.seconds
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 2], ylabel = "SWC", xlabel = "Days")
 lines!(
@@ -223,7 +203,7 @@ lines!(
 lines!(
     ax1,
     seconds ./ 3600 ./ 24,
-    drivers.SWC.values[:],
+    comparison_data.SWC.values,
     label = "Data, Unknown Depth",
 )
 axislegend(ax1, position = :rt)
@@ -231,8 +211,12 @@ axislegend(ax1, position = :rt)
 ax2 = Axis(fig[1, 2], ylabel = "Precipitation (mm/day)")
 ylims!(ax2, [-1300, 0])
 hidexdecorations!(ax2, ticks = false)
-lines!(ax2, seconds ./ 3600 ./ 24, P_liq .* (1e3 * 24 * 3600), label = "Liquid")
-lines!(ax2, seconds ./ 3600 ./ 24, P_snow .* (1e3 * 24 * 3600), label = "Snow")
+lines!(
+    ax2,
+    seconds ./ 3600 ./ 24,
+    comparison_data.P.values .* (1e3 * 24 * 3600),
+    label = "Total precip",
+)
 axislegend(ax2, position = :rb)
 ax3 = Axis(fig[2, 1], ylabel = "SWE (m)", xlabel = "Days")
 lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
@@ -240,7 +224,6 @@ lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
 # Temp
 ax4 = Axis(fig[1, 1], ylabel = "T (K)")
 hidexdecorations!(ax4, ticks = false)
-lines!(ax4, seconds ./ 3600 ./ 24, drivers.TA.values[:], label = "Data, Air")
 lines!(
     ax4,
     sv.t ./ 24 ./ 3600,
@@ -257,13 +240,14 @@ lines!(
 lines!(
     ax4,
     seconds ./ 3600 ./ 24,
-    drivers.TS.values[:],
+    comparison_data.TS.values,
     label = "Data, Unknown depth",
 )
 axislegend(ax4, position = :rt)
 CairoMakie.save(joinpath(savedir, "results.png"), fig)
 
 # Assess conservation
+atmos = forcing.atmos
 _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
 _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
 fig = Figure(size = (1600, 1200), fontsize = 26)

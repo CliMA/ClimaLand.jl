@@ -17,6 +17,10 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+using DelimitedFiles
+FluxnetSimulationsExt =
+    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)
@@ -28,23 +32,22 @@ h_leaf = FT(9.5)
 compartment_midpoints = [h_leaf / 2]
 compartment_surfaces = [FT(0), h_leaf]
 land_domain = Point(; z_sfc = FT(0.0))
-include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
-);
 time_offset = 7
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 atmos_h = FT(32)
 site_ID = "US-MOz"
-data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
-);
-
+start_date = DateTime(2010) + Hour(time_offset)
+(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
+)
 z0_m = FT(2)
 z0_b = FT(0.2)
 

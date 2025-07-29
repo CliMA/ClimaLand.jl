@@ -21,11 +21,14 @@ import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
+using DelimitedFiles
+FluxnetSimulationsExt =
+    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
@@ -63,13 +66,22 @@ include(
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
-
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-    ),
+(start_date, end_date) =
+    FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
+(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
 )
+(; LAI, maxLAI) =
+    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+RAI = maxLAI * f_root_to_shoot
+capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
@@ -136,7 +148,7 @@ is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
@@ -201,45 +213,7 @@ land = LandModel{FT}(;
 
 Y, p, cds = initialize(land)
 
-#Initial conditions
-Y.soil.ϑ_l =
-    drivers.SWC.status != absent ?
-    drivers.SWC.values[1 + Int(round(t0 / DATA_DT))] : soil_ν / 2 # Get soil water content at t0
-# Both data and simulation are reference to 2005-01-01-00 (LOCAL)
-# or 2005-01-01-06 (UTC)
-Y.soil.θ_i = FT(0.0)
-T_0 =
-    drivers.TS.status != absent ?
-    drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
-    drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        earth_param_set,
-    )
-Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
-Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
-ψ_leaf_0 = FT(-2e5 / 9800)
-ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
-
-S_l_ini =
-    inverse_water_retention_curve.(retention_model, ψ_comps, plant_ν, plant_S_s)
-
-for i in 1:(n_stem + n_leaf)
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
-end
-
-Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
-
-Y.snow.S .= 0.0
-Y.snow.S_l .= 0.0
-Y.snow.U .= 0.0
-
+FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
@@ -255,8 +229,6 @@ outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 output_writer = ClimaDiagnostics.Writers.DictWriter()
-
-ref_time = DateTime(2010)
 
 short_names_1D = [
     "sif",
@@ -276,10 +248,11 @@ short_names_1D = [
 ]
 short_names_2D = ["swc", "tsoil", "si"]
 output_vars = [short_names_1D..., short_names_2D...]
+
 diags = ClimaLand.default_diagnostics(
     land,
-    ref_time;
-    output_writer,
+    start_date;
+    output_writer = output_writer,
     output_vars,
     average_period = :hourly,
 )
@@ -289,9 +262,10 @@ diagnostic_handler =
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
-## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
+## How often we want to update the drivers. Note that this uses the defined `t0`, and `tf`
 ## defined in the simulatons file
-updateat = Array(t0:DATA_DT:tf)
+data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID))
+updateat = Array(t0:data_dt:tf)
 model_drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
@@ -342,8 +316,8 @@ AR = AR .* 1e6
 ET = ET .* 24 .* 3600
 
 # For the data, we also restrict to post-spinup period
-data_id_post_spinup = Array(Int64(t_spinup ÷ DATA_DT):1:Int64(tf ÷ DATA_DT))
-data_times = Array(0:DATA_DT:(num_days * S_PER_DAY)) .+ t_spinup
+data_id_post_spinup = Array(Int64(t_spinup ÷ data_dt):1:Int64(tf ÷ data_dt))
+data_times = Array(0:data_dt:(num_days * S_PER_DAY)) .+ t_spinup
 # Plotting
 savedir = generate_output_path("experiments/integrated/fluxnet/$site_ID/out/")
 
@@ -365,7 +339,13 @@ plot_daily_avg(
 
 # Plot all comparisons of model diurnal cycles to data diurnal cycles
 # GPP
-if drivers.GPP.status == absent
+comparison_data = FluxnetSimulationsExt.get_comparison_data(
+    site_ID,
+    time_offset,
+    start_date,
+    FT,
+)
+if comparison_data.GPP.absent
     plot_daily_avg(
         "GPP",
         GPP,
@@ -376,59 +356,59 @@ if drivers.GPP.status == absent
         "Model",
     )
 else
-    GPP_data = drivers.GPP.values[data_id_post_spinup] .* 1e6
+    GPP_data = comparison_data.GPP.values[data_id_post_spinup] .* 1e6
     plot_avg_comp(
         "GPP",
         GPP,
         dt_save,
         GPP_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
-        drivers.GPP.units,
+        "μmol/m^2/s",
         savedir,
     )
 end
 
 # Upwelling shortwave radiation is referred to as outgoing in the data
-if drivers.SW_OUT.status == absent
+if comparison_data.SW_u.absent
     plot_daily_avg("SW up", SW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
-    SW_u_data = drivers.SW_OUT.values[data_id_post_spinup]
+    SW_u_data = comparison_data.SW_u.values[data_id_post_spinup]
     plot_avg_comp(
         "SW up",
         SW_u,
         dt_save,
         SW_u_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
-        drivers.SW_OUT.units,
+        "W/m^2",
         savedir,
     )
 end
 
 # Upwelling longwave radiation is referred to outgoing in the data
-if drivers.LW_OUT.status == absent
+if comparison_data.LW_u.absent
     plot_daily_avg("LW up", LW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
-    LW_u_data = drivers.LW_OUT.values[data_id_post_spinup]
+    LW_u_data = comparison_data.LW_u.values[data_id_post_spinup]
     plot_avg_comp(
         "LW up",
         LW_u,
         dt_save,
         LW_u_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
-        drivers.LW_OUT.units,
+        "W/m^2",
         savedir,
     )
 end
 
 # ET
-if drivers.LE.status == absent
+if comparison_data.LE.absent
     plot_daily_avg("ET", ET, dt_save, num_days, "mm/day", savedir, "Model")
 else
     measured_T =
-        drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
+        comparison_data.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
         (1e3 * 24 * 3600)
     ET_data = measured_T[data_id_post_spinup]
     plot_avg_comp(
@@ -436,7 +416,7 @@ else
         ET,
         dt_save,
         ET_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
         "mm/day",
         savedir,
@@ -444,35 +424,35 @@ else
 end
 
 # Sensible Heat Flux
-if drivers.H.status == absent
+if comparison_data.H.absent
     plot_daily_avg("SHF", SHF, dt_save, num_days, "w/m^2", savedir, "Model")
 else
-    SHF_data = drivers.H.values[data_id_post_spinup]
+    SHF_data = comparison_data.H.values[data_id_post_spinup]
     plot_avg_comp(
         "SHF",
         SHF,
         dt_save,
         SHF_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
-        drivers.H.units,
+        "W/m^2",
         savedir,
     )
 end
 
 # Latent Heat Flux
-if drivers.LE.status == absent
+if comparison_data.LE.absent
     plot_daily_avg("LHF", LHF, dt_save, num_days, "w/m^2", savedir)
 else
-    LHF_data = drivers.LE.values[data_id_post_spinup]
+    LHF_data = comparison_data.LE.values[data_id_post_spinup]
     plot_avg_comp(
         "LHF",
         LHF,
         dt_save,
         LHF_data,
-        FT(DATA_DT),
+        FT(data_dt),
         num_days,
-        drivers.LE.units,
+        "W/m^2",
         savedir,
     )
 end
@@ -526,11 +506,11 @@ lines!(
     label = "Ice, 1.25cm",
 )
 
-if drivers.SWC.status != absent
+if !comparison_data.SWC.absent
     lines!(
         ax1,
         data_times ./ 3600 ./ 24,
-        drivers.SWC.values[data_id_post_spinup],
+        comparison_data.SWC.values[data_id_post_spinup],
         label = "Data",
     )
 end
@@ -558,19 +538,16 @@ limits!(
     -500,
     0.0,
 )
+if !comparison_data.P.absent
+    lines!(
+        ax3,
+        data_times ./ 3600 ./ 24,
+        (comparison_data.P.values .* (1e3 * 24 * 3600))[data_id_post_spinup],
+        label = "Total precip (data)",
+    )
+end
 
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
-    label = "Rain (data)",
-)
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
-    label = "Snow (data)",
-)
+
 CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
 
 
@@ -593,11 +570,11 @@ lines!(
     color = "blue",
 )
 
-if drivers.TS.status != absent
+if !comparison_data.TS.absent
     lines!(
         ax12,
         data_times ./ 3600 ./ 24,
-        drivers.TS.values[data_id_post_spinup],
+        comparison_data.TS.values[data_id_post_spinup],
         label = "Data",
     )
 end
