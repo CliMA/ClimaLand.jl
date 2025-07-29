@@ -296,13 +296,27 @@ t = parent(sol.t)
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
 T = [parent(saved_values.saveval[k].soil.T) for k in 1:length(t)];
 # Let's look at the initial and final times:
-plot(ϑ_l[1], z, xlabel = "ϑ_l", ylabel = "z (m)", label = "t = 0d")
+plot(
+    ϑ_l[1],
+    z,
+    xlabel = "ϑ_l",
+    ylabel = "z (m)",
+    label = "t = 0d",
+    title = "Moisture Equilibration from t = 0d to t = 3d",
+)
 plot!(ϑ_l[4], z, label = "t = 1.5d")
 plot!(ϑ_l[end], z, label = "t = 3d")
 savefig("eq_moisture_plot.png");
 # ![](eq_moisture_plot.png)
 
-plot(T[1], z, xlabel = "T (K)", ylabel = "z (m)", label = "t = 0d")
+plot(
+    T[1],
+    z,
+    xlabel = "T (K)",
+    ylabel = "z (m)",
+    label = "t = 0d",
+    title = "Temperature Equilibration from t = 0d to t = 3d",
+)
 plot!(T[4], z, xlabel = "T (K)", ylabel = "z (m)", label = "t = 1.5d")
 plot!(T[end], z, xlabel = "T (K)", ylabel = "z (m)", label = "t = 3d")
 savefig("eq_temperature_plot.png");
