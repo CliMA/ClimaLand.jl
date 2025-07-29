@@ -24,6 +24,8 @@ using ClimaUtilities
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+LandSimulationVisualizationExt =
+    Base.get_extension(ClimaLand, :LandSimulationVisualizationExt).LandSimulationVisualizationExt;
 
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
@@ -225,10 +227,7 @@ jac_kwargs =
 # Callbacks
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
-output_writer = ClimaDiagnostics.Writers.DictWriter()
-
-short_names_1D = [
+output_vars = [
     "sif",
     "ra",
     "gs",
@@ -243,14 +242,14 @@ short_names_1D = [
     "lhf",
     "rn",
     "swe",
+    "swc",
+    "tsoil",
+    "si"
 ]
-short_names_2D = ["swc", "tsoil", "si"]
-output_vars = [short_names_1D..., short_names_2D...]
-
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = output_writer,
+    output_writer = ClimaDiagnostics.Writers.DictWriter(),
     output_vars,
     average_period = :hourly,
 )
