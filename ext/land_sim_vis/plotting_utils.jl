@@ -388,7 +388,7 @@ function make_diurnal_timeseries(
                 ax.title = "$(sn): RMSD/median = $(round(fractional_RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))"
             end
 
-            CairoMakie.save(joinpath(tmpdir, "$(sn)_avg.png"), fig)
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_avg.pdf"), fig)
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
@@ -466,7 +466,7 @@ function make_timeseries(
                 )
             end
 
-            CairoMakie.save(joinpath(tmpdir, "$(sn)_ts.png"), fig)
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_ts.pdf"), fig)
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
