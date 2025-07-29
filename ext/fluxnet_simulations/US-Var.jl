@@ -23,6 +23,30 @@ function get_domain_info(
     )
 end
 
+
+"""
+    get_location(::Val{:US_Var}; kwargs...)
+
+Returns geographical information for US-Var (California Vaira Ranch Ione) Fluxnet site.
+"""
+function get_location(
+    ::Val{:US_Var};
+    time_offset = 8,
+    lat = FT(38.4133),
+    long = FT(-120.9508),
+)
+    return (; time_offset, lat, long)
+end
+
+"""
+    get_fluxtower_height(::Val{:US_Var}; kwargs...)
+
+Returns atmosphere height for US-Var (California Vaira Ranch Ione) Fluxnet site.
+"""
+function get_fluxtower_height(::Val{US_Var}; atmos_h = FT(2))
+    return (; atmos_h,)
+end
+
 """
     get_parameters(::Val{:US_Var}; kwargs...)
 
@@ -45,10 +69,6 @@ Hydraulics parameters:
 """
 function get_parameters(
     ::Val{:US_Var};
-    time_offset = 8,
-    lat = FT(38.4133),
-    long = FT(-120.9508),
-    atmos_h = FT(2),
     soil_ν = FT(0.45),
     soil_K_sat = FT(0.45 / 3600 / 100),
     soil_S_s = FT(1e-3),

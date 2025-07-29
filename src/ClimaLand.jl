@@ -424,5 +424,4 @@ import .Diagnostics: default_diagnostics
 
 # Simulations
 include(joinpath("simulations", "Simulations.jl"))
-include("ext/FluxnetSimulationsExt.jl")
 end

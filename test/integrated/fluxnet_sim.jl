@@ -5,12 +5,14 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 const FT = Float64
 
+FluxnetSimulationsExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
+
 @testset "US-Ha1 domain info + parameters" begin
-    site_ID = ClimaLand.FluxnetSimulations.replace_hyphen("US-Ha1")
+    site_ID = FluxnetSimulationsExt.replace_hyphen("US-Ha1")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        ClimaLand.FluxnetSimulations.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.5), FT(0.025))
     @test nelements == 20
@@ -125,11 +127,11 @@ const FT = Float64
 end
 
 @testset "US-MOz domain info + parameters" begin
-    site_ID = ClimaLand.FluxnetSimulations.replace_hyphen("US-MOz")
+    site_ID = FluxnetSimulationsExt.replace_hyphen("US-MOz")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        ClimaLand.FluxnetSimulations.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.5), FT(0.1))
     @test nelements == 20
@@ -208,11 +210,11 @@ end
 end
 
 @testset "US-NR1 domain info + parameters" begin
-    site_ID = ClimaLand.FluxnetSimulations.replace_hyphen("US-NR1")
+    site_ID = FluxnetSimulationsExt.replace_hyphen("US-NR1")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        ClimaLand.FluxnetSimulations.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.25), FT(0.05))
     @test nelements == 20
@@ -291,11 +293,11 @@ end
 
 
 @testset "US-Var domain info + parameters" begin
-    site_ID = ClimaLand.FluxnetSimulations.replace_hyphen("US-Var")
+    site_ID = FluxnetSimulationsExt.replace_hyphen("US-Var")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        ClimaLand.FluxnetSimulations.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == nothing
     @test nelements == 14
@@ -378,7 +380,7 @@ end
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        ClimaLand.FluxnetSimulations.get_domain_info(FT, Symbol(site_ID))
+        FluxnetSimulationsExt.get_domain_info(FT, Symbol(site_ID))
 
     @test dz_tuple == (FT(1.5), FT(0.1))
     @test nelements == 20

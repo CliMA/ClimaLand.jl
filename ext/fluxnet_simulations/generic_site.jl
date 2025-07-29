@@ -1,9 +1,15 @@
+###################################
+#        MODULE FUNCTIONS         #
+###################################
+
+
 """
     get_domain_info(FT, site_ID::Symbol; dz_bottom = FT(1.5), dz_top = FT(0.1),
         nelements = 20, zmin = FT(-10),  zmax = FT(0))
 
-Gets and returns primary domain information for a generic Fluxnet site,
-using autofilled values from US-MOz (Missouri Ozark) site.
+Gets and returns primary domain information for a generic Fluxnet site, using
+default values corresponding to a 10m deep soil column with 20 layers, with
+a resolution of 10 cm at the top of the domain and 1.5m at the bottom of the domain.
 """
 function get_domain_info(
     FT,
@@ -25,26 +31,23 @@ function get_domain_info(
     )
 end
 
-
 """
-    get_parameters(site_ID::Symbol; kwargs...)
+    get_parameters(pft::Pft; kwargs...)
 
-Gets parameters for a generic Fluxnet site,
-using autofilled values from US-MOz (Missouri Ozark) site.
+Gets parameters for a generic Fluxnet site based on PFT (plant functional type),
+supplemented with additional autofilled values from US-MOz (Missouri Ozark) site.
 
 Data sources:
 
-Conductance parameters:
-    - Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
 Hydraulics parameters:
     - Holtzman, Nataniel, et al. 2023, https://doi.org/10.1029/2023WR035481
 """
 function get_parameters(
-    site_ID::Symbol;
+    lat,
+    long,
+    pft::Pft;
     time_offset = 7,
-    atmos_h = FT(32),
-    lat = FT(38.7441),
-    long = FT(-92.2000),
+    atmos_h = FT(2),
     soil_ν = FT(0.55),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-2),
@@ -59,26 +62,26 @@ function get_parameters(
     soil_ϵ = FT(0.98),
     soil_α_PAR = FT(0.2),
     soil_α_NIR = FT(0.2),
-    Ω = FT(0.69),
-    χl = FT(0.1),
+    Ω = pft.Ω,
+    χl = pft.χl,
     G_Function = CLMGFunction(χl),
-    α_PAR_leaf = FT(0.1),
+    α_PAR_leaf = pft.α_PAR_leaf,
     λ_γ_PAR = FT(5e-7),
-    τ_PAR_leaf = FT(0.05),
-    α_NIR_leaf = FT(0.45),
-    τ_NIR_leaf = FT(0.25),
-    ϵ_canopy = FT(0.97),
-    ac_canopy = FT(5e2),
-    g1 = FT(141),
+    α_NIR_leaf = pft.α_NIR_leaf,
+    τ_PAR_leaf = pft.τ_PAR_leaf,
+    τ_NIR_leaf = pft.τ_NIR_leaf,
+    ϵ_canopy = pft.ϵ_canopy,
+    ac_canopy = pft.ac_canopy,
+    g1 = pft.g1,
     Drel = FT(1.6),
     g0 = FT(1e-4),
-    Vcmax25 = FT(6e-5),
+    Vcmax25 = pft.Vcmax25,
     pc = FT(-2.0e6),
     sc = FT(5e-6),
     SAI = FT(1.0),
-    f_root_to_shoot = FT(3.5),
-    K_sat_plant = 7e-8,
-    ψ63 = FT(-4 / 0.0098),
+    f_root_to_shoot = pft.f_root_to_shoot,
+    K_sat_plant = pft.K_sat_plant,
+    ψ63 = pft.ψ63,
     Weibull_param = FT(4),
     a = FT(0.1 * 0.0098),
     conductivity_model = PlantHydraulics.Weibull{FT}(
@@ -87,9 +90,9 @@ function get_parameters(
         Weibull_param,
     ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
-    plant_ν = FT(1.44e-4),
+    plant_ν = pft.plant_ν,
     plant_S_s = FT(1e-2 * 0.0098),
-    rooting_depth = FT(0.5),
+    rooting_depth = pft.rooting_depth,
     n_stem = Int64(1),
     n_leaf = Int64(1),
     h_stem = FT(9),

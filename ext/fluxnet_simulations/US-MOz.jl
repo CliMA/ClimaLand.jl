@@ -28,6 +28,29 @@ function get_domain_info(
 end
 
 """
+    get_location(::Val{:US_MOz}; kwargs)
+
+Returns geographical information for US-MOz (Missouri Ozark) Fluxnet site.
+"""
+function get_location(
+    ::Val{:US_MOz};
+    time_offset = 7,
+    lat = FT(38.7441),
+    long = FT(-92.2000),
+)
+    return (; time_offset, lat, long)
+end
+
+"""
+    get_fluxtower_height(::Val{:US_MOz}; kwargs...)
+
+Returns atmosphere height for US-Ha1 (Missouri Ozark) Fluxnet site.
+"""
+function get_fluxtower_height(::Val{US_MOz}; atmos_h = FT(32))
+    return (; atmos_h,)
+end
+
+"""
     get_parameters(::Val{:US_MOz}; kwargs...)
 
 Gets parameters for the Fluxnet site US-MOz (Missouri Ozark)
@@ -42,10 +65,6 @@ Hydraulics parameters:
 """
 function get_parameters(
     ::Val{:US_MOz};
-    time_offset = 7,
-    atmos_h = FT(32),
-    lat = FT(38.7441),
-    long = FT(-92.2000),
     soil_ν = FT(0.55),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-2),
@@ -100,10 +119,6 @@ function get_parameters(
     z0_b = FT(0.1) * z0_m,
 ) where {FT}
     return (;
-        time_offset,
-        lat,
-        long,
-        atmos_h,
         soil_ν,
         soil_K_sat,
         soil_S_s,

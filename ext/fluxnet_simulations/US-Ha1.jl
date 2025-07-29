@@ -27,16 +27,40 @@ function get_domain_info(
 end
 
 """
+    get_location(::Val{:US_Ha1}; kwargs...)
+
+Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
+"""
+function get_location(
+    ::Val{:US_Ha1};
+    time_offset = 5,
+    lat = FT(42.5378),
+    long = FT(-72.1715),
+)
+    return (; time_offset, lat, long)
+end
+
+"""
+    get_fluxtower_height(::Val{:US_Ha1}; kwargs...)
+
+Returns atmosphere height for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
+
+Data sources:
+
+Atmosphere height: 
+    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+"""
+function get_fluxtower_height(::Val{US_Ha1}; atmos_h = FT(30))
+    return (; atmos_h,)
+end
+
+"""
     get_parameters(::Val{:US_Ha1}; kwargs...)
 
 Gets parameters for the Fluxnet site US-Ha1 (Massachusetts Harvard Forest)
 and returns them as a Named Tuple. Default parameters are provided and
 can be overriden using keyword arguments.
 
-Data sources:
-
-Atmosphere height: 
-    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 Soil parameters: 
     - Wang et al. 2021, https://doi.org/10.5194/gmd-14-6741-2021
 Conductance parameters:
@@ -48,10 +72,6 @@ Hydraulics parameters:
 """
 function get_parameters(
     ::Val{:US_Ha1};
-    time_offset = 5,
-    lat = FT(42.5378),
-    long = FT(-72.1715),
-    atmos_h = FT(30),
     soil_ν = FT(0.5),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
@@ -105,10 +125,6 @@ function get_parameters(
 ) where {FT}
 
     return (;
-        time_offset,
-        lat,
-        long,
-        atmos_h,
         soil_ν,
         soil_K_sat,
         soil_S_s,
