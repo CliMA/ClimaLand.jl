@@ -49,7 +49,6 @@ using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
 
-
 ########################################################
 # Convenience constructors for Canopy model components
 ########################################################
