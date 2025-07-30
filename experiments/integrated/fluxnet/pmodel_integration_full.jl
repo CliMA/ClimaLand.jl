@@ -394,7 +394,7 @@ for short_name in vcat(short_names_1D, short_names_2D)
         if short_name in short_names_2D
             NCDatasets.defDim(ds, "z", length(data_vector[1]))
             depth_var = NCDatasets.defVar(ds, "z", FT, ("z",))
-            depth_var[:] = land_domain.space.subsurface.grid.center_local_geometry.coordinates.z
+            depth_var[:] = Array(parent(land_domain.fields.z))
             nc_var = NCDatasets.defVar(ds, short_name, FT, ("time", "z"))
             nc_var[:, :] = data_vector
         else 
