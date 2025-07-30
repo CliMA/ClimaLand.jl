@@ -1,10 +1,4 @@
-# TODO: Make this into a package extension
-# Don't really like how we are still hijacking the data sources file and reusing that...
-module LandCalibration
-
 import Dates
-
-export CalibrateConfig
 
 """
     struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
@@ -20,7 +14,8 @@ export CalibrateConfig
     end
 
 A configuration struct for keeping track of multiple fields that are of interest
-to an user running calibration.
+to an user running calibration or is needed in multiple places (e.g., workers,
+generating observations)
 """
 struct CalibrateConfig{
     SPINUP <: Dates.Period,
@@ -87,8 +82,8 @@ function CalibrateConfig(;
     output_dir = "experiments/better_calibration/land_model",
     rng_seed = 42,
 )
-    isempty(short_names) || error("Cannot run calibration with no short names")
-    isempty(sample_date_ranges) || error(
+    isempty(short_names) && error("Cannot run calibration with no short names")
+    isempty(sample_date_ranges) && error(
         "Cannot run calibration with no dates specified for the date ranges",
     )
 
@@ -102,22 +97,21 @@ function CalibrateConfig(;
         "The minibatch size is $minibatch_size, but the number of samples is $num_samples",
     )
 
-    num_samples % minibatch_size == 0 || @warn(
-        "Number of samples is not divisible by the minibatch size; may be missing samples when running the calibration"
+    remaining = num_samples % minibatch_size
+    remaining == 0 || @warn(
+        "Number of samples is not divisible by the minibatch size; the last $remaining samples may be missing when running the calibration"
     )
 
-    return CalibrateConfig(;
-        nelements = nelements,
-        short_names = short_names,
-        sample_date_ranges = sample_date_ranges,
-        spinup = spinup,
-        extend = extend,
-        output_dir = output_dir,
-        rng_seed = rng_seed,
-        minibatch_size = minibatch_size,
-        n_iterations = n_iterations,
+    return CalibrateConfig(
+        nelements,
+        short_names,
+        sample_date_ranges,
+        spinup,
+        extend,
+        output_dir,
+        rng_seed,
+        minibatch_size,
+        n_iterations,
     )
-
-end
 
 end

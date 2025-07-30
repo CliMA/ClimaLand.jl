@@ -329,7 +329,11 @@ function setup_model(
 end
 
 function ClimaCalibrate.forward_model(iteration, member)
-    (; output_dir, sample_date_ranges, nelements, spinup, extend) = get_config()
+    output_dir = CALIBRATE_CONFIG.output_dir
+    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
+    nelements = CALIBRATE_CONFIG.nelements
+    spinup = CALIBRATE_CONFIG.spinup
+    extend = CALIBRATE_CONFIG.extend
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -370,6 +374,9 @@ function ClimaCalibrate.forward_model(iteration, member)
         key => calibrate_param_dict[key]["value"] for
         (key, value) in calibrate_param_dict
     )
+
+    # TODO: Do something like
+    # ClimaParams.create_toml_dict(FT, override_file = calibrate_params_path)
 
     model = setup_model(
         FT,

@@ -7,14 +7,16 @@ import ClimaCore
 import EnsembleKalmanProcesses as EKP
 import JLD2
 
-include("getters.jl")
+include(
+    joinpath(pkgdir(ClimaLand), "experiments/better_calibration/config.jl"),
+)
+
 include("observation_utils.jl")
 
-# TODO: Resolve this comment
-# For now, we will use `data_sources.jl` for the leaderboard, since it is
-# the easiest option, but it would be better to make your own `data_source.jl`
-# and preprocess the observational data to match the simulation data as opposed
-# to processing both the simulation and observational data (e.g. with ILAMB data).
+# For now, we will use `data_sources.jl` for the leaderboard, since it is the
+# easiest option, but it would be better to make your own `data_source.jl` and
+# preprocess the observational data to match the simulation data as opposed to
+# processing both the simulation and observational data (e.g. with ILAMB data).
 include(
     joinpath(pkgdir(ClimaLand), "ext/land_sim_vis/leaderboard/data_sources.jl"),
 )
@@ -59,7 +61,7 @@ function preprocess_era5_vars(short_names, start_date, nelements)
     era5_obs_vars = get_era5_obs_var_dict()
     for short_name in short_names
         short_name ∉ keys(era5_obs_vars) && error(
-            "There is not variable with the short name $short_name. Add this variable to get_era5_obs_var_dict",
+            "There is no variable with the short name $short_name. Add this variable to get_era5_obs_var_dict",
         )
     end
     vars = map(short_names) do short_name
@@ -78,12 +80,8 @@ processed.
 Note that the individual observation is not generated in this function.
 """
 function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
-    short_name in ("lhf", "shf", "swu", "lwu") || error(
-        "Do not know how to process a variable with the short name $short_name",
-    )
-
     lats, lons = diagnostics_lat_lon(nelements)
-    # Check for `NaN`s
+
     # If there are `NaN`s, then resampling can't be done as resampling is
     # not `NaN` aware
     any(isnan, var.data) && error(
@@ -113,13 +111,7 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
     # For now, it is better to manually create a mask from ClimaCore and
     # generate a mask from it using ClimaAnalysis
 
-    # TODO: Alternatively, if the diagnostics are available, then you can
-    # generate a mask from the diagnostics (as long as there are no NaNs on
-    # the land in the output)
-
-    # TODO: Finally, the best solution might be to make a landsea mask in
-    # in the diagnostics (at the first time step and stop after that)
-    # Problem with this is that the simulation need to run one time
+    # TODO: This can be improved by saving the mask as a diagnostic
     ocean_mask = make_ocean_mask(nelements)
     var = ocean_mask(var)
 
@@ -141,30 +133,26 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
         by = ClimaAnalysis.Index(),
     )
 
+    # TODO: Remove this for generic calibration
     var = ClimaAnalysis.window(var, "latitude", left = 0.0, right = 45.0)
 
     var = ClimaAnalysis.window(var, "longitude", left = -60.0, right = 60.0)
 
+    # TODO: Change the comment? not sure if covariance matrix is correct
     # Want the covariance matrix to be Float32
     var = ClimaCalibrate.ObservationRecipe.change_data_type(var, Float32)
     return var
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # covar_estimator =
-    #     ClimaCalibrate.ObservationRecipe.SeasonalDiagonalCovariance(;
-    #         model_error_scale = Float32(0.05),
-    #         regularization = Float32(25.0),
-    #         ignore_nan = true,
-    #         use_latitude_weights = true,
-    #         min_cosd_lat = 0.1
-    #     )
     covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
         scalar = 25.0,
         use_latitude_weights = true,
         min_cosd_lat = 0.1,
     )
-    (; nelements, sample_date_ranges, short_names) = get_config()
+    nelements = CALIBRATE_CONFIG.nelements
+    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
+    short_names = CALIBRATE_CONFIG.short_names
     @info "The number of samples is $(length(sample_date_ranges))"
 
     observation_vector = make_era5_observation_vector(

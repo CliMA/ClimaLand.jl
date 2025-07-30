@@ -15,8 +15,8 @@ using CairoMakie, GeoMakie, Poppler_jll, Printf, StatsBase
 LandSimVis =
     Base.get_extension(
         ClimaLand,
-        :LandSimulationVisualization,
-    ).LandSimulationVisualization;
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt
 
 """
     ClimaCalibrate.observation_map(iteration)
@@ -24,7 +24,7 @@ LandSimVis =
 Return G ensemble for an `iteration`.
 """
 function ClimaCalibrate.observation_map(iteration)
-    (; output_dir) = get_config()
+    output_dir = CALIBRATE_CONFIG.output_dir
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, iteration))
     current_minibatch = EKP.get_current_minibatch(ekp)
     obs = EKP.get_obs(ekp)
@@ -70,7 +70,8 @@ function process_member_data(
     short_names,
     current_minibatch,
 )
-    (; sample_date_ranges, nelements) = get_config()
+    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
+    nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
     for short_name in short_names
         short_name in ("lhf", "shf", "swu", "lwu") || error(
