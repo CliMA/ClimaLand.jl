@@ -192,3 +192,6 @@ git-tree-sha1 = "cdcc1708832654d2209d267e01a3893c4b25c085"
     [[modis_lai_fluxnet_sites.download]]
     sha256 = "c74780775d98b56eed74222377604272658f59686d4d7881c7b815b6c230080b"
     url = "https://caltech.box.com/shared/static/g6vubma6vcxulb9fl0pvzq6v0oto4iu3.gz"
+
+[fluxnet2015]
+git-tree-sha1 = "94d6eb8e3bc5fc361a43597ab4fb6941bdbe2850"
