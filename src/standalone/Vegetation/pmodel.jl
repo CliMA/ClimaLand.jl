@@ -666,7 +666,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc)
+    βm = @. lazy(moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc))
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -745,7 +745,7 @@ function call_update_optimal_EMA(
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc)
+    βm = @. lazy(moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc))
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
