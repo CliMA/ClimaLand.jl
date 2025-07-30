@@ -1,4 +1,4 @@
-import Dates: Hour, Day
+import Dates: Hour, Day, Minute
 
 """
     monthly_maxs(FT, short_names...; output_writer,  start_date)
