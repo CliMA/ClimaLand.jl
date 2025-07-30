@@ -29,24 +29,36 @@ obs_filename = join(["obs_", site_data_stem])
 
 
 # Meteorological data
-met_data = NCDataset(joinpath(path, met_filename))
-timestamp = met_data["time"][:]
-year = Dates.year.(timestamp)
-# convert from milliseconds to seconds
-mask = (year .== 2009) .| (year .== 2010) .| (year .== 2011)
-seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
+timestamp, mask, seconds, LWdown, SWdown, Psurf, q_air, Tair, u, rainf, snowf =
+    NCDataset(joinpath(path, met_filename)) do met_data
+        timestamp = met_data["time"][:]
+        year = Dates.year.(timestamp)
+        # convert from milliseconds to seconds
+        mask = (year .== 2009) .| (year .== 2010) .| (year .== 2011)
+        seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
 
-LWdown = met_data["LWdown"][:][mask]
-SWdown = met_data["SWdown"][:][mask]
-Psurf = met_data["Psurf"][:][mask]
-q_air = met_data["Qair"][:][mask]
-Tair = met_data["Tair"][:][mask]
-u = met_data["Wind"][:][mask]
-# convert mass flux into volume flux of liquid water
-# additionally, our convention is that a negative flux is downwards
-rainf = -met_data["Rainf"][:][mask] ./ 1000.0 # convert to dS/dt
-snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
-
+        LWdown = met_data["LWdown"][:][mask]
+        SWdown = met_data["SWdown"][:][mask]
+        Psurf = met_data["Psurf"][:][mask]
+        q_air = met_data["Qair"][:][mask]
+        Tair = met_data["Tair"][:][mask]
+        u = met_data["Wind"][:][mask]
+        # convert mass flux into volume flux of liquid water
+        # additionally, our convention is that a negative flux is downwards
+        rainf = -met_data["Rainf"][:][mask] ./ 1000.0 # convert to dS/dt
+        snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
+        return timestamp,
+        mask,
+        seconds,
+        LWdown,
+        SWdown,
+        Psurf,
+        q_air,
+        Tair,
+        u,
+        rainf,
+        snowf
+    end
 # Required parameters for forcing
 earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -97,11 +109,15 @@ atmos = PrescribedAtmosphere(
 )
 forcing = (; atmos, radiation)
 # Snow data
-snow_data = NCDataset(joinpath(path, obs_filename))
+albedo, z, mass, ts = NCDataset(joinpath(path, obs_filename)) do snow_data
+    albedo = snow_data["albs"][:][mask]
+    z = snow_data["snd_man"][:][mask]
+    mass = snow_data["snw_man"][:][mask]
+    ts = snow_data["ts"][:][mask]
+    return albedo, z, mass, ts
+end
 
-albedo = snow_data["albs"][:][mask]
-z = snow_data["snd_man"][:][mask]
-mass = snow_data["snw_man"][:][mask]
+
 
 mass_data_avail = .!(typeof.(mass) .<: Missing)
 # Although snow mass data is present, other data may be missing
@@ -109,7 +125,7 @@ mass_data_avail = .!(typeof.(mass) .<: Missing)
 # with gaps
 fill_missing(x, FT) = typeof(x) <: Missing ? FT(NaN) : x
 
-T_snow = fill_missing.(snow_data["ts"][:][mask][mass_data_avail], FT)
+T_snow = fill_missing.(ts[mass_data_avail], FT)
 ρ_snow = fill_missing.(mass[mass_data_avail] ./ z[mass_data_avail], FT)
 depths = fill_missing.(z[mass_data_avail], FT)
 SWE = depths .* ρ_snow ./ 1000.0
