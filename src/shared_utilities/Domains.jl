@@ -1304,6 +1304,8 @@ If the simulation space is closer to the low resolution CLM data,
 that data will be used, and vice versa. The high resolution data
 takes longer to process and so using lower resolution data when it
 suffices is desirable.
+
+If the surface space is a point, `use_lowres_clm` always returns true.
 """
 function use_lowres_clm(
     surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
@@ -1328,6 +1330,7 @@ function use_lowres_clm(
     return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
 end
 
+use_lowres_clm(surface_space::ClimaCore.Spaces.PointSpace) = true
 
 
 export AbstractDomain

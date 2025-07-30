@@ -1,7 +1,9 @@
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
+using NCDatasets
 using Test
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 using ClimaLand
 using ClimaLand: Domains
 using ClimaLand.Domains:
@@ -584,5 +586,73 @@ end
     )
     surface_space = domain.space.surface
     @test !ClimaLand.Domains.use_lowres_clm(surface_space)
+end
 
+@testset "read in spatial data at a point" begin
+    # Manually access the rooting depth from the CLM data to compare with
+    context = ClimaComms.context()
+    clm_artifact_path =
+        ClimaLand.Artifacts.clm_data_folder_path(; context, lowres = true)
+    filepath = joinpath(clm_artifact_path, "vegetation_properties_map.nc")
+
+    NCDataset(filepath) do ncd
+        lats = ncd["lat"][:]
+        longs = ncd["lon"][:]
+        lat_ind = 2
+        long_ind = 10
+        lat = FT(lats[lat_ind])
+        long = FT(longs[long_ind])
+
+        rooting_depth_nc = ncd["rooting_depth"][long_ind, lat_ind]
+
+        # Construct a Point domain at a longlat that appears in the dataset (not testing interpolation)
+        zmin = FT(0)
+        nelements = 10
+        longlat = (long, lat)
+        zlim = FT.((-1, 0))
+        column = ClimaLand.Domains.Column(; zlim, nelements, longlat)
+        surface_space = column.space.surface
+
+        # Get the rooting depth at this lat/lon using ClimaUtilities
+        rooting_depth_pt = ClimaLand.Canopy.clm_rooting_depth(surface_space)
+
+        @test all(Array(parent(rooting_depth_pt)) .== FT(rooting_depth_nc))
+    end
+end
+
+@testset "read in spatial data at a column" begin
+    # Manually access 3D soil parameter data to compare with
+    context = ClimaComms.context()
+
+    soil_params_artifact_path =
+        ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
+    filepath = joinpath(
+        soil_params_artifact_path,
+        "residual_map_gupta_etal2020_1.0x1.0x4.nc",
+    )
+
+    NCDataset(filepath) do ncd
+        lats = ncd["lat"][:]
+        longs = ncd["lon"][:]
+        zs = ncd["z"][:]
+        lat_ind = 90
+        long_ind = 100
+        lat = FT(lats[lat_ind])
+        long = FT(longs[long_ind])
+
+        θ_r_nc = ncd["θ_r"][long_ind, lat_ind, :]
+
+        # Construct a Column domain at a longlat that appears in the dataset (not testing interpolation)
+        nelements = length(zs)
+        longlat = (long, lat)
+        zlim = FT.((-1, 0))
+        column = ClimaLand.Domains.Column(; zlim, nelements, longlat)
+        subsurface_space = column.space.subsurface
+
+        # Get the residual water content at this lat/lon using ClimaUtilities
+        (; θ_r) =
+            ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
+
+        @test all(Array(parent(θ_r)) .== FT.(θ_r_nc[:]))
+    end
 end
