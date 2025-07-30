@@ -1,4 +1,55 @@
 """
+    make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+
+Creates and returns a function `set_ic!(Y,p,t,model)` which
+updates `Y` in place with an estimated set of initial conditions
+based on the fluxnet observations at `site_ID` at the `start_date` in UTC,
+and the type of the `model`.
+In order to convert between local time and UTC, the hour offset from
+UTC is required. 
+"""
+function make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model,
+)
+    set_ic!(Y, p, t, model) = set_fluxnet_ic!(
+        Y,
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+    return set_ic!
+end
+
+
+function make_set_fluxnet_initial_conditions_standalone_canopy(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model::ClimaLand.Canopy.CanopyModel,
+)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Convert local datetime to time in UTC
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    UTC_datetime = local_datetime .+ hour_offset_to_period(hour_offset_from_UTC)
+    Δ_date = UTC_datetime .- start_date
+
+    set_ic!(Y, p, t, model) = set_fluxnet_ic!(Y, data, columns, Δ_date, model; standalone = true)
+
+    return set_ic!
+end
+
+
+"""
      set_fluxnet_ic!(
         Y,
         site_ID,
@@ -24,7 +75,7 @@ function FluxnetSimulations.set_fluxnet_ic!(
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     # Convert local datetime to time in UTC
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    UTC_datetime = local_datetime .+ hour_offset_to_period(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
     for component in ClimaLand.land_components(model)
         FluxnetSimulations.set_fluxnet_ic!(
@@ -140,18 +191,22 @@ function FluxnetSimulations.set_fluxnet_ic!(
     Δ_date,
     model::ClimaLand.Canopy.CanopyModel;
     val = -9999,
+    standalone = false
 )
-    # Determine which column index corresponds to air temperature
-    idx = findfirst(columns[:] .== "TA_F")
-    T_air_0 = get_data_at_start_date(
-        data[:, idx],
-        Δ_date;
-        preprocess_func = x -> x + 273.15,
-        val,
-    )
+    if !standalone
+        # Determine which column index corresponds to air temperature
+        idx = findfirst(columns[:] .== "TA_F")
+        T_air_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x + 273.15,
+            val,
+        )
 
-    Y.canopy.energy.T .= T_air_0
-    FT = eltype(Y.canopy.energy.T)
+        Y.canopy.energy.T .= T_air_0
+    end 
+
+    FT = eltype(Y.canopy.hydraulics.ϑ_l)
     ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
     ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics

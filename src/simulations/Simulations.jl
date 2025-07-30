@@ -99,9 +99,11 @@ function LandSimulation(
             start_date,
         ),
     ),
+    driver_update_period = 1800 * 3, # 3 hours 
 )
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
+       isa(first(diagnostics), ClimaDiagnostics.Writers.NetCDFWriter) &&
        first(diagnostics).output_writer.output_dir != outdir
         @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
     end
@@ -145,7 +147,7 @@ function LandSimulation(
     )
 
     # Required callbacks
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    updateat = [promote(t0:(ITime(driver_update_period)):tf...)...]
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
@@ -156,10 +158,11 @@ function LandSimulation(
         ClimaDiagnostics.DiagnosticsHandler(diagnostics, Y, p, t0; dt = Δt)
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
+    model_callbacks = ClimaLand.required_model_callbacks(start_date, t0, Δt, model)
 
     # Collect all callbacks
     callbacks =
-        SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
+        SciMLBase.CallbackSet(diag_cb, user_callbacks..., required_callbacks..., model_callbacks...)
 
     _integrator = SciMLBase.init(
         problem,

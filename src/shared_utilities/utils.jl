@@ -8,6 +8,7 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.TimeManager: ITime, date
 import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 export FTfromY, call_count_nans_state
@@ -683,6 +684,7 @@ arguments at a specified frequency in simulation time.
 - `frequency`: Either a `Float` (assumed to be in seconds) or a `Dates.Period`
   (e.g., `Hour(6)`) indicating how often to trigger the callback.
 - `start_date`: The calendar start time of the simulation.
+- `t0`: The initial time of the integrator. The simulation starts at start_date + Seconds(t0)
 - `dt`: The model timestep (used for divisibility warning).
 - `func`: A function that is called every time the schedule triggers.
 - `func_args...`: Additional arguments passed to `func`.
@@ -692,7 +694,8 @@ call the function based on the `frequency`.
 """
 function FrequencyBasedCallback(
     frequency::Union{AbstractFloat, Dates.Period},
-    start_date,
+    start_date::Dates.DateTime,
+    t0::Union{AbstractFloat, Dates.Period},
     dt::Union{AbstractFloat, Dates.Period};
     func,
     func_args...,
@@ -702,14 +705,51 @@ function FrequencyBasedCallback(
         frequency isa AbstractFloat ? Dates.Millisecond(1000 * frequency) :
         frequency
 
+    t_start = t0 isa AbstractFloat ? Dates.Millisecond(1000 * t0) : t0
     schedule = EveryCalendarDtSchedule(
         frequency_period;
         start_date,
-        date_last = start_date,
+        date_last = start_date + t_start,
     )
 
     if !isnothing(dt)
-        dt_period = dt isa Dates.Period ? dt : Dates.Millisecond(1000 * float(dt))
+        dt_period =
+            dt isa Dates.Period ? dt : Dates.Millisecond(1000 * float(dt))
+        if !isdivisible(frequency_period, dt_period)
+            @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+
+    affect! = (integrator) -> func(integrator; func_args...)
+
+    return SciMLBase.DiscreteCallback(cond, affect!)
+end
+
+
+function FrequencyBasedCallback(
+    frequency::ITime,
+    start_date::Dates.DateTime,
+    t0::ITime,
+    dt::ITime;
+    func,
+    func_args...,
+)
+    # Normalize frequency to a Dates.Period
+    frequency_period = Dates.Millisecond(1000 * Float64(frequency))
+
+    t_start = Dates.Millisecond(1000 * Float64(t0))
+    schedule = EveryCalendarDtSchedule(
+        frequency_period;
+        start_date,
+        date_last = start_date + t_start,
+    )
+
+    if !isnothing(dt)
+        dt_period = Dates.Millisecond(1000 * Float64(dt))
         if !isdivisible(frequency_period, dt_period)
             @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
         end

@@ -187,7 +187,9 @@ for FT in (Float32, Float64)
 
         Aj = light_assimilation.(Ref(photosynthesisparams.is_c3), J, ci, Γstar)
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
-        β = moisture_stress(
+        β = compute_tuzet_moisture_stress(TuzetMoistureStressParameters(photosynthesisparams.sc, photosynthesisparams.pc), p_l) 
+        
+        moisture_stress(
             p_l,
             photosynthesisparams.sc,
             photosynthesisparams.pc,

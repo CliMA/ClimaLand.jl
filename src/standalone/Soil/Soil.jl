@@ -97,7 +97,8 @@ import ClimaLand:
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    required_model_callbacks
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
@@ -176,6 +177,10 @@ append_source(src::AbstractSoilSource, srcs::Tuple)::Tuple = (srcs..., src)
 Appends `src` to the tuple of sources `srcs` if `src` is of type `AbstractSoilSource`.
 """
 append_source(src::Nothing, srcs::Tuple)::Tuple = srcs
+
+function required_model_callbacks(start_date, t0, dt, model::AbstractSoilModel)
+    return ()
+end
 
 include("./retention_models.jl")
 include("./rre.jl")

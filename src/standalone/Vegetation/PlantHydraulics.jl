@@ -406,6 +406,16 @@ function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
 end
 
 """
+    root_distribution_CDF(z::FT, rooting_depth::FT) where {FT}
+
+The CDF for the root distribution function defined above. z is expected to be negative 
+while rooting_depth is positive. 
+"""
+function root_distribution_CDF(z::FT, rooting_depth::FT) where {FT}
+    return 1 - exp(z / rooting_depth)
+end
+
+"""
     AbstractConductivityModel{FT <: AbstractFloat}
 
 An abstract type for the plant hydraulics conductivity model.
@@ -654,7 +664,7 @@ function root_water_flux_per_ground_area!(
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
-    ψ_soil = p.drivers.ψ
+    ψ_soil = p.drivers.θ
     above_ground_area_index =
         harmonic_mean.(
             getproperty(area_index, model.compartment_labels[1]),

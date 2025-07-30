@@ -98,13 +98,18 @@ function compute_stomatal_conductance!(
     t,
     land_model::Union{SoilCanopyModel, LandModel},
 )
-    canopy = land_model.canopy
-    (; g1, g0, Drel) = canopy.conductance.parameters
+    conductance_model = land_model.canopy.conductance
+    compute_stomatal_conductance!(out, Y, p, t, land_model.canopy, conductance_model)
+end
+
+
+function compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model::MedlynConductanceModel)
+    (; g1, g0, Drel) = conductance_model.parameters
     earth_param_set = canopy.parameters.earth_param_set
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = medlyn_conductance(
             g0,
@@ -137,6 +142,23 @@ function compute_stomatal_conductance!(
     end
 end
 
+function compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model::PModelConductance)
+    (; Drel) = conductance_model.parameters
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    ci = p.canopy.photosynthesis.IntVars.ci     # internal CO2 partial pressure, Pa 
+    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
+
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = pmodel_gs_h2o(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+        return out
+    else
+        @. out = pmodel_gs_h2o(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+    end
+end
+
 function compute_canopy_transpiration!(
     out,
     Y,
@@ -157,10 +179,11 @@ function compute_canopy_transpiration!(
 end
 
 # Canopy - Energy
-@diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.turbulent_fluxes.lhf
+@diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.turbulent_fluxes.lhf
 @diagnostic_compute "canopy_sensible_heat_flux" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
@@ -169,7 +192,7 @@ function compute_leaf_water_potential!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel},
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
 )
     hydraulics = land_model.canopy.hydraulics
     n_stem = hydraulics.n_stem
@@ -189,95 +212,88 @@ end
 @diagnostic_compute "root_flux_per_ground_area" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.hydraulics.fa_roots
-@diagnostic_compute "leaf_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.leaf
+@diagnostic_compute "leaf_area_index" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.hydraulics.area_index.leaf
+
+# Canopy - Soil moisture stress
+@diagnostic_compute "moisture_stress_factor" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.soil_moisture_stress.βm
+
 # Canopy - Hydraulics
-function compute_moisture_stress_factor!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel, LandModel},
-)
-    canopy = land_model.canopy
-
-    hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    n = n_stem + n_leaf
-
-    earth_param_set = canopy.parameters.earth_param_set
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    (; sc, pc) = canopy.photosynthesis.parameters
-    ψ = p.canopy.hydraulics.ψ
-    if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-        return out
-    else
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-    end
-end
-@diagnostic_compute "root_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.root
-@diagnostic_compute "stem_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.stem
+@diagnostic_compute "root_area_index" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.hydraulics.area_index.root
+@diagnostic_compute "stem_area_index" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.hydraulics.area_index.stem
 
 # Canopy - Photosynthesis
 @diagnostic_compute "photosynthesis_net_canopy" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.photosynthesis.GPP
-@diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.An
-@diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Rd
+@diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.An
+@diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.Rd
+@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25(p, land_model.canopy.photosynthesis)
+@diagnostic_compute "vcmax25" Union{CanopyModel} get_Vcmax25(p, land_model.photosynthesis)
+
+# Canopy - Photosynthesis (P-model only vars)
+@diagnostic_compute "photosynthesis_carboxylation_limited" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.Ac 
+@diagnostic_compute "photosynthesis_light_limited" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.Aj 
+@diagnostic_compute "vcmax" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.Vcmax
 
 # Canopy - Radiative Transfer
 @diagnostic_compute "near_infrared_radiation_down" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.nir_d
 @diagnostic_compute "near_infrared_radiation_absorbed" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.nir.abs
 @diagnostic_compute "near_infrared_radiation_reflected" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.nir.refl
 @diagnostic_compute "near_infrared_radiation_transmitted" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.nir.trans
 @diagnostic_compute "photosynthetically_active_radiation_down" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.par_d
 @diagnostic_compute "photosynthetically_active_radiation_absorbed" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.par.abs
 @diagnostic_compute "photosynthetically_active_radiation_reflected" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.par.refl
 @diagnostic_compute "photosynthetically_active_radiation_transmitted" Union{
     SoilCanopyModel,
     LandModel,
+    CanopyModel,
 } p.canopy.radiative_transfer.par.trans
-@diagnostic_compute "radiation_longwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.LW_n
-@diagnostic_compute "radiation_shortwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_n
+@diagnostic_compute "radiation_longwave_net" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.radiative_transfer.LW_n
+@diagnostic_compute "radiation_shortwave_net" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.radiative_transfer.SW_n
 
 ## Drivers Module ##
 
 @diagnostic_compute "soil_organic_carbon" Union{SoilCanopyModel, LandModel} p.drivers.soc # need to fix this in src/shared_utilities/drivers
-@diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel} p.drivers.P
-@diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel} p.drivers.P_liq
-@diagnostic_compute "radiation_longwave_down" Union{SoilCanopyModel, LandModel} p.drivers.LW_d
-@diagnostic_compute "radiation_shortwave_down" Union{SoilCanopyModel, LandModel} p.drivers.SW_d
-@diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel} p.drivers.P_snow
-@diagnostic_compute "tair" Union{SoilCanopyModel, LandModel} p.drivers.T
-@diagnostic_compute "specific_humidity" Union{SoilCanopyModel, LandModel} p.drivers.q
-@diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel} p.drivers.u
+@diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
+@diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
+@diagnostic_compute "radiation_longwave_down" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.LW_d
+@diagnostic_compute "radiation_shortwave_down" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.SW_d
+@diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_snow
+@diagnostic_compute "tair" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.T
+@diagnostic_compute "specific_humidity" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.q
+@diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.u
 
 function compute_precip!(
     out,
