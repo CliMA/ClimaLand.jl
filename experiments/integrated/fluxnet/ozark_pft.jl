@@ -20,7 +20,6 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
 
@@ -261,9 +260,6 @@ set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
 # Callbacks
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
 output_writer = ClimaDiagnostics.Writers.DictWriter()
 
 short_names_1D = [
@@ -323,10 +319,14 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data =
     FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+savedir =
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
+mkpath(savedir)
 LandSimulationVisualizationExt.make_diurnal_timeseries(
     land_domain,
     diags,
     start_date;
+    savedir,
     short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,
@@ -335,6 +335,7 @@ LandSimulationVisualizationExt.make_timeseries(
     land_domain,
     diags,
     start_date;
+    savedir,
     short_names = ["swc", "tsoil"],
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,

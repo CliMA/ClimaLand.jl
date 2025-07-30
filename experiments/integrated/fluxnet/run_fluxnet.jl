@@ -16,7 +16,6 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
 
@@ -228,9 +227,6 @@ jac_kwargs =
 
 
 # Callbacks
-outdir =
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 output_vars = [
     "sif",
     "ra",
@@ -289,7 +285,9 @@ prob = SciMLBase.ODEProblem(
 ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data =
     FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
-savedir = output_dir
+savedir =
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
+mkpath(savedir)
 LandSimulationVisualizationExt.make_diurnal_timeseries(
     land_domain,
     diags,

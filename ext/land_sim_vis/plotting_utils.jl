@@ -519,12 +519,7 @@ function make_timeseries(
                 color = "blue",
             )
             xlims = extrema(model_dates[spinup_idx:end])
-            var_extrema = extrema(model_output[spinup_idx:end])
-            ymin =
-                var_extrema[1] < 0 ? 1.5 * var_extrema[1] : 0.5 * var_extrema[1]
-            ymax =
-                var_extrema[2] < 0 ? 0.5 * var_extrema[2] : 1.5 * var_extrema[2]
-            limits!(ax, xlims..., ymin, ymax)
+            xlims!(ax, xlims...)
             axislegend(ax, position = :lt)
             if ~(comparison_data isa Nothing) &&
                (Symbol(sn) ∈ propertynames(comparison_data))
