@@ -32,24 +32,25 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-save_dir = joinpath(climaland_dir, "outputs/pmodel_integration_full")
 save_outputs = true 
-
-if save_outputs && !isdir(save_dir)
-    mkdir(save_dir)
-end
+verbose = true
 
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
-if length(ARGS) < 1
-    error("Must provide site ID on command line")
+if length(ARGS) < 3
+    error("Provide args <site_ID> <photo_model> <exp_name> in the command line")
 end
 
 site_ID = ARGS[1]
 photo_model = ARGS[2] 
 exp_name = ARGS[3]
+
+save_dir = joinpath(climaland_dir, "outputs/fluxnet/$(site_ID)_$(photo_model)_$(exp_name)/")
+if save_outputs && !isdir(save_dir)
+    mkpath(save_dir)
+end
 
 @assert photo_model in ("pmodel", "farquhar") "Photo model must be either 'pmodel' or 'farquhar'"
 
@@ -309,23 +310,10 @@ jac_kwargs =
 
 
 # Callbacks
-# save_period = 1800.0
-# saveat = Array(t0:save_period:tf)
-# sv = (;
-#     t = Array{Float64}(undef, length(saveat)),
-#     saveval = Array{NamedTuple}(undef, length(saveat)),
-# )
-# saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(save_dir)
 
 start_date = UTC_DATETIME[1] - Dates.Hour(time_offset)
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-    land_domain.space.subsurface,
-    output_dir;
-    start_date,
-)
+dict_writer = ClimaDiagnostics.Writers.DictWriter()
 
 short_names_1D = [
     "gs",
@@ -345,7 +333,7 @@ output_vars = [short_names_1D..., short_names_2D...]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = nc_writer,
+    output_writer = dict_writer,
     output_vars,
     average_period = :halfhourly,
 )
@@ -379,103 +367,42 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
+@time sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
-# common_vars = [
-#     "canopy.photosynthesis.GPP",
-#     "canopy.photosynthesis.An",
-#     "canopy.photosynthesis.Rd",
-#     "canopy.conductance.r_stomata_canopy",
-#     "canopy.radiative_transfer.par.abs",
-#     "canopy.radiative_transfer.par_d",
-#     "canopy.hydraulics.area_index.leaf",
-#     "canopy.turbulent_fluxes.transpiration",
-#     "canopy.turbulent_fluxes.lhf",
-#     "canopy.turbulent_fluxes.shf",
-#     "canopy.soil_moisture_stress.βm",
-#     "canopy.soil_moisture_stress.ϑ_root",
-#     "soil.infiltration",
-#     "soil.total_water",
-#     "LW_u",
-#     "SW_u",
-# ]
+ClimaLand.Diagnostics.close_output_writers(diags)
+half_hourly_diag_name_2D = short_names_2D .* "_30m_average"
 
-# pmodel_vars = [
-#     "canopy.photosynthesis.OptVars.Vcmax25_opt",
-#     "canopy.photosynthesis.OptVars.Jmax25_opt",
-#     "canopy.photosynthesis.IntVars.ci",
-#     "canopy.photosynthesis.Jmax",
-#     "canopy.photosynthesis.J",
-#     "canopy.photosynthesis.Vcmax",
-#     "canopy.photosynthesis.Ac",
-#     "canopy.photosynthesis.Aj",
-# ]
+for short_name in vcat(short_names_1D, short_names_2D)
+    diag_name = short_name * "_30m_average"
+    nc_file = joinpath(save_dir, "$(diag_name).nc")
 
-# if photo_model == "pmodel"
-#     extracted_vars = extract_variables(sv, [common_vars; pmodel_vars])
-# else
-#     extracted_vars = extract_variables(sv, common_vars)
-# end
+    isfile(nc_file) && rm(nc_file) # remove existing file to overwrite
 
-# if save_outputs
-#     # Save outputs to NetCDF files
-#     # Convert UTC time to local time and create time array
-#     # Use sol.t which contains the actual simulation times in seconds
-#     local_datetime =
-#         UTC_DATETIME[1] - Dates.Hour(time_offset) .+ Dates.Second.(sol.t)
-#     time_seconds = [Dates.datetime2unix(dt) for dt in local_datetime]
+    verbose && @info "Saving $diag_name to $nc_file"
+    if short_name in short_names_2D
+        time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name, 
+            layer=1:land_domain.nelements[1])
+    else
+        time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name)
+    end 
 
-#     # Skip the first timestep for canopy integration outputs
-#     local_datetime_skip_first = local_datetime[2:end]
-#     time_seconds_skip_first = time_seconds[2:end]
+    NCDatasets.Dataset(nc_file, "c") do ds
+        NCDatasets.defDim(ds, "time", length(time_vector))
+        time_var = NCDatasets.defVar(ds, "time", FT, ("time",))
+        time_var[:] = time_vector
+        
+        if short_name in short_names_2D
+            NCDatasets.defDim(ds, "z", length(data_vector[1]))
+            depth_var = NCDatasets.defVar(ds, "z", FT, ("z",))
+            depth_var[:] = land_domain.space.subsurface.grid.center_local_geometry.coordinates.z
+            nc_var = NCDatasets.defVar(ds, short_name, FT, ("time", "z"))
+            nc_var[:, :] = data_vector
+        else 
+            nc_var = NCDatasets.defVar(ds, short_name, FT, ("time",))
+            nc_var[:] = data_vector
+        end
+    end
+end
 
-#     canopy_file = joinpath(save_dir, "$(site_ID)_canopy_integration_outputs_$(photo_model)_$(exp_name).nc")
-#     drivers_file = joinpath(save_dir, "$(site_ID)_fluxnet_drivers.nc")
-#     if isfile(canopy_file)
-#         rm(canopy_file)
-#     end
-#     if isfile(drivers_file)
-#         rm(drivers_file)
-#     end
+verbose && @info "All diagnostic variables saved to NetCDF files in $save_dir"
 
-#     # Create canopy integration outputs NetCDF file
-#     NCDatasets.Dataset(canopy_file, "c") do ds
-#         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
-#         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-#         time_var[:] = time_seconds_skip_first
-
-#         # Save each extracted variable (excluding first timestep)
-#         for (var_name, var_data) in pairs(extracted_vars)
-#             var_clean_name = replace(string(var_name), "." => "_")
-#             nc_var = NCDatasets.defVar(ds, var_clean_name, Float64, ("time",))
-#             nc_var[:] = var_data[2:end]
-#         end
-#     end
-
-#     # Create fluxnet drivers NetCDF file
-#     NCDatasets.Dataset(drivers_file, "c") do ds
-#         NCDatasets.defDim(ds, "time", length(time_seconds_skip_first))
-
-#         # Create time variable
-#         time_var = NCDatasets.defVar(ds, "time", Float64, ("time",))
-#         time_var[:] = time_seconds_skip_first
-
-#         # Save each driver variable
-#         driver_names = fieldnames(typeof(drivers))
-#         for driver_name in driver_names
-#             driver_data = getfield(drivers, driver_name)
-#             # Sample the driver data at the same intervals as the model output
-#             driver_indices = Int.(round.(sol.t ./ DATA_DT)) .+ 1
-#             # Ensure indices are within bounds
-#             driver_indices =
-#                 clamp.(driver_indices, 1, length(driver_data.values))
-#             var_data = driver_data.values[driver_indices]
-#             # Skip last timestep to match canopy outputs length
-#             var_data = var_data[1:(end - 1)]
-
-#             nc_var =
-#                 NCDatasets.defVar(ds, string(driver_name), Float64, ("time",))
-#             nc_var[:] = var_data
-#         end
-#     end
-# end
