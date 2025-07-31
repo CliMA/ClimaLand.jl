@@ -231,6 +231,7 @@ end
     long = FT(-92.2000) 
     start_date = DateTime(2025) 
     dt = 600.0 # 10 minutes
+    t0 = 0.0 # integrator start time
 
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 
@@ -243,13 +244,10 @@ end
     rt_model = BeerLambertModel{FT}(rt_params)
 
     # Photosynthesis 
-    is_c3 = FT(1) 
-    photosynthesis_params = FarquharParameters(FT, is_c3)
-    photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
+    photosynthesis_model = PModel{FT}() 
 
     # Stomatal conductance
-    stomatal_g_params = MedlynConductanceParameters(FT)
-    stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
+    stomatal_model = PModelConductance{FT}()
 
     # Plant hydraulics 
     n_stem = Int64(0) # number of stem elements
@@ -298,7 +296,6 @@ end
     earth_param_set = LP.LandParameters(FT)
     z_0m = FT(2.0) # m, Roughness length for momentum
     z_0b = FT(0.1) # m, Roughness length for scalars
-    h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z_0m,
         z_0b,
@@ -306,47 +303,8 @@ end
     )
     start_date = DateTime(2005)
 
-    # Dummy radiative forcing
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
-            t,
-            s;
-            insol_params = earth_param_set.insol_params,
-            latitude = lat,
-            longitude = long,
-        )
-    shortwave_radiation = (t; latitude=lat, longitude=long, insol_params=earth_param_set.insol_params) -> 1000
-    longwave_radiation = t -> 200
-    radiation = PrescribedRadiativeFluxes(
-        FT,
-        TimeVaryingInput(shortwave_radiation),
-        TimeVaryingInput(longwave_radiation),
-        start_date;
-        θs = zenith_angle,
-        earth_param_set = earth_param_set,
-    )
-
-    # Dummy atmospheric forcing 
-    u_atmos = t -> 10 #m.s-1
-    liquid_precip = (t) -> 0 # m
-    snow_precip = (t) -> 0 # m
-    T_atmos = t -> 290 # Kelvin
-    q_atmos = t -> 0.001 # kg/kg
-    P_atmos = t -> 1e5 # Pa
-    h_atmos = h_int # m
-    c_atmos = (t) -> 4.11e-4 # mol/mol
-    atmos = PrescribedAtmosphere(
-        TimeVaryingInput(liquid_precip),
-        TimeVaryingInput(snow_precip),
-        TimeVaryingInput(T_atmos),
-        TimeVaryingInput(u_atmos),
-        TimeVaryingInput(q_atmos),
-        TimeVaryingInput(P_atmos),
-        start_date,
-        h_atmos,
-        earth_param_set;
-        c_co2 = TimeVaryingInput(c_atmos),
-    )
+    # Dummy atmospheric and radiation forcing
+    atmos, radiation = prescribed_analytic_forcing(FT)
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(;
         parameters = shared_params,
@@ -363,11 +321,11 @@ end
         ),
     )
 
-    @test_nowarn pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
+    @test_nowarn pmodel_callback = make_PModel_callback(FT, start_date, t0, dt, canopy)
 end
 
 
-@testset "Test helper functions update_optimal_EMA and update_intermediate_vars correctness" begin
+@testset "Test update_optimal_EMA optimality computation" begin
     rtol = 1e-5
     atol = 1e-6
 
@@ -439,6 +397,47 @@ end
                 atol = atol,
             )
         end
+    end
+end
+
+@testset "Test compute_intermediate_pmodel_vars" begin
+    rtol = 1e-5
+    atol = 1e-6
+
+    for FT in (Float32, Float64)
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41),
+            β = FT(146),
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN),
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0),
+            sc = FT(2e-6),
+            pc = FT(-2e6),
+        )
+
+        constants = PModelConstants{FT}()
+
+        T_canopy = FT(281.25)
+        I_abs = FT(0.0013948839623481035)
+        ca = FT(0.00039482)
+        P_air = FT(99230.0)
+        VPD = FT(756.2)
+        βm = FT(1.0)
+
+        outputs_full = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            I_abs,
+        )
+
         @testset "Test compute_intermediate_pmodel_vars for $FT" begin
             outputs_from_intermediate_vars =
                 ClimaLand.Canopy.compute_intermediate_pmodel_vars(

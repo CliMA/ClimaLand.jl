@@ -71,42 +71,99 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
     T_freeze = LP.T_freeze(earth_param_set)
     R = LP.gas_constant(earth_param_set)
-
     sif_parameters = sif_model.parameters
 
-    # Check if photosynthesis model is PModel and use cached Jmax and J values
-    if isa(canopy.photosynthesis, PModel)
-        Jmax = p.canopy.photosynthesis.Jmax
-        J = p.canopy.photosynthesis.J
-        @. SIF = compute_SIF_at_a_point(
-            par_d * f_abs_par / energy_per_mole_photon_par,
-            T_canopy,
-            Vcmax25,
-            Jmax,
-            J,
-            T_freeze,
-            sif_parameters,
-        )
-    else
-        # Use original computation for other photosynthesis models
-        (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
-        @. SIF = compute_SIF_at_a_point(
-            par_d * f_abs_par / energy_per_mole_photon_par,
-            T_canopy,
-            Vcmax25,
-            R,
-            T_freeze,
-            ΔHJmax,
-            To,
-            θj,
-            ϕ,
-            sif_parameters,
-        )
-    end
+    @. SIF = _compute_sif_dispatch(
+        canopy.photosynthesis,
+        p,
+        par_d * f_abs_par / energy_per_mole_photon_par,
+        T_canopy,
+        Vcmax25,
+        T_freeze,
+        R,
+        sif_parameters,
+    )
+end
+
+"""
+    _compute_sif_dispatch(photosynthesis_model::PModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+
+Dispatched function for P-model photosynthesis using cached Jmax and J values.
+"""
+function _compute_sif_dispatch(
+    photosynthesis_model::PModel,
+    p,
+    APAR,
+    T_canopy,
+    Vcmax25,
+    T_freeze,
+    R,
+    sif_parameters,
+)
+    # Use cached Jmax and J values from P-model
+    Jmax = p.canopy.photosynthesis.Jmax
+    J = p.canopy.photosynthesis.J
+    
+    return compute_SIF_at_a_point(
+        APAR,
+        T_canopy,
+        Vcmax25,
+        Jmax,
+        J,
+        T_freeze,
+        sif_parameters,
+    )
+end
+
+"""
+    _compute_sif_dispatch(photosynthesis_model::AbstractPhotosynthesisModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+
+Dispatched function for other photosynthesis models (Smith optimality, Farquhar) that compute Jmax on-the-fly.
+"""
+function _compute_sif_dispatch(
+    photosynthesis_model::AbstractPhotosynthesisModel,
+    p,
+    APAR,
+    T_canopy,
+    Vcmax25,
+    T_freeze,
+    R,
+    sif_parameters,
+)
+    # Use original computation for other photosynthesis models
+    (; ΔHJmax, To, θj, ϕ) = photosynthesis_model.parameters
+    
+    return compute_SIF_at_a_point(
+        APAR,
+        T_canopy,
+        Vcmax25,
+        R,
+        T_freeze,
+        ΔHJmax,
+        To,
+        θj,
+        ϕ,
+        sif_parameters,
+    )
 end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
 
+
+"""
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        Jmax::FT,
+        J::FT,
+        T_freeze::FT,
+        sif_parameters::SIFParameters{FT},
+    ) where {FT}
+    
+Computes the Solar Induced Fluorescence (SIF) at 755 nm in W/m^2 using the Lee et al. 2015 model.
+This function is used for the PModel photosynthesis model, which computes Jmax and J in the cache.
+"""
 function compute_SIF_at_a_point(
     APAR::FT,
     Tc::FT,
@@ -131,6 +188,25 @@ function compute_SIF_at_a_point(
     return SIF_755
 end
 
+
+"""
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        R::FT,
+        T_freeze::FT,
+        ΔHJmax::FT,
+        To::FT,
+        θj::FT,
+        ϕ::FT,
+        sif_parameters::SIFParameters{FT},
+    ) where {FT}
+
+Computes the Solar Induced Fluorescence (SIF) at 755 nm in W/m^2 using the Lee et al. 2015 model.
+This function is used for the Smith optimality and Farquhar photosynthesis models, which compute
+Jmax differently than the P-model. 
+"""
 function compute_SIF_at_a_point(
     APAR::FT,
     Tc::FT,

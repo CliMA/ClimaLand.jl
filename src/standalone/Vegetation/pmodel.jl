@@ -134,12 +134,11 @@ function PModelConstants{FT}(;
     bRd = FT(-0.0005),
     fC3 = FT(0.015),
 ) where {FT <: AbstractFloat}
-    earth_param_set = LP.LandParameters(FT)
     return PModelConstants{FT}(
-        LP.gas_constant(earth_param_set),
+        LP.get_default_parameter(FT, :gas_constant),
         Kc25,
         Ko25,
-        FT(298.15),
+        LP.get_default_parameter(FT, :kelvin_25C),
         ΔHkc,
         ΔHko,
         FT(1.6),
@@ -158,9 +157,9 @@ function PModelConstants{FT}(;
         aRd,
         bRd,
         fC3,
-        LP.planck_constant(earth_param_set),
-        LP.light_speed(earth_param_set),
-        LP.avogadro_constant(earth_param_set),
+        LP.get_default_parameter(FT, :planck_constant),
+        LP.get_default_parameter(FT, :light_speed),
+        LP.get_default_parameter(FT, :avogadro_constant),
     )
 end
 
@@ -208,7 +207,9 @@ function PModel{FT}(
 end
 
 """
-New cache variables:
+In addition to total net carbon assimilation (`An`), total canopy photosynthesis (`GPP`),
+and dark respiration (`Rd`), the P-model uses some more cache variables:
+
 - `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt` 
     containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
     using an exponential moving average (EMA) at local noon.
@@ -375,8 +376,7 @@ function compute_full_pmodel_outputs(
 
     # check for negative arg before taking sqrt
     arg = (mj / (βm * mprime))^2 - 1
-    arg = arg > 0 ? arg : FT(0)
-    Jmax = 4 * ϕ0 * I_abs / (sqrt(arg) + eps(FT))
+    Jmax = 4 * ϕ0 * I_abs / (sqrt(max(arg, 0)) + eps(FT))
     Jmax25 =
         Jmax / inst_temp_scaling(
             T_canopy,
@@ -597,7 +597,20 @@ function update_optimal_EMA(
     end
 end
 
+"""
+    compute_intermediate_pmodel_vars(
+        constants::PModelConstants{FT},
+        ξ_opt::FT,
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+    ) where {FT}
 
+Computes three intermediate variables used in downstream P-model calculations.
+Returns a NamedTuple with keys `Γstar` (compensation point), `Kmm` (effective Michaelis Menten
+constant for Rubisco), and `ci` (internal CO2 concentration).
+"""
 function compute_intermediate_pmodel_vars(
     constants::PModelConstants{FT},
     ξ_opt::FT,
@@ -782,7 +795,14 @@ function call_update_optimal_EMA(
 end
 
 """
-function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
+    function make_PModel_callback(
+        ::Type{FT},
+        start_date::Dates.DateTime, 
+        t0::Union{Dates.DateTime, AbstractFloat},
+        dt::Union{Dates.DateTime, AbstractFloat}, 
+        canopy, 
+        longitude = nothing
+    ) where {FT <: AbstractFloat}
 
 This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
 using an exponential moving average at local noon. 
@@ -804,8 +824,9 @@ Args
 """
 function make_PModel_callback(
     ::Type{FT},
-    start_date, 
-    dt, 
+    start_date::Dates.DateTime, 
+    t0::Union{Dates.DateTime, AbstractFloat},
+    dt::Union{Dates.DateTime, AbstractFloat}, 
     canopy, 
     longitude = nothing
 ) where {FT <: AbstractFloat}
@@ -833,7 +854,8 @@ function make_PModel_callback(
 
     return FrequencyBasedCallback(
         dt,         # period of this callback
-        start_date, # start datetime, UTC 
+        start_date, # initial datetime, UTC 
+        t0,         # integrator start time, in seconds UTC
         dt;         # integration timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(
             integrator.p,
@@ -859,6 +881,17 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     constants = model.constants
     FT = eltype(parameters)
 
+    # Unpack preallocated variables to short names
+    Jmax = p.canopy.photosynthesis.Jmax
+    J = p.canopy.photosynthesis.J
+    Vcmax = p.canopy.photosynthesis.Vcmax
+    Ac = p.canopy.photosynthesis.Ac
+    Aj = p.canopy.photosynthesis.Aj
+    An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
+    Rd = p.canopy.photosynthesis.Rd
+    IntVars = p.canopy.photosynthesis.IntVars
+
     # drivers 
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
@@ -880,34 +913,8 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    # compute instantaneous max photosynthetic rates and assimilation rates 
-    Vcmax_inst = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Vcmax,
-            constants.Hd_Vcmax,
-            constants.aS_Vcmax,
-            constants.bS_Vcmax,
-            constants.R,
-        ),
-    )
-
-    Jmax_inst = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Jmax,
-            constants.Hd_Jmax,
-            constants.aS_Jmax,
-            constants.bS_Jmax,
-            constants.R,
-        ),
-    )
-
-    @. p.canopy.photosynthesis.IntVars = compute_intermediate_pmodel_vars(
+    # compute intermediate vars 
+    @. IntVars = compute_intermediate_pmodel_vars(
         constants,
         p.canopy.photosynthesis.OptVars.ξ_opt,
         T_canopy,
@@ -916,44 +923,59 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         p.drivers.c_co2,
     )
 
-    # Note: this is different than the Smith 2019 formulation used in optimality_farquhar.jl
-    J_inst = @. lazy(
-        electron_transport_pmodel(
-            isnan(parameters.ϕ0) ?
-            intrinsic_quantum_yield(
-                T_canopy,
-                parameters.ϕc,
-                parameters.ϕa0,
-                parameters.ϕa1,
-                parameters.ϕa2,
-            ) : parameters.ϕ0,
-            I_abs,
-            Jmax_inst,
-        ),
+    # compute instantaneous max photosynthetic rates and assimilation rates 
+    @. Jmax = p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
+        T_canopy,
+        T_canopy,
+        constants.To,
+        constants.Ha_Jmax,
+        constants.Hd_Jmax,
+        constants.aS_Jmax,
+        constants.bS_Jmax,
+        constants.R,
+    )
+
+    @. J = electron_transport_pmodel(
+        isnan(parameters.ϕ0) ?
+        intrinsic_quantum_yield(
+            T_canopy,
+            parameters.ϕc,
+            parameters.ϕa0,
+            parameters.ϕa1,
+            parameters.ϕa2,
+        ) : parameters.ϕ0,
+        I_abs,
+        Jmax,
+    )
+    
+    @. Vcmax = p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
+        T_canopy,
+        T_canopy,
+        constants.To,
+        constants.Ha_Vcmax,
+        constants.Hd_Vcmax,
+        constants.aS_Vcmax,
+        constants.bS_Vcmax,
+        constants.R,
     )
 
     # rubisco limited assimilation rate
-    Ac = @. lazy(
-        c3_rubisco_assimilation(
-            Vcmax_inst,
-            p.canopy.photosynthesis.IntVars.ci,
-            p.canopy.photosynthesis.IntVars.Γstar,
-            p.canopy.photosynthesis.IntVars.Kmm,
-        ),
+    @. Ac = c3_rubisco_assimilation(
+        Vcmax,
+        IntVars.ci,
+        IntVars.Γstar,
+        IntVars.Kmm,
     )
 
     # light limited assimilation rate 
-    Aj = @. lazy(
-        c3_light_assimilation(
-            J_inst,
-            p.canopy.photosynthesis.IntVars.ci,
-            p.canopy.photosynthesis.IntVars.Γstar,
-        ),
+    @. Aj = c3_light_assimilation(
+        J,
+        IntVars.ci,
+        IntVars.Γstar,
     )
 
     # dark respiration 
-    Rd = @. lazy(
-        constants.fC3 *
+    @. Rd = constants.fC3 *
         (
             inst_temp_scaling_rd(
                 T_canopy,
@@ -970,17 +992,13 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
                 constants.bS_Vcmax,
                 constants.R,
             )
-        ) *
-        Vcmax_inst,
-    )
-
-    @. p.canopy.photosynthesis.Rd = Rd
+        ) * Vcmax
     
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
     # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here. 
-    @. p.canopy.photosynthesis.An = net_photosynthesis(Ac, Aj, Rd, FT(1.0)) 
-    @. p.canopy.photosynthesis.GPP = compute_GPP(
-        p.canopy.photosynthesis.An,
+    @. An = net_photosynthesis(Ac, Aj, Rd, FT(1.0)) 
+    @. GPP = compute_GPP(
+        An,
         extinction_coeff(
             canopy.radiative_transfer.parameters.G_Function,
             p.drivers.cosθs,
@@ -988,11 +1006,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         p.canopy.hydraulics.area_index.leaf,
         canopy.radiative_transfer.parameters.Ω,
     )
-    @. p.canopy.photosynthesis.Jmax = Jmax_inst
-    @. p.canopy.photosynthesis.J = J_inst
-    @. p.canopy.photosynthesis.Vcmax = Vcmax_inst
-    @. p.canopy.photosynthesis.Ac = Ac
-    @. p.canopy.photosynthesis.Aj = Aj
 end
 
 get_Vcmax25(p, m::PModel) = p.canopy.photosynthesis.OptVars.Vcmax25_opt

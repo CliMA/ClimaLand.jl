@@ -115,7 +115,7 @@ end
 """
     PModelConductanceParameters{FT <: AbstractFloat}
 
-The required parameters for the Medlyn stomatal conductance model.
+The required parameters for the P-Model stomatal conductance model.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct PModelConductanceParameters{FT <: AbstractFloat}
@@ -144,8 +144,10 @@ ClimaLand.auxiliary_domain_names(::PModelConductance) = (:surface,)
     update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
 
 Computes and updates the canopy-level conductance (units of m/s) according to the P model. 
+The P-model predicts the ratio of plant internal to external CO2 concentration χ, and therefore
+the stomatal conductance can be inferred from their difference and the net assimilation rate `An`. 
 
-The moisture stress factor is applied to `An` already.
+Note that the moisture stress factor `βm` is applied to `An` already, so it is not applied again here. 
 """
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     c_co2_air = p.drivers.c_co2
@@ -169,5 +171,4 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
             R,
             P_air,
         ) + eps(FT)) # avoids division by zero, since conductance is zero when An is zero 
-
 end
