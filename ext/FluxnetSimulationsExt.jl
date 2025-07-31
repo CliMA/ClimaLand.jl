@@ -1,6 +1,7 @@
 module FluxnetSimulationsExt
 using ClimaLand
 import DelimitedFiles
+using NCDatasets
 
 using ClimaTimeSteppers
 using ClimaComms
