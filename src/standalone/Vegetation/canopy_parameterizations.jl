@@ -37,7 +37,7 @@ export canopy_sw_rt_beer_lambert,
     compute_mj_with_jmax_limitation,
     co2_compensation_p,
     quadratic_soil_moisture_stress,
-    compute_I_abs
+    compute_APAR
 
 # 1. Radiative transfer
 
@@ -1590,7 +1590,7 @@ end
 
 
 """
-    compute_I_abs(
+    compute_APAR(
         f_abs::FT, 
         par_d::FT,
         λ_γ_PAR::FT,
@@ -1604,7 +1604,7 @@ given the fraction of absorbed PAR (`f_abs`), the PAR downwelling flux (`par_d`,
 and the wavelength of PAR (`λ_γ_PAR`, in m), and the physical constants necessary to compute 
 the energy per mol PAR photons. 
 """
-function compute_I_abs(
+function compute_APAR(
     f_abs::FT,
     par_d::FT,
     λ_γ_PAR::FT,

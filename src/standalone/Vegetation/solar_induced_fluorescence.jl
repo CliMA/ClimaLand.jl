@@ -68,15 +68,16 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
     T_freeze = LP.T_freeze(earth_param_set)
     R = LP.gas_constant(earth_param_set)
     sif_parameters = sif_model.parameters
 
-    @. SIF = _compute_sif_dispatch(
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+    _update_SIF_dispatch!(
+        SIF,
         canopy.photosynthesis,
         p,
-        par_d * f_abs_par / energy_per_mole_photon_par,
+        APAR,
         T_canopy,
         Vcmax25,
         T_freeze,
@@ -86,11 +87,13 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
 end
 
 """
-    _compute_sif_dispatch(photosynthesis_model::PModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+    _update_SIF_dispatch!(SIF, photosynthesis_model::PModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
 
 Dispatched function for P-model photosynthesis using cached Jmax and J values.
+Updates SIF array in place.
 """
-function _compute_sif_dispatch(
+function _update_SIF_dispatch!(
+    SIF,
     photosynthesis_model::PModel,
     p,
     APAR,
@@ -104,7 +107,7 @@ function _compute_sif_dispatch(
     Jmax = p.canopy.photosynthesis.Jmax
     J = p.canopy.photosynthesis.J
 
-    return compute_SIF_at_a_point(
+    @. SIF = compute_SIF_at_a_point(
         APAR,
         T_canopy,
         Vcmax25,
@@ -116,11 +119,13 @@ function _compute_sif_dispatch(
 end
 
 """
-    _compute_sif_dispatch(photosynthesis_model::AbstractPhotosynthesisModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+    _update_SIF_dispatch!(SIF, photosynthesis_model::AbstractPhotosynthesisModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
 
 Dispatched function for other photosynthesis models (Smith optimality, Farquhar) that compute Jmax on-the-fly.
+Updates SIF array in place.
 """
-function _compute_sif_dispatch(
+function _update_SIF_dispatch!(
+    SIF,
     photosynthesis_model::AbstractPhotosynthesisModel,
     p,
     APAR,
@@ -133,7 +138,7 @@ function _compute_sif_dispatch(
     # Use original computation for other photosynthesis models
     (; ΔHJmax, To, θj, ϕ) = photosynthesis_model.parameters
 
-    return compute_SIF_at_a_point(
+    @. SIF = compute_SIF_at_a_point(
         APAR,
         T_canopy,
         Vcmax25,

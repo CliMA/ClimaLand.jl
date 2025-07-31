@@ -701,7 +701,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
     I_abs = @. lazy(
-        compute_I_abs(
+        compute_APAR(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
@@ -786,7 +786,7 @@ function call_update_optimal_EMA(
         ),
     )
     I_abs = @. lazy(
-        compute_I_abs(
+        compute_APAR(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
@@ -920,7 +920,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
     I_abs = @. lazy(
-        compute_I_abs(
+        compute_APAR(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
