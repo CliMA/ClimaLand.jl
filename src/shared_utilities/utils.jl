@@ -704,9 +704,7 @@ function FrequencyBasedCallback(
         frequency isa AbstractFloat ? Dates.Millisecond(1000 * frequency) :
         frequency
 
-    t_start = 
-        t0 isa AbstractFloat ? Dates.Millisecond(1000 * t0) :
-        t0
+    t_start = t0 isa AbstractFloat ? Dates.Millisecond(1000 * t0) : t0
     schedule = EveryCalendarDtSchedule(
         frequency_period;
         start_date,
@@ -714,7 +712,8 @@ function FrequencyBasedCallback(
     )
 
     if !isnothing(dt)
-        dt_period = dt isa Dates.Period ? dt : Dates.Millisecond(1000 * float(dt))
+        dt_period =
+            dt isa Dates.Period ? dt : Dates.Millisecond(1000 * float(dt))
         if !isdivisible(frequency_period, dt_period)
             @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
         end

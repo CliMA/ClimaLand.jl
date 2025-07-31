@@ -103,7 +103,7 @@ function _compute_sif_dispatch(
     # Use cached Jmax and J values from P-model
     Jmax = p.canopy.photosynthesis.Jmax
     J = p.canopy.photosynthesis.J
-    
+
     return compute_SIF_at_a_point(
         APAR,
         T_canopy,
@@ -132,7 +132,7 @@ function _compute_sif_dispatch(
 )
     # Use original computation for other photosynthesis models
     (; ΔHJmax, To, θj, ϕ) = photosynthesis_model.parameters
-    
+
     return compute_SIF_at_a_point(
         APAR,
         T_canopy,

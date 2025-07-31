@@ -1428,7 +1428,7 @@ at STP and using Vcmax/Jmax = 1.88.
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
     arg = cstar / mj
     arg = arg < 0 ? FT(0) : arg
-    arg = 1 - arg^(FT(2/3))
+    arg = 1 - arg^(FT(2 / 3))
     sqrt_arg = arg < 0 ? FT(0) : sqrt(arg) # avoid complex numbers
     return FT(mj * sqrt_arg)
 end

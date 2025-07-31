@@ -178,7 +178,7 @@ function PModel{FT}(;
         ϕa2 = ϕa2,
         α = α,
         sc = sc,
-        pc = pc
+        pc = pc,
     )
 
     return PModel{FT}(parameters)

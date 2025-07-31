@@ -223,18 +223,8 @@ and dark respiration (`Rd`), the P-model uses some more cache variables:
 
 Note that these fluxes are all relative to leaf area, not ground area. 
 """
-ClimaLand.auxiliary_vars(model::PModel) = (
-    :An,
-    :GPP,
-    :Rd,
-    :OptVars,
-    :IntVars,
-    :Jmax,
-    :J,
-    :Vcmax,
-    :Ac,
-    :Aj,
-)
+ClimaLand.auxiliary_vars(model::PModel) =
+    (:An, :GPP, :Rd, :OptVars, :IntVars, :Jmax, :J, :Vcmax, :Ac, :Aj)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
     FT,
@@ -621,14 +611,29 @@ function compute_intermediate_pmodel_vars(
 ) where {FT}
     # convert ca from ppm to partial pressure (Pa)
     ca_pp = ca * P_air
-    Γstar = co2_compensation_p(T_canopy, constants.To, P_air, 
-        constants.R, constants.ΔHΓstar, constants.Γstar25)
+    Γstar = co2_compensation_p(
+        T_canopy,
+        constants.To,
+        P_air,
+        constants.R,
+        constants.ΔHΓstar,
+        constants.Γstar25,
+    )
     ci = (ξ_opt * ca_pp + Γstar * sqrt(VPD)) / (ξ_opt + sqrt(VPD))
 
     return (;
         Γstar = Γstar,
-        Kmm = compute_Kmm(T_canopy, P_air, constants.Kc25, constants.Ko25, 
-            constants.ΔHkc, constants.ΔHko, constants.To, constants.R, constants.oi),
+        Kmm = compute_Kmm(
+            T_canopy,
+            P_air,
+            constants.Kc25,
+            constants.Ko25,
+            constants.ΔHkc,
+            constants.ΔHko,
+            constants.To,
+            constants.R,
+            constants.oi,
+        ),
         ci = ci,
     )
 end
@@ -679,7 +684,13 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc))
+    βm = @. lazy(
+        moisture_stress(
+            ψ.:($$n) * ρ_water * grav,
+            parameters.sc,
+            parameters.pc,
+        ),
+    )
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -758,7 +769,13 @@ function call_update_optimal_EMA(
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(moisture_stress(ψ.:($$n) * ρ_water * grav, parameters.sc, parameters.pc))
+    βm = @. lazy(
+        moisture_stress(
+            ψ.:($$n) * ρ_water * grav,
+            parameters.sc,
+            parameters.pc,
+        ),
+    )
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -824,11 +841,11 @@ Args
 """
 function make_PModel_callback(
     ::Type{FT},
-    start_date::Dates.DateTime, 
+    start_date::Dates.DateTime,
     t0::Union{Dates.DateTime, AbstractFloat},
-    dt::Union{Dates.DateTime, AbstractFloat}, 
-    canopy, 
-    longitude = nothing
+    dt::Union{Dates.DateTime, AbstractFloat},
+    canopy,
+    longitude = nothing,
 ) where {FT <: AbstractFloat}
     function seconds_after_midnight(t)
         return Hour(t).value * 3600 + Minute(t).value * 60
@@ -850,7 +867,7 @@ function make_PModel_callback(
     # the max error is on the order of 20 minutes
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
     start_t = FT(seconds_after_midnight(start_date))
-    local_noon = @. seconds_in_a_day * (FT(1/2) - longitude/360)
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
 
     return FrequencyBasedCallback(
         dt,         # period of this callback
@@ -924,16 +941,17 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
-    @. Jmax = p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
-        T_canopy,
-        T_canopy,
-        constants.To,
-        constants.Ha_Jmax,
-        constants.Hd_Jmax,
-        constants.aS_Jmax,
-        constants.bS_Jmax,
-        constants.R,
-    )
+    @. Jmax =
+        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Jmax,
+            constants.Hd_Jmax,
+            constants.aS_Jmax,
+            constants.bS_Jmax,
+            constants.R,
+        )
 
     @. J = electron_transport_pmodel(
         isnan(parameters.ϕ0) ?
@@ -947,35 +965,29 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         I_abs,
         Jmax,
     )
-    
-    @. Vcmax = p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
-        T_canopy,
-        T_canopy,
-        constants.To,
-        constants.Ha_Vcmax,
-        constants.Hd_Vcmax,
-        constants.aS_Vcmax,
-        constants.bS_Vcmax,
-        constants.R,
-    )
+
+    @. Vcmax =
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Vcmax,
+            constants.Hd_Vcmax,
+            constants.aS_Vcmax,
+            constants.bS_Vcmax,
+            constants.R,
+        )
 
     # rubisco limited assimilation rate
-    @. Ac = c3_rubisco_assimilation(
-        Vcmax,
-        IntVars.ci,
-        IntVars.Γstar,
-        IntVars.Kmm,
-    )
+    @. Ac =
+        c3_rubisco_assimilation(Vcmax, IntVars.ci, IntVars.Γstar, IntVars.Kmm)
 
     # light limited assimilation rate 
-    @. Aj = c3_light_assimilation(
-        J,
-        IntVars.ci,
-        IntVars.Γstar,
-    )
+    @. Aj = c3_light_assimilation(J, IntVars.ci, IntVars.Γstar)
 
     # dark respiration 
-    @. Rd = constants.fC3 *
+    @. Rd =
+        constants.fC3 *
         (
             inst_temp_scaling_rd(
                 T_canopy,
@@ -992,11 +1004,12 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
                 constants.bS_Vcmax,
                 constants.R,
             )
-        ) * Vcmax
-    
+        ) *
+        Vcmax
+
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
     # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here. 
-    @. An = net_photosynthesis(Ac, Aj, Rd, FT(1.0)) 
+    @. An = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
     @. GPP = compute_GPP(
         An,
         extinction_coeff(

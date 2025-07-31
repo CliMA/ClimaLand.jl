@@ -87,7 +87,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa2 = ϕa2,
         α = FT(0),
         sc = FT(0),
-        pc = FT(0)
+        pc = FT(0),
     )
 end
 
@@ -226,10 +226,10 @@ end
 
 @testset "Test P-model callback initialization" begin
     FT = Float32
-    
-    lat = FT(38.7441) 
-    long = FT(-92.2000) 
-    start_date = DateTime(2025) 
+
+    lat = FT(38.7441)
+    long = FT(-92.2000)
+    start_date = DateTime(2025)
     dt = 600.0 # 10 minutes
     t0 = 0.0 # integrator start time
 
@@ -244,7 +244,7 @@ end
     rt_model = BeerLambertModel{FT}(rt_params)
 
     # Photosynthesis 
-    photosynthesis_model = PModel{FT}() 
+    photosynthesis_model = PModel{FT}()
 
     # Stomatal conductance
     stomatal_model = PModelConductance{FT}()
@@ -321,7 +321,8 @@ end
         ),
     )
 
-    @test_nowarn pmodel_callback = make_PModel_callback(FT, start_date, t0, dt, canopy)
+    @test_nowarn pmodel_callback =
+        make_PModel_callback(FT, start_date, t0, dt, canopy)
 end
 
 
