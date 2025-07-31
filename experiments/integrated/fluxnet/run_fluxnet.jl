@@ -58,6 +58,14 @@ include(
     ),
 )
 
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(
@@ -78,8 +86,22 @@ include(
     earth_param_set,
     FT,
 )
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    context = ClimaComms.context(surface_space),
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+)
+LAI_init = ClimaCore.Fields.zeros(surface_space)
+evaluate!(LAI_init, LAI, start_date + Second(t0))
+maxLAI = maximum(LAI_init)
 RAI = maxLAI * f_root_to_shoot
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 

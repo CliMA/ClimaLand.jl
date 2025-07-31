@@ -1687,7 +1687,7 @@ function prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,
     start_date;
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
 )
     return TimeVaryingInput(

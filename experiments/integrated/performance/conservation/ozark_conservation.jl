@@ -1,6 +1,8 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
+import ClimaComms
+ClimaComms.@import_required_backends
 using CairoMakie
 using Statistics
 using Dates
@@ -35,8 +37,6 @@ for float_type in (Float32, Float64)
         ),
     )
 
-    # Use smaller `tf` for Float32 simulation
-    tf = (FT == Float64) ? t0 + 3600 * 24 * 10 : t0 + 2 * dt
     saveat = Array(t0:dt:tf)
     sv = (;
         t = Array{Float64}(undef, length(saveat)),

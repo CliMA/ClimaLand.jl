@@ -16,7 +16,7 @@ the hour offset of the site from UTC (local_time + offset = time in UTC),
 and the earth_param_set.
 
 This requires (1) reading in the data, (2) removing missing values,
- (3) converting units, (4) computing the specific humidity and percent of 
+ (3) converting units, (4) computing the specific humidity and percent of
 precipitation that is in snow (if split_precip ==true), and (5)
 making the TimeVaryingInput objects.
 
@@ -198,35 +198,6 @@ function prescribed_forcing_fluxnet(
 end
 
 """
-    prescribed_LAI_fluxnet(site_ID, start_date)
-
-
-Obtains the MODIS LAI data for the site `site_ID`, and returns a TimeVaryingInput
-object for this LAI. This object can interpolate in time in units of seconds since 
-`start_date`.
-
-This also returns the maximum LAI over all of the MODIS data.
-"""
-function prescribed_LAI_fluxnet(site_ID, start_date)
-    # Repeat the same for MODIS LAI
-    # For MODIS LAI, there is no missing data and no unit conversion to make
-    MODIS_LAI_path = ClimaLand.Artifacts.get_modis_lai_fluxnet_data(site_ID)
-    MODIS_LAI, _ = readdlm(MODIS_LAI_path, ',', header = true)
-    dates = DateTime.(MODIS_LAI[:, 1])
-
-    LAI_dt = Second(dates[2] - dates[1]).value
-    LAI_seconds_since_start_date =
-        [Second(date - start_date).value for date in dates]
-    LAI = TimeVaryingInput(
-        LAI_seconds_since_start_date,
-        Float64.(MODIS_LAI[:, 2]),
-    )
-    maxLAI = Float64(maximum(MODIS_LAI[:, 2]))
-
-    return (; LAI, maxLAI)
-end
-
-"""
     get_data_dt(site_ID)
 
 A helper function to get the difference in time between observations;
@@ -249,7 +220,7 @@ end
 """
     get_data_dates(site_ID, hour_offset_from_UTC)
 
-A helper function to get the first and last dates, in UTC, for which we have 
+A helper function to get the first and last dates, in UTC, for which we have
 Fluxnet data at `site_ID`, given the offset in hours of local time
 from UTC.
 """
@@ -325,7 +296,7 @@ end
         val = -9999
 )
 
-Gets and returns the a NamedTuple with the data identified 
+Gets and returns the a NamedTuple with the data identified
 by `varname`. Each element in the tuple is itself a NamedTuple,
 with two keys: absent, and values. If the data column
 is missing completely, the value of absent is true, and no values

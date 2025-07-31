@@ -70,13 +70,19 @@ h_leaf = FT(9.5)
 h_stem = FT(9)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
 compartment_surfaces = [FT(0), h_stem, h_stem + h_leaf]
-land_domain = Point(; z_sfc = FT(0.0))
 time_offset = 7
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
+land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset)
+seconds_per_day = 3600 * 24.0
+t0 = 150seconds_per_day
+N_days = 20.0
+tf = t0 + N_days * seconds_per_day + 80
+
+# Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -87,8 +93,20 @@ start_date = DateTime(2010) + Hour(time_offset)
     earth_param_set,
     FT,
 )
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    context = ClimaComms.context(surface_space),
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+)
+
 z0_m = FT(2)
 z0_b = FT(0.2)
 
@@ -198,11 +216,6 @@ S_l_ini =
         S_s,
     )
 
-seconds_per_day = 3600 * 24.0
-t0 = 150seconds_per_day
-N_days = 20.0
-tf = t0 + N_days * seconds_per_day + 80
-sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
 set_initial_cache! = make_set_initial_cache(canopy)
 
 timestepper = CTS.ARS111();
@@ -281,6 +294,8 @@ savedir = generate_output_path(
 );
 
 # Create plot with statistics
+sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
+
 # Compare T state computed with small vs large dt
 fig = Figure()
 ax = Axis(

@@ -181,9 +181,10 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_single_year_path(;
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
         context = context,
-        year = Dates.year(start_date),
+        start_date = start_date + Second(t0),
+        end_date = start_date + Second(t0) + Second(tf),
     )
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,

@@ -216,8 +216,11 @@ function setup_prob(
         #sc = sc,
     ))
     # Set up plant hydraulics
-    modis_lai_ncdata_path =
-        ClimaLand.Artifacts.find_modis_year_paths(date(t0), date(tf); context)
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
+        date(t0),
+        date(tf);
+        context,
+    )
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,
         surface_space,
