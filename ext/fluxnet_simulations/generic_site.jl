@@ -192,6 +192,23 @@ end
 Given latitude and longitude, returns the dominant PFT at the coordinate.
 """
 function get_pft(lat, long)
+    default_pfts = [
+        Nothing,
+        NET_Temp,
+        NET_Bor,
+        NDT_Bor,
+        BET_Trop,
+        BET_Temp,
+        BDT_Trop,
+        BDT_Temp,
+        BDT_Bor,
+        BES_Temp,
+        BDS_Temp,
+        BDT_Bor,
+        C3G_A,
+        C3G_NA,
+        C4G,
+    ]
     # get path of map from artifact
     dominant_PFT_map_path = joinpath(ClimaLand.Artifacts.clm_data_folder_path(), "dominant_PFT_map.nc")
 
