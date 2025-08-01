@@ -117,12 +117,11 @@ end
 @safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
 end
-
 @safetestset "Canopy spatial parameters" begin
     include("standalone/Vegetation/spatial_parameters.jl")
 end
-@safetestset "P model tests" begin
-    include("standalone/Vegetation/test_pmodel.jl")
+@safetestset "Soil moisture stress tests" begin
+    include("standalone/Vegetation/test_soil_moisture_stress.jl")
 end
 
 # Integrated LSM tests

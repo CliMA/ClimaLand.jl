@@ -137,8 +137,6 @@ end
         ϕa1 = FT(0.022),
         ϕa2 = FT(-0.00034),
         α = FT(0.933),
-        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters. 
@@ -166,8 +164,6 @@ function PModel{FT}(;
     ϕa1 = FT(0.022),
     ϕa2 = FT(-0.00034),
     α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
@@ -178,8 +174,6 @@ function PModel{FT}(;
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
         α = α,
-        sc = sc,
-        pc = pc,
     )
 
     return PModel{FT}(parameters)
@@ -406,6 +400,24 @@ function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
 end
 
 
+"""
+    TuzetMoistureStressModel{FT}() where {FT <: AbstractFloat}
+
+Creates a TuzetMoistureStressModel using default parameters of type FT.
+
+The parameters are set to:
+- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure
+- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor
+"""
+function TuzetMoistureStressModel{FT}(; 
+    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure)   
+) where {FT <: AbstractFloat}
+    parameters = TuzetMoistureStressParameters{FT}(sc, pc)
+    return TuzetMoistureStressModel{eltype(parameters), typeof(parameters)}(parameters)
+end
+
+
 ########################################################
 # End component model convenience constructors
 ########################################################
@@ -442,8 +454,8 @@ and `PModel`.
  must also use `PModelConductance` for stomatal conductance, since these two models
  are derived from the same set of conditions. 
 - subcomponent model type for soil moisture stress. This is of type
- `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel`
- and `NoMoistureStressModel` (which sets the stress factor to 1). 
+ `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel` (default) 
+ `PiecewiseMoistureStressModel`, and `NoMoistureStressModel` (stress factor = 1).
 - subcomponent model type for plant hydraulics. This is of type
  `AbstractPlantHydraulicsModel` and currently only a version which
 prognostically solves Richards equation in the plant is available.
@@ -505,7 +517,7 @@ end
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
-        soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = NoMoistureStressModel{FT}(),
+        soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{FT}(),
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
@@ -530,7 +542,7 @@ function CanopyModel{FT}(;
     radiative_transfer::AbstractRadiationModel{FT},
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
-    soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = NoMoistureStressModel{FT}(),
+    soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{FT}(),
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -560,6 +572,7 @@ function CanopyModel{FT}(;
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -587,6 +600,7 @@ end
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
+        soil_moisture_stress = TuzetMoistureStressModel{FT}(),
         hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
@@ -626,6 +640,7 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -645,6 +660,7 @@ function CanopyModel{FT}(
             radiative_transfer,
             photosynthesis,
             conductance,
+            soil_moisture_stress,
             hydraulics,
             energy,
             sif,

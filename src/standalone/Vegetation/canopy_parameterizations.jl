@@ -12,7 +12,6 @@ export canopy_sw_rt_beer_lambert,
     electron_transport,
     optimality_max_photosynthetic_rates,
     net_photosynthesis,
-    moisture_stress,
     dark_respiration,
     compute_GPP,
     MM_Kc,
@@ -500,17 +499,6 @@ function c3_rubisco_assimilation(
     oi::FT,
 ) where {FT}
     Ac = Vcmax * (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
-    return Ac
-end
-
-
-function c3_rubisco_assimilation(
-    Vcmax::FT,
-    ci::FT,
-    Γstar::FT,
-    Kmm::FT,
-) where {FT}
-    Ac = Vcmax * (ci - Γstar) / (ci + Kmm)
     return Ac
 end
 
