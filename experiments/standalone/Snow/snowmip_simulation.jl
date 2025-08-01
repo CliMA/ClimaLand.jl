@@ -73,8 +73,11 @@ function set_ic!(Y, p, t0, model)
     Y.snow.S .= FT(SWE[1]) # first data point
     Y.snow.S_l .= 0 # this is a guess
     Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
-    Y.snow.U .=
-        ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
+    Y.snow.U .= ClimaLand.Snow.energy_from_q_l_and_swe(
+        FT(SWE[1]),
+        FT(0),
+        model.parameters,
+    ) # with q_l = 0
 end
 
 # We use ARS111 (equivalent to explicit Euler) here for ease of assessing conservation

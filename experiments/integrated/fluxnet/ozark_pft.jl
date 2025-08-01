@@ -251,7 +251,13 @@ land = SoilCanopyModel{FT}(;
 
 
 
-set_ic!(Y, _, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, model)
+set_ic!(Y, _, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 # Callbacks
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")

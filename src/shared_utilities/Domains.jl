@@ -1209,7 +1209,8 @@ end
 function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
     # average_horizontal_resolution_degrees returns a tuple with the resolution
     # along the two directions, so we take the minimum
-    (hasproperty(domain, :longlat) && !isnothing(domain.longlat)) || return nothing
+    (hasproperty(domain, :longlat) && !isnothing(domain.longlat)) ||
+        return nothing
     resolution_degrees = minimum(average_horizontal_resolution_degrees(domain))
     if resolution_degrees > 1
         resolution = "1deg"

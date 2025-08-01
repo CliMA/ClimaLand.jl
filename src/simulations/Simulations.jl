@@ -160,9 +160,9 @@ function LandSimulation(
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
             isnothing(t0.epoch) ? t0 * 10000 : Dates.Month(1),
-            date(t0),
+            t0,
             Δt;
-            mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
+            mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
         ClimaLand.ReportCallback(1000),
     ),

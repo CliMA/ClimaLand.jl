@@ -127,7 +127,13 @@ set_initial_cache! = make_set_initial_cache(land)
 
 
 #Initial conditions
-set_ic!(Y, p, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, model)
+set_ic!(Y, p, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 saveat = Array(t0:dt:tf)
 sv = (;

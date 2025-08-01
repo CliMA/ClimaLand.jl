@@ -695,7 +695,9 @@ function NaNCheckCallback(
     )
 
     if !isnothing(dt)
-        dt_period = typeof(dt) <: typeof(nancheck_frequency_period) ? dt : Dates.Millisecond(1000float(dt))
+        dt_period =
+            typeof(dt) <: typeof(nancheck_frequency_period) ? dt :
+            Dates.Millisecond(1000float(dt))
         if !isdivisible(nancheck_frequency_period, dt_period)
             @warn "Callback frequency ($(nancheck_frequency_period)) is not an integer multiple of dt $(dt_period)"
         end
@@ -712,7 +714,7 @@ end
 # no date version
 function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, ITime},
-    start_date::Union{Nothing, ITime{<: Any, <: Any, Nothing}},
+    start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
     dt;
     mask = nothing,
 )

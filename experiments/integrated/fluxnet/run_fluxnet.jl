@@ -214,7 +214,13 @@ land = LandModel{FT}(;
 )
 
 
-set_ic!(Y, p, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, model)
+set_ic!(Y, p, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 
 
