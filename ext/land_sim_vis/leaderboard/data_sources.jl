@@ -219,6 +219,7 @@ function get_era5_obs_var_dict()
                     conversion_function = units -> units * -1.0,
                 )
             )
+            obs_var.attributes["short_name"] = "lhf"
             return obs_var
         end
 
@@ -238,7 +239,7 @@ function get_era5_obs_var_dict()
                     conversion_function = units -> units * -1.0,
                 )
             )
-
+            obs_var.attributes["short_name"] = "shf"
             return obs_var
         end
 
@@ -252,6 +253,7 @@ function get_era5_obs_var_dict()
             )
             (ClimaAnalysis.units(obs_var) == "W m**-2") &&
                 (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
+            obs_var.attributes["short_name"] = "lwu"
             return obs_var
         end
 
@@ -266,6 +268,7 @@ function get_era5_obs_var_dict()
 
             (ClimaAnalysis.units(obs_var) == "W m**-2") &&
                 (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
+            obs_var.attributes["short_name"] = "swu"
             return obs_var
         end
     return obs_var_dict
