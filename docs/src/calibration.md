@@ -45,19 +45,21 @@ CAL.calibrate(
 where the utki object defines your EKP configurations, for example, the default is:
 
 ```julia
-    observationseries,
-    EKP.TransformUnscented(prior, impose_prior = true);
+EKP.EnsembleKalmanProcess(
+    obs_series,
+    EKP.TransformUnscented(prior, impose_prior = true),
     verbose = true,
-    rng,
+    rng = rng,
     scheduler = EKP.DataMisfitController(terminate_at = 100),
+)
 ```
 
-where `observationseries` is the "truth" you want to calibrate your model on. It can take many forms.
+where `obs_series` is the "truth" you want to calibrate your model on. It can take many forms.
 For example, you may want to calibrate your land model latent heat flux (lhf), the
 observations could be monthly global average of lhf, or monthly average at 100 random locations on land, or the annual amplitude and phase...
-You will create `observationsseries` from some data (for example ERA5), as a vector.
+You will create `obs_series` from some data (for example ERA5), as a vector.
 
-note that `observationseries` object contains the covariance matrix of the noise, which informs the uncertainties in space and time of your targeted "truth". It can be set, for example, to the inter-annual variance of a variable, or to the average of the variable times a % (e.g., 5%), or to a flat noise (for example, 5 W m-2 for latent heat). This will inform the EKP algorithm that if the model is within the target +- noise at specific space and time, the goal is reached.
+Note that `obs_series` object contains the covariance matrix of the noise, which informs the uncertainties in space and time of your targeted "truth". It can be set, for example, to the inter-annual variance of a variable, or to the average of the variable times a % (e.g., 5%), or to a flat noise (for example, 5 W m-2 for latent heat). This will inform the EKP algorithm that if the model is within the target +- noise at specific space and time, the goal is reached.
 
 `TransformUnscented.Unscented` is a method in EKP, that requires `2 x number of parameters + 1` ensemble members (`ensembe_size`, the number of parameter set drawn for your prior distribution tested at each iteration). For more information, read the [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/unscented_kalman_inversion/).
 
@@ -134,7 +136,7 @@ like this:
 │   │   │   └── output_active -> output_0000
 │   │   └── parameters.toml
 ```
-each iteration contains folders for each member, inside which you can find the parameters value inside `parameters.toml`, and model outputs inside `global_diagnostics`.
+Each iteration contains folders for each member, inside which you can find the parameters value inside `parameters.toml`, and model outputs inside `global_diagnostics`.
 
 Two additional functions need to be defined in order to run `CAL.calibrate`. `CAL.forward_model(iteration, member)` and `observation_map(iteration)`.
 The `CAL.forward_model(iteration, member)` needs to generate your model output for a specific iteration and member. The `observation_map(iteration)`
@@ -168,7 +170,7 @@ export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 
-julia --project=.buildkite/ experiments/calibration/global_land/calibrate_land.jl
+julia --project=.buildkite/ experiments/calibration/run_calibration.jl
 ```
 
 and below is a example job .sh script (for Slurm, e.g., central or clima):
@@ -190,7 +192,7 @@ export CLIMACOMMS_CONTEXT="SINGLETON"
 # Build and run the Julia code
 module load climacommon
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/calibrate_land.jl
+julia --project=.buildkite/ experiments/calibration/run_calibration.jl
 ```
 
 where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`. 
@@ -199,33 +201,130 @@ You would start the job with a command such as `qsub name_of_job_script` for PBS
 
 Note that with the default EKP configuration, UTKI, the number of ensemble is set by the number of parameters, as explained in the documentation above. The number of workers (if you use the worker backend) is automatically set to that numbers, so that all members are run in parallel for each iteration.
 
-## Configure your calibration job
+## Configure your land calibration
 
-To run a calibration, you can modify the following objects in `calibrate_land.jl`:
-- include `forward_model.jl` or `forward_model_bucket.jl`, depending on which model you want to calibrate
-- `variable_list`: choose the variables you want to calibrate. For example, `["swu"]` or `["lhf", "shf"]`
-- `n_iterations`: how many iterations you want to run
-- `spinup_period`: the time length of your spinup
-- `start_date`: the start date of the calibration
-- `nelements`: to adjust the model resolution (n_horizontal elements, n_vertical elements)
-- `caldir`: you can change the name and path of your calibration output directory
-- `training_locations`: the default is all locations on land, but you can change this to a subset of land coordinates
+For configuring the land calibration, you can configure the optimization method
+used by EnsembleKalmanProcesses.jl, the observations and how they are
+preprocessed, and the simulation itself. For most settings, you can modify
+the `CalibrateConfig` struct. See the example below.
 
-You should also modify the files:
-- `priors.jl`, to give your parameters and their distribution
-- `forward_mode.jl` or `forward_model_bucket.jl`, to ensure it reads the parameters from `priors.jl` and uses them
+```julia
+CalibrateConfig(;
+    short_names = ["swu"],
+    sample_date_ranges = [("2007-12-1", "2008-9-1")],
+    extend = Dates.Month(3),
+    minibatch_size = 1,
+    n_iterations = 10,
+    nelements = (101, 15),
+    spinup = Dates.Month(3),
+    output_dir = "experiments/calibration/test",
+    rng_seed = 42,
+)
+```
 
-other things to consider:
-- `observationseries_era5.jl`: currently the target data is era5. This could be changed to another dataset, or a perfect model target
-- `observationseries_era5.jl`: the noise is currently set to 5^2 (flat noise, in W m^-2), this should be changed to desired noise
-- you could change the EnsembleKalmanProcesses settings, set in `EKP.EnsembleKalmanProcesses()` in `calibrate_land.jl`
-- you can adjust the ClimaCalibrate backend, see the [documentation](https://clima.github.io/ClimaCalibrate.jl/dev/backends/)
-- Because the variable names are currently different in era5 file, you may have to add variables to map in observationseries_era5.jl (for example, "lhf" => "mslhf")
+### EKP settings
 
-Also, note that currently:
-- the temporal resolution of observation_maps are seasonal (3 months average)
-- the length of calibration is 1 year (data used after spinup)
-- the entire globe is used
-These could also be changed in the code, but would currently requires significant changes.
+In `CalibrateConfig`, you can modify the number of iterations via `n_iterations`
+and the size of the minibatch by `minibatch_size`. For reproducbility, you can
+pass in an integer for `rng_seed` which is used internally by
+EnsembleKalmanProcesses.jl.
 
-Finally, note that the HPC job script and command will slightly differ between slurm (for example central or clima) and pbs (for example derecho).
+For the land calibration, the default optimization method is
+`EnsembleKalmanProcesses.TransformUnscented` and the default scheduler is
+`EKP.DataMisfitController`. To change this optimization method or change the
+scheduler, you need to go to the `run_calibration.jl` file and modify it there.
+For more information about the different optimization methods, see
+[EnsembleKalmanProcesses.jl](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/)
+for more information.
+
+### Observation settings
+
+In `CalibrateConfig`, you can modify which observations that are used via
+`short_names`. As of now, the currently supported observations for calibration
+are seasonal averages of `lhf`, `shf`, `lwu`, and `swu`. See the
+[Data pipelines](@ref) on how to add more variables.
+
+Observations are generated with `generate_observations.jl`. To generate
+observations, you can run
+
+```julia
+julia --project=.buildkite experiments/calibration/generate_observations.jl`
+```
+
+!!! note "When do I need to generate observations?"
+    Whenever `nelements`, `sample_date_ranges`, `short_names`, or the
+    preprocessing of any of the variables change, then you must regenerate the
+    observations!
+
+Each observation contains time series data of the variables from ERA5 and a
+covariance matrix. You can adjust `sample_date_ranges` if you want to optimize
+over a particular year or over multiple years for example.
+
+!!! note "What can be passed for `sample_date_ranges`?"
+    The sample date ranges should be times from the time series data of the
+    observations. Since the land calibration calibrates using seasonal averages,
+    the times passed must be the first day of December, March, June, or
+    September. The seasons are December to February (DJF), March to May
+    (MAM), June to August (JJA), and September to November (SON). The convention
+    for time is use the first time of the time reduction.
+
+To change the covariance matrix, you need to go to `generate_observations.jl`
+and modify the covariance matrix that is passed in. See
+[ClimaCalibrate.jl documentation](https://clima.github.io/ClimaCalibrate.jl/dev/api/#Observation-Recipe-Interface)
+for a list of different covariance matrices that can be used.
+
+#### Data pipelines
+
+!!! note "Data preprocessing"
+    The data preprocessing uses ClimaAnalysis.jl. See the
+    [ClimaAnalysis.jl documentation](https://clima.github.io/ClimaAnalysis.jl/dev/api/)
+    for functions you can use for preprocessing.
+
+To add additional variables or change how a variable is preprocessed, you must
+add the variable to the data sources and specify how the variable should be
+preprocessed. As of now, each variable is loaded by the function
+`get_era5_obs_var_dict` in `ext/land_sim_vis/leaderboard/data_sources.jl`. See
+the documentation of `get_obs_var_dict` for how to add a new variable.
+
+Further preprocessing is done in the function `preprocess_single_era5_var` in
+`generate_observations.jl`. After adding the variable, you should specify any
+additional preprocessing. For example, if you want seasonal averages, you should
+use `ClimaAnalysis.average_season_across_time`. Furthermore, you should check
+the units of the variable, ensure that the grid and mask are the same between
+the simulation and observational data, and ensure the conventions for times are
+the same. Finally, the same preprocessing should be applied between both
+observational and simulation data.
+
+!!! note "Time conventions"
+    Different data sources have different conventions for time. For example,
+    data sources use January 1, January 15, and Feburary 1 for the monthly
+    average of January. For the diagnostics saved from a CliMA simulation, the
+    current convention is to save the monthly average on the Feburary 1. You
+    must ensure that the time conventions are the same. For calibration, we
+    choose the start of the time reduction, so for this example, the time
+    associated with the monthly average of January is January 1. For seasonal
+    averages, the dates would be December 1, March 1, June 1, and September 1.
+
+### Simulation settings
+
+In `CalibrateConfig`, you can modify the resolution of the model via
+`nelements`. To change the directory of where the calibration starts, you can
+change `output_dir`, whose default is `experiments/calibration/land_model`.
+
+For adjusting the start and end dates of the simulation, you can change `spinup`
+and `extend`.
+
+!!! note "How are the start and end dates of the simulation chosen?"
+    The start and end dates of a simulation is automatically inferred from the
+    `sample_date_ranges`. For example, suppose that `sample_date_ranges =
+    [("2007-12-1", "2008-9-1"), ("2008-12-1", "2008-9-1)]` and the minibatch
+    size is 2. The start and end dates are `2007-12-1` to `2008-9-1`. This
+    should cover the time ranges of the observational data. However, observe
+    that the simulation output may not be realistic at the beginning of the
+    simulation while the land model is equilibrating and the end date is not
+    correct, because of the time convention we chosen earlier. To solve the
+    first problem, you can specify how the long the model should spin up for
+    with `spinup` in the `CalibrateConfig`. For the second problem, you can make
+    the simulation extend past `2008-9-1` with `extend`. For calibrating with
+    monthly averages, `extend` should be `Dates.Month(1)` and for calibrating
+    with seasonal averages, `extend` should be `Dates.Month(3)`.
