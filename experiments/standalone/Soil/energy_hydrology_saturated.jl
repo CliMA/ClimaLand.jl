@@ -7,6 +7,7 @@ using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Soil
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 
 FT = Float32;
@@ -61,14 +62,7 @@ soil = Soil.EnergyHydrology{FT}(;
     boundary_conditions = boundary_fluxes,
     sources = (),
 )
-Y, p, cds = initialize(soil);
 
-set_initial_cache! = make_set_initial_cache(soil)
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 function hydrostatic_equilibrium(z, z_interface, params)
     (; ν, S_s, hydrology_cm) = params
@@ -79,7 +73,9 @@ function hydrostatic_equilibrium(z, z_interface, params)
         return ν * (1 + (α * (z - z_interface))^n)^(-m)
     end
 end
-function init_soil!(Y, z, params)
+function init_soil!(Y, p, t0, model)
+    params = model.parameters
+    z = model.domain.fields.z
     FT = eltype(Y.soil.ϑ_l)
     Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.45), params)
     Y.soil.θ_i .= 0
@@ -106,29 +102,30 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Define the problem and callbacks:
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
+simulation_dt_small =
+    LandSimulation(t0, tf, FT(100), soil; set_ic! = init_soil!)
+
+simulation_dt_large = LandSimulation(
+    t0,
+    tf,
+    FT(900),
+    soil;
+    set_ic! = init_soil!,
+    timestepper = ode_algo,
+)
+
 # Solve at small dt
-init_soil!(Y, z, soil.parameters);
-set_initial_cache!(p, Y, t0);
-sol_dt_small = SciMLBase.solve(prob, ode_algo; dt = 100.0);
-init_soil!(Y, z, soil.parameters);
-set_initial_cache!(p, Y, t0);
-sol_dt_large = SciMLBase.solve(prob, ode_algo; dt = 900.0);
-@assert sum(isnan.(sol_dt_large.u[end])) == 0
+sol_dt_small = solve!(simulation_dt_small);
+sol_dt_large = solve!(simulation_dt_large);
+@assert sum(isnan.(simulation_dt_large._integrator.u)) == 0
 
 norm(x) = sqrt(mean(parent(x .^ 2)))
 rmse(x, y) = sqrt(mean(parent((x .- y) .^ 2)))
-@assert rmse(sol_dt_small[end].soil.ϑ_l, sol_dt_large[end].soil.ϑ_l) /
-        norm(sol_dt_small[end].soil.ϑ_l) < sqrt(eps(FT))
-@assert rmse(sol_dt_small[end].soil.ρe_int, sol_dt_large[end].soil.ρe_int) /
-        norm(sol_dt_small[end].soil.ρe_int) < sqrt(eps(FT))
+@assert rmse(
+    simulation_dt_small._integrator.u.soil.ϑ_l,
+    simulation_dt_large._integrator.u.soil.ϑ_l,
+) / norm(simulation_dt_small._integrator.u.soil.ϑ_l) < sqrt(eps(FT))
+@assert rmse(
+    simulation_dt_small._integrator.u.soil.ρe_int,
+    simulation_dt_large._integrator.u.soil.ρe_int,
+) / norm(simulation_dt_small._integrator.u.soil.ρe_int) < sqrt(eps(FT))

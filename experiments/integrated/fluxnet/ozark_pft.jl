@@ -21,6 +21,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
@@ -246,16 +247,17 @@ land = SoilCanopyModel{FT}(;
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
 )
-Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-set_initial_cache! = make_set_initial_cache(land)
-set_initial_cache!(p, Y, t0);
+
+
+
+set_ic!(Y, _, _, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 # Callbacks
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
@@ -289,33 +291,22 @@ diags = ClimaLand.default_diagnostics(
     average_period = :hourly,
 )
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
-
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
-
 ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
 ## defined in the simulatons file
 data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID))
 updateat = Array(t0:data_dt:tf)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
-
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    land;
+    start_date = ref_time,
+    set_ic! = set_ic!,
+    updateat,
+    diagnostics = diags,
+    outdir = output_dir,
+)
+sol = solve!(simulation)
 
 ClimaLand.Diagnostics.close_output_writers(diags)
 

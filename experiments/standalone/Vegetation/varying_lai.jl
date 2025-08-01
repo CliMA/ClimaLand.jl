@@ -16,6 +16,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;

@@ -9,6 +9,7 @@ import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
+import ClimaUtilities.TimeManager: ITime, date
 
 export FTfromY, call_count_nans_state
 
@@ -396,6 +397,36 @@ end
 
 This function is used by `NonInterpSavingCallback` to perform the saving.
 """
+function (affect!::SavingAffect{<:NamedTuple, <:Array{<:Dates.DateTime}})(
+    integrator,
+)
+    integrator_t = Dates.DateTime(integrator.t)
+    while !isempty(affect!.saveat) && first(affect!.saveat) <= integrator_t
+        affect!.saveiter += 1
+        curr_t = popfirst!(affect!.saveat)
+        # @assert curr_t == integrator.t
+        if curr_t == integrator_t
+            affect!.saved_values.t[affect!.saveiter] = curr_t
+            affect!.saved_values.saveval[affect!.saveiter] =
+                deepcopy(integrator.p)
+        end
+    end
+end
+
+function (affect!::SavingAffect{<:NamedTuple, <:Array{<:Number}})(integrator)
+    integrator_t = float(integrator.t)
+    while !isempty(affect!.saveat) && first(affect!.saveat) <= integrator_t
+        affect!.saveiter += 1
+        curr_t = popfirst!(affect!.saveat)
+        # @assert curr_t == integrator.t
+        if curr_t == integrator_t
+            affect!.saved_values.t[affect!.saveiter] = curr_t
+            affect!.saved_values.saveval[affect!.saveiter] =
+                deepcopy(integrator.p)
+        end
+    end
+end
+
 function (affect!::SavingAffect)(integrator)
     while !isempty(affect!.saveat) && first(affect!.saveat) <= integrator.t
         affect!.saveiter += 1
@@ -418,7 +449,16 @@ initial values, don't pass the `initialize` argument to the `DiscreteCallback`
 constructor.
 """
 function saving_initialize(cb, u, t, integrator)
-    (t in cb.affect!.saveat) && cb.affect!(integrator)
+    saveat = cb.affect!.saveat
+    if saveat isa Array{<:Dates.DateTime}
+        # If saveat is a vector of DateTimes, we need to convert t to DateTime
+        return (Dates.DateTime(t) in cb.affect!.saveat) &&
+               cb.affect!(integrator)
+    elseif saveat isa Array{<:Number}
+        return (float(t) in cb.affect!.saveat) && cb.affect!(integrator)
+    else
+        return (t in cb.affect!.saveat) && cb.affect!(integrator)
+    end
 end
 
 """
@@ -457,6 +497,9 @@ This function returns a function with the type signature expected by
 called in the callback. This implementation simply checks if the current time
 is contained in the list of affect times used for the callback.
 """
+condition(saveat::Array{<:Dates.DateTime}) =
+    (_, t, _) -> Dates.DateTime(t) in saveat
+condition(saveat::Array{<:Number}) = (_, t, _) -> float(t) in saveat
 condition(saveat) = (_, t, _) -> t in saveat
 
 function FTfromY(Y::ClimaCore.Fields.FieldVector)
@@ -628,7 +671,7 @@ initialized with the `start_date` to ensure that it is first
 called at the correct time.
 """
 function NaNCheckCallback(
-    nancheck_frequency::Union{AbstractFloat, Dates.Period},
+    nancheck_frequency::Union{AbstractFloat, Dates.Period, ITime},
     start_date,
     dt;
     mask = nothing,
@@ -652,7 +695,9 @@ function NaNCheckCallback(
     )
 
     if !isnothing(dt)
-        dt_period = Dates.Millisecond(1000float(dt))
+        dt_period =
+            typeof(dt) <: typeof(nancheck_frequency_period) ? dt :
+            Dates.Millisecond(1000float(dt))
         if !isdivisible(nancheck_frequency_period, dt_period)
             @warn "Callback frequency ($(nancheck_frequency_period)) is not an integer multiple of dt $(dt_period)"
         end
@@ -663,6 +708,27 @@ function NaNCheckCallback(
     end
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
+    SciMLBase.DiscreteCallback(cond, affect!)
+end
+
+# no date version
+function NaNCheckCallback(
+    nancheck_frequency::Union{AbstractFloat, ITime},
+    start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
+    dt;
+    mask = nothing,
+)
+    schedule = EveryDtSchedule(nancheck_frequency; start_date)
+    if !isnothing(dt)
+        if !isdivisible(nancheck_frequency, dt)
+            @warn "Callback frequency ($(nancheck_frequency)) is not an integer multiple of dt $(dt)"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
     SciMLBase.DiscreteCallback(cond, affect!)
 end
 

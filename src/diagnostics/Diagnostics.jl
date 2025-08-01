@@ -17,7 +17,7 @@ import ..Soil: EnergyHydrology
 import ..Canopy: medlyn_conductance, medlyn_term, moisture_stress
 import ..Domains:
     top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
-
+import ClimaLand
 import ..heaviside
 
 import ClimaDiagnostics:
@@ -31,6 +31,7 @@ import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 import ClimaCore.Fields: zeros, field_values
 import ClimaCore.Operators: column_integral_definite!
+import ClimaUtilities.TimeManager: ITime, date
 
 export close_output_writers
 
