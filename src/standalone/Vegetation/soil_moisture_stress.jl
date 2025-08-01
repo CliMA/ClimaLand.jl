@@ -234,9 +234,12 @@ function update_soil_moisture_stress!(p, Y, model::PiecewiseMoistureStressModel,
     if :soil in canopy.boundary_conditions.prognostic_land_components 
         ϑ_l = Y.soil.ϑ_l
         z = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
+        face_space = ClimaCore.Spaces.face_space(axes(ϑ_l))
+        z_face = ClimaCore.Fields.coordinate_field(face_space).z
+        z_bottom = ClimaCore.Fields.level(z_face, ClimaCore.Utilities.PlusHalf(0))
 
         # normalized distribution for root density 
-        # norm = @. lazy(Canopy.PlantHydraulics.root_distribution_CDF(zmin, canopy.hydraulics.parameters.rooting_depth))
+        norm = @. lazy(Canopy.PlantHydraulics.root_distribution_CDF(z_bottom, canopy.hydraulics.parameters.rooting_depth))
         ϑ_l_root_distribution = @. lazy(ϑ_l * Canopy.PlantHydraulics.root_distribution(
             z, canopy.hydraulics.parameters.rooting_depth))
         
