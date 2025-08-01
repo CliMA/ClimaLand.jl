@@ -66,6 +66,16 @@ include(
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
+
+# Set up the domain
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+
 (start_date, end_date) =
     FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(

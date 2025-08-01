@@ -212,6 +212,8 @@ using .Biogeochemistry
 
 Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
 
+The argument `forcing` should be a NamedTuple containing two fields: `atmos` and `radiation`.
+
 When running the soil model in standalone mode, `prognostic_land_components = (:soil,)`, while for running integrated land models,
 this should be a list of the component models. This value of this argument must be the same across all components in the land model.
 

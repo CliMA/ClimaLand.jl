@@ -62,21 +62,6 @@ FluxnetSimulationsExt =
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
-# Setup the domain for the model:
-
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-f_root_to_shoot = FT(3.5)
-plant_ν = FT(2.46e-4)
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
-
 # - We will be using prescribed atmospheric and radiative drivers from the
 #   US-MOz tower, which we read in here. We are using prescribed
 #   atmospheric and radiative flux conditions, but it is also possible to couple
@@ -108,6 +93,15 @@ atmos_h = FT(32) # m
     earth_param_set,
     FT,
 );
+
+# Setup the domain for the model:
+
+nelements = 10
+zmin = FT(-2)
+zmax = FT(0)
+domain =
+    Column(; zlim = (zmin, zmax), nelements = nelements, longlat = (long, lat));
+
 # # Setup the Coupled Canopy and Soil Physics Model
 
 # We want to simulate the canopy-soil system together, so the model type
@@ -117,7 +111,7 @@ atmos_h = FT(32) # m
 # type and arguments as well as the canopy model component types, component
 # arguments, and the canopy model arguments, so we first need to initialize
 # all of these.
-
+prognostic_land_components = (:canopy, :soil, :soilco2);
 # For our soil model, we will choose the
 # [`EnergyHydrology`](https://clima.github.io/ClimaLand.jl/dev/APIs/Soil/#Soil-Models-2)
 # and set up all the necessary arguments. See the
@@ -128,178 +122,52 @@ atmos_h = FT(32) # m
 # parameters struct:
 
 # Soil parameters
-soil_ν = FT(0.5) # m3/m3
-soil_K_sat = FT(4e-7) # m/s
-soil_S_s = FT(1e-3) # 1/m
-soil_vg_n = FT(2.05) # unitless
-soil_vg_α = FT(0.04) # inverse meters
+ν = FT(0.5) # m3/m3
+K_sat = FT(4e-7) # m/s
+n = FT(2.05) # unitless
+α = FT(0.04) # inverse meters
 θ_r = FT(0.067); # m3/m3
-
-# Soil heat transfer parameters
-ν_ss_quartz = FT(0.1)
-ν_ss_om = FT(0.1)
-ν_ss_gravel = FT(0.0);
-z_0m_soil = FT(0.1)
-z_0b_soil = FT(0.1)
-soil_ϵ = FT(0.98)
-soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.4)
-
-soil_domain = land_domain
-soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+soil = EnergyHydrology{FT}(
+    domain,
+    (; atmos, radiation),
+    earth_param_set;
+    prognostic_land_components,
+    additional_sources = (RootExtraction{FT}(),),
+    retention_parameters = (;
+        ν,
+        θ_r,
+        K_sat,
+        hydrology_cm = vanGenuchten{FT}(; α, n),
+    ),
 )
-soil_ps = Soil.EnergyHydrologyParameters(
-    FT;
-    ν = soil_ν,
-    ν_ss_om = ν_ss_om,
-    ν_ss_quartz = ν_ss_quartz,
-    ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-    K_sat = soil_K_sat,
-    S_s = soil_S_s,
-    θ_r = θ_r,
-    earth_param_set = earth_param_set,
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
-    albedo = soil_albedo,
-);
-
-soil_args = (domain = soil_domain, parameters = soil_ps)
-soil_model_type = Soil.EnergyHydrology{FT}
 
 # For the heterotrophic respiration model, see the
 # [documentation](https://clima.github.io/ClimaLand.jl/previews/PR214/dynamicdocs/pages/soil_biogeochemistry/microbial_respiration/)
 # to understand the parameterisation.
 # The domain is defined similarly to the soil domain described above.
-soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-soilco2_ps = SoilCO2ModelParameters(FT);
-Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
+soil_organic_carbon =
+    ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+drivers = Soil.Biogeochemistry.SoilDrivers(
+    co2_prognostic_soil,
+    soil_organic_carbon,
+    atmos,
+)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; domain, drivers)
 
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
-
-# Begin by declaring the component types of the canopy model. Unlike in the
-# previous tutorial, collect the arguments to each component into tuples and do
-# not instantiate the component models yet. The constructor for the
-# SoilPlantHydrologyModel will use these arguments and internally instatiate the
-# component CanopyModel and RichardsModel instances. This is done so that the
-# constructor may enforce consistency constraints between the two models, and
-# this must be done internally from the constructor.
-
-canopy_component_types = (;
-    autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
-    radiative_transfer = Canopy.TwoStreamModel{FT},
-    photosynthesis = Canopy.FarquharModel{FT},
-    conductance = Canopy.MedlynConductanceModel{FT},
-    hydraulics = Canopy.PlantHydraulicsModel{FT},
-);
-
-# Then provide arguments to the canopy radiative transfer, stomatal conductance,
-# and photosynthesis models as was done in the previous tutorial.
-
-autotrophic_respiration_args =
-    (; parameters = AutotrophicRespirationParameters(FT))
-
-radiative_transfer_args = (;
-    parameters = TwoStreamParameters(
-        FT;
-        G_Function = ConstantGFunction(FT(0.5)),
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.45,
-        τ_PAR_leaf = 0.05,
-        τ_NIR_leaf = 0.25,
-        Ω = 0.69,
-    )
-)
-
-conductance_args = (; parameters = MedlynConductanceParameters(FT; g1 = 141))
-
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
-photosynthesis_args =
-    (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5)));
-
-K_sat_plant = FT(1.8e-8)
 (; LAI, maxLAI) =
     FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
-maxLAI = FT(maxLAI) # convert to the float type of our simulation
-SAI = FT(0.00242)
-RAI = (SAI + maxLAI) * f_root_to_shoot;
-# Note: LAIfunction was determined from data in the script we included above.
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
-
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
-
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-
-retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-
-plant_ν = FT(0.7)
-plant_S_s = FT(1e-2 * 0.0098)
-
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
-    ν = plant_ν,
-    S_s = plant_S_s,
-    rooting_depth = FT(1.0),
-    conductivity_model = conductivity_model,
-    retention_model = retention_model,
-)
-
-plant_hydraulics_args = (
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_midpoints = compartment_midpoints,
-    compartment_surfaces = compartment_surfaces,
-);
-
-# We may now collect all of the canopy component argument tuples into one
-# arguments tuple for the canopy component models.
-
-canopy_component_args = (;
-    autotrophic_respiration = autotrophic_respiration_args,
-    radiative_transfer = radiative_transfer_args,
-    photosynthesis = photosynthesis_args,
-    conductance = conductance_args,
-    hydraulics = plant_hydraulics_args,
-);
-
-# We also need to provide the shared parameter struct to the canopy.
-z0_m = FT(2)
-z0_b = FT(0.2)
-
-shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    z0_m,
-    z0_b,
+surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+ground = PrognosticSoilConditions{FT}();
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    surface_domain,
+    (; atmos, radiation, ground),
+    LAI,
     earth_param_set,
 )
-canopy_domain = obtain_surface_domain(land_domain)
-canopy_model_args = (; parameters = shared_params, domain = canopy_domain);
-
-# We may now instantiate the integrated plant and soil model. In this example,
-# we will compute transpiration diagnostically, and work with prescribed
-# atmospheric and radiative flux conditions from the observations at the Ozark
-# site as was done in the previous tutorial.
-
-land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
-
-land = SoilCanopyModel{FT}(;
-    soilco2_type = soilco2_type,
-    soilco2_args = soilco2_args,
-    land_args = land_input,
-    soil_model_type = soil_model_type,
-    soil_args = soil_args,
-    canopy_component_types = canopy_component_types,
-    canopy_component_args = canopy_component_args,
-    canopy_model_args = canopy_model_args,
-);
+land = SoilCanopyModel{FT}(; soil, soilco2, canopy);
 
 # Now we can initialize the state vectors and model coordinates, and initialize
 # the explicit/implicit tendencies as usual. The Richard's equation time
@@ -312,6 +180,14 @@ imp_tendency! = make_imp_tendency(land);
 jacobian! = make_jacobian(land);
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
+
+# Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
+# value over which to perform the simulation.
+
+t0 = Float64(150 * 3600 * 24)# start mid year
+N_days = 100
+tf = t0 + Float64(3600 * 24 * N_days)
+dt = Float64(30)
 
 # We need to provide initial conditions for the soil and canopy hydraulics
 # models:
@@ -330,29 +206,20 @@ Y.soil.ρe_int =
 
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-ψ_stem_0 = FT(-1e5 / 9800)
+canopy_retention_model = canopy.hydraulics.parameters.retention_model
+canopy_ν = canopy.hydraulics.parameters.ν
+canopy_S_s = canopy.hydraulics.parameters.S_s
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        plant_ν,
-        plant_S_s,
-    )
+S_l_ini = inverse_water_retention_curve(
+    canopy_retention_model,
+    ψ_leaf_0,
+    canopy_ν,
+    canopy_S_s,
+)
+Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction(canopy_ν, S_l_ini);
+evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
-end;
-
-# Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
-# value over which to perform the simulation.
-
-t0 = Float64(150 * 3600 * 24)# start mid year
-N_days = 100
-tf = t0 + Float64(3600 * 24 * N_days)
-dt = Float64(30)
 n = 120
 saveat = Array(t0:(n * dt):tf)
 
