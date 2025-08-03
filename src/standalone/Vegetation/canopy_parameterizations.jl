@@ -1516,7 +1516,7 @@ end
 Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
 """
 function electron_transport_pmodel(ϕ0::FT, I_abs::FT, Jmax::FT) where {FT}
-    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / Jmax)^2)
+    J = 4 * ϕ0 * I_abs / sqrt(1 + (4 * ϕ0 * I_abs / max(Jmax, eps(FT)))^2)
     return J
 end
 
