@@ -402,7 +402,6 @@ function make_diurnal_timeseries(
                 label = "Model",
                 color = "blue",
             )
-            axislegend(ax, position = :lt)
             if ~(comparison_data isa Nothing) &&
                (Symbol(sn) ∈ propertynames(comparison_data))
                 data = getproperty(comparison_data, Symbol(sn))
@@ -430,7 +429,7 @@ function make_diurnal_timeseries(
                     RMSD *
                     ", R² = $(round(R²[1][1], digits = 2))"
             end
-
+            axislegend(ax, position = :lt)
             CairoMakie.save(joinpath(tmpdir, "$(sn)_avg.pdf"), fig)
         end
         figures = readdir(tmpdir, join = true)
@@ -528,7 +527,6 @@ function make_timeseries(
             )
             xlims = extrema(model_dates[spinup_idx:end])
             xlims!(ax, xlims...)
-            axislegend(ax, position = :lt)
             if ~(comparison_data isa Nothing) &&
                (Symbol(sn) ∈ propertynames(comparison_data))
                 data = getproperty(comparison_data, Symbol(sn))
@@ -546,7 +544,7 @@ function make_timeseries(
                     color = "yellow",
                 )
             end
-
+            axislegend(ax, position = :lt)
             CairoMakie.save(joinpath(tmpdir, "$(sn)_ts.pdf"), fig)
         end
         figures = readdir(tmpdir, join = true)
