@@ -9,11 +9,8 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
-using CairoMakie
-using Statistics
 using Dates
 using Insolation
-using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -23,18 +20,21 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaUtilities.OutputPathGenerator: generate_output_path
 using ClimaDiagnostics
 using ClimaUtilities
+
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
-
+using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+LandSimulationVisualizationExt =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
-
 site_ID = "US-MOz"
 
 # Read all site-specific domain parameters from the simulation file for the site
@@ -258,9 +258,6 @@ set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
 # Callbacks
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
 output_writer = ClimaDiagnostics.Writers.DictWriter()
 
 short_names_1D = [
@@ -318,274 +315,26 @@ prob = SciMLBase.ODEProblem(
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
 ClimaLand.Diagnostics.close_output_writers(diags)
-
-# Extract model output from the saved diagnostics
-hourly_diag_name = short_names_1D .* "_1h_average"
-hourly_diag_name_2D = short_names_2D .* "_1h_average"
-
-
-# diagnostic_as_vectors()[2] is a vector of a variable,
-# whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
-# We index to only extract the period post-spinup.
-SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, Rn = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(output_writer, diag_name)[2][(N_spinup_days * 24):end]
-    for diag_name in hourly_diag_name
-]
-
-swc, soil_T, si = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(
-        output_writer,
-        diag_name;
-        layer = 20, #surface layer
-    )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D
-]
-dt_save = 3600.0 # hourly diagnostics
-# Number of days to plot post spinup
-num_days = N_days - N_spinup_days
-model_times = Array(0:dt_save:(num_days * S_PER_DAY)) .+ t_spinup # post spin-up
-
-# convert units for GPP and ET
-GPP = GPP .* 1e6 # mol to μmol
-AR = AR .* 1e6
-ET = ET .* 24 .* 3600
-
-# For the data, we also restrict to post-spinup period
-data_id_post_spinup = Array(Int64(t_spinup ÷ data_dt):1:Int64(tf ÷ data_dt))
-data_times = Array(0:data_dt:(num_days * S_PER_DAY)) .+ t_spinup
-# Plotting
+comparison_data =
+    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
 savedir =
-    generate_output_path("experiments/integrated/fluxnet/$site_ID/out/pft/")
-
-if !isdir(savedir)
-    mkdir(savedir)
-end
-
-# Plot model diurnal cycles without data comparisons
-comparison_data = FluxnetSimulationsExt.get_comparison_data(
-    site_ID,
-    time_offset,
-    start_date,
-    FT,
-)
-if comparison_data.GPP.absent
-    plot_daily_avg(
-        "GPP",
-        GPP,
-        dt_save,
-        num_days,
-        "μmol/m^2/s",
-        savedir,
-        "Model",
-    )
-else
-    GPP_data = comparison_data.GPP.values[data_id_post_spinup] .* 1e6
-    plot_avg_comp(
-        "GPP",
-        GPP,
-        dt_save,
-        GPP_data,
-        FT(data_dt),
-        num_days,
-        "μmol/m^2/s",
-        savedir,
-    )
-end
-
-# Upwelling shortwave radiation is referred to as outgoing in the data
-if comparison_data.SW_u.absent
-    plot_daily_avg("SW up", SW_u, dt_save, num_days, "w/m^2", savedir, "model")
-else
-    SW_u_data = comparison_data.SW_u.values[data_id_post_spinup]
-    plot_avg_comp(
-        "SW up",
-        SW_u,
-        dt_save,
-        SW_u_data,
-        FT(data_dt),
-        num_days,
-        "W/m^2",
-        savedir,
-    )
-end
-
-# Upwelling longwave radiation is referred to outgoing in the data
-if comparison_data.LW_u.absent
-    plot_daily_avg("LW up", LW_u, dt_save, num_days, "w/m^2", savedir, "model")
-else
-    LW_u_data = comparison_data.LW_u.values[data_id_post_spinup]
-    plot_avg_comp(
-        "LW up",
-        LW_u,
-        dt_save,
-        LW_u_data,
-        FT(data_dt),
-        num_days,
-        "W/m^2",
-        savedir,
-    )
-end
-
-# ET
-if comparison_data.LE.absent
-    plot_daily_avg("ET", ET, dt_save, num_days, "mm/day", savedir, "Model")
-else
-    measured_T =
-        comparison_data.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
-        (1e3 * 24 * 3600)
-    ET_data = measured_T[data_id_post_spinup]
-    plot_avg_comp(
-        "ET",
-        ET,
-        dt_save,
-        ET_data,
-        FT(data_dt),
-        num_days,
-        "mm/day",
-        savedir,
-    )
-end
-
-# Sensible Heat Flux
-if comparison_data.H.absent
-    plot_daily_avg("SHF", SHF, dt_save, num_days, "w/m^2", savedir, "Model")
-else
-    SHF_data = comparison_data.H.values[data_id_post_spinup]
-    plot_avg_comp(
-        "SHF",
-        SHF,
-        dt_save,
-        SHF_data,
-        FT(data_dt),
-        num_days,
-        "W/m^2",
-        savedir,
-    )
-end
-
-# Latent Heat Flux
-if comparison_data.LE.absent
-    plot_daily_avg("LHF", LHF, dt_save, num_days, "w/m^2", savedir)
-else
-    LHF_data = comparison_data.LE.values[data_id_post_spinup]
-    plot_avg_comp(
-        "LHF",
-        LHF,
-        dt_save,
-        LHF_data,
-        FT(data_dt),
-        num_days,
-        "W/m^2",
-        savedir,
-    )
-end
-
-# Water stress factor
-plot_daily_avg("moisture_stress", β, dt_save, num_days, "", savedir, "Model")
-
-# Stomatal conductance
-plot_daily_avg(
-    "stomatal_conductance",
-    g_stomata,
-    dt_save,
-    num_days,
-    "m s^-1",
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
+mkpath(savedir)
+LandSimulationVisualizationExt.make_diurnal_timeseries(
+    land_domain,
+    diags,
+    start_date;
     savedir,
-    "Model",
+    short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
 )
-
-if isfile(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
-    ),
+LandSimulationVisualizationExt.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["swc", "tsoil"],
+    spinup_date = start_date + Day(N_spinup_days),
+    comparison_data,
 )
-    rm(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
-        ),
-    )
-end
-
-# Water content in soil and snow
-# Soil water content
-# Current resolution has the first layer at 0.1 cm, the second at 5cm.
-fig = Figure(size = (1000, 800), fontsize = 20)
-ax1 = Axis(fig[2, 1], xlabel = "Days", ylabel = "SWC [m/m]")
-limits!(
-    ax1,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    0.05,
-    0.6,
-)
-lines!(ax1, model_times ./ 3600 ./ 24, swc, label = "1.25cm", color = "blue")
-lines!(
-    ax1,
-    model_times ./ 3600 ./ 24,
-    si,
-    color = "cyan",
-    label = "Ice, 1.25cm",
-)
-
-if !comparison_data.SWC.absent
-    lines!(
-        ax1,
-        data_times ./ 3600 ./ 24,
-        comparison_data.SWC.values[data_id_post_spinup],
-        label = "Data",
-    )
-end
-ax3 = Axis(
-    fig[1, 1],
-    xlabel = "",
-    ylabel = "Precipitation [mm/day]",
-    xticklabelsvisible = false,
-)
-limits!(
-    ax3,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    -500,
-    0.0,
-)
-
-lines!(
-    ax3,
-    data_times ./ 3600 ./ 24,
-    (comparison_data.P.values .* (-1e3 * 24 * 3600))[data_id_post_spinup],
-    label = "Total precip (data)",
-)
-
-CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
-
-
-
-fig2 = Figure(size = (1500, 800))
-ax12 = Axis(fig2[1, 1], xlabel = "Days", ylabel = "Temperature (K)")
-limits!(
-    ax12,
-    minimum(model_times ./ 3600 ./ 24),
-    maximum(model_times ./ 3600 ./ 24),
-    265,
-    315,
-)
-
-lines!(
-    ax12,
-    model_times ./ 3600 ./ 24,
-    soil_T,
-    label = "1.25cm",
-    color = "blue",
-)
-
-if !comparison_data.TS.absent
-    lines!(
-        ax12,
-        data_times ./ 3600 ./ 24,
-        comparison_data.TS.values[data_id_post_spinup],
-        label = "Data",
-    )
-end
-
-CairoMakie.save(joinpath(savedir, "soil_temperature.png"), fig2)

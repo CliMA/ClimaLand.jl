@@ -128,15 +128,44 @@ macro with_error(compute_function_expr)
 end
 
 """
-    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic; layer = 1)
+    nlayers(field::Fields.Field)
+
+Returns the number of layers in the vertical for the `field`;
+this differs from the ClimaCore.Spaces `nlevels` function in
+that it considers non-extruded spaces (spectral element or point
+spaces) to have a single layer.
+"""
+nlayers(field::Fields.Field) = nlayers(axes(field))
+
+"""
+    nlayers(space::Spaces.AbstractSpace)
+
+Returns the default number of layers in the vertical for a ClimaCore
+space. For extruded spaces, this is equal to the number of ClimaCore levels.
+"""
+nlayers(space::Spaces.AbstractSpace) = Spaces.nlevels(space)
+
+"""
+    nlayers(::Spaces.PointSpace)
+
+Returns the number of layers in the vertical; this is one
+for the PointSpace.
+"""
+nlayers(::Spaces.PointSpace) = 1
+
+"""
+    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic; layer = nothing)
 
 Extract `diagnostic` from given `writer` as tuple of vectors (time and value).
-By default, gets the surface values (layer = 1).
-For variables resolved in depth, layer can be 1 or more, up to the maximum layer.
+By default, if `layer` is nothing, it gets the surface value; otherwise
+it returns the layer requested.
+
+Note that for variables resolved in depth, the bottom layer is indicated by `1`,  
+while the top layer is indicated by the number of layers.
 
 `diagnostic` is typically a string with the short name of the diagnostic.
 """
-function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = 1)
+function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = nothing)
 
     # writer[diagnostic] is a dictionary with keys the times and with values Fields. We need
     # to be a little careful because dictionaries are not ordered, so we have to sort them
@@ -144,10 +173,12 @@ function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = 1)
     times = collect(keys(writer[diagnostic]))
     sort_indices = sortperm(times)
     values_all = parent.(values(writer[diagnostic]))[sort_indices]
-    vector_layer_n =
-        vcat([values_all[i][layer, :] for i in 1:length(values_all)]...)
+    field = first(values(writer[diagnostic]))
+    layer_id = layer isa Nothing ? nlayers(field) : layer
+    vector_layer =
+        vcat([values_all[i][layer_id, :] for i in 1:length(values_all)]...)
 
-    return times, vector_layer_n
+    return times, vector_layer
 end
 
 """

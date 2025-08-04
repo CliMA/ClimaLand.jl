@@ -321,3 +321,216 @@ function make_ocean_masked_annual_timeseries(
     end
     return nothing
 end
+
+"""
+    make_diurnal_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name = "diurnal_timeseries.pdf",
+    comparison_data=nothing,
+    spinup_date=start_date,
+)
+
+Creates a pdf with multiple pages, each page showing the
+average diurnal cycle for the diagnostics; the pdf
+is saved under `plot_name` in the directory `savedir`.
+
+The `start_date` is used to convert from timestamps of seconds since
+the start date (in diagnostics) to dates; only values observed or 
+simulated after the `spinup_date` are included.
+
+To include a comparison to data, a NamedTuple `comparison_data`
+may optionally be passed. This should include the timeseries of the
+data labeled with the same variable name as the diagnostics use. For example:
+comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will 
+result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
+being plotted, provided that those diagnostics were recorded during the simulation.
+"""
+function make_diurnal_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name = "diurnal_timeseries.pdf",
+    comparison_data = nothing,
+    spinup_date = start_date,
+)
+    short_names = [d.variable.short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_units = [d.variable.units for d in diagnostics]
+    mktempdir(savedir) do tmpdir
+        for i in 1:length(diag_names)
+            dn = diag_names[i]
+            unit = diag_units[i]
+            sn = short_names[i]
+            model_time, model_output =
+                ClimaLand.Diagnostics.diagnostic_as_vectors(
+                    diagnostics[1].output_writer,
+                    dn,
+                )
+            save_Δt = model_time[2] - model_time[1] # in seconds
+            model_dates = Second.(model_time) .+ start_date
+            spinup_idx = findfirst(spinup_date .<= model_dates)
+            hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+            )
+            fig = CairoMakie.Figure(size = (800, 400))
+            ax = CairoMakie.Axis(
+                fig[1, 1],
+                xlabel = "Hour of day (UTC)",
+                ylabel = "$sn $(unit)",
+            )
+            CairoMakie.lines!(
+                ax,
+                hour_of_day,
+                model_diurnal_cycle,
+                label = "Model",
+                color = "blue",
+            )
+            if ~(comparison_data isa Nothing) &&
+               (Symbol(sn) ∈ propertynames(comparison_data))
+                data = getproperty(comparison_data, Symbol(sn))
+                data_dates = getproperty(comparison_data, :UTC_datetime)
+                spinup_idx = findfirst(spinup_date .<= data_dates)
+                hour_of_day, data_diurnal_cycle = compute_diurnal_cycle(
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
+                )
+                RMSD = @sprintf "%.2e" StatsBase.rmsd(
+                    model_diurnal_cycle,
+                    data_diurnal_cycle,
+                )
+
+                R² = StatsBase.cor(model_diurnal_cycle, data_diurnal_cycle)^2
+                CairoMakie.lines!(
+                    ax,
+                    hour_of_day,
+                    data_diurnal_cycle,
+                    label = "Data",
+                    color = "yellow",
+                )
+                ax.title =
+                    "$(sn): RMSD = " *
+                    RMSD *
+                    ", R² = $(round(R²[1][1], digits = 2))"
+            end
+            axislegend(ax, position = :lt)
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_avg.pdf"), fig)
+        end
+        figures = readdir(tmpdir, join = true)
+        pdfunite() do unite
+            run(Cmd([unite, figures..., joinpath(savedir, plot_name)]))
+        end
+    end
+    return nothing
+end
+
+"""
+    compute_diurnal_cycle(dates, data)
+
+Computes the average diurnal cycle by binning the data dates into hour
+intervals and then computing the mean value of the data per interval.
+Returns the hours of the day and the mean value of the data each hour.
+"""
+function compute_diurnal_cycle(dates, data)
+    hour_of_day = Hour.(dates)
+    mean_by_hour = [mean(data[hour_of_day .== Hour(i)]) for i in 0:23]
+    return [Hour(i) for i in 0:23], mean_by_hour
+end
+
+"""
+    make_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name = "variable_timeseries.pdf",
+    comparison_data=nothing,
+    spinup_date=start_date,
+)
+
+Creates a pdf with multiple pages, each page showing the
+timeseries for the diagnostics; the pdf
+is saved under `plot_name` in the directory `savedir`.
+
+The `start_date` is used to convert from timestamps of seconds since
+the start date (in diagnostics) to dates; only values observed or 
+simulated after the `spinup_date` are included.
+
+To include a comparison to data, a NamedTuple `comparison_data`
+may optionally be passed. This should include the timeseries of the
+data labeled with the same variable name as the diagnostics use. For example:
+comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will 
+result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
+being plotted, provided that those diagnostics were recorded during the simulation.
+"""
+function make_timeseries(
+    savedir,
+    diagnostics,
+    start_date;
+    plot_name,
+    comparison_data,
+    spinup_date,
+)
+    short_names = [d.variable.short_name for d in diagnostics] # short_name
+    diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
+    diag_units = [d.variable.units for d in diagnostics]
+    mktempdir(savedir) do tmpdir
+        for i in 1:length(diag_names)
+            dn = diag_names[i]
+            unit = diag_units[i]
+            sn = short_names[i]
+            model_time, model_output =
+                ClimaLand.Diagnostics.diagnostic_as_vectors(
+                    diagnostics[1].output_writer,
+                    dn,
+                )
+            save_Δt = model_time[2] - model_time[1] # in seconds
+            model_dates = Second.(model_time) .+ start_date
+            spinup_idx = findfirst(spinup_date .<= model_dates)
+            hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+            )
+            fig = CairoMakie.Figure(size = (800, 400))
+            ax = CairoMakie.Axis(
+                fig[1, 1],
+                xlabel = "Date (UTC)",
+                ylabel = "$sn $(unit)",
+            )
+            CairoMakie.lines!(
+                ax,
+                model_dates[spinup_idx:end],
+                model_output[spinup_idx:end],
+                label = "Model",
+                color = "blue",
+            )
+            xlims = extrema(model_dates[spinup_idx:end])
+            xlims!(ax, xlims...)
+            if ~(comparison_data isa Nothing) &&
+               (Symbol(sn) ∈ propertynames(comparison_data))
+                data = getproperty(comparison_data, Symbol(sn))
+                data_dates = getproperty(comparison_data, :UTC_datetime)
+                spinup_idx = findfirst(spinup_date .<= data_dates)
+                hour_of_day, data_diurnal_cycle = compute_diurnal_cycle(
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
+                )
+                CairoMakie.lines!(
+                    ax,
+                    data_dates[spinup_idx:end],
+                    data[spinup_idx:end],
+                    label = "Data",
+                    color = "yellow",
+                )
+            end
+            axislegend(ax, position = :lt)
+            CairoMakie.save(joinpath(tmpdir, "$(sn)_ts.pdf"), fig)
+        end
+        figures = readdir(tmpdir, join = true)
+        pdfunite() do unite
+            run(Cmd([unite, figures..., joinpath(savedir, plot_name)]))
+        end
+    end
+    return nothing
+end

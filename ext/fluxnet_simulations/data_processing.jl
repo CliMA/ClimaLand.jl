@@ -145,40 +145,43 @@ end
 
 """
     get_comparison_data(
-        data,
-        varname,
-        column_name_map;
+        data::Matrix,
+        varname::String,
+        column_name_map::Dict,
+        climaland_shortname::String;
         preprocess_func = identity,
-        val = -9999
-)
+        val = -9999,
+    )
 
-Gets and returns the a NamedTuple with the data identified 
+Gets and returns a NamedTuple with the data identified 
 by `varname` in the `data` matrix by looking up the 
 column index of varname
 using the column_name_map, replacing missing data with the mean
 of the non-missing data, and preprocessing the data using the
-`preprocess_func`, which should be a pointwise function.
+`preprocess_func`, which should be a pointwise function. The 
+key of the NamedTuple should be the shortname of the corresponding
+variable using the shortname of ClimaDiagnostics: `climaland_shortname`.
 
-The NamedTuple has two keys: absent, and values. If the data column
-is missing completely, the value of absent is true, and no values
-are returned. If the data column is present, absent is set to false,
-and the data is returned with the key values. If the column is present
-but the data is missing in each row, absent is set to true.
+If the data column
+is missing completely, or if the column is present
+but the data is missing in each row, an empty NamedTuple
+is returned.
 
 In the future, we can explore dropping the missing values to be
 consistent with what we do above, but this is consistent with the
 current Fluxnet runs.
 """
 function get_comparison_data(
-    data,
-    varname,
-    column_name_map;
+    data::Matrix,
+    varname::String,
+    column_name_map::Dict,
+    climaland_shortname::String;
     preprocess_func = identity,
     val = -9999,
 )
     idx = column_name_map[varname]
     if isnothing(idx)
-        return (; absent = true)
+        return (;)
     else
         v = data[:, idx]
         missing_mask = var_missing.(v; val)
@@ -186,9 +189,9 @@ function get_comparison_data(
         n_missing = sum(not_missing_mask)
         if n_missing <= length(v) # some data are present
             v[missing_mask] .= sum(v[not_missing_mask]) / sum(not_missing_mask)
-            return (; absent = false, values = preprocess_func.(v))
+            return (; Symbol(climaland_shortname) => preprocess_func.(v))
         else
-            return (; absent = true)
+            return (;)
         end
     end
 end

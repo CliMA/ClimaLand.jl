@@ -3,6 +3,7 @@ module Diagnostics
 import Dates: Month, Period
 
 import ClimaComms
+using ClimaCore: Spaces, Fields
 
 import ..Parameters as LP
 

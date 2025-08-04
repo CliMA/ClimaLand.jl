@@ -11,10 +11,7 @@ import ClimaTimeSteppers as CTS
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
-using CairoMakie
-using Statistics
 using Dates
-using NCDatasets
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -23,9 +20,12 @@ using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
+
 using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+using CairoMakie, StatsBase
+
 climaland_dir = pkgdir(ClimaLand)
 FT = Float64
 site_ID = "US-MOz"
@@ -50,8 +50,7 @@ domain = Column(;
 
 # TIME STEPS:
 t0 = FT(1800)
-N_days_spinup = 0
-N_days = N_days_spinup + 360
+N_days = 360
 dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
@@ -173,15 +172,12 @@ sol = SciMLBase.solve(
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
+comparison_data =
+    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
 
-comparison_data = FluxnetSimulationsExt.get_comparison_data(
-    site_ID,
-    time_offset,
-    start_date,
-    FT,
-)
 # Water content
-seconds = comparison_data.seconds
+seconds =
+    [Second(dt).value for dt in (comparison_data.UTC_datetime .- start_date)]
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 2], ylabel = "SWC", xlabel = "Days")
 lines!(
@@ -203,7 +199,7 @@ lines!(
 lines!(
     ax1,
     seconds ./ 3600 ./ 24,
-    comparison_data.SWC.values,
+    comparison_data.swc,
     label = "Data, Unknown Depth",
 )
 axislegend(ax1, position = :rt)
@@ -214,7 +210,7 @@ hidexdecorations!(ax2, ticks = false)
 lines!(
     ax2,
     seconds ./ 3600 ./ 24,
-    comparison_data.P.values .* (1e3 * 24 * 3600),
+    comparison_data.precip .* (1e3 * 24 * 3600),
     label = "Total precip",
 )
 axislegend(ax2, position = :rb)
@@ -240,7 +236,7 @@ lines!(
 lines!(
     ax4,
     seconds ./ 3600 ./ 24,
-    comparison_data.TS.values,
+    comparison_data.tsoil,
     label = "Data, Unknown depth",
 )
 axislegend(ax4, position = :rt)
