@@ -47,7 +47,7 @@ function setup_model(
     earth_param_set,
     calibration_params,
 )
-    (; α_0, k, Δα) = calibration_params
+    (; ϵ_soil, ϵ_canopy) = calibration_params
 
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -69,7 +69,8 @@ function setup_model(
     (; ν, hydrology_cm, K_sat, θ_r) =
         ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
     soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,)
+        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,
+    )
     S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
@@ -82,6 +83,7 @@ function setup_model(
         S_s,
         θ_r,
         albedo = soil_albedo,
+        emissivity = ϵ_soil,
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
@@ -162,6 +164,7 @@ function setup_model(
             α_NIR_leaf,
             τ_NIR_leaf,
             G_Function,
+            ϵ_canopy,
         )
     )
     # Set up conductance
@@ -235,7 +238,7 @@ function setup_model(
         FT(0.08),
         FT(1.77),
         FT(1.0),
-        horz_degree_res
+        horz_degree_res,
     )
     snow_parameters = SnowParameters{FT}(
         Δt;
@@ -315,7 +318,7 @@ function CAL.forward_model(iteration, member)
         sim_end,
         Δt,
         model;
-	user_callbacks = (),
+        user_callbacks = (),
         outdir = diagdir,
         diagnostics,
     )

@@ -1,13 +1,13 @@
 using Dates
 
 model_type = "land" # "land" or "bucket"
-const variable_list = ["swu"] # variable(s) you want to capture by adjusting your priors
+const variable_list = ["lwu"] # variable(s) you want to capture by adjusting your priors
 const n_iterations = 10 # 1 iterations takes ~ 1.5 hour with current settings ((50, 15) resolution, 2 year simulation)
 const spinup_period = Year(1)
 const start_date = DateTime(2000, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
 const nelements = (101, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "land_snow_zenith_hires" # ideally, describe your calibration in a few words
+const dirname = "land_emissivities" # ideally, describe your calibration in a few words
 const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
 import ClimaLand
 model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
@@ -103,8 +103,9 @@ include(
         pkgdir(ClimaLand),
         "experiments",
         "long_runs",
-	"leaderboard",
-	"leaderboard.jl"),
+        "leaderboard",
+        "leaderboard.jl",
+    ),
 )
 function CAL.analyze_iteration(ekp, g_ensemble, prior, output_dir, iteration)
     plot_output_path = CAL.path_to_iteration(output_dir, iteration)

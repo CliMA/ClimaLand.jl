@@ -247,6 +247,7 @@ function canopy_sw_rt_two_stream(
     # Clip this to prevent dividing by zero; the sum must also be < 1. Note that using eps(FT)
     # as the threshold leads to numerical errors, so we use 1e-4
     ω = min(max(α_leaf + τ_leaf, FT(1e-4)), 1 - FT(1e-4))
+
     # Compute aₛ, the single scattering albedo
     aₛ =
         0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), eps(FT))))
