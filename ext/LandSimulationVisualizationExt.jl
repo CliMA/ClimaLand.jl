@@ -3,7 +3,6 @@ import ClimaDiagnostics
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using CairoMakie
-import ClimaCore.Spaces: nlevels, PointSpace
 import GeoMakie
 using Dates
 import NCDatasets

@@ -323,14 +323,6 @@ function make_ocean_masked_annual_timeseries(
 end
 
 """
-    nlevels(::PointSpace)
-
-An extension of the ClimaCore.Spaces.nlevels function
-for the PointSpace; returns 1.
-"""
-nlevels(::PointSpace) = 1
-
-"""
     make_diurnal_timeseries(
     savedir,
     diagnostics,
@@ -366,21 +358,15 @@ function make_diurnal_timeseries(
     short_names = [d.variable.short_name for d in diagnostics] # short_name_X_average e.g.
     diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
     diag_units = [d.variable.units for d in diagnostics]
-    num_levels = [
-        nlevels(first(d.output_writer.dict[d.output_short_name])[2]) for
-        d in diagnostics
-    ]
     mktempdir(savedir) do tmpdir
         for i in 1:length(diag_names)
             dn = diag_names[i]
             unit = diag_units[i]
             sn = short_names[i]
-            level = num_levels[i] == 1 ? 1 : num_levels[i]
             model_time, model_output =
                 ClimaLand.Diagnostics.diagnostic_as_vectors(
                     diagnostics[1].output_writer,
-                    dn;
-                    layer = level,
+                    dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
             model_dates = Second.(model_time) .+ start_date
@@ -489,21 +475,15 @@ function make_timeseries(
     short_names = [d.variable.short_name for d in diagnostics] # short_name
     diag_names = [d.output_short_name for d in diagnostics] # short_name_X_average e.g.
     diag_units = [d.variable.units for d in diagnostics]
-    num_levels = [
-        nlevels(first(d.output_writer.dict[d.output_short_name])[2]) for
-        d in diagnostics
-    ]
     mktempdir(savedir) do tmpdir
         for i in 1:length(diag_names)
             dn = diag_names[i]
             unit = diag_units[i]
             sn = short_names[i]
-            level = num_levels[i] == 1 ? 1 : num_levels[i]
             model_time, model_output =
                 ClimaLand.Diagnostics.diagnostic_as_vectors(
                     diagnostics[1].output_writer,
-                    dn;
-                    layer = level,
+                    dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
             model_dates = Second.(model_time) .+ start_date

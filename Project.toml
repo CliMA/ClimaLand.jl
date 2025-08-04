@@ -39,7 +39,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [extensions]
 FluxnetSimulationsExt = ["DelimitedFiles"]
-LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "ClimaCore", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
+LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
 NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [compat]
