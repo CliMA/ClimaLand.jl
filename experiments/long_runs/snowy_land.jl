@@ -63,7 +63,7 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
-    time_interpolation_method =
+    era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
     surface_space = domain.space.surface
@@ -86,7 +86,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         earth_param_set,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method,
+        time_interpolation_method = era5_time_interpolation_method,
     )
 
     (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
@@ -214,7 +214,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         modis_lai_ncdata_path,
         surface_space,
         start_date;
-        time_interpolation_method,
+        time_interpolation_method = LinearInterpolation(),
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)

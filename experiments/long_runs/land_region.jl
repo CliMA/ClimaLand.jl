@@ -55,8 +55,6 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
-
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar())
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -70,7 +68,7 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         earth_param_set,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method,
+        time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     )
 
     (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
@@ -183,14 +181,14 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
     # Set up plant hydraulics
     modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
         context = context,
-        start_date = start_date + Second(t0),
-        end_date = start_date + Second(t0) + Second(tf),
+        start_date,
+        end_date = stop_date,
     )
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,
         surface_space,
         start_date;
-        time_interpolation_method,
+        time_interpolation_method = LinearInterpolation(),
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
