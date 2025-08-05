@@ -10,7 +10,10 @@ using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
 export prescribed_forcing_fluxnet,
-    set_fluxnet_ic!, get_comparison_data, get_data_dates, get_data_dt
+    make_set_fluxnet_initial_conditions,
+    get_comparison_data,
+    get_data_dates,
+    get_data_dt
 
 # Include site-specific configurations, as well as the default generic site.
 include("fluxnet_simulations/generic_site.jl")

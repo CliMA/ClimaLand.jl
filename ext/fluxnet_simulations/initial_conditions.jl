@@ -1,4 +1,36 @@
 """
+    make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+
+Creates and returns a function `set_ic!(Y,p,t,model)` which
+updates `Y` in place with an estimated set of initial conditions
+based on the fluxnet observations at `site_ID` at the `start_date` in UTC,
+and the type of the `model`.
+In order to convert between local time and UTC, the hour offset from
+UTC is required. 
+"""
+function make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model,
+)
+    set_ic!(Y, p, t, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+        Y,
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+    return set_ic!
+end
+
+
+"""
      set_fluxnet_ic!(
         Y,
         site_ID,
