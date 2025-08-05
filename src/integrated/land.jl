@@ -320,10 +320,12 @@ function LandModel{FT}(;
 
     soilco2_boundary_conditions =
         (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-    soilco2 = soilco2_type(;
+    soilco2 = soilco2_type(
+        soilco2_args.domain,
+        soilco2_drivers;
         boundary_conditions = soilco2_boundary_conditions,
         sources = soilco2_sources,
-        soilco2_args..., # adds domain, params
+        parameters = soilco2_args.parameters,
         drivers = soilco2_drivers,
     )
 
