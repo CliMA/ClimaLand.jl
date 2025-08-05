@@ -5,11 +5,6 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaLand: use_lowres_clm, Artifacts
-
-regridder_type = :InterpolationsRegridder
-extrapolation_bc =
-    (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
-
 """
     clm_canopy_radiation_parameters(
         surface_space;
@@ -19,6 +14,7 @@ extrapolation_bc =
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        interpolation_method = Interpolations.Constant(),
         lowres=use_lowres_clm(surface_space),
     )
 
@@ -35,10 +31,12 @@ In particular, this file returns a field for
 The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`regridder_kwargs` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method. 
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 """
@@ -50,6 +48,7 @@ function clm_canopy_radiation_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    interpolation_method = Interpolations.Constant(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -64,7 +63,7 @@ function clm_canopy_radiation_parameters(
         "ci",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = nans_to_one,),
     )
     χl = SpaceVaryingInput(
@@ -72,7 +71,7 @@ function clm_canopy_radiation_parameters(
         "xl",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     G_Function = ClimaLand.Canopy.CLMGFunction.(χl)
     α_PAR_leaf = SpaceVaryingInput(
@@ -80,28 +79,28 @@ function clm_canopy_radiation_parameters(
         "rholvis",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "taulvis",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     α_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholnir",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     τ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "taulnir",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     return (;
         Ω = Ω,
@@ -122,6 +121,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        interpolation_method = Interpolations.Constant(),
         lowres=use_lowres_clm(surface_space),
     )
 
@@ -137,10 +137,12 @@ In particular, this file returns a field for
 The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`regridder_kwargs` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method. 
+ The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 """
@@ -152,6 +154,7 @@ function clm_photosynthesis_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    interpolation_method = Interpolations.Constant(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -162,7 +165,7 @@ function clm_photosynthesis_parameters(
         "vcmx25",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
     # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
@@ -171,7 +174,7 @@ function clm_photosynthesis_parameters(
         "c3_dominant",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     return (; is_c3 = is_c3, Vcmax25 = Vcmax25)
 end
@@ -186,6 +189,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        interpolation_method = Interpolations.Constant(),
         lowres=use_lowres_clm(surface_space),
     )
 
@@ -197,10 +201,12 @@ Fields.
 The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`regridder_kwargs` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method. 
+ The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 """
@@ -212,6 +218,7 @@ function clm_rooting_depth(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    interpolation_method = Interpolations.Constant(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -221,7 +228,7 @@ function clm_rooting_depth(
         "rooting_depth",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     return rooting_depth
 end
@@ -236,6 +243,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        interpolation_method = Interpolations.Constant(),
         lowres=use_lowres_clm(surface_space),
     )
 
@@ -247,10 +255,12 @@ Fields.
 The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`regridder_kwargs` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method. 
+ The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 """
@@ -262,6 +272,7 @@ function clm_medlyn_g1(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    interpolation_method = Interpolations.Constant(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -273,7 +284,7 @@ function clm_medlyn_g1(
         "medlynslope",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
     return g1

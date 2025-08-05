@@ -206,8 +206,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     else
         modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
             context = nothing,
-            start_date = start_date + Second(t0),
-            end_date = start_date + Second(t0) + Second(tf),
+            start_date,
+            end_date = stop_date,
         )
     end
     LAIfunction = ClimaLand.prescribed_lai_modis(
