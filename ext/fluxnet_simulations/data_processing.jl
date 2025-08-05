@@ -171,7 +171,7 @@ In the future, we can explore dropping the missing values to be
 consistent with what we do above, but this is consistent with the
 current Fluxnet runs.
 """
-function get_comparison_data(
+function FluxnetSimulations.get_comparison_data(
     data::Matrix,
     varname::String,
     column_name_map::Dict,

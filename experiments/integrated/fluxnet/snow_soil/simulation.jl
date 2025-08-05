@@ -22,8 +22,7 @@ import ClimaLand.Parameters as LP
 import ClimaParams
 
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, StatsBase
 
 climaland_dir = pkgdir(ClimaLand)
@@ -57,7 +56,7 @@ tf = t0 + FT(3600 * 24 * N_days)
 # Height of sensor on flux tower
 atmos_h = FT(32)
 start_date = DateTime(2010) + Hour(time_offset)
-forcing = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,
@@ -125,7 +124,7 @@ set_initial_cache! = make_set_initial_cache(land)
 
 
 #Initial conditions
-FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
+FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache!(p, Y, t0)
 
 saveat = Array(t0:dt:tf)
@@ -172,8 +171,7 @@ sol = SciMLBase.solve(
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
-comparison_data =
-    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 
 # Water content
 seconds =

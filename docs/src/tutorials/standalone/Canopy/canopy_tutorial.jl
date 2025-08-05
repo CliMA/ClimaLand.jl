@@ -53,8 +53,7 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
@@ -123,7 +122,7 @@ dt = 225.0
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
 # Forcing data
-(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,
@@ -206,11 +205,8 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 );
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
-    modis_lai_ncdata_path[1],
-    lat,
-    long,
-);
+maxLAI =
+    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
 
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)

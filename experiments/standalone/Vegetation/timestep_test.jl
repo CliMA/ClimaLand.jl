@@ -57,8 +57,7 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float64;
 earth_param_set = LP.LandParameters(FT);
@@ -83,7 +82,7 @@ N_days = 20.0
 tf = t0 + N_days * seconds_per_day + 80
 
 # Get prescribed atmospheric and radiation forcing
-(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,

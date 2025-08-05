@@ -427,4 +427,5 @@ include(joinpath("simulations", "Simulations.jl"))
 
 # Extensions
 include(joinpath("ext", "LandSimVis.jl"))
+include(joinpath("ext", "FluxnetSimulations.jl"))
 end
