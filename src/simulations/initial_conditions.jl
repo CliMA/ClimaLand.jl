@@ -3,6 +3,11 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
 
 export make_set_initial_state_from_file
+
+regridder_type = :InterpolationsRegridder
+extrapolation_bc =
+    (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
+interpolation_method = Interpolations.Constant()
 """
     set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, soil_ic_path)
 
@@ -26,7 +31,7 @@ function set_soil_initial_conditions!(
     T_bounds;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = interpolation_method,
 )
     Y.soil.ϑ_l .= SpaceVaryingInput(
         soil_ic_path,
@@ -162,7 +167,7 @@ function set_snow_initial_conditions!(
     params;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = interpolation_method,
 )
     Y.snow.S .= SpaceVaryingInput(
         snow_ic_path,
