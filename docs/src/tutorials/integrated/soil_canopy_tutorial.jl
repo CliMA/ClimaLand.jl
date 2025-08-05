@@ -62,28 +62,6 @@ FluxnetSimulationsExt =
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
-# Setup the domain for the model:
-
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-f_root_to_shoot = FT(3.5)
-plant_ν = FT(2.46e-4)
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
-
-# - We will be using prescribed atmospheric and radiative drivers from the
-#   US-MOz tower, which we read in here. We are using prescribed
-#   atmospheric and radiative flux conditions, but it is also possible to couple
-#   the simulation with atmospheric and radiative flux models. We also
-# read in the observed LAI and let that vary in time in a prescribed manner.
-
-
 # First provide some information about the site
 site_ID = "US-MOz"
 # Timezone (offset from UTC in hrs)
@@ -96,6 +74,33 @@ long = FT(-92.2000) # degree
 
 # Height of the sensor at the site
 atmos_h = FT(32) # m
+
+# Setup the domain for the model:
+nelements = 10
+zmin = FT(-2)
+zmax = FT(0)
+f_root_to_shoot = FT(3.5)
+plant_ν = FT(2.46e-4)
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9)
+h_leaf = FT(9.5)
+compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
+compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
+land_domain =
+    Column(; zlim = (zmin, zmax), nelements = nelements, longlat = (long, lat));
+
+# Specify the time range and dt value over which to perform the simulation.
+t0 = Float64(150 * 3600 * 24)# start mid year
+N_days = 100
+tf = t0 + Float64(3600 * 24 * N_days)
+dt = Float64(30)
+
+# - We will be using prescribed atmospheric and radiative drivers from the
+#   US-MOz tower, which we read in here. We are using prescribed
+#   atmospheric and radiative flux conditions, but it is also possible to couple
+#   the simulation with atmospheric and radiative flux models. We also
+# read in the observed LAI and let that vary in time in a prescribed manner.
 
 # Forcing data
 (; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
@@ -223,12 +228,27 @@ photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5)));
 
 K_sat_plant = FT(1.8e-8)
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
-maxLAI = FT(maxLAI) # convert to the float type of our simulation
+
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface;
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+);
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+)
+
 SAI = FT(0.00242)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
-# Note: LAIfunction was determined from data in the script we included above.
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
 ψ63 = FT(-4 / 0.0098)
@@ -346,15 +366,7 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end;
 
-# Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
-# value over which to perform the simulation.
-
-t0 = Float64(150 * 3600 * 24)# start mid year
-N_days = 100
-tf = t0 + Float64(3600 * 24 * N_days)
-dt = Float64(30)
-n = 120
-saveat = Array(t0:(n * dt):tf)
+# Select the timestepper and solvers needed for the specific problem.
 
 timestepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
@@ -374,6 +386,8 @@ set_initial_cache!(p, Y, t0);
 # how often we save output, and how often we update
 # the forcing data ("drivers")
 
+n = 120
+saveat = Array(t0:(n * dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),

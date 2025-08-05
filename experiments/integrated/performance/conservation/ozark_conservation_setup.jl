@@ -11,6 +11,8 @@ h_leaf = FT(9.5) # m
 # TIME STEPPING:
 t0 = Float64(120 * 3600 * 24)# start mid year
 dt = Float64(150)
+# Use smaller `tf` for Float32 simulation
+tf = (FT == Float64) ? t0 + 3600 * 24 * 10 : t0 + 2 * dt
 dz_tuple = (dz_bottom, dz_top)
 nelements = 20
 zmin = FT(-10)
@@ -43,6 +45,15 @@ include(
         "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
     ),
 )
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+
+# Get the atmospheric and radiation forcing data
 (start_date, end_date) =
     FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
@@ -55,8 +66,25 @@ include(
     earth_param_set,
     FT,
 )
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    context = ClimaComms.context(surface_space),
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+)
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+);
 RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 # Now we set up the model. For the soil model, we pick

@@ -73,7 +73,21 @@ earth_param_set = LP.LandParameters(FT);
 # stomatal conductance model, and atmospheric and radiative flux conditions
 # which may be either prescribed or simulated.
 
-# First, define the parameters of the model domain. These values are needed
+# First provide some information about the site
+# Timezone (offset from UTC in hrs)
+time_offset = 7
+start_date = DateTime(2010) + Hour(time_offset)
+
+# Site latitude and longitude
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
+# Height of the sensor at the site
+atmos_h = FT(32)
+# Site ID
+site_ID = "US-MOz";
+
+# Now we define the parameters of the model domain. These values are needed
 # by some of the component models. Here we are performing a 1-dimensional
 # simulation in a `Point` domain and will use
 # single stem and leaf compartments, but for 2D simulations, the parameters of
@@ -91,27 +105,22 @@ h_stem = FT(9)
 h_leaf = FT(9.5)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
 compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-land_domain = Point(; z_sfc = FT(0.0))
+land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
+
+# Select a time range to perform time stepping over, and a dt. As usual,
+# the timestep depends on the problem you are solving, the accuracy of the
+# solution required, and the timestepping algorithm you are using.
+
+t0 = 0.0
+N_days = 364
+tf = t0 + 3600 * 24 * N_days
+dt = 225.0
 
 # - We will be using prescribed atmospheric and radiative drivers from the
 #   US-MOz tower, which we read in here. We are using prescribed
 #   atmospheric and radiative flux conditions, but it is also possible to couple
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
-
-# First provide some information about the site
-# Timezone (offset from UTC in hrs)
-time_offset = 7
-start_date = DateTime(2010) + Hour(time_offset)
-
-# Site latitude and longitude
-lat = FT(38.7441) # degree
-long = FT(-92.2000) # degree
-
-# Height of the sensor at the site
-atmos_h = FT(32)
-# Site ID
-site_ID = "US-MOz";
 
 # Forcing data
 (; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
@@ -185,8 +194,24 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # Begin by providing general plant parameters. For the area
 # indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface;
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+);
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+);
+
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + maxLAI) * f_root_to_shoot)
@@ -280,16 +305,6 @@ S_l_ini =
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
-
-# Select a time range to perform time stepping over, and a dt. Also create the
-# saveat Array to contain the data from the model at each time step. As usual,
-# the timestep depends on the problem you are solving, the accuracy of the
-# solution required, and the timestepping algorithm you are using.
-
-t0 = 0.0
-N_days = 364
-tf = t0 + 3600 * 24 * N_days
-dt = 225.0;
 
 # Initialize the cache variables for the canopy using the initial
 # conditions and initial time.

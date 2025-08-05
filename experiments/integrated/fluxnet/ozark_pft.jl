@@ -8,6 +8,7 @@ import ClimaLand
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
+import ClimaComms
 import ClimaParams as CP
 using Dates
 using Insolation
@@ -56,6 +57,14 @@ include(
         "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
     ),
 )
+
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 # Define the PFT land cover percentages for the Ozark site. Currently we only
 # use the dominant PFT, which for Ozark is deciduous broadleaf temperate trees.
@@ -117,8 +126,25 @@ start_date = DateTime(2010) + Hour(time_offset)
     earth_param_set,
     FT,
 )
-(; LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+
+# Read in LAI from MODIS data
+surface_space = land_domain.space.surface
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
+    start_date = start_date + Second(t0),
+    end_date = start_date + Second(t0) + Second(tf);
+    context = ClimaComms.context(surface_space),
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    surface_space,
+    start_date,
+)
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+);
 RAI = maxLAI * f_root_to_shoot
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 

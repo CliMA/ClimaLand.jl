@@ -5,7 +5,7 @@ fluxtower site."""
 ## Ma, S., Baldocchi, D. D., Xu, L., Hehn, T. (2007)
 ## Inter-Annual Variability In Carbon Dioxide Exchange Of An
 ## Oak/Grass Savanna And Open Grassland In California, Agricultural
-## And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008 
+## And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008
 ## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 
