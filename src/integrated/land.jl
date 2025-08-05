@@ -95,7 +95,8 @@ end
         forcing,
         LAI,
         earth_param_set,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        Δt;
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -146,7 +147,7 @@ function LandModel{FT}(
     forcing,
     LAI,
     earth_param_set,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
     Δt;
     soil = Soil.EnergyHydrology{FT}(
         domain,
