@@ -58,9 +58,15 @@ forcing = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
     FT,
 );
 # LAI for the site - this uses our interface for working with MODIS data.
-(LAI, maxLAI) =
-    FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date);# eventually just get LAI
-
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    start_date,
+    end_date = stop_date,
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    domain.space.surface,
+    start_date,
+);
 # Setup the domain for the model:
 zmin = FT(-5) # in m
 zmax = FT(0) # in m

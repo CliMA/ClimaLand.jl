@@ -91,13 +91,62 @@ struct LandModel{
 end
 
 """
+    LandModel{FT}(
+        forcing,
+        LAI,
+        earth_param_set,
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            earth_param_set;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+            runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+        ),
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            Soil.Biogeochemistry.SoilDrivers(
+               Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+                forcing.atmos,
+            ),
+        ),
+        canopy = Canopy.CanopyModel{FT}(
+            Domains.obtain_surface_domain(domain),
+            (;
+                atmos = forcing.atmos,
+                radiation = forcing.radiation,
+                ground = ClimaLand.PrognosticSoilConditions{FT}(),
+            ),
+            LAI,
+            earth_param_set;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        ),
+       snow = Snow.SnowModel(
+            FT,
+            ClimaLand.Domains.obtain_surface_domain(domain),
+            forcing,
+            earth_param_set,
+            Δt;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        ),
+   ) where {FT}
 
+A convenience constructor for setting up the default LandModel,
+where all the parameterizations and parameter values are set to default values
+or passed in via the `earth_param_set`. The boundary conditions of all models
+correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
+of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
+and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
+as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
+Finally, since the snow model requires the timestep, that is a required argument as well.
 """
 function LandModel{FT}(
     forcing,
     LAI,
     earth_param_set,
-    domain,
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
     Δt;
     soil = Soil.EnergyHydrology{FT}(
         domain,

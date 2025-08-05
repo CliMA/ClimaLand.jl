@@ -42,7 +42,7 @@ tutorials = [
     "For model developers" => [
         "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
         "Intro to multi-component models" => [
-            "Blah" => "standalone/Usage/LSM_single_column_tutorial.jl",
+            "Single column tutorial" => "standalone/Usage/LSM_single_column_tutorial.jl",
             "Adjusting boundary conditions for the soil" => "integrated/handling_soil_fluxes.jl",
             "Adjusting boundary conditions for the snow" => "integrated/handling_snow_fluxes.jl",
         ],

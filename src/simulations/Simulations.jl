@@ -215,10 +215,6 @@ function solve!(landsim::LandSimulation)
     end
 end
 
-function get_dt(landsim::LandSimulation)
-    return landsim._integrator.dt
-end
-
 """
     ClimaComms.context(landsim::LandSimulation)
 
