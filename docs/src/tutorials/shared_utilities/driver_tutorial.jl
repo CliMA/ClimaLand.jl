@@ -67,7 +67,8 @@ seconds = 0:data_dt:((length(local_datetime) - 1) * data_dt);
 T = @. 298.15 + 5.0 * sin(2π * (seconds - 3600 * 6) / (3600 * 24));
 LW_d = 5.67 * 10^(-8) .* T .^ 4;
 SW_d = @. max(1400 * sin(2π * (seconds - 3600 * 6) / (3600 * 24)), 0.0);
-diffuse_fraction = 0.5 .+ zeros(length(seconds))
+diffuse_fraction = 0.5 .+ zeros(length(seconds));
+
 # Next, fit interpolators to the data. These interpolators are what are stored in
 # the driver function. Then we can evaluate the radiative forcing
 # at any simulation time (and not just at times coinciding with measurements).

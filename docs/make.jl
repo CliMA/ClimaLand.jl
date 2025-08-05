@@ -52,25 +52,25 @@ include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
     "Running your first simulation" => "getting_started.md",
-    "ClimaLand structure" => [
+    "Tutorials" => tutorials,
+    "Additional resources" => [
         "Model structure" => "model_structure.md",
         "Repository structure" => "repo_structure.md",
+        "Analyzing model output" => [
+            "Diagnostics" => diagnostics,
+            "Leaderboard" => "leaderboard/leaderboard.md",
+        ],
+        "Running on GPU or with MPI" => "architectures.md",
+        "Calibration" => "calibration.md",
+        "Restarting a simulation" => "restarts.md",
+        "Software utilities" => [
+            "ITime type" => "itime.md",
+            "Shared utilities" => "shared_utilities.md",
+        ],
+        "Physical units" => "physical_units.md",
+        "Model Equations" => standalone_models,
+        "Julia background" => "julia.md",
     ],
-    "Tutorials" => tutorials,
-    "Standalone models" => standalone_models,
-    "Analyzing model output" => [
-        "Diagnostics" => diagnostics,
-        "Leaderboard" => "leaderboard/leaderboard.md",
-    ],
-    "Running on GPU or with MPI" => "architectures.md",
-    "Calibration" => "calibration.md",
-    "Restarting a simulation" => "restarts.md",
-    "Software utilities" => [
-        "ITime type" => "itime.md",
-        "Shared utilities" => "shared_utilities.md",
-    ],
-    "Physical units" => "physical_units.md",
-    "Julia background" => "julia.md",
     "APIs" => apis,
     "Contributor guide" => "contributing.md",
 ]

@@ -80,58 +80,138 @@ for FT in (Float32, Float64)
     end
 end
 
-include("full_land_utils.jl");
+"""
+    check_ocean_values_p(p, binary_mask; val = 0.0)
+
+This function tests that every field stored in `p` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the
+values over the ocean.
+"""
+function check_ocean_values_p(p, binary_mask; val = 0.0)
+    properties = [
+        p.drivers,
+        p.soil,
+        p.soilco2,
+        p.snow,
+        p.canopy.energy,
+        p.canopy.hydraulics,
+        p.canopy.radiative_transfer,
+        p.canopy.photosynthesis,
+        p.canopy.sif,
+        p.canopy.turbulent_fluxes,
+        p.canopy.autotrophic_respiration,
+        p.canopy.conductance,
+    ]
+    for property in properties
+        for var in propertynames(property)
+            field_values = Array(parent(getproperty(property, var)))
+            if length(size(field_values)) == 5 # 3d var
+                @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            else
+                @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            end
+        end
+    end
+
+    field_pn_p = [
+        pn for pn in propertynames(p) if pn != :soil &&
+        pn != :canopy &&
+        pn != :snow &&
+        pn != :soilco2 &&
+        pn != :drivers &&
+        ~occursin("dss", String(pn))
+    ]
+
+    for var in field_pn_p
+        field_values = Array(parent(getproperty(p, var)))
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+        else
+            @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+
+        end
+    end
+end
+
+"""
+    check_ocean_values_Y(Y, binary_mask; val = 0.0)
+
+This function tests that every field stored in `Y` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the
+values over the ocean.
+"""
+function check_ocean_values_Y(Y, binary_mask; val = 0.0)
+    @test extrema(Array(parent(Y.soil.ϑ_l))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.soil.θ_i))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S_l))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.energy.T))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+end
+
 
 context = ClimaComms.context()
 nelements = (101, 15)
-start_date = DateTime(2008)
 Δt = 450.0
-t0 = 0.0
-tf = t0 + Δt
-
 FT = Float64
 earth_param_set = LP.LandParameters(FT)
 
-f_over = FT(3.28) # 1/m
-R_sb = FT(1.484e-4 / 1000) # m/s
-scalar_soil_params = (; f_over, R_sb)
-
-α_snow = Snow.ConstantAlbedoModel(FT(0.67))
-scalar_snow_params = (; α_snow, Δt)
-
-# Energy Balance model
-ac_canopy = FT(2.5e3)
-K_sat_plant = FT(5e-9) # m/s # seems much too small?
-ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-Weibull_param = FT(4) # unitless, Holtzman's original c param value
-a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-plant_ν = FT(1.44e-4)
-plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-h_leaf = FT(1.0)
-
-scalar_canopy_params = (;
-    ac_canopy,
-    K_sat_plant,
-    a,
-    ψ63,
-    Weibull_param,
-    plant_ν,
-    plant_S_s,
-    h_leaf,
+domain = ClimaLand.Domains.global_domain(
+    FT;
+    nelements = nelements,
+    mask_threshold = FT(0.99),
 );
-
-domain = ClimaLand.Domains.global_domain(FT; nelements = nelements);
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
-land = global_land_model(
-    FT,
-    scalar_soil_params,
-    scalar_canopy_params,
-    scalar_snow_params,
-    earth_param_set;
-    context = context,
-    domain = domain,
+stop_date = start_date + Second(Δt)
+era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
+    context,
+    lowres = true,
+)
+forcing = ClimaLand.prescribed_forcing_era5(
+    era5_ncdata_path,
+    domain.space.surface,
+    start_date,
+    earth_param_set,
+    FT;
+)
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    start_date,
+    end_date = stop_date,
+)
+LAI = ClimaLand.prescribed_lai_modis(
+    modis_lai_ncdata_path,
+    domain.space.surface,
+    start_date,
 );
+
+land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt);
+
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()
 @test ClimaComms.device(land) == ClimaComms.device()
@@ -275,12 +355,13 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         check_ocean_values_p(p, binary_mask)
 
         # Set initial conditions
-        ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+        ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
         set_initial_state! =
             ClimaLand.Simulations.make_set_initial_state_from_file(
                 ic_path,
                 land,
             )
+        t0 = 0.0
         set_initial_state!(Y, p, t0, land)
         # Now, set the cache with physical values and make sure there are no NaNs, or values set over the ocean
         set_initial_cache! = make_set_initial_cache(land)
@@ -382,7 +463,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
                 dss! = ClimaLand.dss!,
             ),
             Y,
-            (t0, tf),
+            (t0, t0 + Δt),
             p,
         )
         # Define timestepper and ODE algorithm
@@ -400,7 +481,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
             ode_algo;
             dt = Δt,
             adaptive = false,
-            saveat = [t0, tf],
+            saveat = [t0, t0 + Δt],
         )
         u = sol.u[end]
         check_ocean_values_Y(u, binary_mask)

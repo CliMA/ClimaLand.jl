@@ -49,6 +49,12 @@ end
 
 include("standard_diagnostic_frequencies.jl")
 
+default_diagnostics(
+    model::ClimaLand.AbstractModel,
+    start_date::ITime{<:Any, <:Any, <:DateTime},
+    outdir,
+) = default_diagnostics(model, date(start_date), outdir)
+
 # The default diagnostics currently require a start date because they use Dates.Period.
 default_diagnostics(
     model::ClimaLand.AbstractModel,

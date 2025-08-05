@@ -53,6 +53,7 @@ struct LandSimulation{
 }
     model::M
     timestepper::T
+    start_date::Union{DateTime, Nothing}
     user_callbacks::UC
     diagnostics::DI
     required_callbacks::RC
@@ -141,6 +142,8 @@ function LandSimulation(
     updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
     solver_kwargs = (;),
 )
+    start_date = isnothing(t0.epoch) ? nothing : date(t0)
+
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
        !(
@@ -150,7 +153,6 @@ function LandSimulation(
        first(diagnostics).output_writer.output_dir != outdir
         @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
     end
-
 
     # set initial conditions
     Y, p, cds = initialize(model)
@@ -212,6 +214,7 @@ function LandSimulation(
     return LandSimulation(
         model,
         timestepper,
+        start_date,
         user_callbacks,
         diagnostics,
         required_callbacks,
@@ -226,25 +229,24 @@ end
         tf::AbstractFloat,
         Δt::AbstractFloat,
         args...;
-        start_date = nothing,
         kwargs...,
     )
 
-A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s),
-using `start_date` as the epoch if provided. If the `kwargs` contain `updateat`, it will
+A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s), setting the epoch of the ITime to nothing. 
+If the `kwargs` contain `updateat`, it will
 convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
 
+If your simulation has a notion of a calendar date, please use one of the
+other constructors.
 """
 function LandSimulation(
     t0::AbstractFloat,
     tf::AbstractFloat,
     Δt::AbstractFloat,
     args...;
-    start_date = nothing,
     kwargs...,
 )
-    t0_itime, tf_itime, Δt_itime =
-        promote(ITime.((t0, tf, Δt); epoch = start_date)...)
+    t0_itime, tf_itime, Δt_itime = promote(ITime.((t0, tf, Δt))...)
     kwargs = convert_kwarg_updates(t0_itime, kwargs)
     LandSimulation(t0_itime, tf_itime, Δt_itime, args...; kwargs...)
 end
@@ -306,7 +308,6 @@ function solve!(landsim::LandSimulation)
         close_output_writers(landsim.diagnostics)
     end
 end
-
 
 """
     ClimaComms.context(landsim::LandSimulation)

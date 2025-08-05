@@ -14,7 +14,7 @@ julia> Pkg.add(ClimaLand)
 julia> using ClimaLand
 ```
 
-A typical land simulation employs several different parameterizations to model the various land-surface processes. Let's start our journet into ClimaLand by looking at one of those.
+A typical land simulation employs several different parameterizations to model the various land-surface processes. Let's start our journey into ClimaLand by looking at one of those.
 
 ### Parameterization
 

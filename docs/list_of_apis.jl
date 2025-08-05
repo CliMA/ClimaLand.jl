@@ -4,9 +4,6 @@
 
 apis = [
     "ClimaLand" => [
-        "ClimaLand" => "APIs/ClimaLand.md",
-        "Shared Utilities" =>
-            ["APIs/Simulations.md", "APIs/shared_utilities.md"],
         "Soil" => [
             "Soil Energy and Hydrology" => "APIs/Soil.md",
             "Soil Biogeochemistry" => "APIs/SoilBiogeochemistry.md",
@@ -25,4 +22,7 @@ apis = [
         "Bucket Model" => "APIs/Bucket.md",
         "Snow Model" => "APIs/Snow.md",
     ],
+    "Integrated Models" => "APIs/ClimaLand.md",
+    "Shared Utilities" =>
+        ["APIs/Simulations.md", "APIs/shared_utilities.md"],
 ]

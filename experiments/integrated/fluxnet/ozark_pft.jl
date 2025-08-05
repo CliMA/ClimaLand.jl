@@ -297,19 +297,12 @@ canopy = Canopy.CanopyModel{FT}(
 
 # Integrated plant hydraulics and soil model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
-
-
-
-
-
-set_ic!(Y, _, _, model) = FluxnetSimulations.set_fluxnet_ic!(
-    Y,
+set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
     time_offset,
-    model,
+    land,
 )
-
 # Callbacks
 output_writer = ClimaDiagnostics.Writers.DictWriter()
 

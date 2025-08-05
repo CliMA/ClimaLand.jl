@@ -3,11 +3,14 @@
 ```@meta
 CurrentModule = ClimaLand
 ```
-## LSM Model Types and methods
+## Integrated Land Model Types and methods
 
 ```@docs
-ClimaLand.LandSoilBiogeochemistry
+ClimaLand.LandModel
+ClimaLand.SoilCanopyModel
 ClimaLand.LandHydrology
+ClimaLand.LandSoilBiogeochemistry
+ClimaLand.SoilSnowModel
 ClimaLand.land_components
 ClimaLand.lsm_aux_vars
 ClimaLand.lsm_aux_types

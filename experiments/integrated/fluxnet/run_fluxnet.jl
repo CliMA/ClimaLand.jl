@@ -263,17 +263,12 @@ snow = Snow.SnowModel(
 
 # Integrated plant hydraulics, soil, and snow model
 land = LandModel{FT}(canopy, snow, soil, soilco2);
-
-
-set_ic!(Y, p, _, model) = FluxnetSimulations.set_fluxnet_ic!(
-    Y,
+set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
     time_offset,
-    model,
+    land,
 )
-
-
 
 # Callbacks
 output_vars = [
@@ -305,14 +300,14 @@ diags = ClimaLand.default_diagnostics(
 
 ## How often we want to update the drivers.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
-
 updateat = Array(start_date:data_dt:end_date)
+
 simulation = LandSimulation(
     start_date,
     end_date,
     dt,
     land;
-    set_ic! = set_ic!,
+    set_ic!,
     updateat,
     diagnostics = diags,
 )
