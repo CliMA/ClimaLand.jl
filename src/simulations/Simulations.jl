@@ -52,6 +52,7 @@ struct LandSimulation{
 }
     model::M
     timestepper::T
+    start_date::DateTime
     user_callbacks::UC
     diagnostics::DI
     required_callbacks::RC
@@ -100,11 +101,18 @@ function LandSimulation(
         ),
     ),
 )
-    if !isnothing(diagnostics) &&
-       !isempty(diagnostics) &&
-       first(diagnostics).output_writer.output_dir != outdir
-        @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
+    if !isnothing(diagnostics) && !isempty(diagnostics)
+        try
+            ow = first(diagnostics).output_writer.output_dir
+            if ow != outdir
+                @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
+            end
+        catch
+            nothing
+        end
     end
+
+
 
     domain = ClimaLand.get_domain(model)
     t0 = ITime(0, Dates.Second(1), start_date)
@@ -171,6 +179,7 @@ function LandSimulation(
     return LandSimulation(
         model,
         timestepper,
+        start_date,
         user_callbacks,
         diagnostics,
         required_callbacks,
@@ -206,6 +215,9 @@ function solve!(landsim::LandSimulation)
     end
 end
 
+function get_dt(landsim::LandSimulation)
+    return landsim._integrator.dt
+end
 
 """
     ClimaComms.context(landsim::LandSimulation)

@@ -90,7 +90,53 @@ struct LandModel{
     end
 end
 
+"""
 
+"""
+function LandModel{FT}(
+    forcing,
+    LAI,
+    earth_param_set,
+    domain,
+    Δt;
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        earth_param_set;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+    ),
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+            forcing.atmos,
+        ),
+    ),
+    canopy = Canopy.CanopyModel{FT}(
+        Domains.obtain_surface_domain(domain),
+        (;
+            atmos = forcing.atmos,
+            radiation = forcing.radiation,
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
+        ),
+        LAI,
+        earth_param_set;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    ),
+    snow = Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        earth_param_set,
+        Δt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    ),
+) where {FT}
+    return LandModel{FT}(canopy, snow, soil, soilco2)
+end
 
 """
     LandModel{FT}(;

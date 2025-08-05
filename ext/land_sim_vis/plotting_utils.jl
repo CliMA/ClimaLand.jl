@@ -322,6 +322,15 @@ function make_ocean_masked_annual_timeseries(
     return nothing
 end
 
+
+function time_to_date(t::AbstractFloat, start_date)
+    return start_date + Dates.Millisecond(round(1_000 * t))
+end
+
+function time_to_date(t::ITime, start_date)
+    return t.epoch + t.counter * t.period
+end
+
 """
     make_diurnal_timeseries(
     savedir,
@@ -369,7 +378,7 @@ function make_diurnal_timeseries(
                     dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(model_time) .+ start_date
+            model_dates = time_to_date.(model_time, start_date)
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],
@@ -486,7 +495,7 @@ function make_timeseries(
                     dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(model_time) .+ start_date
+            model_dates = time_to_date.(model_time, start_date)
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],

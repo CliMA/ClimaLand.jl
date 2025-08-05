@@ -1,5 +1,6 @@
 module LandSimulationVisualizationExt
 import ClimaDiagnostics
+import ClimaUtilities.TimeManager: ITime
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using CairoMakie

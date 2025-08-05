@@ -1,3 +1,20 @@
+function make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model,
+)
+    set_ic!(Y, p, t, model) = FluxnetSimulationsExt.set_fluxnet_ic!(
+        Y,
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+    return set_ic!
+end
+
+
 """
      set_fluxnet_ic!(
         Y,
