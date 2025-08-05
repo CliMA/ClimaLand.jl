@@ -1,4 +1,6 @@
 module LandSimulationVisualizationExt
+
+import ClimaLand.LandSimVis as LandSimVis
 import ClimaDiagnostics
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
@@ -22,13 +24,13 @@ include("land_sim_vis/leaderboard/leaderboard.jl")
 Uses the diagnostic output of the `sim` to create leaderboard plots, comparing the output of the simulation to the ``observations"
 from ERA5 or ILAMB. 
 """
-function make_leaderboard_plots(
+function LandSimVis.make_leaderboard_plots(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
 )
     model = sim.model
-    make_leaderboard_plots(
+    LandSimVis.make_leaderboard_plots(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics;
@@ -42,7 +44,7 @@ end
 
 A default method for `make_leaderboard_plots` notifying the user that these plots have not been enable for their domain/model combination.
 """
-function make_leaderboard_plots(m, d, diag)
+function LandSimVis.make_leaderboard_plots(m, d, diag)
     @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel, and the domain must be global."
 end
 
@@ -61,7 +63,7 @@ saves the output to files in `savedir`.
 
 The first two arguments are used for dispatch only.
 """
-function make_leaderboard_plots(
+function LandSimVis.make_leaderboard_plots(
     model::ClimaLand.LandModel,
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics;
@@ -113,7 +115,7 @@ be plotted at each level specified. Note that level = 1 corresponds to the top l
 and that the function will error if you provide a level not included in the output.
 Passing levels = nothing defaults to plotting surface values of 3D fields.
 """
-function make_heatmaps(
+function LandSimVis.make_heatmaps(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
@@ -122,7 +124,7 @@ function make_heatmaps(
     plot_name = "figures.pdf",
 )
     model = sim.model
-    make_heatmaps(
+    LandSimVis.make_heatmaps(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics;
@@ -134,7 +136,7 @@ function make_heatmaps(
     )
 end
 
-function make_heatmaps(
+function LandSimVis.make_heatmaps(
     model::ClimaLand.AbstractModel,
     domain::Union{
         ClimaLand.Domains.SphericalShell,
@@ -155,10 +157,17 @@ function make_heatmaps(
     elseif short_names isa Nothing
         short_names = avail_short_names
     end
-    make_heatmaps(savedir, diagdir, short_names, date; plot_name, levels)
+    LandSimVis.make_heatmaps(
+        savedir,
+        diagdir,
+        short_names,
+        date;
+        plot_name,
+        levels,
+    )
 end
 
-function make_heatmaps(
+function LandSimVis.make_heatmaps(
     model::ClimaLand.AbstractModel,
     domain::Union{ClimaLand.Domains.HybridBox, ClimaLand.Domains.Plane},
     diagnostics;
@@ -176,7 +185,7 @@ function make_heatmaps(
     elseif short_names isa Nothing
         short_names = avail_short_names
     end
-    make_heatmaps(
+    LandSimVis.make_heatmaps(
         savedir,
         diagdir,
         short_names,
@@ -192,7 +201,7 @@ function make_heatmaps(
 end
 
 
-function make_heatmaps(
+function LandSimVis.make_heatmaps(
     model::ClimaLand.AbstractModel,
     domain::Union{ClimaLand.Domains.Point, ClimaLand.Domains.Column},
     diagnostics;
@@ -223,14 +232,14 @@ Please note that
 case all possible variables will be plotted
 - The top layer of 3D variables is used for plotting.
 """
-function make_annual_timeseries(
+function LandSimVis.make_annual_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
     plot_name = "annual_timeseries.pdf",
 )
     model = sim.model
-    make_annual_timeseries(
+    LandSimVis.make_annual_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics;
         plot_name,
@@ -239,7 +248,7 @@ function make_annual_timeseries(
     )
 end
 
-function make_annual_timeseries(
+function LandSimVis.make_annual_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics;
     plot_name = "annual_timeseries.pdf",
@@ -249,7 +258,7 @@ function make_annual_timeseries(
     @info "No method matching make_annual_timeseries for $domain."
 end
 
-function make_annual_timeseries(
+function LandSimVis.make_annual_timeseries(
     domain::Union{
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.SphericalSurface,
@@ -302,7 +311,7 @@ Please note that
 case all possible variables will be plotted
 - The top layer of 3D variables is used for plotting.
 """
-function make_diurnal_timeseries(
+function LandSimVis.make_diurnal_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
@@ -311,7 +320,7 @@ function make_diurnal_timeseries(
     spinup_date = sim.start_date,
 )
     model = sim.model
-    make_diurnal_timeseries(
+    LandSimVis.make_diurnal_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics,
         sim.start_date;
@@ -323,7 +332,7 @@ function make_diurnal_timeseries(
     )
 end
 
-function make_diurnal_timeseries(
+function LandSimVis.make_diurnal_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics,
     start_date;
@@ -336,7 +345,7 @@ function make_diurnal_timeseries(
     @info "No method matching make_diurnal_timeseries for $domain."
 end
 
-function make_diurnal_timeseries(
+function LandSimVis.make_diurnal_timeseries(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
     diagnostics,
     start_date;
@@ -354,7 +363,7 @@ function make_diurnal_timeseries(
         short_names = avail_short_names
     end
     diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
-    make_diurnal_timeseries(
+    LandSimVis.make_diurnal_timeseries(
         savedir,
         diagnostics[diag_ids], # To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
         start_date;
@@ -391,7 +400,7 @@ Please note that
 case all possible variables will be plotted
 - The top layer of 3D variables is used for plotting.
 """
-function make_timeseries(
+function LandSimVis.make_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
@@ -400,7 +409,7 @@ function make_timeseries(
     spinup_date = sim.start_date,
 )
     model = sim.model
-    make_timeseries(
+    LandSimVis.make_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics,
         sim.start_date;
@@ -412,7 +421,7 @@ function make_timeseries(
     )
 end
 
-function make_timeseries(
+function LandSimVis.make_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics,
     start_date;
@@ -425,7 +434,7 @@ function make_timeseries(
     @info "No method matching make_timeseries for $domain."
 end
 
-function make_timeseries(
+function LandSimVis.make_timeseries(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
     diagnostics,
     start_date;
@@ -443,7 +452,7 @@ function make_timeseries(
         short_names = avail_short_names
     end
     diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
-    make_timeseries(
+    LandSimVis.make_timeseries(
         savedir,
         diagnostics[diag_ids],# To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
         start_date;
@@ -459,13 +468,13 @@ end
 Creates a plot which assess conservation of energy and water by the simulation;
 the outut is saved in `savedir`.
 """
-function check_conservation(
+function LandSimVis.check_conservation(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     plot_name = "conservation_figures.pdf",
 )
     model = sim.model
-    check_conservation(
+    LandSimVis.check_conservation(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics,
@@ -474,11 +483,11 @@ function check_conservation(
     )
 end
 
-function check_conservation(m, d, diags, o, pn)
+function LandSimVis.check_conservation(m, d, diags, o, pn)
     @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology, and the domain must be global."
 end
 
-function check_conservation(
+function LandSimVis.check_conservation(
     model::ClimaLand.Soil.EnergyHydrology,
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics,
@@ -486,7 +495,7 @@ function check_conservation(
     plot_name,
 )
     diagdir = first(diagnostics).output_writer.output_dir
-    check_conservation(savedir, diagdir; plot_name)
+    LandSimVis.check_conservation(savedir, diagdir; plot_name)
 
 end
 

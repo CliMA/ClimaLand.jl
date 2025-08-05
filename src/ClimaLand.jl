@@ -424,4 +424,7 @@ import .Diagnostics: default_diagnostics
 
 # Simulations
 include(joinpath("simulations", "Simulations.jl"))
+
+# Extensions
+include(joinpath("ext", "LandSimVis.jl"))
 end

@@ -28,11 +28,7 @@ using DelimitedFiles
 FluxnetSimulationsExt =
     Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
 using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
-LandSimulationVisualizationExt =
-    Base.get_extension(
-        ClimaLand,
-        :LandSimulationVisualizationExt,
-    ).LandSimulationVisualizationExt;
+import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
@@ -346,7 +342,7 @@ comparison_data =
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
 mkpath(savedir)
-LandSimulationVisualizationExt.make_diurnal_timeseries(
+LandSimVis.make_diurnal_timeseries(
     land_domain,
     diags,
     start_date;
@@ -355,7 +351,7 @@ LandSimulationVisualizationExt.make_diurnal_timeseries(
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,
 )
-LandSimulationVisualizationExt.make_timeseries(
+LandSimVis.make_timeseries(
     land_domain,
     diags,
     start_date;
