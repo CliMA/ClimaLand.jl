@@ -218,6 +218,7 @@ function soil_vangenuchten_parameters(
     # Set missing values to the mean. For Ksat, we use the mean in log space.
     μ = FT(-5.08)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
+    K_sat .= max.(K_sat, sqrt(eps(FT)))
 
     ν .= masked_to_value.(ν, soil_params_mask, 0.47)
 

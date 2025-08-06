@@ -1285,11 +1285,14 @@ function soil_compute_turbulent_fluxes_at_a_point(
                     K_sat_sfc,
                     effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc),
                 )
-            K_c::FT = hydraulic_conductivity(
-                hydrology_cm_sfc,
-                K_sat_sfc,
-                hydrology_cm_sfc.S_c,
-            )
+            K_c::FT = max(
+                hydraulic_conductivity(
+                    hydrology_cm_sfc,
+                    K_sat_sfc,
+                    hydrology_cm_sfc.S_c,
+                ),
+                sqrt(eps(FT)),
+            ) # prevent division by zero in case of zero K_sat
             x::FT = 4 * K_sfc * (1 + Ẽ_pot / (4 * K_c))
             Ẽ_l *= x / (Ẽ_pot + x)
         end
