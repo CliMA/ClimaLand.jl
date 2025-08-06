@@ -7,6 +7,7 @@ export make_set_initial_state_from_file
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
+interpolation_method = Interpolations.Linear()
 """
     set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, soil_ic_path)
 
@@ -30,20 +31,21 @@ function set_soil_initial_conditions!(
     T_bounds;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
+    interpolation_method = interpolation_method,
 )
     Y.soil.ϑ_l .= SpaceVaryingInput(
         soil_ic_path,
         "swc",
         subsurface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     Y.soil.θ_i .= SpaceVaryingInput(
         soil_ic_path,
         "si",
         subsurface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
     Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
@@ -63,7 +65,7 @@ function set_soil_initial_conditions!(
         "sie",
         subsurface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     T =
         ClimaLand.Soil.temperature_from_ρe_int.(
@@ -165,13 +167,14 @@ function set_snow_initial_conditions!(
     params;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
+    interpolation_method = interpolation_method,
 )
     Y.snow.S .= SpaceVaryingInput(
         snow_ic_path,
         "swe",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)

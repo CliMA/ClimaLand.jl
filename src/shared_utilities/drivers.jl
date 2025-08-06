@@ -3,6 +3,7 @@ import ClimaUtilities.TimeVaryingInputs:
     AbstractTimeVaryingInput,
     LinearInterpolation,
     PeriodicCalendar
+import Interpolations: Constant
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.FileReaders: NCFileReader, read
 import ClimaUtilities.TimeManager: ITime, date
@@ -1461,13 +1462,18 @@ end
                              max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-                             regridder_type = :InterpolationsRegridder)
+                             regridder_type = :InterpolationsRegridder,
+                             interpolation_method = Interpolations.Constant(),)
 
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
 and the earth_param_set.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
+
+The ClimaLand default is to use nearest neighbor interpolation, but 
+linear interpolation is supported
+by passing interpolation_method = Interpolations.Linear().
 
 ########## WARNING ##########
 
@@ -1488,6 +1494,7 @@ function prescribed_forcing_era5(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
 )
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
@@ -1499,6 +1506,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
         compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
@@ -1510,6 +1518,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
     )
@@ -1525,6 +1534,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         compose_function = wind_function,
         method = time_interpolation_method,
     )
@@ -1536,6 +1546,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         compose_function = specific_humidity,
         method = time_interpolation_method,
     )
@@ -1545,6 +1556,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
 
@@ -1554,6 +1566,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
     h_atmos = FT(10)
@@ -1578,6 +1591,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
     function compute_diffuse_fraction(total, direct)
@@ -1594,6 +1608,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
         compose_function = compute_diffuse_fraction_broadcasted,
     )
@@ -1603,6 +1618,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
     zenith_angle =
@@ -1634,13 +1650,18 @@ end
                          start_date,
                          earth_param_set;
                          time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-                         regridder_type = :InterpolationsRegridder)
+                         regridder_type = :InterpolationsRegridder,
+                         interpolation_method = Interpolations.Constant(),)
 
 A helper function which constructs the TimeVaryingInput object for Leaf Area Index, from a
 file path pointing to the ERA5 LAI data in a netcdf file, a file path pointing to the ERA5
 LAI cover data in a netcdf file, the surface_space, the start date, and the earth_param_set.
 
 This currently one works when a single file is passed for both the era5 lai and era5 lai cover data.
+
+The ClimaLand default is to use nearest neighbor interpolation, but 
+linear interpolation is supported
+by passing interpolation_method = Interpolations.Linear().
 """
 function prescribed_lai_era5(
     era5_lai_ncdata_path,
@@ -1649,6 +1670,7 @@ function prescribed_lai_era5(
     start_date;
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
 )
     hvc_ds = NCFileReader(era5_lai_cover_ncdata_path, "cvh")
     lvc_ds = NCFileReader(era5_lai_cover_ncdata_path, "cvl")
@@ -1665,6 +1687,7 @@ function prescribed_lai_era5(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
         compose_function = compose_function,
     )
@@ -1677,11 +1700,16 @@ end
                           earth_param_set;
                           time_interpolation_method =
                                         LinearInterpolation(PeriodicCalendar()))
-                          regridder_type = :InterpolationsRegridder)
+                          regridder_type = :InterpolationsRegridder,
+                          interpolation_method = Interpolations.Constant(),)
 
 A helper function which constructure the TimeVaryingInput object for Lead Area
 Index from a file path pointint to the MODIS LAI data in a netcdf file, the
 surface_space, the start date, and the earth_param_set.
+
+The ClimaLand default is to use nearest neighbor interpolation, but 
+linear interpolation is supported
+by passing interpolation_method = Interpolations.Linear().
 """
 function prescribed_lai_modis(
     modis_lai_ncdata_path,
@@ -1689,6 +1717,7 @@ function prescribed_lai_modis(
     start_date;
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
 )
     return TimeVaryingInput(
         modis_lai_ncdata_path,
@@ -1696,6 +1725,7 @@ function prescribed_lai_modis(
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
 end

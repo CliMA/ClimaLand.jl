@@ -1,29 +1,29 @@
-# # Regional run of full land model
+# # Global run of land model at low resolution
 
-# The code sets up and runs the soil/canopy/snow model for 6 hours on a small
-# region of the globe in Southern California,
-# using ERA5 data. In this simulation, we have
-# turned lateral flow off because horizontal boundary conditions and the
-# land/sea mask are not yet supported by ClimaCore.
+# The code sets up and runs ClimaLand v1, which
+# includes soil, canopy, and snow, on a spherical domain,
+# using low resolution ERA5 data as forcing.
 
 # Simulation Setup
-# Number of spatial elements: 10x10 in horizontal, 15 in vertical
+# Number of spatial elements: 30 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 2 years
+# Simulation duration: 730 d
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
-# Jacobian update: every new timestep
+# Jacobian update: every new Newton iteration
 # Atmos forcing update: every 3 hours
+
 import ClimaComms
 ClimaComms.@import_required_backends
-import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities.TimeManager: ITime, date
+
+import ClimaDiagnostics
 import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
-import ClimaUtilities.TimeManager: ITime, date
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 using ClimaCore
@@ -38,25 +38,30 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
 
 using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
-import ClimaLand.LandSimVis as LandSimVis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualizationExt,
+    ).LandSimulationVisualizationExt;
 
 const FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "california_longrun_$(device_suffix)"
-diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
+root_path = "lowres_snowy_land_longrun_$(device_suffix)"
+diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
+function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
-
     # Forcing data
-    era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+    era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
+        context,
+        lowres = true,
+    )
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -176,7 +181,7 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
     modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-        context = context,
+        context = nothing,
         start_date,
         end_date = stop_date,
     )
@@ -190,12 +195,12 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
-        ai_parameterization,
+        ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
-        rooting_depth,
-        conductivity_model,
-        retention_model,
+        rooting_depth = rooting_depth,
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
     )
     plant_hydraulics_args = (
         parameters = plant_hydraulics_ps,
@@ -239,10 +244,19 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         β = FT(0.4),
         x0 = FT(0.2),
     )
+    horz_degree_res =
+        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    scf = Snow.WuWuSnowCoverFractionModel(
+        FT(0.08),
+        FT(1.77),
+        FT(1.0),
+        horz_degree_res,
+    )
     snow_parameters = SnowParameters{FT}(
         Δt;
         earth_param_set = earth_param_set,
         α_snow = α_snow,
+        scf = scf,
     )
     snow_args = (;
         parameters = snow_parameters,
@@ -270,32 +284,39 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
     )
     return land
 end
-
-start_date = DateTime(2008)
-stop_date = DateTime(2010)
+# Note that since the Northern hemisphere's winter season is defined as DJF,
+# we simulate from and until the beginning of
+# March so that a full season is included in seasonal metrics.
+start_date = DateTime("2008-03-01")
+stop_date = DateTime("2010-03-02")
 Δt = 450.0
-nelements = (10, 10, 15)
-@info "Run: Regional Soil-Canopy-Snow Model"
+nelements = (30, 15)
+domain = ClimaLand.Domains.global_domain(
+    FT;
+    context,
+    nelements,
+    mask_threshold = FT(0.99),
+)
+params = LP.LandParameters(FT)
+model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+user_callbacks = (
+    ClimaLand.NaNCheckCallback(
+        Dates.Month(6),
+        start_date,
+        ITime(Δt, epoch = start_date),
+        mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
+    ),
+    ClimaLand.ReportCallback(10000),
+)
+simulation =
+    LandSimulation(FT, start_date, stop_date, Δt, model; user_callbacks, outdir)
+@info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
-
-radius = FT(6378.1e3)
-depth = FT(50)
-center_long, center_lat = FT(-117.59736), FT(34.23375)
-delta_m = FT(200_000) # in meters
-domain = ClimaLand.Domains.HybridBox(;
-    xlim = (delta_m, delta_m),
-    ylim = (delta_m, delta_m),
-    zlim = (-depth, FT(0)),
-    nelements = nelements,
-    longlat = (center_long, center_lat),
-    dz_tuple = FT.((10.0, 0.05)),
-)
-params = LP.LandParameters(FT)
-model = setup_model(FT, context, start_date, Δt, domain, params)
-simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
 ClimaLand.Simulations.solve!(simulation)
 
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
