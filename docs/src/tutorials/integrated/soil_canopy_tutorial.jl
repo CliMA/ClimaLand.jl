@@ -126,27 +126,36 @@ prognostic_land_components = (:canopy, :soil, :soilco2);
 # Define the parameters for the soil model and provide them to the model
 # parameters struct:
 
+# Soil albedo
+soil_α_PAR = FT(0.2)
+soil_α_NIR = FT(0.4)
+soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = soil_α_PAR,
+    NIR_albedo = soil_α_NIR,
+)
+
 # Soil parameters
-ν = FT(0.5) # m3/m3
-K_sat = FT(4e-7) # m/s
-n = FT(2.05) # unitless
-α = FT(0.04) # inverse meters
+soil_ν = FT(0.5) # m3/m3
+soil_K_sat = FT(4e-7) # m/s
+soil_S_s = FT(1e-3) # 1/m
+soil_vg_n = FT(2.05) # unitless
+soil_vg_α = FT(0.04) # inverse meters
 θ_r = FT(0.067); # m3/m3
 ν_ss_quartz = FT(0.1)
 ν_ss_om = FT(0.1)
 ν_ss_gravel = FT(0.0);
-soil_S_s = FT(1e-3) # 1/m
 soil = EnergyHydrology{FT}(
     domain,
     (; atmos, radiation),
     earth_param_set;
     prognostic_land_components,
+    albedo = soil_albedo,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     retention_parameters = (;
-        ν,
+        ν = soil_ν,
         θ_r,
-        K_sat,
-        hydrology_cm = vanGenuchten{FT}(; α, n),
+        K_sat = soil_K_sat,
+        hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
     ),
     composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel),
     S_s = soil_S_s,
@@ -177,6 +186,12 @@ LAI = ClimaLand.prescribed_lai_modis(
     surface_space,
     start_date,
 );
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+);
 
 # For a coupled SoilCanopyModel, we provide a flag to the canopy that indicates
 #  the ground forcing is prognostic (i.e. the soil model) rather than prescribed.
@@ -185,12 +200,69 @@ ground = ClimaLand.PrognosticSoilConditions{FT}();
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
 surface_domain = ClimaLand.Domains.obtain_surface_domain(domain);
+
+# Let's overwrite some default parameters for the canopy model components.
+# This involves constructing the components individually and then
+# passing them to the canopy model constructor.
+
+# Canopy conductance
+conductance = Canopy.MedlynConductanceModel{FT}(surface_domain; g1 = 141);
+
+# Canopy radiative transfer
+radiation_parameters = (;
+    G_Function = ConstantGFunction(FT(0.5)),
+    α_PAR_leaf = 0.1,
+    α_NIR_leaf = 0.45,
+    τ_PAR_leaf = 0.05,
+    τ_NIR_leaf = 0.25,
+    Ω = 0.69,
+);
+radiative_transfer = TwoStreamModel{FT}(surface_domain; radiation_parameters);
+
+# Canopy photosynthesis
+photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5));
+photosynthesis = FarquharModel{FT}(surface_domain; photosynthesis_parameters);
+
+# Canopy hydraulics
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9)
+h_leaf = FT(9.5)
+f_root_to_shoot = FT(3.5)
+plant_ν = FT(0.7)
+plant_S_s = FT(1e-2 * 0.0098)
+SAI = FT(0.00242)
+RAI = (SAI + maxLAI) * f_root_to_shoot;
+K_sat_plant = FT(1.8e-8)
+ψ63 = FT(-4 / 0.0098)
+Weibull_param = FT(4)
+conductivity_model =
+    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
+    surface_domain,
+    LAI;
+    SAI,
+    RAI,
+    n_stem,
+    n_leaf,
+    h_stem,
+    h_leaf,
+    ν = plant_ν,
+    S_s = plant_S_s,
+    conductivity_model,
+    rooting_depth = FT(1),
+)
+
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     surface_domain,
     (; atmos, radiation, ground),
     LAI,
-    earth_param_set,
+    earth_param_set;
     prognostic_land_components = (:canopy, :soil, :soilco2),
+    conductance,
+    radiative_transfer,
+    photosynthesis,
+    hydraulics,
 );
 
 # Now we can combine the soil and canopy models into a single combined model.
@@ -207,14 +279,6 @@ imp_tendency! = make_imp_tendency(land);
 jacobian! = make_jacobian(land);
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
-# Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
-# value over which to perform the simulation.
-
-t0 = Float64(150 * 3600 * 24)# start mid year
-N_days = 100
-tf = t0 + Float64(3600 * 24 * N_days)
-dt = Float64(30)
 
 # We need to provide initial conditions for the model:
 Y.soil.ϑ_l = FT(0.4)
@@ -244,7 +308,6 @@ S_l_ini = inverse_water_retention_curve(
     canopy_S_s,
 )
 Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction(canopy_ν, S_l_ini);
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
 # Choose the timestepper and solver needed for the problem.
 timestepper = CTS.ARS343()
