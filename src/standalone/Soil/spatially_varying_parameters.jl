@@ -27,7 +27,7 @@ of CLM data for the PAR and NIR albedo of wet and dry soil.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`interpolation_method` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method. 
@@ -87,7 +87,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-       interpolation_method = Interpolations.Constant(),
+       interpolation_method = Interpolations.Linear(),
     )
 
 Reads spatially varying van Genuchten parameters for the soil model, from NetCDF files
@@ -104,7 +104,7 @@ In particular, this file returns a field for
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`interpolation_method` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.
@@ -126,7 +126,7 @@ function soil_vangenuchten_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
 )
     context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
@@ -237,7 +237,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
+        interpolation_method = Interpolations.Linear(),
         path = Artifacts.soil_grids_params_artifact_path(;
                                                                    lowres = true,
                                                                    ClimaComms.context(subsurface_space),
@@ -255,7 +255,7 @@ In particular, this file returns a field for
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`interpolation_method` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.
@@ -272,7 +272,7 @@ function soil_composition_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
     path = Artifacts.soil_grids_params_artifact_path(;
         lowres = true,
         context = ClimaComms.context(subsurface_space),
@@ -328,7 +328,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
+        interpolation_method = Interpolations.Linear(),
     )
 
 Returns the spatially varying parameter `fmax` of the TOPMODEL
@@ -336,7 +336,7 @@ parameterization; this is read from a nc file and then regridded
 to the simulation grid.
 
 The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`interpolation_method` 
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.
@@ -350,7 +350,7 @@ function topmodel_fmax(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
 )
     # Read in f_max data and topmodel data land sea mask
     infile_path = Artifacts.topmodel_data_path()

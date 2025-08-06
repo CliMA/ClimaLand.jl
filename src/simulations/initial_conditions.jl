@@ -7,7 +7,7 @@ export make_set_initial_state_from_file
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
-interpolation_method = Interpolations.Constant()
+interpolation_method = Interpolations.Linear()
 """
     set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, soil_ic_path)
 
