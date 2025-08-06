@@ -17,6 +17,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaLand.Simulations: LandSimulation, solve!
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
@@ -42,30 +43,20 @@ for float_type in (Float32, Float64)
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+    simulation = LandSimulation(
+        t0,
+        tf,
+        dt,
+        land;
+        start_date,
+        user_callbacks = (saving_cb, ClimaLand.ReportCallback(1000)),
+        set_ic! = set_ic!,
+        updateat = deepcopy(saveat),
+        solver_kwargs = (; save_everystep = true),
+        diagnostics = (),
+    )
 
-    updateat = deepcopy(saveat)
-    drivers = ClimaLand.get_drivers(land)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-    sol = SciMLBase.solve(
-        prob,
-        ode_algo;
-        dt = dt,
-        callback = cb,
-        adaptive = false,
-        saveat = saveat,
-    )
+    sol = ClimaLand.Simulations.solve!(simulation)
 
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT
@@ -83,18 +74,19 @@ for float_type in (Float32, Float64)
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
             abs.(
-                cos.(radiation.θs.(sv.t, radiation.start_date)) .- cache_cosθs
+                cos.(radiation.θs.(sv.t[1:(end - 1)], radiation.start_date)) .-
+                cache_cosθs[2:end]
             ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
-        atmos_T = map(sv.t) do time
+        atmos_T = map(sv.t[1:(end - 1)]) do time
             ClimaLand.evaluate!(T_mutable, atmos.T, time)
             return T_mutable[]
         end |> collect
 
-        @assert mean(abs.(atmos_T .- cache_Tair)) < eps(FT)
+        @assert mean(abs.(atmos_T .- cache_Tair[2:end])) < eps(FT)
 
-        daily = sol.t[2:end] ./ 3600 ./ 24
+        daily = sv.t[2:end] ./ 3600 ./ 24
         savedir = generate_output_path(
             "experiments/integrated/performance/conservation",
         )

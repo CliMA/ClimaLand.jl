@@ -124,6 +124,7 @@ using SciMLBase
 using Plots
 using ClimaCore
 using ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 
 # Import the functions we are extending for our model:
 import ClimaLand:
@@ -145,7 +146,7 @@ import ClimaLand:
 # the surface flux boundary value, the floating point precision,
 # and the domain of the model
 # (single column, global run, etc..).
-struct RichardsTutorialModel{FT, D} <: AbstractModel{FT}
+struct RichardsTutorialModel{FT, D} <: AbstractExpModel{FT}
     "van Genuchten model parameters"
     vGmodel::ClimaLand.Soil.vanGenuchten{FT}
     "Porosity [unitless]"
@@ -322,34 +323,11 @@ soil = RichardsTutorialModel{Float32, typeof(domain)}(
     domain,
 );
 
-# Create the initial state structure, using the default method. This step
-# creates the vector Y and cache p, but initializes them with zeros.
-Y, p, cds = initialize(soil);
-
-# Note that `Y` has the structure we planned on in our `compute_exp_tendency!` function, for `x`,
-Y.soil
-
-# The same is true for `p`:
-p.soil
-
-# Here we now update `Y` in place with initial conditions of our choosing.
-
-Y.soil.θ = 0.25f0;
-
-# Set initial cache variable values, and inspect values:
-
-set_initial_cache! = make_set_initial_cache(soil);
-set_initial_cache!(p, Y, 0.0);
-@show p.soil.K
-
-@show p.soil.ψ
-
-@show p.soil.top_flux
-
-# Next up is to create the `exp_tendency!` function:
-exp_tendency! = make_exp_tendency(soil);
-
-# # Running the simulation
+# Here we create a function to update `Y` in place with initial conditions of our choosing.
+function set_ic!(Y, p, t0, model)
+    Y.soil.θ = 0.25f0
+end
+# # Creating and running the simulation
 
 # Set the initial and end times, timestep:
 
@@ -361,16 +339,34 @@ dt = 1800.0;
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-# SciMLBase problem statement using CTS.jl internals:
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
-    Y,
-    (t0, tf),
-    p,
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; save_everystep = true),
+    timestepper = ode_algo,
+    user_callbacks = (),
+    diagnostics = (),
 );
 
+Y = simulation._integrator.u
+p = simulation._integrator.p
+# Note that `Y` has the structure we planned on in our `compute_exp_tendency!` function, for `x`,
+Y.soil
+
+# The same is true for `p`:
+p.soil
+
+@show p.soil.K
+
+@show p.soil.ψ
+
+@show p.soil.top_flux
+
 # Solve command:
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = collect(t0:dt:tf));
+sol = solve!(simulation);
 
 # The solution is stored in `sol.u[k].soil.θ`, where k ranges over the number
 # of timesteps.
