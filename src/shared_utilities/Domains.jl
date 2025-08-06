@@ -1177,10 +1177,16 @@ apply_threshold(field, value) =
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+       interpolation_method = Interpolations.Constant()
     )
 
 Reads in the default Clima land/sea mask, regrids to the `surface_space`, and
 treats any point with a land fraction < threshold as ocean.
+
+Note that by default we use nearest-neighbor interpolation, in which case
+the threshold does nothing since the land-sea mask is natively 0/1, and only
+becomes a non-integer number when linearly interpolating. You can change to linear
+interpolation by passing `interpolation_method = Interpolations.Linear()`.
 """
 function landsea_mask(
     surface_space;
@@ -1194,13 +1200,14 @@ function landsea_mask(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    interpolation_method = Interpolations.Constant(),
 )
     mask = SpaceVaryingInput(
         filepath,
         "landsea",
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
     binary_mask = apply_threshold.(mask, threshold)
     return binary_mask
