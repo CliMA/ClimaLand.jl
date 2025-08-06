@@ -8,14 +8,15 @@ using ClimaLand.PlantHydraulics
 
 const FT = Float64
 
-FluxnetSimulationsExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
+using DelimitedFiles
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 @testset "US-Ha1 domain info + parameters" begin
-    site_ID = FluxnetSimulationsExt.replace_hyphen("US-Ha1")
+    site_ID = FluxnetSimulations.replace_hyphen("US-Ha1")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.5), FT(0.025))
     @test nelements == 20
@@ -24,13 +25,13 @@ FluxnetSimulationsExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
 
     # geographical info
     (; time_offset, lat, long) =
-        FluxnetSimulationsExt.get_location(FT, Val(site_ID))
+        FluxnetSimulations.get_location(FT, Val(site_ID))
 
     @test time_offset == 5
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
 
-    (; atmos_h) = FluxnetSimulationsExt.get_fluxtower_height(FT, Val(site_ID))
+    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(30)
 
     # parameters
@@ -81,11 +82,7 @@ FluxnetSimulationsExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
         h_canopy,
         z0_m,
         z0_b,
-    ) = FluxnetSimulationsExt.get_parameters(
-        FT,
-        Val(site_ID),
-        Vcmax25 = FT(1e-4),
-    )
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Vcmax25 = FT(1e-4))
 
     @test soil_ν == FT(0.5)
     @test soil_K_sat == FT(4e-7)
@@ -137,11 +134,11 @@ FluxnetSimulationsExt = Base.get_extension(ClimaLand, :FluxnetSimulationsExt)
 end
 
 @testset "US-MOz domain info + parameters" begin
-    site_ID = FluxnetSimulationsExt.replace_hyphen("US-MOz")
+    site_ID = FluxnetSimulations.replace_hyphen("US-MOz")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.5), FT(0.1))
     @test nelements == 20
@@ -150,12 +147,12 @@ end
 
     # geographical info
     (; time_offset, lat, long) =
-        FluxnetSimulationsExt.get_location(FT, Val(site_ID), time_offset = 5)
+        FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
     @test time_offset == 5
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
 
-    (; atmos_h) = FluxnetSimulationsExt.get_fluxtower_height(FT, Val(site_ID))
+    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(32)
 
     # parameters
@@ -206,7 +203,7 @@ end
         h_canopy,
         z0_m,
         z0_b,
-    ) = FluxnetSimulationsExt.get_parameters(FT, Val(site_ID))
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
 
     # selected parameters from each "model group" for testing
     @test soil_ν == FT(0.55)
@@ -222,11 +219,11 @@ end
 end
 
 @testset "US-NR1 domain info + parameters" begin
-    site_ID = FluxnetSimulationsExt.replace_hyphen("US-NR1")
+    site_ID = FluxnetSimulations.replace_hyphen("US-NR1")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == (FT(1.25), FT(0.05))
     @test nelements == 20
@@ -234,13 +231,13 @@ end
     @test zmax == FT(0)
 
     (; time_offset, lat, long) =
-        FluxnetSimulationsExt.get_location(FT, Val(site_ID))
+        FluxnetSimulations.get_location(FT, Val(site_ID))
 
     @test time_offset == 7
     @test lat == FT(40.0329)
     @test long == FT(-105.5464)
 
-    (; atmos_h) = FluxnetSimulationsExt.get_fluxtower_height(FT, Val(site_ID))
+    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(21.5)
 
     # parameters
@@ -291,7 +288,7 @@ end
         h_canopy,
         z0_m,
         z0_b,
-    ) = FluxnetSimulationsExt.get_parameters(FT, Val(site_ID), Ω = FT(1))
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Ω = FT(1))
 
     # selected parameters from each "model group" for testing
     @test soil_ν == FT(0.45)
@@ -307,11 +304,11 @@ end
 
 
 @testset "US-Var domain info + parameters" begin
-    site_ID = FluxnetSimulationsExt.replace_hyphen("US-Var")
+    site_ID = FluxnetSimulations.replace_hyphen("US-Var")
 
     # domain information
     (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulationsExt.get_domain_info(FT, Val(site_ID))
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
     @test dz_tuple == nothing
     @test nelements == 14
@@ -319,12 +316,12 @@ end
     @test zmax == FT(0)
 
     (; time_offset, lat, long) =
-        FluxnetSimulationsExt.get_location(FT, Val(site_ID))
+        FluxnetSimulations.get_location(FT, Val(site_ID))
     @test time_offset == 8
     @test lat == FT(38.4133)
     @test long == FT(-120.9508)
 
-    (; atmos_h) = FluxnetSimulationsExt.get_fluxtower_height(FT, Val(site_ID))
+    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(2)
 
     # parameters
@@ -375,7 +372,7 @@ end
         h_canopy,
         z0_m,
         z0_b,
-    ) = FluxnetSimulationsExt.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
 
     # selected parameters from each "model group" for testing
     @test soil_ν == FT(0.45)

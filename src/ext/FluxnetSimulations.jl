@@ -14,4 +14,14 @@ function get_data_dates end
 
 function get_maxLAI_at_site end
 
+function get_domain_info end
+
+function get_location end
+
+function get_fluxtower_height end
+
+function get_parameters end
+
+function replace_hyphen end
+
 end

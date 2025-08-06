@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+- Use FluxnetSimulationsExt in fluxnet experiments PR[#1295](https://github.com/CliMA/ClimaLand.jl/pull/1295/files#diff-597adb6c799a803db91ad8d3f827958a793598e2b74423332705227b48b2507f)
 - Use nearest neighbor spatial interpolation PR[#1290](https://github.com/CliMA/ClimaLand.jl/pull/1290)
 - Use global MODIS LAI for all simulations; remove `modis_lai_fluxnet_sites` artifact PR[#1282](https://github.com/CliMA/ClimaLand.jl/pull/1282)
 - Use ClimaUtilities v0.1.25 to read in spatial data to a point using lat/lon PR[#1279](https://github.com/CliMA/ClimaLand.jl/pull/1279)

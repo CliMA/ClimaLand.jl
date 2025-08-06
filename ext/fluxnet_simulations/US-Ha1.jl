@@ -12,7 +12,7 @@ Gets and returns primary domain information for the US-Ha1 (Massachusetts
 Harvard Forest) Fluxnet site. The values are provided as defaults, and can be
 overwritten by passing the corresponding keyword arguments to this function.
 """
-function get_domain_info(
+function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_Ha1};
     dz_bottom = FT(1.5),
@@ -33,7 +33,7 @@ Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxn
 The values are provided as defaults, and can be overwritten by passing the corresponding
 keyword arguments to this function.
 """
-function get_location(
+function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Ha1};
     time_offset = 5,
@@ -52,21 +52,25 @@ corresponding keyword arguments to this function.
 
 Data sources:
 
-Atmosphere height: 
+Atmosphere height:
     - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 """
-function get_fluxtower_height(FT, ::Val{:US_Ha1}; atmos_h = FT(30))
+function FluxnetSimulations.get_fluxtower_height(
+    FT,
+    ::Val{:US_Ha1};
+    atmos_h = FT(30),
+)
     return (; atmos_h,)
 end
 
 """
     get_parameters(FT, ::Val{:US_Ha1}; kwargs...)
 
-Gets parameters for the Fluxnet site US-Ha1 (Massachusetts Harvard Forest), 
+Gets parameters for the Fluxnet site US-Ha1 (Massachusetts Harvard Forest),
 which is a Deciduous Broadleaf Forest, and returns them as a Named Tuple.
 Default parameters are provided and can be overriden using keyword arguments.
 
-Soil parameters: 
+Soil parameters:
     - Wang et al. 2021, https://doi.org/10.5194/gmd-14-6741-2021
 Conductance parameters:
     - Wang et al. 2021, https://doi.org/10.5194/gmd-14-6741-2021
@@ -75,7 +79,7 @@ Photosynthesis parameters:
 Hydraulics parameters:
     - Holtzman, Nataniel, et al. 2023, https://doi.org/10.1029/2023WR035481
 """
-function get_parameters(
+function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_Ha1};
     soil_ν = FT(0.5),

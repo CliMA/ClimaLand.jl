@@ -25,36 +25,83 @@ using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, StatsBase
 
-climaland_dir = pkgdir(ClimaLand)
-FT = Float64
-site_ID = "US-MOz"
-time_offset = 7 # offset from UTC in hrs
-lat = FT(38.7441) # degree
-long = FT(-92.2000) # degree
-
+const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+climaland_dir = pkgdir(ClimaLand)
 
-# Column dimensions - separation of layers at the top and bottom of the column:
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-dz_bottom = FT(1.0)
-dz_top = FT(0.04)
+site_ID = "US-MOz"
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
-domain = Column(;
-    zlim = (zmin, zmax),
-    nelements = nelements,
-    dz_tuple = (dz_bottom, dz_top),
-)
+# Get the default values for this site's domain, location, and parameters
+(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+(;
+    soil_ν,
+    soil_K_sat,
+    soil_S_s,
+    soil_vg_n,
+    soil_vg_α,
+    θ_r,
+    ν_ss_quartz,
+    ν_ss_om,
+    ν_ss_gravel,
+    z_0m_soil,
+    z_0b_soil,
+    soil_ϵ,
+    soil_α_PAR,
+    soil_α_NIR,
+    Ω,
+    χl,
+    G_Function,
+    α_PAR_leaf,
+    λ_γ_PAR,
+    τ_PAR_leaf,
+    α_NIR_leaf,
+    τ_NIR_leaf,
+    ϵ_canopy,
+    ac_canopy,
+    g1,
+    Drel,
+    g0,
+    Vcmax25,
+    SAI,
+    f_root_to_shoot,
+    K_sat_plant,
+    ψ63,
+    Weibull_param,
+    a,
+    conductivity_model,
+    retention_model,
+    plant_ν,
+    plant_S_s,
+    rooting_depth,
+    n_stem,
+    n_leaf,
+    h_leaf,
+    h_stem,
+    h_canopy,
+    z0_m,
+    z0_b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
-# TIME STEPS:
+compartment_midpoints =
+    n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
+
+# Construct the ClimaLand domain to run the simulation on
+domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
+
+# Set up the timestepping information for the simulation
 t0 = FT(1800)
 N_days = 360
 dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
-# Height of sensor on flux tower
-atmos_h = FT(32)
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
 start_date = DateTime(2010) + Hour(time_offset)
 forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -67,25 +114,20 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     FT,
 )
 
-
+# Construct the soil model
 prognostic_land_components = (:snow, :soil)
 α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = FT(0.25),
-    NIR_albedo = FT(0.25),
+    PAR_albedo = soil_α_PAR,
+    NIR_albedo = soil_α_NIR,
 )
 runoff = ClimaLand.Soil.SurfaceRunoff()
 retention_parameters = (;
-    ν = FT(0.5),
-    K_sat = FT(0.45 / 3600 / 100),
-    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(2)),
-    θ_r = FT(0.09),
+    ν = soil_ν,
+    K_sat = soil_K_sat,
+    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
+    θ_r = θ_r,
 )
-composition_parameters =
-    (; ν_ss_quartz = FT(0.2), ν_ss_om = FT(0.0), ν_ss_gravel = FT(0.4))
-S_s = FT(1e-3)
-z_0m = FT(0.01)
-z_0b = FT(0.001)
-emissivity = FT(0.98)
+composition_parameters = (; ν_ss_quartz, ν_ss_om, ν_ss_gravel)
 soil_model = Soil.EnergyHydrology{FT}(
     domain,
     forcing,
@@ -94,12 +136,14 @@ soil_model = Soil.EnergyHydrology{FT}(
     albedo = α_soil,
     runoff,
     retention_parameters,
-    S_s,
+    S_s = soil_S_s,
     composition_parameters,
-    z_0m,
-    z_0b,
-    emissivity,
+    z_0m = z_0m_soil,
+    z_0b = z_0b_soil,
+    emissivity = soil_ϵ,
 )
+
+# Construct the snow model
 α_snow = Snow.ConstantAlbedoModel(0.8)
 density = Snow.MinimumDensityModel(300.0)
 snow_model = Snow.SnowModel(
@@ -113,6 +157,7 @@ snow_model = Snow.SnowModel(
     density,
 )
 
+# Construct the land model
 land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
@@ -122,8 +167,7 @@ jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 set_initial_cache! = make_set_initial_cache(land)
 
-
-#Initial conditions
+# Initial conditions
 FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache!(p, Y, t0)
 
@@ -170,7 +214,9 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
+savedir =
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/ozark_soilsnow")
+mkpath(savedir)
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 
 # Water content

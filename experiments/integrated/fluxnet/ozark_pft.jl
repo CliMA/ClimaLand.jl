@@ -32,27 +32,69 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 site_ID = "US-MOz"
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
-# Read all site-specific domain parameters from the simulation file for the site
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
-    ),
-)
 
-include(
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
-)
+# Get the default values for this site's domain, location, and parameters
+(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+(;
+    soil_ν,
+    soil_K_sat,
+    soil_S_s,
+    soil_vg_n,
+    soil_vg_α,
+    θ_r,
+    ν_ss_quartz,
+    ν_ss_om,
+    ν_ss_gravel,
+    z_0m_soil,
+    z_0b_soil,
+    soil_ϵ,
+    soil_α_PAR,
+    soil_α_NIR,
+    Ω,
+    χl,
+    G_Function,
+    α_PAR_leaf,
+    λ_γ_PAR,
+    τ_PAR_leaf,
+    α_NIR_leaf,
+    τ_NIR_leaf,
+    ϵ_canopy,
+    ac_canopy,
+    g1,
+    Drel,
+    g0,
+    Vcmax25,
+    SAI,
+    f_root_to_shoot,
+    K_sat_plant,
+    ψ63,
+    Weibull_param,
+    a,
+    conductivity_model,
+    retention_model,
+    plant_ν,
+    plant_S_s,
+    rooting_depth,
+    n_stem,
+    n_leaf,
+    h_leaf,
+    h_stem,
+    h_canopy,
+    z0_m,
+    z0_b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
-# Read in the site-specific parameters for all parameters not defined by the PFTs
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
-    ),
-)
+compartment_midpoints =
+    n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
+# Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;
     zlim = (zmin, zmax),
     nelements = nelements,
@@ -60,6 +102,23 @@ land_domain = Column(;
     longlat = (long, lat),
 )
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+
+# Set up the timestepping information for the simulation
+t0 = Float64(0)
+dt = Float64(450) # 7.5 minutes
+N_spinup_days = 15
+N_days = N_spinup_days + 340
+tf = Float64(t0 + N_days * 3600 * 24)
+t_spinup = Float64(t0 + N_spinup_days * 3600 * 24)
+
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 3,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
 # Define the PFT land cover percentages for the Ozark site. Currently we only
 # use the dominant PFT, which for Ozark is deciduous broadleaf temperate trees.
@@ -104,12 +163,6 @@ pft_pcts = [
 ac_canopy = ac_canopy * 3
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
-    ),
-)
 start_date = DateTime(2010) + Hour(time_offset)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -123,17 +176,17 @@ start_date = DateTime(2010) + Hour(time_offset)
 )
 
 # Read in LAI from MODIS data
-surface_space = land_domain.space.surface
+surface_space = land_domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
     start_date = start_date + Second(t0),
     end_date = start_date + Second(t0) + Second(tf);
     context = ClimaComms.context(surface_space),
-)
+);
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,
     start_date,
-)
+);
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI =
     FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);

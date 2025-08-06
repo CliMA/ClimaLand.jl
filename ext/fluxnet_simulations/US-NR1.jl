@@ -12,7 +12,7 @@ Gets and returns primary domain information for the US-NR1 (Colorado Niwot Ridge
 Fluxnet site. The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_domain_info(
+function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_NR1};
     dz_bottom = FT(1.25),
@@ -33,7 +33,7 @@ Returns geographical information for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_location(
+function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_NR1};
     time_offset = 7,
@@ -53,10 +53,14 @@ corresponding keyword arguments to this function.
 Data sources:
 
 Atmosphere height:
-    - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li, 
+    - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li,
     Jiahong & Luo, Hongyan & Zulueta, Rommel. (2016). https://doi.org/10.5194/amt-9-1341-2016
 """
-function get_fluxtower_height(FT, ::Val{:US_NR1}; atmos_h = FT(21.5))
+function FluxnetSimulations.get_fluxtower_height(
+    FT,
+    ::Val{:US_NR1};
+    atmos_h = FT(21.5),
+)
     return (; atmos_h,)
 end
 
@@ -77,7 +81,7 @@ Photosynthesis parameters:
 Hydraulics parameters:
     - Holtzman, Nataniel, et al. 2023, https://doi.org/10.1029/2023WR035481
 """
-function get_parameters(
+function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_NR1};
     soil_ν = FT(0.45),
