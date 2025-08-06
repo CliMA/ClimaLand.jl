@@ -2,47 +2,75 @@
 
 ## Introduction
 
-In general, models attempt to reproduce real world observations.
-Calibration is the process of finding the parameter set that will best reproduce real world observation.
+In general, models attempt to reproduce real world observations. Calibration is
+the process of finding the parameter set that will best reproduce real world
+observation.
 
 The key ingredients in calibration are:
 - the model we want to run;
 - the parameters we want to tune along with their prior distributions;
-- the observational data we want to reproduce and how that data is represented in the model;
+- the observational data we want to reproduce and how that data is represented
+  in the model;
 - the noise associated to such observational data.
 
-The process of calibrating consists of optimizing how different parameters match the given observations within the given noise. In ClimaLand, we use `EnsembleKalmanProcesses.jl` (EKP) to perform automatic calibration.
-Before discussing the details of EKP, we introduce the following terminology to mirror the key ingredients introduced above:
+The process of calibrating consists of optimizing how different parameters match
+the given observations within the given noise. In ClimaLand, we use
+`EnsembleKalmanProcesses.jl` (EKP) to perform automatic calibration. Before
+discussing the details of EKP, we introduce the following terminology to mirror
+the key ingredients introduced above:
 
 - a `forward_model` that runs the model for a given parameter set,
-- an `observation` vector that contains the data or statistics of data we want the model to reproduce,
-- an `observation_map` which maps the equivalent of the observation vector, but from the model output,
-- `priors` which contains the parameters we want to calibrate (find the value that makes the model match the observation best), priors gives which parameters, but also their distribution
-- a covariance matrix, that defines the observational error and correlations
+- an `observation` vector that contains the data or statistics of data we want
+  the model to reproduce,
+- an `observation_map` which maps the equivalent of the observation vector, but
+  from the model output,
+- `priors` which contains the parameters we want to calibrate (find the value
+  that makes the model match the observation best), priors gives which
+  parameters, but also their distribution
+- a covariance matrix that defines the observational error and correlations
 
-[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) (EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of Ensemble Kalman methods to find a (locally) optimal parameter set `U` for a model `G` to fit noisy `Γ` observational data `Y`. These methods are optimized for problems where the model `G` is computationally expensive and no analtyic derivatives are available, as in the case of weather forcasting, where Ensemble Kalman techniques have a long history of success.
+[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl)
+(EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of
+Ensemble Kalman methods to find a (locally) optimal parameter set `U` for a
+model `G` to fit noisy `Γ` observational data `Y`. These methods are optimized
+for problems where the model `G` is computationally expensive and no analtyic
+derivatives are available, as in the case of weather forcasting, where Ensemble
+Kalman techniques have a long history of success.
 
-Large calibration campaigns often require supercomputers and while direct use of EKP.jl is possible, CliMA's preferred approach is using [ClimaCalibrate.jl](https://github.com/CliMA/ClimaCalibrate.jl), a package optimized for running on compute clusters. `ClimaCalibrate` handles efficient job orchestration and abstracts the details of the underlying system, providing a simpler user experience. Consult the [ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/) for further information.
+Large calibration campaigns often require supercomputers and while direct use of
+EKP.jl is possible, CliMA's preferred approach is using
+[ClimaCalibrate.jl](https://github.com/CliMA/ClimaCalibrate.jl), a package
+optimized for running on compute clusters. `ClimaCalibrate` handles efficient
+job orchestration and abstracts the details of the underlying system, providing
+a simpler user experience. Consult the
+[ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/)
+for further information.
 
 ## Calibrate a land model
 
-In this tutorial, we will perform a calibration using `ClimaCalibrate`. `ClimaCalibrate` provides an interface to `EnsembleKalmanProcesses.jl` that is more optimized for use on supercomputers. The [tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/) shows how to perform a calibration using `EKP` directly.
+In this tutorial, we will perform a calibration using `ClimaCalibrate`.
+`ClimaCalibrate` provides an interface to `EnsembleKalmanProcesses.jl` that is
+more optimized for use on supercomputers. The
+[tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/)
+shows how to perform a calibration using `EKP` directly.
 
-The `calibrate` function is at the heart of performing a calibration with `ClimaCalibrate`:
+The `calibrate` function is at the heart of performing a calibration with
+`ClimaCalibrate`:
 
 ```julia
-import ClimaCalibrate as CAL
+import ClimaCalibrate
 
-CAL.calibrate(
-    CAL.WorkerBackend,
+ClimaCalibrate.calibrate(
+    ClimaCalibrate.WorkerBackend,
     utki,
     n_iterations,
     prior,
-    caldir,
+    output_dir,
 )
 ```
 
-where the `utki` object defines your EKP configurations, for example, the default is:
+where the `utki` object defines your EKP configurations, for example, the
+default is:
 
 ```julia
 EKP.EnsembleKalmanProcess(
@@ -54,29 +82,45 @@ EKP.EnsembleKalmanProcess(
 )
 ```
 
-where `obs_series` is the "truth" you want to calibrate your model on. It can take many forms.
-For example, you may want to calibrate your land model latent heat flux (lhf), the
-observations could be monthly global average of lhf, or monthly average at 100 random locations on land, or the annual amplitude and phase...
-You will create `obs_series` from some data (for example ERA5), as a vector.
+where `obs_series` is the "truth" you want to calibrate your model on. It can
+take many forms. For example, you may want to calibrate monthly global average
+of latent heat flux, monthly average at 100 random locations on land, or the
+annual amplitude and phase. You will create `obs_series` from some data (for
+example ERA5), as a vector.
 
-Note that `obs_series` object contains the covariance matrix of the noise, which informs the uncertainties in space and time of your targeted "truth". It can be set, for example, to the inter-annual variance of a variable, or to the average of the variable times a % (e.g., 5%), or to a flat noise (for example, 5 W m-2 for latent heat). This will inform the EKP algorithm that if the model is within the target +- noise at specific space and time, the goal is reached.
+Note that `obs_series` object contains the covariance matrix of the noise, which
+informs the uncertainties in space and time of your targeted "truth". It can be
+set, for example, to the inter-annual variance of a variable, or a percentage
+(e.g., 5%) of the average of the variable, or to a flat noise (e.g., 5 W m-2 for
+latent heat). This will inform the EKP algorithm that if the model is within the
+target plus or minus the noise at specific space and time, the goal is reached.
 
-`TransformUnscented.Unscented` is a method in EKP, that requires `2 x number of parameters + 1` ensemble members (`ensemble_size`, the number of parameter set drawn for your prior distribution tested at each iteration). For more information, read the [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/unscented_kalman_inversion/).
+- `TransformUnscented.Unscented` is a method in EKP, that requires `2p + 1`
+  ensemble members for each iteration, where `p` is the number of parameters.
+  For more information, read the
+  [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/unscented_kalman_inversion/).
 
-`verbose = true` is a setting that writes information about your calibration run to a log file.
+- `verbose = true` is a setting that writes information about your calibration
+  run to a log file.
 
-`rng` is a set random seed.
+- `rng` is a set random seed.
 
-`Scheduler` is a EKP setting for timestepping, please read [EKP schedulers documentations](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/learning_rate_scheduler/).
+- `Scheduler` is a EKP setting for timestepping, please read
+  [EKP schedulers documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/learning_rate_scheduler/).
 
-`CAL.WorkerBackend` defines how to interact with the underlying compute system. For other possible backends (for example, `JuliaBackend`, `ClimaGPUBackend`, or `DerechoBackend`),
-see [this doc page](https://clima.github.io/ClimaCalibrate.jl/dev/backends/).
+- `ClimaCalibrate.WorkerBackend` defines how to interact with the underlying
+  compute system. For other possible backends (for example, `JuliaBackend`,
+  `ClimaGPUBackend`, or `DerechoBackend`), see the
+  [backend documentation in ClimaCalibrate](https://clima.github.io/ClimaCalibrate.jl/dev/backends/).
 
-Each backend is optimized for specific use cases and computing resources. The backend system is implemented through Julia's multiple dispatch,
-so that code written for one computer can seamlessly be ported to a new/different environments.
+Each backend is optimized for specific use cases and computing resources. The
+backend system is implemented through Julia's multiple dispatch, so that code
+written for one environment can seamlessly be ported to a new/different
+environments.
 
-`prior` is the distribution of the parameters you want to calibrate. For example, if you want to calibrate two parameters called `sc` and `pc`,
-you would define your priors like this, for example:
+- `prior` is the distribution of the parameters you want to calibrate. For
+  example, if you want to calibrate two parameters called `sc` and `pc`, you
+  would define your priors like this, for example:
 ```julia
 prior_sc = EKP.constrained_gaussian("sc", 5e-6, 5e-4, 0, Inf);
 prior_pc = EKP.constrained_gaussian("pc", -2e6, 1e6, -Inf, Inf);
@@ -84,12 +128,16 @@ prior = EKP.combine_distributions([prior_sc, prior_pc]);
 ```
 For more documentation about prior distribution, see [this EKP documentation page](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/parameter_distributions/).
 
-`n_iterations` is the number of times your priors distribution will be updated, at each iteration your model is run for the number of `ensemble_size`.
-So in total, your model will be run `ensemble_size` * `n_iterations`.
+- `n_iterations` is the number of times your priors distribution will be
+  updated, at each iteration your model is run for  the number of
+  `ensemble_size`. So in total, your model will be run `ensemble_size` *
+  `n_iterations`.
 
-`caldir` is the path to your calibration output directory. For example `calibration_output`. Inside this folder, the parameter set of each iteration * member will
-be stored, as well as the output of your model simulations. For example, if you ran a calibration with 1 iteration and 2 members, caldir would be structured
-like this:
+- `output_dir` is the path to your calibration output directory. Inside this
+  folder, the parameter set of each ensemble member for each iteration is
+  stored, as well as the output of your model simulations. For example, if you
+  ran a calibration with 1 iteration and 2 members, output_dir would be
+  structured like this:
 
 ```
 .
@@ -136,21 +184,31 @@ like this:
 │   │   │   └── output_active -> output_0000
 │   │   └── parameters.toml
 ```
-Each iteration contains folders for each member, inside which you can find the parameters value inside `parameters.toml`, and model outputs inside `global_diagnostics`.
+Each iteration contains directories for each member, inside which you can find
+the parameters value inside `parameters.toml`, and model outputs inside
+`global_diagnostics`.
 
-Two additional functions need to be defined in order to run `CAL.calibrate`. `CAL.forward_model(iteration, member)` and `observation_map(iteration)`.
-The `CAL.forward_model(iteration, member)` needs to generate your model output for a specific iteration and member. The `observation_map(iteration)`
-needs to return your loss, a vector of the same format as `observations` but created with your model output (for example, monthly average of latent heat flux),
-for all members. To make this easier, it can be useful to implement a `process_member_data(root_path)` function that generates one member output from your
-model output path.
+Two additional functions need to be defined in order to run
+`ClimaCalibrate.calibrate`. `ClimaCalibrate.forward_model(iteration, member)`
+and `ClimaCalibrate.observation_map(iteration)`. The
+`ClimaCalibrate.forward_model(iteration, member)` needs to generate your model
+output for a specific iteration and member. The
+`ClimaCalibrate.observation_map(iteration)` needs to return your loss, a vector
+of the same format as `observations` but created with your model output (for
+example, monthly average of latent heat flux), for all members. To make this
+easier, it can be useful to implement a `process_member_data(root_path)`
+function that generates one member output from your model output path.
 
-Once you have defined `CAL.forward_model`, `CAL.observation_map`, `caldir`, `noise`, `observations`, `n_iterations`, `ensemble_size`, and your backend, you can
-call `CAL.calibrate`!
+Once you have defined `ClimaCalibrate.forward_model`,
+`ClimaCalibrate.observation_map`, `output_dir`, `noise`, `observations`,
+`n_iterations`, `ensemble_size`, and your backend, you can call
+`ClimaCalibrate.calibrate`!
 
-## job script
+## Job script
 
-A calibration job will likely take hours to complete, so you will probably have to submit a job with a job scheduler.
-Below is an example job .pbs script (for PBS, e.g., Derecho):
+A calibration job will likely take hours to complete, so you will probably have
+to submit a job with a job scheduler. Below is an example job .pbs script (for
+PBS, e.g., Derecho):
 
 ```bash
 #!/bin/bash
@@ -195,11 +253,16 @@ julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl
 ```
 
-where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`. 
-On a Slurm cluster, comment out `add_workers` in `calibrate_land.jl`, as worker processes will inherit the allocated resources automatically.
-You would start the job with a command such as `qsub name_of_job_script` for PBS or `sbatch name_of_job_script` for Slurm, and a few hours later, you would get a calibrated parameter set. You can check the status of your job with `qstat -u username` of PBS or `squeue -u username` on Slurm.
+where `run_calibration.jl` is a script that set up the calibration and call
+`ClimaCalibrate.calibrate`. You would start the job with a command such as `qsub
+name_of_job_script` for PBS or `sbatch name_of_job_script` for Slurm, and a few
+hours later, you would get a calibrated parameter set. You can check the status
+of your job with `qstat -u username` of PBS or `squeue -u username` on Slurm.
 
-Note that with the default EKP configuration, UTKI, the number of ensemble is set by the number of parameters, as explained in the documentation above. The number of workers (if you use the worker backend) is automatically set to that numbers, so that all members are run in parallel for each iteration.
+Note that with the default EKP configuration, UTKI, the number of ensemble is
+set by the number of parameters, as explained in the documentation above. The
+number of workers (if you use the worker backend) is automatically set to that
+numbers, so that all members are run in parallel for each iteration.
 
 ## Configure your land calibration
 
