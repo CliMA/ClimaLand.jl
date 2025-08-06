@@ -1049,9 +1049,10 @@ end
 """
     perturbed_specific_humidity_from_dewpoint(dewpoint_temperature, temperature, air_pressure, earth_param_set, ΔT)
 
-Estimates the perturbed specific humidity given the true dewpoint temperature and true temperature of the air
-in Kelvin to first compute relative humidity, and the using RH, a perturbed air temperature = temperature+ΔT,
-and true air pressure in Pa, along with the ClimaLand earth_param_set, to compute a perturbed `q`.
+Estimates the perturbed specific humidity given the true dewpoint temperature, true temperature of the air
+in Kelvin, and true air pressure in Pa, along with a perturbation to the temperature ΔT, and the ClimaLand
+`earth_param_set`. We first compute relative humidity, and then using RH and the perturbed air temperature,
+equal to  true temperature+ΔT, compute a perturbed `q`.
 
 Relative humidity is computed using the Magnus formula.
 
