@@ -67,6 +67,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         surface_space,
         start_date,
         earth_param_set,
+        5.0,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),

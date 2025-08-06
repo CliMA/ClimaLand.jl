@@ -60,6 +60,7 @@ function setup_model(FT, start_date, domain, earth_param_set, bucket_params)
         surface_space,
         start_date,
         earth_param_set,
+        5.0,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method,
