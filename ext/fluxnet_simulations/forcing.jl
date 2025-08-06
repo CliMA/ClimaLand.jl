@@ -35,7 +35,7 @@ and that these names are:
 "LW_IN_F" (downwelling LW radiation in W/m^2)
 "SW_IN_F" (downwelling SW radiation in W/m^2)
 """
-function prescribed_forcing_fluxnet(
+function FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,
@@ -213,7 +213,7 @@ in the dataset.
 This works well with the artifact `modis_lai_multiyear_paths`, but has not been
 tested with other datasets.
 """
-function get_maxLAI_at_site(ncd_path, lat, long)
+function FluxnetSimulations.get_maxLAI_at_site(ncd_path, lat, long)
     NCDataset(ncd_path) do ds
         # Find the indices of the closest latitude and longitude in the dataset
         # to the given lat and long
@@ -232,7 +232,7 @@ end
 A helper function to get the difference in time between observations;
 this is used in making some plots.
 """
-function get_data_dt(site_ID)
+function FluxnetSimulations.get_data_dt(site_ID)
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
@@ -253,7 +253,7 @@ A helper function to get the first and last dates, in UTC, for which we have
 Fluxnet data at `site_ID`, given the offset in hours of local time
 from UTC.
 """
-function get_data_dates(site_ID, hour_offset_from_UTC)
+function FluxnetSimulations.get_data_dates(site_ID, hour_offset_from_UTC)
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
@@ -327,7 +327,7 @@ Gets and returns the a NamedTuple with the comparison
 data for the Fluxnet `site_ID`, given its hour offset from
 UTC, and the value used to indicate missing data (`val`)
 """
-function get_comparison_data(
+function FluxnetSimulations.get_comparison_data(
     site_ID::String,
     hour_offset_from_UTC::Int;
     val = -9999,
@@ -355,7 +355,7 @@ function get_comparison_data(
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
     data_dt = Second(local_datetime[2] - local_datetime[1]).value # seconds
 
-    gpp = get_comparison_data(
+    gpp = FluxnetSimulations.get_comparison_data(
         data,
         "GPP_DT_VUT_REF",
         column_name_map,
@@ -363,11 +363,35 @@ function get_comparison_data(
         preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol/m^2/s
         val,
     )
-    lhf = get_comparison_data(data, "LE_CORR", column_name_map, "lhf"; val)
-    shf = get_comparison_data(data, "H_CORR", column_name_map, "shf"; val)
-    swu = get_comparison_data(data, "SW_OUT", column_name_map, "swu"; val)
-    lwu = get_comparison_data(data, "LW_OUT", column_name_map, "lwu"; val)
-    swc = get_comparison_data(
+    lhf = FluxnetSimulations.get_comparison_data(
+        data,
+        "LE_CORR",
+        column_name_map,
+        "lhf";
+        val,
+    )
+    shf = FluxnetSimulations.get_comparison_data(
+        data,
+        "H_CORR",
+        column_name_map,
+        "shf";
+        val,
+    )
+    swu = FluxnetSimulations.get_comparison_data(
+        data,
+        "SW_OUT",
+        column_name_map,
+        "swu";
+        val,
+    )
+    lwu = FluxnetSimulations.get_comparison_data(
+        data,
+        "LW_OUT",
+        column_name_map,
+        "lwu";
+        val,
+    )
+    swc = FluxnetSimulations.get_comparison_data(
         data,
         "SWC_F_MDS_1",
         column_name_map,
@@ -375,7 +399,7 @@ function get_comparison_data(
         preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
         val,
     )
-    tsoil = get_comparison_data(
+    tsoil = FluxnetSimulations.get_comparison_data(
         data,
         "TS_F_MDS_1",
         column_name_map,
@@ -383,7 +407,7 @@ function get_comparison_data(
         preprocess_func = (x) -> x + 273.15, # converts degrees C to K
         val,
     )
-    precip = get_comparison_data(
+    precip = FluxnetSimulations.get_comparison_data(
         data,
         "P_F",
         column_name_map,

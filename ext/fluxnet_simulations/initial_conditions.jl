@@ -13,7 +13,7 @@ is provided in local time, we require the offset from UTC in hours `hour_offset_
 The `model` indicates which how to update it `Y` from these observations,
 via different methods of `set_fluxnet_ic!`.
 """
-function set_fluxnet_ic!(
+function FluxnetSimulations.set_fluxnet_ic!(
     Y,
     site_ID,
     start_date,
@@ -27,7 +27,13 @@ function set_fluxnet_ic!(
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
     for component in ClimaLand.land_components(model)
-        set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
+        FluxnetSimulations.set_fluxnet_ic!(
+            Y,
+            data,
+            columns,
+            Δ_date,
+            getproperty(model, component),
+        )
     end
 end
 
@@ -47,7 +53,7 @@ a CSV file, `columns` is the list of column names,
 start date (in UTC), and `model` indicates which part of `Y` we are updating, and how to update it,
 via different methods of `set_fluxnet_ic!`.
 """
-function set_fluxnet_ic!(
+function FluxnetSimulations.set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -127,7 +133,7 @@ of the plant.
 
 If ony a leaf compartment is used, only the leaf ψ is used.
 """
-function set_fluxnet_ic!(
+function FluxnetSimulations.set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -177,7 +183,7 @@ Sets Y.snow.S, Y.snow.S_l, and Y.snow.U in place to be zero at the start of the 
 Note that the Snow NeuralDensity model has additional prognostic variables which also must be set
 to zero; another method may work well for that case.
 """
-function set_fluxnet_ic!(
+function FluxnetSimulations.set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -194,7 +200,7 @@ end
 
 Sets Y.soilco2.C in place with the atmospheric CO2 concentration, in mol co2 per mol air.
 """
-function set_fluxnet_ic!(
+function FluxnetSimulations.set_fluxnet_ic!(
     Y,
     data,
     columns,

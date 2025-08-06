@@ -20,14 +20,9 @@ using ClimaDiagnostics
 using ClimaUtilities
 
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
-LandSimulationVisualizationExt =
-    Base.get_extension(
-        ClimaLand,
-        :LandSimulationVisualizationExt,
-    ).LandSimulationVisualizationExt;
+import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
@@ -76,9 +71,8 @@ include(
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
-(start_date, end_date) =
-    FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
-(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,
@@ -102,11 +96,8 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 )
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
-    modis_lai_ncdata_path[1],
-    lat,
-    long,
-);
+maxLAI =
+    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
 RAI = maxLAI * f_root_to_shoot
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 
@@ -240,7 +231,7 @@ land = LandModel{FT}(;
 
 Y, p, cds = initialize(land)
 
-FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
+FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
@@ -286,7 +277,7 @@ diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
 ## How often we want to update the drivers. Note that this uses the defined `t0`, and `tf`
 ## defined in the simulatons file
-data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID));
+data_dt = Float64(FluxnetSimulations.get_data_dt(site_ID));
 updateat = Array(t0:data_dt:tf);
 model_drivers = ClimaLand.get_drivers(land);
 updatefunc = ClimaLand.make_update_drivers(model_drivers);
@@ -308,12 +299,11 @@ prob = SciMLBase.ODEProblem(
 @time sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
 
 ClimaLand.Diagnostics.close_output_writers(diags)
-comparison_data =
-    FluxnetSimulationsExt.get_comparison_data(site_ID, time_offset)
+comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
 mkpath(savedir)
-LandSimulationVisualizationExt.make_diurnal_timeseries(
+LandSimVis.make_diurnal_timeseries(
     land_domain,
     diags,
     start_date;
@@ -322,7 +312,7 @@ LandSimulationVisualizationExt.make_diurnal_timeseries(
     spinup_date = start_date + Day(N_spinup_days),
     comparison_data,
 )
-LandSimulationVisualizationExt.make_timeseries(
+LandSimVis.make_timeseries(
     land_domain,
     diags,
     start_date;

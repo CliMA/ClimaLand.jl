@@ -18,8 +18,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)
@@ -37,7 +36,7 @@ long = FT(-92.2000) # degree
 atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset)
-(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,

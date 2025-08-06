@@ -22,7 +22,7 @@ in levels; if levels is nothing, the surface is plotted by default.
 
 The plotting defaults are set for global plots with an ocean mask.
 """
-function make_heatmaps(
+function LandSimVis.make_heatmaps(
     savedir,
     diagdir,
     short_names,
@@ -133,7 +133,7 @@ The resulting .pdf contains a time series of the global mean
 (area-weighted) energy and water volume error, in units of 
 `J/m^2` and `m`. Only continents are included in the global average. 
 """
-function check_conservation(
+function LandSimVis.check_conservation(
     savedir,
     diagdir;
     plot_name = "conservation_figures.pdf",
@@ -347,7 +347,7 @@ comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will
 result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
 being plotted, provided that those diagnostics were recorded during the simulation.
 """
-function make_diurnal_timeseries(
+function LandSimVis.make_diurnal_timeseries(
     savedir,
     diagnostics,
     start_date;
@@ -464,7 +464,7 @@ comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will
 result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
 being plotted, provided that those diagnostics were recorded during the simulation.
 """
-function make_timeseries(
+function LandSimVis.make_timeseries(
     savedir,
     diagnostics,
     start_date;

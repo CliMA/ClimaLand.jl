@@ -54,9 +54,8 @@ land_domain = Column(;
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 # Get the atmospheric and radiation forcing data
-(start_date, end_date) =
-    FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
-(; atmos, radiation) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
     long,
@@ -80,11 +79,8 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 )
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
-    modis_lai_ncdata_path[1],
-    lat,
-    long,
-);
+maxLAI =
+    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
 RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
 # Now we set up the model. For the soil model, we pick
@@ -211,5 +207,5 @@ Y, p, cds = initialize(land)
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
+FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
 set_initial_cache!(p, Y, t0)

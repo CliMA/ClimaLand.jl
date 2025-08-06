@@ -38,11 +38,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
 
 using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
-LandSimVis =
-    Base.get_extension(
-        ClimaLand,
-        :LandSimulationVisualizationExt,
-    ).LandSimulationVisualizationExt;
+import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64;
 context = ClimaComms.context()
