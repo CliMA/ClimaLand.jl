@@ -120,14 +120,13 @@ dt = 225.0;
 # use a prescribed soil driver, defined as follows:
 ψ_soil = FT(0.0)
 T_soil = FT(298.0)
-soil_driver = PrescribedGroundConditions{FT}(;
+ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     T = TimeVaryingInput(t -> T_soil),
     ψ = TimeVaryingInput(t -> ψ_soil),
     ϵ = FT(0.99),
 );
-ground = PrescribedGroundConditions{FT}();
 forcing = (; atmos, radiation, ground);
 
 # Now we read in time-varying LAI from a global MODIS dataset.

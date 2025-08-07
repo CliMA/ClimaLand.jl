@@ -495,7 +495,7 @@ end
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
         hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
-        energy = BigLeafEnergyModel{FT}(),
+        energy = PrescribedCanopyTempModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
 
@@ -534,7 +534,7 @@ function CanopyModel{FT}(
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
-    energy = BigLeafEnergyModel{FT}(),
+    energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
@@ -545,20 +545,20 @@ function CanopyModel{FT}(
     end
 
     # Confirm that each spatially-varying parameter is on the correct domain
-    for p in map(
-        component -> propertynames(component.parameters),
-        [
-            autotrophic_respiration,
-            radiative_transfer,
-            photosynthesis,
-            conductance,
-            hydraulics,
-            energy,
-            sif,
-        ],
-    )
-        @assert !(p isa ClimaCore.Fields.Field) ||
-                axes(p) == domain.space.surface
+    for component in [
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        hydraulics,
+        energy,
+        sif,
+    ]
+        # For component models without parameters, skip the check
+        !hasproperty(component, :parameters) && continue
+
+        @assert !(component.parameters isa ClimaCore.Fields.Field) ||
+                axes(component.parameters) == domain.space.surface
     end
 
     boundary_conditions = AtmosDrivenCanopyBC(

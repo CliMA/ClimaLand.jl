@@ -164,7 +164,7 @@ soil = EnergyHydrology{FT}(
     S_s = soil_S_s,
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
-    ϵ = soil_ϵ,
+    emissivity = soil_ϵ,
 );
 
 # For the heterotrophic respiration model, see the
@@ -300,8 +300,6 @@ Y.soil.ρe_int =
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
 canopy_retention_model = canopy.hydraulics.parameters.retention_model
-canopy_ν = canopy.hydraulics.parameters.ν
-canopy_S_s = canopy.hydraulics.parameters.S_s
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
@@ -309,12 +307,12 @@ S_l_ini =
     inverse_water_retention_curve.(
         canopy_retention_model,
         [ψ_stem_0, ψ_leaf_0],
-        canopy_ν,
-        canopy_S_s,
+        plant_ν,
+        plant_S_s,
     )
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(canopy_ν, S_l_ini[i])
+        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
 # Choose the timestepper and solver needed for the problem.
