@@ -161,8 +161,8 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_p,
     start_date,
     atmos_h,
-    earth_param_set;
-)
+    earth_param_set,
+);
 LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
 SW_IN = TimeVaryingInput((t) -> 500.0)
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
@@ -183,7 +183,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     start_date,
     θs = zenith_angle,
     earth_param_set = earth_param_set,
-)
+);
 
 # Soil model setup
 # Soil parameters
@@ -264,7 +264,8 @@ n_stem = Int64(1)
 n_leaf = Int64(1)
 h_stem = FT(9) # m
 h_leaf = FT(9.5) # m
-hydraulics = Canopy.PlantHydraulicsModel{FT}(;
+h_canopy = h_stem + h_leaf
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
     LAI;
     SAI,
