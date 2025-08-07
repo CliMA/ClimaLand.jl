@@ -48,7 +48,8 @@ function get_parameters(FT,
         ClimaLand.Soil.soil_vangenuchten_parameters(domain.space.subsurface, FT),
     soil_params_grids = 
         ClimaLand.Soil.soil_composition_parameters(domain.space.subsurface, FT),
-    vegetation_params = 
+    soil_albedo_params =
+        ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface),
     time_offset = get_time_offset(long),
     atmos_h = FT(50), # take max of each site, height >= h_canopy + 10
     soil_ν = soil_params_gupta[:ν], # gupta
@@ -101,6 +102,7 @@ function get_parameters(FT,
     z0_m = FT(0.13) * h_canopy,
     z0_b = FT(0.1) * z0_m,
 )
+    
     soil_α_PAR = FT(0.2) # function of clm_soil_albedo_parameters, soil moisture, can be calculated within
     soil_α_NIR = FT(0.2) # function of clm_soil_albedo_parameters, soil moisture
     # ://github.com/CliMA/ClimaLand.jl/blob/b3fce30e5e9b4e3024f0bbfd13e2e9654b541296/src/standalone/Soil/soil_albedo.jl#L193
