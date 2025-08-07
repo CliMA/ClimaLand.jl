@@ -6,7 +6,6 @@ import ClimaUtilities.TimeManager: ITime, date
 using Thermodynamics
 using Dates
 using DelimitedFiles
-using DocStringExtensions
 using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
