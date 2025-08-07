@@ -299,15 +299,19 @@ Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 canopy_retention_model = canopy.hydraulics.parameters.retention_model
 canopy_ν = canopy.hydraulics.parameters.ν
 canopy_S_s = canopy.hydraulics.parameters.S_s
+ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini = inverse_water_retention_curve(
+S_l_ini = inverse_water_retention_curve.(
     canopy_retention_model,
-    ψ_leaf_0,
+    [ψ_stem_0, ψ_leaf_0],
     canopy_ν,
     canopy_S_s,
 )
-Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction(canopy_ν, S_l_ini);
+for i in 1:2
+    Y.canopy.hydraulics.ϑ_l.:($i) .=
+        augmented_liquid_fraction.(canopy_ν, S_l_ini[i])
+end
 
 # Choose the timestepper and solver needed for the problem.
 timestepper = CTS.ARS343()

@@ -128,10 +128,36 @@ LAI = ClimaLand.prescribed_lai_modis(
     surface_space,
     start_date,
 );
+# Get the maximum LAI at this site over the first year of the simulation
+maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
+    modis_lai_ncdata_path[1],
+    lat,
+    long,
+);
+
+# Construct canopy hydraulics with 1 stem and 1 leaf compartment.
+# By default, the model is constructed with a single leaf compartment and no stem.
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9)
+h_leaf = FT(9.5)
+SAI = FT(0.00242)
+f_root_to_shoot = FT(3.5)
+RAI = FT((SAI + maxLAI) * f_root_to_shoot)
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
+    domain,
+    LAI;
+    n_stem,
+    n_leaf,
+    h_stem,
+    h_leaf,
+    SAI,
+    RAI,
+);
 
 # Set up the canopy model using defaults for all parameterizations and parameters,
-# except for those explicitly set here.
-canopy = ClimaLand.Canopy.CanopyModel{FT}(domain, forcing, LAI, earth_param_set);
+# except for the hydraulics model defined above.
+canopy = ClimaLand.Canopy.CanopyModel{FT}(domain, forcing, LAI, earth_param_set; hydraulics);
 
 # Initialize the state vectors and obtain the model coordinates, then get the
 # explicit time stepping tendency that updates auxiliary and prognostic
@@ -146,10 +172,14 @@ jac_kwargs =
 
 # Provide initial conditions for the canopy hydraulics model
 (; retention_model, ν, S_s) = canopy.hydraulics.parameters
+ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini = inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
-Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction(ν, S_l_ini);
+S_l_ini = inverse_water_retention_curve.(retention_model, [ψ_stem_0, ψ_leaf_0], ν, S_s)
+for i in 1:2
+    Y.canopy.hydraulics.ϑ_l.:($i) .=
+        augmented_liquid_fraction.(ν, S_l_ini[i])
+end
 
 # Initialize the cache variables for the canopy using the initial
 # conditions and initial time.
