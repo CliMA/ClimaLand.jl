@@ -100,15 +100,11 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 )
 
-z_0m = FT(0.13) * atmos.h
-z_0b = FT(0.1) * z_0m
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
     earth_param_set;
-    z_0m,
-    z_0b,
     prognostic_land_components,
 )
 
