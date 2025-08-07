@@ -100,14 +100,14 @@ earth_param_set = LP.LandParameters(FT);
 
 # # Create the model
 # Set the values of other parameters required by the model:
-ν = FT(0.395)
+ν = FT(0.395);
 # Soil solids
 # are the components of soil besides water, ice, gases, and air.
 # We specify the soil component fractions, relative to all soil solids.
 # These do not sum to unity; the remainder is ν_ss_minerals (=0.08, in this case).
-ν_ss_quartz = FT(0.92)
-ν_ss_om = FT(0.0)
-ν_ss_gravel = FT(0.0)
+ν_ss_quartz = FT(0.92);
+ν_ss_om = FT(0.0);
+ν_ss_gravel = FT(0.0);
 # Other parameters include the hydraulic conductivity at saturation, the specific
 # storage, and the van Genuchten parameters for sand.
 # We recommend Chapter 8 of Bonan (2019) for finding parameters
