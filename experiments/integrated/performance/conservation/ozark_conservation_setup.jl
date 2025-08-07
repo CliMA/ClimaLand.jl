@@ -158,8 +158,7 @@ conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis =
-    FarquharModel{FT}(canopy_domain; photosynthesis_parameters, sc, pc)
+photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
