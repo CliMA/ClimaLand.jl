@@ -20,7 +20,7 @@
 # in which the intensity of light absorbed is a negative exponential function of
 # depth in the canopy and an exinction coefficient determined by optical depth.
 
-# The model of photosynthesis in Clima Land is the Farquar Model in which GPP is
+# The model of photosynthesis in Clima Land is the Farquhar Model in which GPP is
 # calculated based on C3 and C4 photosynthesis, which determines potential
 # leaf-level photosynthesis.
 
@@ -103,8 +103,7 @@ dt = 225.0;
 # We will be using prescribed atmospheric and radiative drivers from the
 # US-MOz tower, which we read in here. We are using prescribed
 # atmospheric and radiative flux conditions, but it is also possible to couple
-# the simulation with atmospheric and radiative flux models. We also
-# read in time-varying LAI from a global MODIS dataset.
+# the simulation with atmospheric and radiative flux models.
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -115,9 +114,23 @@ dt = 225.0;
     earth_param_set,
     FT,
 );
+
+
+# For this canopy, we are running in standalone mode, which means we need to
+# use a prescribed soil driver, defined as follows:
+ψ_soil = FT(0.0)
+T_soil = FT(298.0)
+soil_driver = PrescribedGroundConditions{FT}(;
+    α_PAR = FT(0.2),
+    α_NIR = FT(0.4),
+    T = TimeVaryingInput(t -> T_soil),
+    ψ = TimeVaryingInput(t -> ψ_soil),
+    ϵ = FT(0.99),
+);
 ground = PrescribedGroundConditions{FT}();
 forcing = (; atmos, radiation, ground);
 
+# Now we read in time-varying LAI from a global MODIS dataset.
 surface_space = domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
     start_date = start_date + Second(t0),
@@ -129,11 +142,20 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 );
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
-    modis_lai_ncdata_path[1],
-    lat,
-    long,
-);
+maxLAI =
+    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
+
+# Construct radiative transfer model, overwriting some default parameters.
+radiation_parameters = (;
+    Ω = FT(0.69),
+    G_Function = ConstantGFunction(FT(0.5)),
+    α_PAR_leaf = FT(0.1),
+    α_NIR_leaf = FT(0.45),
+    τ_PAR_leaf = FT(0.05),
+    τ_NIR_leaf = FT(0.25),
+)
+radiative_transfer =
+    Canopy.TwoStreamModel{FT}(domain; radiation_parameters, ϵ_canopy = FT(0.99));
 
 # Construct canopy hydraulics with 1 stem and 1 leaf compartment.
 # By default, the model is constructed with a single leaf compartment and no stem.
@@ -155,9 +177,25 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
     RAI,
 );
 
+# Construct the conductance model.
+conductance = Canopy.MedlynConductanceModel{FT}(domain; g1 = FT(141));
+
+# Construct the photosynthesis model.
+photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
+photosynthesis = Canopy.FarquharModel{FT}(domain; photosynthesis_parameters)
+
 # Set up the canopy model using defaults for all parameterizations and parameters,
 # except for the hydraulics model defined above.
-canopy = ClimaLand.Canopy.CanopyModel{FT}(domain, forcing, LAI, earth_param_set; hydraulics);
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    domain,
+    forcing,
+    LAI,
+    earth_param_set;
+    hydraulics,
+    radiative_transfer,
+    conductance,
+    photosynthesis,
+);
 
 # Initialize the state vectors and obtain the model coordinates, then get the
 # explicit time stepping tendency that updates auxiliary and prognostic
@@ -175,10 +213,15 @@ jac_kwargs =
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini = inverse_water_retention_curve.(retention_model, [ψ_stem_0, ψ_leaf_0], ν, S_s)
+S_l_ini =
+    inverse_water_retention_curve.(
+        retention_model,
+        [ψ_stem_0, ψ_leaf_0],
+        ν,
+        S_s,
+    )
 for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(ν, S_l_ini[i])
+    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end
 
 # Initialize the cache variables for the canopy using the initial

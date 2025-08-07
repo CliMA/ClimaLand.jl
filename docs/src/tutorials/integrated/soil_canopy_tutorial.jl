@@ -123,16 +123,7 @@ prognostic_land_components = (:canopy, :soil, :soilco2);
 # [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/Soil/soil_energy_hydrology/)
 # on the model for a more detailed explanation of the soil model.
 
-# Define the parameters for the soil model and provide them to the model
-# parameters struct:
-
-# Soil albedo
-soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.4)
-soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
+# Define the parameters for the soil model and provide them to the model constructor.
 
 # Soil parameters
 soil_ν = FT(0.5) # m3/m3
@@ -144,6 +135,18 @@ soil_vg_α = FT(0.04) # inverse meters
 ν_ss_quartz = FT(0.1)
 ν_ss_om = FT(0.1)
 ν_ss_gravel = FT(0.0);
+
+z_0m_soil = FT(0.1)
+z_0b_soil = FT(0.1)
+soil_ϵ = FT(0.98)
+soil_α_PAR = FT(0.2)
+soil_α_NIR = FT(0.4)
+
+soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = soil_α_PAR,
+    NIR_albedo = soil_α_NIR,
+)
+
 soil = EnergyHydrology{FT}(
     domain,
     (; atmos, radiation),
@@ -159,6 +162,9 @@ soil = EnergyHydrology{FT}(
     ),
     composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel),
     S_s = soil_S_s,
+    z_0m = z_0m_soil,
+    z_0b = z_0b_soil,
+    ϵ = soil_ϵ,
 );
 
 # For the heterotrophic respiration model, see the
@@ -187,11 +193,8 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 );
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulationsExt.get_maxLAI_at_site(
-    modis_lai_ncdata_path[1],
-    lat,
-    long,
-);
+maxLAI =
+    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
 
 # For a coupled SoilCanopyModel, we provide a flag to the canopy that indicates
 #  the ground forcing is prognostic (i.e. the soil model) rather than prescribed.
@@ -302,12 +305,13 @@ canopy_S_s = canopy.hydraulics.parameters.S_s
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini = inverse_water_retention_curve.(
-    canopy_retention_model,
-    [ψ_stem_0, ψ_leaf_0],
-    canopy_ν,
-    canopy_S_s,
-)
+S_l_ini =
+    inverse_water_retention_curve.(
+        canopy_retention_model,
+        [ψ_stem_0, ψ_leaf_0],
+        canopy_ν,
+        canopy_S_s,
+    )
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .=
         augmented_liquid_fraction.(canopy_ν, S_l_ini[i])
