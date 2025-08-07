@@ -145,6 +145,18 @@ function ZenithAngleAlbedoModel(
     ZenithAngleAlbedoModel(α_0, Δα, k, β, x0)
 end
 
+function ZenithAngleAlbedoModel(toml_dict::TD) where {TD <: CP.AbstractTOMLDict}
+    name_map = (;
+        :alpha_0 => :α_0,
+        :delta_alpha => :Δα,
+        :k => :k,
+        :beta => :β,
+        :x0 => :x0,
+    )
+    p = CP.get_parameter_values(toml_dict, name_map)
+    return ZenithAngleAlbedoModel(p.α_0, p.Δα, p.k, β = p.β, x0 = p.x0)
+end
+
 """
     AbstractSnowCoverFractionModel{FT}
 

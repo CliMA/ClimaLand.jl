@@ -58,7 +58,15 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
+function setup_model(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    earth_param_set,
+    toml_dict,
+)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -258,13 +266,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     # Snow model
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
-    )
+    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
@@ -322,7 +324,11 @@ domain = ClimaLand.Domains.global_domain(
     mask_threshold = FT(0.99),
 )
 params = LP.LandParameters(FT)
-model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+toml_dict = CP.create_toml_dict(
+    FT,
+    default_file = joinpath(pkgdir(ClimaLand), "toml", "parameters.toml"),
+)
+model = setup_model(FT, start_date, stop_date, Δt, domain, params, toml_dict)
 simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"

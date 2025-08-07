@@ -1,0 +1,32 @@
+# How do I add a parameter?
+# At the minimum, a parameter needs a parameter name, value, and type. All
+# parameter names must be unique. The description attribute is optional, but it
+# is recommended to add one. These parameters are loaded in ClimaLand using
+# `ClimaParams.get_parameter_values`.
+
+## ZenithAngleAlbedoModel parameters
+
+[alpha_0]
+value = 0.64
+type = "float"
+description = "Free parameter controlling the minimum snow albedo"
+
+[delta_alpha]
+value = 0.06
+type = "float"
+description = "Free parameter controlling the snow albedo when θs = 90∘"
+
+[k]
+value = 2.0
+type = "float"
+description = "Rate at which albedo drops to its minimum value with zenith angle"
+
+[beta]
+value = 0.4
+type = "float"
+description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
+
+[x0]
+value = 0.2
+type = "float"
+description = "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
