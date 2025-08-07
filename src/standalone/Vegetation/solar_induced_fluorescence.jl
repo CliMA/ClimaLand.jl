@@ -68,14 +68,78 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
     T_freeze = LP.T_freeze(earth_param_set)
     R = LP.gas_constant(earth_param_set)
-
-    (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
     sif_parameters = sif_model.parameters
+
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+    _update_SIF_dispatch!(
+        SIF,
+        canopy.photosynthesis,
+        p,
+        APAR,
+        T_canopy,
+        Vcmax25,
+        T_freeze,
+        R,
+        sif_parameters,
+    )
+end
+
+"""
+    _update_SIF_dispatch!(SIF, photosynthesis_model::PModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+
+Dispatched function for P-model photosynthesis using cached Jmax and J values.
+Updates SIF array in place.
+"""
+function _update_SIF_dispatch!(
+    SIF,
+    photosynthesis_model::PModel,
+    p,
+    APAR,
+    T_canopy,
+    Vcmax25,
+    T_freeze,
+    R,
+    sif_parameters,
+)
+    # Use cached Jmax and J values from P-model
+    Jmax = p.canopy.photosynthesis.Jmax
+    J = p.canopy.photosynthesis.J
+
     @. SIF = compute_SIF_at_a_point(
-        par_d * f_abs_par / energy_per_mole_photon_par,
+        APAR,
+        T_canopy,
+        Vcmax25,
+        Jmax,
+        J,
+        T_freeze,
+        sif_parameters,
+    )
+end
+
+"""
+    _update_SIF_dispatch!(SIF, photosynthesis_model::AbstractPhotosynthesisModel, p, APAR, T_canopy, Vcmax25, T_freeze, R, sif_parameters)
+
+Dispatched function for other photosynthesis models (Smith optimality, Farquhar) that compute Jmax on-the-fly.
+Updates SIF array in place.
+"""
+function _update_SIF_dispatch!(
+    SIF,
+    photosynthesis_model::AbstractPhotosynthesisModel,
+    p,
+    APAR,
+    T_canopy,
+    Vcmax25,
+    T_freeze,
+    R,
+    sif_parameters,
+)
+    # Use original computation for other photosynthesis models
+    (; ΔHJmax, To, θj, ϕ) = photosynthesis_model.parameters
+
+    @. SIF = compute_SIF_at_a_point(
+        APAR,
         T_canopy,
         Vcmax25,
         R,
@@ -89,6 +153,65 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
 end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
+
+
+"""
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        Jmax::FT,
+        J::FT,
+        T_freeze::FT,
+        sif_parameters::SIFParameters{FT},
+    ) where {FT}
+    
+Computes the Solar Induced Fluorescence (SIF) at 755 nm in W/m^2 using the Lee et al. 2015 model.
+This function is used for the PModel photosynthesis model, which computes Jmax and J in the cache.
+"""
+function compute_SIF_at_a_point(
+    APAR::FT,
+    Tc::FT,
+    Vcmax25::FT,
+    Jmax::FT,
+    J::FT,
+    T_freeze::FT,
+    sif_parameters::SIFParameters{FT},
+) where {FT}
+    (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
+        sif_parameters
+    kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
+    x = 1 - J / max(Jmax, eps(FT))
+    kn = (kn_p1 * x - kn_p2) * x
+    ϕp0 = kp / max(kf + kp + kn, eps(FT))
+    ϕp = J / max(Jmax, eps(FT)) * ϕp0
+    ϕf = kf / max(kf + kd + kn, eps(FT)) * (1 - ϕp)
+    κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
+    F = APAR * ϕf
+    SIF_755 = F / max(κ, eps(FT))
+
+    return SIF_755
+end
+
+
+"""
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        R::FT,
+        T_freeze::FT,
+        ΔHJmax::FT,
+        To::FT,
+        θj::FT,
+        ϕ::FT,
+        sif_parameters::SIFParameters{FT},
+    ) where {FT}
+
+Computes the Solar Induced Fluorescence (SIF) at 755 nm in W/m^2 using the Lee et al. 2015 model.
+This function is used for the Smith optimality and Farquhar photosynthesis models, which compute
+Jmax differently than the P-model. 
+"""
 function compute_SIF_at_a_point(
     APAR::FT,
     Tc::FT,
