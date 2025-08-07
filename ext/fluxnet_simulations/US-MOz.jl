@@ -5,13 +5,13 @@ Citation: Jeffrey Wood, Lianhong Gu (2025), AmeriFlux FLUXNET-1F US-MOz Missouri
 =#
 
 """
-    get_domain_info(FT, ::Val{:US_MOz}; dz_bottom = FT(1.5), dz_top = FT(0.1),
+    FluxnetSimulations.get_domain_info(FT, ::Val{:US_MOz}; dz_bottom = FT(1.5), dz_top = FT(0.1),
         nelements = 20, zmin = FT(-10), zmax = FT(0))
 
 Gets and returns primary domain information for the US-MOz (Missouri Ozark)
 Fluxnet site. Default parameters are provided and can be overriden using keyword arguments.
 """
-function get_domain_info(
+function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_MOz};
     dz_bottom = FT(1.5),
@@ -33,7 +33,7 @@ Returns geographical information for US-MOz (Missouri Ozark) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_location(
+function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_MOz};
     time_offset = 7,
@@ -50,14 +50,18 @@ Returns atmosphere height for US-Ha1 (Missouri Ozark) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_fluxtower_height(FT, ::Val{:US_MOz}; atmos_h = FT(32))
+function FluxnetSimulations.get_fluxtower_height(
+    FT,
+    ::Val{:US_MOz};
+    atmos_h = FT(32),
+)
     return (; atmos_h,)
 end
 
 """
     get_parameters(FT, ::Val{:US_MOz}; kwargs...)
 
-Gets parameters for the Fluxnet site US-MOz (Missouri Ozark), which is a Deciduous Broadleaf Forest, 
+Gets parameters for the Fluxnet site US-MOz (Missouri Ozark), which is a Deciduous Broadleaf Forest,
 and returns them as a Named Tuple. The values are provided as defaults, and
 can be overwritten by passing the corresponding keyword arguments to this function.
 
@@ -68,7 +72,7 @@ Conductance parameters:
 Hydraulics parameters:
     - Holtzman, Nataniel, et al. 2023, https://doi.org/10.1029/2023WR035481
 """
-function get_parameters(
+function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_MOz};
     soil_ν = FT(0.55),

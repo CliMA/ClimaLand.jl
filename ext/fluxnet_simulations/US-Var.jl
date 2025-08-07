@@ -14,7 +14,7 @@ keyword arguments to this function.
 
 Domain depth source: Xu and Baldocchi, 2003.
 """
-function get_domain_info(
+function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_Var};
     dz_tuple = nothing,
@@ -32,7 +32,7 @@ Returns geographical information for US-Var (California Vaira Ranch Ione) Fluxne
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_location(
+function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Var};
     time_offset = 8,
@@ -49,7 +49,11 @@ Returns atmosphere height for US-Var (California Vaira Ranch Ione) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 """
-function get_fluxtower_height(FT, ::Val{:US_Var}; atmos_h = FT(2))
+function FluxnetSimulations.get_fluxtower_height(
+    FT,
+    ::Val{:US_Var};
+    atmos_h = FT(2),
+)
     return (; atmos_h,)
 end
 
@@ -74,7 +78,7 @@ Hydraulics parameters:
     - Holtzman, Nataniel, et al. 2023, https://doi.org/10.1029/2023WR035481
     - Xu and Baldocchi 2003, doi:10.1016/j.agrformet.2003.10.004
 """
-function get_parameters(
+function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_Var};
     soil_ν = FT(0.45),

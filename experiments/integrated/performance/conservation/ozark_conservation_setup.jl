@@ -1,29 +1,80 @@
-# Column dimensions - separation of layers at the top and bottom of the column:
-dz_bottom = FT(1.5)
-dz_top = FT(0.025)
+# Convert site_ID string to a Val so we can dispatch on it
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
-# Stem and leaf compartments and their heights:
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9) # m
-h_leaf = FT(9.5) # m
+# Get the default values for this site's domain, location, and parameters
+# Use finer dz_top for conservation test
+dz_top = FT(0.025)
+(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val); dz_top)
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+
+(;
+    soil_ν,
+    soil_K_sat,
+    soil_S_s,
+    soil_vg_n,
+    soil_vg_α,
+    θ_r,
+    ν_ss_quartz,
+    ν_ss_om,
+    ν_ss_gravel,
+    z_0m_soil,
+    z_0b_soil,
+    soil_ϵ,
+    soil_α_PAR,
+    soil_α_NIR,
+    Ω,
+    χl,
+    G_Function,
+    α_PAR_leaf,
+    λ_γ_PAR,
+    τ_PAR_leaf,
+    α_NIR_leaf,
+    τ_NIR_leaf,
+    ϵ_canopy,
+    ac_canopy,
+    g1,
+    Drel,
+    g0,
+    Vcmax25,
+    SAI,
+    f_root_to_shoot,
+    K_sat_plant,
+    ψ63,
+    Weibull_param,
+    a,
+    conductivity_model,
+    retention_model,
+    plant_ν,
+    plant_S_s,
+    rooting_depth,
+    n_stem,
+    n_leaf,
+    h_leaf,
+    h_stem,
+    h_canopy,
+    z0_m,
+    z0_b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+
+compartment_midpoints =
+    n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
 # TIME STEPPING:
 t0 = Float64(120 * 3600 * 24)# start mid year
 dt = Float64(150)
 # Use smaller `tf` for Float32 simulation
 tf = (FT == Float64) ? t0 + 3600 * 24 * 10 : t0 + 2 * dt
-dz_tuple = (dz_bottom, dz_top)
-nelements = 20
-zmin = FT(-10)
-zmax = FT(0)
-timestepper = CTS.ARS111()
+
 # Select conv. condition based on float type due to different precision
 err = (FT == Float64) ? 1e-8 : 1e-4
 norm_condition = CTS.MaximumError(err)
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
 max_iterations = 20
-# Set up timestepper
+timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
@@ -33,18 +84,7 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 )
 
-
-# Setup the domain for the simulation
-include(
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
-)
-# Read in the parameters for the Ozark site
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
-    ),
-)
+# Set up the domain for the simulation
 land_domain = Column(;
     zlim = (zmin, zmax),
     nelements = nelements,
