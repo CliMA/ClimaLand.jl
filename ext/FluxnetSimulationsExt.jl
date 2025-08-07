@@ -12,6 +12,10 @@ import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
+using ClimaLand.Domains
+using ClimaCore
+
+using NCDatasets
 export prescribed_forcing_fluxnet,
     set_fluxnet_ic!,
     get_comparison_data,
