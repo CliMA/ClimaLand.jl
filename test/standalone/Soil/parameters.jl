@@ -64,6 +64,37 @@ const FT = Float64;
     @test eltype(hcm) == ClimaLand.Soil.vanGenuchten{FT}
 end
 
+@testset "Depth varying van Genuchten parameters" begin
+    regridder_type = :InterpolationsRegridder
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    )
+
+    # construct a column domain at the US-Ha1 and check that the vG params are depth varying
+    domain = ClimaLand.Domains.Column(;
+        zlim = (FT(-1.0), FT(0.0)),
+        nelements = 10,
+        dz_tuple = (FT(0.2), FT(0.05)),
+        longlat = (FT(-72.1715), FT(42.5378))
+    )
+
+    vg_params = ClimaLand.Soil.soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT;
+        regridder_type = regridder_type,
+        extrapolation_bc = extrapolation_bc,
+    )
+
+    # check that vG params are not all the same
+    for p in vg_params
+        # this gives a nelements x (n) matrix
+        vals = parent(p)
+        @test length(unique(eachrow(vals))) > 1
+    end
+end
+
 @testset "Scalar Parameters" begin
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
