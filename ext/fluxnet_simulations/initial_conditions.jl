@@ -13,7 +13,7 @@ and the type of the `model`.
 In order to convert between local time and UTC, the hour offset from
 UTC is required. 
 """
-function make_set_fluxnet_initial_conditions(
+function FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
     hour_offset_from_UTC,
@@ -30,7 +30,7 @@ function make_set_fluxnet_initial_conditions(
 end
 
 
-function make_set_fluxnet_initial_conditions_standalone_canopy(
+function FluxnetSimulations.make_set_fluxnet_initial_conditions_standalone_canopy(
     site_ID,
     start_date,
     hour_offset_from_UTC,
@@ -43,7 +43,7 @@ function make_set_fluxnet_initial_conditions_standalone_canopy(
     UTC_datetime = local_datetime .+ hour_offset_to_period(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
 
-    set_ic!(Y, p, t, model) = set_fluxnet_ic!(Y, data, columns, Δ_date, model; standalone = true)
+    set_ic!(Y, p, t, model) = FluxnetSimulations.set_fluxnet_ic!(Y, data, columns, Δ_date, model; standalone = true)
 
     return set_ic!
 end

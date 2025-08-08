@@ -4,7 +4,6 @@ using ClimaLand
 
 
 function parse_array_field(field)
-    @show field
     if field == "" || field == "NaN"
         return Float64[]
     elseif field isa Float64

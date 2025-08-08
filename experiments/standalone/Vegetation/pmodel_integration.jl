@@ -38,7 +38,7 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_para
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_domain.jl"))
 
 ######### Simulation setup #########
-site_ID = length(ARGS) >= 1 ? ARGS[1] : "US-NR1"
+site_ID = length(ARGS) >= 1 ? ARGS[1] : "US-Var"
 photo_model = length(ARGS) >= 2 ? ARGS[2] : "pmodel" # "pmodel" or "farquhar"
 soil_moisture_stress = length(ARGS) >= 3 ? ARGS[3] : "piecewise" # "piecewise" or "no_sms"
 

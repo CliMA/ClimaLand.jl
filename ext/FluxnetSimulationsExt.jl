@@ -19,7 +19,9 @@ export prescribed_forcing_fluxnet,
     get_data_dt,
     replace_hyphen,
     get_parameters,
-    get_domain_info
+    get_domain_info,
+    make_set_fluxnet_initial_conditions,
+    make_set_fluxnet_initial_conditions_standalone_canopy
 
 # Include site-specific configurations, as well as the default generic site.
 include("fluxnet_simulations/generic_site.jl")
