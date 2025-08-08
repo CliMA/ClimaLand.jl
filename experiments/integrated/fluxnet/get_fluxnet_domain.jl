@@ -4,6 +4,7 @@ using ClimaLand
 
 
 function parse_array_field(field)
+    @show field
     if field == "" || field == "NaN"
         return Float64[]
     elseif field isa Float64
@@ -47,24 +48,33 @@ function get_site_domain(site_ID; fluxnet2015_metadata_path = nothing)
 
     site_metadata = data[row_idx, :]
 
+    varnames = [
+        "latitude", "longitude", "utc_offset", "canopy_height", "atmospheric_sensor_heights",
+        "swc_depths", "ts_depths"
+    ]
+    column_name_map = Dict(
+        varname => findfirst(header[:] .== varname) for varname in varnames
+    )
+
     nan_if_empty(x) =
         (x isa String && isempty(x)) ? NaN :
         (x isa AbstractFloat && isnan(x)) ? NaN :
         x
 
-    for (i, field) in enumerate(site_metadata)
+    for (varname, column) in column_name_map
+        field = site_metadata[column]
         if field == "" || (field isa AbstractFloat && isnan(field))
-            @warn "Field $(header[i]) is missing for site $site_ID"
+            @warn "Field $(varname) is missing for site $site_ID"
         end
     end
     
     return (;
-        lat = nan_if_empty(site_metadata[2]),
-        long = nan_if_empty(site_metadata[3]),
-        time_offset = -1 * nan_if_empty(site_metadata[4]),
-        h_canopy = nan_if_empty(site_metadata[5]),
-        atmospheric_sensor_height = parse_array_field(site_metadata[6]),
-        swc_depths = parse_array_field(site_metadata[7]),
-        ts_depths = parse_array_field(site_metadata[8]),
+        lat = nan_if_empty(site_metadata[column_name_map["latitude"]]),
+        long = nan_if_empty(site_metadata[column_name_map["longitude"]]),
+        time_offset = -1 * nan_if_empty(site_metadata[column_name_map["utc_offset"]]),
+        h_canopy = nan_if_empty(site_metadata[column_name_map["canopy_height"]]),
+        atmospheric_sensor_height = parse_array_field(site_metadata[column_name_map["atmospheric_sensor_heights"]]),
+        swc_depths = parse_array_field(site_metadata[column_name_map["swc_depths"]]),
+        ts_depths = parse_array_field(site_metadata[column_name_map["ts_depths"]]),
     )
 end
