@@ -38,9 +38,17 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_para
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_domain.jl"))
 
 ######### Simulation setup #########
+<<<<<<< HEAD
 site_ID = length(ARGS) >= 1 ? ARGS[1] : "US-Var"
+=======
+site_ID = length(ARGS) >= 1 ? ARGS[1] : "BR-Sa3"
+>>>>>>> 937d5f1c7 (Add option for high/low res soil params)
 photo_model = length(ARGS) >= 2 ? ARGS[2] : "pmodel" # "pmodel" or "farquhar"
 soil_moisture_stress = length(ARGS) >= 3 ? ARGS[3] : "piecewise" # "piecewise" or "no_sms"
+
+use_lowres_soil_hydrology = false
+@warn "You are using use_lowres_soil_hydrology = $(use_lowres_soil_hydrology). \
+        Remember to set use_lowres_soil_hydrology to true if running locally"
 
 # If these are specified, they override the defaults which are inferred
 # from data availability. Note that these are in UTC time 
@@ -66,6 +74,7 @@ function setup_standalone_canopy_model(
     use_default_param_maps,
     photo_model = "pmodel",
     soil_moisture_stress = "piecewise",
+    use_lowres_soil_hydrology = false,
 )
     # Get domain info
     (; lat, long, time_offset, h_canopy, atmospheric_sensor_height,
@@ -88,12 +97,14 @@ function setup_standalone_canopy_model(
         (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
             ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space)
 
-        # medlyn conductance
-        g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
+        if photo_model == "farquhar"
+            # medlyn conductance
+            g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
 
-        # farquhar photosynthesis
-        (; is_c3, Vcmax25) =
-            ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+            # farquhar photosynthesis
+            (; is_c3, Vcmax25) =
+                ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+        end
 
         # plant hydraulics
         plant_ν = FT(1.44e-4)
@@ -118,9 +129,10 @@ function setup_standalone_canopy_model(
         ac_canopy = FT(2.5e3)
 
         # soil parameters
-        (; ν, hydrology_cm, K_sat, θ_r) =
-            ClimaLand.Soil.soil_vangenuchten_parameters(surface_space, FT)
-        S_s = ClimaCore.Fields.zeros(surface_space) .+ FT(1e-3)
+        if soil_moisture_stress == "piecewise"
+            (; ν, hydrology_cm, K_sat, θ_r) =
+                ClimaLand.Soil.soil_vangenuchten_parameters(surface_space, FT, lowres = use_lowres_soil_hydrology)
+        end
     else
         site_params = get_site_parameters(site_ID)
 
@@ -160,7 +172,6 @@ function setup_standalone_canopy_model(
         # soil parameters
         ν = site_params.soil_ν
         K_sat = site_params.soil_K_sat
-        S_s = site_params.soil_S_s
         soil_vg_n = site_params.soil_vg_n
         soil_vg_α = site_params.soil_vg_α
         hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n)
@@ -348,6 +359,7 @@ canopy = setup_standalone_canopy_model(
     use_default_param_maps = true,
     photo_model = photo_model,
     soil_moisture_stress = soil_moisture_stress,
+    use_lowres_soil_hydrology = use_lowres_soil_hydrology,
 )
 
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions_standalone_canopy(
