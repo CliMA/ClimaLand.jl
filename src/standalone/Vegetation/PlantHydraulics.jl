@@ -8,6 +8,7 @@ import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy: AbstractCanopyComponent, set_canopy_prescribed_field!
 using ClimaLand: AbstractGroundConditions, PrescribedGroundConditions
 using ClimaCore
+using NVTX
 using DocStringExtensions
 
 import ClimaLand:
@@ -333,7 +334,7 @@ Please see Issue #644
 or PR #645 for details.
 For now, this clipping is similar to what CLM and NOAH MP do.
 """
-function ClimaLand.Canopy.set_canopy_prescribed_field!(
+NVTX.@annotate function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
     t,

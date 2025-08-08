@@ -362,7 +362,7 @@ function make_update_boundary_fluxes(
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
 
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
@@ -428,7 +428,7 @@ where the canopy LAI is zero. Note also that this serves the role of
 `canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
 when the Canopy is run in standalone mode.
 """
-function lsm_radiant_energy_fluxes!(
+NVTX.@annotate function lsm_radiant_energy_fluxes!(
     p,
     land::LandModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
