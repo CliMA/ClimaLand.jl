@@ -127,10 +127,11 @@ function soil_vangenuchten_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
+    lowres = true,
 )
     context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
-        Artifacts.soil_params_artifact_folder_path(; context)
+        Artifacts.soil_params_artifact_folder_path(; context, lowres)
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
