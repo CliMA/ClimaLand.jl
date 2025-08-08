@@ -87,12 +87,15 @@ git-tree-sha1 = "230f00823299e7e33d276d9b57cba985fc04eaae"
     url = "https://caltech.box.com/shared/static/0vqhet1hsj36sgmy0ajrcrb24cihcfd7.gz"
 
 [soil_params_Gupta2020_2022]
-git-tree-sha1 = "c10e8f877603bfa2c018eb2dd0c51dd078abe5df"
+git-tree-sha1 = "9370b7272968bfb92b48f2d4f495c278fa9f741d"
 
-    [[soil_params_Gupta2020_2022.download]]
-    sha256 = "6205d96ae7724c469eef5cd1cf3b99e186637427b6fb65ecc659fb808fc6cacf"
-    url = "https://caltech.box.com/shared/static/7c6yx62tzjivxfmhqyy03r6e9l1glyu1.gz"
+[soil_params_Gupta2020_2022_lowres]
+git-tree-sha1 = "e6d18714edfdcbd0244203146521d32df338385a"
 
+    [[soil_params_Gupta2020_2022_lowres.download]]
+    sha256 = "3e8ca24c57589eb3ccf20e52e74dd56bb46f9122048c0ee468889b1c631bb2a2"
+    url = "https://caltech.box.com/shared/static/cg8ib5f6ps7wc1nn1p6wk2dnhmvwwr2p.gz"
+    
 [modis_clumping_index]
 git-tree-sha1 = "b849eb95c09190095e7bf021494ddeda8858af01"
 
