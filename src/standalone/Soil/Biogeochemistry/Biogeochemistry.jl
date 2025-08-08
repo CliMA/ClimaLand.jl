@@ -133,9 +133,9 @@ end
 
 
 """
-SoilCO2Model{FT}(;
+SoilCO2Model{FT}(
         domain::ClimaLand.AbstractDomain,
-        drivers::DT,
+        drivers::DT;
         parameters = SoilCO2ModelParameters(FT),
         boundary_conditions::BC = (
             top = AtmosCO2StateBC(),
@@ -148,9 +148,9 @@ A constructor for `SoilCO2Model`.
 Defaults are provided for the parameters, boundary conditions, and sources.
 These can be overridden by providing the appropriate keyword arguments.
 """
-function SoilCO2Model{FT}(;
+function SoilCO2Model{FT}(
     domain::ClimaLand.AbstractDomain,
-    drivers::DT,
+    drivers::DT;
     parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(FT),
     boundary_conditions::BC = (
         top = AtmosCO2StateBC(),

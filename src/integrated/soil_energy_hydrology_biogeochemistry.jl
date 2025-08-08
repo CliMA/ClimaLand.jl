@@ -53,9 +53,11 @@ function LandSoilBiogeochemistry{FT}(;
         soil_organic_carbon,
         atmos,
     )
-    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(;
-        soilco2_args...,
-        drivers = soil_co2_drivers,
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+        soilco2_args.domain,
+        soil_co2_drivers;
+        boundary_conditions = soilco2_args.boundary_conditions,
+        parameters = soilco2_args.parameters,
     )
     args = (soil, soilco2)
     return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
