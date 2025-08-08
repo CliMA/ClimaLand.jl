@@ -27,8 +27,7 @@ using ClimaDiagnostics
 using ClimaUtilities
 import ClimaUtilities.TimeManager: ITime, date
 using DelimitedFiles
-FluxnetSimulationsExt =
-    Base.get_extension(ClimaLand, :FluxnetSimulationsExt).FluxnetSimulationsExt;
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 climaland_dir = pkgdir(ClimaLand)
 const FT = Float64
@@ -51,7 +50,6 @@ end_date = nothing
 saved_var_names = [
     "gpp", "msf", "vcmax25", "clhf" 
 ]
-average_period = :halfhourly
 Δt = Float64(600.0)
 save_dir = "outputs/fluxnet2015/standalone/$(site_ID)"
 ####################################
@@ -73,7 +71,8 @@ function setup_standalone_canopy_model(
     (; lat, long, time_offset, h_canopy, atmospheric_sensor_height,
         swc_depths, ts_depths) = get_site_domain(site_ID)
 
-    canopy_domain = Point(; z_sfc = FT(0.0), longlat = (FT(long), lat))
+    canopy_domain = Point(; z_sfc = FT(0.0), longlat = (FT(long), FT(lat)))
+    surface_space = canopy_domain.space.surface
 
     # Get parameters
     try 
@@ -84,7 +83,6 @@ function setup_standalone_canopy_model(
     end
 
     if use_default_param_maps
-        surface_space = canopy_domain.space.surface
 
         # RT 
         (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
@@ -174,10 +172,16 @@ function setup_standalone_canopy_model(
 
     # simulation time 
     (start_date, end_date) =
-        FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
+        FluxnetSimulations.get_data_dates(site_ID, time_offset)
+
+    if start_date < DateTime(2000, 1, 1)
+        @warn "Fluxnet start_date is before 2000, which is not supported by our current MODIS LAI product. \
+               Using 2000-01-01 as the start date."
+        start_date = DateTime(2000, 1, 1)
+    end
 
     # Get the forcing
-    (; atmos, radiation, soil) = FluxnetSimulationsExt.prescribed_forcing_fluxnet(
+    (; atmos, radiation, soil) = FluxnetSimulations.prescribed_forcing_fluxnet(
         site_ID,
         lat,
         long,
@@ -194,7 +198,21 @@ function setup_standalone_canopy_model(
         )
     )
 
-    (; LAI, maxLAI) = FluxnetSimulationsExt.prescribed_LAI_fluxnet(site_ID, start_date)
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
+        start_date = start_date,
+        end_date = end_date,
+    )
+    LAI = ClimaLand.prescribed_lai_modis(
+        modis_lai_ncdata_path,
+        surface_space,
+        start_date,
+    );
+    # Get the maximum LAI at this site over the first year of the simulation
+    maxLAI = FluxnetSimulations.get_maxLAI_at_site(
+        modis_lai_ncdata_path[1],
+        lat,
+        long,
+    );
 
     # Set up canopy model 
     z0_m = FT(0.13) * h_canopy
@@ -316,11 +334,12 @@ end
     swc_depths, ts_depths) = get_site_domain(site_ID)
 
 (start_date_from_data, end_date_from_data) =
-    FluxnetSimulationsExt.get_data_dates(site_ID, time_offset)
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
 start_date = isnothing(start_date) ? start_date_from_data : start_date
 end_date = isnothing(end_date) ? end_date_from_data : end_date
 start_date_local = start_date - Dates.Hour(time_offset)
-data_dt = Float64(FluxnetSimulationsExt.get_data_dt(site_ID))
+data_dt = Float64(FluxnetSimulations.get_data_dt(site_ID))
+average_period = (data_dt == Float64(1800)) ? :halfhourly : :hourly
 
 canopy = setup_standalone_canopy_model(
     FT,
@@ -331,7 +350,7 @@ canopy = setup_standalone_canopy_model(
     soil_moisture_stress = soil_moisture_stress,
 )
 
-set_ic! = FluxnetSimulationsExt.make_set_fluxnet_initial_conditions_standalone_canopy(
+set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions_standalone_canopy(
     site_ID,
     start_date,
     time_offset,
