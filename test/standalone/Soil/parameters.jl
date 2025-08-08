@@ -77,7 +77,7 @@ end
         zlim = (FT(-1.0), FT(0.0)),
         nelements = 10,
         dz_tuple = (FT(0.2), FT(0.05)),
-        longlat = (FT(-72.1715), FT(42.5378))
+        longlat = (FT(-72.1715), FT(42.5378)),
     )
 
     vg_params = ClimaLand.Soil.soil_vangenuchten_parameters(
