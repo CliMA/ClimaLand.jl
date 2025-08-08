@@ -648,18 +648,20 @@ end
         nelements = length(zs)
         longlat = (long, lat)
         zlim = FT.((-1, 0))
-        column = ClimaLand.Domains.Column(; 
-            zlim, 
-            nelements, 
+        column = ClimaLand.Domains.Column(;
+            zlim,
+            nelements,
             longlat,
-            dz_tuple=(FT(0.35), FT(0.25)), 
+            dz_tuple = (FT(0.35), FT(0.25)),
         )
         subsurface_space = column.space.subsurface
 
         # Get the residual water content at this lat/lon using ClimaUtilities
-        (; θ_r) =
-            ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT;
-                interpolation_method = Interpolations.Constant())
+        (; θ_r) = ClimaLand.Soil.soil_vangenuchten_parameters(
+            subsurface_space,
+            FT;
+            interpolation_method = Interpolations.Constant(),
+        )
 
         @test all(Array(parent(θ_r)) .== FT.(θ_r_nc[:]))
     end
