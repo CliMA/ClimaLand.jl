@@ -200,9 +200,25 @@ end
     soil_params_artifact_path(; context)
 
 Return the path to the folder that contains the soil parameters.
+
+Returns a 1 degree version by default (lowres = true). The high resolution (1 km) version
+is not downloaded by Julia and thus must be downloaded manually if you are running this
+locally (see ClimaArtifacts for download details).
 """
-function soil_params_artifact_folder_path(; context = nothing)
-    return @clima_artifact("soil_params_Gupta2020_2022", context)
+function soil_params_artifact_folder_path(; context = nothing, lowres = true)
+    if lowres
+        dir = @clima_artifact("soil_params_Gupta2020_2022_lowres", context)
+    else
+        try
+            dir = @clima_artifact("soil_params_Gupta2020_2022", context)
+        catch
+            @warn(
+                "High resolution soil parameters not available locally; using low resolution data instead."
+            )
+            dir = @clima_artifact("soil_params_Gupta2020_2022_lowres", context)
+        end
+    end
+    return dir
 end
 
 """
