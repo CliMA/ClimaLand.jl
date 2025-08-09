@@ -495,7 +495,7 @@ end
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
         hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
-        energy = PrescribedCanopyTempModel{FT}(),
+        energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
 
