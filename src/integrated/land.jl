@@ -224,13 +224,114 @@ function LandModel{FT}(;
 
     soilco2_boundary_conditions =
         (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-    soilco2 = soilco2_type(;
+    soilco2 = soilco2_type(
+        soilco2_args.domain,
+        soilco2_drivers;
         boundary_conditions = soilco2_boundary_conditions,
         sources = soilco2_sources,
-        soilco2_args..., # adds domain, params
-        drivers = soilco2_drivers,
+        parameters = soilco2_args.parameters,
     )
 
+    return LandModel{FT}(canopy, snow, soil, soilco2)
+end
+
+"""
+    LandModel{FT}(
+        forcing,
+        LAI,
+        earth_param_set,
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        Δt;
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            earth_param_set;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        ),
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            Soil.Biogeochemistry.SoilDrivers(
+               Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+                forcing.atmos,
+            ),
+        ),
+        canopy = Canopy.CanopyModel{FT}(
+            Domains.obtain_surface_domain(domain),
+            (;
+                atmos = forcing.atmos,
+                radiation = forcing.radiation,
+                ground = ClimaLand.PrognosticSoilConditions{FT}(),
+            ),
+            LAI,
+            earth_param_set;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        ),
+       snow = Snow.SnowModel(
+            FT,
+            ClimaLand.Domains.obtain_surface_domain(domain),
+            forcing,
+            earth_param_set,
+            Δt;
+            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        ),
+   ) where {FT}
+
+A convenience constructor for setting up the default LandModel,
+where all the parameterizations and parameter values are set to default values
+or passed in via the `earth_param_set`. The boundary conditions of all models
+correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
+of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
+and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
+as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
+Finally, since the snow model requires the timestep, that is a required argument as well.
+"""
+function LandModel{FT}(
+    forcing,
+    LAI,
+    earth_param_set,
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
+    Δt;
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        earth_param_set;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+    ),
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+            forcing.atmos,
+        ),
+    ),
+    canopy = Canopy.CanopyModel{FT}(
+        Domains.obtain_surface_domain(domain),
+        (;
+            atmos = forcing.atmos,
+            radiation = forcing.radiation,
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
+        ),
+        LAI,
+        earth_param_set;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    ),
+    snow = Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        earth_param_set,
+        Δt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    ),
+) where {FT}
     return LandModel{FT}(canopy, snow, soil, soilco2)
 end
 

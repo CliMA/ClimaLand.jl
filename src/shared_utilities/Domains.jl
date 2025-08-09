@@ -1268,9 +1268,9 @@ function global_domain(
     FT;
     apply_mask = true,
     mask_threshold = 0.5,
-    nelements = (101, 15),
+    nelements = (75, 15),
     dz_tuple = (10.0, 0.05),
-    depth = 50.0,
+    depth = 20.0,
     npolynomial = 0,
     context = ClimaComms.context(),
 )

@@ -64,12 +64,12 @@ for FT in (Float32, Float64)
         prescribed_met = PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm)
         soil_drivers = SoilDrivers(prescribed_met, Csom, atmos)
 
-        model = SoilCO2Model{FT}(;
-            parameters = parameters,
-            domain = soil_domain,
-            sources = sources,
+        model = SoilCO2Model{FT}(
+            soil_domain,
+            soil_drivers;
+            parameters,
             boundary_conditions = boundary_conditions,
-            drivers = soil_drivers,
+            sources = sources,
         )
 
         Y, p, coords = initialize(model)
@@ -144,12 +144,12 @@ for FT in (Float32, Float64)
             atmos, # need to create some functions
         )
 
-        model = SoilCO2Model{FT}(;
-            parameters = parameters,
-            domain = soil_domain,
-            sources = sources,
+        model = SoilCO2Model{FT}(
+            soil_domain,
+            soil_drivers;
+            parameters,
             boundary_conditions = boundary_conditions,
-            drivers = soil_drivers,
+            sources = sources,
         )
 
         Y, p, coords = initialize(model)
