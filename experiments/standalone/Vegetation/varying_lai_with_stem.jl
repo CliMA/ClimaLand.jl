@@ -96,12 +96,16 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_midpoints = compartment_midpoints,
 );
 
+# Use the big leaf energy model
+energy = ClimaLand.Canopy.BigLeafEnergyModel{FT}(; ac_canopy = FT(1e4))
+
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
     LAI,
     earth_param_set;
     hydraulics = plant_hydraulics,
+    energy,
 );
 
 
@@ -125,8 +129,6 @@ S_l_ini =
 
 Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
 Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
-
-
 
 t0 = 0.0
 N_days = 60

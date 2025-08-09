@@ -60,9 +60,18 @@ function fakeLAIfunction(t)
 end
 LAI = TimeVaryingInput(fakeLAIfunction)
 
+# Set up plant hydraulics with no vegetation
+SAI = RAI = FT(0)
+hydraulics = PlantHydraulicsModel{FT}(land_domain, LAI; SAI, RAI);
+
 # Construct a CanopyModel with default parameters
-canopy =
-    ClimaLand.Canopy.CanopyModel{FT}(land_domain, forcing, LAI, earth_param_set);
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    land_domain,
+    forcing,
+    LAI,
+    earth_param_set;
+    hydraulics,
+);
 
 Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy);
@@ -81,7 +90,7 @@ t0 = 0.0
 N_days = 10
 tf = t0 + 3600 * 24 * N_days
 dt = 225.0;
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
+
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 

@@ -65,12 +65,16 @@ RAI = FT(2 * f_root_to_shoot)
 ν = FT(0.7)
 hydraulics = PlantHydraulicsModel{FT}(land_domain, LAI; n_leaf, h_leaf, RAI, ν)
 
+# Use the big leaf energy model
+energy = ClimaLand.Canopy.BigLeafEnergyModel{FT}(; ac_canopy = FT(1e4))
+
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
     LAI,
     earth_param_set;
     hydraulics,
+    energy,
 );
 
 Y, p, coords = ClimaLand.initialize(canopy)
