@@ -78,14 +78,7 @@ function time_varying_input_from_data(
     preprocess_func = identity,
     val = -9999,
     required_varnames = nothing,
-)
-    # Filter to valid date range if required_varnames is provided
-    if !isnothing(required_varnames)
-        valid_rows = find_rows_with_all_variables_available(data, column_name_map, required_varnames; val)
-        data = data[valid_rows, :]
-        time_in_seconds = time_in_seconds[valid_rows]
-    end
-    
+)   
     var_data = data[:, column_name_map[varname]]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
@@ -138,13 +131,6 @@ function time_varying_input_from_data(
     val = -9999,
     required_varnames = nothing,
 )
-    # Filter to valid date range if required_varnames is provided
-    if !isnothing(required_varnames)
-        valid_rows = find_rows_with_all_variables_available(data, column_name_map, required_varnames; val)
-        data = data[valid_rows, :]
-        time_in_seconds = time_in_seconds[valid_rows]
-    end
-    
     var_ids = [column_name_map[varname] for varname in varnames]
     var_data = data[:, var_ids]
     # The time varying input object interpolates over gaps

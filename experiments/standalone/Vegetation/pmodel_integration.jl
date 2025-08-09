@@ -38,11 +38,7 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_para
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_domain.jl"))
 
 ######### Simulation setup #########
-<<<<<<< HEAD
-site_ID = length(ARGS) >= 1 ? ARGS[1] : "US-Var"
-=======
 site_ID = length(ARGS) >= 1 ? ARGS[1] : "BR-Sa3"
->>>>>>> 937d5f1c7 (Add option for high/low res soil params)
 photo_model = length(ARGS) >= 2 ? ARGS[2] : "pmodel" # "pmodel" or "farquhar"
 soil_moisture_stress = length(ARGS) >= 3 ? ARGS[3] : "piecewise" # "piecewise" or "no_sms"
 
@@ -130,8 +126,32 @@ function setup_standalone_canopy_model(
 
         # soil parameters
         if soil_moisture_stress == "piecewise"
-            (; ν, hydrology_cm, K_sat, θ_r) =
-                ClimaLand.Soil.soil_vangenuchten_parameters(surface_space, FT, lowres = use_lowres_soil_hydrology)
+            file_tail = use_lowres_soil_hydrology ? "1.0x1.0x4" : "1km_4layer"
+            context = ClimaComms.context(surface_space)
+            soil_params_artifact_path =
+                ClimaLand.Artifacts.soil_params_artifact_folder_path(; context, lowres=use_lowres_soil_hydrology)
+
+            ν = FT(nearest_point_value(
+                joinpath(soil_params_artifact_path, "porosity_map_gupta_etal2020_$(file_tail).nc"),
+                "ν", lat, long, 0.0
+            ))
+            soil_vg_n = FT(nearest_point_value(
+                joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_$(file_tail).nc"),
+                "n", lat, long, 0.0
+            ))
+            soil_vg_α = FT(nearest_point_value(
+                joinpath(soil_params_artifact_path, "vGalpha_map_gupta_etal2020_$(file_tail).nc"),
+                "α", lat, long, 0.0
+            ))
+            θ_r = FT(nearest_point_value(
+                joinpath(soil_params_artifact_path, "residual_map_gupta_etal2020_$(file_tail).nc"),
+                "θ_r", lat, long, 0.0
+            ))
+
+            hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n)
+
+            # (; ν, hydrology_cm, K_sat, θ_r) =
+            #     ClimaLand.Soil.soil_vangenuchten_parameters(surface_space, FT, lowres = use_lowres_soil_hydrology)
         end
     else
         site_params = get_site_parameters(site_ID)
@@ -183,7 +203,7 @@ function setup_standalone_canopy_model(
 
     # simulation time 
     (start_date, end_date) =
-        FluxnetSimulations.get_data_dates(site_ID, time_offset)
+        FluxnetSimulations.get_data_dates(site_ID, time_offset, construct_soil_driver=true)
 
     if start_date < DateTime(2000, 1, 1)
         @warn "Fluxnet start_date is before 2000, which is not supported by our current MODIS LAI product. \
@@ -423,8 +443,13 @@ for short_name in saved_var_names
         time_var.attrib["units"] = "seconds since $(epoch)"
 
         if soil_moisture_stress == "piecewise"
-            ds.attrib["field_capacity"] = parent(canopy.soil_moisture_stress.parameters.θ_c)[1]
-            ds.attrib["wilting_point"] = parent(canopy.soil_moisture_stress.parameters.θ_w)[1]
+            if canopy.soil_moisture_stress.parameters.θ_c isa ClimaCore.Fields.Field
+                ds.attrib["field_capacity"] = parent(canopy.soil_moisture_stress.parameters.θ_c)[1]
+                ds.attrib["wilting_point"] = parent(canopy.soil_moisture_stress.parameters.θ_w)[1]
+            else
+                ds.attrib["field_capacity"] = canopy.soil_moisture_stress.parameters.θ_c
+                ds.attrib["wilting_point"] = canopy.soil_moisture_stress.parameters.θ_w
+            end
         end
     end
 end

@@ -129,13 +129,14 @@ function soil_vangenuchten_parameters(
     interpolation_method = Interpolations.Linear(),
     lowres = true,
 )
+    file_tail = lowres ? "1.0x1.0x4" : "1km_4layer"
     context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
         Artifacts.soil_params_artifact_folder_path(; context, lowres)
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
+            "vGalpha_map_gupta_etal2020_$(file_tail).nc",
         ),
         "α",
         subsurface_space;
@@ -145,7 +146,7 @@ function soil_vangenuchten_parameters(
     vg_n = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
+            "vGn_map_gupta_etal2020_$(file_tail).nc",
         ),
         "n",
         subsurface_space;
@@ -158,7 +159,7 @@ function soil_vangenuchten_parameters(
     soil_params_mask = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
+            "vGalpha_map_gupta_etal2020_$(file_tail).nc",
         ),
         "α",
         subsurface_space;
@@ -187,7 +188,7 @@ function soil_vangenuchten_parameters(
     θ_r = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
+            "residual_map_gupta_etal2020_$(file_tail).nc",
         ),
         "θ_r",
         subsurface_space;
@@ -198,7 +199,7 @@ function soil_vangenuchten_parameters(
     ν = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
+            "porosity_map_gupta_etal2020_$(file_tail).nc",
         ),
         "ν",
         subsurface_space;
@@ -208,7 +209,7 @@ function soil_vangenuchten_parameters(
     K_sat = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
+            "ksat_map_gupta_etal2020_$(file_tail).nc",
         ),
         "Ksat",
         subsurface_space;

@@ -311,3 +311,63 @@ function get_site_parameters(site_ID::String)
         error("Site ID $site_ID not supported. Available sites: US-Var, US-Ha1, US-NR1, US-MOz")
     end
 end
+
+
+using NCDatasets
+
+"""
+    nearest_point_value(path, varname, qlat, qlon, qdepth)
+
+Return the value of `varname` at the grid point nearest to the given
+latitude (`qlat`), longitude (`qlon`), and depth (`qdepth`) from the NetCDF
+file at `path`.
+
+Assumes:
+- Rectilinear grid (1D lat, 1D lon, 1D depth)
+- No time dimension
+- Variable includes latitude, longitude, and depth dimensions in any order
+
+Only the coordinate vectors and the single selected value are read from disk.
+"""
+function nearest_point_value(path::AbstractString, varname::AbstractString,
+                             qlat::Real, qlon::Real, qdepth::Real)
+
+    to360(x) = (x % 360 + 360) % 360
+    to180(x) = x > 180 ? x - 360 : x
+    nearest_index(v, q) = argmin(abs.(v .- q))
+
+    ds = NCDataset(path, "r")
+    try
+        # Identify dimension positions by common aliases
+        v = ds[varname]
+        dims = dimnames(v)  # e.g., ("depth","lat","lon")
+        latdim = findfirst(in(("lat","latitude","y","nav_lat")), dims)
+        londim = findfirst(in(("lon","longitude","x","nav_lon")), dims)
+        depthdim = findfirst(in(("depth","lev","level","z","olevel","Depth")), dims)
+
+        latdim === nothing && error("Could not identify latitude dimension in $varname.")
+        londim === nothing && error("Could not identify longitude dimension in $varname.")
+        depthdim === nothing && error("Could not identify depth/level dimension in $varname.")
+
+        # Coordinate variable names usually match dim names in CF; use them directly
+        lat = ds[dims[latdim]][:]
+        lon = ds[dims[londim]][:]
+        depth = ds[dims[depthdim]][:]
+
+        # Adjust query longitude to file’s convention
+        lonq = maximum(lon) > 180 ? to360(qlon) : to180(qlon)
+
+        i_lat = nearest_index(lat, qlat)
+        i_lon = nearest_index(lon, lonq)
+        i_depth = nearest_index(depth, qdepth)
+
+        idx = Any[Colon() for _ in 1:length(dims)]
+        idx[latdim] = i_lat
+        idx[londim] = i_lon
+        idx[depthdim] = i_depth
+
+        return v[idx...]
+    finally
+        close(ds)
+    end
+end
