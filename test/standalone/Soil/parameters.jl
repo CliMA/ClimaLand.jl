@@ -91,7 +91,7 @@ end
     for p in vg_params
         # this gives a nelements x (n) matrix
         vals = parent(p)
-        @test length(unique(eachrow(vals))) > 1
+        @test size(vals, 1) > 1 && any(vals .!= @view vals[1:1, :])
     end
 end
 
