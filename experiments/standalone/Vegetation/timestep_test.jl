@@ -61,21 +61,15 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float64;
 earth_param_set = LP.LandParameters(FT);
-f_root_to_shoot = FT(3.5)
-plant_ν = FT(2.46e-4) # kg/m^2
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_leaf = FT(9.5)
-h_stem = FT(9)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [FT(0), h_stem, h_stem + h_leaf]
-time_offset = 7
+
+# Site-specific information
+time_offset = 7 # difference from UTC in hours
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
-start_date = DateTime(2010) + Hour(time_offset)
+start_date = DateTime(2010) + Hour(time_offset) # UTC
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
 N_days = 20.0
@@ -92,6 +86,12 @@ tf = t0 + N_days * seconds_per_day + 80
     earth_param_set,
     FT,
 )
+ground = PrescribedGroundConditions{FT}(;
+    α_PAR = FT(0.2),
+    α_NIR = FT(0.4),
+    ϵ = FT(0.99),
+);
+forcing = (; atmos, radiation, ground);
 
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
@@ -106,97 +106,16 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 )
 
-z0_m = FT(2)
-z0_b = FT(0.2)
+# Overwrite energy parameter for stability
+energy = BigLeafEnergyModel{FT}(; ac_canopy = FT(1e3))
 
-shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    z0_m,
-    z0_b,
-    earth_param_set,
-);
-
-soil_driver = PrescribedGroundConditions{FT}(;
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
-    ϵ = FT(0.99),
-);
-
-rt_params = TwoStreamParameters(
-    FT;
-    G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
-    Ω = FT(0.69),
-    λ_γ_PAR = FT(5e-7),
-)
-rt_model = TwoStreamModel{FT}(rt_params);
-
-cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
-stomatal_model = MedlynConductanceModel{FT}(cond_params);
-
-is_c3 = FT(1)
-photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
-photosynthesis_model = FarquharModel{FT}(photo_params);
-
-AR_params = AutotrophicRespirationParameters(FT)
-AR_model = AutotrophicRespirationModel{FT}(AR_params);
-
-f_root_to_shoot = FT(3.5)
-SAI = FT(1.0)
-RAI = FT(3f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
-
-K_sat_plant = FT(1.8e-6)
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
-
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-
-retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
-
-ν = FT(0.7)
-S_s = FT(1e-2 * 0.0098)
-
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
-    ν = ν,
-    S_s = S_s,
-    rooting_depth = FT(0.5),
-    conductivity_model = conductivity_model,
-    retention_model = retention_model,
-);
-
-
-plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_surfaces = compartment_surfaces,
-    compartment_midpoints = compartment_midpoints,
-);
-ac_canopy = FT(1e3)
-energy_model = ClimaLand.Canopy.BigLeafEnergyModel{FT}(
-    BigLeafEnergyParameters{FT}(ac_canopy),
-)
-
-canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-    parameters = shared_params,
-    domain = land_domain,
-    autotrophic_respiration = AR_model,
-    radiative_transfer = rt_model,
-    photosynthesis = photosynthesis_model,
-    conductance = stomatal_model,
-    energy = energy_model,
-    hydraulics = plant_hydraulics,
-    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
-        atmos,
-        radiation,
-        soil_driver,
-    ),
+# Construct canopy model
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    land_domain,
+    forcing,
+    LAI,
+    earth_param_set;
+    energy,
 );
 
 exp_tendency! = make_exp_tendency(canopy)
@@ -205,6 +124,7 @@ jacobian! = make_jacobian(canopy)
 drivers = ClimaLand.get_drivers(canopy)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 
+(; retention_model, ν, S_s) = canopy.hydraulics.parameters;
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
 S_l_ini =
@@ -249,7 +169,6 @@ for dt in dts
 
     # Set initial conditions
     Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-    Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
     set_initial_cache!(p, Y, t0)
 
@@ -309,7 +228,7 @@ dts = dts[2:end] ./ 60
 lines!(ax, dts, FT.(mean_err), label = "Mean Error")
 lines!(ax, dts, FT.(p95_err), label = "95th% Error")
 lines!(ax, dts, FT.(p99_err), label = "99th% Error")
-axislegend(ax)
+axislegend(ax, position = :rb)
 save(joinpath(savedir, "errors.png"), fig)
 
 # Create convergence plot
