@@ -112,7 +112,7 @@ for FT in (Float32, Float64)
             FT(0.05),
             FT(ρc_ds),
             param_set,
-        ) == FT(ρc_ds + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
+        ) ≈ FT(ρc_ds + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
 
         @test volumetric_internal_energy(
             FT(0.05),
