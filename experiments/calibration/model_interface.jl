@@ -91,6 +91,7 @@ function setup_model(
         time_interpolation_method = era5_time_interpolation_method,
     )
 
+    # Construct soil parameters
     (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
         ClimaLand.Soil.soil_composition_parameters(subsurface_space, FT)
     (; ν, hydrology_cm, K_sat, θ_r) =
@@ -111,27 +112,63 @@ function setup_model(
         θ_r,
         albedo = soil_albedo,
     )
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
-        R_sb = R_sb,
-    )
 
-    # Spatially varying canopy parameters from CLM
-    g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
-    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(surface_space)
-    (; is_c3, Vcmax25) =
-        ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+    soil_args = (domain = domain, parameters = soil_params)
+    soil_model_type = Soil.EnergyHydrology{FT}
+
+    # Construct canopy component parameters
+    # Set up autotrophic respiration
+    autotrophic_respiration_args = (;
+        parameters = Canopy.AutotrophicRespirationParameters(
+            calibrate_param_dict,
+        )
+    )
+    # Set up radiative transfer
     (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
         ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space)
-
-    # Energy Balance model
-    ac_canopy = FT(2.5e3)
+    radiative_transfer_args = (;
+        parameters = Canopy.TwoStreamParameters(
+            calibrate_param_dict;
+            Ω,
+            α_PAR_leaf,
+            τ_PAR_leaf,
+            α_NIR_leaf,
+            τ_NIR_leaf,
+            G_Function,
+        )
+    )
+    # Set up conductance
+    g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
+    (; is_c3, Vcmax25) =
+        ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+    conductance_args = (;
+        parameters = Canopy.MedlynConductanceParameters(
+            calibrate_param_dict;
+            g1,
+        )
+    )
+    # Set up photosynthesis
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            calibrate_param_dict,
+            is_c3;
+            Vcmax25 = Vcmax25,
+        )
+    )
+    # Set up plant hydraulics
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+        context = nothing,
+        start_date,
+        end_date = stop_date,
+    )
+    LAIfunction = ClimaLand.prescribed_lai_modis(
+        modis_lai_ncdata_path,
+        surface_space,
+        start_date;
+        time_interpolation_method = LinearInterpolation(),
+    )
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
-    f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
     K_sat_plant = FT(7e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m
@@ -152,88 +189,9 @@ function setup_model(
         n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
     compartment_surfaces =
         n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
-
-    z0_m = FT(0.13) * h_canopy
-    z0_b = FT(0.1) * z0_m
-
-    soil_args = (domain = domain, parameters = soil_params)
-    soil_model_type = Soil.EnergyHydrology{FT}
-
-    # Soil microbes model
-    soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-    soilco2_ps =
-        Soil.Biogeochemistry.SoilCO2ModelParameters(calibrate_param_dict)
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    soilco2_args = (; domain = domain, parameters = soilco2_ps)
-
-    # Now we set up the canopy model, which we set up by component:
-    # Component Types
-    canopy_component_types = (;
-        autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
-        radiative_transfer = Canopy.TwoStreamModel{FT},
-        photosynthesis = Canopy.FarquharModel{FT},
-        conductance = Canopy.MedlynConductanceModel{FT},
-        hydraulics = Canopy.PlantHydraulicsModel{FT},
-        energy = Canopy.BigLeafEnergyModel{FT},
-    )
-    # Individual Component arguments
-    # Set up autotrophic respiration
-    autotrophic_respiration_args = (;
-        parameters = Canopy.AutotrophicRespirationParameters(
-            calibrate_param_dict,
-        )
-    )
-    # Set up radiative transfer
-    radiative_transfer_args = (;
-        parameters = Canopy.TwoStreamParameters(
-            calibrate_param_dict;
-            Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
-            G_Function,
-        )
-    )
-    # Set up conductance
-    conductance_args = (;
-        parameters = Canopy.MedlynConductanceParameters(
-            calibrate_param_dict;
-            g1,
-        )
-    )
-    # Set up photosynthesis
-    photosynthesis_args = (;
-        parameters = Canopy.FarquharParameters(
-            calibrate_param_dict,
-            is_c3;
-            Vcmax25 = Vcmax25,
-        )
-    )
-    # Set up plant hydraulics
-    if LONGER_RUN
-        modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
-            start_date,
-            stop_date;
-            context,
-        )
-    else
-        modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-            context = nothing,
-            start_date,
-            end_date = stop_date,
-        )
-    end
-    LAIfunction = ClimaLand.prescribed_lai_modis(
-        modis_lai_ncdata_path,
-        surface_space,
-        start_date;
-        time_interpolation_method = LinearInterpolation(),
-    )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-
+    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(surface_space)
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
         ν = plant_ν,
@@ -250,6 +208,8 @@ function setup_model(
         compartment_surfaces = compartment_surfaces,
     )
 
+    # Energy Balance model
+    ac_canopy = FT(2.5e3)
     energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
 
     # Canopy component args
@@ -263,6 +223,8 @@ function setup_model(
     )
 
     # Other info needed
+    z0_m = FT(0.13) * h_canopy
+    z0_b = FT(0.1) * z0_m
     shared_params = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z0_m,
         z0_b,
@@ -274,8 +236,24 @@ function setup_model(
         domain = ClimaLand.obtain_surface_domain(domain),
     )
 
+    # Component Types
+    canopy_component_types = (;
+        autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
+        radiative_transfer = Canopy.TwoStreamModel{FT},
+        photosynthesis = Canopy.FarquharModel{FT},
+        conductance = Canopy.MedlynConductanceModel{FT},
+        hydraulics = Canopy.PlantHydraulicsModel{FT},
+        energy = Canopy.BigLeafEnergyModel{FT},
+    )
+
+    # Construct soil microbes parameters
+    soilco2_ps =
+        Soil.Biogeochemistry.SoilCO2ModelParameters(calibrate_param_dict)
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+    soilco2_args = (; domain = domain, parameters = soilco2_ps)
+    soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
+
     # Snow model
-    # α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
         FT(0.64),
@@ -304,6 +282,15 @@ function setup_model(
         domain = ClimaLand.obtain_surface_domain(domain),
     )
     snow_model_type = Snow.SnowModel
+
+    # Runoff model
+    f_over = FT(3.28) # 1/m
+    R_sb = FT(1.484e-4 / 1000) # m/s
+    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
+        f_over = f_over,
+        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
+        R_sb = R_sb,
+    )
 
     land_input = (
         atmos = atmos,
