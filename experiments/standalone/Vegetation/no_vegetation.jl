@@ -22,21 +22,16 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
-f_root_to_shoot = FT(3.5)
-SAI = FT(0.0)
-plant_ν = FT(2.46e-4) # kg/m^2
-n_stem = Int64(0)
-n_leaf = Int64(1)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_leaf / 2]
-compartment_surfaces = [FT(0), h_leaf]
-land_domain = Point(; z_sfc = FT(0.0))
+
 time_offset = 7
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
+land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset)
+
+# Prescribed forcing from Fluxnet data
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -47,45 +42,12 @@ start_date = DateTime(2010) + Hour(time_offset)
     earth_param_set,
     FT,
 )
-z0_m = FT(2)
-z0_b = FT(0.2)
-
-shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    z0_m,
-    z0_b,
-    earth_param_set,
-);
-
-soil_driver = PrescribedGroundConditions{FT}(;
+ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),
 );
-
-rt_params = TwoStreamParameters(
-    FT;
-    G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
-    Ω = FT(0.69),
-    λ_γ_PAR = FT(5e-7),
-)
-
-rt_model = TwoStreamModel{FT}(rt_params);
-
-cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
-
-stomatal_model = MedlynConductanceModel{FT}(cond_params);
-
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
-photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
-
-photosynthesis_model = FarquharModel{FT}(photo_params);
-
-AR_params = AutotrophicRespirationParameters(FT)
-AR_model = AutotrophicRespirationModel{FT}(AR_params);
+forcing = (; atmos, radiation, ground);
 
 function fakeLAIfunction(t)
     if t < 30 * 24 * 3600
@@ -96,66 +58,20 @@ function fakeLAIfunction(t)
         0.0
     end
 end
+LAI = TimeVaryingInput(fakeLAIfunction)
 
+# Set up plant hydraulics with no vegetation
+SAI = RAI = FT(0)
+hydraulics = PlantHydraulicsModel{FT}(land_domain, LAI; SAI, RAI);
 
-f_root_to_shoot = FT(3.5)
-SAI = FT(0)
-RAI = FT(2 * f_root_to_shoot)
-ai_parameterization =
-    PrescribedSiteAreaIndex{FT}(TimeVaryingInput(fakeLAIfunction), SAI, RAI)
-rooting_depth = FT(1.0);
-
-K_sat_plant = FT(1.8e-8)
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-a = FT(0.05 * 0.0098)
-
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-
-retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
-
-ν = FT(0.7)
-S_s = FT(1e-2 * 0.0098)
-
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
-    ν = ν,
-    S_s = S_s,
-    rooting_depth = rooting_depth,
-    conductivity_model = conductivity_model,
-    retention_model = retention_model,
+# Construct a CanopyModel with default parameters
+canopy = ClimaLand.Canopy.CanopyModel{FT}(
+    land_domain,
+    forcing,
+    LAI,
+    earth_param_set;
+    hydraulics,
 );
-
-
-plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_surfaces = compartment_surfaces,
-    compartment_midpoints = compartment_midpoints,
-);
-
-energy_model = ClimaLand.Canopy.BigLeafEnergyModel{FT}(
-    BigLeafEnergyParameters{FT}(FT(1e3)),
-)
-
-canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-    parameters = shared_params,
-    domain = land_domain,
-    autotrophic_respiration = AR_model,
-    radiative_transfer = rt_model,
-    photosynthesis = photosynthesis_model,
-    conductance = stomatal_model,
-    energy = energy_model,
-    hydraulics = plant_hydraulics,
-    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
-        atmos,
-        radiation,
-        soil_driver,
-    ),
-);
-
 
 Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy);
@@ -165,17 +81,16 @@ jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 ψ_leaf_0 = FT(-2e5 / 9800)
-
+(; retention_model, ν, S_s) = canopy.hydraulics.parameters;
 S_l_ini = inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
 
 Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini)
-
-
 
 t0 = 0.0
 N_days = 10
 tf = t0 + 3600 * 24 * N_days
 dt = 225.0;
+
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);

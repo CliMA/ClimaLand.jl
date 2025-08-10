@@ -212,11 +212,25 @@ using .Biogeochemistry
 
 Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
 
+The argument `forcing` should be a NamedTuple containing two fields: `atmos` and `radiation`.
+
 When running the soil model in standalone mode, `prognostic_land_components = (:soil,)`, while for running integrated land models,
 this should be a list of the component models. This value of this argument must be the same across all components in the land model.
 
 Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
-changed with keyword arguments.
+changed with keyword arguments. Note that these parameters must all be of the same type: either `FT` or ClimaCore Fields.
+By default they are Fields read in from data, so in practice this means if some values are provided as Floats, all of these
+parameter defaults must be overwritten as Floats.
+
+`retention_parameters` should be a NamedTuple with the following fields:
+- `ν`: soil porosity
+- `hydrology_cm`: the hydrology closure model being used
+- `K_sat`: saturated hydraulic conductivity
+- `θ_r`: residual water content
+`composition_parameters` should be a NamedTuple with the following fields:
+- `ν_ss_om`: soil organic matter volume fraction
+- `ν_ss_quartz`: soil quartz volume fraction
+- `ν_ss_gravel`: soil gravel volume fraction
 
 The runoff and albedo parameterizations are also provided and can be changed via keyword argument;
 additional sources may be required in your model if the soil model will be composed with other
