@@ -7,8 +7,6 @@ export default_diagnostics
 # If you are developing new models, add your defaults here. If you want to add
 # more high level interfaces, add them here. Feel free to include extra files.
 
-# Bucket model
-
 """
     function common_diagnostics(
                                 period,
@@ -50,14 +48,17 @@ end
 include("standard_diagnostic_frequencies.jl")
 
 # The default diagnostics currently require a start date because they use Dates.Period.
-default_diagnostics(
+function default_diagnostics(
     model::ClimaLand.AbstractModel,
     start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
     outdir,
-) = []
+)
+    @warn "Default diagnostics not available when running without a start date."
+    return []
+end
 
 function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
-    # a starting date is required for default diagnostics
+    # a start date is required for default diagnostics
     domain = ClimaLand.get_domain(model)
     default_diagnostic_domain =
         haskey(domain.space, :subsurface) ? domain.space.subsurface :
@@ -66,178 +67,80 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
     return default_diagnostics(model, start_date; output_writer)
 end
 
-# Bucket
+"""
+    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly)
+
+For a general AbstractModel, we need a specification of output_vars to determine which diagnostics to output.
+
+The input `output_vars` can have 3 values:
+- `:long` - all diagnostics are output
+- `:short` - a short list of diagnostics is output
+- `_::Vector{String}` - a user-defined list of diagnostics is output
+
+Currently, this method will work for the following models:
+- `CanopyModel`
+- `SoilCanopyModel`
+- `LandModel`
+- `BucketModel`
+`EnergyHydrology` has a specialized method that handles conservation diagnostics.
+"""
 function default_diagnostics(
-    land_model::BucketModel{FT},
+    model::Union{
+        CanopyModel{FT},
+        SoilCanopyModel{FT},
+        LandModel{FT},
+        BucketModel{FT},
+    },
     start_date;
     output_writer,
+    output_vars = :short,
     average_period = :monthly,
 ) where {FT}
+    define_diagnostics!(model)
 
-    define_diagnostics!(land_model)
-
-    bucket_diagnostics = [
-        "swa",
-        "rn",
-        "tsfc",
-        "qsfc",
-        "lhf",
-        "rae",
-        "shf",
-        "vflux",
-        "rhosfc",
-        "tsoil",
-        "wsoil",
-        "wsfc",
-        "ssfc",
-    ]
-
-    if average_period == :hourly
-        default_outputs = hourly_averages(
-            FT,
-            bucket_diagnostics...;
-            output_writer,
-            start_date,
-        )
-    elseif average_period == :daily
-        default_outputs =
-            daily_averages(FT, bucket_diagnostics...; output_writer, start_date)
-    elseif average_period == :monthly
-        default_outputs = monthly_averages(
-            FT,
-            bucket_diagnostics...;
-            output_writer,
-            start_date,
-        )
-    end
-
-    return [default_outputs...]
-end
-
-# SoilCanopyModel
-function default_diagnostics(
-    land_model::SoilCanopyModel{FT},
-    start_date;
-    output_writer,
-    output_vars = :long,
-    average_period = :daily,
-) where {FT}
-
-    define_diagnostics!(land_model)
-    possible_diags = [
-        "swa",
-        "sif",
-        "ra",
-        "gs",
-        "trans",
-        "clhf",
-        "cshf",
-        "lwp",
-        # "fa", # return a Tuple
-        "far",
-        "lai",
-        "msf",
-        "rai",
-        "sai",
-        "gpp",
-        "an",
-        "rd",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "lwn",
-        "swn",
-        "soc",
-        "airp",
-        "rain",
-        "lwd",
-        "swd",
-        "snow",
-        "qsfc",
-        "ws",
-        "infil",
-        "shc",
-        "stc",
-        "swp",
-        "soilrn",
-        "tsoil",
-        "soillhf",
-        "soilshf",
-        "hr",
-        "scd",
-        "scms",
-        "ct",
-        "sco2",
-        "swc",
-        # "pwc", # return a Tuple
-        "si",
-        "sie",
-        "swu",
-        "lwu",
-        "er",
-        "et",
-        "sr",
-        "rn",
-        "lhf",
-        "shf",
-        "salb",
-    ]
+    possible_diags = get_possible_diagnostics(model)
     if output_vars == :long
-        soilcanopy_diagnostics = possible_diags
+        diagnostics = possible_diags
     elseif output_vars == :short
-        soilcanopy_diagnostics = [
-            "gpp",
-            "ct",
-            "lai",
-            "sco2",
-            "swc",
-            "si",
-            "swa",
-            "lwu",
-            "et",
-            "er",
-            "sr",
-            "sif",
-        ]
+        diagnostics = get_short_diagnostics(model)
     else
         @assert typeof(output_vars) <: Vector{String}
         @assert all([var ∈ possible_diags for var in output_vars])
-        soilcanopy_diagnostics = output_vars
+        diagnostics = output_vars
     end
 
-    if average_period == :hourly
-        default_outputs = hourly_averages(
-            FT,
-            soilcanopy_diagnostics...;
-            output_writer,
-            start_date,
-        )
+
+    if average_period == :halfhourly
+        default_outputs =
+            halfhourly_averages(FT, diagnostics...; output_writer, start_date)
+    elseif average_period == :hourly
+        default_outputs =
+            hourly_averages(FT, diagnostics...; output_writer, start_date)
     elseif average_period == :daily
-        default_outputs = daily_averages(
-            FT,
-            soilcanopy_diagnostics...;
-            output_writer,
-            start_date,
-        )
+        default_outputs =
+            daily_averages(FT, diagnostics...; output_writer, start_date)
     elseif average_period == :monthly
-        default_outputs = monthly_averages(
-            FT,
-            soilcanopy_diagnostics...;
-            output_writer,
-            start_date,
-        )
+        default_outputs =
+            monthly_averages(FT, diagnostics...; output_writer, start_date)
+    else
+        @error("Invalid diagnostics average period $(average_period)")
     end
-
     return [default_outputs...]
 end
 
+"""
+    default_diagnostics(
+        land_model::EnergyHydrology{FT},
+        start_date;
+        output_writer,
+        average_period = :monthly,
+        conservation = false,
+        conservation_period = Day(10),
+    ) where {FT}
 
-# SoilModel
+Define a method specific to the EnergyHydrology model so that we can
+handle conservation diagnostics specially.
+"""
 function default_diagnostics(
     land_model::EnergyHydrology{FT},
     start_date;
@@ -249,9 +152,15 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
 
-    soil_diagnostics = ["swc", "si", "sie", "et"]
-
-    if average_period == :hourly
+    soil_diagnostics = get_short_diagnostics(land_model)
+    if average_period == :halfhourly
+        default_outputs = halfhourly_averages(
+            FT,
+            soil_diagnostics...;
+            output_writer,
+            start_date,
+        )
+    elseif average_period == :hourly
         default_outputs =
             hourly_averages(FT, soil_diagnostics...; output_writer, start_date)
     elseif average_period == :daily
@@ -284,17 +193,141 @@ function default_diagnostics(
     return [default_outputs..., additional_outputs...]
 end
 
-# Land Model
 function default_diagnostics(
-    land_model::LandModel{FT},
+    model::AbstractModel,
     start_date;
     output_writer,
-    output_vars = :short,
-    average_period = :monthly,
-) where {FT}
+    output_vars,
+    average_period,
+)
+    @warn(
+        "No default diagnostics defined for model type $(typeof(model)); consider extending `default_diagnostics` for this model type."
+    )
+    return []
+end
 
-    define_diagnostics!(land_model)
-    possible_diags = [
+
+"""
+    get_possible_diagnostics(model)
+
+Return a list containing all possible diagnostics for the given model.
+See the file `src/diagnostics/land_compute_methods.jl` to see which model
+variable(s) each diagnostic comes from.
+"""
+function get_possible_diagnostics(model::EnergyHydrology{FT}) where {FT}
+    return ["swc", "si", "sie", "tsoil", "et", "epa", "epac", "wvpa", "wvpac"]
+end
+function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
+    return [
+        "sif",
+        "ra",
+        "gs",
+        "trans",
+        "clhf",
+        "cshf",
+        "lwp",
+        # "fa", # return a Tuple
+        "far",
+        "lai",
+        "msf",
+        "rai",
+        "sai",
+        "gpp",
+        "an",
+        "rd",
+        "vcmax25",
+        "nir",
+        "anir",
+        "rnir",
+        "tnir",
+        "par",
+        "apar",
+        "rpar",
+        "tpar",
+        "lwn",
+        "swn",
+        "ct",
+        "shf",
+        "lhf",
+        "er",
+        "et",
+        "airp", # start of driver diagnostics
+        "rain",
+        "snow",
+        "lwd",
+        "swd",
+        "qsfc",
+        "ws",
+    ]
+end
+function get_possible_diagnostics(model::SoilCanopyModel{FT}) where {FT}
+    return [
+        "swa",
+        "sif", # start of canopy diagnostics
+        "ra",
+        "gs",
+        "trans",
+        "clhf",
+        "cshf",
+        "lwp",
+        # "fa", # return a Tuple
+        "far",
+        "lai",
+        "msf",
+        "rai",
+        "sai",
+        "gpp",
+        "an",
+        "rd",
+        "vcmax25",
+        "nir",
+        "anir",
+        "rnir",
+        "tnir",
+        "par",
+        "apar",
+        "rpar",
+        "tpar",
+        "lwn",
+        "swn",
+        "ct",
+        "soc", # start of driver diagnostics
+        "airp",
+        "rain",
+        "lwd",
+        "swd",
+        "snow",
+        "qsfc",
+        "ws",
+        "infil", # start of soil diagnostics
+        "shc",
+        "stc",
+        "swp",
+        "soilrn",
+        "tsoil",
+        "soillhf",
+        "soilshf",
+        "hr",
+        "scd",
+        "scms",
+        "sco2",
+        "swc",
+        # "pwc", # return a Tuple
+        "si",
+        "sie",
+        "swu",
+        "lwu",
+        "er",
+        "et",
+        "sr",
+        "rn",
+        "lhf",
+        "shf",
+        "salb",
+    ]
+end
+function get_possible_diagnostics(model::LandModel{FT}) where {FT}
+    return [
         "swa",
         "sif",
         "ra",
@@ -312,6 +345,10 @@ function default_diagnostics(
         "gpp",
         "an",
         "rd",
+        "vcmax25",
+        "vcmax",
+        "ac",
+        "aj",
         "nir",
         "anir",
         "rnir",
@@ -361,68 +398,79 @@ function default_diagnostics(
         "tair",
         "precip",
     ]
-    if output_vars == :long
-        snowyland_diagnostics = possible_diags
-    elseif output_vars == :short
-        snowyland_diagnostics = [
-            "gpp",
-            "swc",
-            "si",
-            "sie",
-            "swu",
-            "lwu",
-            "et",
-            "sr",
-            "ssr",
-            "swe",
-            "shf",
-            "lhf",
-            "trans",
-            "msf",
-            "lwp",
-            "tsoil",
-            "lai",
-            "iwc",
-            "swd",
-            "lwd",
-            "snowc",
-            "tair",
-            "precip",
-        ]
-    else
-        @assert typeof(output_vars) <: Vector{String}
-        @assert all([var ∈ possible_diags for var in output_vars])
-        snowyland_diagnostics = output_vars
-    end
-
-    if average_period == :hourly
-        default_outputs = hourly_averages(
-            FT,
-            snowyland_diagnostics...;
-            output_writer,
-            start_date,
-        )
-    elseif average_period == :daily
-        default_outputs = daily_averages(
-            FT,
-            snowyland_diagnostics...;
-            output_writer,
-            start_date,
-        )
-    elseif average_period == :monthly
-        default_outputs = monthly_averages(
-            FT,
-            snowyland_diagnostics...;
-            output_writer,
-            start_date,
-        )
-    end
+end
+function get_possible_diagnostics(model::BucketModel{FT}) where {FT}
+    return [
+        "swa",
+        "rn",
+        "tsfc",
+        "qsfc",
+        "lhf",
+        "rae",
+        "shf",
+        "vflux",
+        "rhosfc",
+        "tsoil",
+        "wsoil",
+        "wsfc",
+        "ssfc",
+    ]
 end
 
-# fallback method if no default diagnostics are defined
-default_diagnostics(
-    land_model::ClimaLand.AbstractModel,
-    start_date;
-    output_writer,
-    average_period = nothing,
-) = []
+"""
+    get_short_diagnostics(model)
+
+Return a shortened list of highlighted diagnostics for the given model.
+"""
+function get_short_diagnostics(model::EnergyHydrology{FT}) where {FT}
+    return ["swc", "si", "sie", "tsoil", "et"]
+end
+function get_short_diagnostics(model::CanopyModel{FT}) where {FT}
+    return ["gpp", "ct", "lai", "trans", "er", "sif"]
+end
+function get_short_diagnostics(model::SoilCanopyModel{FT}) where {FT}
+    return [
+        "gpp",
+        "ct",
+        "lai",
+        "sco2",
+        "swc",
+        "si",
+        "swa",
+        "lwu",
+        "et",
+        "er",
+        "sr",
+        "sif",
+    ]
+end
+function get_short_diagnostics(model::LandModel{FT}) where {FT}
+    return [
+        "gpp",
+        "swc",
+        "si",
+        "sie",
+        "swu",
+        "lwu",
+        "et",
+        "sr",
+        "ssr",
+        "swe",
+        "shf",
+        "lhf",
+        "trans",
+        "msf",
+        "lwp",
+        "tsoil",
+        "lai",
+        "iwc",
+        "swd",
+        "lwd",
+        "snowc",
+        "tair",
+        "precip",
+    ]
+end
+function get_short_diagnostics(model::BucketModel{FT}) where {FT}
+    return get_possible_diagnostics(model)
+end
