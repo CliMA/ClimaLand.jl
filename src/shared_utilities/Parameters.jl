@@ -77,6 +77,32 @@ is no option to change them individually.
 LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
     LandParameters(CP.create_toml_dict(FT))
 
+"""
+    LandParameters(FT, filepaths...)
+
+Construct `LandParameters` from a list of TOML files, whose element type is
+`FT`.
+
+If `override = false`, then non-unique TOML entries are not allowed. If
+`override = true`, then parameters from later TOML files in `filepaths` will
+overwrite the parameters from earlier TOML files.
+"""
+function LandParameters(FT, filepaths..., override = false)
+    all(filepath -> endswith(filepath, ".toml"), filepaths) ||
+        error("File paths ($filepaths) must be TOML files")
+    toml_dict = CP.create_toml_dict(
+        FT,
+        default_file = CP.merge_toml_files(
+            [
+                joinpath(pkgdir(CP), "src", "parameters.toml")
+                filepaths...
+            ],
+            overrride = override,
+        ),
+    )
+    return LandParameters(toml_dict)
+end
+
 function LandParameters(toml_dict::CP.AbstractTOMLDict)
     thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
@@ -154,6 +180,28 @@ to the variables in the parameter structs as noted below:
 function get_default_parameter(FT, climaparams_name)
     toml_dict = CP.create_toml_dict(FT)
     return CP.get_parameter_values(toml_dict, string(climaparams_name))[climaparams_name]
+end
+
+"""
+    create_toml_dict(FT, filepaths...; override = false)
+
+Creates a `ParamDict{FT}` struct from `filepaths`.
+
+If `override = false`, then non-unique TOML entries are not allowed. If
+`override = true`, then parameters from later TOML files in `filepaths` will
+overwrite the parameters from earlier TOML files.
+"""
+function create_toml_dict(FT, filepaths...; override = false)
+Construct a `ParamDict{FT}` struct from `filepaths`.
+        error("File paths ($filepaths) must be TOML files")
+    toml_dict = CP.create_toml_dict(
+        FT,
+        override_file = CP.merge_toml_files(
+            [filepaths...],
+            override = override,
+        ),
+    )
+    return toml_dict
 end
 
 end # module
