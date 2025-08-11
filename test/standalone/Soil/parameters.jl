@@ -64,6 +64,8 @@ const FT = Float64;
     @test eltype(hcm) == ClimaLand.Soil.vanGenuchten{FT}
 end
 
+# this tests if the upstream ClimaArtifacts generation for the low res (1 deg x 1 deg)
+# van Genuchten param maps is creating depth-varying maps as expected
 @testset "Depth varying van Genuchten parameters" begin
     regridder_type = :InterpolationsRegridder
     extrapolation_bc = (

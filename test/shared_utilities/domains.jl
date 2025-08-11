@@ -644,7 +644,8 @@ end
         θ_r_nc = ncd["θ_r"][long_ind, lat_ind, :]
 
         # Construct a Column domain at a longlat that appears in the dataset
-        # and at the depths of the native data (not testing interpolation)
+        # The dz_tuple is chosen so that the depths of the column will map to
+        # the 4 layers in the data using nearest neighbor interpolation
         nelements = length(zs)
         longlat = (long, lat)
         zlim = FT.((-1, 0))
@@ -657,6 +658,8 @@ end
         subsurface_space = column.space.subsurface
 
         # Get the residual water content at this lat/lon using ClimaUtilities
+        # use nearest neighbor interpolation to map the column to data in the depth
+        # dimension
         (; θ_r) = ClimaLand.Soil.soil_vangenuchten_parameters(
             subsurface_space,
             FT;
