@@ -87,7 +87,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-       interpolation_method = Interpolations.Linear(),
+       interpolation_method = Interpolations.Constant(),
     )
 
 Reads spatially varying van Genuchten parameters for the soil model, from NetCDF files
@@ -126,7 +126,7 @@ function soil_vangenuchten_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = true,
 )
     context = ClimaComms.context(subsurface_space)
@@ -239,7 +239,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         path = Artifacts.soil_grids_params_artifact_path(;
                                                                    lowres = true,
                                                                    ClimaComms.context(subsurface_space),
@@ -274,7 +274,7 @@ function soil_composition_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     path = Artifacts.soil_grids_params_artifact_path(;
         lowres = true,
         context = ClimaComms.context(subsurface_space),
@@ -330,7 +330,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
     )
 
 Returns the spatially varying parameter `fmax` of the TOPMODEL
@@ -352,7 +352,7 @@ function topmodel_fmax(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
 )
     # Read in f_max data and topmodel data land sea mask
     infile_path = Artifacts.topmodel_data_path()
