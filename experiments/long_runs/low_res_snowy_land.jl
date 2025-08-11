@@ -62,11 +62,12 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         context,
         lowres = true,
     )
-    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    atmos, radiation = ClimaLand.prescribed_perturbed_forcing_era5(
         era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,
+        5.0,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
