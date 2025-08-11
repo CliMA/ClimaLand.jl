@@ -7,11 +7,7 @@ include(
 )
 
 using CairoMakie, GeoMakie, Poppler_jll, Printf, StatsBase
-LandSimVis =
-    Base.get_extension(
-        ClimaLand,
-        :LandSimulationVisualizationExt,
-    ).LandSimulationVisualizationExt
+import ClimaLand.LandSimVis as LandSimVis
 
 """
     ClimaCalibrate.observation_map(iteration)

@@ -181,7 +181,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 );
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; domain, drivers);
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers);
 
 # Read in prescribed LAI at the site from global MODIS data
 surface_space = domain.space.surface;

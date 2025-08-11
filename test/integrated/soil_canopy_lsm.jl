@@ -37,10 +37,7 @@ for FT in (Float32, Float64)
             soil_organic_carbon,
             atmos,
         )
-        soilco2 = Biogeochemistry.SoilCO2Model{FT}(;
-            domain,
-            drivers = soilco2_drivers,
-        )
+        soilco2 = Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
 
         # Canopy model
         canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
