@@ -1099,7 +1099,7 @@ function rh_from_dewpoint(Td_C::FT, T_C::FT) where {FT <: Real}
     b = FT(17.625) # unitless
     γ = Td_C * b / (c + Td_C)
     rh = exp(γ - b * T_C / (c + T_C))
-    return rh
+    return max(rh, FT(1.0))
 end
 
 """
