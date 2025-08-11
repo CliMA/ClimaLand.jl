@@ -1087,6 +1087,8 @@ end
 
 Returns the relative humidity given the dewpoint temperature in Celsius and the
 air temperature in Celsius, using the Magnus formula.
+Since this formula is not restricted to the [0,1] range,
+we enforce it.
 
 For more information on the Magnus formula, see e.g.
 Lawrence, Mark G. (1 February 2005).
@@ -1099,7 +1101,7 @@ function rh_from_dewpoint(Td_C::FT, T_C::FT) where {FT <: Real}
     b = FT(17.625) # unitless
     γ = Td_C * b / (c + Td_C)
     rh = exp(γ - b * T_C / (c + T_C))
-    return max(rh, FT(1.0))
+    return max(FT(0), min(rh, FT(1.0)))
 end
 
 """
