@@ -181,15 +181,12 @@ start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 nelements = (101, 15)
-domain = ClimaLand.Domains.global_domain(
-    FT;
-    context,
-    nelements,
-    mask_threshold = FT(0.99),
-)
+domain = ClimaLand.Domains.global_domain(FT; context, nelements)
 params = LP.LandParameters(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, params)
-simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_not_spunup(model)
+simulation =
+    LandSimulation(FT, start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"
