@@ -58,7 +58,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     soil_α_NIR,
     Ω,
     χl,
-    G_Function,
     α_PAR_leaf,
     λ_γ_PAR,
     τ_PAR_leaf,

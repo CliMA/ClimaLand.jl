@@ -186,8 +186,8 @@ function FluxnetSimulations.get_comparison_data(
         v = data[:, idx]
         missing_mask = var_missing.(v; val)
         not_missing_mask = .~missing_mask
-        n_missing = sum(not_missing_mask)
-        if n_missing <= length(v) # some data are present
+        n_missing = sum(missing_mask)
+        if n_missing < length(v) # some data are present
             v[missing_mask] .= sum(v[not_missing_mask]) / sum(not_missing_mask)
             return (; Symbol(climaland_shortname) => preprocess_func.(v))
         else
