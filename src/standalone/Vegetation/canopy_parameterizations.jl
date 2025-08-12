@@ -62,7 +62,7 @@ cosine of the solar zenith angle and the leaf orientation index.
 See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf.
 
 Note that the zenith angle is defined ∈ [0,2π), so to prevent a negative value
-of G when the sun is below the horizon, we clip cosθs >= 0
+of G when the sun is below the horizon, we clip cosθs >= 0.
 """
 function compute_G(G::CLMGFunction, cosθs::FT) where {FT}
     χl = G.χl
