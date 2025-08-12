@@ -24,11 +24,10 @@ component) or standalone (single component) modes.  </strong>
 # Introduction
 
 This is the repository of the CliMA land model code. Here are some notable features:
-- ClimaLand has a modular design, models can be run as standalone (e.g., soil moisture only) or integrated (e.g., soil moisture and energy AND canopy AND snow, etc.)
+- ClimaLand has a modular design, models can be run as standalone (e.g., soil moisture/energy only) or integrated (e.g., soil moisture/energy AND canopy AND snow, etc.)
 - ClimaLand can simulate single columns, regional boxes, and global runs
 - ClimaLand is CPU and GPU compatible
-- ClimaLand welcome contributions: please feel free to reach out to us with questions about how to get started, create a branch, and extend our code. For example, a modeler might want to test a new stomatal conductance model.
-- ClimaLand provides APIs and UIs at multiple levels.
+- ClimaLand welcomes contributions! Please feel free to reach out to us with questions about how to get started, create a branch, and extend our code.
 
 ## Installation
 
@@ -40,14 +39,7 @@ julia> using Pkg
 julia> Pkg.add(ClimaLand)
 ```
 
-Which is equivalent to doing
-
-```Julia
-julia> ] # typing the ] key with go into package REPL mode
-pkg> add ClimaLand
-```
-
-You are now ready to use `ClimaLand.jl`. To get started, we recommend reading the [documentation](https://clima.github.io/ClimaLand.jl/dev/).
+You are now ready to use `ClimaLand.jl`. To get started, we recommend reading the [documentation](https://clima.github.io/ClimaLand.jl/stable/).
 
 ## Models
 
@@ -55,21 +47,22 @@ In our code base, a "model" define a set of prognostic variables which must be t
 
 <strong> Component Models: </strong>
 
-- RichardsModel <: AbstractSoilModel <: AbstractModel (runnable only in standalone mode)
+- `RichardsModel`: Soil model option; runnable only in standalone mode
 
-- EnergyHydrologyModel <: AbstractSoilModel <: AbstractModel (runnable in standalone mode, or as part of a land model)
+- `EnergyHydrology`: Soil model option; runnable in standalone mode, or as part of an integrated model
 
-- CanopyModel <: AbstractVegetationModel <: AbstractModel  (runnable in standalone mode, or as part of a land model)
+- `CanopyModel`: runnable in standalone mode, or as part of an integrated model
 
-- SnowModel <: AbstractSnowModel <: AbstractModel (runnable in standalone mode, or as part of a land model)
+- `SnowModel`: runnable in standalone mode, or as part of an integrated model
 
 <strong> Combined Models: </strong>
 
-- SoilCanopyModel <: AbstractLandModel <: AbstractModel (an example of a land model, made of individual component models which are solved simultaneously but taking into account interactions between the components)
+- `SoilCanopyModel`: an integrated model made of individual component models `EnergyHydrology` + `CanopyModel`
+- `LandModel`: an integrated model made of individual component models `EnergyHydrology` + `CanopyModel` + `SnowModel` + `SoilCO2Model`
 
 ## Notes
 
-Recommended Julia Version: Stable release v1.11.1. CI tests Julia v1.10 and 1.11.
+Recommended Julia Version: Stable release v1.11.x. CI tests Julia v1.10 and 1.11.
 
 ClimaLand.jl is a different model from the original CliMA Land,
 which aims to utilize remote sensing data through more complex canopy RT
