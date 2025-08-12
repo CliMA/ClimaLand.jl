@@ -146,7 +146,7 @@ function ClimaLand.surface_height(model::CanopyModel{FT}, _...) where {FT}
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         canopy_boundary_fluxes!(p, canopy, Y, t)
     end
     return update_boundary_fluxes!
@@ -265,7 +265,7 @@ because the canopy requires a different resistance for vapor and sensible heat
 fluxes, and the resistances depend on ustar, which we must compute using
 SurfaceFluxes before adjusting to account for these resistances.
 """
-function ClimaLand.turbulent_fluxes!(
+NVTX.@annotate function ClimaLand.turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
     model::CanopyModel,

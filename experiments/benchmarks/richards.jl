@@ -33,6 +33,7 @@ import NCDatasets
 
 import ClimaComms
 ClimaComms.@import_required_backends
+import CUDA
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaTimeSteppers as CTS
@@ -235,7 +236,6 @@ if profiler == "flamegraph"
     @info "Done profiling"
 
     if ClimaComms.device() isa ClimaComms.CUDADevice
-        import CUDA
         lprob, lode_algo, lΔt, lcb = setup_simulation()
         p = CUDA.@profile SciMLBase.solve(
             lprob,
@@ -278,7 +278,8 @@ if profiler == "flamegraph"
         @info "Saved allocation flame to $alloc_flame_file"
     end
 
-    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark" &&
+       ClimaComms.device() isa ClimaComms.CUDADevice
         PREVIOUS_BEST_TIME = 0.6
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
