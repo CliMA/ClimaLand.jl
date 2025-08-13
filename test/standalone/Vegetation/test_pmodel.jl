@@ -231,8 +231,6 @@ end
     long = FT(-92.2000)
     start_date = DateTime(2025)
     dt = 600.0 # 10 minutes
-    t0 = 0.0 # integrator start time
-
     # Canopy domain
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 
@@ -253,7 +251,7 @@ end
     )
 
     @test_nowarn pmodel_callback =
-        make_PModel_callback(FT, start_date, t0, dt, canopy)
+        make_PModel_callback(FT, start_date, dt, canopy)
 end
 
 

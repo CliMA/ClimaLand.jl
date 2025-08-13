@@ -717,8 +717,7 @@ end
     function make_PModel_callback(
         ::Type{FT},
         start_date::Dates.DateTime, 
-        t0::Union{Dates.DateTime, AbstractFloat},
-        dt::Union{Dates.DateTime, AbstractFloat}, 
+        dt::Union{AbstractFloat, Dates.Period}, 
         canopy, 
         longitude = nothing
     ) where {FT <: AbstractFloat}
@@ -735,7 +734,7 @@ application here (since meteorological drivers are often updated at coarser time
 Args
 - `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
 - `start_date`: datetime object for the start of the simulation (UTC).
-- `dt`: timestep in seconds (this will get cast to type FT)
+- `dt`: timestep 
 - `canopy`: the canopy object containing the P-model parameters and constants.
 - `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on 
     a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then 
@@ -744,13 +743,16 @@ Args
 function make_PModel_callback(
     ::Type{FT},
     start_date::Dates.DateTime,
-    t0::Union{Dates.DateTime, AbstractFloat},
-    dt::Union{Dates.DateTime, AbstractFloat},
+    dt::Union{AbstractFloat, Dates.Period},
     canopy,
     longitude = nothing,
 ) where {FT <: AbstractFloat}
-    function seconds_after_midnight(t)
-        return Hour(t).value * 3600 + Minute(t).value * 60 + Second(t).value
+    function seconds_after_midnight(date)
+        return Float64(
+            Hour(date).value * 3600 +
+            Minute(date).value * 60 +
+            Second(date).value,
+        )
     end
 
     if isnothing(longitude)
@@ -768,18 +770,17 @@ function make_PModel_callback(
     # effects of obliquity and orbital eccentricity, so it is constant throughout the year
     # the max error is on the order of 20 minutes
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-    start_t = FT(seconds_after_midnight(start_date))
-    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
+    start_t = seconds_after_midnight(start_date)
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
 
     return FrequencyBasedCallback(
         dt,         # period of this callback
         start_date, # initial datetime, UTC 
-        t0,         # integrator start time, in seconds UTC
         dt;         # integration timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(
             integrator.p,
             integrator.u,
-            (integrator.t + start_t) % (seconds_in_a_day), # current time in seconds UTC; 
+            (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC; 
             canopy = canopy,
             dt = dt,
             local_noon = local_noon,
