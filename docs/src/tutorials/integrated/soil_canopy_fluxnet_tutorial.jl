@@ -32,7 +32,7 @@ using ClimaLand.Simulations
 import ClimaLand.Parameters as LP
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis;
 
 # Define the floating point precision desired (64 or 32 bit), and get the
@@ -131,6 +131,10 @@ LandSimVis.make_diurnal_timeseries(
     simulation;
     short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
     spinup_date = start_date + Day(20),
-    plot_name = "US_MOz_diurnal_timeseries.pdf",
+    plot_stem_name = "US_MOz_diurnal_timeseries",
 );
-# ![](US_MOz_diurnal_timeseries.pdf)
+# ![](gpp_US_MOz_diurnal_timeseries.png)
+# ![](shf_US_MOz_diurnal_timeseries.png)
+# ![](lhf_US_MOz_diurnal_timeseries.png)
+# ![](swu_US_MOz_diurnal_timeseries.png)
+# ![](lwu_US_MOz_diurnal_timeseries.png)

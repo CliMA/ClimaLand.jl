@@ -6,7 +6,7 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/calibration/observation_utils.jl"),
 )
 
-using CairoMakie, GeoMakie, Poppler_jll, Printf, StatsBase
+using CairoMakie, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 
 """

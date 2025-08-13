@@ -33,13 +33,12 @@ DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-Poppler_jll = "9c32591e-4766-534b-9725-b71a8799265b"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [extensions]
 FluxnetSimulationsExt = ["DelimitedFiles"]
-LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
+LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Printf", "StatsBase"]
 NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [compat]
@@ -66,7 +65,6 @@ LazyArtifacts = "1"
 LazyBroadcast = "1.0.0"
 LinearAlgebra = "1"
 NCDatasets = "0.14"
-Poppler_jll = "24"
 Printf = "1"
 SciMLBase = "2.53"
 StaticArrays = "1.6"

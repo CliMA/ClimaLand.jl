@@ -12,7 +12,6 @@ import NCDatasets
 using ClimaLand
 using StatsBase
 using Printf
-using Poppler_jll: pdfunite
 
 include("land_sim_vis/plotting_utils.jl")
 include("land_sim_vis/leaderboard/data_sources.jl")
@@ -98,13 +97,14 @@ end
         short_names = nothing,
         date = nothing,
         levels = nothing,
-	plot_name = "figures.pdf"
+	plot_stem_name = "figures"
 )
 
 Makes heatmaps using the diagnostics output of the `sim` simulation,
 specifically for the list of variables `short_names`, at the date
 given by `date`, and at the layers defined by `levels`; the output
-plots are saved in `savedir`.
+plots are saved in `savedir` with their short_name and the plot_stem_name
+combined to created the output file name: short_name_plot_stem_name.png.
 
 Please note that
 - `date` must be a DateTime, and the output closest to this date will be used
@@ -122,14 +122,14 @@ function LandSimVis.make_heatmaps(
     short_names = nothing,
     date = nothing,
     levels = nothing,
-    plot_name = "figures.pdf",
+    plot_stem_name = "figures",
 )
     model = sim.model
     LandSimVis.make_heatmaps(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics;
-        plot_name,
+        plot_stem_name,
         savedir,
         short_names,
         date,
@@ -144,7 +144,7 @@ function LandSimVis.make_heatmaps(
         ClimaLand.Domains.SphericalSurface,
     },
     diagnostics;
-    plot_name = "figures.pdf",
+    plot_stem_name = "figures",
     savedir,
     short_names,
     date,
@@ -163,7 +163,7 @@ function LandSimVis.make_heatmaps(
         diagdir,
         short_names,
         date;
-        plot_name,
+        plot_stem_name,
         levels,
     )
 end
@@ -172,7 +172,7 @@ function LandSimVis.make_heatmaps(
     model::ClimaLand.AbstractModel,
     domain::Union{ClimaLand.Domains.HybridBox, ClimaLand.Domains.Plane},
     diagnostics;
-    plot_name = "figures.pdf",
+    plot_stem_name = "figures",
     savedir,
     short_names,
     date,
@@ -191,7 +191,7 @@ function LandSimVis.make_heatmaps(
         diagdir,
         short_names,
         date;
-        plot_name,
+        plot_stem_name,
         levels,
         plot! = viz.heatmap2D!,
         mask = nothing,
@@ -206,7 +206,7 @@ function LandSimVis.make_heatmaps(
     model::ClimaLand.AbstractModel,
     domain::Union{ClimaLand.Domains.Point, ClimaLand.Domains.Column},
     diagnostics;
-    plot_name,
+    plot_stem_name,
     savedir,
     short_names,
     date,
@@ -220,7 +220,7 @@ end
         sim::ClimaLand.Simulations.LandSimulation;
         savedir = ".",
         short_names = nothing,
-	plot_name = "annual_timeseries.pdf",
+	plot_stem_name = "annual_timeseries",
 )
 
 Makes timeseries of the domain-averaged variable,
@@ -237,13 +237,13 @@ function LandSimVis.make_annual_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
-    plot_name = "annual_timeseries.pdf",
+    plot_stem_name = "annual_timeseries",
 )
     model = sim.model
     LandSimVis.make_annual_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics;
-        plot_name,
+        plot_stem_name,
         savedir,
         short_names,
     )
@@ -252,7 +252,7 @@ end
 function LandSimVis.make_annual_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics;
-    plot_name = "annual_timeseries.pdf",
+    plot_stem_name = "annual_timeseries",
     savedir = ".",
     short_names = nothing,
 )
@@ -265,7 +265,7 @@ function LandSimVis.make_annual_timeseries(
         ClimaLand.Domains.SphericalSurface,
     },
     diagnostics;
-    plot_name = "annual_timeseries.pdf",
+    plot_stem_name = "annual_timeseries",
     savedir = ".",
     short_names = nothing,
 )
@@ -281,7 +281,7 @@ function LandSimVis.make_annual_timeseries(
         savedir,
         diagdir,
         short_names;
-        plot_name,
+        plot_stem_name,
     )
 end
 
@@ -290,7 +290,7 @@ end
         sim::ClimaLand.Simulations.LandSimulation;
         savedir = ".",
         short_names = nothing,
-	plot_name = "diurnal_timeseries.pdf",
+	plot_stem_name = "diurnal_timeseries",
         comparison_data = nothing,
         spinup_date = sim.start_date
 )
@@ -298,8 +298,9 @@ end
 Computes and plots the average diurnal cycle of the diagnostic
 output of the simulation `sim`,
 specifically for the list of variables `short_names; the output
-plots are saved in `savedir` under the name `plot_name`. 
-Only data after the spinup_date is considered.
+plots are saved in `savedir` with their short_name and the plot_stem_name
+combined to created the output file name: short_name_plot_stem_name.png,
+after spinup is removed.
 
 The comparison data can optionally be provided as a NamedTuple; the data must 
 be labeled with a key equal to the same name as in `short_names`, 
@@ -316,7 +317,7 @@ function LandSimVis.make_diurnal_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
-    plot_name = "diurnal_timeseries.pdf",
+    plot_stem_name = "diurnal_timeseries",
     comparison_data = nothing,
     spinup_date = sim.start_date,
 )
@@ -325,7 +326,7 @@ function LandSimVis.make_diurnal_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics,
         sim.start_date;
-        plot_name,
+        plot_stem_name,
         savedir,
         short_names,
         comparison_data,
@@ -337,7 +338,7 @@ function LandSimVis.make_diurnal_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics,
     start_date;
-    plot_name = "diurnal_timeseries.pdf",
+    plot_stem_name = "diurnal_timeseries",
     savedir = ".",
     short_names = nothing,
     comparison_data = nothing,
@@ -350,7 +351,7 @@ function LandSimVis.make_diurnal_timeseries(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
     diagnostics,
     start_date;
-    plot_name = "diurnal_timeseries.pdf",
+    plot_stem_name = "diurnal_timeseries",
     savedir = ".",
     short_names = nothing,
     comparison_data = nothing,
@@ -368,7 +369,7 @@ function LandSimVis.make_diurnal_timeseries(
         savedir,
         diagnostics[diag_ids], # To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
         start_date;
-        plot_name,
+        plot_stem_name,
         comparison_data,
         spinup_date,
     )
@@ -379,7 +380,7 @@ end
         sim::ClimaLand.Simulations.LandSimulation;
         savedir = ".",
         short_names = nothing,
-	plot_name = "variable_timeseries.pdf",
+	plot_stem_name = "variable_timeseries",
         comparison_data = nothing,
         spinup_date = sim.start_date
 )
@@ -387,8 +388,9 @@ end
 Computes and plots the timeseries of the diagnostic
 output of the simulation `sim`,
 specifically for the list of variables `short_names; the output
-plots are saved in `savedir` under the name `plot_name`. 
-Only data after the spinup_date is considered.
+plots are saved in `savedir` with their short_name and the plot_stem_name
+combined to created the output file name: short_name_plot_stem_name.png,
+after spinup is removed.
 
 The comparison data can optionally be provided as a NamedTuple; the data must 
 be labeled with a key equal to the same name as in `short_names`, 
@@ -405,7 +407,7 @@ function LandSimVis.make_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
     short_names = nothing,
-    plot_name = "variable_timeseries.pdf",
+    plot_stem_name = "timeseries",
     comparison_data = nothing,
     spinup_date = sim.start_date,
 )
@@ -414,7 +416,7 @@ function LandSimVis.make_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics,
         sim.start_date;
-        plot_name,
+        plot_stem_name,
         savedir,
         short_names,
         comparison_data,
@@ -426,7 +428,7 @@ function LandSimVis.make_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics,
     start_date;
-    plot_name = "variable_timeseries.pdf",
+    plot_stem_name = "timeseries",
     savedir = ".",
     short_names = nothing,
     comparison_data = nothing,
@@ -439,7 +441,7 @@ function LandSimVis.make_timeseries(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
     diagnostics,
     start_date;
-    plot_name = "variable_timeseries.pdf",
+    plot_stem_name = "timeseries",
     savedir = ".",
     short_names = nothing,
     comparison_data = nothing,
@@ -457,14 +459,14 @@ function LandSimVis.make_timeseries(
         savedir,
         diagnostics[diag_ids],# To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
         start_date;
-        plot_name,
+        plot_stem_name,
         comparison_data,
         spinup_date,
     )
 end
 
 """
-    check_conservation(sim::ClimaLand.Simulations.LandSimulation; savedir = ".", plot_name = "conservation_figures.pdf")
+    check_conservation(sim::ClimaLand.Simulations.LandSimulation; savedir = ".", plot_stem_name = "conservation")
 
 Creates a plot which assess conservation of energy and water by the simulation;
 the outut is saved in `savedir`.
@@ -472,7 +474,7 @@ the outut is saved in `savedir`.
 function LandSimVis.check_conservation(
     sim::ClimaLand.Simulations.LandSimulation;
     savedir = ".",
-    plot_name = "conservation_figures.pdf",
+    plot_stem_name = "conservation",
 )
     model = sim.model
     LandSimVis.check_conservation(
@@ -480,7 +482,7 @@ function LandSimVis.check_conservation(
         ClimaLand.get_domain(model),
         sim.diagnostics,
         savedir,
-        plot_name,
+        plot_stem_name,
     )
 end
 
@@ -493,10 +495,10 @@ function LandSimVis.check_conservation(
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics,
     savedir,
-    plot_name,
+    plot_stem_name,
 )
     diagdir = first(diagnostics).output_writer.output_dir
-    LandSimVis.check_conservation(savedir, diagdir; plot_name)
+    LandSimVis.check_conservation(savedir, diagdir; plot_stem_name)
 
 end
 

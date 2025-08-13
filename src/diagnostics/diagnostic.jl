@@ -57,16 +57,6 @@ function add_diagnostic_variable!(;
     comments = "",
     compute!,
 )
-    haskey(ALL_DIAGNOSTICS, short_name) && @warn(
-        "overwriting diagnostic `$short_name` entry containing fields\n" *
-        "$(map(
-            field -> "$(getfield(ALL_DIAGNOSTICS[short_name], field))",
-            filter(field -> field != :compute!, fieldnames(DiagnosticVariable)),
-        ))",
-        maxlog = 1,
-        _id = Symbol(short_name)
-    )
-
     ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
         short_name,
         long_name,

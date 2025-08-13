@@ -39,7 +39,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 
 using Dates
 
-using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64;

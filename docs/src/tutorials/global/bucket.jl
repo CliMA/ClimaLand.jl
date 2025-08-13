@@ -19,7 +19,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
-using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis;
 
 # Set the simulation float type, determine the
@@ -120,21 +120,25 @@ simulation = LandSimulation(
 solve!(simulation);
 
 # Make some plots:
-short_names = ["tsfc", "lhf", "shf", "wsoil"]
+short_names = ["lhf", "shf", "wsoil"]
 
 LandSimVis.make_annual_timeseries(
     simulation;
     savedir = ".",
     short_names,
-    plot_name = "bucket_annual_timeseries.pdf",
+    plot_stem_name = "bucket_annual_timeseries",
 )
-# ![](bucket_annual_timeseries.pdf)
+# ![](shf_bucket_annual_timeseries.png)
+# ![](lhf_bucket_annual_timeseries.png)
+# ![](wsoil_bucket_annual_timeseries.png)
 
 LandSimVis.make_heatmaps(
     simulation;
     savedir = ".",
     short_names,
     date = stop_date,
-    plot_name = "bucket_figures.pdf",
+    plot_stem_name = "bucket_heatmap",
 )
-# ![](bucket_figures.pdf)
+# ![](shf_bucket_heatmap.png)
+# ![](lhf_bucket_heatmap.png)
+# ![](wsoil_bucket_heatmap.png)
