@@ -12,6 +12,8 @@ import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
+import Insolation.Parameters as IP
+using Dates
 
 import ClimaLand:
     name,
@@ -30,9 +32,10 @@ import ClimaLand:
     make_compute_jacobian,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    FrequencyBasedCallback
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
-using ClimaLand.Domains: Point, Plane, SphericalSurface
+using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
 include("./PlantHydraulics.jl")
@@ -121,6 +124,66 @@ function FarquharModel{FT}(
     parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
+
+
+"""
+    function PModel{FT}(;
+        cstar = FT(0.41),
+        β = FT(146),
+        ϕc = FT(0.087),
+        ϕ0 = FT(NaN),
+        ϕa0 = FT(0.352),
+        ϕa1 = FT(0.022),
+        ϕa2 = FT(-0.00034),
+        α = FT(0.933),
+        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+    ) where {FT <: AbstractFloat}
+
+Constructs a P-model (an optimality model for photosynthesis) using default parameters. 
+
+The following default parameters are used:
+- cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
+- β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020) 
+- ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020) 
+- ϕ0 = NaN (unitless) - constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the 
+                        temperature-dependent form (Stocker 2020)    
+- ϕa0 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa1 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa2 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
+- α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
+- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
+- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
+"""
+
+function PModel{FT}(;
+    cstar = FT(0.41),
+    β = FT(146),
+    ϕc = FT(0.087),
+    ϕ0 = FT(NaN),
+    ϕa0 = FT(0.352),
+    ϕa1 = FT(0.022),
+    ϕa2 = FT(-0.00034),
+    α = FT(0.933),
+    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+) where {FT <: AbstractFloat}
+    parameters = ClimaLand.Canopy.PModelParameters(
+        cstar = cstar,
+        β = β,
+        ϕc = ϕc,
+        ϕ0 = ϕ0,
+        ϕa0 = ϕa0,
+        ϕa1 = ϕa1,
+        ϕa2 = ϕa2,
+        α = α,
+        sc = sc,
+        pc = pc,
+    )
+
+    return PModel{FT}(parameters)
+end
+
 
 ## Plant hydraulics models
 """
@@ -329,6 +392,19 @@ function MedlynConductanceModel{FT}(
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
 end
 
+"""
+    PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
+
+Creates a PModelConductance using default parameters of type FT.
+
+The following default parameter is used:
+- Drel = FT(1.6) (unitless) - relative diffusivity of H2O to CO2 (Bonan Table A.3)
+"""
+function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
+    cond_params = PModelConductanceParameters(Drel = Drel)
+    return PModelConductance{FT}(cond_params)
+end
+
 
 ########################################################
 # End component model convenience constructors
@@ -460,6 +536,14 @@ function CanopyModel{FT}(;
     if typeof(energy) <: PrescribedCanopyTempModel{FT}
         @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
         @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
+    end
+
+    if typeof(photosynthesis) <: PModel{FT}
+        @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
+    end
+
+    if typeof(conductance) <: PModelConductance{FT}
+        @assert typeof(photosynthesis) <: PModel{FT} "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
     end
 
     args = (
@@ -823,8 +907,8 @@ function ClimaLand.make_update_aux(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -963,8 +1047,8 @@ function make_compute_exp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -993,8 +1077,8 @@ function make_compute_imp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1023,8 +1107,8 @@ function ClimaLand.make_compute_jacobian(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1105,6 +1189,33 @@ function ClimaLand.total_liq_water_vol_per_area!(
         p,
         t,
     )
+end
+
+"""
+    ClimaLand.make_set_initial_cache(model::CanopyModel)
+
+Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
+is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which 
+sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt. 
+"""
+function ClimaLand.make_set_initial_cache(model::CanopyModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
+        set_historical_cache!(p, Y0, model.photosynthesis, model)
+    end
+    return set_initial_cache!
+end
+
+"""
+    set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+
+For some canopy components (namely the P-model), we need values at t-1 to compute new 
+values, so this function sets the historical cache values for the photosynthesis model.
+However, for other photosynthesis models this is not needed, so do nothing by default. 
+"""
+function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return nothing
 end
 
 end

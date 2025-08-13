@@ -75,11 +75,11 @@ function OptimalityFarquharModel{FT}(
 end
 
 ClimaLand.auxiliary_vars(model::OptimalityFarquharModel) =
-    (:An, :GPP, :Rd, :Vcmax25)
+    (:An, :GPP, :Rd, :Vcmax25, :Jmax25)
 ClimaLand.auxiliary_types(model::OptimalityFarquharModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
-    (:surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface)
 
 """
     update_photosynthesis!(p, Y, model::OptimalityFarquharModel,canopy)
@@ -180,14 +180,37 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     )
 
     @. Vcmax25 = Vcmax / arrhenius_function(T_canopy, To, R, ΔHVcmax)
+    @. Jmax25 = Jmax / arrhenius_function(T_canopy, To, R, ΔHJmax)
     @. Rd = dark_respiration(is_c3, Vcmax25, β, T_canopy, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
     # Compute GPP: TODO - move to diagnostics only
     @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 end
 
-get_Vcmax25(p, m::OptimalityFarquharParameters) =
-    p.canopy.photosynthesis.Vcmax25
+get_Vcmax25(p, m::OptimalityFarquharModel) = p.canopy.photosynthesis.Vcmax25
+
+function get_Jmax(Y, p, canopy, m::OptimalityFarquharModel)
+    (; To, ΔHJmax) = m.parameters
+    R = LP.get_default_parameter(eltype(m.parameters), :gas_constant)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    Jmax25 = p.canopy.photosynthesis.Jmax25
+    return @. lazy(Jmax25 * arrhenius_function(T_canopy, To, R, ΔHJmax))
+end
+
+function get_electron_transport(Y, p, canopy, m::OptimalityFarquharModel)
+    (; θj, ϕ) = m.parameters
+    earth_param_set = canopy.parameters.earth_param_set
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    par_d = p.canopy.radiative_transfer.par_d
+    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+    Jmax = get_Jmax(Y, p, canopy, m)
+    return @. lazy(electron_transport(APAR, Jmax, θj, ϕ))
+end
+
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
 
 ## For interfacing with ClimaParams

@@ -26,15 +26,21 @@ export canopy_sw_rt_beer_lambert,
     plant_respiration_maintenance,
     plant_respiration_growth,
     enforce_albedo_constraint,
+    # P-model photosynthesis
     intrinsic_quantum_yield,
     compute_viscosity_ratio,
     compute_Kmm,
     optimal_co2_ratio_c3,
-    pmodel_vcmax,
+    intercellular_co2_pmodel,
+    gs_co2_pmodel,
+    gs_h2o_pmodel,
+    vcmax_pmodel,
     compute_LUE,
     compute_mj_with_jmax_limitation,
+    electron_transport_pmodel,
     co2_compensation_p,
-    quadratic_soil_moisture_stress
+    quadratic_soil_moisture_stress,
+    compute_APAR
 
 # 1. Radiative transfer
 
@@ -500,6 +506,29 @@ function c3_rubisco_assimilation(
     oi::FT,
 ) where {FT}
     Ac = Vcmax * (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
+    return Ac
+end
+
+"""
+    c3_rubisco_assimilation(
+        Vcmax::FT,
+        ci::FT,
+        Γstar::FT,
+        Kmm::FT,
+    ) where {FT}
+
+Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
+in units of moles CO2/m^2/s. Identical to the function above, except we take 
+Kmm = Kc * (1 + oi / Ko)
+directly, where Kmm represents an effective Michaelis-Menten coefficient. 
+"""
+function c3_rubisco_assimilation(
+    Vcmax::FT,
+    ci::FT,
+    Γstar::FT,
+    Kmm::FT,
+) where {FT}
+    Ac = Vcmax * (ci - Γstar) / (ci + Kmm)
     return Ac
 end
 
@@ -1133,11 +1162,11 @@ enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
         ϕa2::FT
     ) where {FT}
 
-    Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol) 
-    as a function of temperature T (K) and a calibratable parameter c (unitless). 
-    The functional form given in Bernacchi et al (2003) and used in Stocker 
-    et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0, 
-    ϕa1, and ϕa2.
+Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol) 
+as a function of temperature T (K) and a calibratable parameter c (unitless). 
+The functional form given in Bernacchi et al (2003) and used in Stocker 
+et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0, 
+ϕa1, and ϕa2.
 """
 function intrinsic_quantum_yield(
     T::FT,
@@ -1149,7 +1178,7 @@ function intrinsic_quantum_yield(
     # convert to C
     T = T - FT(273.15)
     ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
-    return FT(ϕ)
+    return max(ϕ, FT(0)) # Ensure non-negative quantum yield
 end
 
 
@@ -1160,10 +1189,10 @@ end
         constant_density::Bool
     ) where {FT}
 
-    Computes the viscosity of water in Pa s given temperature T (K) and pressure p (Pa)
-    according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050]. 
+Computes the viscosity of water in Pa s given temperature T (K) and pressure p (Pa)
+according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050]. 
 
-    Can consider simplifying if this level of precision is not needed
+Can consider simplifying if this level of precision is not needed
 """
 function viscosity_h2o(T::FT, p::FT) where {FT}
     # Reference constants
@@ -1228,10 +1257,8 @@ end
         constant_density::Bool
     ) where {FT}
 
-    Computes η*, the ratio of the viscosity of water at temperature T and pressure p
-    to the viscosity of water at STP. If `constant_density` is true, the density of water
-    is taken to be constant (1000.0 kg/m^3). Otherwise we use an EOS to compute the density
-    at the given temperature and pressure. 
+Computes η*, the ratio of the viscosity of water at temperature T and pressure p
+to the viscosity of water at STP. 
 """
 function compute_viscosity_ratio(T::FT, p::FT) where {FT}
     η25 = viscosity_h2o(FT(298.15), FT(101325.0))
@@ -1246,8 +1273,8 @@ end
         oi::FT
     ) where {FT}
 
-    Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure (`P_air`)
-    and a constant mixing ratio of O2 (`oi`), typically 0.209. 
+Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure (`P_air`)
+and a constant mixing ratio of O2 (`oi`), typically 0.209. 
 """
 function po2(P_air::FT, oi::FT) where {FT}
     return oi * P_air
@@ -1263,8 +1290,8 @@ end
         Γstar25::FT
     ) where {FT}
 
-    Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
-    and pressure p (Pa). See Equation B5 of Stocker et al. (2020). 
+Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
+and pressure p (Pa). See Equation B5 of Stocker et al. (2020). 
 """
 function co2_compensation_p(
     T::FT,
@@ -1291,12 +1318,12 @@ end
         oi::FT
     ) where {FT}
 
-    Computes the effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis (`Kmm`),
-    in units Pa, as a function of temperature T (K), atmospheric pressure p (Pa), and constants:
-    Kc25 (Michaelis-Menten coefficient for CO2 at 25 °C), Ko25 (Michaelis-Menten coefficient for O2 at 25 °C),
-    ΔHkc (effective enthalpy of activation for Kc), ΔHko (effective enthalpy of activation for Ko),
-    To (reference temperature, typically 298.15 K), R (universal gas constant), and oi (O2 mixing ratio, 
-    typically 0.209).
+Computes the effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis (`Kmm`),
+in units Pa, as a function of temperature T (K), atmospheric pressure p (Pa), and constants:
+Kc25 (Michaelis-Menten coefficient for CO2 at 25 °C), Ko25 (Michaelis-Menten coefficient for O2 at 25 °C),
+ΔHkc (effective enthalpy of activation for Kc), ΔHko (effective enthalpy of activation for Ko),
+To (reference temperature, typically 298.15 K), R (universal gas constant), and oi (O2 mixing ratio, 
+typically 0.209).
 """
 function compute_Kmm(
     T::FT,
@@ -1326,33 +1353,33 @@ end
         Drel::FT 
     ) where {FT}
 
-    The p-model assumptions, that 1) plants optimize the relative costs of transpiration per unit
-    carbon assimlated and costs of maintaining carboxylation capacity per unit carbon assimilated;
-    2) coordination hypothesis (assimilation is limited simultaneously by both light and Rubisco) 
-    are applied to compute the optimal ratio of intercellular to ambient CO2 concentration (`χ`)
-    and auxiliary variables ξ, mj, and mc. mj and mc represent capacities for light and Rubisco-
-    limited photosynthesis, respectively. 
+The p-model assumptions, that 1) plants optimize the relative costs of transpiration per unit
+carbon assimlated and costs of maintaining carboxylation capacity per unit carbon assimilated;
+2) coordination hypothesis (assimilation is limited simultaneously by both light and Rubisco) 
+are applied to compute the optimal ratio of intercellular to ambient CO2 concentration (`χ`)
+and auxiliary variables ξ, mj, and mc. mj and mc represent capacities for light and Rubisco-
+limited photosynthesis, respectively. 
 
-    Parameters: Kmm (effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis, Pa),
-    Γstar (CO2 compensation point, Pa), ηstar (viscosity ratio), ca (ambient CO2 partial pressure, Pa),
-    VPD (vapor pressure deficit, Pa), β (moisture stress factor, unitless), Drel = 1.6 (relative 
-    diffusivity of water vapor with respect to CO2, unitless).
+Parameters: Kmm (effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis, Pa),
+Γstar (CO2 compensation point, Pa), ηstar (viscosity ratio), ca_pp (ambient CO2 partial pressure, Pa),
+VPD (vapor pressure deficit, Pa), β (moisture stress factor, unitless), Drel = 1.6 (relative 
+diffusivity of water vapor with respect to CO2, unitless).
 """
 function optimal_co2_ratio_c3(
     Kmm::FT,
     Γstar::FT,
     ηstar::FT,
-    ca::FT,
+    ca_pp::FT,
     VPD::FT,
     β::FT,
     Drel::FT,
 ) where {FT}
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
+    χ = Γstar / ca_pp + (1 - Γstar / ca_pp) * ξ / (ξ + sqrt(max(VPD, 0)))
 
     # define some auxiliary variables 
-    γ = Γstar / ca
-    κ = Kmm / ca
+    γ = Γstar / ca_pp
+    κ = Kmm / ca_pp
 
     mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
     mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
@@ -1360,22 +1387,54 @@ function optimal_co2_ratio_c3(
     return χ, ξ, mj, mc
 end
 
+"""
+    intercellular_co2_pmodel(ξ::FT, ca_pp::FT, Γstar::FT, VPD::FT) where {FT}
+
+Computes the intercellular co2 concentration (`ci`) as a function of the 
+optimal `ξ` (sensitivity to dryness), `ca_pp` (ambient CO2 partial pressure),
+`Γstar` (CO2 compensation point), and `VPD` (vapor pressure deficit).
+"""
+function intercellular_co2_pmodel(
+    ξ::FT,
+    ca_pp::FT,
+    Γstar::FT,
+    VPD::FT,
+) where {FT}
+    return (ξ * ca_pp + Γstar * sqrt(max(VPD, 0))) / (ξ + sqrt(max(VPD, 0)))
+end
 
 """
-    pmodel_gs(
+    gs_co2_pmodel(
         χ::FT, 
         ca::FT,
         A::FT
     ) where {FT}
 
-    Computes the stomatal conductance of CO2 (`gs`), in units of mol CO2/m^2/s
-    via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
-    concentration (`χ`), the ambient CO2 concentration (`ca`), and the 
-    assimilation rate (`A`). This is related to the conductance of H2O by a 
-    factor Drel = 1.6. 
+Computes the stomatal conductance of CO2 (`gs_co2`), in units of mol CO2/m^2/s
+via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
+concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), and the 
+assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of water by a 
+factor Drel (default value = 1.6).
 """
-function pmodel_gs(χ::FT, ca::FT, A::FT) where {FT}
-    return A / (ca * (1 - χ))
+function gs_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
+    return A / (ca * (1 - χ) + eps(FT))
+end
+
+"""
+    gs_h2o_pmodel(
+        χ::FT, 
+        ca::FT,
+        A::FT,
+        Drel::FT
+    ) where {FT}
+
+Computes the stomatal conductance of H2O (`gs_h2o`), in units of mol H2O/m^2/s
+via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
+concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), the 
+assimilation rate (`A`, mol m^-2 s^-1), and the relative conductivity ratio `Drel` (unitless).
+"""
+function gs_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
+    return Drel * gs_co2_pmodel(χ, ca, A)
 end
 
 """
@@ -1384,12 +1443,16 @@ end
         cstar::FT
     ) where {FT}
 
-    Computes m' such that Aj = ϕ0 I_abs * m' (a LUE model) by assuming that dA/dJmax = c
-    is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
-    at STP and using Vcmax/Jmax = 1.88. 
+Computes m' such that Aj = ϕ0 APAR * m' (a LUE model) by assuming that dA/dJmax = c
+is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
+at STP and using Vcmax/Jmax = 1.88. 
 """
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
-    return FT(mj * sqrt(1 - (cstar / mj)^(FT(2 / 3))))
+    arg = cstar / mj
+    arg = arg < 0 ? FT(0) : arg
+    arg = 1 - arg^(FT(2 / 3))
+    sqrt_arg = arg < 0 ? FT(0) : sqrt(arg) # avoid complex numbers
+    return FT(mj * sqrt_arg)
 end
 
 
@@ -1401,9 +1464,9 @@ end
         Mc::FT
     ) where {FT} 
 
-    Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`ϕ0`),
-    moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
-    in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
+Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`ϕ0`),
+moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
+in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
 """
 function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
     return ϕ0 * β * mprime * Mc
@@ -1411,21 +1474,21 @@ end
 
 
 """
-    pmodel_vcmax(
+    vcmax_pmodel(
         ϕ0::FT,
-        I_abs::FT,
+        APAR::FT,
         mprime::FT,
         mc::FT
         βm::FT
     ) where {FT}
 
-    Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using 
-    the intrinsic quantum yield (`ϕ0`), absorbed radiation (`I_abs`), Jmax-adjusted capacity
-    (`mprime`), a Rubisco-limited capacity (`mc`), and empirical soil moisture stress factor
-    (`βm`). See Eqns 16 and 6 in Stocker et al. (2020). 
+Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using 
+the intrinsic quantum yield (`ϕ0`), absorbed photosynthetically active radiation (`APAR`), 
+Jmax-adjusted capacity (`mprime`), a Rubisco-limited capacity (`mc`), and empirical 
+soil moisture stress factor (`βm`). See Eqns 16 and 6 in Stocker et al. (2020). 
 """
-function pmodel_vcmax(ϕ0::FT, I_abs::FT, mprime::FT, mc::FT, βm::FT) where {FT}
-    Vcmax = βm * ϕ0 * I_abs * mprime / mc
+function vcmax_pmodel(ϕ0::FT, APAR::FT, mprime::FT, mc::FT, βm::FT) where {FT}
+    Vcmax = βm * ϕ0 * APAR * mprime / mc
     return Vcmax
 end
 
@@ -1439,10 +1502,10 @@ end
         θ1::FT = FT(0.6)
     ) where {FT}
 
-    Computes an empirical soil moisture stress factor (`β`) according to the quadratic
-    functional form of Stocker et al. (2020), Eq 21, using the soil moisture (`θ`),
-    AET/PET (`meanalpha`), and parameters `a_hat`, `b_hat`, `θ0`, and `θ1`. Default values
-    are from the original paper. 
+Computes an empirical soil moisture stress factor (`β`) according to the quadratic
+functional form of Stocker et al. (2020), Eq 21, using the soil moisture (`θ`),
+AET/PET (`meanalpha`), and parameters `a_hat`, `b_hat`, `θ0`, and `θ1`. Default values
+are from the original paper. 
 """
 function quadratic_soil_moisture_stress(
     θ::FT,
@@ -1468,30 +1531,30 @@ end
 """
     electron_transport_pmodel(
         ϕ0::FT,
-        I_abs::FT,
+        APAR::FT,
         Jmax::FT 
     ) where {FT}
     
-    Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
+Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
 """
-function electron_transport_pmodel(ϕ0::FT, I_abs::FT, Jmax::FT) where {FT}
-    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / Jmax)^2)
+function electron_transport_pmodel(ϕ0::FT, APAR::FT, Jmax::FT) where {FT}
+    J = 4 * ϕ0 * APAR / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
     return J
 end
 
 
 
 """
-inst_temp_scaling(
-    T_canopy::FT;
-    T_acclim::FT = T_canopy,
-    To::FT,
-    Ha::FT,
-    Hd::FT,
-    aS::FT,
-    bS::FT,
-    R::FT
-) where {FT}
+    inst_temp_scaling(
+        T_canopy::FT,
+        T_acclim::FT = T_canopy,
+        To::FT,
+        Ha::FT,
+        Hd::FT,
+        aS::FT,
+        bS::FT,
+        R::FT
+    ) where {FT}
 
 Given Vcmax or Jmax that have acclimated according to T_acclim, this function computes
 the instantaneous temperature scaling factor f ∈ [0, ∞) for these maximum rates at the 
@@ -1499,12 +1562,6 @@ instantaneous current temperature T_canopy. To is a reference temperature for th
 and should be set to 298.15 K (25 °C). By default we assume that T_acclim = T_canopy. 
 
 The parameters (`Ha`, `Hd`, `aS`, `bS`) come from Kattge & Knorr (2007)
-
-| Quantity | Ha (J/mol) | Hd (J/mol) | aS (J/mol/K) | bS (J/mol/K^2) |
-|----------|------------|------------|--------------|----------------|
-| Vcmax    |   71 513   | 200 000    |   668.39     | 1.07           |
-| Jmax     |   49 884   | 200 000    |   659.70     | 0.75           |
-
 """
 function inst_temp_scaling(
     T_canopy::FT,
@@ -1516,8 +1573,8 @@ function inst_temp_scaling(
     bS::FT,
     R::FT,
 ) where {FT}
-    T_acclim = T_acclim - FT(273.15)    # °C for ΔS(T)
-    ΔS = aS - bS * T_acclim      # entropy term (J mol⁻¹ K⁻¹)
+    T_acclim = T_acclim - FT(273.15)    # convert to C
+    ΔS = aS - bS * T_acclim             # entropy term (J mol^-1 K^-1)
 
     # Arrhenius-type activation scaling factor
     f_act = arrhenius_function(T_canopy, To, R, Ha)
@@ -1532,18 +1589,18 @@ end
 
 
 """
-inst_temp_scaling_rd(
-    T_canopy::FT,
-    To::FT, 
-    aRd::FT, 
-    bRd::FT
-) where {FT}
+    inst_temp_scaling_rd(
+        T_canopy::FT,
+        To::FT, 
+        aRd::FT, 
+        bRd::FT
+    ) where {FT}
 
 Computes the instantaneous temperature scaling factor for dark respiration (Rd) 
 at canopy temperature `T_canopy` given reference temperature `To`, the first order
 coefficient `aRd`, and the second order coefficient `bRd`. 
 
-Usees the log-quadratic functional form of Heskel et al. (2016) 
+Uses the log-quadratic functional form of Heskel et al. (2016) 
 https://www.pnas.org/doi/full/10.1073/pnas.1520282113
 """
 function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
@@ -1551,4 +1608,32 @@ function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
         aRd * (T_canopy - To) +
         bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2),
     )
+end
+
+
+"""
+    compute_APAR(
+        f_abs::FT, 
+        par_d::FT,
+        λ_γ_PAR::FT,
+        lightspeed::FT,
+        planck_h::FT,
+        N_a::FT
+    ) where {FT} 
+
+Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
+given the fraction of absorbed PAR (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2), 
+and the wavelength of PAR (`λ_γ_PAR`, in m), and the physical constants necessary to compute 
+the energy per mol PAR photons. 
+"""
+function compute_APAR(
+    f_abs::FT,
+    par_d::FT,
+    λ_γ_PAR::FT,
+    lightspeed::FT,
+    planck_h::FT,
+    N_a::FT,
+) where {FT}
+    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR
+    return f_abs * par_d / energy_per_mole_photon_par
 end

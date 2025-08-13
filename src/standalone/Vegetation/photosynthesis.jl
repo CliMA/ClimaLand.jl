@@ -270,6 +270,31 @@ end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 get_Vcmax25(p, m::FarquharModel) = m.parameters.Vcmax25
+
+function get_Jmax(Y, p, canopy, m::FarquharModel)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    (; Vcmax25, ΔHJmax, To) = m.parameters
+    R = LP.gas_constant(canopy.parameters.earth_param_set)
+    return @. lazy(max_electron_transport(Vcmax25, ΔHJmax, T_canopy, To, R))
+end
+
+function get_electron_transport(Y, p, canopy, m::FarquharModel)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+
+    earth_param_set = canopy.parameters.earth_param_set
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    par_d = p.canopy.radiative_transfer.par_d
+    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+
+    Jmax = get_Jmax(Y, p, canopy, m)
+    (; θj, ϕ) = m.parameters
+    return @. lazy(electron_transport(APAR, Jmax, θj, ϕ))
+end
+
 include("./optimality_farquhar.jl")
 
 ## For interfacing with ClimaParams

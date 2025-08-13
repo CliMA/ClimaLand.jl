@@ -59,50 +59,66 @@ Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948
 """
 function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     SIF = p.canopy.sif.SIF
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    par_d = p.canopy.radiative_transfer.par_d
     earth_param_set = canopy.parameters.earth_param_set
+
+    # Compute APAR
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    par_d = p.canopy.radiative_transfer.par_d
+    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
-    T_freeze = LP.T_freeze(earth_param_set)
-    R = LP.gas_constant(earth_param_set)
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
 
-    (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
+    # Get max photosynthesis rates
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
+    Jmax = get_Jmax(Y, p, canopy, canopy.photosynthesis)
+    J = get_electron_transport(Y, p, canopy, canopy.photosynthesis)
+
+    T_freeze = LP.T_freeze(earth_param_set)
     sif_parameters = sif_model.parameters
+
     @. SIF = compute_SIF_at_a_point(
-        par_d * f_abs_par / energy_per_mole_photon_par,
+        APAR,
         T_canopy,
         Vcmax25,
-        R,
+        Jmax,
+        J,
         T_freeze,
-        ΔHJmax,
-        To,
-        θj,
-        ϕ,
         sif_parameters,
     )
 end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
+
+
+"""
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        Jmax::FT,
+        J::FT,
+        T_freeze::FT,
+        sif_parameters::SIFParameters{FT},
+    ) where {FT}
+    
+Computes the Solar Induced Fluorescence (SIF) at 755 nm in W/m^2 using the Lee et al. 2015 model.
+This takes as parameters `APAR` (absorbed photosynthetically active radiation, mol/m^2/s), `Tc`
+(canopy temperature, K), `Vcmax25` (maximum carboxylation rate at 25 °C, mol/m^2/s), `Jmax`
+(electron transport rate, mol/m^2/s), `J` (electron transport rate, mol/m^2/s), `T_freeze` 
+(freezing temperature, K), `sif_parameters` (SIF parameters). 
+"""
 function compute_SIF_at_a_point(
     APAR::FT,
     Tc::FT,
     Vcmax25::FT,
-    R::FT,
+    Jmax::FT,
+    J::FT,
     T_freeze::FT,
-    ΔHJmax::FT,
-    To::FT,
-    θj::FT,
-    ϕ::FT,
     sif_parameters::SIFParameters{FT},
 ) where {FT}
-    Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
-    J = electron_transport(APAR, Jmax, θj, ϕ)
     (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
         sif_parameters
     kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)

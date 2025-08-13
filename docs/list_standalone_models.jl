@@ -6,10 +6,12 @@ standalone_models = [
         ]
         "Photosynthesis" => [
             "Farquhar model" => "standalone/pages/vegetation/photosynthesis/farquhar_model.md",
+            "P-model" => "standalone/pages/vegetation/photosynthesis/pmodel.md",
             "Optimality model" => "standalone/pages/vegetation/photosynthesis/optimality_model.md",
         ]
         "Stomatal conductance" => [
             "Medlyn model" => "standalone/pages/vegetation/stomatal_conductance/medlyn_model.md",
+            "P-model" => "standalone/pages/vegetation/photosynthesis/pmodel.md",
         ]
         "Plant hydraulics" => [
             "Van Genuchten model" => "standalone/pages/vegetation/plant_hydraulics/van_genuchten_model.md",

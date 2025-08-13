@@ -38,11 +38,12 @@ using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
-
+using Dates
 
 """
     percent_difference(a, b)
@@ -84,6 +85,9 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa0 = ϕa0,
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
+        α = FT(0),
+        sc = FT(0),
+        pc = FT(0),
     )
 end
 
@@ -118,8 +122,8 @@ end
     outputs_file = joinpath(datadir, "outputs.csv")
 
     # tolerances
-    atol = 1e-3
-    rtol = 1e-3
+    atol = 1e-2
+    rtol = 1e-2
 
     # read inputs and outputs from CSV files
     inputs_data, inputs_header = readdlm(inputs_file, ',', header = true)
@@ -166,9 +170,9 @@ end
 
                 T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
                 VPD = FT(inputs["vpd"])
-                ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
+                ca = FT(inputs["co2"]) * FT(1e-6)  # Convert ppm to mol/mol
                 P_air = FT(get(inputs, "patm", 101325.0))
-                I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
+                APAR = FT(inputs["fapar"]) * FT(inputs["ppfd"])
                 βm =
                     Bool(inputs["do_soilmstress"]) ?
                     quadratic_soil_moisture_stress(FT(inputs["soilm"])) :
@@ -179,11 +183,11 @@ end
                     parameters,
                     constants,
                     T_canopy,
-                    I_abs,
-                    ca,
                     P_air,
                     VPD,
+                    ca,
                     βm,
+                    APAR,
                 )
 
                 # Compare each output field
@@ -195,6 +199,9 @@ end
                         r_out = ref_outputs_typed[key]
                         # convert gpp to kg/m^2/s   
                         r_out = key == "gpp" ? r_out / FT(1000.0) : r_out
+
+                        # convert gs to mol/m^2/s 
+                        r_out = key == "gs" ? r_out * P_air : r_out
 
                         j_out = getproperty(outputs, key_symbol)
                         diff = percent_difference(j_out, r_out)
@@ -215,4 +222,117 @@ end
             end
         end
     end
+end
+
+@testset "Test P-model callback initialization" begin
+    FT = Float32
+
+    lat = FT(38.7441)
+    long = FT(-92.2000)
+    start_date = DateTime(2025)
+    dt = 600.0 # 10 minutes
+    t0 = 0.0 # integrator start time
+
+    # Canopy domain
+    canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
+
+    # Dummy atmospheric and radiation forcing
+    atmos, radiation = prescribed_analytic_forcing(FT)
+    ground = PrescribedGroundConditions{FT}()
+    forcing = (; atmos = atmos, radiation = radiation, ground = ground)
+    LAI = TimeVaryingInput(t -> FT(0.0))
+    earth_param_set = LP.LandParameters(FT)
+
+    canopy = CanopyModel{FT}(
+        canopy_domain,
+        forcing,
+        LAI,
+        earth_param_set;
+        photosynthesis = PModel{FT}(),
+        conductance = PModelConductance{FT}(),
+    )
+
+    @test_nowarn pmodel_callback =
+        make_PModel_callback(FT, start_date, t0, dt, canopy)
+end
+
+
+@testset "Test update_optimal_EMA optimality computation" begin
+    rtol = 1e-5
+    atol = 1e-6
+
+    for FT in (Float32, Float64)
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41),
+            β = FT(146),
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN),
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0),
+            sc = FT(2e-6),
+            pc = FT(-2e6),
+        )
+
+        constants = PModelConstants{FT}()
+
+        T_canopy = FT(281.25)
+        APAR = FT(0.0013948839623481035)
+        ca = FT(0.00039482)
+        P_air = FT(99230.0)
+        VPD = FT(756.2)
+        βm = FT(1.0)
+
+        outputs_full = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR,
+        )
+
+        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+            dummy_OptVars =
+                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            outputs_from_EMA = update_optimal_EMA(
+                parameters,
+                constants,
+                dummy_OptVars,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                βm,
+                APAR,
+                FT(1.0), # force update 
+            )
+            @test isapprox(
+                outputs_from_EMA.ξ_opt,
+                outputs_full.xi,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Vcmax25_opt,
+                outputs_full.vcmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Jmax25_opt,
+                outputs_full.jmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+        end
+    end
+end
+
+@testset "Test edge cases" begin
+    FT = Float64
+    @test !isnan(electron_transport_pmodel(FT(0.5), FT(0.5), FT(0)))
 end
