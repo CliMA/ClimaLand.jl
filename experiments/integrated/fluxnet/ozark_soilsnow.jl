@@ -160,12 +160,11 @@ snow_model = Snow.SnowModel(
 land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
 
 # Initial conditions
-set_ic!(Y, p, _, model) = FluxnetSimulations.set_fluxnet_ic!(
-    Y,
+set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
     time_offset,
-    model,
+    land,
 )
 
 saveat = Array(start_date:Second(dt):end_date)

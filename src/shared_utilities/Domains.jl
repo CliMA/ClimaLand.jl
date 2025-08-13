@@ -1167,7 +1167,7 @@ apply_threshold(field, value) =
 """
     landsea_mask(
         surface_space;
-        filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        filepath = landseamask_file_path(;
                  context = ClimaComms.context(surface_space),
                  ),
         threshold = 0.5,
@@ -1246,10 +1246,21 @@ end
 """
     global_domain(
     FT;
+    apply_mask = true,
+    mask_threshold = 0.5,
     nelements = (101, 15),
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
     npolynomial = 0,
+    context = ClimaComms.context(),
+    filepath = landseamask_file_path(;context),
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant()
 )
 
 Helper function to create a SphericalShell domain with (101,15) elements, a
@@ -1282,6 +1293,14 @@ function global_domain(
     depth = 50.0,
     npolynomial = 0,
     context = ClimaComms.context(),
+    filepath = landseamask_file_path(; context),
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
 )
     if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
         @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
@@ -1301,7 +1320,14 @@ function global_domain(
     )
     if apply_mask
         surface_space = domain.space.surface # 2d space
-        binary_mask = landsea_mask(domain; threshold = mask_threshold)
+        binary_mask = landsea_mask(
+            domain;
+            threshold = mask_threshold,
+            regridder_type,
+            extrapolation_bc,
+            interpolation_method,
+            filepath,
+        )
         Spaces.set_mask!(surface_space, binary_mask)
     end
 

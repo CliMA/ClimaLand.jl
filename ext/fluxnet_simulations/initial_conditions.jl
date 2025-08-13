@@ -1,4 +1,31 @@
 """
+    FluxnetSimulations.make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model,
+    )
+
+Creates and returns a function `set_ic!(Y,p,t,model)` which
+updates `Y` in place with an estimated set of initial conditions
+based on the fluxnet observations at `site_ID` at the `start_date` in UTC,
+and the type of the `model`.
+In order to convert between local time and UTC, the hour offset from
+UTC is required. 
+"""
+function FluxnetSimulations.make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model,
+)
+    set_ic!(Y, p, t, model) =
+        set_fluxnet_ic!(Y, site_ID, start_date, hour_offset_from_UTC, model)
+    return set_ic!
+end
+
+
+"""
      set_fluxnet_ic!(
         Y,
         site_ID,
@@ -13,7 +40,7 @@ is provided in local time, we require the offset from UTC in hours `hour_offset_
 The `model` indicates which how to update it `Y` from these observations,
 via different methods of `set_fluxnet_ic!`.
 """
-function FluxnetSimulations.set_fluxnet_ic!(
+function set_fluxnet_ic!(
     Y,
     site_ID,
     start_date,
@@ -27,13 +54,7 @@ function FluxnetSimulations.set_fluxnet_ic!(
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
     for component in ClimaLand.land_components(model)
-        FluxnetSimulations.set_fluxnet_ic!(
-            Y,
-            data,
-            columns,
-            Δ_date,
-            getproperty(model, component),
-        )
+        set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
     end
 end
 
@@ -41,7 +62,7 @@ end
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.EnergyHydrology)
 
 Sets the values of Y.soil in place with:
-- \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date
+- \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date, unless this is larger than 90% of porosity.
 - θ_i: no ice (θ_i = 0)
 - \rho e_int: an internal energy computed using the above θ_l, θ_i, and the temperature of the soil
   in the first layer, at the observation date closest to the start date. If the soil 
@@ -53,7 +74,7 @@ a CSV file, `columns` is the list of column names,
 start date (in UTC), and `model` indicates which part of `Y` we are updating, and how to update it,
 via different methods of `set_fluxnet_ic!`.
 """
-function FluxnetSimulations.set_fluxnet_ic!(
+function set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -66,20 +87,25 @@ function FluxnetSimulations.set_fluxnet_ic!(
     column_name_map = Dict(
         varname => findfirst(columns[:] .== varname) for varname in varnames
     )
-
+    FT = eltype(Y.soil.ρe_int)
     if isnothing(column_name_map["SWC_F_MDS_1"])
         θ_l_0 = model.parameters.ν / 2
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
         θ_l_0 = model.parameters.ν / 2
     else
-        θ_l_0 = get_data_at_start_date(
-            data[:, column_name_map["SWC_F_MDS_1"]],
-            Δ_date;
-            preprocess_func = x -> x / 100,
-            val,
-        )
+        θ_l_0 =
+            min.(
+                FT(
+                    get_data_at_start_date(
+                        data[:, column_name_map["SWC_F_MDS_1"]],
+                        Δ_date;
+                        preprocess_func = x -> x / 100,
+                        val,
+                    ),
+                ),
+                model.parameters.ν .* FT(0.9),
+            )
     end
-
     Y.soil.ϑ_l .= θ_l_0
     Y.soil.θ_i .= 0
 
@@ -113,7 +139,6 @@ function FluxnetSimulations.set_fluxnet_ic!(
             model.parameters.ρc_ds,
             model.parameters.earth_param_set,
         )
-    FT = eltype(Y.soil.ρe_int)
     Y.soil.ρe_int =
         ClimaLand.Soil.volumetric_internal_energy.(
             Y.soil.θ_i,
@@ -133,7 +158,7 @@ of the plant.
 
 If ony a leaf compartment is used, only the leaf ψ is used.
 """
-function FluxnetSimulations.set_fluxnet_ic!(
+function set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -183,7 +208,7 @@ Sets Y.snow.S, Y.snow.S_l, and Y.snow.U in place to be zero at the start of the 
 Note that the Snow NeuralDensity model has additional prognostic variables which also must be set
 to zero; another method may work well for that case.
 """
-function FluxnetSimulations.set_fluxnet_ic!(
+function set_fluxnet_ic!(
     Y,
     data,
     columns,
@@ -200,7 +225,7 @@ end
 
 Sets Y.soilco2.C in place with the atmospheric CO2 concentration, in mol co2 per mol air.
 """
-function FluxnetSimulations.set_fluxnet_ic!(
+function set_fluxnet_ic!(
     Y,
     data,
     columns,

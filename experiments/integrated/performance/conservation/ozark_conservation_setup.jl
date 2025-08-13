@@ -225,5 +225,11 @@ Y, p, cds = initialize(land)
 jac_kwargs =
     (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
+set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    time_offset,
+    land,
+)
+set_ic!(Y, p, t0, land)
 set_initial_cache!(p, Y, t0)

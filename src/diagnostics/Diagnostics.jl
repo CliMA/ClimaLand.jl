@@ -1,6 +1,6 @@
 module Diagnostics
 
-import Dates: Month, Period
+import Dates: Month, Period, DateTime
 
 import ClimaComms
 using ClimaCore: Spaces, Fields

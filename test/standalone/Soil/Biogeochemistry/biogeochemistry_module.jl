@@ -68,8 +68,8 @@ for FT in (Float32, Float64)
             soil_domain,
             soil_drivers;
             parameters,
-            boundary_conditions = boundary_conditions,
-            sources = sources,
+            boundary_conditions,
+            sources,
         )
 
         Y, p, coords = initialize(model)
@@ -148,8 +148,8 @@ for FT in (Float32, Float64)
             soil_domain,
             soil_drivers;
             parameters,
-            boundary_conditions = boundary_conditions,
-            sources = sources,
+            boundary_conditions,
+            sources,
         )
 
         Y, p, coords = initialize(model)

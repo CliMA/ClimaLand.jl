@@ -13,7 +13,7 @@ using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
 export prescribed_forcing_fluxnet,
-    set_fluxnet_ic!,
+    make_set_fluxnet_initial_conditions,
     get_comparison_data,
     get_data_dates,
     get_data_dt,

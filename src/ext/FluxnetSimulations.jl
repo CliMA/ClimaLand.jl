@@ -4,7 +4,7 @@ function prescribed_forcing_fluxnet end
 
 function prescribed_LAI_fluxnet end
 
-function set_fluxnet_ic! end
+function make_set_fluxnet_initial_conditions end
 
 function get_data_dt end
 

@@ -323,6 +323,33 @@ function make_ocean_masked_annual_timeseries(
 end
 
 """
+   time_to_date(t::AbstractFloat, start_date)
+
+Converts a time since the start_date (measured in seconds)
+to a date.
+"""
+function time_to_date(t::AbstractFloat, start_date)
+    return start_date + Dates.Millisecond(round(1_000 * t))
+end
+
+"""
+   time_to_date(t::ITime, start_date)
+
+Converts an ITime to a date using the epoch
+of the Itime, the counter, and the period (unit)
+of the counter. 
+
+Although the epoch can be different from the start_date,
+we usually think of the simulation time as relative to the start_date,
+and so we warn here if that is not the case 
+"""
+function time_to_date(t::ITime, start_date)
+    start_date != t.epoch &&
+        @warn("$(start_date) is different from the simulation time epoch.")
+    return isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+end
+
+"""
     make_diurnal_timeseries(
     savedir,
     diagnostics,
@@ -368,8 +395,8 @@ function LandSimVis.make_diurnal_timeseries(
                     diagnostics[1].output_writer,
                     dn,
                 )
-            save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(float.(model_time)) .+ start_date
+            save_Δt = model_time[2] - model_time[1] # in seconds since the start_date. if model_time is an Itime, the epoch should be start_date
+            model_dates = time_to_date.(model_time, start_date)
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],
@@ -486,7 +513,7 @@ function LandSimVis.make_timeseries(
                     dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(float.(model_time)) .+ start_date
+            model_dates = time_to_date.(model_time, start_date)
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],
