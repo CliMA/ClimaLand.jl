@@ -141,7 +141,7 @@ end
             ψ63 = FT(-4 / 0.0098),
             c = FT(4),
         ),
-        retention_model = LinearRetentionCurve{FT}(a = FT(0.05 * 0.0098)),
+        retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
         rooting_depth = clm_rooting_depth(domain.space.surface),
         transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
     ) where {FT <: AbstractFloat}
@@ -160,9 +160,9 @@ The following default parameters are used:
 - ν = 1.44e-4 (m3/m3) - porosity
 - S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
 - K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
-- ψ63 = -4 / 0.0098 (MPa to m) - xylem percentage loss of conductivity curve parameters; Holtzman's original value
-- c = 4 (unitless) - Weibull parameter; Holtzman's original value
-- a = 0.05 * 0.0098 (m) - bulk modulus of elasticity; Holtzman's original value
+- ψ63 = -4 / 0.0098 (MPa to m) - xylem percentage loss of conductivity curve parameters;
+- c = 4 (unitless) - Weibull parameter;
+- a = 0.2 * 0.0098 (m) - bulk modulus of elasticity;
 
 Citation:
 Holtzman, N., Wang, Y., Wood, J. D., Frankenberg, C., & Konings, A. G. (2023).
@@ -192,7 +192,7 @@ function PlantHydraulicsModel{FT}(
         FT(4), # c
     ),
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(
-        FT(0.05 * 0.0098), # a
+        FT(0.2 * 0.0098), # a
     ),
     rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
