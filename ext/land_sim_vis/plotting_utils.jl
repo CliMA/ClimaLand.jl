@@ -42,9 +42,7 @@ function LandSimVis.make_heatmaps(
     simdir = ClimaAnalysis.SimDir(diagdir)
     for short_name in short_names
         var = get(simdir; short_name)
-        avail_dates =
-            DateTime(var.attributes["start_date"]) .+
-            Second.(ClimaAnalysis.times(var))
+        avail_dates = ClimaAnalysis.dates(var)
         idx = argmin(abs.(date .- avail_dates))
         if ClimaAnalysis.has_altitude(var)
             plot_zvals =
@@ -128,7 +126,7 @@ Generates two png files assessing water and energy conservation in
 savedir/water_plot_stem_name.png
 savedir/energy_plot_stem_name.png
 
-The resulting pngs contain a time series of the global mean 
+The resulting png files contain a time series of the global mean 
 (area-weighted) energy or water volume error, in units of 
 `J/m^2` and `m`. Only continents are included in the global average. 
 """
@@ -260,23 +258,7 @@ function make_ocean_masked_annual_timeseries(
             fig_seasonal_cycle[1, 1],
             xlabel = "Month of the year",
             ylabel = "$short_name [$(ClimaAnalysis.units(var))]",
-            xticks = (
-                1:1:12,
-                [
-                    "Jan",
-                    "Feb",
-                    "Mar",
-                    "Apr",
-                    "May",
-                    "Jun",
-                    "Jul",
-                    "Aug",
-                    "Sep",
-                    "Oct",
-                    "Nov",
-                    "Dec",
-                ],
-            ),
+            xticks = (1:1:12, Dates.monthabbr.(1:12)),
         )
         [
             CairoMakie.lines!(
