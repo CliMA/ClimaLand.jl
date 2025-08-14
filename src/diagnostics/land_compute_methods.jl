@@ -175,7 +175,7 @@ function compute_stomatal_conductance!(
     (; Drel) = conductance_model.parameters
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
-    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
+    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa
     An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
 
     if isnothing(out)
@@ -232,6 +232,8 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.turbulent_fluxes.shf
+@diagnostic_compute "latent_heat_flux" CanopyModel p.canopy.turbulent_fluxes.lhf
+@diagnostic_compute "sensible_heat_flux" CanopyModel p.canopy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
 function compute_leaf_water_potential!(
@@ -297,7 +299,6 @@ function compute_moisture_stress_factor!(
         @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
     end
 end
-
 function compute_moisture_stress_factor!(
     out,
     Y,
@@ -629,6 +630,7 @@ function compute_evapotranspiration!(
             ) * 1000 # density of liquid water (1000kg/m^3)
     end
 end
+@diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.transpiration
 
 function compute_total_respiration!(
     out,
@@ -648,6 +650,7 @@ function compute_total_respiration!(
             p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
     end
 end
+@diagnostic_compute "total_respiration" CanopyModel p.canopy.autotrophic_respiration.Ra
 
 function compute_latent_heat_flux!(
     out,
@@ -763,6 +766,25 @@ function compute_canopy_temperature!(
         p.canopy.hydraulics.area_index.stem
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = nan_if_no_canopy(Y.canopy.energy.T, AI)
+        return out
+    else
+        out .= nan_if_no_canopy.(Y.canopy.energy.T, AI)
+    end
+end
+function compute_canopy_temperature!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::CanopyModel{FT},
+) where {FT}
+    AI =
+        p.canopy.hydraulics.area_index.leaf .+
+        p.canopy.hydraulics.area_index.stem # Allocates
+    if isnothing(out)
+        out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = nan_if_no_canopy(Y.canopy.energy.T, AI)
         return out

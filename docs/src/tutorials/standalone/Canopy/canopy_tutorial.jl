@@ -53,8 +53,11 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaDiagnostics
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
+using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+import ClimaLand.LandSimVis as LandSimVis
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
@@ -228,16 +231,16 @@ function set_ic!(Y, p, t0, model)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 
-# Allocate the struct which stores the saved auxiliary state
-# and create the callback which saves it at each element in saveat.
-
-n = 16
-saveat = Array(start_date:Second(n * dt):end_date);
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
+# Set up the diagnostics writer, which will save model variables
+# throughout the course of the simulation.
+diag_writer = ClimaDiagnostics.Writers.DictWriter();
+diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+    canopy,
+    start_date;
+    output_vars = ["gpp", "trans"],
+    output_writer = diag_writer,
+    average_period = :hourly,
+);
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
@@ -261,59 +264,18 @@ simulation = LandSimulation(
     end_date,
     dt,
     canopy;
-    set_ic! = set_ic!,
-    updateat = updateat,
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    set_ic!,
+    updateat,
     timestepper = ode_algo,
-    user_callbacks = (saving_cb,),
+    user_callbacks = (),
+    diagnostics,
 );
 
+# Now we can solve the simulation, which will run the model forward in time.
 sol = solve!(simulation);
 
 # # Create some plots
 
-# We can now plot the data produced in the simulation. For example, GPP:
-
-daily = FT.(sol.t) ./ 3600 ./ 24
-model_GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
-    k in 1:length(sv.saveval)
-]
-
-plt1 = Plots.plot(size = (600, 700));
-Plots.plot!(
-    plt1,
-    daily,
-    model_GPP .* 1e6,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    xlabel = "days",
-    ylabel = "GPP [μmol/mol]",
-);
-
-# Transpiration plot:
-
-T = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
-    k in 1:length(sv.saveval)
-]
-T = T .* (1e3 * 24 * 3600)
-
-plt2 = Plots.plot(size = (500, 700));
-Plots.plot!(
-    plt2,
-    daily,
-    T,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    xlabel = "days",
-    ylabel = "Vapor Flux [mm/day]",
-);
-
-# Show the two plots together:
-
-Plots.plot(plt1, plt2, layout = (2, 1));
-
-# Save the output:
-savefig("ozark_standalone_canopy_test.png");
-# ![](ozark_standalone_canopy_test.png)
+# We can now plot the data produced in the simulation. For example, GPP and transpiration:
+LandSimVis.make_diurnal_timeseries(simulation; short_names = ["gpp", "trans"])
+# ![](diurnal_timeseries.pdf)
