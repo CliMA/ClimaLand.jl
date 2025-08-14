@@ -1376,7 +1376,11 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain)
         conductance = Canopy.MedlynConductanceModel{FT}(domain)
-        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI)
+        toml_dict = LP.create_toml_dict(
+            FT,
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+        )
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI, toml_dict)
         energy = Canopy.BigLeafEnergyModel{FT}()
         sif = Canopy.Lee2015SIFModel{FT}()
 
@@ -1492,9 +1496,12 @@ end
         atmos, radiation = prescribed_analytic_forcing(FT)
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = ClimaLand.Parameters.create_toml_dict(
+            FT,
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+        )
 
-        canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, earth_param_set)
+        canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict)
 
         # Check that the canopy model was created correctly
         @test ClimaComms.context(canopy) == ClimaComms.context()

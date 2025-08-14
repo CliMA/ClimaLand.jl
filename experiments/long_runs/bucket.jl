@@ -48,7 +48,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, domain, earth_param_set, bucket_params)
+function setup_model(FT, start_date, domain, earth_param_set, Δt, toml_dict)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -66,20 +66,9 @@ function setup_model(FT, start_date, domain, earth_param_set, bucket_params)
         regridder_type,
     )
 
-    (; σS_c, W_f, z_0m, z_0b, κ_soil, ρc_soil, τc, α_snow) = bucket_params
-
-    albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space)
-    bucket_parameters = BucketModelParameters(
-        FT;
-        albedo,
-        σS_c,
-        W_f,
-        z_0m,
-        z_0b,
-        κ_soil,
-        ρc_soil,
-        τc,
-    )
+    albedo = PrescribedBaregroundAlbedo(toml_dict, surface_space)
+    bucket_parameters =
+        BucketModelParameters(toml_dict, albedo = albedo, τc = FT(float(Δt)))
     bucket = BucketModel(
         parameters = bucket_parameters,
         domain = domain,
@@ -106,19 +95,13 @@ domain =
 
 # Parameters
 params = LP.LandParameters(FT)
-σS_c = FT(0.2)
-W_f = FT(0.2)
-z_0m = FT(1e-3)
-z_0b = FT(1e-3)
-κ_soil = FT(1.5)
-ρc_soil = FT(2e6)
-τc = FT(float(Δt))
-α_snow = FT(0.8)
-depth = FT(3.5)
-bucket_params = (; σS_c, W_f, z_0m, z_0b, κ_soil, ρc_soil, τc, α_snow)
+
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
 # Model
-model = setup_model(FT, start_date, domain, params, bucket_params)
+model = setup_model(FT, start_date, domain, params, Δt, toml_dict)
 
 # IC function
 function set_ic!(Y, p, t, bucket)

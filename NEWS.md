@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Use ClimaParams instead of hard coding values for long runs PR[#1300](https://github.com/CliMA/ClimaLand.jl/pull/1300)
 
 v0.18.2
 -------

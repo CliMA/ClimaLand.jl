@@ -239,7 +239,7 @@ end
     LandModel{FT}(
         forcing,
         LAI,
-        earth_param_set,
+        toml_dict::CP.AbstractTOMLDict,
         domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
         Δt;
         soil = Soil.EnergyHydrology{FT}(
@@ -280,7 +280,7 @@ end
 
 A convenience constructor for setting up the default LandModel,
 where all the parameterizations and parameter values are set to default values
-or passed in via the `earth_param_set`. The boundary conditions of all models
+or passed in via the `toml_dict`. The boundary conditions of all models
 correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
@@ -290,7 +290,7 @@ Finally, since the snow model requires the timestep, that is a required argument
 function LandModel{FT}(
     forcing,
     LAI,
-    earth_param_set,
+    toml_dict::CP.AbstractTOMLDict,
     domain::Union{
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,
@@ -300,7 +300,7 @@ function LandModel{FT}(
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
     ),
@@ -320,14 +320,14 @@ function LandModel{FT}(
             ground = ClimaLand.PrognosticGroundConditions{FT}(),
         ),
         LAI,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     ),
     snow = Snow.SnowModel(
         FT,
         ClimaLand.Domains.obtain_surface_domain(domain),
         forcing,
-        earth_param_set,
+        toml_dict,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     ),

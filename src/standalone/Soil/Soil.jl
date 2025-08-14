@@ -194,7 +194,7 @@ using .Biogeochemistry
 # Soil model constructor useful for working with simulations forced by
 # the atmosphere
 """
-    EnergyHydrology{FT}(domain, forcing, earth_param_set;
+    EnergyHydrology{FT}(domain, forcing, toml_dict::CP.AbstractTOMLDict;
                          prognostic_land_components = (:soil),
                          albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
                          runoff =  Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
@@ -210,7 +210,7 @@ using .Biogeochemistry
                          additional_sources = (),
                          ) where {FT <: AbstractFloat}
 
-Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
+Creates a EnergyHydrology model with the given float type FT, domain, toml_dict, forcing, and prognostic land components.
 
 The argument `forcing` should be a NamedTuple containing two fields: `atmos` and `radiation`.
 
@@ -242,14 +242,13 @@ by kwarg; otherwise the default values are used.
 function EnergyHydrology{FT}(
     domain,
     forcing,
-    earth_param_set;
+    toml_dict::CP.AbstractTOMLDict;
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,
     ),
-    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
-        f_over = FT(3.28), # extract from EPS
-        R_sb = FT(1.484e-4 / 1000),# extract from EPS
+    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
+        toml_dict,
         f_max = topmodel_fmax(domain.space.surface, FT),
     ),
     retention_parameters = soil_vangenuchten_parameters(
