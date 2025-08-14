@@ -59,6 +59,7 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
+    earth_param_set = LP.LandParameters(toml_dict)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -91,20 +92,16 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
 
     # Overwrite some defaults for the canopy model
     # Energy model
-    ac_canopy = FT(2.5e3)
-    energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+    energy_args = Canopy.BigLeafEnergyParameters(toml_dict)
+    energy = Canopy.BigLeafEnergyModel{FT}(energy_args)
 
     # Plant hydraulics
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
-    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-    Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    conductivity_model =
-        Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-    a = FT(0.2 * 0.0098) # 1/m
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
+    conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
+    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         surface_domain,
-        LAI;
+        LAI,
+        toml_dict;
         conductivity_model,
         retention_model,
     )
@@ -125,7 +122,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         surface_domain,
         canopy_forcing,
         LAI,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
@@ -137,26 +134,15 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
 
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
-    )
+    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
-    scf = Snow.WuWuSnowCoverFractionModel(
-        FT(0.08),
-        FT(1.77),
-        FT(1.0),
-        horz_degree_res,
-    )
+    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     snow = Snow.SnowModel(
         FT,
         surface_domain,
         forcing,
-        earth_param_set,
+        toml_dict,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         α_snow,
@@ -164,8 +150,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     )
 
     # Construct the land model with all default components except for snow
-    land =
-        LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
     return land
 end
 
@@ -184,8 +169,10 @@ domain = ClimaLand.Domains.global_domain(
     nelements,
     mask_threshold = FT(0.99),
 )
-params = LP.LandParameters(FT)
-model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
 # Construct the PModel callback
 pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, Δt, model.canopy)

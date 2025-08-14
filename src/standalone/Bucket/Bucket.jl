@@ -139,6 +139,26 @@ function PrescribedBaregroundAlbedo{FT}(
 end
 
 """
+     PrescribedBaregroundAlbedo(toml_dict::CP.AbstractTOMLDict,
+                                surface_space::ClimaCore.Spaces.AbstractSpace;
+                                α_snow = toml_dict["alpha_snow"],
+                                kwargs...)
+
+An outer constructor for the PrescribedBaregroundAlbedo model which get the
+value for α_snow from `toml_dict` or the keyword argument `α_snow`.
+"""
+function PrescribedBaregroundAlbedo(
+    toml_dict::CP.AbstractTOMLDict,
+    surface_space::ClimaCore.Spaces.AbstractSpace;
+    α_snow = toml_dict["alpha_snow"],
+    kwargs...,
+)
+    FT = CP.float_type(toml_dict)
+    return PrescribedBaregroundAlbedo{FT}(α_snow, surface_space; kwargs...)
+
+end
+
+"""
     PrescribedSurfaceAlbedo{FT, TV <: AbstractTimeVaryingInput}
                        <: AbstractBucketAlbedoModel
 
@@ -277,48 +297,41 @@ function BucketModelParameters(
     τc,
     kwargs...,
 ) where {FT <: AbstractFloat}
-    return BucketModelParameters(
-        CP.create_toml_dict(FT);
-        albedo,
-        z_0m,
-        z_0b,
-        τc,
-        kwargs...,
-    )
+    toml_dict = LP.create_toml_dict(FT, LP.DEFAULT_PARAMS_FILEPATH)
+    return BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc, kwargs...)
 end
 
 function BucketModelParameters(
     toml_dict::CP.AbstractTOMLDict;
     albedo,
-    z_0m,
-    z_0b,
-    τc,
-    kwargs...,
+    W_f = toml_dict["land_bucket_capacity"],
+    f_bucket = toml_dict["bucket_capacity_fraction"],
+    z_0b = toml_dict["bucket_z_0b"],
+    ρc_soil = toml_dict["bucket_soil_heat_capacity"],
+    f_snow = toml_dict["critical_snow_fraction"],
+    z_0m = toml_dict["bucket_z_0m"],
+    σS_c = toml_dict["critical_snow_water_equivalent"],
+    p = toml_dict["bucket_beta_decay_exponent"],
+    κ_soil = toml_dict["bucket_soil_conductivity"],
+    τc = toml_dict["tau_c"],
 )
-
-    name_map = (;
-        :soil_conductivity => :κ_soil,
-        :soil_heat_capacity => :ρc_soil,
-        :critical_snow_water_equivalent => :σS_c,
-        :land_bucket_capacity => :W_f,
-        :critical_snow_fraction => :f_snow,
-        :bucket_capacity_fraction => :f_bucket,
-        :bucket_beta_decay_exponent => :p,
-    )
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
-
     AAM = typeof(albedo)
     earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
     BucketModelParameters{FT, AAM, PSE}(;
+        κ_soil,
+        ρc_soil,
         albedo,
+        σS_c,
+        f_snow,
+        W_f,
+        f_bucket,
+        p,
         z_0m,
         z_0b,
         τc,
         earth_param_set,
-        parameters...,
-        kwargs...,
     )
 end
 """

@@ -7,6 +7,7 @@ import ClimaCore: Fields, Spaces
 include("Artifacts.jl")
 include("shared_utilities/Parameters.jl")
 import .Parameters as LP
+import ClimaParams as CP
 
 include("shared_utilities/compat.jl")
 

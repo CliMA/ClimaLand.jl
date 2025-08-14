@@ -67,7 +67,7 @@ insolation_parameters(ps::ALP) = ps.insol_params
 """
     LandParameters(::Type{FT})
 
-A constructor for the ClimaLand ``earth_param_set`` (LandParameters)
+A constructor for the ClimaLand `earth_param_set` (LandParameters)
 struct which contains the default values defined in ClimaParamsm
 with type FT (Float32, Float64)
 
@@ -78,31 +78,12 @@ LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
     LandParameters(CP.create_toml_dict(FT))
 
 """
-    LandParameters(FT, filepaths...)
+    LandParameters(toml_dict::CP.AbstractTOMLDict)
 
-Construct `LandParameters` from a list of TOML files, whose element type is
-`FT`.
+Construct `LandParameters` from `toml_dict`.
 
-If `override = false`, then non-unique TOML entries are not allowed. If
-`override = true`, then parameters from later TOML files in `filepaths` will
-overwrite the parameters from earlier TOML files.
+See [`ClimaLand.Parameters.create_toml_dict`](@ref).
 """
-function LandParameters(FT, filepaths..., override = false)
-    all(filepath -> endswith(filepath, ".toml"), filepaths) ||
-        error("File paths ($filepaths) must be TOML files")
-    toml_dict = CP.create_toml_dict(
-        FT,
-        default_file = CP.merge_toml_files(
-            [
-                joinpath(pkgdir(CP), "src", "parameters.toml")
-                filepaths...
-            ],
-            overrride = override,
-        ),
-    )
-    return LandParameters(toml_dict)
-end
-
 function LandParameters(toml_dict::CP.AbstractTOMLDict)
     thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
@@ -185,14 +166,14 @@ end
 """
     create_toml_dict(FT, filepaths...; override = false)
 
-Creates a `ParamDict{FT}` struct from `filepaths`.
+Construct a `ParamDict{FT}` struct from `filepaths`.
 
 If `override = false`, then non-unique TOML entries are not allowed. If
 `override = true`, then parameters from later TOML files in `filepaths` will
 overwrite the parameters from earlier TOML files.
 """
 function create_toml_dict(FT, filepaths...; override = false)
-Construct a `ParamDict{FT}` struct from `filepaths`.
+    all(filepath -> endswith(filepath, ".toml"), filepaths) ||
         error("File paths ($filepaths) must be TOML files")
     toml_dict = CP.create_toml_dict(
         FT,
@@ -203,5 +184,8 @@ Construct a `ParamDict{FT}` struct from `filepaths`.
     )
     return toml_dict
 end
+
+const DEFAULT_PARAMS_FILEPATH =
+    joinpath(pkgdir(Parameters), "toml", "default_parameters.toml")
 
 end # module

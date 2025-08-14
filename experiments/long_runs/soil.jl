@@ -62,7 +62,10 @@ stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
 Δt = 450.0
 nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements)
-params = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+params = LP.LandParameters(toml_dict)
 # Forcing data
 if LONGER_RUN
     era5_ncdata_path =
@@ -80,7 +83,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     max_wind_speed = 25.0,
     time_interpolation_method,
 )
-model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, params)
+model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;
