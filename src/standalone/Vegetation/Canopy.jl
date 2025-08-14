@@ -235,28 +235,18 @@ https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
     domain,
-    LAI::AbstractTimeVaryingInput;
+    LAI::AbstractTimeVaryingInput,
+    toml_dict::CP.AbstractTOMLDict;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
     h_leaf::FT = FT(1),
-    SAI::FT = FT(0),
-    RAI::FT = FT(1),
-    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex(
         LAI,
-        SAI,
-        RAI,
+        toml_dict,
     ),
-    ν::FT = FT(1.44e-4),
-    S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
-    conductivity_model = PlantHydraulics.Weibull{FT}(
-        FT(7e-8), # K_sat
-        FT(-4 / 0.0098), # ψ63
-        FT(4), # c
-    ),
-    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(
-        FT(0.2 * 0.0098), # a
-    ),
+    conductivity_model = PlantHydraulics.Weibull(toml_dict),
+    retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
     rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
@@ -272,10 +262,9 @@ function PlantHydraulicsModel{FT}(
     compartment_surfaces =
         n_stem > 0 ? [zmax, h_stem, h_stem + h_leaf] : [zmax, h_leaf]
 
-    parameters = PlantHydraulics.PlantHydraulicsParameters(;
+    parameters = PlantHydraulics.PlantHydraulicsParameters(
+        toml_dict;
         ai_parameterization,
-        ν,
-        S_s,
         conductivity_model,
         retention_model,
         rooting_depth,
@@ -609,15 +598,15 @@ function CanopyModel{FT}(
     },
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
-    earth_param_set;
-    z_0m = FT(2),
-    z_0b = FT(0.2),
+    toml_dict::CP.AbstractTOMLDict;
+    z_0m = toml_dict["canopy_momentum_roughness_length"],
+    z_0b = toml_dict["canopy_scalar_roughness_length"],
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(),
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
-    hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
+    hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}
@@ -653,6 +642,7 @@ function CanopyModel{FT}(
     )
 
     # TODO: move z_0m, z_0b to ClimaParams so we can call `get_default_parameter`.
+    earth_param_set = LP.LandParameters(toml_dict)
     parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z_0m,
         z_0b,
