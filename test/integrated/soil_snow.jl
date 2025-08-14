@@ -7,7 +7,13 @@ import ClimaParams as CP
 import ClimaLand.Parameters as LP
 using Dates
 FT = Float32
-earth_param_set = LP.LandParameters(FT)
+default_param_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+snowy_land_param_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "snowy_land.toml")
+toml_dict =
+    LP.create_toml_dict(FT, default_param_filepath, snowy_land_param_filepath)
+earth_param_set = LP.LandParameters(toml_dict)
 domain = ClimaLand.Domains.Column(; zlim = FT.((-100.0, 0.0)), nelements = 10)
 # Radiation
 start_date = DateTime(2005)
@@ -71,7 +77,7 @@ prognostic_land_components = (:snow, :soil)
 soil = ClimaLand.Soil.EnergyHydrology{FT}(
     domain,
     forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     runoff = ClimaLand.Soil.Runoff.NoRunoff(),
     albedo,
@@ -87,7 +93,7 @@ snow = ClimaLand.Snow.SnowModel(
     FT,
     ClimaLand.Domains.obtain_surface_domain(domain),
     forcing,
-    earth_param_set,
+    toml_dict,
     Δt;
     prognostic_land_components,
 )

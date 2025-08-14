@@ -1,0 +1,39 @@
+[land_bucket_capacity]
+value = 0.2
+type = "float"
+
+[bucket_capacity_fraction]
+value = 0.75
+type = "float"
+
+[z_0b]
+value = 0.001
+type = "float"
+
+[soil_heat_capacity]
+value = 2.0e6
+type = "float"
+
+[critical_snow_fraction]
+value = 0.0
+type = "float"
+
+[z_0m]
+value = 0.01
+type = "float"
+
+[critical_snow_water_equivalent]
+value = 0.2
+type = "float"
+
+[bucket_beta_decay_exponent]
+value = 1.0
+type = "float"
+
+[soil_conductivity]
+value = 1.5
+type = "float"
+
+[alpha_snow]
+value = 0.8
+type = "float"

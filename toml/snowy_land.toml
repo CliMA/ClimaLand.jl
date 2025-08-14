@@ -1,0 +1,25 @@
+# WuWuSnowCoverFractionModel parameters
+
+[gamma]
+value = 0.08
+type = "float"
+description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
+tag = "WuWuSnowCoverFractionModel"
+
+[beta_0]
+value = 1.77
+type = "float"
+description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
+tag = "WuWuSnowCoverFractionModel"
+
+[beta_min]
+value = 1.0
+type = "float"
+description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
+tag = "WuWuSnowCoverFractionModel"
+
+[z0]
+value = 0.106
+type = "float"
+description = "The value used to normalize snow depth when computing snow cover fraction (m)"
+tag = "WuWuSnowCoverFractionModel"

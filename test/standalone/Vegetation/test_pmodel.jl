@@ -239,13 +239,16 @@ end
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos = atmos, radiation = radiation, ground = ground)
     LAI = TimeVaryingInput(t -> FT(0.0))
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = ClimaLand.Parameters.create_toml_dict(
+        FT,
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+    )
 
     canopy = CanopyModel{FT}(
         canopy_domain,
         forcing,
         LAI,
-        earth_param_set;
+        toml_dict;
         photosynthesis = PModel{FT}(),
         conductance = PModelConductance{FT}(),
     )

@@ -111,8 +111,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     # Overwrite some defaults for the canopy model
     # Energy model
-    ac_canopy = FT(2.5e3)
-    energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+    energy = Canopy.BigLeafEnergyModel{FT}(earth_param_set)
 
     # Roughness lengths
     hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain, LAI)
