@@ -27,7 +27,7 @@ using ClimaUtilities
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)

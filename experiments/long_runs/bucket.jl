@@ -33,7 +33,7 @@ using Statistics
 using Dates
 import NCDatasets
 
-using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64;

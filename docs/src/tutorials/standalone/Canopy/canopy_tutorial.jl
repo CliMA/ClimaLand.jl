@@ -56,7 +56,7 @@ import ClimaLand.Parameters as LP
 import ClimaDiagnostics
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 
 # Define the floating point precision desired (64 or 32 bit), and get the
@@ -277,5 +277,10 @@ sol = solve!(simulation);
 # # Create some plots
 
 # We can now plot the data produced in the simulation. For example, GPP and transpiration:
-LandSimVis.make_diurnal_timeseries(simulation; short_names = ["gpp", "trans"])
-# ![](diurnal_timeseries.pdf)
+LandSimVis.make_diurnal_timeseries(
+    simulation;
+    short_names = ["gpp", "trans"],
+    plot_stem_name = "canopy",
+)
+# ![](gpp_canopy.png)
+# ![](trans_canopy.png)

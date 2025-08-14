@@ -11,7 +11,7 @@
 
 # ``` julia
 # using ClimaLand
-# using CairoMakie, ClimaAnalysis, GeoMakie, Poppler_jll, Printf, StatsBase
+# using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 # import ClimaLand.LandSimVis as LandSimVis;
 # ```
 
@@ -30,16 +30,19 @@
 # To plot a subset of the variables, pass in a list of ClimaLand
 # Diagnostic short_names. You can also optionally pass in a spinup
 # date: only data after this date will be included in plotting. You
-# can also pass in a directory and plot name to overwrite the defaults:
+# can also pass in a directory and plot stem name to overwrite the defaults:
 
 # ```julia
 # LandSimVis.make_timeseries(
 #    simulation;
 #    savedir = path_to_dir,
-#    plot_name = "myplot.pdf",
+#    plot_stem_name = "timeseries",
 #    short_names = ["swc", "si", "swe"],
 #    spinup_date = start_date + Day(20))
 # ```
+
+# This would create the following plots
+# "swc_timeseries.png", "si_timeseries.png", and "swe_timeseries.png".
 
 # To plot comparison data, you first need to get the comparison data
 # ```julia
