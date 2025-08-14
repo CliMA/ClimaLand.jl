@@ -684,7 +684,7 @@ function NaNCheckCallback(
     end
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
-    SciMLBase.DiscreteCallback(cond, affect!)
+    return SciMLBase.DiscreteCallback(cond, affect!)
 end
 
 # no date version
@@ -730,10 +730,10 @@ arguments at a specified frequency in simulation time.
     integrator as its first argument and kwargs specified in
     `func_args`. Typically, such a function will look something like:
         (integrator; func_args) -> do_some_update(integrator.p, integrator.u, ...)
-    Note that func_args can be empty. 
+    Note that func_args can be empty.
 
 The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when to
-call the function based on the `frequency`. 
+call the function based on the `frequency`.
 """
 function FrequencyBasedCallback(
     frequency::Union{AbstractFloat, Dates.Period},
@@ -766,8 +766,8 @@ function FrequencyBasedCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
-    SciMLBase.DiscreteCallback(cond, affect!)
+    affect! = (integrator) -> func(integrator; func_args...)
+    return SciMLBase.DiscreteCallback(cond, affect!)
 end
 
 """

@@ -204,7 +204,6 @@ sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
     simulation,
 );
 
-ClimaLand.Diagnostics.close_output_writers(diags)
 
 simdir = ClimaAnalysis.SimDir(output_dir)
 short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]

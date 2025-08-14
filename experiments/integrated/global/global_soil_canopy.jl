@@ -146,7 +146,6 @@ simulation = LandSimulation(
     user_callbacks = (),
 )
 ClimaLand.Simulations.solve!(simulation)
-ClimaLand.Diagnostics.close_output_writers(diags)
 
 # ClimaAnalysis
 if ClimaComms.iamroot(context)
