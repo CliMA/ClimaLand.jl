@@ -140,14 +140,14 @@ end
         pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
     ) where {FT <: AbstractFloat}
 
-Constructs a P-model (an optimality model for photosynthesis) using default parameters. 
+Constructs a P-model (an optimality model for photosynthesis) using default parameters.
 
 The following default parameters are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
-- β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020) 
-- ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020) 
-- ϕ0 = NaN (unitless) - constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the 
-                        temperature-dependent form (Stocker 2020)    
+- β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020)
+- ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020)
+- ϕ0 = NaN (unitless) - constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the
+                        temperature-dependent form (Stocker 2020)
 - ϕa0 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
 - ϕa1 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
 - ϕa2 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
@@ -338,9 +338,9 @@ Creates a Beer-Lambert model for canopy radiative transfer on the provided domai
 
 Spatially-varying parameters are read in from data files in `clm_canopy_radiation_parameters`.`
 In particular, this function returns a field for
-- clumping index Ω
-- albedo and transmissitivy in PAR and NIR bands
-- leaf angle distribution G function parameter χl
+- clumping index `Ω`
+- leaf angle distribution `G_Function`
+- albedo and transmissitivy in PAR and NIR bands (`α_PAR_leaf`, `τ_PAR_leaf`, `α_NIR_leaf`, `τ_NIR_leaf`)
 
 Canopy emissivity and wavelength per PAR photon are currently treated
 as constants; these can be passed in as Floats by kwarg.
@@ -1195,8 +1195,8 @@ end
     ClimaLand.make_set_initial_cache(model::CanopyModel)
 
 Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
-is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which 
-sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt. 
+is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
+sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     update_cache! = make_update_cache(model)
@@ -1210,9 +1210,9 @@ end
 """
     set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
 
-For some canopy components (namely the P-model), we need values at t-1 to compute new 
+For some canopy components (namely the P-model), we need values at t-1 to compute new
 values, so this function sets the historical cache values for the photosynthesis model.
-However, for other photosynthesis models this is not needed, so do nothing by default. 
+However, for other photosynthesis models this is not needed, so do nothing by default.
 """
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
     return nothing
