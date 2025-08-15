@@ -76,7 +76,7 @@ ensemble_kalman_process = EKP.EnsembleKalmanProcess(
 # We are now ready to carry out the inversion. At each iteration, we get the ensemble from the last iteration, apply
 # Ozark_LatentHeatFlux(params) to each ensemble member, and apply the Kalman update to the ensemble.
 
-# Can be multithreaded, see https://clima.github.io/EnsembleKalmanProcesses.jl/dev/parallel_hpc/
+# Can be multithreaded, see https://clima.github.io/EnsembleKalmanProcesses.jl/stable/parallel_hpc/
 ClimaLand_out = []
 for i in 1:N_iterations # This will run the model N_ensemble * N_iterations times
     params_i = EKP.get_ϕ_final(prior, ensemble_kalman_process)

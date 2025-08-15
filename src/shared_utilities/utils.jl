@@ -684,7 +684,7 @@ function NaNCheckCallback(
     end
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
-    SciMLBase.DiscreteCallback(cond, affect!)
+    return SciMLBase.DiscreteCallback(cond, affect!)
 end
 
 # no date version
@@ -723,22 +723,20 @@ arguments at a specified frequency in simulation time.
 # Arguments
 - `frequency`: Either a `Float` (assumed to be in seconds) or a `Dates.Period`
   (e.g., `Hour(6)`) indicating how often to trigger the callback.
-- `start_date`: The calendar start time of the simulation.
-- `t0`: The initial time of the integrator. The simulation starts at start_date + Seconds(t0)
+- `start_date`: The calendar start date of the simulation.
 - `dt`: The model timestep (used for divisibility warning).
 - `func`: The function to be called at each callback. It should accept the
     integrator as its first argument and kwargs specified in
     `func_args`. Typically, such a function will look something like:
         (integrator; func_args) -> do_some_update(integrator.p, integrator.u, ...)
-    Note that func_args can be empty. 
+    Note that func_args can be empty.
 
 The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when to
-call the function based on the `frequency`. 
+call the function based on the `frequency`.
 """
 function FrequencyBasedCallback(
     frequency::Union{AbstractFloat, Dates.Period},
     start_date::Dates.DateTime,
-    t0::Union{AbstractFloat, Dates.Period},
     dt::Union{AbstractFloat, Dates.Period};
     func,
     func_args...,
@@ -748,11 +746,10 @@ function FrequencyBasedCallback(
         frequency isa AbstractFloat ? Dates.Millisecond(1000 * frequency) :
         frequency
 
-    t_start = t0 isa AbstractFloat ? Dates.Millisecond(1000 * t0) : t0
     schedule = EveryCalendarDtSchedule(
         frequency_period;
         start_date,
-        date_last = start_date + t_start,
+        date_last = start_date,
     )
 
     if !isnothing(dt)
@@ -766,8 +763,8 @@ function FrequencyBasedCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
-    SciMLBase.DiscreteCallback(cond, affect!)
+    affect! = (integrator) -> func(integrator; func_args...)
+    return SciMLBase.DiscreteCallback(cond, affect!)
 end
 
 """

@@ -1,7 +1,7 @@
 # # Fluxnet simulations with an integrated soil and canopy model
 
 # In the
-# [standalone canopy tutorial](docs/src/tutorials/standalone/Canopy/canopy_tutorial.md),
+# [standalone canopy tutorial](docs/src/tutorials/standalone/Canopy/canopy_tutorial.jl),
 # we demonstrated how to run the canopy model in
 # standalone mode using a prescribed soil moisture
 # and ground temperature. ClimaLand can also
@@ -14,13 +14,15 @@
 # located within an oak-hickory forest in Ozark, Missouri, USA.
 # The forcing data was obtained from
 # AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1854370
+
 # Citation: Jeffrey Wood, Lianhong Gu (2025), AmeriFlux FLUXNET-1F US-MOz Missouri Ozark
 # Site, Ver. 5-7, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1854370
 
 # The focus of this tutorial is to learn the steps towards setting up and
 # running an integrated simulation, and less on the parameterization
 # choices. As such, the default parameters are implicitly set.
-# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.md) or the [soiil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.md).
+# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl)
+# or the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl).
 
 # # Preliminary Setup
 using Dates
@@ -44,7 +46,7 @@ earth_param_set = LP.LandParameters(FT);
 # We will use prescribed atmospheric and radiative forcing from the
 # US-MOz tower.
 site_ID = "US-MOz";
-site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 # Get the latitude and longitude in degrees, as well as the
 # time offset in hours of local time from UTC
 (; time_offset, lat, long) =
@@ -91,7 +93,7 @@ LAI = ClimaLand.prescribed_lai_modis(
 # # Setup the integrated model
 
 # We want to simulate the canopy-soil system together, so we pick the  model type
-# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/ClimaLand/#Integrated-Land-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/ClimaLand/#Integrated-Land-Model-Types-and-methods)
 # Here we use the highest level model constructor, which uses default parameters,
 # and parameterizations, for the soil and canopy models.
 land_model = SoilCanopyModel{FT}(forcing, LAI, earth_param_set, domain);
@@ -110,10 +112,11 @@ diagnostics = ClimaLand.default_diagnostics(
     average_period = :hourly,
 );
 
-# How often we want to update the forcing.
+# Choose how often we want to update the forcing.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID));
 updateat = Array(start_date:data_dt:stop_date);
 
+# Now we can construct the simulation object and solve it.
 simulation = Simulations.LandSimulation(
     start_date,
     stop_date,

@@ -7,7 +7,6 @@
 # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 
 import SciMLBase
-import ClimaTimeSteppers as CTS
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
@@ -95,10 +94,11 @@ compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
 
 # Set up the timestepping information for the simulation
-start_date = DateTime(2010) + Hour(time_offset)
-N_days = 360
-end_date = start_date + Day(N_days)
-dt = FT(900)
+dt = Float64(900)
+
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
+(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
 
 # Height of sensor on flux tower
 atmos_h = FT(32)

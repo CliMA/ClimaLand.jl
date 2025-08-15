@@ -213,7 +213,6 @@ simulation, saved_values, nc_writer =
 sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
     simulation,
 );
-close(nc_writer)
 output_dir = nc_writer.output_dir
 
 simdir = ClimaAnalysis.SimDir(output_dir)
@@ -246,7 +245,6 @@ if PROFILING
     flame_file = joinpath(outdir, "flame_$device_suffix.html")
     ProfileCanvas.html_file(flame_file, results)
     @info "Save compute flame to $flame_file"
-    close(nc_writer)
 
     simulation, saved_values, nc_writer =
         setup_prob(start_date, start_date + Second(tf), Δt, outdir)
@@ -258,7 +256,6 @@ if PROFILING
     alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
     ProfileCanvas.html_file(alloc_flame_file, profile)
     @info "Save allocation flame to $alloc_flame_file"
-    close(nc_writer)
 end
 
 # Interpolate to grid

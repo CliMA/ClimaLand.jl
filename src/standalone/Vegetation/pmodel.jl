@@ -100,6 +100,8 @@ Base.@kwdef struct PModelConstants{FT}
     lightspeed::FT
     """Avogadro constant (mol^-1)"""
     N_a::FT
+    """Density of water (kg m^-3)"""
+    ρ_water::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -162,6 +164,7 @@ function PModelConstants{FT}(;
         LP.get_default_parameter(FT, :planck_constant),
         LP.get_default_parameter(FT, :light_speed),
         LP.get_default_parameter(FT, :avogadro_constant),
+        LP.get_default_parameter(FT, :density_liquid_water),
     )
 end
 
@@ -314,6 +317,7 @@ function compute_full_pmodel_outputs(
         planck_h,
         lightspeed,
         N_a,
+        ρ_water,
     ) = constants
 
     # Convert ca from mol/mol to a partial pressure (Pa)
@@ -323,7 +327,7 @@ function compute_full_pmodel_outputs(
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_canopy, P_air)
+    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca_pp, VPD, β, Drel)
     ci = χ * ca_pp
@@ -480,6 +484,7 @@ function update_optimal_EMA(
             planck_h,
             lightspeed,
             N_a,
+            ρ_water,
         ) = constants
 
         # Compute intermediate values
@@ -488,7 +493,7 @@ function update_optimal_EMA(
             ϕ0
 
         Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-        ηstar = compute_viscosity_ratio(T_canopy, P_air)
+        ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
         Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
         # convert ca from mol/mol to Pa 
@@ -717,8 +722,7 @@ end
     function make_PModel_callback(
         ::Type{FT},
         start_date::Dates.DateTime, 
-        t0::Union{Dates.DateTime, AbstractFloat},
-        dt::Union{Dates.DateTime, AbstractFloat}, 
+        dt::Union{AbstractFloat, Dates.Period}, 
         canopy, 
         longitude = nothing
     ) where {FT <: AbstractFloat}
@@ -735,7 +739,7 @@ application here (since meteorological drivers are often updated at coarser time
 Args
 - `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
 - `start_date`: datetime object for the start of the simulation (UTC).
-- `dt`: timestep in seconds (this will get cast to type FT)
+- `dt`: timestep 
 - `canopy`: the canopy object containing the P-model parameters and constants.
 - `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on 
     a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then 
@@ -744,13 +748,16 @@ Args
 function make_PModel_callback(
     ::Type{FT},
     start_date::Dates.DateTime,
-    t0::Union{Dates.DateTime, AbstractFloat},
-    dt::Union{Dates.DateTime, AbstractFloat},
+    dt::Union{AbstractFloat, Dates.Period},
     canopy,
     longitude = nothing,
 ) where {FT <: AbstractFloat}
-    function seconds_after_midnight(t)
-        return Hour(t).value * 3600 + Minute(t).value * 60 + Second(t).value
+    function seconds_after_midnight(date)
+        return Float64(
+            Hour(date).value * 3600 +
+            Minute(date).value * 60 +
+            Second(date).value,
+        )
     end
 
     if isnothing(longitude)
@@ -768,18 +775,17 @@ function make_PModel_callback(
     # effects of obliquity and orbital eccentricity, so it is constant throughout the year
     # the max error is on the order of 20 minutes
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-    start_t = FT(seconds_after_midnight(start_date))
-    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
+    start_t = seconds_after_midnight(start_date)
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
 
     return FrequencyBasedCallback(
         dt,         # period of this callback
         start_date, # initial datetime, UTC 
-        t0,         # integrator start time, in seconds UTC
         dt;         # integration timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(
             integrator.p,
             integrator.u,
-            (integrator.t + start_t) % (seconds_in_a_day), # current time in seconds UTC; 
+            (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC; 
             canopy = canopy,
             dt = dt,
             local_noon = local_noon,

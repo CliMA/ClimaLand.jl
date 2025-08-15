@@ -48,19 +48,19 @@ discretization is tied to a set of basis functions you wish to use to represent 
 variable as a function of space. The nodal points - the locations in space where the variable
 is solved for - are arranged in `space` in a manner which depends on these basis functions.
 Note that these spaces are only mathematically needed when your variables satisfy PDEs[^1],
-but that they still exist when your variables do not, because we are using the same 
+but that they still exist when your variables do not, because we are using the same
 underlying infrastructure in both cases.
 
 
 ## Domain types
 All ClimaLand domains are subtypes of abstract type
-[`ClimaLand.Domains.AbstractDomain`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.AbstractDomain).
+[`ClimaLand.Domains.AbstractDomain`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.AbstractDomain).
 A variety of concrete domain types are supported:
 
-- 0D: [`Domains.Point`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Point)
-- 1D: [`Domains.Column`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Column)
-- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.SphericalSurface)
-- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.SphericalShell).
+- 0D: [`Domains.Point`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Point)
+- 1D: [`Domains.Column`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Column)
+- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalSurface)
+- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalShell).
 
 As discussed above, our modeling requires that variables of a model can be defined on different subsets of the domain. Because of that, we define the concept of a surface domain, and a subsurface domain. Not all domains have a surface and subsurface; some only have surface domains, as shown in the Table below.
 
@@ -74,7 +74,7 @@ As discussed above, our modeling requires that variables of a model can be defin
 
 There is a single key method which take a ClimaLand domain as an argument.
 
-- [` coordinates(domain)`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.coordinates): under the hood, this function  uses
+- [` coordinates(domain)`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.coordinates): under the hood, this function  uses
 the NamedTuple of function spaces (domain.space) to create the coordinate field for the surface and subsurface domains (as applicable), stored in a NamedTuple.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has subsurface coordinates of latitude, longitude, and depth, while the surface coordinates
@@ -98,28 +98,28 @@ make sense to use. A single layer snow model does not require vertical resolutio
 that make sense to use are a Point, Plane, or SphericalSurface.
 
 When a developer first defines a model, they need to specify the symbols used for the prognostic variables,
-via [`prognostic_vars`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_vars),
+via [`prognostic_vars`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_vars),
 and
 the types of those variables,
- via [`prognostic_types`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_types).
+ via [`prognostic_types`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_types).
 
-They additionally need to define which subset of the domain the variables are defined on, using 
-[`prognostic_domain_names`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_domain_names).
+They additionally need to define which subset of the domain the variables are defined on, using
+[`prognostic_domain_names`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_domain_names).
 
-The [`initialize`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize)
+The [`initialize`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize)
 function (which calls both
-[`initialize_prognostic`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize_prognostic)
- and [`initialize_auxiliary`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize_auxiliary))
+[`initialize_prognostic`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize_prognostic)
+ and [`initialize_auxiliary`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
 is a float, the field will be a field of float values (a scalar field)[^4].
 
-How do domains tie into this? The field of a prognostic variable corresponds in a 1-1 fashion with the coordinate field of the subset of the domain associated with that variable via `prognostic_domain_name`.  For example, the bucket model has a vertically resolved temperature `T`, but the bucket water content 
-`W` is not vertically resolved. If your domain is a Column, the subsurface coordinates may be [-4.5,-3.5,-2.5,-1.5, -0.5], and 
-the surface coordinate would be [-0.0]. Your prognostic variable field for `T` will be [T[-4.5], T[-3.5]; T[-2.5], T[-1.5], T[-0.5]], and for `W`  it will be [W[0.0],]. Your variable always has the same spatial resolution as the associated subset of the domain. 
+How do domains tie into this? The field of a prognostic variable corresponds in a 1-1 fashion with the coordinate field of the subset of the domain associated with that variable via `prognostic_domain_name`.  For example, the bucket model has a vertically resolved temperature `T`, but the bucket water content
+`W` is not vertically resolved. If your domain is a Column, the subsurface coordinates may be [-4.5,-3.5,-2.5,-1.5, -0.5], and
+the surface coordinate would be [-0.0]. Your prognostic variable field for `T` will be [T[-4.5], T[-3.5]; T[-2.5], T[-1.5], T[-0.5]], and for `W`  it will be [W[0.0],]. Your variable always has the same spatial resolution as the associated subset of the domain.
 
 This functionality is not required for every standalone component model. For example, a single layer snow model
-will only have variables on the surface of the domain (which in this case, would be the entire Point, Plane, or 
+will only have variables on the surface of the domain (which in this case, would be the entire Point, Plane, or
 SphericalShell domain). The user still must define the prognostic_domain_names method. This functionality is required
 for most multi-component models.
 

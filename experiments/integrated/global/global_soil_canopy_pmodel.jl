@@ -30,7 +30,7 @@ import ClimaUtilities
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 ClimaComms.init(context)
-outdir = generate_output_path("experiments/integrated/global")
+outdir = generate_output_path("experiments/integrated/global_pmodel")
 
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -47,6 +47,8 @@ surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 
 # Set up dates and times for the simulation
+# Note that the P Model takes a few weeks to spin up, so this short of a run
+# really only tests software functionality.
 start_date = DateTime(2008);
 dt = 450.0
 end_date = start_date + Dates.Second(3600)
@@ -100,29 +102,22 @@ LAI = ClimaLand.prescribed_lai_modis(
     start_date,
 )
 
+# Construct the P model manually since it is not a default
+photosynthesis = PModel{FT}()
+conductance = PModelConductance{FT}()
+
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
     earth_param_set;
     prognostic_land_components,
+    photosynthesis,
+    conductance,
 )
 
 # Combine the soil and canopy models into a single prognostic land model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
-
-ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-set_ic! =
-    (Y, p, t0, model) ->
-        ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, model)
-stepper = CTS.ARS343()
-ode_algo = CTS.IMEXAlgorithm(
-    stepper,
-    CTS.NewtonsMethod(
-        max_iters = 1,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
-    ),
-)
 
 # ClimaDiagnostics
 nc_writer =
@@ -135,6 +130,9 @@ diags = ClimaLand.default_diagnostics(
     average_period = :hourly,
 )
 
+# Construct the PModel callback
+pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, land.canopy)
+
 simulation = LandSimulation(
     start_date,
     end_date,
@@ -142,8 +140,7 @@ simulation = LandSimulation(
     land;
     outdir,
     diagnostics = diags,
-    timestepper = ode_algo,
-    user_callbacks = (),
+    user_callbacks = (pmodel_cb,),
 )
 ClimaLand.Simulations.solve!(simulation)
 

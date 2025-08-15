@@ -43,7 +43,7 @@ EKP.jl is possible, CliMA's preferred approach is using
 optimized for running on compute clusters. `ClimaCalibrate` handles efficient
 job orchestration and abstracts the details of the underlying system, providing
 a simpler user experience. Consult the
-[ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/)
+[ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/stable/)
 for further information.
 
 ## Calibrate a land model
@@ -98,7 +98,7 @@ target plus or minus the noise at specific space and time, the goal is reached.
 - `TransformUnscented.Unscented` is a method in EKP, that requires `2p + 1`
   ensemble members for each iteration, where `p` is the number of parameters.
   For more information, read the
-  [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/unscented_kalman_inversion/).
+  [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/unscented_kalman_inversion/).
 
 - `verbose = true` is a setting that writes information about your calibration
   run to a log file.
@@ -106,12 +106,12 @@ target plus or minus the noise at specific space and time, the goal is reached.
 - `rng` is a set random seed.
 
 - `Scheduler` is a EKP setting for timestepping, please read
-  [EKP schedulers documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/learning_rate_scheduler/).
+  [EKP schedulers documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/learning_rate_scheduler/).
 
 - `ClimaCalibrate.WorkerBackend` defines how to interact with the underlying
   compute system. For other possible backends (for example, `JuliaBackend`,
   `ClimaGPUBackend`, or `DerechoBackend`), see the
-  [backend documentation in ClimaCalibrate](https://clima.github.io/ClimaCalibrate.jl/dev/backends/).
+  [backend documentation in ClimaCalibrate](https://clima.github.io/ClimaCalibrate.jl/stable/backends/).
 
 Each backend is optimized for specific use cases and computing resources. The
 backend system is implemented through Julia's multiple dispatch, so that code
@@ -126,7 +126,7 @@ prior_sc = EKP.constrained_gaussian("sc", 5e-6, 5e-4, 0, Inf);
 prior_pc = EKP.constrained_gaussian("pc", -2e6, 1e6, -Inf, Inf);
 prior = EKP.combine_distributions([prior_sc, prior_pc]);
 ```
-For more documentation about prior distribution, see [this EKP documentation page](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/parameter_distributions/).
+For more documentation about prior distribution, see [this EKP documentation page](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/parameter_distributions/).
 
 - `n_iterations` is the number of times your priors distribution will be
   updated, at each iteration your model is run for  the number of
@@ -323,7 +323,7 @@ For the land calibration, the default optimization method is
 scheduler, you need to go to the `experiments/calibration/run_calibration.jl`
 file and modify it there. For more information about the different optimization
 methods, see
-[EnsembleKalmanProcesses.jl](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/)
+[EnsembleKalmanProcesses.jl](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/)
 for more information.
 
 ### Observation settings
@@ -359,14 +359,14 @@ over a particular year or over multiple years for example.
 
 To change the covariance matrix, you need to go to `generate_observations.jl`
 and modify the covariance matrix that is passed in. See
-[ClimaCalibrate.jl documentation](https://clima.github.io/ClimaCalibrate.jl/dev/api/#Observation-Recipe-Interface)
+[ClimaCalibrate.jl documentation](https://clima.github.io/ClimaCalibrate.jl/stable/api/#Observation-Recipe-Interface)
 for a list of different covariance matrices that can be used.
 
 #### Data pipelines
 
 !!! note "Data preprocessing"
     The data preprocessing uses ClimaAnalysis.jl. See the
-    [ClimaAnalysis.jl documentation](https://clima.github.io/ClimaAnalysis.jl/dev/api/)
+    [ClimaAnalysis.jl documentation](https://clima.github.io/ClimaAnalysis.jl/stable/api/)
     for functions you can use for preprocessing.
 
 To add additional variables or change how a variable is preprocessed, you must

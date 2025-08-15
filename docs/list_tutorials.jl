@@ -16,6 +16,7 @@ tutorials = [
             "Changing soil parameterizations" => "standalone/Soil/changing_soil_parameterizations.jl",
         ],
         "Canopy" => [
+            "Default Canopy" => "standalone/Canopy/default_canopy.jl",
             "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",
             "Changing canopy parameterizations" => "standalone/Canopy/changing_canopy_parameterizations.jl",
         ],

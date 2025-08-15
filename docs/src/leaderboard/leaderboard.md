@@ -23,7 +23,7 @@ modified to add a new variable to the leaderboard. The dictionaries are `sim_var
 
 To add a variable for the leaderboard, add a key-value pair to the dictionary `sim_var_dict`
 whose key is the short name of the variable and the value is a function that returns a
-[`OutputVar`](https://clima.github.io/ClimaAnalysis.jl/dev/var/). Any preprocessing is done
+[`OutputVar`](https://clima.github.io/ClimaAnalysis.jl/stable/var/). Any preprocessing is done
 in the function which includes unit conversion and shifting the dates.
 
 ```julia

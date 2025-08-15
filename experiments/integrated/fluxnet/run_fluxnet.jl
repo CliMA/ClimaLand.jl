@@ -1,5 +1,4 @@
 import SciMLBase
-import ClimaTimeSteppers as CTS
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
@@ -101,25 +100,10 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
-N_spinup_days = 15
-N_days = N_spinup_days + 340
-
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, end_date) = FluxnetSimulations.get_data_dates(
-    site_ID,
-    time_offset;
-    duration = Day(N_days),
-)
+(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -311,9 +295,8 @@ simulation = LandSimulation(
     updateat,
     diagnostics = diags,
 )
-@time sol = solve!(simulation)
+@time solve!(simulation)
 
-ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
@@ -324,7 +307,7 @@ LandSimVis.make_diurnal_timeseries(
     start_date;
     savedir,
     short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
-    spinup_date = start_date + Day(N_spinup_days),
+    spinup_date = start_date + Day(20),
     comparison_data,
 )
 LandSimVis.make_timeseries(
@@ -333,6 +316,6 @@ LandSimVis.make_timeseries(
     start_date;
     savedir,
     short_names = ["swc", "tsoil", "swe"],
-    spinup_date = start_date + Day(N_spinup_days),
+    spinup_date = start_date + Day(20),
     comparison_data,
 )

@@ -185,7 +185,7 @@ p.soil |> propertynames
 
 
 # Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/dev/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
+# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/stable/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
 # conditions.
 sol = solve!(simulation);
 
@@ -218,6 +218,7 @@ plot(
     legend = :bottomleft,
     title = "Equilibrium test",
 );
+plot!(1e-3 .+ ϑ_l[1], z, label = "porosity");
 plot!(ϑ_l[end], z, label = string("t = ", string(t[end]), "days"));
 function hydrostatic_equilibrium(z, z_interface)
     ν = 0.495
@@ -232,8 +233,6 @@ function hydrostatic_equilibrium(z, z_interface)
     end
 end
 plot!(hydrostatic_equilibrium.(z, -0.56), z, label = "equilibrium solution");
-
-plot!(1e-3 .+ ϑ_l[1], z, label = "porosity");
 
 # Save the output:
 savefig("equilibrium_test_ϑ_l.png");

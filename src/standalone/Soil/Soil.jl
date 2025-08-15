@@ -308,6 +308,7 @@ end
                          )
 
 Creates a RichardsModel model with the given float type FT, domain, earth_param_set and forcing.
+Here, `forcing` should be a `NamedTuple` containing a field `atmos` with the atmospheric forcing.
 
 Default spatially varying parameters (for retention curve parameters and specific storativity) are provided but can be
 changed with keyword arguments.
