@@ -98,7 +98,8 @@ end
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
 and the earth_param_set, applying a change in the instantaneous temperature at each point
-of ΔT, while keeping the relative humidity fixed.
+of ΔT, while keeping the relative humidity fixed. The LW_d shifts as LW_d -> LW_d + aΔT, with
+a= 2W/m^2/K a surface climate sensitivity parameter.
 
 Please see the documentation for `prescribed_forcing_era5` for more information.
 """
@@ -239,6 +240,7 @@ function prescribed_perturbed_temperature_era5(
         method = time_interpolation_method,
         compose_function = compute_diffuse_fraction_broadcasted,
     )
+    perturb_lw_d(LW_d; ΔT = ΔT, a = 2) = LW_d .+ (a * ΔT)
     LW_d = TimeVaryingInput(
         era5_ncdata_path,
         "msdwlwrf",
@@ -247,6 +249,7 @@ function prescribed_perturbed_temperature_era5(
         regridder_type,
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
+        file_reader_kwargs = (; preprocess_func = perturb_lw_d),
     )
     zenith_angle =
         (t, s) -> default_zenith_angle(
