@@ -8,7 +8,6 @@ using Insolation
 
 using ClimaCore
 import ClimaParams as CP
-import ClimaTimeSteppers as CTS
 using StaticArrays
 using ClimaLand
 using ClimaLand.Domains: Point
@@ -98,16 +97,6 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 updateat = Array(start_date:Second(1800):end_date)
 
-# Set up timestepper
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 6,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
-
 simulation = LandSimulation(
     start_date,
     end_date,
@@ -117,7 +106,7 @@ simulation = LandSimulation(
     user_callbacks = (saving_cb,),
     updateat = updateat,
     solver_kwargs = (; saveat = deepcopy(saveat)),
-    timestepper = ode_algo,
+    diagnostics = nothing,
 )
 sol = solve!(simulation)
 
