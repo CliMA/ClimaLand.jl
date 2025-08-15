@@ -1183,83 +1183,106 @@ end
 
 
 """
-    viscosity_h20(
+    viscosity_h2o(
         T::FT, 
-        p::FT,
-        constant_density::Bool
+        ρ_water::FT
     ) where {FT}
 
-Computes the viscosity of water in Pa s given temperature T (K) and pressure p (Pa)
+Computes the viscosity of water in Pa s given temperature T (K) and density ρ_water (kg/m^3)
 according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050]. 
 
 Can consider simplifying if this level of precision is not needed
 """
-function viscosity_h2o(T::FT, p::FT) where {FT}
+function viscosity_h2o(T::FT, ρ::FT) where {FT <: AbstractFloat}
     # Reference constants
-    tk_ast = FT(647.096)    # K
-    ρ_ast = FT(322.0)      # kg/m^3
-    μ_ast = FT(1e-6)       # Pa s
-
-    # Get density of water [kg/m^3]
-    earth_param_set = LP.LandParameters(FT)
-    ρ = LP.ρ_cloud_liq(earth_param_set)
+    tk_ast = FT(647.096)     # K
+    ρ_ast = FT(322.0)       # kg m⁻³
+    μ_ast = FT(1e-6)        # Pa s
 
     # Dimensionless variables
     tbar = T / tk_ast
     tbarx = sqrt(tbar)
-    tbar2 = tbar^2
-    tbar3 = tbar^3
+    tbar2 = tbar * tbar
+    tbar3 = tbar2 * tbar
     ρbar = ρ / ρ_ast
 
-    # Calculate μ0 (Eq. 11 & Table 2)
-    μ0 =
+    # μ0 (Eq. 11 & Table 2)
+    μ0 = (
         FT(1.67752) + FT(2.20462) / tbar + FT(0.6366564) / tbar2 -
         FT(0.241605) / tbar3
-    μ0 = FT(1e2) * tbarx / μ0
+    )
+    μ0 = FT(100) * tbarx / μ0
 
-    # Coefficients h_array from Table 3
-    h_array = [
-        0.520094 0.0850895 -1.08374 -0.289555 0.0 0.0
-        0.222531 0.999115 1.88797 1.26613 0.0 0.120573
-        -0.281378 -0.906851 -0.772479 -0.489837 -0.257040 0.0
-        0.161913 0.257399 0.0 0.0 0.0 0.0
-        -0.0325372 0.0 0.0 0.0698452 0.0 0.0
-        0.0 0.0 0.0 0.0 0.00872102 0.0
-        0.0 0.0 0.0 -0.00435673 0.0 -0.000593264
-    ]
+    # Using tuples keeps everything isbits and avoids heap allocation on device
+    # blame the formatter
+    h = (
+        (
+            FT(0.520094),
+            FT(0.0850895),
+            FT(-1.08374),
+            FT(-0.289555),
+            FT(0.0),
+            FT(0.0),
+        ),
+        (
+            FT(0.222531),
+            FT(0.999115),
+            FT(1.88797),
+            FT(1.26613),
+            FT(0.0),
+            FT(0.120573),
+        ),
+        (
+            FT(-0.281378),
+            FT(-0.906851),
+            FT(-0.772479),
+            FT(-0.489837),
+            FT(-0.257040),
+            FT(0.0),
+        ),
+        (FT(0.161913), FT(0.257399), FT(0.0), FT(0.0), FT(0.0), FT(0.0)),
+        (FT(-0.0325372), FT(0.0), FT(0.0), FT(0.0698452), FT(0.0), FT(0.0)),
+        (FT(0.0), FT(0.0), FT(0.0), FT(0.0), FT(0.00872102), FT(0.0)),
+        (FT(0.0), FT(0.0), FT(0.0), FT(-0.00435673), FT(0.0), FT(-0.000593264)),
+    )
 
-    # Compute μ1 (Eq. 12 & Table 3)
-    μ1 = FT(0.0)
-    ctbar = (FT(1.0) / tbar) - FT(1.0)
-    for i in 1:6
-        coef1 = ctbar^(i - 1)
-        coef2 = FT(0.0)
-        for j in 1:7
-            coef2 += FT(h_array[j, i]) * (ρbar - FT(1.0))^(j - 1)
-        end
-        μ1 += coef1 * coef2
+    # μ1 (Eq. 12 & Table 3), with Horner evaluation and iterative powers
+    ctbar = inv(tbar) - one(FT)
+    δρ = ρbar - one(FT)
+    μ1 = zero(FT)
+    coef1 = one(FT)
+    @inbounds for i in 1:6
+        coef2 = h[7][i]
+        coef2 = muladd(δρ, coef2, h[6][i])
+        coef2 = muladd(δρ, coef2, h[5][i])
+        coef2 = muladd(δρ, coef2, h[4][i])
+        coef2 = muladd(δρ, coef2, h[3][i])
+        coef2 = muladd(δρ, coef2, h[2][i])
+        coef2 = muladd(δρ, coef2, h[1][i])
+
+        μ1 = muladd(coef1, coef2, μ1)  # accumulate ctbar^(i-1) * coef2
+        coef1 *= ctbar # update ctbar power for next i
     end
     μ1 = exp(ρbar * μ1)
 
-    μ_bar = μ0 * μ1       # Eq. 2
-    μ = μ_bar * μ_ast     # Eq. 1
-    return FT(μ)          # Pa s
+    μ_bar = μ0 * μ1
+    μ = μ_bar * μ_ast
+    return μ
 end
 
 
 """
     compute_viscosity_ratio(
-        T::FT, 
-        p::FT,
-        constant_density::Bool
+        T::FT,
+        To::FT,
+        ρ_water::FT
     ) where {FT}
 
-Computes η*, the ratio of the viscosity of water at temperature T and pressure p
-to the viscosity of water at STP. 
+Computes η*, the ratio of the viscosity of water at temperature T to that at To = 25˚C. 
 """
-function compute_viscosity_ratio(T::FT, p::FT) where {FT}
-    η25 = viscosity_h2o(FT(298.15), FT(101325.0))
-    ηstar = viscosity_h2o(T, p) / η25
+function compute_viscosity_ratio(T::FT, To::FT, ρ_water::FT) where {FT}
+    η25 = viscosity_h2o(To, ρ_water)
+    ηstar = viscosity_h2o(T, ρ_water) / η25
     return FT(ηstar)
 end
 
