@@ -1,4 +1,4 @@
-# # Global run of land model at low resolution
+1# # Global run of land model at low resolution
 
 # The code sets up and runs ClimaLand v1, which
 # includes soil, canopy, and snow, on a spherical domain,
@@ -45,7 +45,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "lowres_snowy_land_longrun_$(device_suffix)"
+root_path = "lowres_snowy_land_longrun_rh_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -58,12 +58,12 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         context,
         lowres = true,
     )
-    atmos, radiation = ClimaLand.prescribed_perturbed_forcing_era5(
+    atmos, radiation = ClimaLand.prescribed_perturbed_rh_era5(
         era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,
-        5.0,
+        -0.2,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -182,4 +182,3 @@ ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)

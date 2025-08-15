@@ -39,6 +39,7 @@ steps:
 
   - group: "Global Land Models"
     if: build.env("LONGER_RUN") == null
+    if: build.env("PERTURBED_RUN") == null
     steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
@@ -104,6 +105,34 @@ steps:
           slurm_time: 00:30:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
+
+  - group: "Perturbed Low-res Global Land Models"
+    if: build.env("PERTURBED_RUN") != null
+    steps:
+
+      - label: ":snow_capped_mountain: Low-Res Snowy Land Perturbed Temperature"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land_temp.jl
+        artifact_paths:
+          - "lowres_snowy_land_longrun_temp_gpu/*png"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 3:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          PERTURBED_RUN: ""
+ 
+      - label: ":snow_capped_mountain: Low-Res Snowy Land Perturbed RH"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land_rh.jl
+        artifact_paths:
+          - "lowres_snowy_land_longrun_rh_gpu/*png"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 3:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          PERTURBED_RUN: ""
 
   - group: "Longer runs of Global Land Models"
     if: build.env("LONGER_RUN") != null
