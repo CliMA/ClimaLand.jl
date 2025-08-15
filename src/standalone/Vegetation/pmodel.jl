@@ -10,7 +10,7 @@ export PModelParameters,
     PModelParameters{FT<:AbstractFloat}
 
 The required parameters for P-model (Stocker et al. 2020). Parameters are typically
-tunable with considerable uncertainty. 
+tunable with considerable uncertainty.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
@@ -107,7 +107,7 @@ end
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
-# make these custom structs broadcastable as tuples 
+# make these custom structs broadcastable as tuples
 Base.broadcastable(x::PModelParameters) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
 
@@ -115,7 +115,7 @@ Base.broadcastable(x::PModelConstants) = tuple(x)
     PModelConstants(FT)
 
 Creates a `PModelConstants` object with default values for the P-model constants.
-See Stocker et al. (2020) Table A2 and references within for more information. 
+See Stocker et al. (2020) Table A2 and references within for more information.
 """
 function PModelConstants{FT}(;
     Kc25 = FT(39.97), # Pa (see note on line 38 above)
@@ -174,11 +174,11 @@ end
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 
-    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
+    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020).
 
-    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
-        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
-        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
+    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T.,
+        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating
+        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581,
         https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 """
 struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
@@ -198,7 +198,7 @@ PModel{FT}(
 )
 
 Outer constructor for the PModel struct. This takes a PModelParameters struct which includes
-parameters with considerable uncertainty. PModelConstants is constructed by default to the 
+parameters with considerable uncertainty. PModelConstants is constructed by default to the
 default values, but if you know what you are doing, you can override with your own constants.
 """
 function PModel{FT}(
@@ -215,10 +215,10 @@ end
 In addition to total net carbon assimilation (`An`), total canopy photosynthesis (`GPP`),
 and dark respiration (`Rd`), the P-model uses some more cache variables:
 
-- `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt` 
+- `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt`
     containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
     using an exponential moving average (EMA) at local noon.
-Note that these fluxes are all relative to leaf area, not ground area. 
+Note that these fluxes are all relative to leaf area, not ground area.
 """
 ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
@@ -234,19 +234,19 @@ ClimaLand.auxiliary_domain_names(::PModel) =
 
 """
 compute_full_pmodel_outputs(
-    parameters::PModelParameters{FT}, 
+    parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
     T_canopy::FT,
     P_air::FT,
     VPD::FT,
-    ca::FT, 
+    ca::FT,
     βm::FT,
     APAR::FT,
 ) where {FT}
 
-Performs the P-model computations as defined in Stocker et al. (2020) 
+Performs the P-model computations as defined in Stocker et al. (2020)
 and returns a dictionary of full outputs. See https://github.com/geco-bern/rpmodel
-for a code reference. This should replicate the behavior of the `rpmodel` package. 
+for a code reference. This should replicate the behavior of the `rpmodel` package.
 
 Args:
 - `parameters`:     PModelParameters object containing the model parameters.
@@ -264,7 +264,7 @@ Output name         Description (units)
     "gammastar"     CO2 compensation point (Pa)
     "kmm"           Effective MM coefficient for Rubisco-limited photosynthesis (Pa)
     "ns_star"       Viscosity of water normalized to 25 deg C (unitless)
-    "chi"           Optimal ratio of intercellular to ambient CO2 (unitless) 
+    "chi"           Optimal ratio of intercellular to ambient CO2 (unitless)
     "xi"            Sensitivity of χ to VPD (Pa^1/2)
     "mj"            CO2 limitation factor for light-limited photosynthesis (unitless)
     "mc"            CO2 limitation factor for Rubisco-limited photosynthesis (unitless)
@@ -372,7 +372,7 @@ function compute_full_pmodel_outputs(
     iWUE = (ca_pp - ci) / Drel
     gs = gs_co2_pmodel(χ, ca, Ac)
 
-    # dark respiration 
+    # dark respiration
     rd =
         fC3 *
         (
@@ -405,21 +405,21 @@ end
 
 """
 update_optimal_EMA(
-    parameters::PModelParameters{FT}, 
+    parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
-    OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}}, 
+    OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
     T_canopy::FT,
     P_air::FT,
     VPD::FT,
-    ca::FT, 
+    ca::FT,
     βm::FT,
     APAR::FT,
     local_noon_mask::FT,
-) where {FT} 
+) where {FT}
 
-This function updates the optimal photosynthetic capacities Vcmax25, Jmax25 and sensitivity of 
+This function updates the optimal photosynthetic capacities Vcmax25, Jmax25 and sensitivity of
 stomatal conductance to dryness (ξ) using an exponential moving average (EMA) that computes new
-optimal values at local noon, following Mengoli et al. (2022). 
+optimal values at local noon, following Mengoli et al. (2022).
 
 Args:
 - `parameters`: PModelParameters object containing the model parameters.
@@ -431,14 +431,14 @@ Args:
 - `ca`: Ambient CO2 concentration (mol/mol).
 - `βm`: Soil moisture stress factor (unitless).
 - `APAR`: Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
-- `local_noon_mask`: A mask (0 or 1) indicating whether the current time is within the local noon window. 
+- `local_noon_mask`: A mask (0 or 1) indicating whether the current time is within the local noon window.
 
 Returns:
 - NamedTuple with updated optimal values of ξ, Vcmax25, and Jmax25
 
-Reference: 
-Mengoli, G., Agustí-Panareda, A., Boussetta, S., Harrison, S. P., Trotta, C., & Prentice, I. C. (2022). 
-Ecosystem photosynthesis in land-surface models: A first-principles approach incorporating acclimation. 
+Reference:
+Mengoli, G., Agustí-Panareda, A., Boussetta, S., Harrison, S. P., Trotta, C., & Prentice, I. C. (2022).
+Ecosystem photosynthesis in land-surface models: A first-principles approach incorporating acclimation.
 Journal of Advances in Modeling Earth Systems, 14, e2021MS002767. https://doi.org/10.1029/2021MS002767
 """
 function update_optimal_EMA(
@@ -496,7 +496,7 @@ function update_optimal_EMA(
         ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
         Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
-        # convert ca from mol/mol to Pa 
+        # convert ca from mol/mol to Pa
         ca_pp = ca * P_air
 
         ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
@@ -545,15 +545,15 @@ end
 """
 function get_local_noon_mask(
     t::FT,
-    dt::FT, 
-    lon::FT 
-) where {FT}    
+    dt::FT,
+    lon::FT
+) where {FT}
 
-This function determines whether the current time `t` (seconds UTC) is within a local noon window of width 
-`dt` (seconds) centered around the local noon time for a given longitude `lon` (degrees, -180 to 180). 
-Currently we neglect the correction due to obliquity and eccentricity. 
+This function determines whether the current time `t` (seconds UTC) is within a local noon window of width
+`dt` (seconds) centered around the local noon time for a given longitude `lon` (degrees, -180 to 180).
+Currently we neglect the correction due to obliquity and eccentricity.
 
-See https://clima.github.io/Insolation.jl/dev/ZenithAngleEquations/#Hour-Angle 
+See https://clima.github.io/Insolation.jl/dev/ZenithAngleEquations/#Hour-Angle
 """
 function get_local_noon_mask(t, dt, local_noon::FT) where {FT}
     strict_noon_mask =
@@ -562,25 +562,25 @@ function get_local_noon_mask(t, dt, local_noon::FT) where {FT}
 end
 
 """
-function set_historical_cache!(p, Y0, model::PModel, canopy) 
+function set_historical_cache!(p, Y0, model::PModel, canopy)
 
 The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
 Before the simulation, we need to have some physically meaningful initial values for these variables,
-which live in p.canopy.photosynthesis.OptVars. 
+which live in p.canopy.photosynthesis.OptVars.
 
-This method assumes that the acclimation is to the initial conditions of the simulation. Note that 
-if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are 
-zero, so it will take ~1 month (two e-folding timescales for α corresponding to 2 week acclimation 
-timescale) for the model to reach a physically meaningful state. 
+This method assumes that the acclimation is to the initial conditions of the simulation. Note that
+if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are
+zero, so it will take ~1 month (two e-folding timescales for α corresponding to 2 week acclimation
+timescale) for the model to reach a physically meaningful state.
 
-An alternative to this approach is to initialize the initial optimal values to some reasonable values 
-based on a spun-up simulation. 
+An alternative to this approach is to initialize the initial optimal values to some reasonable values
+based on a spun-up simulation.
 """
 function set_historical_cache!(p, Y0, model::PModel, canopy)
     parameters = model.parameters
     constants = model.constants
 
-    # drivers 
+    # drivers
     FT = eltype(parameters)
     earth_param_set = canopy.parameters.earth_param_set
 
@@ -665,12 +665,12 @@ Updates the optimal parameters according to conditions at local noon.
 function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
 
-    # update the acclimated Vcmax25, Jmax25, ξ using EMA 
+    # update the acclimated Vcmax25, Jmax25, ξ using EMA
     parameters = canopy.photosynthesis.parameters
     constants = canopy.photosynthesis.constants
     earth_param_set = canopy.parameters.earth_param_set
 
-    # drivers 
+    # drivers
     FT = eltype(parameters)
     # TODO: replace this with modular soil moisture stress parameterization
     ψ = p.canopy.hydraulics.ψ
@@ -721,28 +721,28 @@ end
 """
     function make_PModel_callback(
         ::Type{FT},
-        start_date::Dates.DateTime, 
-        dt::Union{AbstractFloat, Dates.Period}, 
-        canopy, 
+        start_date::Dates.DateTime,
+        dt::Union{AbstractFloat, Dates.Period},
+        canopy,
         longitude = nothing
     ) where {FT <: AbstractFloat}
 
 This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
-using an exponential moving average at local noon. 
+using an exponential moving average at local noon.
 
-We check for local noon using the provided `longitude` (once passing 
+We check for local noon using the provided `longitude` (once passing
 in lat/lon for point/column domains, this can be automatically extracted from the domain axes) every dt.
 The time of local noon is expressed in seconds UTC and neglects the effects of obliquity and eccentricity, so
-it is constant throughout the year. This presents an error of up to ~20 minutes, but it is sufficient for our 
-application here (since meteorological drivers are often updated at coarser time intervals anyway). 
+it is constant throughout the year. This presents an error of up to ~20 minutes, but it is sufficient for our
+application here (since meteorological drivers are often updated at coarser time intervals anyway).
 
 Args
 - `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
 - `start_date`: datetime object for the start of the simulation (UTC).
-- `dt`: timestep 
+- `dt`: timestep
 - `canopy`: the canopy object containing the P-model parameters and constants.
-- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on 
-    a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then 
+- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on
+    a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then
     the longitude at each point can be automatically extracted from the field axes (THIS STILL NEEDS TO BE TESTED)
 """
 function make_PModel_callback(
@@ -771,7 +771,7 @@ function make_PModel_callback(
         end
     end
 
-    # this computes the time of local noon in seconds UTC without considering the 
+    # this computes the time of local noon in seconds UTC without considering the
     # effects of obliquity and orbital eccentricity, so it is constant throughout the year
     # the max error is on the order of 20 minutes
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
@@ -780,12 +780,12 @@ function make_PModel_callback(
 
     return FrequencyBasedCallback(
         dt,         # period of this callback
-        start_date, # initial datetime, UTC 
+        start_date, # initial datetime, UTC
         dt;         # integration timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(
             integrator.p,
             integrator.u,
-            (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC; 
+            (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC;
             canopy = canopy,
             dt = dt,
             local_noon = local_noon,
@@ -798,7 +798,7 @@ end
     update_photosynthesis!(p, Y, model::PModel, canopy)
 
 Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary 
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::PModel, canopy)
@@ -813,7 +813,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     ci = p.canopy.photosynthesis.ci
     OptVars = p.canopy.photosynthesis.OptVars
 
-    # drivers 
+    # drivers
     P_air = p.drivers.P
     ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
@@ -836,7 +836,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    # compute intermediate vars 
+    # compute intermediate vars
     Γstar = @. lazy(
         co2_compensation_p(
             T_canopy,
@@ -862,7 +862,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    # compute instantaneous max photosynthetic rates and assimilation rates 
+    # compute instantaneous max photosynthetic rates and assimilation rates
     Jmax = @. lazy(
         p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
             T_canopy,
@@ -910,7 +910,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     # light limited assimilation rate
     Aj = @. lazy(c3_light_assimilation(J, ci, Γstar))
 
-    # dark respiration 
+    # dark respiration
     @. Rd =
         constants.fC3 *
         (
@@ -933,7 +933,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         Vcmax
 
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
-    # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here. 
+    # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here.
     @. An = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
     @. GPP = compute_GPP(
         An,

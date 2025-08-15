@@ -3,9 +3,10 @@ Snow Model
 ```@meta
 CurrentModule = ClimaLand.Snow
 ```
-## Snow Parameters
+## Snow Model and Parameters
 
 ```@docs
+ClimaLand.Snow.SnowModel
 ClimaLand.Snow.SnowParameters
 ```
 
@@ -19,7 +20,7 @@ ClimaLand.Snow.snow_thermal_conductivity
 ClimaLand.Snow.snow_bulk_temperature
 ClimaLand.Snow.maximum_liquid_mass_fraction
 ClimaLand.Snow.runoff_timescale
-ClimaLand.Snow.compute_water_runoff	
+ClimaLand.Snow.compute_water_runoff
 ClimaLand.Snow.energy_from_q_l_and_swe
 ClimaLand.Snow.energy_from_T_and_swe
 ClimaLand.Snow.snow_cover_fraction

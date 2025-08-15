@@ -4,10 +4,13 @@
 CurrentModule = ClimaLand.Canopy
 ```
 
-## Parameters
+## Models and Parameters
 
 ```@docs
+ClimaLand.Canopy.MedlynConductanceModel
 ClimaLand.Canopy.MedlynConductanceParameters
+ClimaLand.Canopy.PModelConductance
+ClimaLand.Canopy.PModelConductanceParameters
 ```
 
 ## Methods
