@@ -28,6 +28,7 @@ tutorials = [
     "Running Fluxnet simulations" => [
         "Canopy and soil" => "integrated/soil_canopy_fluxnet_tutorial.jl",
         "Canopy, soil, and snow" => "integrated/snowy_land_fluxnet_tutorial.jl",
+        "Changing LandModel parameterizations" => "integrated/changing_snowy_land_parameterizations.jl",
         "Data processing" => "integrated/fluxnet_data.jl",
         "Visualization" => "integrated/fluxnet_vis.jl",
     ],

@@ -4,18 +4,30 @@
 CurrentModule = ClimaLand.Canopy
 ```
 
-## Parameters
+## Models and Parameters
 
 ```@docs
+ClimaLand.Canopy.TwoStreamModel
+ClimaLand.Canopy.TwoStreamParameters
+ClimaLand.Canopy.BeerLambertModel
 ClimaLand.Canopy.BeerLambertParameters
+```
+
+## Radiative Transfer Parameterizations
+```@docs
+ClimaLand.Canopy.ConstantGFunction
+ClimaLand.Canopy.CLMGFunction
 ```
 
 ## Methods
 
 ```@docs
+ClimaLand.Canopy.canopy_radiant_energy_fluxes!
+ClimaLand.Canopy.ground_albedo_PAR
+ClimaLand.Canopy.ground_albedo_NIR
 ClimaLand.Canopy.compute_fractional_absorbances
 ClimaLand.Canopy.canopy_sw_rt_beer_lambert
 ClimaLand.Canopy.canopy_sw_rt_two_stream
 ClimaLand.Canopy.extinction_coeff
-ClimaLand.Canopy.canopy_radiant_energy_fluxes!
+ClimaLand.Canopy.compute_G
 ```

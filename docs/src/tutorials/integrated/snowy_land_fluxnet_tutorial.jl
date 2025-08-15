@@ -4,7 +4,7 @@
 # [SoilCanopyModel tutorial](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl),
 # we demonstrated how to run the an integrated model with a soil and
 # canopy component at the US-MOz fluxnet site.
-# Here we add in a snow component, and run the site at the Niwot Ridge site instead.
+# Here we add in a snow component, and run at the Niwot Ridge site instead.
 # The forcing data was obtained from
 # AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871141
 
@@ -16,8 +16,9 @@
 # The focus of this tutorial is to learn the steps towards setting up and
 # running an integrated simulation, and less on the parameterization
 # choices. As such, the default parameters are implicitly set.
-# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl)
-# or the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl).
+# To experiment with modularity in the parameters and parameterizations, please see the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl),
+# the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl),
+# or the [snowy land parameterizations tutorial](docs/src/tutorials/integrated/changing_snowy_land_parameterizations.jl).
 
 # # Preliminary Setup
 using Dates

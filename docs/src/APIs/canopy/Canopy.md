@@ -3,15 +3,17 @@
 ```@meta
 CurrentModule = ClimaLand.Canopy
 ```
-## Canopy Model Structs
+## Canopy Model and Parameters
 
 ```@docs
 ClimaLand.Canopy.CanopyModel
 ClimaLand.Canopy.SharedCanopyParameters
+ClimaLand.Canopy.AbstractCanopyComponent
 ```
 
-## Canopy Model Fluxes
+## Canopy Model Boundary Fluxes
 
 ```@docs
-ClimaLand.Canopy.DiagnosticTranspiration
+ClimaLand.Canopy.AbstractCanopyBC
+ClimaLand.Canopy.AtmosDrivenCanopyBC
 ```
