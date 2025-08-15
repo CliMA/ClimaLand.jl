@@ -18,18 +18,13 @@ standalone_models = [
         ]
     ]
     "Soil" => [
+        "Physics" => [
+            "Richards model" => "standalone/pages/soil/physics/richards_model.md",
+            "Energy+Hydrology model" => "standalone/pages/soil/physics/energy_model.md",
+        ]
         "Biogeochemistry" => [
             "DAMM model" => "standalone/pages/soil/biogeochemistry/DAMM_model.md",
         ]
-        "Hydrology" => [
-            "Richards model" => "standalone/pages/soil/hydrology/richards_model.md",
-        ]
-        "Energy" => [
-            "Energy model" => "standalone/pages/soil/energy/energy_model.md",
-        ]
     ]
     "Snow" => ["Snow model" => "standalone/pages/snow/snow_model.md"]
-    "SurfaceWater" => [
-        "Surface water model" => "standalone/pages/surface_water/surface_water_model.md",
-    ]
 ]

@@ -53,6 +53,7 @@ pages = Any[
     "Home" => "index.md",
     "Running your first simulation" => "getting_started.md",
     "Tutorials" => tutorials,
+    "Model Equations" => standalone_models,
     "Additional resources" => [
         "Model structure" => "model_structure.md",
         "Repository structure" => "repo_structure.md",
@@ -68,7 +69,6 @@ pages = Any[
             "Shared utilities" => "shared_utilities.md",
         ],
         "Physical units" => "physical_units.md",
-        "Model Equations" => standalone_models,
         "Julia background" => "julia.md",
     ],
     "APIs" => apis,

@@ -1,51 +1,42 @@
-# Radiative transfer scheme
-This section describes multiple models of radiative transfer
-through the vegetation canopy, implemented in ClimaLand.
-
 ## Beer's law
-Plants utilize Photosynthetically Active Radiation (PAR) for the process of photosynthesis, during which they convert light energy into chemical energy, fueling the synthesis of sugars and other organic compounds. PAR refers to the portion of the electromagnetic spectrum that is essential for photosynthesis in plants. PAR includes wavelengths ranging from approximately 400 to 700 nanometers and corresponds to the visible light spectrum. The unit used to measure PAR is called micromoles per square meter per second (μmol/m²/s), representing the number of photons within the PAR range that strike a square meter of a surface per second.
 
-The portion of PAR that is actually absorbed by the vegetation canopy for photosynthesis is called Absorbed Photosynthetically Active Radiation (APAR). The APAR driving photosynthesis is calculated following the Beer-
-Lambert law:
-
+Plants absorb, transmit, and reflect shortwave radiation; the fraction of downwelling
+radiation partitioned into each of these
+categories under Beer's law is given by per wavelength band as
 ```math
-APAR(PAR, \theta_s) = (PAR)(1 - \rho_{leaf})(1 - e^{(-K(\theta_s) LAI  \Omega)})
+\rm{abs}_\lambda = (1 - \alpha_{\rm{leaf}, \lambda})(1 - e^{(-K(\theta_s) LAI  \Omega)})\\
+\rm{trans}_\lambda = e^{(-K(\theta_s) LAI  \Omega)}\\
+\rm{refl}_\lambda = 1 - \rm{abs}_\lambda - trans_\lambda * (1-\alpha_{\rm{ground}})
 ```
 
-where PAR ≈ SW/2 is the incident moles of photons per meter squared per
-second in the PAR window, approximated as half of the incident shortwave flux.
-If PAR is not directly available, $ρ_{leaf}$ is the PAR canopy reflectance, K is the
-vegetation extinction coefficient following Campbell (1998), LAI is the leaf area
-index, $θ_s$ is the zenith angle, and $Ω$ is the clumping index following Braghiere
-(2021). $K$, $Ω$ and $ρ_{leaf}$ are all unitless. LAI is in m² m⁻².
-In order to compute $K$, we need $θ_s$ in radians and the leaf angle distribution $l_d$
-(unitless). K is then defined as
+where λ reflects the wavelength of light, SW\_d is the downwelling radiative flux,
+α\_{leaf,λ} is the albedo of the leaves in that wavelength band, K is the extinction
+coefficient, θ\_s is the zenith angle, LAI is the leaf area index, Ω
+is the clumping index, and α\_{ground,λ} is the ground albedo.
+
+The extinction coefficient is defined as
 
 ```math
 K = l_d/\max{(\cos{(\theta_s)}, \epsilon)}
 ```
-
+where $l_d$ is the leaf distribution factor, and where the denominator is structured
 so that at night, when 3π/2 > $θ_s$ > π/2, $K$ is large (lots of extinction) and
 non-negative. The small value ε prevents dividing by zero.
 
-The model has the following parameters:
+The model has the following variables:
 
 | Output | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
-| Absorbed Photosynthetically Active Radiation  | APAR   | μmol m⁻² s⁻¹  | 0-1500 |
+| Absorbed fraction of radiative flux per band | abs_λ | W m⁻²  | 0--1 |
+| Reflected fraction of radiative flux per band | refl_λ | W m⁻²  | 0--1 |
+| Transmitted fraction of radiative flux per band | trans_λ | W m⁻²  | 0--1 |
 
-| Drivers | Symbol | Unit | Range |
+| Input | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
-| Photosynthetically Active Radiation | PAR | μmol m⁻² s⁻¹  | 0--1500 |
-| Leaf Area Index   | LAI   | m² m⁻² | 0--10 |
-
-| Parameters | Symbol | Unit | Range |
-| :---         |     :---:      |    :---:      |     :---:   |
-| Canopy reflectance | $ρ_{leaf}$  | -  | 0.0--1.0 |
-| Extinction coefficient  | $K$   | - | 0.0--1.0 |
-| Clumping index | $Ω$  | -  | 0.0--1.0 |
+| Leaf reflectance (albedo) | $α\_{\rm{leaf},λ}$  | -  | 0--1 |
+| Extinction coefficient  | $K$   | - | K>0 |
+| Clumping index | $Ω$  | -  | 0--1 |
 | Zenith angle | $θ_s$  | rad | 0--π |
-
-| Constants | Symbol | Unit | Value |
-| :---         |     :---:      |    :---:      |     :---:   |
-| Leaf angle distribution | $l_d$ | - | 0.5 |
+| Leaf Area Index   | LAI   | m² m⁻² | 0--10 |
+| Leaf angle distribution | $l_d$ | - | 0--1 |
+| Ground albedo | $α\_{\rm{ground},λ}$  | -  | 0--1 |
