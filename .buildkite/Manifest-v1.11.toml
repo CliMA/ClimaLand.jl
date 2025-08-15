@@ -2,7 +2,11 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
+<<<<<<< HEAD
 project_hash = "53802e4fba14dac3d5e5fb1149db2ae8e60ebb4d"
+=======
+project_hash = "3edb2ca53d9a3a7f7b2ad2bcedfbffcd4cb01606"
+>>>>>>> c27a63b7f (Update ClimaParams version to 0.11)
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
