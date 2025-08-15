@@ -73,23 +73,27 @@ steps:
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
-        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*pdf"
+        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "ozark_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*pdf"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
 
       - label: "niwot_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
-        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*pdf"
+        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
 
       - label: "harvard_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
-        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*pdf"
+        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
-        artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*pdf"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*png"
+
+      - label: "ozark_pmodel"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pmodel.jl"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/pmodel/out/*png"
 
       - label: "ozark_conservation"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
@@ -112,6 +116,16 @@ steps:
       - label: "Global Run CPU MPI"
         command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
         artifact_paths: "experiments/integrated/global/output_active/*png"
+        env:
+          CLIMACOMMS_CONTEXT: "MPI"
+        agents:
+          slurm_ntasks_per_node: 4
+          slurm_nodes: 1
+          slurm_mem: 24G
+
+      - label: "Global Run + P Model CPU MPI"
+        command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy_pmodel.jl"
+        artifact_paths: "experiments/integrated/global_pmodel/output_active/*png"
         env:
           CLIMACOMMS_CONTEXT: "MPI"
         agents:

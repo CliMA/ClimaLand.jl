@@ -6,7 +6,6 @@ defined by plant functional types instead of fully site-specific parameters.
 import ClimaLand
 
 import SciMLBase
-import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaComms
 import ClimaParams as CP
@@ -106,22 +105,8 @@ prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
-N_spinup_days = 15
-N_days = N_spinup_days + 340
-N_seconds = Float64(N_days * 3600 * 24)
-start_date = DateTime(2010) + Hour(time_offset)
-end_date = start_date + Day(N_days)
-
-
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
-
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
 # Define the PFT land cover percentages for the Ozark site. Currently we only
 # use the dominant PFT, which for Ozark is deciduous broadleaf temperate trees.
 pft_pcts = [
@@ -160,9 +145,6 @@ pft_pcts = [
     rooting_depth,
 ) = FT.(params_from_pfts(pft_pcts))
 
-# For now, replace ac_canopy with larger value in order to increase
-# stability of timestepping
-ac_canopy = ac_canopy * 3
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 
@@ -244,9 +226,9 @@ photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
-    start_date = start_date,
-    end_date = end_date;
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+    start_date,
+    end_date = stop_date,
     context = ClimaComms.context(surface_space),
 );
 LAI = ClimaLand.prescribed_lai_modis(
@@ -335,17 +317,17 @@ diags = ClimaLand.default_diagnostics(
 ## How often we want to update the drivers
 ## defined in the simulatons file
 data_dt = Float64(FluxnetSimulations.get_data_dt(site_ID))
-updateat = Array(start_date:Second(data_dt):end_date)
+updateat = Array(start_date:Second(data_dt):stop_date)
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     land;
     set_ic! = set_ic!,
     updateat,
     diagnostics = diags,
 )
-sol = solve!(simulation)
+solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
@@ -357,7 +339,7 @@ LandSimVis.make_diurnal_timeseries(
     start_date;
     savedir,
     short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
-    spinup_date = start_date + Day(N_spinup_days),
+    spinup_date = start_date + Day(20),
     comparison_data,
 )
 LandSimVis.make_timeseries(
@@ -366,6 +348,6 @@ LandSimVis.make_timeseries(
     start_date;
     savedir,
     short_names = ["swc", "tsoil"],
-    spinup_date = start_date + Day(N_spinup_days),
+    spinup_date = start_date + Day(20),
     comparison_data,
 )
