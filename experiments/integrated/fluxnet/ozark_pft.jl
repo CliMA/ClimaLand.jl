@@ -228,7 +228,7 @@ photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 surface_space = land_domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
     start_date,
-    end_date = stop_date;
+    end_date = stop_date,
     context = ClimaComms.context(surface_space),
 );
 LAI = ClimaLand.prescribed_lai_modis(

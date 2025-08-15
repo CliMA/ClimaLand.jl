@@ -140,7 +140,6 @@ simulation = LandSimulation(
     land;
     outdir,
     diagnostics = diags,
-    timestepper = ode_algo,
     user_callbacks = (pmodel_cb,),
 )
 ClimaLand.Simulations.solve!(simulation)
