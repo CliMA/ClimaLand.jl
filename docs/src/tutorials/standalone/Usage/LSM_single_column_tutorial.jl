@@ -1,5 +1,5 @@
 # The `AbstractModel`
-# [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/model_tutorial)
+# [tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/model_tutorial)
 # describes how a user can run
 # simulations of a physical system governed by differential equations.
 # In this framework, the user must define a model type for their problem,
@@ -136,7 +136,7 @@ soil_ode! = make_exp_tendency(soil);
 # functions, given the model, and evaluates them before computing
 # the tendency, so we do not need to define that for the soil model.
 
-# Note also that we have defined methods `make_compute_exp_tendency`, 
+# Note also that we have defined methods `make_compute_exp_tendency`,
 # `make_update_aux`, and `make_update_boundary_fluxes`, which only take
 # the `model` as argument, and which return
 # the functions `compute_exp_tendency!`, `update_aux!`, and `update_boundary_fluxes!`.

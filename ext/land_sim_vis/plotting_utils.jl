@@ -18,9 +18,9 @@ Generates png files called in the provided savedir;
 these images are global maps for the provided short_names variables
 contained in the provided savedir folder (see ClimaAnalysis documentation),
 at the date provided. Plots are saved under the name
-short_name_date_plot_stem_name.png. 
+short_name_date_plot_stem_name.png.
 Variables with multiple levels are plotted at each level
-in levels, with the level appended to the plot name; 
+in levels, with the level appended to the plot name;
 if levels is nothing, the surface is plotted by default.
 
 The plotting defaults are set for global plots with an ocean mask.
@@ -126,9 +126,9 @@ Generates two png files assessing water and energy conservation in
 savedir/water_plot_stem_name.png
 savedir/energy_plot_stem_name.png
 
-The resulting png files contain a time series of the global mean 
-(area-weighted) energy or water volume error, in units of 
-`J/m^2` and `m`. Only continents are included in the global average. 
+The resulting png files contain a time series of the global mean
+(area-weighted) energy or water volume error, in units of
+`J/m^2` and `m`. Only continents are included in the global average.
 """
 function LandSimVis.check_conservation(
     savedir,
@@ -199,7 +199,7 @@ function LandSimVis.check_conservation(
         ax = Axis(
             fig_cycle[1, 1],
             xlabel = "Years",
-            ylabel = "Global Mean Conservation Error $(units[i])",
+            ylabel = "Global Mean Conservation Error [$(units[i])]",
             title = "$(titles[i]), typical value = $(typical_value[i]) $(units[i])",
         )
         CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
@@ -222,7 +222,7 @@ end
 Generates multiple png files called short_name_plot_stem_name.png in the provided savedir,
 one for each short_name in the Vector provided `short_names`.
 These images contain the timeseries for the global mean of the provided short_names variables
-contained in the provided savedir folder (see ClimaAnalysis documentation). 
+contained in the provided savedir folder (see ClimaAnalysis documentation).
 """
 function make_ocean_masked_annual_timeseries(
     savedir,
@@ -309,11 +309,11 @@ end
 
 Converts an ITime to a date using the epoch
 of the Itime, the counter, and the period (unit)
-of the counter. 
+of the counter.
 
 Although the epoch can be different from the start_date,
 we usually think of the simulation time as relative to the start_date,
-and so we warn here if that is not the case 
+and so we warn here if that is not the case
 """
 function time_to_date(t::ITime, start_date)
     start_date != t.epoch &&
@@ -336,13 +336,13 @@ average diurnal cycle for the diagnostics; the files
 is saved under short_name_plot_stem_name.png in the directory `savedir`.
 
 The `start_date` is used to convert from timestamps of seconds since
-the start date (in diagnostics) to dates; only values observed or 
+the start date (in diagnostics) to dates; only values observed or
 simulated after the `spinup_date` are included.
 
 To include a comparison to data, a NamedTuple `comparison_data`
 may optionally be passed. This should include the timeseries of the
 data labeled with the same variable name as the diagnostics use. For example:
-comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will 
+comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will
 result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
 being plotted, provided that those diagnostics were recorded during the simulation.
 """
@@ -376,7 +376,7 @@ function LandSimVis.make_diurnal_timeseries(
         ax = CairoMakie.Axis(
             fig[1, 1],
             xlabel = "Hour of day (UTC)",
-            ylabel = "$sn $(unit)",
+            ylabel = "$sn [$(unit)]",
         )
         CairoMakie.lines!(
             ax,
@@ -446,13 +446,13 @@ timeseries for the diagnostics; the files
 is saved under short_name_plot_stem_name.png in the directory `savedir`.
 
 The `start_date` is used to convert from timestamps of seconds since
-the start date (in diagnostics) to dates; only values observed or 
+the start date (in diagnostics) to dates; only values observed or
 simulated after the `spinup_date` are included.
 
 To include a comparison to data, a NamedTuple `comparison_data`
 may optionally be passed. This should include the timeseries of the
 data labeled with the same variable name as the diagnostics use. For example:
-comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will 
+comparison_data = (; UTC_datetime, gpp = [....], shf = [....]) will
 result in the timeseries of gpp vs UTC_datetime and shf vs UTC_datetime
 being plotted, provided that those diagnostics were recorded during the simulation.
 """
@@ -486,7 +486,7 @@ function LandSimVis.make_timeseries(
         ax = CairoMakie.Axis(
             fig[1, 1],
             xlabel = "Date (UTC)",
-            ylabel = "$sn $(unit)",
+            ylabel = "$sn [$(unit)]",
         )
         CairoMakie.lines!(
             ax,

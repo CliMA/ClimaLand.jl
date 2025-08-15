@@ -117,7 +117,7 @@ steps:
         agents:
           slurm_ntasks_per_node: 4
           slurm_nodes: 1
-          slurm_mem: 16G
+          slurm_mem: 24G
 
       - label: "Canopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/timestep_test.jl"

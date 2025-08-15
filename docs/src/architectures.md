@@ -20,7 +20,7 @@ Below, we have descriptions for how to specify the context when trying to run a
 simulation in different setups. There are two ways to do this: internally within a
 script/REPL, or in the terminal via environment variables.
 
-For more detailed information, please see the ClimaComms.jl [documentation](https://clima.github.io/ClimaComms.jl/dev/).
+For more detailed information, please see the ClimaComms.jl [documentation](https://clima.github.io/ClimaComms.jl/stable/).
 
 ## Choosing the architecture within a script/REPL
 

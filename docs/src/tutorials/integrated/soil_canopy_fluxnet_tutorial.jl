@@ -91,7 +91,7 @@ LAI = ClimaLand.prescribed_lai_modis(
 # # Setup the integrated model
 
 # We want to simulate the canopy-soil system together, so we pick the  model type
-# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/ClimaLand/#Integrated-Land-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/ClimaLand/#Integrated-Land-Model-Types-and-methods)
 # Here we use the highest level model constructor, which uses default parameters,
 # and parameterizations, for the soil and canopy models.
 land_model = SoilCanopyModel{FT}(forcing, LAI, earth_param_set, domain);
