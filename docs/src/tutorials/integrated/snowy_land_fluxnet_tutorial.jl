@@ -1,12 +1,13 @@
 # # Fluxnet simulations with the full land model: snow, soil, canopy
 
 # In the
-# [SoilCanopyModel tutorial](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.md),
+# [SoilCanopyModel tutorial](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl),
 # we demonstrated how to run the an integrated model with a soil and
 # canopy component at the US-MOz fluxnet site.
 # Here we add in a snow component, and run the site at the Niwot Ridge site instead.
 # The forcing data was obtained from
 # AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871141
+
 # Citation: Peter D. Blanken, Russel K. Monson, Sean P. Burns,
 # David R. Bowling, Andrew A. Turnipseed (2022),
 # AmeriFlux FLUXNET-1F US-NR1 Niwot Ridge Forest (LTER NWT1),
@@ -15,7 +16,8 @@
 # The focus of this tutorial is to learn the steps towards setting up and
 # running an integrated simulation, and less on the parameterization
 # choices. As such, the default parameters are implicitly set.
-# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.md) or the [soiil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.md).
+# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl)
+# or the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl).
 
 # # Preliminary Setup
 using Dates
@@ -40,7 +42,7 @@ earth_param_set = LP.LandParameters(FT);
 # US-NR1 tower.  We also
 # read in the MODIS LAI and let that vary in time in a prescribed manner.
 site_ID = "US-NR1";
-site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 # Get the latitude and longitude in degrees, as well as the
 # time offset in hours of local time from UTC
 (; time_offset, lat, long) =
@@ -106,7 +108,7 @@ diagnostics = ClimaLand.default_diagnostics(
     average_period = :hourly,
 );
 
-# How often we want to update the forcing.
+# Choose how often we want to update the forcing.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID));
 updateat = Array(start_date:data_dt:stop_date);
 

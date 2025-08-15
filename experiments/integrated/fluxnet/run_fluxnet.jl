@@ -313,7 +313,6 @@ simulation = LandSimulation(
 )
 @time sol = solve!(simulation)
 
-ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
