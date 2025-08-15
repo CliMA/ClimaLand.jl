@@ -70,8 +70,9 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
 
-# Get maximum simulation start and end dates in UTC; these must be included in the forcing data range
-start_date = DateTime(2010, 3, 1)
+# Get simulation start and stop dates in UTC; these must be included in the forcing data range
+# Here we calibrate with only two months of data.
+start_date = DateTime(2010, 5, 1)
 stop_date = DateTime(2010, 7, 1)
 Δt = 450.0; # seconds
 
@@ -185,14 +186,16 @@ function model(Vcmax25, g1)
         land_model,
     )
 
-    #md # Configure diagnostics to output sensible and latent heat fluxes hourly
+    #md # Configure diagnostics to output sensible and latent heat fluxes half-hourly
+    #md # Since fluxnet data is recorded every half hour, with the average of the half hour,
+    #md # we need to be consistent here.
     output_vars = ["lhf"]
     diagnostics = ClimaLand.default_diagnostics(
         land_model,
         start_date;
         output_writer = ClimaDiagnostics.Writers.DictWriter(),
         output_vars,
-        average_period = :hourly,
+        average_period = :halfhourly,
     )
 
     #md # Create and run the simulation
@@ -238,7 +241,7 @@ end;
 function get_lhf(simulation)
     return ClimaLand.Diagnostics.diagnostic_as_vectors(
         simulation.diagnostics[1].output_writer,
-        "lhf_1h_average",
+        "lhf_30m_average",
     )
 end;
 
@@ -402,3 +405,9 @@ axislegend(
 CairoMakie.resize_to_layout!(fig)
 CairoMakie.save("G_first_and_last.png", fig)
 fig
+# Here we can see that the calibration has improved the fit to the data;
+# but this it not the fully story. If other parameters have been set to
+# unrealistic values, the parameters here may be compensating to
+# achieve a lower loss. Moreover, we have only calibrated with two months
+# of data. Production-level calibration runs require careful choice
+# of free parameters and target observations.

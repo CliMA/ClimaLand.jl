@@ -246,12 +246,11 @@ diags = ClimaLand.default_diagnostics(
     start_date;
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
     output_vars,
-    average_period = :hourly,
+    average_period = :halfhourly,
 );
 
 ## How often we want to update the drivers.
-data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
-updateat = Array(start_date:data_dt:stop_date)
+updateat = Array(start_date:Second(dt):stop_date)
 pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, land.canopy)
 simulation = LandSimulation(
     start_date,
