@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "9203851248a12e047a2bd05b81252222b8b3aba2"
+project_hash = "bcbf89fe06492cc2a9d9c8d3c2a8e3cf0faff5d6"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
@@ -424,9 +424,9 @@ weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "DataFrames", "Delimit
 
 [[deps.ClimaParams]]
 deps = ["TOML"]
-git-tree-sha1 = "8f76fb84975762ac8e12fadcb87992b2a92e3966"
+git-tree-sha1 = "690ba306f502a14e145fc2de3537c99e1bd93540"
 uuid = "5c42b081-d73a-476f-9059-fd94b934656c"
-version = "0.10.35"
+version = "0.11.1"
 
 [[deps.ClimaTimeSteppers]]
 deps = ["ClimaComms", "DataStructures", "DiffEqBase", "KernelAbstractions", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "SciMLBase", "StaticArrays"]
