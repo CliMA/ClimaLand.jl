@@ -51,7 +51,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     K_sat::F
     "The specific storativity (1/m)"
     S_s::F
-    "The residual water fraction (m^3/m^3"
+    "The residual water fraction (m^3/m^3)"
     θ_r::F
     "Ice impedance factor for the hydraulic conductivity"
     Ω::FT

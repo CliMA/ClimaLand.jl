@@ -36,10 +36,6 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
         Setting this to 0 represents no incorporation of past values. Since we update the EMA equation
         once per day, α = 1 - 1 day/τ where τ is the acclimation timescale in days."""
     α::FT
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
-    pc::FT
 end
 
 """
@@ -174,12 +170,12 @@ end
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 
-    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
+An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
 
-    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
-        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
-        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
-        https://doi.org/10.5194/gmd-13-1545-2020, 2020.
+Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
+    and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
+    ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
+    https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 """
 struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
