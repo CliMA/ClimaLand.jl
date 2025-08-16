@@ -4,9 +4,10 @@
 CurrentModule = ClimaLand.Canopy
 ```
 
-## Parameters
+## Models and Parameters
 
 ```@docs
+ClimaLand.Canopy.AutotrophicRespirationModel
 ClimaLand.Canopy.AutotrophicRespirationParameters
 ```
 
