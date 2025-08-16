@@ -36,8 +36,8 @@ tutorials = [
         "Snow, soil, canopy" => "global/snowy_land.jl",
     ],
     "Calibrating a ClimaLand model" => [
-        "Single site perfect model" => "calibration/minimal_working_example.jl",
-        "Single site observations" => "calibration/minimal_working_example_obs.jl",
+        "Single site perfect model" => "calibration/perfect_model_site_level_calibration.jl",
+        "Single site observations" => "calibration/obs_site_level_calibration.jl",
     ],
     "Running coupled simulations" =>
         ["Coupled bucket model" => "standalone/Bucket/coupled_bucket.jl"],
