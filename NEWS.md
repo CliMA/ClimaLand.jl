@@ -4,9 +4,19 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.18.1
+-------
+- Unify default diagnostics code PR[#1313](https://github.com/CliMA/ClimaLand.jl/pull/1313)
+- Improve documentation of Fluxnet and global runs PR[#1288](https://github.com/CliMA/ClimaLand.jl/pull/1288)
+- Implement sub-daily PModel PR[#1281](https://github.com/CliMA/ClimaLand.jl/pull/1281)
+- Misc. bugfixes PR[#1310](https://github.com/CliMA/ClimaLand.jl/pull/1310)
+- Use new constructors for LandModel PR[#1306](https://github.com/CliMA/ClimaLand.jl/pull/1306)
+- Add ERA5 forcing artifact with perturbed atmospheric temperature PR[#1291](https://github.com/CliMA/ClimaLand.jl/pull/1291)
+- Use new constructors for CanopyModel and SoilCanopyModel PR[#1284](https://github.com/CliMA/ClimaLand.jl/pull/1284)
+
+
 v0.18.0
 -------
-
 - Use FluxnetSimulationsExt in fluxnet experiments PR[#1295](https://github.com/CliMA/ClimaLand.jl/pull/1295/files#diff-597adb6c799a803db91ad8d3f827958a793598e2b74423332705227b48b2507f)
 - Use nearest neighbor spatial interpolation PR[#1290](https://github.com/CliMA/ClimaLand.jl/pull/1290)
 - Use global MODIS LAI for all simulations; remove `modis_lai_fluxnet_sites` artifact PR[#1282](https://github.com/CliMA/ClimaLand.jl/pull/1282)
