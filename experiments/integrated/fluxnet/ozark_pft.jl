@@ -311,7 +311,7 @@ diags = ClimaLand.default_diagnostics(
     start_date;
     output_writer = output_writer,
     output_vars,
-    average_period = :hourly,
+    average_period = :halfhourly,
 )
 
 ## How often we want to update the drivers

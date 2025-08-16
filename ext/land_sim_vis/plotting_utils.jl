@@ -189,7 +189,7 @@ function LandSimVis.check_conservation(
     end
     titles =
         ["Global mean energy per area", "Global mean water volume per area"]
-    name = ["energy", "water"]
+    quantity_names = ["energy", "water"]
     errors = [energy_error, water_volume_error]
     typical_value =
         [@sprintf("%1.2le", mean_energy), @sprintf("%1.2le", mean_water_volume)]
@@ -204,7 +204,7 @@ function LandSimVis.check_conservation(
         )
         CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
         CairoMakie.save(
-            joinpath(savedir, "$(names[i])_$(plot_stem_name).pdf"),
+            joinpath(savedir, "$(quantity_names[i])_$(plot_stem_name).pdf"),
             fig_cycle,
         )
     end
