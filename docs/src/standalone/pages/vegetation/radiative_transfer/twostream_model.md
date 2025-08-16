@@ -17,9 +17,9 @@ and is equal to
 ```math
 \int_{0}^{1}[\mu^{\prime}/G(\mu^{\prime})]d\mu^{\prime}
 ```
-μ′ is the direction of scattered flux, ω is the scattering coefficient and is equal to ρleaf +τleaf , and L is the cumulative LAI. β and β0 are upscattering parameters for the diffuse and direct beams respectively. (See Sellers 1985 for details)
+μ′ is the direction of scattered flux, ω is the scattering coefficient and is equal to αleaf +τleaf , and L is the cumulative LAI. β and β0 are upscattering parameters for the diffuse and direct beams respectively. (See Sellers 1985 for details)
 
-These equations can be solved as an exact solution with appropriate boundary conditions. For direct incident radiation, the appropriate top boundary condition is I↓ = 0 for L = 0, and the bottom boundary condition is I↑ = ρs[I↓ + exp (−kLT )] for L = LT , where ρs is the soil reflectance and LT is the total LAI. The corresponding solution yielded is then:
+These equations can be solved as an exact solution with appropriate boundary conditions. For direct incident radiation, the appropriate top boundary condition is I↓ = 0 for L = 0, and the bottom boundary condition is I↑ = αs[I↓ + exp (−kLT )] for L = LT , where αs is the soil reflectance and LT is the total LAI. The corresponding solution yielded is then:
 
 ```math
 I^{\uparrow} = \frac{h_1\exp{(-KL)}}{\sigma} + h_2\exp{(-hL)} + h_3\exp{(hL)},\\
@@ -27,7 +27,7 @@ I^{\downarrow} = \frac{h_4\exp{(-KL)}}{\sigma} + h_5\exp{(-hL)} + h_6\exp{(hL)}
 ```
 
 For diffuse radiation, the appropriate top boundary condition is I↓ = 1 for L
-= 0, and the bottom boundary condition is I↑ = ρsI↓ for L = LT. Then, the corresponding solution is:
+= 0, and the bottom boundary condition is I↑ = αsI↓ for L = LT. Then, the corresponding solution is:
 
 ```math
 I^{\uparrow} = h_7\exp{(-hL)} + h_8\exp{(hL)},\\
@@ -36,30 +36,21 @@ I^{\downarrow} = h_9\exp{(-hL)} + h_{10}\exp{(hL)}
 
 where coefficients such as σ and h1 to h10 are given in Sellers 1985. Note that there is an error in the expression for h4 in the appendix of Sellers 1985. The correct expression may be found in Sellers 1996.
 
-The model has the following parameters:
+The model has the following variables:
 
-| Output | Symmbol | Unit | Range |
+| Output | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
-| Absorbed Photosynthetically Active Radiation  | APAR   | μmol m⁻² s⁻¹  | 0-1500 |
-| Absorbed Near-Infrared Radiation              | ANIR   | μmol m⁻² s⁻¹  | 0-1500 |
+| Absorbed fraction of radiative flux per band | abs_λ | W m⁻²  | 0--1 |
+| Reflected fraction of radiative flux per band | refl_λ | W m⁻²  | 0--1 |
+| Transmitted fraction of radiative flux per band | trans_λ | W m⁻²  | 0--1 |
 
-| Drivers | Symbol | Unit | Range |
+| Input | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Photosynthetically Active Radiation | PAR | μmol m⁻² s⁻¹  | 0--1500 |
 | Leaf Area Index   | LAI   | m² m⁻² | 0--10 |
-
-| Parameters | Symbol | Unit | Range |
-| :---         |     :---:      |    :---:      |     :---:   |
-| Canopy PAR Reflectance | $\alpha\_PAR\_{leaf}$  | -  | 0.0--1.0 |
-| Canopy NIR Reflectance | $\alpha\_NIR\_{leaf}$  | -  | 0.0--1.0 |
-| Canopy PAR Transmittance | $\tau\_PAR\_{leaf}$  | -  | 0.0--1.0 |
-| Canopy NIR Transmittance | $\tau\_NIR\_{leaf}$  | -  | 0.0--1.0 |
-| Canopy Emissivity        | $ϵ\_canopy$         | -  | 0.0--1.0 |
-| Clumping index | $Ω$  | -  | 0.0--1.0 |
+| Canopy Reflectance | $\alpha\_{\rm{leaf},λ}$  | -  | 0--1 |
+| Canopy Transmittance | $\tau\_{\rm{leaf},λ}$  | -  | 0--1 |
+| Clumping index | $Ω$  | -  | 0--1 |
 | Zenith angle | $θ_s$  | rad | 0--π |
-
-| Constants | Symbol | Unit | Value |
-| :---         |     :---:      |    :---:      |     :---:   |
-| Leaf angle distribution | $l_d$ | - | 0.5 |
-| Typical wavelength per photon PAR | $\lambda\_\gamma\_PAR$ | m | 5e-7
-| Typical wavelength per photon NIR | $\lambda\_\gamma\_NIR$ | m | 1.65e-6
+| Leaf angle distribution | $l_d$ | - | 0--1 |
+| Ground albedo | $α\_{\rm{ground},λ}$  | -  | 0--1 |
