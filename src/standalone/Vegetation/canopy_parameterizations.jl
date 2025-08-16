@@ -1165,7 +1165,7 @@ end
 
 
 """
-    viscosity_h20(
+    viscosity_h2o(
         T::FT, 
         p::FT,
         constant_density::Bool

@@ -33,12 +33,8 @@ import ClimaLand:
     get_drivers,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-<<<<<<< HEAD
-    FrequencyBasedCallback
-=======
     FrequencyBasedCallback,
     required_model_callbacks
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
@@ -142,11 +138,6 @@ end
         ϕa1 = FT(0.022),
         ϕa2 = FT(-0.00034),
         α = FT(0.933),
-<<<<<<< HEAD
-        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-=======
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters. 
@@ -174,11 +165,6 @@ function PModel{FT}(;
     ϕa1 = FT(0.022),
     ϕa2 = FT(-0.00034),
     α = FT(0.933),
-<<<<<<< HEAD
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-=======
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
@@ -189,11 +175,6 @@ function PModel{FT}(;
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
         α = α,
-<<<<<<< HEAD
-        sc = sc,
-        pc = pc,
-=======
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
     )
 
     return PModel{FT}(parameters)
@@ -420,8 +401,6 @@ function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
     return PModelConductance{FT}(cond_params)
 end
 
-<<<<<<< HEAD
-=======
 
 """
     TuzetMoistureStressModel{FT}() where {FT <: AbstractFloat}
@@ -440,7 +419,6 @@ function TuzetMoistureStressModel{FT}(;
     return TuzetMoistureStressModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
 
 ########################################################
 # End component model convenience constructors
@@ -677,7 +655,6 @@ function CanopyModel{FT}(
     end
 
     # Confirm that each spatially-varying parameter is on the correct domain
-<<<<<<< HEAD
     for component in [
         autotrophic_respiration,
         radiative_transfer,
@@ -692,23 +669,6 @@ function CanopyModel{FT}(
 
         @assert !(component.parameters isa ClimaCore.Fields.Field) ||
                 axes(component.parameters) == domain.space.surface
-=======
-    for p in map(
-        component -> propertynames(component.parameters),
-        [
-            autotrophic_respiration,
-            radiative_transfer,
-            photosynthesis,
-            conductance,
-            soil_moisture_stress,
-            hydraulics,
-            energy,
-            sif,
-        ],
-    )
-        @assert !(p isa ClimaCore.Fields.Field) ||
-                axes(p) == domain.space.surface
->>>>>>> ac43a1d33 (soil moisture stress + fluxnet2015 any site)
     end
 
     boundary_conditions = AtmosDrivenCanopyBC(

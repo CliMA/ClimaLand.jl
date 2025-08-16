@@ -34,8 +34,18 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 
 # Read all site-specific domain parameters from the simulation file for the site
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_parameters.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/get_fluxnet_domain.jl"))
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/get_fluxnet_parameters.jl",
+    ),
+)
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/get_fluxnet_domain.jl",
+    ),
+)
 
 ######### Simulation setup #########
 site_ID = length(ARGS) >= 1 ? ARGS[1] : "BR-Sa3"
@@ -51,9 +61,7 @@ use_lowres_soil_hydrology = false
 start_date = DateTime(2005)
 end_date = DateTime(2006)
 
-saved_var_names = [
-    "gpp", "an", "clhf", "swu", "lwu", "lai", "apar"
-]
+saved_var_names = ["gpp", "an", "clhf", "swu", "lwu", "lai", "apar"]
 Δt = Float64(600.0)
 save_dir = "outputs/fluxnet2015/debugging/$(site_ID)"
 ####################################
@@ -64,7 +72,7 @@ end
 
 
 function setup_standalone_canopy_model(
-    FT, 
+    FT,
     site_ID,
     earth_param_set;
     use_default_param_maps,
@@ -75,14 +83,21 @@ function setup_standalone_canopy_model(
     use_lowres_soil_hydrology = false,
 )
     # Get domain info
-    (; lat, long, time_offset, h_canopy, atmospheric_sensor_height,
-        swc_depths, ts_depths) = get_site_domain(site_ID)
+    (;
+        lat,
+        long,
+        time_offset,
+        h_canopy,
+        atmospheric_sensor_height,
+        swc_depths,
+        ts_depths,
+    ) = get_site_domain(site_ID)
 
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (FT(long), FT(lat)))
     surface_space = canopy_domain.space.surface
 
     # Get parameters
-    try 
+    try
         site_params = get_site_parameters(site_ID)
     catch
         @warn "No site-specific params found in get_fluxnet_parameters.jl for site $(site_ID). Using default parameters specified by parameter maps"
@@ -93,15 +108,20 @@ function setup_standalone_canopy_model(
 
         # RT 
         (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
-            ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space, lowres=false)
+            ClimaLand.Canopy.clm_canopy_radiation_parameters(
+                surface_space,
+                lowres = false,
+            )
 
         if photo_model == "farquhar"
             # medlyn conductance
-            g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space, lowres=false)
+            g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space, lowres = false)
 
             # farquhar photosynthesis
-            (; is_c3, Vcmax25) =
-                ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space, lowres=false)
+            (; is_c3, Vcmax25) = ClimaLand.Canopy.clm_photosynthesis_parameters(
+                surface_space,
+                lowres = false,
+            )
         end
 
         # plant hydraulics
@@ -112,7 +132,8 @@ function setup_standalone_canopy_model(
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless
         a = FT(0.2 * 0.0098) # 1/m
-        conductivity_model = Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+        conductivity_model =
+            Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
         SAI = FT(0.0)
         h_stem = FT(0.0)
@@ -131,24 +152,59 @@ function setup_standalone_canopy_model(
             file_tail = use_lowres_soil_hydrology ? "1.0x1.0x4" : "1km_4layer"
             context = ClimaComms.context(surface_space)
             soil_params_artifact_path =
-                ClimaLand.Artifacts.soil_params_artifact_folder_path(; context, lowres=use_lowres_soil_hydrology)
+                ClimaLand.Artifacts.soil_params_artifact_folder_path(;
+                    context,
+                    lowres = use_lowres_soil_hydrology,
+                )
 
-            ν = FT(nearest_point_value(
-                joinpath(soil_params_artifact_path, "porosity_map_gupta_etal2020_$(file_tail).nc"),
-                "ν", lat, long, 0.0
-            ))
-            soil_vg_n = FT(nearest_point_value(
-                joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_$(file_tail).nc"),
-                "n", lat, long, 0.0
-            ))
-            soil_vg_α = FT(nearest_point_value(
-                joinpath(soil_params_artifact_path, "vGalpha_map_gupta_etal2020_$(file_tail).nc"),
-                "α", lat, long, 0.0
-            ))
-            θ_r = FT(nearest_point_value(
-                joinpath(soil_params_artifact_path, "residual_map_gupta_etal2020_$(file_tail).nc"),
-                "θ_r", lat, long, 0.0
-            ))
+            ν = FT(
+                nearest_point_value(
+                    joinpath(
+                        soil_params_artifact_path,
+                        "porosity_map_gupta_etal2020_$(file_tail).nc",
+                    ),
+                    "ν",
+                    lat,
+                    long,
+                    0.0,
+                ),
+            )
+            soil_vg_n = FT(
+                nearest_point_value(
+                    joinpath(
+                        soil_params_artifact_path,
+                        "vGn_map_gupta_etal2020_$(file_tail).nc",
+                    ),
+                    "n",
+                    lat,
+                    long,
+                    0.0,
+                ),
+            )
+            soil_vg_α = FT(
+                nearest_point_value(
+                    joinpath(
+                        soil_params_artifact_path,
+                        "vGalpha_map_gupta_etal2020_$(file_tail).nc",
+                    ),
+                    "α",
+                    lat,
+                    long,
+                    0.0,
+                ),
+            )
+            θ_r = FT(
+                nearest_point_value(
+                    joinpath(
+                        soil_params_artifact_path,
+                        "residual_map_gupta_etal2020_$(file_tail).nc",
+                    ),
+                    "θ_r",
+                    lat,
+                    long,
+                    0.0,
+                ),
+            )
 
             hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n)
 
@@ -205,7 +261,11 @@ function setup_standalone_canopy_model(
 
     # simulation time 
     if start_date === nothing && end_date === nothing
-        (start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset, construct_soil_driver=true)
+        (start_date, end_date) = FluxnetSimulations.get_data_dates(
+            site_ID,
+            time_offset,
+            construct_soil_driver = true,
+        )
     end
 
     if start_date < DateTime(2000, 1, 1)
@@ -225,11 +285,7 @@ function setup_standalone_canopy_model(
         earth_param_set,
         FT;
         construct_soil_driver = true,
-        soil_driver_args = (
-            α_PAR = FT(0.2),
-            α_NIR = FT(0.4),
-            ϵ = FT(0.99),
-        )
+        soil_driver_args = (α_PAR = FT(0.2), α_NIR = FT(0.4), ϵ = FT(0.99)),
     )
 
     modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
@@ -240,13 +296,13 @@ function setup_standalone_canopy_model(
         modis_lai_ncdata_path,
         surface_space,
         start_date,
-    );
+    )
     # Get the maximum LAI at this site over the first year of the simulation
     maxLAI = FluxnetSimulations.get_maxLAI_at_site(
         modis_lai_ncdata_path[1],
         lat,
         long,
-    );
+    )
 
     # Set up canopy model 
     z0_m = FT(0.13) * h_canopy
@@ -255,7 +311,7 @@ function setup_standalone_canopy_model(
         z0_m,
         z0_b,
         earth_param_set,
-    );
+    )
 
     # Set the radiative transfer model
     rt_params = TwoStreamParameters(
@@ -267,13 +323,13 @@ function setup_standalone_canopy_model(
         τ_NIR_leaf = τ_NIR_leaf,
         Ω = Ω,
     )
-    radiative_transfer_model = TwoStreamModel{FT}(rt_params);
+    radiative_transfer_model = TwoStreamModel{FT}(rt_params)
 
     # Set up the photosynthesis and stomatal conductance models
     if photo_model == "pmodel"
         # Set the conductance model 
         cond_params = PModelConductanceParameters(Drel = FT(1.6))
-        conductance_model = PModelConductance{FT}(cond_params);
+        conductance_model = PModelConductance{FT}(cond_params)
 
         # Set the photosynthesis model (P-model currently only supports C3) 
         photo_params = PModelParameters(
@@ -286,27 +342,27 @@ function setup_standalone_canopy_model(
             ϕa2 = FT(-0.00034),
             α = FT(0.933),
         )
-        photosynthesis_model = PModel{FT}(photo_params);
+        photosynthesis_model = PModel{FT}(photo_params)
     else
         # Set the conductance model 
         cond_params = MedlynConductanceParameters(FT; g1)
-        conductance_model = MedlynConductanceModel{FT}(cond_params);
+        conductance_model = MedlynConductanceModel{FT}(cond_params)
 
         # Set the photosynthesis model 
         photo_params = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25)
-        photosynthesis_model = FarquharModel{FT}(photo_params);
+        photosynthesis_model = FarquharModel{FT}(photo_params)
     end
 
     # Set the autotrophic respiration model
     AR_params = AutotrophicRespirationParameters(FT)
-    autotrophic_respiration_model = AutotrophicRespirationModel{FT}(AR_params);
+    autotrophic_respiration_model = AutotrophicRespirationModel{FT}(AR_params)
 
     # Set the plant hydraulics model
     RAI = maxLAI * f_root_to_shoot
     ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
     conductivity_model =
         PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
         ν = plant_ν,
@@ -325,19 +381,21 @@ function setup_standalone_canopy_model(
         n_leaf = n_leaf,
         compartment_midpoints = compartment_midpoints,
         compartment_surfaces = compartment_surfaces,
-    );
+    )
 
     # Define the soil moisture stress model 
     if soil_moisture_stress == "piecewise"
-        soil_moisture_stress_params = PiecewiseMoistureStressParametersFromHydrology(
-            hydrology_cm,
-            ν,
-            θ_r,
-            zmin;
-            verbose = true
-        )
+        soil_moisture_stress_params =
+            PiecewiseMoistureStressParametersFromHydrology(
+                hydrology_cm,
+                ν,
+                θ_r,
+                zmin;
+                verbose = true,
+            )
 
-        soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}(soil_moisture_stress_params)
+        soil_moisture_stress_model =
+            PiecewiseMoistureStressModel{FT}(soil_moisture_stress_params)
     elseif soil_moisture_stress == "no_sms"
         soil_moisture_stress_model = NoMoistureStressModel{FT}()
     else
@@ -359,7 +417,7 @@ function setup_standalone_canopy_model(
             radiation,
             soil,
         ),
-    );
+    )
 
     return canopy, start_date, end_date
 end
@@ -371,8 +429,15 @@ function hour_offset_to_period(hour_offset_from_UTC)
 end
 
 
-(; lat, long, time_offset, h_canopy, atmospheric_sensor_height,
-    swc_depths, ts_depths) = get_site_domain(site_ID)
+(;
+    lat,
+    long,
+    time_offset,
+    h_canopy,
+    atmospheric_sensor_height,
+    swc_depths,
+    ts_depths,
+) = get_site_domain(site_ID)
 
 data_dt = Float64(FluxnetSimulations.get_data_dt(site_ID))
 average_period = (data_dt == Float64(1800)) ? :halfhourly : :hourly
@@ -391,12 +456,13 @@ canopy, start_date, end_date = setup_standalone_canopy_model(
 
 start_date_local = start_date - hour_offset_to_period(time_offset)
 
-set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions_standalone_canopy(
-    site_ID,
-    start_date,
-    time_offset,
-    canopy,
-);
+set_ic! =
+    FluxnetSimulations.make_set_fluxnet_initial_conditions_standalone_canopy(
+        site_ID,
+        start_date,
+        time_offset,
+        canopy,
+    );
 
 dict_writer = ClimaDiagnostics.Writers.DictWriter()
 
@@ -421,24 +487,24 @@ simulation = LandSimulation(
 @time ClimaLand.Simulations.solve!(simulation)
 
 # Save the output to NetCDF files
-time_label_dict = Dict(
-    :halfhourly => "30m",
-    :hourly => "1h",
-    :daily => "1d",
-)
+time_label_dict = Dict(:halfhourly => "30m", :hourly => "1h", :daily => "1d")
 
 for short_name in saved_var_names
     diag_name = short_name * "_$(time_label_dict[average_period])_average"
-    nc_file = joinpath(save_dir, "$(diag_name)_$(photo_model)_$(soil_moisture_stress)_short.nc")
+    nc_file = joinpath(
+        save_dir,
+        "$(diag_name)_$(photo_model)_$(soil_moisture_stress)_short.nc",
+    )
     isfile(nc_file) && rm(nc_file)
 
     @info "Saving diagnostic $diag_name to $nc_file"
-    time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name)
-    
+    time_vector, data_vector =
+        ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name)
+
     if time_vector[1] isa ITime
         epoch = start_date_local
         # TODO: figure out why time_vector is ahead by one timestep
-        time_vector = Float64.(time_vector) .- Δt 
+        time_vector = Float64.(time_vector) .- Δt
     end
 
     NCDatasets.Dataset(nc_file, "c") do ds
@@ -452,12 +518,17 @@ for short_name in saved_var_names
         time_var.attrib["units"] = "seconds since $(epoch)"
 
         if soil_moisture_stress == "piecewise"
-            if canopy.soil_moisture_stress.parameters.θ_c isa ClimaCore.Fields.Field
-                ds.attrib["field_capacity"] = parent(canopy.soil_moisture_stress.parameters.θ_c)[1]
-                ds.attrib["wilting_point"] = parent(canopy.soil_moisture_stress.parameters.θ_w)[1]
+            if canopy.soil_moisture_stress.parameters.θ_c isa
+               ClimaCore.Fields.Field
+                ds.attrib["field_capacity"] =
+                    parent(canopy.soil_moisture_stress.parameters.θ_c)[1]
+                ds.attrib["wilting_point"] =
+                    parent(canopy.soil_moisture_stress.parameters.θ_w)[1]
             else
-                ds.attrib["field_capacity"] = canopy.soil_moisture_stress.parameters.θ_c
-                ds.attrib["wilting_point"] = canopy.soil_moisture_stress.parameters.θ_w
+                ds.attrib["field_capacity"] =
+                    canopy.soil_moisture_stress.parameters.θ_c
+                ds.attrib["wilting_point"] =
+                    canopy.soil_moisture_stress.parameters.θ_w
             end
         end
     end

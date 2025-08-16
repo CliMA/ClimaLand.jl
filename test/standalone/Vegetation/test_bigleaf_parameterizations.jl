@@ -190,11 +190,6 @@ for FT in (Float32, Float64)
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
         β = compute_tuzet_moisture_stress(TuzetMoistureStressParameters(photosynthesisparams.sc, photosynthesisparams.pc), p_l) 
         
-        moisture_stress(
-            p_l,
-            photosynthesisparams.sc,
-            photosynthesisparams.pc,
-        )
         @test β ==
               (1 + exp(photosynthesisparams.sc * photosynthesisparams.pc)) / (
             1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc))

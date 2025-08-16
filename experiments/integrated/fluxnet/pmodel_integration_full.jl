@@ -36,7 +36,7 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-save_outputs = true 
+save_outputs = true
 verbose = true
 
 # Read in the site to be run from the command line
@@ -45,10 +45,13 @@ if length(ARGS) < 3
 end
 
 site_ID = ARGS[1]
-photo_model = ARGS[2] 
+photo_model = ARGS[2]
 exp_name = ARGS[3]
 
-save_dir = joinpath(climaland_dir, "outputs/fluxnet/$(site_ID)_$(photo_model)_$(exp_name)/")
+save_dir = joinpath(
+    climaland_dir,
+    "outputs/fluxnet/$(site_ID)_$(photo_model)_$(exp_name)/",
+)
 if save_outputs && !isdir(save_dir)
     mkpath(save_dir)
 end
@@ -143,23 +146,26 @@ if photo_model == "pmodel"
     photosynthesis_model = Canopy.PModel{FT}
     conductance_model = Canopy.PModelConductance{FT}
 
-    conductance_args = (; parameters = PModelConductanceParameters(Drel = FT(1.6)))
-    photosynthesis_args = (; parameters = PModelParameters(
-        cstar = FT(0.41),
-        β = FT(146),
-        ϕc = FT(0.087),
-        ϕ0 = FT(NaN),
-        ϕa0 = FT(0.352),
-        ϕa1 = FT(0.022),
-        ϕa2 = FT(-0.00034),
-        α = FT(0.933)
-    ))
+    conductance_args =
+        (; parameters = PModelConductanceParameters(Drel = FT(1.6)))
+    photosynthesis_args = (;
+        parameters = PModelParameters(
+            cstar = FT(0.41),
+            β = FT(146),
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN),
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0.933),
+        )
+    )
 else
     photosynthesis_model = Canopy.FarquharModel{FT}
     conductance_model = Canopy.MedlynConductanceModel{FT}
 
     conductance_args = (; parameters = MedlynConductanceParameters(FT; g1))
-    is_c3 = FT(1) 
+    is_c3 = FT(1)
     photosynthesis_args =
         (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 end
@@ -171,7 +177,7 @@ SM_params = PiecewiseMoistureStressParametersFromHydrology(
     soil_ps.θ_r;
     c = FT(1.0),
     β0 = FT(1.0),
-    verbose = true
+    verbose = true,
 )
 
 soil_moisture_stress_model = PiecewiseMoistureStressModel{FT}
@@ -271,7 +277,7 @@ land = LandModel{FT}(;
 )
 
 Y, p, cds = initialize(land)
-@info "Land model initialized" 
+@info "Land model initialized"
 
 #Initial conditions
 FluxnetSimulationsExt.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
@@ -312,7 +318,8 @@ diags = ClimaLand.default_diagnostics(
     average_period = :halfhourly,
 )
 
-diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
@@ -324,8 +331,15 @@ model_drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
-if photo_model == "pmodel" 
-    pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, t0, dt, land.canopy, long)
+if photo_model == "pmodel"
+    pmodel_cb = ClimaLand.make_PModel_callback(
+        FT,
+        start_date,
+        t0,
+        dt,
+        land.canopy,
+        long,
+    )
     cb = SciMLBase.CallbackSet(diag_cb, driver_cb, pmodel_cb)
 else
     cb = SciMLBase.CallbackSet(diag_cb, driver_cb)
@@ -354,25 +368,29 @@ for short_name in vcat(short_names_1D, short_names_2D)
 
     verbose && @info "Saving $diag_name to $nc_file"
     if short_name in short_names_2D
-        time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name, 
-            layer=1:land_domain.nelements[1])
+        time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            dict_writer,
+            diag_name,
+            layer = 1:land_domain.nelements[1],
+        )
         data_vector = reshape(data_vector, length(time_vector), nelements)
     else
-        time_vector, data_vector = ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name)
-    end 
+        time_vector, data_vector =
+            ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, diag_name)
+    end
 
     NCDatasets.Dataset(nc_file, "c") do ds
         NCDatasets.defDim(ds, "time", length(time_vector))
         time_var = NCDatasets.defVar(ds, "time", FT, ("time",))
         time_var[:] = time_vector
-        
+
         if short_name in short_names_2D
             NCDatasets.defDim(ds, "z", nelements)
             depth_var = NCDatasets.defVar(ds, "z", FT, ("z",))
             depth_var[:] = Array(parent(land_domain.fields.z))
             nc_var = NCDatasets.defVar(ds, short_name, FT, ("time", "z"))
             nc_var[:, :] = data_vector
-        else 
+        else
             nc_var = NCDatasets.defVar(ds, short_name, FT, ("time",))
             nc_var[:] = data_vector
         end
@@ -380,4 +398,3 @@ for short_name in vcat(short_names_1D, short_names_2D)
 end
 
 verbose && @info "All diagnostic variables saved to NetCDF files in $save_dir"
-

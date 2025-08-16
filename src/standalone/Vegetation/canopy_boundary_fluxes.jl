@@ -360,6 +360,7 @@ function canopy_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     args...,
 )
+    @show args
     (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _, _) =
         canopy_compute_turbulent_fluxes_at_a_point(args...)
     return (

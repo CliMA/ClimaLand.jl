@@ -114,7 +114,7 @@ they carry an inherent land/sea mask. This land/sea mask may not match the
 underlying land sea mask of the simulation. While values over the ocean do
 not matter, we need to ensure that values in the simulation are set to
 something physical, even if they are not set in the data.
-In the future, this should be handled by ClimaUtilities via extrpolation.
+In the future, this should be handled by ClimaUtilities via extrapolation.
 Here we set them manually.
 """
 function soil_vangenuchten_parameters(
@@ -127,16 +127,14 @@ function soil_vangenuchten_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = true,
 )
-    file_tail = lowres ? "1.0x1.0x4" : "1km_4layer"
     context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
-        Artifacts.soil_params_artifact_folder_path(; context, lowres)
+        Artifacts.soil_params_artifact_folder_path(; context)
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_$(file_tail).nc",
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "α",
         subsurface_space;
@@ -146,7 +144,7 @@ function soil_vangenuchten_parameters(
     vg_n = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_$(file_tail).nc",
+            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "n",
         subsurface_space;
@@ -159,7 +157,7 @@ function soil_vangenuchten_parameters(
     soil_params_mask = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_$(file_tail).nc",
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "α",
         subsurface_space;
@@ -184,11 +182,11 @@ function soil_vangenuchten_parameters(
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
         ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
     hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
-
+    
     θ_r = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "residual_map_gupta_etal2020_$(file_tail).nc",
+            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "θ_r",
         subsurface_space;
@@ -199,7 +197,7 @@ function soil_vangenuchten_parameters(
     ν = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_$(file_tail).nc",
+            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "ν",
         subsurface_space;
@@ -209,13 +207,14 @@ function soil_vangenuchten_parameters(
     K_sat = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_$(file_tail).nc",
+            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "Ksat",
         subsurface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
+
 
     # Set missing values to the mean. For Ksat, we use the mean in log space.
     μ = FT(-5.08)
