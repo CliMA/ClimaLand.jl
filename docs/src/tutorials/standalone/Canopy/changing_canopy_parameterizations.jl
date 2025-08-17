@@ -30,7 +30,7 @@ earth_param_set = LP.LandParameters(FT);
 # near Pasadena, California.
 # This is different from the soil example, which ran on a column, because the
 # soil model has depth and the canopy model does not.
-longlat = FT.((34.1, -118.1))
+longlat = FT.((-118.1, 34.1))
 domain = Domains.Point(; z_sfc = FT(0.0), longlat);
 surface_space = domain.space.surface;
 
