@@ -16,8 +16,8 @@ tutorials = [
             "Changing soil parameterizations" => "standalone/Soil/changing_soil_parameterizations.jl",
         ],
         "Canopy" => [
-            "Default Canopy" => "standalone/Canopy/default_canopy.jl",
-            "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",
+            "Default canopy" => "standalone/Canopy/default_canopy.jl",
+            "Default canopy fluxtower simulation " => "standalone/Canopy/canopy_tutorial.jl",
             "Changing canopy parameterizations" => "standalone/Canopy/changing_canopy_parameterizations.jl",
         ],
         "Snow" => [
@@ -28,6 +28,7 @@ tutorials = [
     "Running Fluxnet simulations" => [
         "Canopy and soil" => "integrated/soil_canopy_fluxnet_tutorial.jl",
         "Canopy, soil, and snow" => "integrated/snowy_land_fluxnet_tutorial.jl",
+        "Changing LandModel parameterizations" => "integrated/changing_snowy_land_parameterizations.jl",
         "Data processing" => "integrated/fluxnet_data.jl",
         "Visualization" => "integrated/fluxnet_vis.jl",
     ],

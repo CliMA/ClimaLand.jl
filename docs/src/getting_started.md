@@ -41,7 +41,7 @@ near Pasadena, California.
 ```julia
 zmax = FT(0)
 zmin = FT(-1.0)
-longlat = FT.((34.1, -118.1))
+longlat = FT.((-118.1, 34.1))
 domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
 surface_space = domain.space.surface;
 ```

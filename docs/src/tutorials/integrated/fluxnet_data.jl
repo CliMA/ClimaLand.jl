@@ -2,10 +2,10 @@
 
 # In this tutorial, we will demonstrate how we read in forcing data at a Fluxnet site
 # using our ClimaLand infrastructure. To see an example running a simulation at a
-# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.md) 
-# or [LandModel](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.md)
-# To access the forcing data (LAI from MODIS, SW_d, LW_d, T_air, q_air,
-# P_air, and precipitation from fluxtower data), you first need the
+# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl) 
+# or [LandModel](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.jl)
+# To access the forcing data (LAI from MODIS, SW\_d, LW\_d, T\_air, q\_air,
+# P\_air, and precipitation from fluxtower data), you first need the
 # the fluxtower site ID.
 # Currently, ClimaLand provides an interface for working with four
 # fluxtower sites; adding support for a much larger set of sites is
