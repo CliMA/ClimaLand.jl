@@ -18,9 +18,9 @@
 # 3. Implementing Ensemble Kalman Inversion
 # 4. Analyzing the calibration results
 # 
-# ## Prerequisites
-# 
-# First, ensure you have the required packages installed:
+#nb # ## Prerequisites
+#nb # 
+#nb # First, ensure you have the required packages installed:
 
 #nb ENV["JULIA_PKG_PRECOMPILE_AUTO"]=0 
 #nb using Pkg 
@@ -40,6 +40,7 @@
 
 using ClimaLand
 using ClimaLand.Domains: Column
+using ClimaLand.Canopy
 using ClimaLand.Simulations
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaLand.Parameters as LP
@@ -76,9 +77,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
-# Set simulation start/stop dates and timestep.
-(start_date, _) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
-stop_date = DateTime(2010, 4, 1, 6, 30)
+# Get maximum simulation start and end dates
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+stop_date = DateTime(2010, 4, 1, 6, 30)  # Set the stop date manually
 Δt = 450.0  # seconds
 
 # ## Domain and Forcing Setup
@@ -120,31 +122,29 @@ LAI = ClimaLand.prescribed_lai_modis(
 # Create an integrated land model that couples canopy, snow, soil, and soil CO2
 # components. This comprehensive model allows us to simulate the full land
 # surface system and its interactions.
-
-# Set up ground conditions and define which components to simulate
-# prognostically
-ground = ClimaLand.PrognosticGroundConditions{FT}()
-prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
-
-# Prepare canopy domain and forcing
-canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
-canopy_forcing = (; forcing.atmos, forcing.radiation, ground);
-
-# Model constructor function that creates the complete land surface model:
 function model(Vcmax25)
     Vcmax25 = FT(Vcmax25)
 
+    #md # Set up ground conditions and define which components to simulate prognostically
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+    #md # Prepare canopy domain and forcing
+    canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    canopy_forcing = (; forcing.atmos, forcing.radiation, ground)
+
     #md # Set up photosynthesis parameters using the Farquhar model
-    photosyn_defaults = ClimaLand.Canopy.clm_photosynthesis_parameters(
-        canopy_domain.space.surface,
-    )
-    photosynthesis = ClimaLand.Canopy.FarquharModel{FT}(
+    photosyn_defaults =
+        Canopy.clm_photosynthesis_parameters(canopy_domain.space.surface)
+    photosynthesis = Canopy.FarquharModel{FT}(
         canopy_domain;
         photosynthesis_parameters = (;
             is_c3 = photosyn_defaults.is_c3,
             Vcmax25,
         ),
     )
+
+    conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1 = FT(141))
 
     #md # Create canopy model
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
@@ -154,6 +154,7 @@ function model(Vcmax25)
         earth_param_set;
         photosynthesis,
         prognostic_land_components,
+        conductance,
     )
 
     #md # Create integrated land model

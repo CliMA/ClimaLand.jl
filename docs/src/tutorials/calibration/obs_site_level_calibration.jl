@@ -1,26 +1,19 @@
-# # Perfect Model Site-Level Calibration Tutorial
+# # Model Site-Level Calibration Tutorial Using Observations
 # 
-# This tutorial demonstrates how to perform a perfect model calibration
-# experiment using ClimaLand. In a perfect model experiment, we generate
-# synthetic observations from our model with known parameters, then use ensemble
-# Kalman inversion to recover those parameters. This approach allows us to
-# evaluate the calibration method without the influence of model structural
-# errors.
-
-# In this tutorial we will calibrate the Vcmax25 parameter using latent heat
+# In this tutorial we will calibrate the Vcmax25 and g1 parameters using latent heat
 # flux observations from the FLUXNET site (US-MOz).
 # 
 # ## Overview
 # 
 # The tutorial covers:
 # 1. Setting up a land surface model for a FLUXNET site (US-MOz)
-# 2. Creating a synthetic observation dataset
-# 3. Implementing Ensemble Kalman Inversion
+# 2. Obtaining the observation dataset
+# 3. Implementing Ensemble Kalman Inversion to calibrate Vcmax25 and g1
 # 4. Analyzing the calibration results
 # 
-# ## Prerequisites
-# 
-# First, ensure you have the required packages installed:
+#nb # ## Prerequisites
+#nb # 
+#nb # First, ensure you have the required packages installed:
 
 #nb ENV["JULIA_PKG_PRECOMPILE_AUTO"]=0 
 #nb using Pkg 
@@ -40,6 +33,7 @@
 
 using ClimaLand
 using ClimaLand.Domains: Column
+using ClimaLand.Canopy
 using ClimaLand.Simulations
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaLand.Parameters as LP
@@ -76,9 +70,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
-# Set simulation start/stop dates and timestep.
-(start_date, _) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
-stop_date = DateTime(2010, 4, 1, 6, 30)
+# Get maximum simulation start and end dates
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+stop_date = DateTime(2010, 4, 1, 6, 30)  # Set the stop date manually
 Δt = 450.0  # seconds
 
 # ## Domain and Forcing Setup
@@ -120,39 +115,39 @@ LAI = ClimaLand.prescribed_lai_modis(
 # Create an integrated land model that couples canopy, snow, soil, and soil CO2
 # components. This comprehensive model allows us to simulate the full land
 # surface system and its interactions.
-
-# Set up ground conditions and define which components to simulate
-# prognostically
-ground = ClimaLand.PrognosticGroundConditions{FT}()
-prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
-
-# Prepare canopy domain and forcing
-canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
-canopy_forcing = (; forcing.atmos, forcing.radiation, ground);
-
-# Model constructor function that creates the complete land surface model:
-function model(Vcmax25)
+function model(Vcmax25, g1)
     Vcmax25 = FT(Vcmax25)
+    g1 = FT(g1)
+
+    #md # Set up ground conditions and define which components to simulate prognostically
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+    #md # Prepare surface domain and forcing
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    canopy_forcing = (; forcing.atmos, forcing.radiation, ground)
 
     #md # Set up photosynthesis parameters using the Farquhar model
-    photosyn_defaults = ClimaLand.Canopy.clm_photosynthesis_parameters(
-        canopy_domain.space.surface,
-    )
-    photosynthesis = ClimaLand.Canopy.FarquharModel{FT}(
-        canopy_domain;
+    photosyn_defaults =
+        Canopy.clm_photosynthesis_parameters(surface_domain.space.surface)
+    photosynthesis = Canopy.FarquharModel{FT}(
+        surface_domain;
         photosynthesis_parameters = (;
             is_c3 = photosyn_defaults.is_c3,
             Vcmax25,
         ),
     )
 
+    conductance = Canopy.MedlynConductanceModel{FT}(surface_domain; g1)
+
     #md # Create canopy model
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        canopy_domain,
+    canopy = Canopy.CanopyModel{FT}(
+        surface_domain,
         canopy_forcing,
         LAI,
         earth_param_set;
         photosynthesis,
+        conductance,
         prognostic_land_components,
     )
 
@@ -198,8 +193,8 @@ end
 # observation space, along with supporting functions for data processing:
 
 # This function runs the model and computes diurnal average of latent heat flux
-function G(Vcmax25)
-    simulation = model(Vcmax25)
+function G(Vcmax25, g1)
+    simulation = model(Vcmax25, g1)
     lhf = get_lhf(simulation)
     observation =
         Float64.(
@@ -237,11 +232,10 @@ function get_diurnal_average(var, start_date, spinup_date)
     return mean_by_hour
 end
 
-# ## Perfect Model Experiment Setup
+# ## Experiment Setup
 # 
-# Since this is a perfect model experiment, we generate synthetic observations
-# from our target parameter value. This parameter will be recovered by the
-# calibration.
+# We obtain observations from the FLUXNET site. The dataset contains multiple
+# variables, but we will just use latent heat flux in this calibration.
 true_Vcmax25 = 0.0001 # [mol m-2 s-1]
 dataset = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 observations = get_diurnal_average(
@@ -259,12 +253,18 @@ noise_covariance = 0.05 * EKP.I
 # Set up the prior distribution for the parameter and configure the ensemble
 # Kalman inversion:
 
-# Constrained Gaussian prior for Vcmax25 with bounds [0, 2e-3]
-prior = PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3)
+# Constrained Gaussian prior for Vcmax25 with bounds [0, 2e-3], and g1 with
+# bounds [0, 1000]
+
+priors = [
+    PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3),
+    PD.constrained_gaussian("g1", 150, 90, 0, 1000),
+]
+prior = PD.combine_distributions(priors)
 
 # Set the ensemble size and number of iterations
-ensemble_size = 10
-N_iterations = 3
+ensemble_size = 20
+N_iterations = 5
 
 # ## Ensemble Kalman Inversion
 # 
