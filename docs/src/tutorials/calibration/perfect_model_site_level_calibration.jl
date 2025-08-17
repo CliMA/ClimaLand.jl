@@ -346,7 +346,13 @@ for g in eachcol(last_G_ensemble)
     lines!(ax, 1:length(g), g; color = (:blue, 0.6), linewidth = 1.5)
 end
 
-lines!(ax, 1:length(observations), observations; color = (:black, 0.6), linewidth = 3)
+lines!(
+    ax,
+    1:length(observations),
+    observations;
+    color = (:black, 0.6),
+    linewidth = 3,
+)
 
 axislegend(
     ax,
@@ -354,7 +360,6 @@ axislegend(
         LineElement(color = :red, linewidth = 2),
         LineElement(color = :blue, linewidth = 2),
         LineElement(color = :black, linewidth = 4),
-
     ],
     ["First ensemble", "Last ensemble", "Observations"];
     position = :rb,
