@@ -224,7 +224,7 @@ end
 # Helper function: Compute diurnal average of a variable
 function get_diurnal_average(var, start_date, spinup_date)
     (times, data) = var
-    model_dates = if times isa Vector{DateTime} # TODO ensure this works
+    model_dates = if times isa Vector{DateTime}
         times
     else
         Second.(getproperty.(times, :counter)) .+ start_date
