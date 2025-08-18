@@ -86,6 +86,6 @@ function co2_diffusivity(
     D =
         D0 *
         (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) *
-        (θ_a / θ_a100)^(FT(2) + FT(3) / b)
+        max((θ_a / θ_a100), FT(0))^(FT(2) + FT(3) / b)
     return D
 end

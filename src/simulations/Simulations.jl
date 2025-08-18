@@ -136,7 +136,7 @@ function LandSimulation(
             Δt;
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
-        ClimaLand.ReportCallback(1000),
+        ClimaLand.ReportCallback(100),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
     updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
