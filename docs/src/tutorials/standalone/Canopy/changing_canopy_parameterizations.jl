@@ -25,6 +25,9 @@ import ClimaLand.LandSimVis as LandSimVis
 # which holds constants used across CliMA models.
 FT = Float32
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml");
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # We will run this simulation on a point domain at a lat/lon location
 # near Pasadena, California.
@@ -103,7 +106,7 @@ model = Canopy.CanopyModel{FT}(
     domain,
     (; atmos, radiation, ground),
     LAI,
-    earth_param_set;
+    toml_dict;
     energy,
     radiative_transfer,
 );

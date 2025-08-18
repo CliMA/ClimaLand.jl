@@ -28,6 +28,9 @@ import ClimaLand.LandSimVis as LandSimVis
 # which holds constants used across CliMA models.
 FT = Float32
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml");
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # We will run this simulation on a point domain at a lat/lon location
 # near Pasadena, California.
@@ -66,12 +69,8 @@ LAI = TimeVaryingInput((t) -> FT(1.0));
 # but these can also be overwritten, which we'll demonstrate in later tutorials.
 # Of course, this model construction differs from the soil example because we're
 # using a different model type, but the approach remains the same.
-model = Canopy.CanopyModel{FT}(
-    domain,
-    (; atmos, radiation, ground),
-    LAI,
-    earth_param_set,
-);
+model =
+    Canopy.CanopyModel{FT}(domain, (; atmos, radiation, ground), LAI, toml_dict);
 
 # Define a function to set initial conditions for the prognostic variables.
 # Since these are specific to the model physics, the contents here differ from
