@@ -193,7 +193,7 @@ using .Biogeochemistry
 
 # Soil model constructor useful for working with simulations forced by
 # the atmosphere
-"""
+@doc """
     EnergyHydrology{FT}(domain, forcing, earth_param_set;
                          prognostic_land_components = (:soil),
                          albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
@@ -297,7 +297,7 @@ function EnergyHydrology{FT}(
 end
 
 
-"""
+@doc """
     RichardsModel{FT}(domain, forcing;
                          runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
                                                                             R_sb = FT(1.484e-4 / 1000),

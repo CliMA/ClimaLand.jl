@@ -272,7 +272,7 @@ Base.@kwdef struct SnowParameters{
     earth_param_set::PSE
 end
 
-"""
+@doc """
    SnowParameters{FT}(Δt;
                       density = MinimumDensityModel(200),
                       z_0m = FT(0.0024),
@@ -333,7 +333,7 @@ function SnowParameters{FT}(
 end
 
 ## For interfacing with ClimaParams
-"""
+@doc """
     function SnowParameters(
         FT,
         Δt;
@@ -423,7 +423,7 @@ function SnowModel(;
     SnowModel{FT, typeof.(args)...}(args...)
 end
 
-"""
+@doc """
     SnowModel(
         FT,
         domain,

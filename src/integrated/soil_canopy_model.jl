@@ -75,7 +75,7 @@ struct SoilCanopyModel{
     end
 end
 
-"""
+@doc """
     SoilCanopyModel{FT}(
         forcing,
         LAI,

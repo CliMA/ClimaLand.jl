@@ -235,7 +235,7 @@ function LandModel{FT}(;
     return LandModel{FT}(canopy, snow, soil, soilco2)
 end
 
-"""
+@doc """
     LandModel{FT}(
         forcing,
         LAI,

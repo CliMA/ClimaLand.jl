@@ -58,7 +58,7 @@ include("./spatially_varying_parameters.jl")
 ########################################################
 
 ## Autotrophic respiration models
-"""
+@doc """
     AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
 
 Creates a AutotrophicRespirationModel using default parameters of type FT.
@@ -69,7 +69,7 @@ function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
 end
 
 ## Energy models
-"""
+@doc """
     BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
@@ -86,7 +86,7 @@ function BigLeafEnergyModel{FT}(;
 end
 
 ## Photosynthesis models
-"""
+@doc """
     FarquharModel{FT}(
         domain;
         photosynthesis_parameters = clm_photosynthesis_parameters(
@@ -126,7 +126,7 @@ function FarquharModel{FT}(
 end
 
 
-"""
+@doc """
     function PModel{FT}(;
         cstar = FT(0.41),
         β = FT(146),
@@ -186,7 +186,7 @@ end
 
 
 ## Plant hydraulics models
-"""
+@doc """
     PlantHydraulicsModel{FT}(
         domain,
         LAI::AbstractTimeVaryingInput;
@@ -291,7 +291,7 @@ function PlantHydraulicsModel{FT}(
 end
 
 ## Radiative transfer models
-"""
+@doc """
     TwoStreamModel{FT}(
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
@@ -327,7 +327,7 @@ function TwoStreamModel{FT}(
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
 end
 
-"""
+@doc """
     BeerLambertModel{FT}(
         domain;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
@@ -367,7 +367,7 @@ function BeerLambertModel{FT}(
 end
 
 ## Stomatal conductance models
-"""
+@doc """
     MedlynConductanceModel{FT}(;
         g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
         g1 = clm_medlyn_g1(domain.space.surface),
@@ -392,7 +392,7 @@ function MedlynConductanceModel{FT}(
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
 end
 
-"""
+@doc """
     PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
 
 Creates a PModelConductance using default parameters of type FT.
@@ -492,7 +492,7 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
     domain::D
 end
 
-"""
+@doc """
     CanopyModel{FT}(;
         autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
         radiative_transfer::AbstractRadiationModel{FT},
@@ -561,7 +561,7 @@ function CanopyModel{FT}(;
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
-"""
+@doc """
     function CanopyModel{FT}(
         domain::Union{
             ClimaLand.Domains.Point,
