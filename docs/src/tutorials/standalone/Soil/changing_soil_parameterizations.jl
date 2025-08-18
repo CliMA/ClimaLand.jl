@@ -28,6 +28,9 @@ using Dates
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models.
 FT = Float32
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml");
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # We will run this simulation on a column domain with 1 meter depth, at a lat/lon location near Pasadena, California.
 zmax = FT(0)
@@ -68,12 +71,8 @@ albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(
 
 # Now we can create the `EnergyHydrology` model with the specified albedo parameterization
 # passed as a [keyword argument](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments).
-model = Soil.EnergyHydrology{FT}(
-    domain,
-    (; atmos, radiation),
-    earth_param_set;
-    albedo,
-);
+model =
+    Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict; albedo);
 # That's it! Now that you have the model, you can create
 # the simulation, solve it, and make your plots like you would for
 # any other ClimaLand simulation.

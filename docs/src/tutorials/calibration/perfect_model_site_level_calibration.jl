@@ -68,6 +68,9 @@ const FT = Float32
 
 # Initialize land parameters and site configuration.
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
@@ -144,15 +147,14 @@ function model(Vcmax25)
         canopy_domain,
         canopy_forcing,
         LAI,
-        earth_param_set;
+        toml_dict;
         photosynthesis,
         prognostic_land_components,
         conductance,
     )
 
     #md # Create integrated land model
-    land_model =
-        LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; canopy)
+    land_model = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; canopy)
 
     #md # Set initial conditions from FLUXNET data
     set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
