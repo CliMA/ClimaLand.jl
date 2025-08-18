@@ -84,6 +84,7 @@ steps:
         agents:
           slurm_mem: 8GB
           slurm_gpus: 1
+          slurm_time: 00:30:00
 
   - group: "Target Benchmark Nsight"
     steps:
