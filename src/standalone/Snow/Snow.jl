@@ -5,6 +5,7 @@ import ...Parameters as LP
 using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
+using NVTX
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -84,12 +85,12 @@ end
     AbstractAlbedoModel{FT}
 
 Defines the model type for albedo parameterization
-for use within an `AbstractSnowModel` type. 
+for use within an `AbstractSnowModel` type.
 
-These parameterizations are stored in parameters.α_snow, and 
+These parameterizations are stored in parameters.α_snow, and
 are used to update the value of p.snow.α_snow (the broadband
 albedo of the snow at a point).
-stored 
+stored
 """
 abstract type AbstractAlbedoModel{FT <: AbstractFloat} end
 
@@ -111,8 +112,8 @@ Establishes the albedo parameterization where albedo
 depends on the cosine of the zenith angle of the sun, as
     α = f(x) * [α_0 + Δα*exp(-k*cos(θs))],
 
-where cos θs is the cosine of the zenith angle, α_0, Δα, and k 
-are free parameters. The factor out front is a function of 
+where cos θs is the cosine of the zenith angle, α_0, Δα, and k
+are free parameters. The factor out front is a function of
 x = ρ_snow/ρ_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
 x0 ∈ [0,1] and β ∈ [0,1] are free. Choose β = 0 to remove this dependence on snow density.
 
@@ -149,9 +150,9 @@ end
     AbstractSnowCoverFractionModel{FT}
 
 Defines the model type for snow cover parameterization
-for use within an `AbstractSnowModel` type. 
+for use within an `AbstractSnowModel` type.
 
-These parameterizations are stored in parameters.scf, and 
+These parameterizations are stored in parameters.scf, and
 are used to update the value of p.snow.snow_cover_fraction.
 """
 abstract type AbstractSnowCoverFractionModel{FT <: AbstractFloat} end
@@ -159,7 +160,7 @@ abstract type AbstractSnowCoverFractionModel{FT <: AbstractFloat} end
 """
     WuWuSnowCoverFractionModel{FT <: AbstractFloat} <: AbstractSnowCoverFractionModel{FT}
 
-Establishes the snow cover parameterization of Wu, Tongwen, and 
+Establishes the snow cover parameterization of Wu, Tongwen, and
 Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535,
@@ -172,7 +173,7 @@ horizontal resolution of the simulation, in degrees, and β0, β_min and γ
 are unitless. It is correct to think of β0, β_min, γ, and z0 as the free
 parameters, while horz_degree_res is provided and β_scf is determined.
 
-β0, β_min, γ, and β_scf must be > 0. 
+β0, β_min, γ, and β_scf must be > 0.
 
 From Wu and Wu et al, β0 ∼ 1.77 and γ ∼ 0.08, over a range of 1.5-4.5∘
 """
@@ -654,7 +655,7 @@ auxiliary_domain_names(snow::SnowModel) = (
 ClimaLand.name(::SnowModel) = :snow
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         parameters = model.parameters
         # The ordering is important here
         @. p.snow.q_l = liquid_mass_fraction(Y.snow.S, Y.snow.S_l)
@@ -708,7 +709,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 end
 
 function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # First compute the boundary fluxes
         snow_boundary_fluxes!(model.boundary_conditions, model, Y, p, t)
         # Next, clip them in case the snow will melt in this timestep
@@ -747,7 +748,7 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
 end
 
 function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         # positive fluxes are TOWARDS atmos; negative fluxes increase quantity in snow
         @. dY.snow.S = -p.snow.applied_water_flux
         @. dY.snow.S_l = -p.snow.liquid_water_flux

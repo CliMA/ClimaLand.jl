@@ -3,6 +3,7 @@ import ClimaCore.MatrixFields: @name, ⋅
 using ClimaCore: Spaces
 import LinearAlgebra
 import LinearAlgebra: I
+using NVTX
 
 export make_jacobian,
     make_compute_jacobian, set_dfluxBCdY!, FieldMatrixWithSolver
@@ -24,7 +25,7 @@ function make_jacobian(model::AbstractModel)
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     compute_jacobian! = make_compute_jacobian(model)
-    function jacobian!(W, Y, p, dtγ, t)
+    NVTX.@annotate function jacobian!(W, Y, p, dtγ, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
         compute_jacobian!(W, Y, p, dtγ, t)
