@@ -201,7 +201,7 @@ end
 
 """
     get_maxLAI_at_site(date, lat, long;
-                       ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Year(date)))
+                       ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Dates.year(date)))
 
 A helper function to get the maximum LAI at a site from the MODIS LAI data for the 
 year corresponding to `date`. This is used in some simulations to 
@@ -220,7 +220,7 @@ function FluxnetSimulations.get_maxLAI_at_site(
     lat,
     long;
     ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;
-        year = Year(date),
+        year = Dates.year(date),
     ),
 )
     NCDataset(ncd_path) do ds
