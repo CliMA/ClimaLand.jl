@@ -1,6 +1,7 @@
 using Test
 using ClimaLand
 using ClimaLand.Diagnostics: @with_error
+import ClimaLand.Parameters as LP
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams
@@ -120,3 +121,67 @@ rn = get(simdir; short_name = "rn")
 @test readdir(tmpdir) == ["lhf_1h_average.nc", "rn_1h_average.nc"]
 @test length(rn.dims) == 3
 @test mean(rn.data) != 0.0
+
+
+@testset "runoff compute methods" begin
+    using ClimaLand
+    import ClimaParams
+    import ClimaLand.Parameters as LP
+    using ClimaDiagnostics
+    using Dates
+
+    FT = Float32
+    domain = ClimaLand.Domains.global_domain(FT)
+    atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+    forcing = (; atmos, radiation)
+    earth_param_set = LP.LandParameters(FT)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+    # Soil model
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        earth_param_set;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(), #NoRunoff(),
+    )
+
+    start_date = DateTime(2008, 1, 1)
+    stop_date = DateTime(2008, 3, 1)
+    dt = 450.0
+
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+        start_date,
+        end_date = stop_date,
+    )
+    LAI = ClimaLand.prescribed_lai_modis(
+        modis_lai_ncdata_path,
+        domain.space.surface,
+        start_date,
+    )
+
+    model =
+        ClimaLand.LandModel{FT}(forcing, LAI, earth_param_set, domain, dt; soil)
+
+    # Test that diagnostics don't error when trying to produce nonexistent variables
+    output_vars = ["sr", "ssr"]
+    output_writer = ClimaDiagnostics.Writers.DictWriter()
+    average_period = :hourly
+
+    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+        model,
+        start_date;
+        output_writer,
+        output_vars,
+        average_period,
+    )
+
+    simulation = ClimaLand.Simulations.LandSimulation(
+        start_date,
+        stop_date,
+        dt,
+        model;
+        diagnostics,
+    )
+end

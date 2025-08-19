@@ -347,6 +347,7 @@ function get_possible_diagnostics(model::SoilCanopyModel{FT}) where {FT}
         "er",
         "et",
         "sr",
+        "ssr",
         "rn",
         "lhf",
         "shf",
@@ -412,6 +413,7 @@ function get_possible_diagnostics(model::LandModel{FT}) where {FT}
         "er",
         "et",
         "sr",
+        "ssr",
         "swe",
         "snd",
         "rn",
@@ -465,6 +467,7 @@ function get_short_diagnostics(model::SoilCanopyModel{FT}) where {FT}
         "et",
         "er",
         "sr",
+        "ssr",
         "sif",
     ]
 end
