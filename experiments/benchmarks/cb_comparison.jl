@@ -1,27 +1,3 @@
-# # Global run of land model
-
-# The code sets up and profiles ClimaLand v1, which
-# includes soil, canopy, and snow, for 1 day on a spherical domain,
-# using ERA5 data as forcing. In this simulation, we have
-# turned lateral flow off because horizontal boundary conditions and the
-# land/sea mask are not yet supported by ClimaCore.
-
-# You can choose between the profiling type
-# by requestion --profiler nsight or --profiler integrated. If not provided,
-# the integrated profiler is used, and if benchmarking on cpu, flamegraphs are created.
-
-# When run with buildkite on clima, without Nisght, this code also compares with the previous best time
-# saved at the top of this file
-
-# Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
-# Soil depth: 50 m
-# Simulation duration: 1 day
-# Timestep: 450 s
-# Timestepper: ARS111
-# Fixed number of iterations: 3
-# Jacobian update: every Newton iteration
-# Atmos forcing update: every 3 hours
 delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
 import SciMLBase
@@ -32,10 +8,11 @@ import ClimaTimeSteppers as CTS
 import ClimaCore
 @show pkgversion(ClimaCore)
 using ClimaUtilities.ClimaArtifacts
-
+import ClimaDiagnostics
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
+import ClimaUtilities.TimeManager: ITime, date
 import ClimaParams as CP
 
 using ClimaLand
@@ -50,37 +27,25 @@ using Dates
 using Test
 using ArgParse
 
-function parse_commandline()
-    s = ArgParseSettings()
-    @add_arg_table s begin
-        "--profiler"
-        help = "Profiler option: nsight or flamegraph"
-        arg_type = String
-        default = "integrated"
-    end
-    return parse_args(s)
-end
+include("benchmark_sim.jl")
+
+
 
 const FT = Float64
 
-const PREVIOUS_GPU_TIME = 2.67
 
 include("benchmark_sim.jl")
 
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
-device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-outdir = "snowy_land_benchmark_$(device_suffix)"
-!ispath(outdir) && mkpath(outdir)
-parsed_args = parse_commandline()
-profiler = parsed_args["profiler"]
 
-function setup_simulation()
+function generic_setup_simulation(;
+    diagnostic_frequency = nothing,
+    nan_check_frequency = nothing,
+)
     start_date = DateTime(2008)
-    duration =
-        device isa ClimaComms.CPUSingleThreaded ? Dates.Minute(30) :
-        Dates.Day(1)
+    duration = Dates.Hour(45)
     Δt = 450.0
     end_date = start_date + duration
     updateat = Array(start_date:Second(3600 * 3):end_date)
@@ -180,16 +145,83 @@ function setup_simulation()
         Y.snow.S_l .= 0
         Y.snow.U .= 0
     end
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        tempdir();
+        start_date,
+    )
+    diagnostics =
+        isnothing(diagnostic_frequency) ? nothing :
+        ClimaLand.default_diagnostics(
+            land,
+            start_date;
+            output_writer,
+            average_period = diagnostic_frequency,
+        )
+    user_callbacks =
+        isnothing(nan_check_frequency) ? () :
+        (
+            ClimaLand.NaNCheckCallback(
+                nan_check_frequency,
+                ITime(0; epoch = start_date),
+                nothing,
+            ),
+        )
     simulation = ClimaLand.Simulations.LandSimulation(
         start_date,
         end_date,
         Δt,
         land;
-        updateat = updateat,
+        updateat,
         set_ic!,
-        user_callbacks = (),
-        diagnostics = [],
+        user_callbacks,
+        diagnostics,
     )
+    ClimaLand.Simulations.step!(simulation)
     return simulation
 end
-run_benchmarks(device, setup_simulation, profiler, PREVIOUS_GPU_TIME, outdir)
+
+setup_with_daily() = generic_setup_simulation(; diagnostic_frequency = :daily)
+setup_with_monthly() =
+    generic_setup_simulation(; diagnostic_frequency = :monthly)
+setup_with_half_hourly() =
+    generic_setup_simulation(; diagnostic_frequency = :halfhourly)
+setup_with_infrequent_nan_check() =
+    generic_setup_simulation(; nan_check_frequency = Day(1))
+setup_with_frequent_nan_check() =
+    generic_setup_simulation(; nan_check_frequency = Hour(10))
+
+# generic_setup_simulation()
+# setup_with_daily()
+# setup_with_half_hourly()
+# setup_with_monthly()
+# setup_with_infrequent_nan_check()
+# setup_with_frequent_nan_check()
+
+run_timing_benchmarks(
+    device,
+    generic_setup_simulation;
+    MAX_PROFILING_TIME_SECONDS = 280,
+)
+
+run_timing_benchmarks(
+    device,
+    setup_with_monthly;
+    MAX_PROFILING_TIME_SECONDS = 280,
+)
+
+
+run_timing_benchmarks(
+    device,
+    setup_with_daily;
+    MAX_PROFILING_TIME_SECONDS = 280,
+)
+
+
+run_timing_benchmarks(
+    device,
+    setup_with_infrequent_nan_check;
+    MAX_PROFILING_TIME_SECONDS = 280,
+)
+
+# run_timing_benchmarks(device, setup_with_frequent_nan_check)
