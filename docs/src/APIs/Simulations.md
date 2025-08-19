@@ -1,4 +1,4 @@
-Simulations
+# Simulations
 
 ```@meta
 CurrentModule = ClimaLand.Simulations
@@ -8,5 +8,4 @@ CurrentModule = ClimaLand.Simulations
 ClimaLand.Simulations.LandSimulation
 ClimaLand.Simulations.step!
 ClimaLand.Simulations.solve!
-ClimaLand.Simulations.make_set_inital_state_from_file
 ```

@@ -37,6 +37,8 @@ ClimaLand.Canopy.compute_Vcmax
 ```
 
 ## PModel Methods
+
+```@docs
 ClimaLand.Canopy.compute_full_pmodel_outputs
 ClimaLand.Canopy.set_historical_cache!
 ClimaLand.Canopy.update_optimal_EMA
@@ -55,3 +57,4 @@ ClimaLand.Canopy.electron_transport_pmodel
 ClimaLand.Canopy.co2_compensation_p
 ClimaLand.Canopy.quadratic_soil_moisture_stress
 ClimaLand.Canopy.compute_APAR
+```
