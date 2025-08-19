@@ -200,11 +200,8 @@ forcing = ClimaLand.prescribed_forcing_era5(
     earth_param_set,
     FT;
 )
-LAI = ClimaLand.prescribed_lai_modis(
-    domain.space.surface,
-    start_date,
-    stop_date
-);
+LAI =
+    ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 
 land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt);
 

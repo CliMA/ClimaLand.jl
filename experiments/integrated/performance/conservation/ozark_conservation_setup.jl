@@ -170,8 +170,7 @@ LAI = ClimaLand.prescribed_lai_modis(
     stop_date + Second(tf),
 )
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI =
-    FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
 
 hydraulics = Canopy.PlantHydraulicsModel{FT}(

@@ -215,8 +215,14 @@ in the dataset.
 
 The user can override the default by passing a different ncd_path, in which case `date` is not used.
 """
-function FluxnetSimulations.get_maxLAI_at_site(date, lat, long;
-                                               ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Year(date)))
+function FluxnetSimulations.get_maxLAI_at_site(
+    date,
+    lat,
+    long;
+    ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;
+        year = Year(date),
+    ),
+)
     NCDataset(ncd_path) do ds
         # Find the indices of the closest latitude and longitude in the dataset
         # to the given lat and long
