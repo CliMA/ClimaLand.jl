@@ -123,9 +123,9 @@ LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date);
 # to linearly interpolate observed LAI to any simulation time.
 
 # It can also be useful to know the maximum LAI at a site. To do so, we
-# can call, for the first year of data (first element of `modis_lai_ncdata_path`):
+# can call, for the first year of data:
 maxLAI =
-    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long)
+    FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
 
 # # Fluxnet comparison data
 

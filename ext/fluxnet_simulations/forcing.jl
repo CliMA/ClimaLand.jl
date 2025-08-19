@@ -200,20 +200,23 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
 end
 
 """
-    get_maxLAI_at_site(ncd_path, lat, long)
+    get_maxLAI_at_site(date, lat, long;
+                       ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Year(date)))
 
-A helper function to get the maximum LAI at a site from the MODIS LAI data.
-This is used in site-level simulations to set the initial RAI value.
+A helper function to get the maximum LAI at a site from the MODIS LAI data for the 
+year corresponding to `date`. This is used in some simulations to 
+set the root area index.
 
-The file at `ncd_path` is expected to contain latitude and longitude in variables
+By default, this uses MODIS data for the year desired; the default file 
+at `ncd_path` is expected to contain latitude and longitude in variables
 "lat" and "lon", and LAI in the variable "lai". The function finds the maximum LAI
 at the closest latitude and longitude to the given `lat` and `long` values over all dates
 in the dataset.
 
-This works well with the artifact `modis_lai_multiyear_paths`, but has not been
-tested with other datasets.
+The user can override the default by passing a different ncd_path, in which case `date` is not used.
 """
-function FluxnetSimulations.get_maxLAI_at_site(ncd_path, lat, long)
+function FluxnetSimulations.get_maxLAI_at_site(date, lat, long;
+                                               ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Year(date)))
     NCDataset(ncd_path) do ds
         # Find the indices of the closest latitude and longitude in the dataset
         # to the given lat and long
