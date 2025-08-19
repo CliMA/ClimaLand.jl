@@ -13,7 +13,7 @@ import ..SoilCanopyModel
 
 import ..LandModel
 
-import ..Soil: EnergyHydrology
+import ..Soil: EnergyHydrology, Runoff
 
 import ..AbstractModel
 
