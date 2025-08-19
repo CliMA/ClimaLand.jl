@@ -124,7 +124,7 @@ soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     land_domain,
     soil_forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     albedo = soil_albedo,
@@ -175,7 +175,8 @@ RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
 
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
-    LAI;
+    LAI,
+    toml_dict;
     n_stem,
     n_leaf,
     h_stem,
@@ -199,7 +200,7 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     z_0m = z0_m,
     z_0b = z0_b,
     prognostic_land_components,

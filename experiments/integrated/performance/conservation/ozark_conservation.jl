@@ -27,6 +27,9 @@ for float_type in (Float32, Float64)
     # Make these global so we can use them in other ozark files
     global FT = float_type
     global earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    global toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
     # Create model, set initial conditions, and setup most simulation parameters
     include(

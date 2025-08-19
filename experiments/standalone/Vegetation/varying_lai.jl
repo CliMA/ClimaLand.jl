@@ -21,6 +21,9 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
 time_offset = 7
 lat = FT(38.7441) # degree
@@ -66,13 +69,21 @@ h_leaf = FT(9.5)
 f_root_to_shoot = FT(3.5)
 RAI = FT(2 * f_root_to_shoot)
 ν = FT(0.7)
-hydraulics = PlantHydraulicsModel{FT}(land_domain, LAI; n_leaf, h_leaf, RAI, ν)
+hydraulics = PlantHydraulicsModel{FT}(
+    land_domain,
+    LAI,
+    toml_dict;
+    n_leaf,
+    h_leaf,
+    RAI,
+    ν,
+)
 
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     hydraulics,
 );
 
