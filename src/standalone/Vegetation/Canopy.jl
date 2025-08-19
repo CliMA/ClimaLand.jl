@@ -879,9 +879,9 @@ end
 """
      ClimaLand.make_update_aux(canopy::CanopyModel{FT,
                                                   <:AutotrophicRespirationModel,
-                                                  <:Union{BeerLambertModel, TwoStreamModel},
-                                                  <:FarquharModel,
-                                                  <:MedlynConductanceModel,
+                                                  <:AbstractRadiationModel,
+                                                  <:AbstractPhotosynthesisModel,
+                                                  <:AbstractStomatalConductanceModel,
                                                   <:PlantHydraulicsModel,},
                               ) where {FT}
 
@@ -903,9 +903,9 @@ function ClimaLand.make_update_aux(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, PModel},
-        <:Union{MedlynConductanceModel, PModelConductance},
+        <:AbstractRadiationModel,
+        <:AbstractPhotosynthesisModel,
+        <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -1043,11 +1043,11 @@ function make_compute_exp_tendency(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, PModel},
-        <:Union{MedlynConductanceModel, PModelConductance},
+        <:AbstractRadiationModel,
+        <:AbstractPhotosynthesisModel,
+        <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
-        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+        <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
     components = canopy_components(canopy)
@@ -1073,11 +1073,11 @@ function make_compute_imp_tendency(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, PModel},
-        <:Union{MedlynConductanceModel, PModelConductance},
+        <:AbstractRadiationModel,
+        <:AbstractPhotosynthesisModel,
+        <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
-        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+        <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
     components = canopy_components(canopy)
@@ -1103,11 +1103,11 @@ function ClimaLand.make_compute_jacobian(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, PModel},
-        <:Union{MedlynConductanceModel, PModelConductance},
+        <:AbstractRadiationModel,
+        <:AbstractPhotosynthesisModel,
+        <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
-        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+        <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
     components = canopy_components(canopy)

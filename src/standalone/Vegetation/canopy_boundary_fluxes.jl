@@ -157,11 +157,11 @@ end
                             canopy::CanopyModel{
                                 FT,
                                 <:AutotrophicRespirationModel,
-                                <:Union{BeerLambertModel, TwoStreamModel},
-                                <:Union{FarquharModel, PModel},
-                                <:Union{MedlynConductanceModel, PModelConductance},
+                                <:AbstractRadiationModel,
+                                <:AbstractPhotosynthesisModel,
+                                <:AbstractStomatalConductanceModel,
                                 <:PlantHydraulicsModel,
-                                <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
+                                <:AbstractCanopyEnergyModel}
                             },
                             Y::ClimaCore.Fields.FieldVector,
                             t,
@@ -183,11 +183,11 @@ function canopy_boundary_fluxes!(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, PModel},
-        <:Union{MedlynConductanceModel, PModelConductance},
+        <:AbstractRadiationModel,
+        <:AbstractPhotosynthesisModel,
+        <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
-        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+        <:AbstractCanopyEnergyModel,
     },
     Y::ClimaCore.Fields.FieldVector,
     t,
