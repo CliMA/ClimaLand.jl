@@ -4,6 +4,12 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.18.2
+-------
+- Fix rendering in docs PR[#1338](https://github.com/CliMA/ClimaLand.jl/pull/1338)
+- Add calibration tutorial against observations PR[#1337](https://github.com/CliMA/ClimaLand.jl/pull/1337)
+- Hide domain error in Soil CO2 diffusivity function PR[#1336](https://github.com/CliMA/ClimaLand.jl/pull/1336)
+
 v0.18.1
 -------
 - Unify default diagnostics code PR[#1313](https://github.com/CliMA/ClimaLand.jl/pull/1313)
