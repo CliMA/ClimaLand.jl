@@ -16,7 +16,9 @@ export TOPMODELRunoff,
     subsurface_runoff_source,
     topmodel_ss_flux,
     update_infiltration_water_flux!,
-    is_saturated
+    is_saturated,
+    get_surface_runoff,
+    get_subsurface_runoff
 
 """
     AbstractRunoffModel
@@ -46,7 +48,7 @@ subsurface_runoff_source(runoff::AbstractRunoffModel) = runoff.subsurface_source
 
 """
     NoRunoff <: AbstractRunoffModel
-A concrete type of soil runoff model; the 
+A concrete type of soil runoff model; the
 default choice, which does not include any
 runoff.
 """
@@ -76,7 +78,7 @@ runoff_var_types(::NoRunoff, FT) = (FT,)
 
 A simple model for runoff appropriate for single column runs.
 
-Only surface runoff is computed, using a combination of Dunne 
+Only surface runoff is computed, using a combination of Dunne
 and Hortonian runoff.
 """
 struct SurfaceRunoff <: AbstractRunoffModel
@@ -117,7 +119,7 @@ end
 
 The update_infiltration_water_flux! function for the SurfaceRunoff model.
 
-Updates the runoff model variables in place in `p.soil` for the SurfaceRunoff 
+Updates the runoff model variables in place in `p.soil` for the SurfaceRunoff
 parameterization:
 p.soil.R_s
 p.soil.is_saturated
@@ -390,5 +392,24 @@ than porosity `ν`.
 function is_saturated(twc::FT, ν::FT) where {FT}
     return ClimaLand.heaviside(twc - ν)
 end
+
+"""
+    get_surface_runoff(runoff_model, Y, p)
+
+A helper function which returns the surface runoff variable
+based on the type of runoff model being used.
+"""
+get_surface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
+get_surface_runoff(runoff_model::Union{SurfaceRunoff, TOPMODELRunoff}, Y, p) =
+    p.soil.R_s
+
+"""
+    get_subsurface_runoff(runoff_model, Y, p)
+
+A helper function which returns the subsurface runoff variable
+based on the type of runoff model being used.
+"""
+get_subsurface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
+get_subsurface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_ss
 
 end

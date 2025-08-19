@@ -1,4 +1,4 @@
-# Using ClimaLand Diagnostics when running a simulation
+# Using ClimaLand Diagnostics to save simulation output
 
 When running a ClimaLand simulations, you have multiple options on how to write the outputs of that simulation.
 You may want all variables, or just a selected few.
@@ -18,65 +18,81 @@ Note that this is different from checkpointing the simulation, which has specifi
 For information about checkpointing and restarting simulations, please see the page titled
 [Restarting Simulations](@ref).
 
-Once you have defined your model and are ready to run a simulation, and after adding ClimaDiagnostics (using ClimaDiagnostics),
- you can add default diagnostics to it by doing the following steps:
+The main user-facing function in the ClimaLand.Diagnostics module is `default_diagnostics`. This function defines
+what diagnostic variables to compute by default for a specific model, and
+on what schedule (for example, hourly average).
 
-### define an output folder
+`default_diagnostics` takes in the following arguments:
+- `model`: The ClimaLand model to generate diagnostics for. Currently the following models support diagnostics: `CanopyModel`, `EnergyHydrologyModel`, `SoilCanopyModel`, `LandModel`, `BucketModel`
+- `start_date`: The start date of the simulation.
+- `output_writer`: An object of type `ClimaDiagnostics.AbstractWriter`. Specifically this may be a `NetCDFWriter`, `HDF5Writer`, or `DictWriter`, which save output to a NetCDF file, HDF5 file, or dictionary in Julia memory, respectively. For more details about the diagnostics writers, please see the ClimaDiagnostics.jl documentation.
+- `output_vars`: This argument may be `:short` to output a default list of variables defined for each model, `:long` to output all
+available variables for the model, or a user-defined list of variable "short names".
+- `average_period`: How often to compute and save the average of the diagnostics.
+- `dt`: Simulation timestep; only required for instantaneous diagnostics.
 
-```Julia
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path("base_output_dir/")
+## Example: diagnostics for a `CanopyModel`
+
+The following code sets up default short diagnostics to be averaged hourly and written in memory as a Julia dictionary:
+```julia
+diag_writer = ClimaDiagnostics.Writers.DictWriter();
+diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+    canopy,
+    start_date;
+    output_vars = :short,
+    output_writer = diag_writer,
+    average_period = :hourly,
+);
 ```
 
-### define a space
+To instead output a list of specific diagnostics, you can change the value of `output_vars`.
+For example, to output gross primary productivity (GPP) and transpiration you would do the following:
+```julia
+diag_writer = ClimaDiagnostics.Writers.DictWriter();
+diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+    canopy,
+    start_date;
+    output_vars = ["gpp", "trans"],
+    output_writer = diag_writer,
+    average_period = :hourly,
+);
+```
+A description of available diagnostics and their short names can be found on the [Available diagnostic variables](@ref) documentation page.
 
-Your diagnostics will be written in time and space. These may be defined in your model, but usually land model space is a sphere with no vertical dimension.
-You may have variables varying with soil depth, and so you will need:
-
-```Julia
-space = bucket_domain.space.subsurface
+To write the diagnostics to a NetCDF file instead of saving it in memory, the `diag_writer` should be constructed as a `NetCDFWriter` and then passed to `default_diagnostics` as before:
+```julia
+outdir = "my_output_dir"
+nc_writer =
+    ClimaDiagnostics.Writers.NetCDFWriter(space, outdir; start_date)
 ```
 
-### define your writter
+!!! note
 
-Your diagnostics will be written in a Julia Dict or a netcdf file, for example. This is up to you. For a netcdf file, you define your writter like this:
+    The `NetCDFWriter` currently writes to file for each diagnostic output, which can be quite slow when saving variables at every step.
+    On the other hand, the `DictWriter` saves output to memory which may be too large in global runs, so
+    `DictWriter` usually should not be used for global runs.
+    In general, we recommend using `DictWriter` for column simulations, and `NetCDFWriter` for global simulations.
 
-```Julia
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir; start_date)
-```
+## Diagnostics output naming and format
 
-providing the space and output_dir defined in steps 1. and 2.
+Diagnostics are typically named using the format `$(short_name)_$(period)_$(reduction)`.
+For example, with the NetCDFWriter, hourly-averaged GPP would be saved in an output file titled `gpp_1h_average.nc`.
 
-### make your diagnostics on your model, using your writter, and define a callback
+The specific output format depends on which output writer is being used; for more details,
+please see the [ClimaDiagnostics documentation](https://clima.github.io/ClimaDiagnostics.jl/stable/writers/).
 
-Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
+## Adding new diagnostics
 
-```Julia
-t0 = 0 # the start date of your simulation
-
-start_date = DateTime(2024) # start_date is the DateTime of your start date
-
-diags = ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
-
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
-
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-
-sol = SciMLBase.solve(prob, ode_algo; dt = Δt, callback = diag_cb)
-```
-
-Your diagnostics have now been written in netcdf files in your output folder.
-
-Note that by default, `default_diagnostics` assign two optional kwargs: `output_vars = :long` and `average_period` = :daily.
-`output_vars = :long` will write all available diagnostics, whereas `output_vars = :short` will only write essentials diagnostics.
-`average_period` defines the period over which diagnostics are averaged, it can be set to `:hourly`, `:daily` and `:monthly`.
-
-## Custom Diagnostics
-
-When defining a custom diagnostic, follow these steps:
+To define a new, custom diagnostic, you must follow these steps:
+- specify how to compute the diagnostic
+- manually define the diagnostic via `add_diagnostic_variable!`
+- add the diagnostic to the list of possible diagnostics for the relevant model(s)
 
 ### Define how to compute your diagnostic variable from your model state and cache.
 
+These functions are defined in `src/diagnostics/land_compute_methods.jl` and must be named
+in the format `compute_[standard_name]!`. Be sure to write method(s) for each model you want
+this diagnostic to be available for.
 For example, let's say you want the bowen ratio (ratio between sensible heat and latent heat) in the Bucket model.
 
 ```Julia
@@ -90,14 +106,16 @@ end
 ```
 
 Or, for convenience, you can use the `@diagnostic_compute` macro which generates the same function.
-However, it is better to use that macro only if you are getting a defined variable, such as latent heat flux.
-(without an operation like the bowen ratio above). For example,
+However, it is better to use that macro only if you are retrieving an existing variable, such as latent heat flux,
+rather than computing one, like the Bowen ratio above. For example,
 
 ```Julia
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 ```
 
 ### Add that diagnostic(s) variable to your list of variables
+
+These functions are defined in `src/diagnostics/define_diagnostics.jl`.
 
 ```Julia
  add_diagnostic_variable!(
@@ -120,11 +138,17 @@ add_diagnostic_variable!(
 )
 ```
 
-### Define how to schedule your variables. For example, you want the seasonal maximum of your variables, where season is defined as 90 days.
+### Define how often to output your variables, and how to combine them.
+
+We have many common output periods and reductions defined in `src/diagnostics/standard_diagnostic_frequencies.jl`,
+including averages, maximums, and minimums over different periods of time, and instantaneous outputs.
+
+You can also define your own output frequencies and reductions. For example, if you want the seasonal maximum of your
+variables, where season is defined as 90 days, you could add the following function.
 
 ```Julia
 seasonal_maxs(FT, short_names...; output_writer) = common_diagnostics(
-    90 * 24 * 60 * 60 * one(FT),
+    FT(90 * 24 * 60 * 60), # 90 days in seconds
     max,
     output_writer,
     nothing, # start_date
