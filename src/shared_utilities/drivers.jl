@@ -1475,7 +1475,7 @@ and the earth_param_set.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
 
-The ClimaLand default is to use nearest neighbor interpolation, but 
+The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
 by passing interpolation_method = Interpolations.Linear().
 
@@ -1663,7 +1663,7 @@ LAI cover data in a netcdf file, the surface_space, the start date, and the eart
 
 This currently one works when a single file is passed for both the era5 lai and era5 lai cover data.
 
-The ClimaLand default is to use nearest neighbor interpolation, but 
+The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
 by passing interpolation_method = Interpolations.Linear().
 """
@@ -1711,7 +1711,7 @@ A helper function which constructure the TimeVaryingInput object for Lead Area
 Index from a file path pointint to the MODIS LAI data in a netcdf file, the
 surface_space, the start date, and the earth_param_set.
 
-The ClimaLand default is to use nearest neighbor interpolation, but 
+The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
 by passing interpolation_method = Interpolations.Linear().
 """
@@ -1778,7 +1778,7 @@ function prescribed_analytic_forcing(
     T_atmos = (t) -> 280.0,
     u_atmos = (t) -> 1.0,
     q_atmos = (t) -> 0.0, # no atmos water
-    h_atmos = FT(1e-8),
+    h_atmos = FT(1), # m
     P_atmos = (t) -> 101325,
     atmos = PrescribedAtmosphere(
         TimeVaryingInput(precip),
