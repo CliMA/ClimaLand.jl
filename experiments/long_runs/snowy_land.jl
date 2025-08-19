@@ -87,17 +87,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     forcing = (; atmos, radiation)
 
     # Read in LAI from MODIS data
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-        context = nothing,
-        start_date,
-        end_date = stop_date,
-    )
-    LAI = ClimaLand.prescribed_lai_modis(
-        modis_lai_ncdata_path,
-        surface_space,
-        start_date;
-        time_interpolation_method = LinearInterpolation(),
-    )
+    LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 
     # Overwrite some defaults for the canopy model
     # Energy model

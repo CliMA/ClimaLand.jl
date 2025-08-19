@@ -179,16 +179,7 @@ photosynthesis = PModel{FT}()
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context = ClimaComms.context(surface_space),
-    start_date,
-    end_date = stop_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-);
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI =
     FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);

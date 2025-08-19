@@ -277,14 +277,14 @@ function FluxnetSimulations.get_data_dates(
     end
     duration_available_ms = latest_date - earliest_date
     start_date = earliest_date + start_offset
-    end_date = isnothing(duration) ? latest_date : start_date + duration
-    if !isnothing(duration) && (end_date > latest_date)
+    stop_date = isnothing(duration) ? latest_date : start_date + duration
+    if !isnothing(duration) && (stop_date > latest_date)
         error(
             "The sum of the requested duration of $duration and start_offset of $start_offset \
             is greater than the available $duration_available_ms of data.",
         )
     end
-    return (start_date, end_date)
+    return (start_date, stop_date)
 end
 
 """

@@ -49,7 +49,7 @@ surface_space = domain.space.surface;
 We choose the initial and final simulation times as `DateTime`s, and a timestep in seconds.
 ```julia
 start_date = DateTime(2008);
-end_date = start_date + Second(60 * 60 * 72);
+stop_date = start_date + Second(60 * 60 * 72);
 dt = 1000.0;
 ```
 
@@ -103,7 +103,7 @@ end
 Now construct the `LandSimulation` object, which contains the model
 and additional timestepping information.
 ```julia
-simulation = LandSimulation(start_date, end_date, dt, model; set_ic!, user_callbacks = ());
+simulation = LandSimulation(start_date, stop_date, dt, model; set_ic!, user_callbacks = ());
 ```
 
 Now we can run the simulation!

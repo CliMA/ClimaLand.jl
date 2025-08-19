@@ -98,7 +98,8 @@ dt = Float64(900)
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
 
 # Height of sensor on flux tower
 atmos_h = FT(32)
@@ -167,7 +168,7 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 
-saveat = Array(start_date:Second(dt):end_date)
+saveat = Array(start_date:Second(dt):stop_date)
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -178,7 +179,7 @@ updateat = deepcopy(saveat)
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     land;
     user_callbacks = (saving_cb,),

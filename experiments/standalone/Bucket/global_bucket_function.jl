@@ -97,7 +97,7 @@ z_0b = FT(1e-3);
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);
-end_date = start_date + Second(7 * 86400);
+stop_date = start_date + Second(7 * 86400);
 
 # Precipitation:
 precip = (t) -> 0;
@@ -167,11 +167,11 @@ end
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     Δt,
     model;
     outdir = output_dir,
-    updateat = collect(start_date:Second(Δt * 3):end_date),
+    updateat = collect(start_date:Second(Δt * 3):stop_date),
     set_ic!,
     timestepper = ode_algo,
     diagnostics = diags,

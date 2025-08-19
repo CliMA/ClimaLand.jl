@@ -30,7 +30,7 @@ atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset)
 N_days = 60
-end_date = start_date + Day(N_days)
+stop_date = start_date + Day(N_days)
 dt = FT(225);
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -128,17 +128,17 @@ function set_ic!(Y, p, t0, model)
 end
 
 n = 16
-saveat = Array(start_date:Second(n * dt):end_date)
+saveat = Array(start_date:Second(n * dt):stop_date)
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-updateat = Array(start_date:Second(1800):end_date)
+updateat = Array(start_date:Second(1800):stop_date)
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     canopy;
     set_ic! = set_ic!,

@@ -33,7 +33,6 @@ import ClimaTimeSteppers as CTS
 import ClimaCore
 @show pkgversion(ClimaCore)
 using ClimaUtilities.ClimaArtifacts
-
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
@@ -74,12 +73,17 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "snowy_land_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
-function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
+function setup_prob(
+    start_date,
+    stop_date,
+    Δt;
+    outdir = outdir,
+    nelements = (101, 15),
+)
     earth_param_set = LP.LandParameters(FT)
     domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
-    start_date = DateTime(2008)
 
     # Forcing data
     era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
@@ -97,17 +101,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     forcing = (; atmos, radiation)
 
     # Read in LAI from MODIS data
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-        context = nothing,
-        start_date = start_date + Second(t0),
-        end_date = start_date + Second(t0) + Second(tf),
-    )
-    LAI = ClimaLand.prescribed_lai_modis(
-        modis_lai_ncdata_path,
-        surface_space,
-        start_date;
-        time_interpolation_method = time_interpolation_method,
-    )
+    LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 
     # Overwrite some defaults for the canopy model
     # Energy model
@@ -155,7 +149,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y.soil.ρe_int .=
         Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, earth_param_set)
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-
+    # we need t0 to set IC
+    t0 = 0.0
+    tf = Second(stop_date - start_date).value
     plant_ν = land.canopy.hydraulics.parameters.ν
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
@@ -196,18 +192,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 end
 
 function setup_simulation(; greet = false)
-    t0 = 0.0
-    tf = 60 * 60.0 * 6
+    start_date = DateTime(2008)
+    stop_date = Second(60 * 60.0 * 6) + start_date
     Δt = 450.0
     nelements = (101, 15)
-    if greet
-        @info "Run: Global Soil-Canopy-Snow Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Duration: $(tf - t0) s"
-    end
-
-    prob, cb = setup_prob(t0, tf, Δt; nelements)
+    prob, cb = setup_prob(start_date, stop_date, Δt; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

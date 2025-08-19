@@ -156,16 +156,12 @@ function setup_model(
         )
     )
     # Set up plant hydraulics
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-        context = nothing,
-        start_date,
-        end_date = stop_date,
-    )
-    LAIfunction = ClimaLand.prescribed_lai_modis(
-        modis_lai_ncdata_path,
+    LAI = ClimaLand.prescribed_lai_modis(
         surface_space,
-        start_date;
+        start_date,
+        stop_date;
         time_interpolation_method = LinearInterpolation(),
+        context = ClimaComms.context(surface_space),
     )
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2

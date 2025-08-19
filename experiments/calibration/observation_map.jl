@@ -115,13 +115,13 @@ function process_member_data(
     # Note that we implicitly remove spinup when windowing is done
     @info "Current minibatch is $current_minibatch"
     flattened_data = map(current_minibatch) do idx
-        start_date, end_date = sample_date_ranges[idx]
+        start_date, stop_date = sample_date_ranges[idx]
         flat_data = map(vars) do var
             var = ClimaAnalysis.window(
                 var,
                 "time",
                 left = start_date,
-                right = end_date,
+                right = stop_date,
                 by = ClimaAnalysis.MatchValue(),
             )
             ClimaAnalysis.flatten(var).data

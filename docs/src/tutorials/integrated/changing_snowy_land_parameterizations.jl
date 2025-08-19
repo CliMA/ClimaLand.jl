@@ -84,15 +84,8 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     FT,
 );
 # LAI for the site - this uses our interface for working with MODIS data.
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    start_date,
-    end_date = stop_date,
-);
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    domain.space.surface,
-    start_date,
-);
+LAI =
+    ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 
 # # Setup the integrated model
 

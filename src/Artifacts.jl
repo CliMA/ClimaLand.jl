@@ -31,18 +31,18 @@ function era5_land_forcing_data_forty_years_folder_path(; context = nothing)
 end
 
 """
-    find_era5_year_paths(start_date, end_date; context = nothing)
+    find_era5_year_paths(start_date, stop_date; context = nothing)
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
-`start_date` and ending on `end_date`.
+`start_date` and ending on `stop_date`.
 
 We add 1 year to the final date to ensure that everything between
-start_date and end_date is covered. (This is needed, e.g., if the last file
+start_date and stop_date is covered. (This is needed, e.g., if the last file
 is up to Dec 15th but we want to simulate past that date.)
 """
-function find_era5_year_paths(start_date, end_date; context = nothing)
+function find_era5_year_paths(start_date, stop_date; context = nothing)
     year0 = Dates.year(start_date)
-    yearf = Dates.year(end_date) + 1
+    yearf = Dates.year(stop_date) + 1
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
@@ -145,22 +145,22 @@ function modis_lai_single_year_path(;
 end
 
 """
-    modis_lai_multiyear_paths(; start_date, end_date, context = nothing)
+    modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
 
 Return the appropriate files of MODIS LAI data to run a simuation starting on
-`start_date` and ending on `end_date`. The artifact contains data from 2000 to 2020.
+`start_date` and ending on `stop_date`. The artifact contains data from 2000 to 2020.
 
 If the final date falls in the month of December, we add 1 year to the final date
-to ensure that everything between start_date and end_date is covered.
+to ensure that everything between start_date and stop_date is covered.
 This is needed, e.g., if the last file is up to Dec 15th but we want to
 simulate past that date.
 """
-function modis_lai_multiyear_paths(; start_date, end_date, context = nothing)
+function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
     # Get the year of the start and final dates
     year0 = Dates.year(start_date)
     yearf =
-        Dates.month(end_date) == 12 ? Dates.year(end_date) + 1 :
-        Dates.year(end_date)
+        Dates.month(stop_date) == 12 ? Dates.year(stop_date) + 1 :
+        Dates.year(stop_date)
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     paths = collect(
         joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for

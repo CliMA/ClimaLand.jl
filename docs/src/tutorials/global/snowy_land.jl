@@ -60,16 +60,10 @@ forcing = ClimaLand.prescribed_forcing_era5(
 );
 
 # MODIS LAI is prescribed for the canopy model:
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context,
-    start_date,
-    end_date = stop_date,
-)
 LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
     domain.space.surface,
-    start_date;
-    time_interpolation_method = LinearInterpolation(),
+    start_date
+    stop_date;
 );
 # Make the model:
 model = ClimaLand.LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt);

@@ -74,7 +74,7 @@ start_date = DateTime(2010) + Hour(time_offset)
 # the timestep depends on the problem you are solving, the accuracy of the
 # solution required, and the timestepping algorithm you are using.
 N_days = 364
-end_date = start_date + Day(N_days)
+stop_date = start_date + Day(N_days)
 dt = 225.0
 
 # Site latitude and longitude
@@ -136,13 +136,7 @@ forcing = (; atmos, radiation, ground);
 
 # Now we read in time-varying LAI from a global MODIS dataset.
 surface_space = domain.space.surface;
-modis_lai_ncdata_path =
-    ClimaLand.Artifacts.modis_lai_multiyear_paths(; start_date, end_date)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-);
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date);
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI =
     FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
@@ -244,7 +238,7 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
-updateat = Array(start_date:Second(1800):end_date);
+updateat = Array(start_date:Second(1800):stop_date);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -261,7 +255,7 @@ ode_algo = CTS.IMEXAlgorithm(
 # the cache, the driver callbacks, and set the initial conditions.
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     canopy;
     set_ic!,

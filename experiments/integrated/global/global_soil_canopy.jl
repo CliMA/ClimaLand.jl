@@ -49,7 +49,7 @@ subsurface_space = domain.space.subsurface
 # Set up dates and times for the simulation
 start_date = DateTime(2008);
 dt = 450.0
-end_date = start_date + Dates.Second(3600)
+stop_date = start_date + Dates.Second(3600)
 
 # Forcing data
 era5_ncdata_path =
@@ -89,16 +89,7 @@ canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 
 # Set up plant hydraulics
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context = nothing,
-    start_date = start_date,
-    end_date = end_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-)
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
@@ -137,7 +128,7 @@ diags = ClimaLand.default_diagnostics(
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     land;
     outdir,
