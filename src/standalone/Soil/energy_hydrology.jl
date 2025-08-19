@@ -76,7 +76,7 @@ end
 Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
 
-@doc """
+"""
     EnergyHydrologyParameters(
         ::Type{FT};
         ν,
@@ -266,7 +266,7 @@ struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     lateral_flow::Bool
 end
 
-@doc """
+"""
     EnergyHydrology{FT}(;
         parameters::PS
         domain::D,

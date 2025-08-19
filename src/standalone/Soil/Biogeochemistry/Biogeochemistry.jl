@@ -70,7 +70,7 @@ end
 ## For interfacting with ClimaParams
 
 
-@doc """
+"""
     SoilCO2ModelParameters(::Type{FT}; kwargs...)
     SoilCO2ModelParameters(toml_dict; kwargs...)
 
@@ -132,7 +132,7 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
 end
 
 
-@doc """
+"""
 SoilCO2Model{FT}(
         domain::ClimaLand.AbstractDomain,
         drivers::DT;
