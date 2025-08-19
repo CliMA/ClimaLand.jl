@@ -90,8 +90,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     # Roughness lengths
     h_canopy = hydraulics.compartment_surfaces[end]
-    z0_m = FT(0.13) * h_canopy
-    z0_b = FT(0.1) * z0_m
+    z_0m = FT(0.13) * h_canopy
+    z_0b = FT(0.1) * z_0m
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
@@ -104,8 +104,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
-        z_0m = z0_m,
-        z_0b = z0_b,
+        z_0m,
+        z_0b,
     )
 
     # Snow model setup
