@@ -216,15 +216,6 @@ function model(Vcmax25, g1)
         user_callbacks = (),
         diagnostics,
     )
-    simulation = Simulations.LandSimulation(
-        start_date,
-        stop_date,
-        Δt,
-        land_model;
-        set_ic!,
-        user_callbacks = (),
-        diagnostics,
-    )
     solve!(simulation)
     return simulation
 end;
