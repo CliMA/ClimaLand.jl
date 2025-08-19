@@ -233,16 +233,16 @@ ClimaLand.auxiliary_domain_names(::PModel) =
 
 
 """
-compute_full_pmodel_outputs(
-    parameters::PModelParameters{FT},
-    constants::PModelConstants{FT},
-    T_canopy::FT,
-    P_air::FT,
-    VPD::FT,
-    ca::FT,
-    βm::FT,
-    APAR::FT,
-) where {FT}
+    compute_full_pmodel_outputs(
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+        βm::FT,
+        APAR::FT,
+    ) where {FT}
 
 Performs the P-model computations as defined in Stocker et al. (2020)
 and returns a dictionary of full outputs. See https://github.com/geco-bern/rpmodel
@@ -404,18 +404,18 @@ end
 
 
 """
-update_optimal_EMA(
-    parameters::PModelParameters{FT},
-    constants::PModelConstants{FT},
-    OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
-    T_canopy::FT,
-    P_air::FT,
-    VPD::FT,
-    ca::FT,
-    βm::FT,
-    APAR::FT,
-    local_noon_mask::FT,
-) where {FT}
+    update_optimal_EMA(
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+        βm::FT,
+        APAR::FT,
+        local_noon_mask::FT,
+    ) where {FT}
 
 This function updates the optimal photosynthetic capacities Vcmax25, Jmax25 and sensitivity of
 stomatal conductance to dryness (ξ) using an exponential moving average (EMA) that computes new
@@ -543,11 +543,11 @@ function update_optimal_EMA(
 end
 
 """
-function get_local_noon_mask(
-    t::FT,
-    dt::FT,
-    lon::FT
-) where {FT}
+    function get_local_noon_mask(
+        t::FT,
+        dt::FT,
+        lon::FT
+    ) where {FT}
 
 This function determines whether the current time `t` (seconds UTC) is within a local noon window of width
 `dt` (seconds) centered around the local noon time for a given longitude `lon` (degrees, -180 to 180).
@@ -562,7 +562,7 @@ function get_local_noon_mask(t, dt, local_noon::FT) where {FT}
 end
 
 """
-function set_historical_cache!(p, Y0, model::PModel, canopy)
+    function set_historical_cache!(p, Y0, model::PModel, canopy)
 
 The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
 Before the simulation, we need to have some physically meaningful initial values for these variables,

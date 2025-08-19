@@ -283,7 +283,7 @@ function LandSimulation(
 end
 
 """
-   step!(landsim::LandSimulation)
+    step!(landsim::LandSimulation)
 
 Advances the land simulation `landsim` forward in time by one step,
 updating `landsim` in place.
@@ -293,7 +293,7 @@ function step!(landsim::LandSimulation)
 end
 
 """
-   solve!(landsim::LandSimulation)
+    solve!(landsim::LandSimulation)
 
 Advances the land simulation `landsim` forward from the initial to final time,
 updating `landsim` in place.
