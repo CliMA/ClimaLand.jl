@@ -5,15 +5,12 @@
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
 
-# This code also assesses performance, either via Nsight or by running the
-# model multiple times and collecting statistics for execution time and allocations
-# to make flame graphs. You can choose between the two
-# by requestion --profiler nsight or --profiler flamegraph. If not provided,
-# flamegraphs are created.
+# You can choose between the profiling type
+# by requestion --profiler nsight or --profiler integrated. If not provided,
+# the integrated profiler is used, and if benchmarking on cpu, flamegraphs are created.
 
 # When run with buildkite on clima, without Nisght, this code also compares with the previous best time
-# saved at the bottom of this file
-
+# saved at the top of this file
 # Simulation Setup
 # This simulation setup is taken from the richards_runoff.jl experiment.
 # Number of spatial elements: 101 in horizontal, 15 in vertical
@@ -79,11 +76,12 @@ outdir = "richards_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 parsed_args = parse_commandline()
 profiler = parsed_args["profiler"]
-duration = profiler == "nsight" ? Dates.Hour(5) : Dates.Week(1)
+
 
 function setup_simulation()
     FT = Float64
     start_date = DateTime(2008)
+    duration = Dates.Week(1)
     Δt = FT(1800.0)
     end_date = start_date + duration
     updateat = Array(start_date:Dates.Second(2Δt):end_date)

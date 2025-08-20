@@ -4,11 +4,9 @@
 # containing temporally-varying data over the globe, and analytic atmospheric and radiative
 # forcings.
 
-# This code also assesses performance, either via Nsight or by running the
-# model multiple times and collecting statistics for execution time and allocations
-# to make flame graphs. You can choose between the two
-# by requestion --profiler nsight or --profiler flamegraph. If not provided,
-# flamegraphs are created.
+# You can choose between the profiling type
+# by requestion --profiler nsight or --profiler integrated. If not provided,
+# the integrated profiler is used, and if benchmarking on cpu, flamegraphs are created.
 
 # When run with buildkite on clima, without Nisght, this code also compares with the previous best time
 # saved at the bottom of this file
@@ -47,7 +45,7 @@ function parse_commandline()
         "--profiler"
         help = "Profiler option: nsight or flamegraph"
         arg_type = String
-        default = "flamegraph"
+        default = "integrated"
     end
     return parse_args(s)
 end
@@ -77,12 +75,12 @@ function setup_simulation()
     # Set up simulation domain
     dz_tuple = FT.((1.0, 0.05))
     depth = FT(3.5)
+    nelements = (200, 7)
     bucket_domain =
         ClimaLand.Domains.global_domain(FT; nelements, dz_tuple, depth)
     start_date = DateTime(2005)
     tf = start_date + Week(1)
     Δt = 3600.0
-    nelements = (200, 7)
 
     # Initialize parameters
     σS_c = FT(0.2)
@@ -169,24 +167,6 @@ function setup_simulation()
         diagnostics = [],
     )
     return simulation
-end
-
-function setup_simulation(; greet = false)
-    t0 = 0.0
-    tf = 7 * 86400
-    Δt = 3600.0
-    nelements = (200, 7)
-    if greet
-        @info "Run: Bucket with temporal map"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Duration: $(tf - t0) s"
-    end
-
-    prob, cb = setup_prob(t0, tf, Δt; nelements)
-    timestepper = CTS.RK4()
-    ode_algo = CTS.ExplicitAlgorithm(timestepper)
-    return prob, ode_algo, Δt, cb
 end
 
 run_benchmarks(

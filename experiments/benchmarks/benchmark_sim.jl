@@ -1,3 +1,9 @@
+# This script contains functions to assess performance, either via Nsight or by running the
+# model multiple times and collecting statistics for execution time and allocations
+# to make flame graphs. You can choose between the two
+# by requestion --profiler nsight or --profiler integrated. If not provided,
+# the integrated profiler is used, and if benchmarking on cpu, flamegraphs are created.
+
 import CUDA
 import Profile, ProfileCanvas
 using Dates
@@ -12,10 +18,10 @@ function run_benchmarks(
     previous_best_gpu_time,
     outdir,
 )
+    # run once just to ensure everything is compiled
+    simulation = setup_simulation()
+    ClimaLand.Simulations.solve!(simulation)
     if profiler == "integrated"
-        # run once just to ensure everything is compiled
-        simulation = setup_simulation()
-        ClimaLand.Simulations.solve!(simulation)
         @info "Benchmarking with Integrated Profiler"
         run_integrated_profiler(device, setup_simulation, outdir)
         @info "Done with integrated profiler"
@@ -37,6 +43,13 @@ function run_benchmarks(
             end
         end
     elseif profiler == "nsight"
+        simulation = setup_simulation()
+        ClimaLand.Simulations.step!(simulation)
+        CUDA.@profile external = true begin
+            for i in 1:5
+                ClimaLand.Simulations.step!(simulation)
+            end
+        end
     else
         @error "Unknown profiler: $profiler"
     end
@@ -75,9 +88,6 @@ function run_integrated_profiler(
 end
 
 function run_timing_benchmarks(device, setup_simulation)
-    simulation = setup_simulation()
-    ClimaLand.call_count_nans_state(sim._integrator.u)
-    ClimaLand.Simulations.solve!(simulation)
     MAX_PROFILING_TIME_SECONDS = 500
     MAX_PROFILING_SAMPLES = 100
     time_now = time()
@@ -85,13 +95,13 @@ function run_timing_benchmarks(device, setup_simulation)
     while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
         length(timings_s) < MAX_PROFILING_SAMPLES
         simulation = setup_simulation()
-        ClimaLand.call_count_nans_state(sim._integrator.u)
         push!(
             timings_s,
             ClimaComms.@elapsed device ClimaLand.Simulations.solve!(simulation)
         )
         @show timings_s[end]
     end
+    @show timings_s
     num_samples = length(timings_s)
     average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
     max_timing_s = round(maximum(timings_s), sigdigits = 3)
