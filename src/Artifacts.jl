@@ -232,7 +232,9 @@ end
     )
 
 Return the path to the file that contains a year of fluxnet data
-corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var).
+corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var). If
+the site_ID is not in this set, the function will try to find the corresponding
+dataset, or throw an error if not found.
 
 Site publications and licenses:
 US-Ha1:

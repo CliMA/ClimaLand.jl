@@ -9,6 +9,7 @@ using DelimitedFiles
 using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
+using ClimaLand.Soil
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
 using ClimaLand.Domains
