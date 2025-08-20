@@ -81,10 +81,14 @@ function FluxnetSimulations.get_parameters(
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
 <<<<<<< HEAD
+<<<<<<< HEAD
     soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
 =======
     hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
 >>>>>>> a523e6aba (pain)
+=======
+    soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+>>>>>>> fe513ef05 (run from fluxnet2015)
     θ_r = FT(0.067),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),

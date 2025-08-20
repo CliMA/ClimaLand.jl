@@ -153,10 +153,14 @@ function FluxnetSimulations.get_parameters(
     )[1],
     h_canopy = FluxnetSimulationsExt.get_canopy_height(site_ID),
 <<<<<<< HEAD
+<<<<<<< HEAD
     h_stem = ((h_canopy - h_leaf)) > 0 ? h_canopy - h_leaf : FT(0.0),
 =======
     h_stem = h_canopy - h_leaf,
 >>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
+=======
+    h_stem = ((h_canopy - h_leaf)) > 0 ? h_canopy - h_leaf : FT(0.0),
+>>>>>>> fe513ef05 (run from fluxnet2015)
     z0_m = FT(0.13) * h_canopy,
     z0_b = FT(0.1) * z0_m,
 )

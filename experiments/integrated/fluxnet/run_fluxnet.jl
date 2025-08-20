@@ -34,12 +34,68 @@ end
 
 site_ID = ARGS[1]
 
-# Get the default values for this site's domain, location, and parameters
-(; dz_tuple, nelements, zmin, zmax) =
+if (site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1"))
+    site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+
+    # Get the default values for this site's domain, location, and parameters
+    (; dz_tuple, nelements, zmin, zmax) =
     FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+
+    (;
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_hydrology_cm,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_albedo,
+        Ω,
+        χl,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+else
+    (; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT)
+    (; time_offset, lat, long, atmos_h) =
+    FluxnetSimulations.get_location(site_ID)
+end
+
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;
@@ -124,8 +180,12 @@ soil_domain = land_domain
 # )
 
 forcing = (; atmos, radiation)
-retention_parameters =
-    (; ν = soil_ν, θ_r, K_sat = soil_K_sat, hydrology_cm = soil_hydrology_cm)
+retention_parameters = (;
+    ν = soil_ν,
+    θ_r,
+    K_sat = soil_K_sat,
+    hydrology_cm = soil_hydrology_cm,
+)
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 
 soil = Soil.EnergyHydrology{FT}(
