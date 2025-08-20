@@ -61,6 +61,7 @@ function FluxnetSimulations.get_parameters(
         FT,
     ),
 <<<<<<< HEAD
+<<<<<<< HEAD
     soil_ν = ClimaCore.Fields.field2array(soil_params_gupta[:ν])[1],
     soil_K_sat = ClimaCore.Fields.field2array(soil_params_gupta[:K_sat])[1],
     soil_S_s = FT(1e-2),
@@ -89,18 +90,28 @@ function FluxnetSimulations.get_parameters(
 =======
     soil_ν = soil_params_gupta[:ν],
     soil_K_sat = soil_params_gupta[:K_sat],
+=======
+    soil_ν = ClimaCore.Fields.field2array(soil_params_gupta[:ν])[1],
+    soil_K_sat = ClimaCore.Fields.field2array(soil_params_gupta[:K_sat])[1],
+>>>>>>> a523e6aba (pain)
     soil_S_s = FT(1e-2),
-    soil_hydrology_cm = soil_params_gupta[:hydrology_cm],
-    θ_r = soil_params_gupta[:θ_r],
-    ν_ss_quartz = soil_params_grids[:ν_ss_quartz],
-    ν_ss_om = soil_params_grids[:ν_ss_om],
-    ν_ss_gravel = soil_params_grids[:ν_ss_gravel],
+    soil_hydrology_cm = ClimaCore.MatrixFields.column_field2array(soil_params_gupta[:hydrology_cm])[1],
+    θ_r = ClimaCore.Fields.field2array(soil_params_gupta[:θ_r])[1],
+    ν_ss_quartz = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_quartz])[1],
+    ν_ss_om = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_om])[1],
+    ν_ss_gravel = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_gravel])[1],
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.01),
     soil_ϵ = FT(0.98),
+    soil_albedo_params = ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface),
     soil_albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
+<<<<<<< HEAD
         ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface)...,
 >>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
+=======
+         NamedTuple{keys(soil_albedo_params)}(
+                  (ClimaCore.Fields.field2array(v)[1] for v in values(soil_albedo_params)))...,
+>>>>>>> a523e6aba (pain)
     ),
     Ω = pft.parameters.Ω,
     χl = pft.parameters.χl,

@@ -64,6 +64,7 @@ function get_site_info(site_ID; fluxnet2015_metadata_path = nothing)
         lat = nan_if_empty(site_metadata[column_name_map["latitude"]]),
         long = nan_if_empty(site_metadata[column_name_map["longitude"]]),
 <<<<<<< HEAD
+<<<<<<< HEAD
         time_offset = Int64(
             -1 * nan_if_empty(site_metadata[column_name_map["utc_offset"]]),
 =======
@@ -71,6 +72,11 @@ function get_site_info(site_ID; fluxnet2015_metadata_path = nothing)
             site_metadata[column_name_map["utc_offset"]],
 >>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
         ),
+=======
+        time_offset = Int64(-1 * nan_if_empty(
+            site_metadata[column_name_map["utc_offset"]],
+        )),
+>>>>>>> a523e6aba (pain)
         atmospheric_sensor_height = parse_array_field(
             site_metadata[column_name_map["atmospheric_sensor_heights"]],
         ),

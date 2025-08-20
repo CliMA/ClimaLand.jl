@@ -33,8 +33,19 @@ Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxn
 The values are provided as defaults, and can be overwritten by passing the corresponding
 keyword arguments to this function.
 
+<<<<<<< HEAD
 Atmosphere height:
     - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+=======
+<<<<<<< HEAD
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-5 for Eastern Standard Time (EST).
+=======
+Atmosphere height:
+    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+>>>>>>> 0fbc3a466 (pain)
+>>>>>>> a523e6aba (pain)
 """
 function FluxnetSimulations.get_location(
     FT,
@@ -69,7 +80,11 @@ function FluxnetSimulations.get_parameters(
     soil_ν = FT(0.5),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
+<<<<<<< HEAD
     soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+=======
+    hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+>>>>>>> a523e6aba (pain)
     θ_r = FT(0.067),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),

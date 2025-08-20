@@ -49,7 +49,7 @@ end
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
     @test atmos_h == FT(30)
-
+    
     # parameters
     (;
         soil_ν,
@@ -156,9 +156,21 @@ end
     @test zmax == FT(0)
 
     # geographical info
+<<<<<<< HEAD
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
     @test time_offset == 5
+=======
+<<<<<<< HEAD
+    (; time_offset, lat, long) =
+        FluxnetSimulations.get_location(FT, Val(site_ID))
+    @test time_offset == -6
+=======
+    (; time_offset, lat, long, atmos_h) =
+        FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
+    @test time_offset == 5
+>>>>>>> 0fbc3a466 (pain)
+>>>>>>> a523e6aba (pain)
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
     @test atmos_h == FT(32)
@@ -316,8 +328,12 @@ end
     @test nelements == 24
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
+    
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> a523e6aba (pain)
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
     @test time_offset == -8
@@ -460,9 +476,14 @@ end
     @test h_leaf == FT(0.5)
     @test Vcmax25 == FT(2.4e-5)
 <<<<<<< HEAD
+<<<<<<< HEAD
 end
 nothing
 =======
 
 end
 >>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
+=======
+end
+nothing
+>>>>>>> a523e6aba (pain)

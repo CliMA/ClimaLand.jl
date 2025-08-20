@@ -33,9 +33,15 @@ Returns geographical information for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 
+<<<<<<< HEAD
 The `time_offset` is the difference from UTC in hours
 and excludes daylight savings time, following Fluxnet convention.
 For this site, the local time is UTC-7 for Mountain Standard Time (MST).
+=======
+Atmosphere height:
+    - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li,
+    Jiahong & Luo, Hongyan & Zulueta, Rommel. (2016). https://doi.org/10.5194/amt-9-1341-2016
+>>>>>>> 0fbc3a466 (pain)
 """
 function FluxnetSimulations.get_location(
     FT,
