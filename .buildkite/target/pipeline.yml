@@ -4,7 +4,7 @@ agents:
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
-  JULIA_NVTX_CALLBACKS: "gc|alloc|free|inference"
+  JULIA_NVTX_CALLBACKS: "gc,alloc,free,inference"
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_CUDA_MEMORY_POOL: "cuda"

@@ -177,15 +177,13 @@ function generic_setup_simulation(;
         user_callbacks,
         diagnostics,
     )
-    ClimaLand.Simulations.step!(simulation)
     return simulation
 end
 
 setup_with_daily() = generic_setup_simulation(; diagnostic_frequency = :daily)
 setup_with_monthly() =
     generic_setup_simulation(; diagnostic_frequency = :monthly)
-setup_with_half_hourly() =
-    generic_setup_simulation(; diagnostic_frequency = :halfhourly)
+setup_with_hourly() = generic_setup_simulation(; diagnostic_frequency = :hourly)
 setup_with_infrequent_nan_check() =
     generic_setup_simulation(; nan_check_frequency = Day(1))
 setup_with_frequent_nan_check() =
@@ -197,31 +195,32 @@ setup_with_frequent_nan_check() =
 # setup_with_monthly()
 # setup_with_infrequent_nan_check()
 # setup_with_frequent_nan_check()
+# setup_with_hourly()
 
 run_timing_benchmarks(
     device,
     generic_setup_simulation;
-    MAX_PROFILING_TIME_SECONDS = 280,
+    # MAX_PROFILING_TIME_SECONDS = 280,
 )
 
 run_timing_benchmarks(
     device,
     setup_with_monthly;
-    MAX_PROFILING_TIME_SECONDS = 280,
+    # MAX_PROFILING_TIME_SECONDS = 280,
 )
 
 
-run_timing_benchmarks(
-    device,
-    setup_with_daily;
-    MAX_PROFILING_TIME_SECONDS = 280,
-)
+# run_timing_benchmarks(
+#     device,
+#     setup_with_daily;
+#     MAX_PROFILING_TIME_SECONDS = 280,
+# )
 
 
-run_timing_benchmarks(
-    device,
-    setup_with_infrequent_nan_check;
-    MAX_PROFILING_TIME_SECONDS = 280,
-)
+# run_timing_benchmarks(
+#     device,
+#     setup_with_infrequent_nan_check;
+#     MAX_PROFILING_TIME_SECONDS = 280,
+# )
 
-# run_timing_benchmarks(device, setup_with_frequent_nan_check)
+run_timing_benchmarks(device, setup_with_hourly)

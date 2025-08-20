@@ -52,7 +52,8 @@ end
 
 const FT = Float64;
 
-const PREVIOUS_GPU_TIME = 0.333
+
+const PREVIOUS_GPU_TIME = 0.116
 
 include("benchmark_sim.jl")
 

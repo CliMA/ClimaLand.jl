@@ -103,7 +103,6 @@ function run_timing_benchmarks(
             ClimaComms.@elapsed device ClimaLand.Simulations.solve!(simulation)
         )
     end
-    @show timings_s
     num_samples = length(timings_s)
     average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
     max_timing_s = round(maximum(timings_s), sigdigits = 3)
