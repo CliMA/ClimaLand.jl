@@ -88,7 +88,7 @@ function run_integrated_profiler(
 end
 
 function run_timing_benchmarks(device, setup_simulation)
-    MAX_PROFILING_TIME_SECONDS = 500
+    MAX_PROFILING_TIME_SECONDS = 400
     MAX_PROFILING_SAMPLES = 100
     time_now = time()
     timings_s = Float64[]
@@ -99,7 +99,6 @@ function run_timing_benchmarks(device, setup_simulation)
             timings_s,
             ClimaComms.@elapsed device ClimaLand.Simulations.solve!(simulation)
         )
-        @show timings_s[end]
     end
     @show timings_s
     num_samples = length(timings_s)

@@ -60,7 +60,7 @@ function generic_setup_simulation(;
     nan_check_frequency = nothing,
 )
     start_date = DateTime(2008)
-    duration = Dates.Month(2)
+    duration = Dates.Hour(45)
     Δt = 450.0
     end_date = start_date + duration
     updateat = Array(start_date:Second(3600 * 3):end_date)
@@ -201,12 +201,12 @@ setup_with_monthly() =
 setup_with_half_hourly() =
     generic_setup_simulation(; diagnostic_frequency = :halfhourly)
 setup_with_infrequent_nan_check() =
-    generic_setup_simulation(; nan_check_frequency = Month(1))
+    generic_setup_simulation(; nan_check_frequency = Day(1))
 setup_with_frequent_nan_check() =
-    generic_setup_simulation(; nan_check_frequency = 60 * 60.0)
+    generic_setup_simulation(; nan_check_frequency = Hour(10))
 
 generic_setup_simulation()
-# setup_with_daily
+setup_with_daily()
 # setup_with_half_hourly()
 setup_with_monthly()
 setup_with_infrequent_nan_check()
@@ -217,9 +217,8 @@ run_timing_benchmarks(device, generic_setup_simulation)
 run_timing_benchmarks(device, setup_with_monthly)
 
 
-# run_timing_benchmarks(device, setup_with_daily)
+run_timing_benchmarks(device, setup_with_daily)
 
-# run_timing_benchmarks(device, setup_with_half_hourly)
 
 run_timing_benchmarks(device, setup_with_infrequent_nan_check)
 

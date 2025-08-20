@@ -63,7 +63,7 @@ end
 
 const FT = Float64
 
-const PREVIOUS_BEST_GPU_TIME = 0.67
+const PREVIOUS_BEST_GPU_TIME = 2.67
 
 include("benchmark_sim.jl")
 

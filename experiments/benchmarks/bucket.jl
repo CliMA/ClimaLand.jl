@@ -79,7 +79,7 @@ function setup_simulation()
     bucket_domain =
         ClimaLand.Domains.global_domain(FT; nelements, dz_tuple, depth)
     start_date = DateTime(2005)
-    tf = start_date + Week(1)
+    end_date = start_date + Week(1)
     Δt = 3600.0
 
     # Initialize parameters
@@ -148,19 +148,13 @@ function setup_simulation()
         Y.bucket.σS .= FT(0.08)
     end
 
-    exp_tendency! = make_exp_tendency(model)
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction((T_exp!) = exp_tendency!, (dss!) = ClimaLand.dss!),
-        Y,
-        (t0, tf),
-        p,
-    )
+
     updateat = collect(start_date:Second(3Δt):end_date)
     simulation = ClimaLand.Simulations.LandSimulation(
         start_date,
         end_date,
         Δt,
-        land;
+        model;
         updateat = updateat,
         set_ic!,
         user_callbacks = (),

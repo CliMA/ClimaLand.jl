@@ -88,7 +88,7 @@ function setup_simulation()
     )
     model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, params)
     simulation =
-        LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+        LandSimulation(start_date, stop_date, Δt, model; diagnostics = [])
     return simulation
 end
 
