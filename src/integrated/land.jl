@@ -289,7 +289,6 @@ Finally, since the snow model requires the timestep, that is a required argument
 """
 function LandModel{FT}(
     forcing,
-    LAI,
     earth_param_set,
     domain::Union{
         ClimaLand.Domains.Column,
@@ -319,7 +318,6 @@ function LandModel{FT}(
             radiation = forcing.radiation,
             ground = ClimaLand.PrognosticGroundConditions{FT}(),
         ),
-        LAI,
         earth_param_set;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     ),

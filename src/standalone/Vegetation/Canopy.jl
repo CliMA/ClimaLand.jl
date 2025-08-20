@@ -235,19 +235,14 @@ Impacts of temporal resolution. Water Resources Research, 59, e2023WR035481.
 https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
-    domain,
-    LAI::AbstractTimeVaryingInput;
+    domain;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
     h_leaf::FT = FT(1),
     SAI::FT = FT(0),
     RAI::FT = FT(1),
-    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-        LAI,
-        SAI,
-        RAI,
-    ),
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(SAI, RAI),
     ν::FT = FT(1.44e-4),
     S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull{FT}(
@@ -609,7 +604,6 @@ function CanopyModel{FT}(
         ClimaLand.Domains.SphericalSurface,
     },
     forcing::NamedTuple,
-    LAI::AbstractTimeVaryingInput,
     earth_param_set;
     z_0m = FT(2),
     z_0b = FT(0.2),
@@ -618,7 +612,7 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
-    hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
+    hydraulics = PlantHydraulicsModel{FT}(domain),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}

@@ -67,23 +67,14 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedSiteAreaIndex{
     FT <: AbstractFloat,
-    F <: AbstractTimeVaryingInput,
+    # F <: AbstractTimeVaryingInput,
 }
-    "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
-    LAIfunction::F
     "The constant stem area index (SAI; m2/m2)"
     SAI::FT
     "The constant root area index (RAI; m2/m2)"
     RAI::FT
 end
 
-function PrescribedSiteAreaIndex{FT}(
-    LAIfunction::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
-) where {FT <: AbstractFloat}
-    PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
-end
 
 """
     lai_consistency_check(
@@ -338,8 +329,8 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     p,
     t,
 ) where {FT}
-    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
+    (; SAI, RAI) = component.parameters.ai_parameterization
+
     p.canopy.hydraulics.area_index.leaf .=
         clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
     @. p.canopy.hydraulics.area_index.stem = SAI

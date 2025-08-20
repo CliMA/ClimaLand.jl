@@ -30,34 +30,34 @@ steps:
 
   - wait
 
-  - group: "Benchmark (CPU)"
-    steps:
-      - label: ":bucket: Bucket (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 8GB
-        artifact_paths:
-          - "bucket_benchmark_cpu/flame*html"
+  # - group: "Benchmark (CPU)"
+  #   steps:
+  #     - label: ":bucket: Bucket (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 8GB
+  #       artifact_paths:
+  #         - "bucket_benchmark_cpu/flame*html"
 
-      - label: ":droplet: RichardsModel (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 8GB
-        artifact_paths:
-            - "richards_benchmark_cpu/flame*html"
+  #     - label: ":droplet: RichardsModel (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 8GB
+  #       artifact_paths:
+  #           - "richards_benchmark_cpu/flame*html"
 
-      - label: ":snow_capped_mountain: Snowy Land (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 8GB
-        artifact_paths:
-            - "snowy_land_benchmark_cpu/flame*html"
+  #     - label: ":snow_capped_mountain: Snowy Land (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 8GB
+  #       artifact_paths:
+  #           - "snowy_land_benchmark_cpu/flame*html"
 
   - group: "Target Benchmark (GPU)"
     steps:
@@ -69,21 +69,21 @@ steps:
       #     slurm_mem: 8GB
       #     slurm_gpus: 1
 
-      - label: ":bucket: Bucket"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 8GB
-          slurm_gpus: 1
+      # - label: ":bucket: Bucket"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 8GB
+      #     slurm_gpus: 1
 
-      - label: ":droplet: RichardsModel"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 8GB
-          slurm_gpus: 1
+      # - label: ":droplet: RichardsModel"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 8GB
+      #     slurm_gpus: 1
 
       - label: ":snow_capped_mountain: Snowy Land"
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
@@ -93,13 +93,13 @@ steps:
           slurm_mem: 8GB
           slurm_gpus: 1
 
-      - label: ":no_entry_sign: :evergreen_tree: Soil"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 8GB
-          slurm_gpus: 1
+      # - label: ":no_entry_sign: :evergreen_tree: Soil"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 8GB
+      #     slurm_gpus: 1
 
   - group: "Profile with Nsight"
     steps:
@@ -118,17 +118,17 @@ steps:
           slurm_cpus_per_task: 8
           slurm_gpus: 1
 
-      - label: ":no_entry_sign: :evergreen_tree: Soil"
-        command:
-          - mkdir -p soil_benchmark_gpu
-          - >
-            nsys profile --start-later=true  --capture-range=cudaProfilerApi --kill=none --trace=nvtx,mpi,cuda,osrt --output=soil_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl --profiler nsight
-        artifact_paths:
-          - "soil_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 64G
-          slurm_cpus_per_task: 8
-          slurm_gpus: 1
+      # - label: ":no_entry_sign: :evergreen_tree: Soil"
+      #   command:
+      #     - mkdir -p soil_benchmark_gpu
+      #     - >
+      #       nsys profile --start-later=true  --capture-range=cudaProfilerApi --kill=none --trace=nvtx,mpi,cuda,osrt --output=soil_benchmark_gpu/report
+      #       julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl --profiler nsight
+      #   artifact_paths:
+      #     - "soil_benchmark_gpu/report*"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 64G
+      #     slurm_cpus_per_task: 8
+      #     slurm_gpus: 1

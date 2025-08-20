@@ -681,6 +681,7 @@ struct PrescribedRadiativeFluxes{
     DT,
     T,
     TP,
+    L <: Union{Nothing, AbstractTimeVaryingInput},
 } <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
@@ -694,6 +695,8 @@ struct PrescribedRadiativeFluxes{
     θs::T
     "Thermodynamic parameters"
     thermo_params::TP
+    "LAI"
+    LAI::L
     function PrescribedRadiativeFluxes(
         FT,
         SW_d,
@@ -702,13 +705,14 @@ struct PrescribedRadiativeFluxes{
         θs = nothing,
         earth_param_set = nothing,
         frac_diff = nothing,
+        LAI = nothing,
     )
         if isnothing(earth_param_set)
             thermo_params = nothing
         else
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
-        args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
+        args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params, LAI)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -1403,6 +1407,8 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.SW_d, r.SW_d, t)
         evaluate!(p.drivers.LW_d, r.LW_d, t)
+        isnothing(r.LAI) ||
+            evaluate!(p.canopy.hydraulics.area_index.leaf, r.LAI, t)
         # Next we update the zenith angle and diffuse fraction of light. These are either
         # both required, or neither required.
         if !isnothing(r.θs)
@@ -1500,6 +1506,7 @@ function prescribed_forcing_era5(
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
+    LAI = nothing,
 )
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
@@ -1644,6 +1651,7 @@ function prescribed_forcing_era5(
         θs = zenith_angle,
         earth_param_set = earth_param_set,
         frac_diff = frac_diff,
+        LAI,
     )
     return (; atmos, radiation)
 end

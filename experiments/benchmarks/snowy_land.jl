@@ -97,16 +97,6 @@ function setup_simulation()
         context,
         lowres = true,
     )
-    atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
-        start_date,
-        earth_param_set,
-        FT;
-        time_interpolation_method = time_interpolation_method,
-    )
-    forcing = (; atmos, radiation)
-
     # Read in LAI from MODIS data
     modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
         context = nothing,
@@ -119,6 +109,18 @@ function setup_simulation()
         start_date;
         time_interpolation_method = time_interpolation_method,
     )
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        era5_ncdata_path,
+        surface_space,
+        start_date,
+        earth_param_set,
+        FT;
+        time_interpolation_method = time_interpolation_method,
+        LAI,
+    )
+    forcing = (; atmos, radiation)
+
+
 
     # Overwrite some defaults for the canopy model
     # Energy model
@@ -126,7 +128,7 @@ function setup_simulation()
     energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
 
     # Roughness lengths
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain, LAI)
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain)
     h_canopy = hydraulics.compartment_surfaces[end]
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
@@ -137,7 +139,6 @@ function setup_simulation()
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
-        LAI,
         earth_param_set;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
@@ -147,7 +148,7 @@ function setup_simulation()
     )
 
     # Construct land model with all default components
-    land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; canopy)
+    land = LandModel{FT}(forcing, earth_param_set, domain, Δt; canopy)
 
 
     # Set initial conditions
