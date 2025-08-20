@@ -4,6 +4,7 @@ export PiecewiseMoistureStressParameters,
     PiecewiseMoistureStressModel, PiecewiseMoistureStressParametersFromHydrology
 
 export compute_piecewise_moisture_stress
+export compute_tuzet_moisture_stress
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
