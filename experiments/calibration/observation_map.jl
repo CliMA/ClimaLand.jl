@@ -9,6 +9,8 @@ include(
 using CairoMakie, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 
+# Need access to get_era5_obs_var_dict and get_sim_var_dict
+ext = Base.get_extension(ClimaLand, :LandSimulationVisualizationExt)
 """
     ClimaCalibrate.observation_map(iteration)
 
@@ -67,14 +69,14 @@ function process_member_data(
     sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
     nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
-    era5_obs_vars = LandSimVis.get_era5_obs_var_dict()
+    era5_obs_vars = ext.get_era5_obs_var_dict()
     for short_name in short_names
         short_name in keys(era5_obs_vars) || error(
             "Variable $short_name does not appear in the observation dataset. Add the variable to get_era5_obs_var_dict",
         )
     end
 
-    sim_var_dict = LandSimVis.get_sim_var_dict(diagnostics_folder_path)
+    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
     vars = map(short_names) do short_name
         var = sim_var_dict[short_name]()
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
