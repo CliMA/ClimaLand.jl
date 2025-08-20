@@ -264,11 +264,11 @@ diags = ClimaLand.default_diagnostics(
 
 ## How often we want to update the drivers.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
-updateat = Array(start_date:data_dt:end_date)
+updateat = Array(start_date:data_dt:stop_date)
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     land;
     set_ic!,

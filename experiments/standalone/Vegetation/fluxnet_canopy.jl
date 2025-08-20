@@ -179,8 +179,8 @@ soil_moisture_stress =
 surface_space = canopy_domain.space.surface
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
     context = ClimaComms.context(surface_space),
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
+    start_date,
+    stop_date,
 )
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
