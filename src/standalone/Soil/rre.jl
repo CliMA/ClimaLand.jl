@@ -98,7 +98,7 @@ function RichardsModel{FT}(;
 end
 
 function make_update_boundary_fluxes(model::RichardsModel)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         z = model.domain.fields.z
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
@@ -148,7 +148,7 @@ right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
 """
 function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
@@ -205,7 +205,7 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
     # are restricted to be periodic. In this case, the explicit tendency
     # does not depend on boundary fluxes, and we do not need to update
     # the boundary_var variables prior to evaluation.
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
         dY.soil.ϑ_l .= 0
         dY.soil.∫F_vol_liq_water_dt .= 0
@@ -355,7 +355,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::RichardsModel)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
             hydrology_cm,
@@ -378,7 +378,7 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
-    function compute_jacobian!(
+    NVTX.@annotate function compute_jacobian!(
         jacobian::MatrixFields.FieldMatrixWithSolver,
         Y,
         p,
