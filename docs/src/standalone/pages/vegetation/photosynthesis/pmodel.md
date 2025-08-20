@@ -6,7 +6,7 @@ The P-model differs from other canopy component models in two main ways:
 
 ```julia
 # make the callback 
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, t0, dt, canopy)
+pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, canopy)
 
 # add this callback to the CallbackSet with driver, diag
 cb = SciMLBase.CallbackSet(driver_cb, diag_cb, pmodel_cb);

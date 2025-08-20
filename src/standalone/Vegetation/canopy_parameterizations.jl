@@ -13,7 +13,6 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     electron_transport,
     optimality_max_photosynthetic_rates,
     net_photosynthesis,
-    moisture_stress,
     dark_respiration,
     compute_GPP,
     MM_Kc,
@@ -717,23 +716,6 @@ function net_photosynthesis(Ac::FT, Aj::FT, Rd::FT, β::FT) where {FT}
     return An
 end
 
-"""
-    moisture_stress(pl::FT,
-                    sc::FT,
-                    pc::FT) where {FT}
-
-Computes the moisture stress factor (`β`), which is unitless,
- as a function of
-a constant (`sc`, 1/Pa), a reference pressure (`pc`, Pa), and
-the leaf water pressure (`pl`, Pa) .
-
-See Eqn 12.57 of G. Bonan's textbook,
-Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
-    β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl))))
-    return β
-end
 
 """
     dark_respiration(is_c3::AbstractFloat, args...)

@@ -358,6 +358,17 @@ function auxiliary_domain_names(land::AbstractLandModel)
     ))
 end
 
+function required_model_callbacks(start_date, t0, dt, land::AbstractLandModel)
+    components = land_components(land)
+
+    callbacks = map(
+        c -> required_model_callbacks(start_date, t0, dt, getproperty(land, c)),
+        components,
+    )
+
+    # filter out empties, then flatten into a single tuple
+    return Tuple((cb for cb in Iterators.flatten(callbacks) if cb !== nothing))
+end
 
 """
    lsm_aux_vars(m::AbstractLandModel)

@@ -6,6 +6,8 @@ function prescribed_LAI_fluxnet end
 
 function make_set_fluxnet_initial_conditions end
 
+function make_set_fluxnet_initial_conditions end
+
 function get_data_dt end
 
 function get_comparison_data end
@@ -23,5 +25,7 @@ function get_fluxtower_height end
 function get_parameters end
 
 function replace_hyphen end
+
+function hour_offset_to_period end
 
 end

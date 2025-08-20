@@ -36,10 +36,6 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
         Setting this to 0 represents no incorporation of past values. Since we update the EMA equation
         once per day, α = 1 - 1 day/τ where τ is the acclimation timescale in days."""
     α::FT
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
-    pc::FT
 end
 
 """
@@ -174,12 +170,12 @@ end
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 
-    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020).
+An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
 
-    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T.,
-        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating
-        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581,
-        https://doi.org/10.5194/gmd-13-1545-2020, 2020.
+Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
+    and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
+    ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
+    https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 """
 struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
@@ -588,13 +584,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -630,8 +620,6 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ϕa1 = parameters.ϕa1,
         ϕa2 = parameters.ϕa2,
         α = FT(0),  # this allows us to use the initial values directly
-        sc = parameters.sc,
-        pc = parameters.pc,
     )
 
     local_noon_mask = FT(1)  # Force update for initialization
@@ -673,17 +661,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     # drivers
     FT = eltype(parameters)
     # TODO: replace this with modular soil moisture stress parameterization
-    ψ = p.canopy.hydraulics.ψ
-    n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
-    grav = LP.grav(earth_param_set)
-    ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -727,11 +705,9 @@ end
         longitude = nothing
     ) where {FT <: AbstractFloat}
 
-This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
-using an exponential moving average at local noon.
+This constructs a PeriodicCallback for the P-model that updates the optimal photosynthetic capacities
+using an exponential moving average at local noon. 
 
-We check for local noon using the provided `longitude` (once passing
-in lat/lon for point/column domains, this can be automatically extracted from the domain axes) every dt.
 The time of local noon is expressed in seconds UTC and neglects the effects of obliquity and eccentricity, so
 it is constant throughout the year. This presents an error of up to ~20 minutes, but it is sufficient for our
 application here (since meteorological drivers are often updated at coarser time intervals anyway).
@@ -741,9 +717,8 @@ Args
 - `start_date`: datetime object for the start of the simulation (UTC).
 - `dt`: timestep
 - `canopy`: the canopy object containing the P-model parameters and constants.
-- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on
-    a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then
-    the longitude at each point can be automatically extracted from the field axes (THIS STILL NEEDS TO BE TESTED)
+- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
+    that it will be inferred from the canopy domain).
 """
 function make_PModel_callback(
     ::Type{FT},
@@ -778,7 +753,7 @@ function make_PModel_callback(
     start_t = seconds_after_midnight(start_date)
     local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
 
-    return FrequencyBasedCallback(
+    return PeriodicCallback(
         dt,         # period of this callback
         start_date, # initial datetime, UTC
         dt;         # integration timestep, in seconds
@@ -992,4 +967,31 @@ function get_electron_transport(Y, p, canopy, m::PModel)
             Jmax,
         ),
     )
+end
+
+
+"""
+    required_photosynthesis_model_callbacks(
+        start_date,
+        t0,
+        dt,
+        canopy,
+        photo_model::PModel,
+    )
+
+Construct the P-model callback.
+"""
+function required_photosynthesis_model_callbacks(
+    start_date,
+    t0,
+    dt,
+    canopy,
+    photo_model::PModel,
+)
+    FT = eltype(photo_model)
+
+    # if dt is an ITime, this converts it to Float64 for the callback
+    dt = float(dt)
+    pmodel_cb = make_PModel_callback(FT, start_date, dt, canopy)
+    return (pmodel_cb,)
 end

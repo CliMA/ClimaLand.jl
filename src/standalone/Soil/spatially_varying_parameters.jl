@@ -114,7 +114,7 @@ they carry an inherent land/sea mask. This land/sea mask may not match the
 underlying land sea mask of the simulation. While values over the ocean do
 not matter, we need to ensure that values in the simulation are set to
 something physical, even if they are not set in the data.
-In the future, this should be handled by ClimaUtilities via extrpolation.
+In the future, this should be handled by ClimaUtilities via extrapolation.
 Here we set them manually.
 """
 function soil_vangenuchten_parameters(
@@ -214,6 +214,7 @@ function soil_vangenuchten_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
+
 
     # Set missing values to the mean. For Ksat, we use the mean in log space.
     μ = FT(-5.08)

@@ -8,6 +8,18 @@ data. Returns true if x == -9999.
 var_missing(x; val = -9999) = x == val
 
 """
+    FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+
+Convert a hour offset (which may be fractional) to a Dates.Period that can be added to DateTime objects.
+Supports both integer and half-hour time zones (e.g., 5.5 hours).
+"""
+function FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+    hours = floor(Int, hour_offset_from_UTC)
+    minutes = round(Int, (hour_offset_from_UTC - hours) * 60)
+    return Dates.Hour(hours) + Dates.Minute(minutes)
+end
+
+"""
    mask_data(t, v; val = -9999)
 
 Returns t[id], v[id], where id corresponds
@@ -51,7 +63,8 @@ simulation corresponding to each row of data.
 If you need to preprocess the data (e.g., unit conversion), you must pass 
 a pointwise function preprocess_func(var) as a keyword argument.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is 
+marked by missing by a given value equal to `val`), because the 
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -74,8 +87,8 @@ end
         data,
         varnames::Vector{String},
         column_name_map,
-        time_in_seconds::Vector,
-        preprocess_func,
+        time_in_seconds::Vector;
+        preprocess_func = identity,
         val=-9999,
     )
 
@@ -98,7 +111,8 @@ should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
 simulation corresponding to each row of data.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is 
+marked by missing by a given value equal to `val`), because the 
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -141,6 +155,105 @@ function get_data_at_start_date(
     Δ_date, v = mask_data(Δ_date, v; val)
     idx_start = argmin(abs.(Δ_date))
     return preprocess_func(v[idx_start])
+end
+
+"""
+    get_required_varnames(construct_prescribed_soil::Bool)
+
+Returns the tuple of required variable names for Fluxnet data processing.
+If `construct_prescribed_soil` is true, includes soil moisture and temperature variables.
+"""
+function get_required_varnames(construct_prescribed_soil::Bool)
+    varnames = (
+        "TA_F",
+        "VPD_F",
+        "PA_F",
+        "P_F",
+        "WS_F",
+        "LW_IN_F",
+        "SW_IN_F",
+        "CO2_F_MDS",
+    )
+    if construct_prescribed_soil
+        varnames = (varnames..., "SWC_F_MDS_1", "TS_F_MDS_1")
+    end
+    return varnames
+end
+
+"""
+    create_column_name_map(columns, varnames)
+
+Creates a dictionary mapping variable names to their column indices in the data.
+"""
+function create_column_name_map(columns, varnames)
+    column_name_map = Dict(
+        varname => findfirst(columns[:] .== varname) for varname in varnames
+    )
+
+    # Check for missing columns
+    nothing_id = findall(collect(values(column_name_map)) .== nothing)
+    if !isempty(nothing_id)
+        missing_vars = [varnames[i] for i in nothing_id]
+        @error("$(missing_vars) is missing in the data, but required.")
+    end
+
+    return column_name_map
+end
+
+"""
+    read_fluxnet_data(site_ID)
+
+Reads Fluxnet CSV data and returns data with local timestamps.
+Returns (data, columns, local_datetime).
+"""
+function read_fluxnet_data(site_ID)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+
+    # Convert timestamps
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+
+    return (data, columns, local_datetime)
+end
+
+"""
+    read_fluxnet_data(site_ID, hour_offset_from_UTC)
+
+Reads Fluxnet CSV data and processes timestamps, converting local time to UTC.
+Returns (data, columns, local_datetime, UTC_datetime).
+"""
+function read_fluxnet_data(site_ID, hour_offset_from_UTC)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+
+    # Convert timestamps
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    UTC_datetime =
+        local_datetime .+
+        FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+
+    return (data, columns, local_datetime, UTC_datetime)
+end
+
+"""
+    find_rows_with_all_variables_available(data, column_name_map, varnames; val=-9999)
+
+Return a boolean vector indicating which rows have all required variables
+not equal to `val` in the columns specified by `varnames`.
+"""
+function find_rows_with_all_variables_available(
+    data,
+    column_name_map,
+    varnames;
+    val = -9999,
+)
+    valid_rows = trues(size(data, 1))
+    cols = getindex.(Ref(column_name_map), varnames)
+    @inbounds for col_idx in cols
+        valid_rows .&= (data[:, col_idx] .!= val)
+    end
+
+    return valid_rows
 end
 
 """
