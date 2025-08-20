@@ -60,7 +60,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             "observations" => observation_vector,
             "names" => [
                 string(Dates.year(start_date)) for
-                (start_date, end_date) in sample_date_ranges
+                (start_date, stop_date) in sample_date_ranges
             ],
             "minibatcher" => ClimaCalibrate.minibatcher_over_samples(
                 length(observation_vector),

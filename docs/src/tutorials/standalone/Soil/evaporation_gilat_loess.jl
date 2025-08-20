@@ -69,7 +69,7 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
 );
 
 start_date = DateTime(2005)
-end_date = start_date + Day(15)
+stop_date = start_date + Day(15)
 dt = Float64(900.0)
 SW_d = (t) -> 0
 LW_d = (t) -> 294.15^4 * 5.67e-8
@@ -166,7 +166,7 @@ ode_algo = CTS.IMEXAlgorithm(
 );
 
 # Saving callback
-saveat = Array(start_date:Hour(1):end_date);
+saveat = Array(start_date:Hour(1):stop_date);
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -175,7 +175,7 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 cb = SciMLBase.CallbackSet(saving_cb);
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     soil;
     set_ic! = set_ic!,
@@ -203,7 +203,7 @@ soil = Soil.EnergyHydrology{FT}(;
 )
 
 timestepper = CTS.ARS111();
-saveat = Array(start_date:Hour(1):end_date);
+saveat = Array(start_date:Hour(1):stop_date);
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -213,7 +213,7 @@ updateat = deepcopy(saveat)
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     soil;
     set_ic! = set_ic!,
@@ -250,7 +250,7 @@ soil = Soil.EnergyHydrology{FT}(;
     boundary_conditions = no_drainage_boundary_fluxes,
     sources = (),
 )
-saveat = Array(start_date:Hour(1):end_date);
+saveat = Array(start_date:Hour(1):stop_date);
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -259,7 +259,7 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 updateat = deepcopy(saveat)
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     soil;
     set_ic! = set_ic!,

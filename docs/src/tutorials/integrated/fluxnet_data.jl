@@ -117,23 +117,14 @@ domain =
     Column(; zlim = (FT(-3.0), FT(0.0)), nelements = 10, longlat = (long, lat))
 surface_space = domain.space.surface;
 # Get the paths to each year of MODIS data within the start and stop dates.
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    start_date,
-    end_date = stop_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-);
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date);
 
 # Just like with the air temperature, the LAI is an object that we can use
 # to linearly interpolate observed LAI to any simulation time.
 
 # It can also be useful to know the maximum LAI at a site. To do so, we
-# can call, for the first year of data (first element of `modis_lai_ncdata_path`):
-maxLAI =
-    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long)
+# can call, for the first year of data:
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
 
 # # Fluxnet comparison data
 

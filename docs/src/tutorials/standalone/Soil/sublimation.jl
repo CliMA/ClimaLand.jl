@@ -27,7 +27,7 @@ earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
 start_date = DateTime(2005)
-end_date = start_date + Day(4)
+stop_date = start_date + Day(4)
 dt = Float64(10)
 SW_d = (t) -> 0
 LW_d = (t) -> 270.0^4 * 5.67e-8
@@ -162,7 +162,7 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 )
 
-saveat = Array(start_date:Hour(1):end_date);
+saveat = Array(start_date:Hour(1):stop_date);
 sv = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -171,7 +171,7 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 updateat = deepcopy(saveat)
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     soil;
     set_ic! = set_ic!,

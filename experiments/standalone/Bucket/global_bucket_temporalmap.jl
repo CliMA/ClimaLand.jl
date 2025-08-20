@@ -80,12 +80,12 @@ device_suffix =
 outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
 t0 = 0.0;
 start_date = DateTime(2005)
-end_date = start_date + Second(50 * 86400)
+stop_date = start_date + Second(50 * 86400)
 # run for 50 days to test monthly file update
 Δt = 3600.0;
 
 
-function setup_prob(start_date, end_date, Δt, outdir)
+function setup_prob(start_date, stop_date, Δt, outdir)
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
@@ -171,7 +171,7 @@ function setup_prob(start_date, end_date, Δt, outdir)
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 
-    saveat = collect(start_date:Second(Δt * 3):end_date)
+    saveat = collect(start_date:Second(Δt * 3):stop_date)
     saved_values = (;
         t = Array{DateTime}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -191,7 +191,7 @@ function setup_prob(start_date, end_date, Δt, outdir)
 
     simulation = LandSimulation(
         start_date,
-        end_date,
+        stop_date,
         Δt,
         model;
         outdir = output_dir,
@@ -207,7 +207,7 @@ function setup_prob(start_date, end_date, Δt, outdir)
 end
 
 simulation, saved_values, nc_writer =
-    setup_prob(start_date, end_date, Δt, outdir);
+    setup_prob(start_date, stop_date, Δt, outdir);
 
 
 sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(

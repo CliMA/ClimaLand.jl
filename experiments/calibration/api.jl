@@ -122,9 +122,9 @@ function CalibrateConfig(;
         date_pair in sample_date_ranges
     ]
 
-    for (start_date, end_date) in sample_date_ranges
-        start_date <= end_date || error(
-            "The start date ($start_date) should be before the end date ($end_date)",
+    for (start_date, stop_date) in sample_date_ranges
+        start_date <= stop_date || error(
+            "The start date ($start_date) should be before the stop date ($stop_date)",
         )
     end
     issorted(sample_date_ranges) ||

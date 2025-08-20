@@ -1698,31 +1698,38 @@ function prescribed_lai_era5(
 end
 
 """
-     prescribed_lai_modis(modis_lai_ncdata_path,
-                          surface_space,
-                          start_date,
+     prescribed_lai_modis(surface_space,
+                          start_date
+                          stop_date,
                           earth_param_set;
                           time_interpolation_method =
                                         LinearInterpolation(PeriodicCalendar()))
                           regridder_type = :InterpolationsRegridder,
-                          interpolation_method = Interpolations.Constant(),)
+                          interpolation_method = Interpolations.Constant(),
+                          context = ClimaComms.context(surface_space))
 
-A helper function which constructure the TimeVaryingInput object for Lead Area
-Index from a file path pointint to the MODIS LAI data in a netcdf file, the
-surface_space, the start date, and the earth_param_set.
+A helper function which constructs the TimeVaryingInput object for Leaf Area
+Index using MODIS LAI data; requires the
+surface_space, the start and stop dates, and the earth_param_set.
 
 The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
 by passing interpolation_method = Interpolations.Linear().
 """
 function prescribed_lai_modis(
-    modis_lai_ncdata_path,
     surface_space,
-    start_date;
+    start_date,
+    stop_date;
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
+    context = ClimaComms.context(surface_space),
 )
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+        context,
+        start_date,
+        stop_date,
+    )
     return TimeVaryingInput(
         modis_lai_ncdata_path,
         ["lai"],

@@ -95,7 +95,8 @@ canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Get the atmospheric and radiation forcing data
-(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -163,19 +164,13 @@ photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context = ClimaComms.context(surface_space),
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
-)
 LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
     surface_space,
-    start_date,
+    start_date + Second(t0),
+    stop_date + Second(tf),
 )
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI =
-    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
 
 hydraulics = Canopy.PlantHydraulicsModel{FT}(

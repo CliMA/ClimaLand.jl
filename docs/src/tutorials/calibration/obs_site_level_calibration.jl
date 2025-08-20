@@ -104,15 +104,8 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
 );
 
 # Get Leaf Area Index (LAI) data from MODIS satellite observations.
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    start_date,
-    end_date = stop_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    domain.space.surface,
-    start_date,
-);
+LAI =
+    ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 
 # ## Model Setup
 # 

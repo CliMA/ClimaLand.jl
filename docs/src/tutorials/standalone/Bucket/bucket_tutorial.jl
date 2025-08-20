@@ -214,7 +214,7 @@ bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);
 # Simulation start date, end time, and timestep
 
-end_date = start_date + Second(7 * 86400);
+stop_date = start_date + Second(7 * 86400);
 Δt = 3600.0;
 
 # To drive the system in standalone mode,
@@ -302,7 +302,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default. We also need a callback to update the
 # drivers (atmos and radiation)
-saveat = collect(start_date:Second(Δt):end_date);
+saveat = collect(start_date:Second(Δt):stop_date);
 saved_values = (;
     t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -314,7 +314,7 @@ updateat = deepcopy(saveat);
 # the cache, the driver callbacks, and set the initial conditions.
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     Δt,
     model;
     set_ic! = set_ic!,

@@ -103,7 +103,8 @@ dt = Float64(450) # 7.5 minutes
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, end_date) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -183,19 +184,9 @@ photosynthesis = FarquharModel{FT}(surface_domain; photosynthesis_parameters)
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context = ClimaComms.context(surface_space),
-    start_date,
-    end_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-);
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI =
-    FluxnetSimulations.get_maxLAI_at_site(modis_lai_ncdata_path[1], lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
@@ -284,11 +275,11 @@ diags = ClimaLand.default_diagnostics(
 
 ## How often we want to update the drivers.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
-updateat = Array(start_date:data_dt:end_date)
+updateat = Array(start_date:data_dt:stop_date)
 
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     land;
     set_ic!,

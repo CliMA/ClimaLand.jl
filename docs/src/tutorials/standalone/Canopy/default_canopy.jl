@@ -39,7 +39,7 @@ surface_space = domain.space.surface;
 
 # We choose the initial and final simulation times as DatesTimes, and a timestep in seconds.
 start_date = DateTime(2008);
-end_date = start_date + Second(60 * 60 * 72);
+stop_date = start_date + Second(60 * 60 * 72);
 dt = 1000.0;
 
 # Whereas the soil model takes in 2 forcing objects (atmosphere and radiation),
@@ -107,7 +107,7 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
 # and additional timestepping information. This is identical to the soil example.
 simulation = LandSimulation(
     start_date,
-    end_date,
+    stop_date,
     dt,
     model;
     set_ic!,

@@ -56,12 +56,12 @@ function make_era5_observation_vector(
     # time dimension, so we grab the first date in sample_date_ranges
     start_date = first(first(sample_date_ranges))
     era5_vars = preprocess_era5_vars(short_names, start_date, nelements)
-    observation_vector = map(sample_date_ranges) do (start_date, end_date)
+    observation_vector = map(sample_date_ranges) do (start_date, stop_date)
         ClimaCalibrate.ObservationRecipe.observation(
             covar_estimator,
             era5_vars,
             start_date,
-            end_date,
+            stop_date,
         )
     end
     return observation_vector

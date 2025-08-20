@@ -72,7 +72,7 @@ atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset) + Day(150)
 N_days = 20.0
-end_date = start_date + Day(N_days) + Second(80)
+stop_date = start_date + Day(N_days) + Second(80)
 
 # Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -94,16 +94,7 @@ forcing = (; atmos, radiation, ground);
 
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    context = ClimaComms.context(surface_space),
-    start_date = start_date,
-    end_date = end_date,
-)
-LAI = ClimaLand.prescribed_lai_modis(
-    modis_lai_ncdata_path,
-    surface_space,
-    start_date,
-)
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Overwrite energy parameter for stability
 energy = BigLeafEnergyModel{FT}(; ac_canopy = FT(1e3))
@@ -155,11 +146,11 @@ for dt in dts
     @info dt
 
     # Create update times for driver and saving callback
-    saveat = vcat(Array(start_date:Second(3 * 3600):end_date), end_date)
-    updateat = vcat(Array(start_date:Second(3 * 3600):end_date), end_date)
+    saveat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
+    updateat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
     simulation = LandSimulation(
         start_date,
-        end_date,
+        stop_date,
         dt,
         canopy;
         set_ic! = set_ic!,
@@ -190,7 +181,7 @@ savedir = generate_output_path(
 );
 
 # Create plot with statistics
-sim_time = round(Dates.value(Second(end_date - start_date)) / 3600, digits = 2) # simulation length in hours
+sim_time = round(Dates.value(Second(stop_date - start_date)) / 3600, digits = 2) # simulation length in hours
 
 # Compare T state computed with small vs large dt
 fig = Figure()
