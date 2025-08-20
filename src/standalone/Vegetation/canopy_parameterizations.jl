@@ -1150,32 +1150,84 @@ end
 # P-model
 """
     intrinsic_quantum_yield(
+        is_c3::AbstractFloat, args...
+    ) where {FT}
+
+Computes the intrinsic quantum yield of photosystem II 
+"""
+function intrinsic_quantum_yield(
+    is_c3::AbstractFloat, args...
+) where {FT}
+    is_c3 > 0.5 ? c3_intrinsic_quantum_yield(args...) :
+        c4_intrinsic_quantum_yield(args...)
+end
+
+"""
+    c3_intrinsic_quantum_yield(
         T::FT,
         c::FT,
         ϕa0::FT,
         ϕa1::FT,
-        ϕa2::FT
+        ϕa2::FT,
+        ::FT,
+        ::FT,
+        ::FT
     ) where {FT}
 
-Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol)
+Computes the intrinsic quantum yield ϕ (mol/mol)
 as a function of temperature T (K) and a calibratable parameter c (unitless).
 The functional form given in Bernacchi et al (2003) and used in Stocker
 et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0,
 ϕa1, and ϕa2.
 """
-function intrinsic_quantum_yield(
+function c3_intrinsic_quantum_yield(
     T::FT,
     c::FT,
     ϕa0::FT,
     ϕa1::FT,
     ϕa2::FT,
+    ::FT,
+    ::FT,
+    ::FT,
 ) where {FT}
     # convert to C
     T = T - FT(273.15)
     ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
-    return max(ϕ, FT(0)) # Ensure non-negative quantum yield
+    return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
 end
 
+
+"""
+    c3_intrinsic_quantum_yield(
+        T::FT,
+        c::FT,
+        ϕa0::FT,
+        ϕa1::FT,
+        ϕa2::FT,
+        ::FT,
+        ::FT,
+        ::FT
+    ) where {FT}
+
+Computes the intrinsic quantum yield ϕ (mol/mol) for c4 plants as a function 
+of temperature T (K).
+The functional form is a quadratic with coefficients given in 
+"""
+function c4_intrinsic_quantum_yield(
+    T::FT,
+    ::FT,
+    ::FT,
+    ::FT,
+    ::FT,
+    ϕa0_c4::FT,
+    ϕa1_c4::FT,
+    ϕa2_c4::FT,
+) where {FT}
+    # convert to C
+    T = T - FT(273.15)
+    ϕ = (ϕa0_c4 + ϕa1_c4 * T + ϕa2_c4 * T^2)
+    return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
+end
 
 """
     viscosity_h2o(
@@ -1450,6 +1502,32 @@ assimilation rate (`A`, mol m^-2 s^-1), and the relative conductivity ratio `Dre
 """
 function gs_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
     return Drel * gs_co2_pmodel(χ, ca, A)
+end
+
+
+function compute_mj(is_c3::AbstractFloat, args...)
+    return is_c3 > 0.5 ? c3_compute_mj(args...) : c4_compute_mj(args...)
+end
+
+
+function c3_compute_mj(Γstar::FT, ca_pp::FT, ξ::FT, VPD::FT) where {FT}
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+    mj = (ci - Γstar) / (ci + 2 * Γstar) # eqn 11 in Stocker et al. (2020)
+    return mj
+end
+
+function c4_compute_mj(::FT, ::FT, ::FT, ::FT) where {FT}
+    return FT(1.0)
+end
+
+function compute_mc(is_c3::AbstractFloat, args...)
+    return is_c3 > 0.5 ? c3_compute_mc(args...) : c4_compute_mc(args...)
+end
+
+function c3_compute_mc(Γstar::FT, ca_pp::FT, ξ::FT, VPD::FT, Kmm::FT) where {FT}
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+    mc = (ci - Γstar) / (ci + Kmm) # eqn 7 in Stocker et al. (2020)
+    return mc
 end
 
 """

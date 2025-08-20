@@ -500,9 +500,7 @@ function update_optimal_EMA(
         ca_pp = ca * P_air
 
         ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-        χ = Γstar / ca_pp + (1 - Γstar / ca_pp) * ξ / (ξ + sqrt(max(VPD, 0)))
-        γ = Γstar / ca_pp
-        κ = Kmm / ca_pp
+
         mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
         mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
         mprime = compute_mj_with_jmax_limitation(mj, cstar)
