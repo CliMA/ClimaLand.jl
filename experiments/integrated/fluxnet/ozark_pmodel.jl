@@ -177,7 +177,8 @@ radiative_transfer =
 conductance = PModelConductance{FT}()
 
 # Set up photosynthesis
-photosynthesis = PModel{FT}()
+is_c3 = FT(1)
+photosynthesis = PModel{FT}(surface_domain; is_c3)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data

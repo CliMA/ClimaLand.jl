@@ -130,14 +130,18 @@ end
 
 
 """
-    function PModel{FT}(;
+    function PModel{FT}(domain;
+        is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
         cstar = FT(0.41),
         β = FT(146),
         ϕc = FT(0.087),
         ϕ0 = FT(NaN),
-        ϕa0 = FT(0.352),
-        ϕa1 = FT(0.022),
-        ϕa2 = FT(-0.00034),
+        ϕa0_c3 = FT(0.352),
+        ϕa1_c3 = FT(0.022),
+        ϕa2_c3 = FT(-0.00034),
+        ϕa0_c4 = FT(-0.08),
+        ϕa1_c4 = FT(0.00375),
+        ϕa2_c4 = FT(-0.011),
         α = FT(0.933),
         sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
         pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
@@ -151,21 +155,29 @@ The following default parameters are used:
 - ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020)
 - ϕ0 = NaN (unitless) - constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the
                         temperature-dependent form (Stocker 2020)
-- ϕa0 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa1 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa2 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa0_c3 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa1_c3 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa2_c3 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa0_c4 = -0.008 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa1_c4 = 0.00375 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa2_c4 = -0.011 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
 - sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
 - pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
-function PModel{FT}(;
+function PModel{FT}(
+    domain;
+    is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
     cstar = FT(0.41),
     β = FT(146),
     ϕc = FT(0.087),
     ϕ0 = FT(NaN),
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
+    ϕa0_c3 = FT(0.352),
+    ϕa1_c3 = FT(0.022),
+    ϕa2_c3 = FT(-0.00034),
+    ϕa0_c4 = FT(-0.08),
+    ϕa1_c4 = FT(0.00375),
+    ϕa2_c4 = FT(-0.011),
     α = FT(0.933),
     sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
     pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
@@ -175,15 +187,18 @@ function PModel{FT}(;
         β = β,
         ϕc = ϕc,
         ϕ0 = ϕ0,
-        ϕa0 = ϕa0,
-        ϕa1 = ϕa1,
-        ϕa2 = ϕa2,
+        ϕa0_c3 = ϕa0_c3,
+        ϕa1_c3 = ϕa1_c3,
+        ϕa2_c3 = ϕa2_c3,
+        ϕa0_c4 = ϕa0_c4,
+        ϕa1_c4 = ϕa1_c4,
+        ϕa2_c4 = ϕa2_c4,
         α = α,
         sc = sc,
         pc = pc,
     )
 
-    return PModel{FT}(parameters)
+    return PModel{FT}(is_c3, parameters)
 end
 
 

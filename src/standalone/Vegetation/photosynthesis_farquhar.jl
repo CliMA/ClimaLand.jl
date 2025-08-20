@@ -100,6 +100,119 @@ ClimaLand.auxiliary_domain_names(::FarquharModel) =
     (:surface, :surface, :surface)
 
 """
+    rubisco_assimilation_farquhar(is_c3::AbstractFloat, args...)
+
+Calls the correct rubisco assimilation function based on the `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_rubisco_assimilation_farquhar`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_rubisco_assimilation_farquhar`.
+"""
+function rubisco_assimilation_farquhar(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_rubisco_assimilation_farquhar(args...) :
+    c4_rubisco_assimilation_farquhar(args...)
+end
+
+"""
+    c3_rubisco_assimilation_farquhar(Vcmax::FT,
+                         ci::FT,
+                         Γstar::FT,
+                         Kmm::FT) where {FT}
+
+Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
+in units of moles CO2/m^2/s,
+as a function of the maximum rate of carboxylation of Rubisco (`Vcmax`),
+the leaf internal carbon dioxide partial pressure (`ci`),
+the CO2 compensation point (`Γstar`), and the effective Michaelis-Menten parameter
+`K_mm`.
+
+The units of ci, Γstar, and Kmm may be Pa or mol/mol, but they must be consistent. The
+units of Vcmax must be mol CO2/m^2.s. 
+
+See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function c3_rubisco_assimilation_farquhar(
+    Vcmax::FT,
+    ci::FT,
+    Γstar::FT,
+    Kmm::FT,
+) where {FT}
+    Ac = Vcmax * (ci - Γstar) / (ci + Kmm)
+    return Ac
+end
+
+"""
+    c4_rubisco_assimilation_farquhar(Vcmax::FT,_...) where {FT}
+
+Computes the Rubisco limiting rate of photosynthesis for C4 plants (`Ac`)
+in units of moles CO2/m^2/s,
+as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`).
+"""
+function c4_rubisco_assimilation_farquhar(Vcmax::FT, _...) where {FT}
+    Ac = Vcmax
+    return Ac
+end
+
+"""
+    light_assimilation_farquhar(is_c3::AbstractFloat, args...)
+
+Calls the correct light assimilation function based on the `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_light_assimilation_farquhar`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_light_assimilation_farquhar`.
+"""
+function light_assimilation_farquhar(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_light_assimilation_farquhar(args...) :
+    c4_light_assimilation_farquhar(args...)
+end
+"""
+    c3_light_assimilation_farquhar(
+                       J::FT,
+                       ci::FT,
+                       Γstar::FT,
+                       ::FT,
+                       ::FT) where {FT}
+
+Computes the electron transport limiting rate (`Aj`),
+in units of moles CO2/m^2/s.
+
+For C3 plants, this is a function of
+the rate of electron transport (`J`), the leaf internal carbon dioxide partial pressure (`ci`),
+and the CO2 compensation point (`Γstar`).
+See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function c3_light_assimilation_farquhar(
+    J::FT,
+    ci::FT,
+    Γstar::FT,
+    _...,
+) where {FT}
+    Aj = J * (ci - Γstar) / (4 * (ci + 2 * Γstar))
+    return Aj
+end
+
+"""
+    c4_light_assimilation_farquhar(::FT, ::FT, ::FT, APAR::FT, E::FT) where {FT}
+
+Computes the electron transport limiting rate (`Aj`),
+in units of moles CO2/m^2/s.
+
+For C4 plants, this is a function of APAR and a efficiency parameter E, see Equation 11.70 of
+ G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function c4_light_assimilation_farquhar(
+    ::FT,
+    ::FT,
+    ::FT,
+    APAR::FT,
+    E::FT,
+) where {FT}
+    Aj = APAR * E
+    return Aj
+end
+
+"""
     gross_leaf_photosynthesis_at_a_point_Farquhar
 
 Computes the gross photosynthesis at the leaf level, not accounting for moisture stress.
@@ -152,11 +265,11 @@ function gross_leaf_photosynthesis_at_a_point_Farquhar(
     )
     Γstar = co2_compensation_farquhar(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2_farquhar(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation(is_c3, J, ci, Γstar, APAR_leaf_moles, E)
+    Aj = light_assimilation_farquhar(is_c3, J, ci, Γstar, APAR_leaf_moles, E)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
     Kmm = Kc * (1 + oi / Ko)
-    Ac = rubisco_assimilation(is_c3, Vcmax_leaf, ci, Γstar, Kmm)
+    Ac = rubisco_assimilation_farquhar(is_c3, Vcmax_leaf, ci, Γstar, Kmm)
     return gross_photosynthesis(Ac, Aj)
 end
 
