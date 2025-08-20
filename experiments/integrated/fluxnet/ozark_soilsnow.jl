@@ -186,6 +186,7 @@ simulation = LandSimulation(
     set_ic! = set_ic!,
     updateat,
     solver_kwargs = (; saveat = saveat),
+    diagnostics = nothing,
 )
 sol = solve!(simulation)
 

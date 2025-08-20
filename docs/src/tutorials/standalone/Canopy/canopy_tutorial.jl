@@ -65,26 +65,25 @@ import ClimaLand.LandSimVis as LandSimVis
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 
-# First provide some information about the site:
-# Timezone (offset from UTC in hrs)
-time_offset = 7
-start_date = DateTime(2010) + Hour(time_offset)
-
-# Select a time range to perform time stepping over, and a dt. As usual,
-# the timestep depends on the problem you are solving, the accuracy of the
-# solution required, and the timestepping algorithm you are using.
-N_days = 364
-stop_date = start_date + Day(N_days)
-dt = 225.0
+# We will use prescribed atmospheric and radiative forcing from the
+# US-MOz tower.
+site_ID = "US-MOz";
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
+# Get the latitude and longitude in degrees, as well as the
+# time offset in hours of local time from UTC
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val));
+# Get the height of the sensors in m
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
+# Set a start and stop date of the simulation in UTC, as well as
+# a timestep in seconds
+start_date = DateTime("2010-05-01", "yyyy-mm-dd")
+stop_date = DateTime("2010-09-01", "yyyy-mm-dd")
+dt = 450.0
 
 # Site latitude and longitude
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
-
-# Height of the sensor at the site
-atmos_h = FT(32)
-# Site ID
-site_ID = "US-MOz";
 
 # # Setup the Canopy Model
 
@@ -102,8 +101,6 @@ site_ID = "US-MOz";
 # the [`domain`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#Domains)
 # would change.
 domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
-
-
 
 # We will be using prescribed atmospheric and radiative drivers from the
 # US-MOz tower, which we read in here. We are using prescribed
