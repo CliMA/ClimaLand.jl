@@ -115,8 +115,8 @@ steps:
           CLIMACOMMS_DEVICE: CUDA
         agents:
           slurm_mem: 64G
-          slurm_gpus: 1
           slurm_cpus_per_task: 8
+          slurm_gpus: 1
 
       - label: ":no_entry_sign: :evergreen_tree: Soil
         command:
@@ -130,5 +130,5 @@ steps:
           CLIMACOMMS_DEVICE: CUDA
         agents:
           slurm_mem: 64G
-          slurm_gpus: 1
           slurm_cpus_per_task: 8
+          slurm_gpus: 1
