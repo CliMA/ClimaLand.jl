@@ -104,13 +104,20 @@ function initialize_auxiliary(
     component::AbstractCanopyComponent{FT},
     state,
 ) where {FT}
-    ClimaLand.initialize_vars(
+    new_initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),
-        auxiliary_domain_names(component),
         state,
         name(component),
     )
+end
+
+function new_initialize_vars(keys, types, state, model_name)
+    FT = eltype(state)
+    length(keys) == 0 && return (; model_name => nothing)
+    zero_value = NamedTuple{keys}(ClimaCore.RecursiveApply.rzero.(types))
+
+    return (; model_name => fill(zero_value, axes(state.surface)))
 end
 
 """

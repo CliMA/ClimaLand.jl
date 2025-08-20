@@ -861,15 +861,19 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
         model.boundary_conditions,
         ClimaLand.TopBoundary(),
     )
-    domains = boundary_var_domain_names(
-        model.boundary_conditions,
-        ClimaLand.TopBoundary(),
-    )
-    additional_aux = map(zip(types, domains)) do (T, domain)
-        zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        f = map(_ -> zero_instance, getproperty(coords, domain))
-        fill!(ClimaCore.Fields.field_values(f), zero_instance)
-        f
+    # domains = boundary_var_domain_names(
+    #     model.boundary_conditions,
+    #     ClimaLand.TopBoundary(),
+    # )
+    # additional_aux = map(zip(types, domains)) do (T, domain)
+    #     zero_instance = ClimaCore.RecursiveApply.rzero(T)
+    #     f = map(_ -> zero_instance, getproperty(coords, domain))
+    #     fill!(ClimaCore.Fields.field_values(f), zero_instance)
+    #     f
+    # end
+    additional_aux = map(types) do t
+        zero_value = ClimaCore.RecursiveApply.rzero.(t)
+        fill(zero_value, axes(coords.surface))
     end
     return NamedTuple{vars}(additional_aux)
 end
