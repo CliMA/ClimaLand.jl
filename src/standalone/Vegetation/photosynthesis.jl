@@ -263,8 +263,8 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
         s6,
         E,
     )
-    # Compute GPP: TODO - move to diagnostics only
-    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+    # Compute GPP: remove if this stays the same
+    @. GPP = An
 
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)

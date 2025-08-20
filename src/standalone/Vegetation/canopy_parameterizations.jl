@@ -15,7 +15,6 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     net_photosynthesis,
     moisture_stress,
     dark_respiration,
-    compute_GPP,
     MM_Kc,
     MM_Ko,
     compute_Vcmax,
@@ -820,22 +819,6 @@ function c3_dark_respiration(
 end
 
 """
-    compute_GPP(An::FT,
-             K::FT,
-             LAI::FT,
-             Ω::FT) where {FT}
-
-Computes the total canopy photosynthesis (`GPP`) as a function of
-the total net carbon assimilation (`An`), the extinction coefficient (`K`),
-leaf area index (`LAI`) and the clumping index (`Ω`).
-"""
-function compute_GPP(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
-    GPP = An * (1 - exp(-K * LAI * Ω)) / (K * Ω)
-    return GPP
-end
-
-
-"""
     upscale_leaf_conductance(gs::FT, LAI::FT, T::FT, R::FT, P::FT) where {FT}
 
 This currently takes a leaf conductance (moles per leaf area per second)
@@ -852,7 +835,7 @@ function upscale_leaf_conductance(
 ) where {FT}
     # TODO: Check what CLM does, and check if we can use the same function
     #  for GPP from An, and make more general.
-    canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
+    canopy_conductance = gs * (R * T) / P # convert to m s-1
     return canopy_conductance
 end
 
