@@ -32,6 +32,9 @@ end
 Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the corresponding
 keyword arguments to this function.
+
+Atmosphere height:
+    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 """
 function FluxnetSimulations.get_location(
     FT,
@@ -39,28 +42,9 @@ function FluxnetSimulations.get_location(
     time_offset = 5,
     lat = FT(42.5378),
     long = FT(-72.1715),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_Ha1}; kwargs...)
-
-Returns atmosphere height for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-
-Data sources:
-
-Atmosphere height:
-    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
-"""
-function FluxnetSimulations.get_fluxtower_height(
-    FT,
-    ::Val{:US_Ha1};
     atmos_h = FT(30),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """
@@ -85,8 +69,7 @@ function FluxnetSimulations.get_parameters(
     soil_ν = FT(0.5),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
-    soil_vg_n = FT(2.05),
-    soil_vg_α = FT(0.04),
+    hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
     θ_r = FT(0.067),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),
@@ -94,8 +77,10 @@ function FluxnetSimulations.get_parameters(
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.001),
     soil_ϵ = FT(0.98),
-    soil_α_PAR = FT(0.2),
-    soil_α_NIR = FT(0.2),
+    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+        PAR_albedo = FT(0.2),
+        NIR_albedo = FT(0.2),
+    ),
     Ω = FT(0.69),
     χl = FT(0.5),
     G_Function = ConstantGFunction(χl),

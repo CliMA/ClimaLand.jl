@@ -38,16 +38,14 @@ end
     @test zmax == FT(0)
 
     # geographical info
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
     @test time_offset == 5
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(30)
-
+    
     # parameters
     (;
         soil_ν,
@@ -160,13 +158,11 @@ end
     @test zmax == FT(0)
 
     # geographical info
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
     @test time_offset == 5
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(32)
 
     # parameters
@@ -244,14 +240,12 @@ end
     @test zmin == FT(-10)
     @test zmax == FT(0)
 
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
     @test time_offset == 7
     @test lat == FT(40.0329)
     @test long == FT(-105.5464)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(21.5)
 
     # parameters
@@ -328,14 +322,13 @@ end
     @test nelements == 14
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
+    
 
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
     @test time_offset == 8
     @test lat == FT(38.4133)
     @test long == FT(-120.9508)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(2)
 
     # parameters
@@ -474,5 +467,5 @@ end
     @test χl == FT(-0.3)
     @test h_leaf == FT(0.5)
     @test Vcmax25 == FT(2.4e-5)
-
 end
+nothing

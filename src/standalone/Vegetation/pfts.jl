@@ -98,7 +98,7 @@ NET_Temp = Pft(
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
         χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 2234,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 2234.0,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 74.31, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -126,7 +126,7 @@ NET_Bor = Pft(
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
         χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 2792,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 2792.0,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 74.31, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -154,7 +154,7 @@ NDT_Bor = Pft(
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.985,  # Unitless ⋅ Ma et al. 2019
         χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 2792,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 2792.0,  # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 74.31, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -294,7 +294,7 @@ BDT_Bor = Pft(
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.968,  # Unitless ⋅ Ma et al. 2019
         χl = 0.25,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 140.72, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -322,7 +322,7 @@ BES_Temp = Pft(
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
         χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 148.63, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -350,7 +350,7 @@ BDS_Temp = Pft(
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
         χl = 0.25,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 148.63, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -378,7 +378,7 @@ BDS_Bor = Pft(
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
         χl = 0.25,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 148.63, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -406,7 +406,7 @@ C3G_A = Pft(
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
         χl = -0.3,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 70.2, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -434,7 +434,7 @@ C3G_NA = Pft(
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
         χl = -0.3,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 166.02, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -462,7 +462,7 @@ C4G = Pft(
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
         χl = -0.3,         # Unitless ⋅ CLM2 PFT Data
-        ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
+        ac_canopy = 745.0,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
         # Stomatal Conductance Model
         g1 = 51.22, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1

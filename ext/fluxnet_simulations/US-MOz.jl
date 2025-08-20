@@ -39,23 +39,9 @@ function FluxnetSimulations.get_location(
     time_offset = 7,
     lat = FT(38.7441),
     long = FT(-92.2000),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_MOz}; kwargs...)
-
-Returns atmosphere height for US-Ha1 (Missouri Ozark) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-"""
-function FluxnetSimulations.get_fluxtower_height(
-    FT,
-    ::Val{:US_MOz};
     atmos_h = FT(32),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """

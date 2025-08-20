@@ -32,6 +32,10 @@ end
 Returns geographical information for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
+
+Atmosphere height:
+    - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li,
+    Jiahong & Luo, Hongyan & Zulueta, Rommel. (2016). https://doi.org/10.5194/amt-9-1341-2016
 """
 function FluxnetSimulations.get_location(
     FT,
@@ -39,29 +43,9 @@ function FluxnetSimulations.get_location(
     time_offset = 7,
     lat = FT(40.0329),
     long = FT(-105.5464),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_NR1}; kwargs...)
-
-Returns atmosphere height for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-
-Data sources:
-
-Atmosphere height:
-    - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li,
-    Jiahong & Luo, Hongyan & Zulueta, Rommel. (2016). https://doi.org/10.5194/amt-9-1341-2016
-"""
-function FluxnetSimulations.get_fluxtower_height(
-    FT,
-    ::Val{:US_NR1};
     atmos_h = FT(21.5),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """
