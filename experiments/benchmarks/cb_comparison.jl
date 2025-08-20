@@ -205,11 +205,11 @@ setup_with_infrequent_nan_check() =
 setup_with_frequent_nan_check() =
     generic_setup_simulation(; nan_check_frequency = Hour(10))
 
-generic_setup_simulation()
-setup_with_daily()
+#generic_setup_simulation()
+#setup_with_daily()
 # setup_with_half_hourly()
-setup_with_monthly()
-setup_with_infrequent_nan_check()
+#setup_with_monthly()
+#setup_with_infrequent_nan_check()
 # setup_with_frequent_nan_check()
 
 run_timing_benchmarks(device, generic_setup_simulation)
