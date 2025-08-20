@@ -28,7 +28,7 @@ long = FT(-92.2000) # degree
 land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
-start_date = DateTime(2010) + Hour(time_offset)
+start_date = DateTime(2010, 1, 2)
 N_days = 60
 stop_date = start_date + Day(N_days)
 dt = FT(225);
