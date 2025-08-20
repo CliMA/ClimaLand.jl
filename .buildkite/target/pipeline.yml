@@ -4,7 +4,7 @@ agents:
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
-  # JULIA_NVTX_CALLBACKS: "gc|alloc|free|inference"
+  JULIA_NVTX_CALLBACKS: "gc|alloc|free|inference"
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_CUDA_MEMORY_POOL: "cuda"
@@ -118,7 +118,7 @@ steps:
           slurm_cpus_per_task: 8
           slurm_gpus: 1
 
-      - label: ":no_entry_sign: :evergreen_tree: Soil
+      - label: ":no_entry_sign: :evergreen_tree: Soil"
         command:
           - mkdir -p soil_benchmark_gpu
           - >
