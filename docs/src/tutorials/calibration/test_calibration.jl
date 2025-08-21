@@ -57,22 +57,21 @@ using ClimaAnalysis, GeoMakie, Printf, StatsBase
 # Set random seed for reproducibility and floating point precision
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-const FT = Float32
+const FT = Float64
 
 # Initialize land parameters and site configuration.
 earth_param_set = LP.LandParameters(FT)
-site_ID = "US-MOz"
-site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
+site_ID = "AU-Rob"
+# site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 
 # Get site-specific information: location coordinates, time offset, and sensor
 # height.
-(; time_offset, lat, long) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
+(; time_offset, lat, long, atmos_h) =
+    FluxnetSimulations.get_location(site_ID)
 
 # Get maximum simulation start and end dates in UTC; these must be included in the forcing data range
-start_date = DateTime(2010, 3, 1)
-stop_date = DateTime(2010, 7, 1)
+start_date = DateTime(2014, 3, 1)
+stop_date = DateTime(2014, 7, 1)
 Δt = 450.0; # seconds
 
 # ## Domain and Forcing Setup
@@ -351,7 +350,7 @@ EKP.Visualize.plot_error_over_iters(
     fig[1, dim_size + 1],
     ensemble_kalman_process,
 )
-CairoMakie.save("constrained_params_and_error.png", fig)
+CairoMakie.save("experiments/integrated/fluxnet/$(site_ID)/constrained_params_and_error.png", fig)
 fig
 
 # Compare the model output between the first and last iterations to assess
@@ -400,5 +399,5 @@ axislegend(
 )
 
 CairoMakie.resize_to_layout!(fig)
-CairoMakie.save("G_first_and_last.png", fig)
+CairoMakie.save("experiments/integrated/fluxnet/$(site_ID)/G_first_and_last.png", fig)
 fig
