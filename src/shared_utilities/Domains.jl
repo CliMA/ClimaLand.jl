@@ -1308,7 +1308,7 @@ function global_domain(
     end
 
     radius = FT(6378.1e3)
-    dz_tuple = dz_tuple isa Nothing ? dz_tuple :  = FT.(dz_tuple)
+    dz_tuple = dz_tuple isa Nothing ? dz_tuple : FT.(dz_tuple)
     depth = FT(depth)
     domain = SphericalShell(;
         radius,
