@@ -12,8 +12,6 @@ ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
 ClimaLand.Canopy.FarquharParameters
-ClimaLand.Canopy.OptimalityFarquharModel
-ClimaLand.Canopy.OptimalityFarquharParameters
 ```
 
 ## FarquharModel Methods

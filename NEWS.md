@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Remove Smith Optimality model; use PModel instead PR[#1361](https://github.com/CliMA/ClimaLand.jl/pull/1361)
 
 v0.18.2
 -------
