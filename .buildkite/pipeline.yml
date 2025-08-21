@@ -31,10 +31,6 @@ steps:
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
 
-      - echo "--- Instantiate lib/ClimaLandSimulations"
-      - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.status()'"
-
     agents:
       slurm_gpus: 1
       # Ensures that we have all the 8 tasks on the same node
@@ -152,12 +148,6 @@ steps:
           slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
-
-  - group: "ClimaLandSimulations"
-    steps:
-      - label: "Ozark figures Makie"
-        command: "julia --color=yes --project=lib/ClimaLandSimulations lib/ClimaLandSimulations/experiments/ozark.jl"
-        artifact_paths: "figures/*pdf"
 
   - group: "CPU: global bucket"
     steps:
