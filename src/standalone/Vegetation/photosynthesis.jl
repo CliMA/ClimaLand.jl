@@ -97,7 +97,7 @@ function photosynthesis_at_a_point_Farquhar(
     T,
     β,
     Rd,
-    APAR,
+    APAR_leaf_moles,
     c_co2,
     medlyn_factor,
     R,
@@ -128,12 +128,12 @@ function photosynthesis_at_a_point_Farquhar(
     E,
 )
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
-    J = electron_transport(APAR, Jmax, θj, ϕ)
+    J = electron_transport(APAR_leaf_moles, Jmax, θj, ϕ)
     Vcmax =
         compute_Vcmax(is_c3, Vcmax25, T, R, To, ΔHVcmax, Q10, s1, s2, s3, s4)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation(is_c3, J, ci, Γstar, APAR, E)
+    Aj = light_assimilation(is_c3, J, ci, Γstar, APAR_leaf_moles, E)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
     Ac = rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
@@ -148,7 +148,7 @@ end
         canopy
 )
 
-Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar model, along with the
+Computes the net leaf photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar model, along with the
 dark respiration `Rd` (mol CO2/m^2/s) and gross primary productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
@@ -193,7 +193,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     T_air = p.drivers.T
     q_air = p.drivers.q
     earth_param_set = canopy.parameters.earth_param_set
-    c = LP.light_speed(earth_param_set)
+    lightspeed = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
     grav = LP.grav(earth_param_set)
@@ -213,7 +213,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
-
+    
     @. Rd = dark_respiration(
         is_c3,
         Vcmax25,
@@ -229,11 +229,12 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
         fC4,
     )
     # TO DO: refactor to pass parameter struct, not the parameters individually
+    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs, par_d, λ_γ_PAR, lightspeed, planck_h, N_a, LAI))
     @. An = photosynthesis_at_a_point_Farquhar(
         T_canopy,
         β,
         Rd,
-        f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
+        APAR_leaf_moles,
         c_co2_air,
         medlyn_factor,
         R,
@@ -263,8 +264,8 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
         s6,
         E,
     )
-    # Compute GPP: remove if this stays the same
-    @. GPP = An
+    # Compute GPP: scale from leaf level An to canopy level GPP
+    @. GPP = GPP_from_leaf_level_An(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
@@ -280,7 +281,6 @@ end
 
 function get_electron_transport(Y, p, canopy, m::FarquharModel)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-
     earth_param_set = canopy.parameters.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
     par_d = p.canopy.radiative_transfer.par_d
@@ -288,11 +288,13 @@ function get_electron_transport(Y, p, canopy, m::FarquharModel)
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a, LAI))
 
     Jmax = get_Jmax(Y, p, canopy, m)
     (; θj, ϕ) = m.parameters
-    return @. lazy(electron_transport(APAR, Jmax, θj, ϕ))
+    return @. lazy(electron_transport(APAR_leaf_moles, Jmax, θj, ϕ))
 end
 
 include("./optimality_farquhar.jl")

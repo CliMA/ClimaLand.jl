@@ -166,8 +166,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
             upscale_leaf_conductance(
-                gs_h2o_pmodel(χ, c_co2_air, An, Drel), # leaf level conductance in mol H2O Pa^-1
-                LAI,
+                gs_h2o_pmodel(χ, c_co2_air, An, Drel), # canopy level conductance in mol H2O Pa^-1
+                FT(0), # LAI = 0 since already canopy level
                 T_air,
                 R,
                 P_air,

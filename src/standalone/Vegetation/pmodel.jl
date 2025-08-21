@@ -11,6 +11,9 @@ export PModelParameters,
 
 The required parameters for P-model (Stocker et al. 2020). Parameters are typically
 tunable with considerable uncertainty.
+
+The pmodel works with canopy level quantities, despite being based on the Farquhar model
+for leaf-level rates.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
@@ -212,7 +215,7 @@ function PModel{FT}(
 end
 
 """
-In addition to total net carbon assimilation (`An`), total canopy photosynthesis (`GPP`),
+In addition to gross primary productivity (`GPP`)
 and dark respiration (`Rd`), the P-model uses some more cache variables:
 
 - `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt`
@@ -220,16 +223,15 @@ and dark respiration (`Rd`), the P-model uses some more cache variables:
     using an exponential moving average (EMA) at local noon.
 Note that these fluxes are all relative to leaf area, not ground area.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars)
+ClimaLand.auxiliary_vars(model::PModel) = (:GPP, :Rd, :ci, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
-    FT,
     FT,
     FT,
     FT,
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
 )
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface)
 
 
 """
@@ -256,9 +258,10 @@ Args:
 - `VPD`:            Vapor pressure deficit (Pa).
 - `ca`:             Ambient CO2 concentration (mol/mol).
 - `βm`:             Soil moisture stress factor (unitless).
-- `APAR`:          Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
+- `APAR_canopy_moles`:          Absorbed photosynthetically active radiation by canopy (mol photons m^-2 s^-1).
 
 Returns: named tuple with the following keys and descriptions:
+Fluxes are per unit area ground - canopy level
 Output name         Description (units)
     "gpp"           Gross primary productivity (kg m^-2 s^-1)
     "gammastar"     CO2 compensation point (Pa)
@@ -285,7 +288,7 @@ function compute_full_pmodel_outputs(
     VPD::FT,
     ca::FT,
     βm::FT,
-    APAR::FT,
+    APAR_canopy_moles::FT,
 ) where {FT}
     # Unpack parameters
     (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
@@ -333,7 +336,7 @@ function compute_full_pmodel_outputs(
     ci = χ * ca_pp
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
-    Vcmax = βm * ϕ0 * APAR * mprime / mc
+    Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
     inst_temp_scaling_vcmax25 = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -348,7 +351,7 @@ function compute_full_pmodel_outputs(
 
     # check for negative arg before taking sqrt
     arg = (mj / (βm * mprime))^2 - 1
-    Jmax = 4 * ϕ0 * APAR / (sqrt(max(arg, 0)) + eps(FT))
+    Jmax = 4 * ϕ0 * APAR_canopy_moles / (sqrt(max(arg, 0)) + eps(FT))
     Jmax25 =
         Jmax / inst_temp_scaling(
             T_canopy,
@@ -360,7 +363,7 @@ function compute_full_pmodel_outputs(
             bS_Jmax,
             R,
         )
-    J = electron_transport_pmodel(ϕ0, APAR, Jmax)
+    J = electron_transport_pmodel(ϕ0, APAR_canopy_moles, Jmax)
 
     Ac = Vcmax * mc
     Aj = J * mj / FT(4)
@@ -413,7 +416,7 @@ end
         VPD::FT,
         ca::FT,
         βm::FT,
-        APAR::FT,
+        APAR_canopy_moles::FT,
         local_noon_mask::FT,
     ) where {FT}
 
@@ -430,7 +433,7 @@ Args:
 - `VPD`: Vapor pressure deficit (Pa).
 - `ca`: Ambient CO2 concentration (mol/mol).
 - `βm`: Soil moisture stress factor (unitless).
-- `APAR`: Absorbed photosynthetically active radiation (mol photons m^-2 s^-1).
+- `APAR_canopy_moles`: Absorbed photosynthetically active radiation (mol photons m^-2 s^-1) for the canopy
 - `local_noon_mask`: A mask (0 or 1) indicating whether the current time is within the local noon window.
 
 Returns:
@@ -450,7 +453,7 @@ function update_optimal_EMA(
     VPD::FT,
     ca::FT,
     βm::FT,
-    APAR::FT,
+    APAR_canopy_moles::FT,
     local_noon_mask::FT,
 ) where {FT}
     if local_noon_mask == FT(1.0)
@@ -507,7 +510,7 @@ function update_optimal_EMA(
         mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
         mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
-        Vcmax = βm * ϕ0 * APAR * mprime / mc
+        Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
         Vcmax25 =
             Vcmax / inst_temp_scaling(
                 T_canopy,
@@ -604,8 +607,8 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
             LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
         ),
     )
-    APAR = @. lazy(
-        compute_APAR(
+    APAR_canopy_moles = @. lazy(
+        compute_APAR_canopy_moles(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
@@ -645,7 +648,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         VPD,
         p.drivers.c_co2,
         βm,
-        APAR,
+        APAR_canopy_moles,
         local_noon_mask,
     )
 end
@@ -693,8 +696,8 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
             LP.thermodynamic_parameters(earth_param_set),
         ),
     )
-    APAR = @. lazy(
-        compute_APAR(
+    APAR_canopy_moles = @. lazy(
+        compute_APAR_canopy_moles(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
@@ -713,7 +716,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         VPD,
         p.drivers.c_co2,
         βm,
-        APAR,
+        APAR_canopy_moles,
         local_noon_mask,
     )
 end
@@ -797,9 +800,8 @@ end
 """
     update_photosynthesis!(p, Y, model::PModel, canopy)
 
-Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary
-productivity `GPP` (mol CO2/m^2/s), and updates them in place.
+Computes the gross primary productivity `GPP` (mol CO2/m^2/s) for the P-model, along with the
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s).
 """
 function update_photosynthesis!(p, Y, model::PModel, canopy)
     parameters = model.parameters
@@ -807,7 +809,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     FT = eltype(parameters)
 
     # Unpack preallocated variables to short names
-    An = p.canopy.photosynthesis.An
     GPP = p.canopy.photosynthesis.GPP
     Rd = p.canopy.photosynthesis.Rd
     ci = p.canopy.photosynthesis.ci
@@ -934,16 +935,8 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
     # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here.
-    @. An = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
-    @. GPP = compute_GPP(
-        An,
-        extinction_coeff(
-            canopy.radiative_transfer.parameters.G_Function,
-            p.drivers.cosθs,
-        ),
-        p.canopy.hydraulics.area_index.leaf,
-        canopy.radiative_transfer.parameters.Ω,
-    )
+    @. GPP = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
+
 end
 
 get_Vcmax25(p, m::PModel) = p.canopy.photosynthesis.OptVars.Vcmax25_opt
@@ -974,7 +967,7 @@ function get_electron_transport(Y, p, canopy, m::PModel)
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
+    APAR_canopy_moles = @. lazy(compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
 
     Jmax = get_Jmax(Y, p, canopy, m)
     parameters = m.parameters
@@ -988,7 +981,7 @@ function get_electron_transport(Y, p, canopy, m::PModel)
                 parameters.ϕa1,
                 parameters.ϕa2,
             ) : parameters.ϕ0,
-            APAR,
+            APAR_canopy_moles,
             Jmax,
         ),
     )

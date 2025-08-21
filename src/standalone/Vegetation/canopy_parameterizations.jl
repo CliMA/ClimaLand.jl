@@ -15,6 +15,7 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     net_photosynthesis,
     moisture_stress,
     dark_respiration,
+    GPP_from_leaf_level_An,
     MM_Kc,
     MM_Ko,
     compute_Vcmax,
@@ -41,7 +42,8 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     electron_transport_pmodel,
     co2_compensation_p,
     quadratic_soil_moisture_stress,
-    compute_APAR
+    compute_APAR_leaf_moles,
+    compute_APAR_canopy_moles
 
 # 1. Radiative transfer
 
@@ -580,16 +582,16 @@ function c3_light_assimilation(J::FT, ci::FT, Γstar::FT, _...) where {FT}
 end
 
 """
-    light_assimilation(::FT, ::FT, ::FT, APAR::FT, E::FT) where {FT}
+    light_assimilation(::FT, ::FT, ::FT, APAR_leaf_moles::FT, E::FT) where {FT}
 
 Computes the electron transport limiting rate (`Aj`),
 in units of moles CO2/m^2/s.
 
-For C4 plants, this is a function of APAR and a efficiency parameter E, see Equation 11.70 of
+For C4 plants, this is a function of APAR_leaf_moles and a efficiency parameter E, see Equation 11.70 of
  G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function c4_light_assimilation(::FT, ::FT, ::FT, APAR::FT, E::FT) where {FT}
-    Aj = APAR * E
+function c4_light_assimilation(::FT, ::FT, ::FT, APAR_leaf_moles::FT, E::FT) where {FT}
+    Aj = APAR_leaf_moles * E
     return Aj
 end
 
@@ -618,7 +620,7 @@ function max_electron_transport(
 end
 
 """
-    electron_transport(APAR::FT,
+    electron_transport(APAR_leaf_moles::FT,
                        Jmax::FT,
                        θj::FT,
                        ϕ::FT) where {FT}
@@ -626,15 +628,15 @@ end
 Computes the rate of electron transport (`J`),
 in units of mol/m^2/s, as a function of
 the maximum potential rate of electron transport (`Jmax`),
-absorbed photosynthetically active radiation (`APAR`),
+absorbed photosynthetically active radiation (`APAR_leaf_moles`),
 an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
 and the quantum yield of photosystem II (`ϕ`).
 
 See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function electron_transport(APAR::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
-    # Light utilization of APAR
-    IPSII = ϕ * APAR / 2
+function electron_transport(APAR_leaf_moles::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
+    # Light utilization of APAR (leaf level)
+    IPSII = ϕ * APAR_leaf_moles / 2
     # This is a solution to a quadratic equation
     # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
     J =
@@ -644,10 +646,10 @@ function electron_transport(APAR::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
 end
 
 """
-optimality_max_photosynthetic_rates(APAR::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
+optimality_max_photosynthetic_rates(APAR_leaf_moles::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
 
 Computes the photosynthesis rates Vcmax and Jmax in
-mol/m^2/s given absorbed photosynthetically active radiation (`APAR`),
+mol/m^2/s given absorbed photosynthetically active radiation (`APAR_leaf_moles`),
 an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
  the quantum yield of photosystem II (`ϕ`), the intercellular
 o2 content (`oi`), the intercellular CO2 concentration (ci),
@@ -656,7 +658,7 @@ o2 content (`oi`), the intercellular CO2 concentration (ci),
 See Smith et al. 2019.
 """
 function optimality_max_photosynthetic_rates(
-    APAR::FT,
+    APAR_leaf_moles::FT,
     θj::FT,
     ϕ::FT,
     oi::FT,
@@ -667,7 +669,7 @@ function optimality_max_photosynthetic_rates(
     c::FT,
 ) where {FT}
     # Light utilization of APAR
-    IPSII = ϕ * APAR / 2
+    IPSII = ϕ * APAR_leaf_moles / 2
 
     mc = (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
     m = (ci - Γstar) / (ci + 2 * Γstar)
@@ -704,7 +706,7 @@ end
                        Rd::FT,
                        β::FT) where {FT}
 
-Computes the total net carbon assimilation (`An`),
+Computes the total carbon assimilation (`An`),
 in units of mol CO2/m^2/s, as a function of
 the Rubisco limiting factor (`Ac`), the electron transport limiting rate (`Aj`),
 dark respiration (`Rd`), and the moisture stress factor (`β`).
@@ -819,6 +821,22 @@ function c3_dark_respiration(
 end
 
 """
+    GPP_from_leaf_level_An(An::FT,
+                           K::FT,
+                           LAI::FT,
+                           Ω::FT) where {FT}
+
+Computes the total canopy photosynthesis (`GPP`) as a function of
+the total leaf carbon assimilation (`An`), the extinction coefficient (`K`),
+leaf area index (`LAI`) and the clumping index (`Ω`).
+"""
+function GPP_from_leaf_level_An(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
+    GPP = An * (1 - exp(-K * LAI * Ω)) / (K * Ω)
+    return GPP
+end
+
+
+"""
     upscale_leaf_conductance(gs::FT, LAI::FT, T::FT, R::FT, P::FT) where {FT}
 
 This currently takes a leaf conductance (moles per leaf area per second)
@@ -835,7 +853,7 @@ function upscale_leaf_conductance(
 ) where {FT}
     # TODO: Check what CLM does, and check if we can use the same function
     #  for GPP from An, and make more general.
-    canopy_conductance = gs * (R * T) / P # convert to m s-1
+    canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
     return canopy_conductance
 end
 
@@ -1004,11 +1022,10 @@ end
 Computes the stomatal conductance according to Medlyn, as a function of
 the minimum stomatal conductance (`g0`),
 the relative diffusivity of water vapor with respect to CO2 (`Drel`),
-the Medlyn term (unitless), the biochemical demand for CO2 (`An`), and the
+the Medlyn term (unitless), the biochemical demand for CO2 (leaf level `An`), and the
 atmospheric concentration of CO2 (`ca`).
 
-This returns the conductance in units of mol/m^2/s. It must be converted to
-m/s using the molar density of water prior to use in SurfaceFluxes.jl.
+This returns the leaf conductance in units of mol/m^2/s (leaf area).
 """
 function medlyn_conductance(
     g0::FT,
@@ -1054,9 +1071,9 @@ function penman_monteith(
 end
 
 """
-    nitrogen_content(
+    canopy_nitrogen_content(
                      ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-                     Vcmax25::FT, #
+                     Vcmax2_leaf5::FT, #
                      LAI::FT, # Leaf area index
                      SAI::FT,
                      RAI::FT,
@@ -1067,11 +1084,11 @@ end
                      μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
                     ) where {FT}
 
-Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
+Computes the canopy nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
 """
-function nitrogen_content(
+function canopy_nitrogen_content(
     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-    Vcmax25::FT, #
+    Vcmax25_leaf::FT, #
     LAI::FT, # Leaf area index
     SAI::FT,
     RAI::FT,
@@ -1083,7 +1100,7 @@ function nitrogen_content(
 ) where {FT}
     Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
     Rc = σl * RAI
-    nm = Vcmax25 / ne
+    nm = Vcmax25_leaf / ne
     Nl = nm * σl * LAI
     Nr = μr * nm * Rc
     Ns = μs * nm * Sc
@@ -1102,6 +1119,8 @@ end
 Computes plant maintenance respiration as a function of dark respiration (Rd),
 the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns),
 and the soil moisture factor (β).
+
+#TODO: is this canopy or leaf?
 """
 function plant_respiration_maintenance(
     Rd::FT, # Dark respiration
@@ -1124,6 +1143,8 @@ end
 
 Computes plant growth respiration as a function of net photosynthesis (An),
 plant maintenance respiration (Rpm), and a relative contribution factor, Rel.
+
+# canopy or leaf?
 """
 function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
     Rg = Rel * (An - Rpm)
@@ -1413,6 +1434,8 @@ via Fick's law. Parameters are the ratio of intercellular to ambient CO2
 concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), and the
 assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of water by a
 factor Drel (default value = 1.6).
+
+Note that in the Pmodel, only the canopy level assimilation is computed, so A = GPP.
 """
 function gs_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
     return A / (ca * (1 - χ) + eps(FT))
@@ -1430,6 +1453,10 @@ Computes the stomatal conductance of H2O (`gs_h2o`), in units of mol H2O/m^2/s
 via Fick's law. Parameters are the ratio of intercellular to ambient CO2
 concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), the
 assimilation rate (`A`, mol m^-2 s^-1), and the relative conductivity ratio `Drel` (unitless).
+
+Note that in the Pmodel, only the canopy level assimilation is computed, so A = GPP.
+
+I believe this is canopy level - confirm. if so rename
 """
 function gs_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
     return Drel * gs_co2_pmodel(χ, ca, A)
@@ -1474,19 +1501,19 @@ end
 """
     vcmax_pmodel(
         ϕ0::FT,
-        APAR::FT,
+        APAR_canopy_moles::FT,
         mprime::FT,
         mc::FT
         βm::FT
     ) where {FT}
 
 Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using
-the intrinsic quantum yield (`ϕ0`), absorbed photosynthetically active radiation (`APAR`),
+the intrinsic quantum yield (`ϕ0`), absorbed photosynthetically active radiation (`APAR_canopy_moles`),
 Jmax-adjusted capacity (`mprime`), a Rubisco-limited capacity (`mc`), and empirical
 soil moisture stress factor (`βm`). See Eqns 16 and 6 in Stocker et al. (2020).
 """
-function vcmax_pmodel(ϕ0::FT, APAR::FT, mprime::FT, mc::FT, βm::FT) where {FT}
-    Vcmax = βm * ϕ0 * APAR * mprime / mc
+function vcmax_pmodel(ϕ0::FT, APAR_canopy_moles::FT, mprime::FT, mc::FT, βm::FT) where {FT}
+    Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
     return Vcmax
 end
 
@@ -1529,14 +1556,15 @@ end
 """
     electron_transport_pmodel(
         ϕ0::FT,
-        APAR::FT,
+        APAR_canopy_moles::FT,
         Jmax::FT
     ) where {FT}
 
-Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
+Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel at the
+canopy level.
 """
-function electron_transport_pmodel(ϕ0::FT, APAR::FT, Jmax::FT) where {FT}
-    J = 4 * ϕ0 * APAR / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
+function electron_transport_pmodel(ϕ0::FT, APAR_canopy_moles::FT, Jmax::FT) where {FT}
+    J = 4 * ϕ0 * APAR_canopy_moles / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
     return J
 end
 
@@ -1610,21 +1638,21 @@ end
 
 
 """
-    compute_APAR(
+    compute_APAR_canopy_moles(
         f_abs::FT,
         par_d::FT,
         λ_γ_PAR::FT,
         lightspeed::FT,
         planck_h::FT,
-        N_a::FT
+        N_a::FT,
     ) where {FT}
 
-Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
-given the fraction of absorbed PAR (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2),
-and the wavelength of PAR (`λ_γ_PAR`, in m), and the physical constants necessary to compute
-the energy per mol PAR photons.
+Computes the absorbed photosynthetically active radiation over ground area (mol photons m^-2 s^-1)
+given the fraction of absorbed PAR by the canopy (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2) per ground area,
+and the wavelength of PAR (`λ_γ_PAR`, in m), the physical constants necessary to compute
+the energy per mol PAR photons, and the LAI.
 """
-function compute_APAR(
+function compute_APAR_canopy_moles(
     f_abs::FT,
     par_d::FT,
     λ_γ_PAR::FT,
@@ -1634,4 +1662,34 @@ function compute_APAR(
 ) where {FT}
     energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR
     return f_abs * par_d / energy_per_mole_photon_par
+end
+
+
+"""
+    compute_APAR_leaf_moles(
+        f_abs::FT,
+        par_d::FT,
+        λ_γ_PAR::FT,
+        lightspeed::FT,
+        planck_h::FT,
+        N_a::FT,
+        LAI::FT
+    ) where {FT}
+
+Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
+given the fraction of absorbed PAR by the canopy (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2) per ground area,
+and the wavelength of PAR (`λ_γ_PAR`, in m), the physical constants necessary to compute
+the energy per mol PAR photons, and the LAI.
+"""
+function compute_APAR_leaf_moles(
+    f_abs::FT,
+    par_d::FT,
+    λ_γ_PAR::FT,
+    lightspeed::FT,
+    planck_h::FT,
+    N_a::FT,
+    LAI::FT
+) where {FT}
+    APAR_canopy_moles =  compute_APAR_canopy_moles(f_abs, par_d, λ_γ_PAR, lightspeed, planck_h, N_a)
+    return APAR_canopy_moles / max(LAI, sqrt(eps(FT)))
 end
