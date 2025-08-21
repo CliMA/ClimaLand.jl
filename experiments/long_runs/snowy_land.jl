@@ -176,7 +176,6 @@ domain = ClimaLand.Domains.global_domain(
     context,
     nelements,
     mask_threshold = FT(0.99),
-    dz_tuple = nothing
 )
 params = LP.LandParameters(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, params)
