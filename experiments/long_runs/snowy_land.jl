@@ -178,6 +178,8 @@ domain = ClimaLand.Domains.global_domain(
     mask_threshold = FT(0.99),
     dz_tuple = nothing
 )
+params = LP.LandParameters(FT)
+model = setup_model(FT, start_date, stop_date, Δt, domain, params)
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;
@@ -189,9 +191,6 @@ diagnostics = ClimaLand.default_diagnostics(
     output_vars = :long,
     average_period= :hourly
 )
-
-params = LP.LandParameters(FT)
-model = setup_model(FT, start_date, stop_date, Δt, domain, params)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
