@@ -143,10 +143,9 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
     Γstar = @. lazy(co2_compensation(Γstar25, ΔHΓstar, T, To, R))
     ci = @. lazy(intercellular_co2(c_co2_air, Γstar, medlyn_factor))# may change?
-    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a, LAI))
     rates = @. lazy(
         optimality_max_photosynthetic_rates(
-            APAR_leaf_moles,
+            f_abs * par_d / energy_per_mole_photon_par,
             θj,
             ϕ,
             oi,
@@ -161,7 +160,7 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     Vcmax = rates.:2
     J = @. lazy(
         electron_transport(
-            APAR_leaf_moles,
+            f_abs * par_d / energy_per_mole_photon_par,
             Jmax,
             θj,
             ϕ,
@@ -184,8 +183,8 @@ function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
     @. Jmax25 = Jmax / arrhenius_function(T_canopy, To, R, ΔHJmax)
     @. Rd = dark_respiration(is_c3, Vcmax25, β, T_canopy, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
-    # Compute GPP
-    @. GPP = GPP_from_leaf_level_An(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+    # Compute GPP: TODO - move to diagnostics only
+    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 end
 
 get_Vcmax25(p, m::OptimalityFarquharModel) = p.canopy.photosynthesis.Vcmax25
@@ -207,11 +206,9 @@ function get_electron_transport(Y, p, canopy, m::OptimalityFarquharModel)
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    area_index = p.canopy.hydraulics.area_index
-    LAI = area_index.leaf
-    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a, LAI))
+    APAR = @. lazy(compute_APAR(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
     Jmax = get_Jmax(Y, p, canopy, m)
-    return @. lazy(electron_transport(APAR_leaf_moles, Jmax, θj, ϕ))
+    return @. lazy(electron_transport(APAR, Jmax, θj, ϕ))
 end
 
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
