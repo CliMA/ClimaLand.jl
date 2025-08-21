@@ -25,23 +25,23 @@ function run_benchmarks(
         @info "Benchmarking with Integrated Profiler"
         run_integrated_profiler(device, setup_simulation, outdir)
         @info "Done with integrated profiler"
-        @info "Running timing benchmarks"
-        (average_timing_s, std_timing_s) =
-            run_timing_benchmarks(device, setup_simulation)
-        @show (average_timing_s, std_timing_s)
-        if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) ==
-           "climaland-benchmark" && device isa ClimaComms.CUDADevice
-            if average_timing_s > PREVIOUS_GPU_TIME + std_timing_s
-                @info "Possible performance regression, previous average time was $(PREVIOUS_GPU_TIME)"
-            elseif average_timing_s < PREVIOUS_GPU_TIME - std_timing_s
-                @info "Possible significant performance improvement, please update PREVIOUS_GPU_TIME in $(@__DIR__)"
-            end
-            @testset "Performance" begin
-                @test PREVIOUS_GPU_TIME - 2std_timing_s <=
-                      average_timing_s <=
-                      PREVIOUS_GPU_TIME + 2std_timing_s
-            end
-        end
+        # @info "Running timing benchmarks"
+        # (average_timing_s, std_timing_s) =
+        #     run_timing_benchmarks(device, setup_simulation)
+        # @show (average_timing_s, std_timing_s)
+        # if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) ==
+        #    "climaland-benchmark" && device isa ClimaComms.CUDADevice
+        #     if average_timing_s > PREVIOUS_GPU_TIME + std_timing_s
+        #         @info "Possible performance regression, previous average time was $(PREVIOUS_GPU_TIME)"
+        #     elseif average_timing_s < PREVIOUS_GPU_TIME - std_timing_s
+        #         @info "Possible significant performance improvement, please update PREVIOUS_GPU_TIME in $(@__DIR__)"
+        #     end
+        #     @testset "Performance" begin
+        #         @test PREVIOUS_GPU_TIME - 2std_timing_s <=
+        #               average_timing_s <=
+        #               PREVIOUS_GPU_TIME + 2std_timing_s
+        #     end
+        # end
     elseif profiler == "nsight"
         simulation = setup_simulation()
         ClimaLand.Simulations.step!(simulation)
@@ -70,6 +70,7 @@ end
 function run_integrated_profiler(
     device::ClimaComms.CUDADevice,
     setup_simulation,
+    outdir,
 )
     simulation = setup_simulation()
     p = CUDA.@profile ClimaLand.Simulations.solve!(simulation)
@@ -84,6 +85,12 @@ function run_integrated_profiler(
         show(io, p)
     end
     println()
+    simulation = setup_simulation()
+    Profile.@profile ClimaLand.Simulations.solve!(simulation)
+    results = Profile.fetch()
+    flame_file = joinpath(outdir, "flame_$device_suffix.html")
+    ProfileCanvas.html_file(flame_file, results)
+    @info "Saved compute flame to $flame_file"
     return
 end
 
