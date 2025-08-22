@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Fix divide by zero when VPD is zero PR[#1363](https://github.com/CliMA/ClimaLand.jl/pull/1363)
 
 v0.18.2
 -------
