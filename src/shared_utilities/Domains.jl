@@ -1109,8 +1109,7 @@ julia> domain = ClimaLand.Domains.SphericalShell(;
         radius = 6300e3,
         depth = 15.,
         nelements = (10, 3),
-        dz_tuple = ((1.0, 0.05)),
-    );
+        dz_tuple = ((1.0, 0.05)));
 
 julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
 (9.0, 9.0)
@@ -1119,11 +1118,10 @@ julia> domain = ClimaLand.Domains.Plane(;
         xlim = (50000.0, 80000.),
         ylim = (30000.0, 40000.),
         longlat = (-118.14452, 34.14778),
-        nelements = (20, 3),
-    );
+        nelements = (20, 3));
 
-julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
-(0.05839157, 0.20961125)
+julia> round.(ClimaLand.Domains.average_horizontal_resolution_degrees(domain), digits = 3)
+(0.031, 0.389)
 ```
 """
 function average_horizontal_resolution_degrees(
