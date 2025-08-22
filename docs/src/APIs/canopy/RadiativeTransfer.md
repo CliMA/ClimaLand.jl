@@ -8,9 +8,26 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.TwoStreamModel
+ClimaLand.Canopy.TwoStreamModel{FT}(
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    n_layers::Int = 20,
+) where {FT <: AbstractFloat}
 ClimaLand.Canopy.TwoStreamParameters
 ClimaLand.Canopy.BeerLambertModel
+ClimaLand.Canopy.BeerLambertModel{FT}(
+    domain;
+    radiation_parameters = clm_canopy_radiation_parameters(
+        domain.space.surface,
+    ),
+    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+) where {FT <: AbstractFloat}
 ClimaLand.Canopy.BeerLambertParameters
+ClimaLand.Canopy.BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}
+ClimaLand.Canopy.TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}
 ```
 
 ## Radiative Transfer Parameterizations

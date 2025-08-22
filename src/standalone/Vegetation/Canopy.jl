@@ -157,7 +157,6 @@ The following default parameters are used:
 - sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
 - pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
-
 function PModel{FT}(;
     cstar = FT(0.41),
     β = FT(146),
