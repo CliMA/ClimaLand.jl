@@ -568,8 +568,32 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
 @diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
 @diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
-@diagnostic_compute "surface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_s
-@diagnostic_compute "subsurface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_ss
+function compute_surface_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    return Runoff.get_surface_runoff(
+        land_model.soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
+function compute_subsurface_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    return Runoff.get_subsurface_runoff(
+        land_model.soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
 
 function compute_evapotranspiration!(
     out,
