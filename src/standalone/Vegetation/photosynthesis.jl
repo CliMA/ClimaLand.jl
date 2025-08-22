@@ -125,8 +125,8 @@ function gross_leaf_photosynthesis_at_a_point_Farquhar(
     s6,
     E,
 )
-    Jmax = max_electron_transport(Vcmax25_leaf, ΔHJmax, T, To, R)
-    J = electron_transport(APAR_leaf_moles, Jmax, θj, ϕ)
+    Jmax = max_electron_transport_farquhar(Vcmax25_leaf, ΔHJmax, T, To, R)
+    J = electron_transport_farquhar(APAR_leaf_moles, Jmax, θj, ϕ)
     Vcmax_leaf = compute_Vcmax(
         is_c3,
         Vcmax25_leaf,
@@ -141,10 +141,11 @@ function gross_leaf_photosynthesis_at_a_point_Farquhar(
         s4,
     )
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
-    ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
+    ci = intercellular_co2_farquhar(c_co2, Γstar, medlyn_factor)
     Aj = light_assimilation(is_c3, J, ci, Γstar, APAR_leaf_moles, E)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+    Kmm = Kc * (1 + oi / Ko)
     Ac = rubisco_assimilation(is_c3, Vcmax_leaf, ci, Γstar, Kc, Ko, oi)
     return gross_photosynthesis(Ac, Aj)
 end
@@ -286,7 +287,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     # See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
     @. An = max(0, β * A_leaf - Rd)
     # Compute GPP: scale from leaf level A to canopy level GPP
-    @. GPP = GPP_from_leaf_level_An(
+    @. GPP = GPP_from_leaf_level_A(
         A_leaf * β,
         extinction_coeff(G_Function, cosθs),
         LAI,
@@ -306,7 +307,7 @@ function get_Jmax_leaf(Y, p, canopy, m::FarquharModel)
     (; Vcmax25, ΔHJmax, To) = m.parameters
     R = LP.gas_constant(canopy.parameters.earth_param_set)
     Jmax_leaf =
-        @. lazy(max_electron_transport(Vcmax25, ΔHJmax, T_canopy, To, R))
+        @. lazy(max_electron_transport_farquhar(Vcmax25, ΔHJmax, T_canopy, To, R))
     return Jmax_leaf
 end
 
@@ -316,63 +317,6 @@ function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
     Jmax = get_Jmax_leaf(Y, p, canopy, m)
     FT = eltype(p.canopy.photosynthesis.An)
     return @. lazy(J / max(Jmax, sqrt(eps(FT))))
-end
-"""
-    max_electron_transport(Vcmax::FT) where {FT}
-
-Computes the maximum potential rate of electron transport (`Jmax`),
-in units of mol/m^2/s,
-as a function of Vcmax at 25 °C (`Vcmax25`),
-a constant (`ΔHJmax`), a standard temperature (`To`),
-the unversal gas constant (`R`), and the temperature (`T`);
-used in the Farquhar model.
-
-See Table 11.5 of G. Bonan's textbook,
-Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function max_electron_transport(
-    Vcmax25::FT,
-    ΔHJmax::FT,
-    T::FT,
-    To::FT,
-    R::FT,
-) where {FT}
-    Jmax25 = Vcmax25 * FT(exp(1))
-    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
-    return Jmax
-end
-
-
-"""
-    electron_transport(APAR_leaf_moles::FT,
-                       Jmax::FT,
-                       θj::FT,
-                       ϕ::FT) where {FT}
-
-Computes the rate of electron transport (`J`),
-in units of mol/m^2/s, as a function of
-the maximum potential rate of electron transport (`Jmax`),
-absorbed photosynthetically active radiation (`APAR_leaf_moles`),
-an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
-and the quantum yield of photosystem II (`ϕ`);
-used in the Farquhar model.
-
-See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function electron_transport(
-    APAR_leaf_moles::FT,
-    Jmax::FT,
-    θj::FT,
-    ϕ::FT,
-) where {FT}
-    # Light utilization of APAR (leaf level)
-    IPSII = ϕ * APAR_leaf_moles / 2
-    # This is a solution to a quadratic equation
-    # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
-    J =
-        (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
-        (2 * θj)
-    return J
 end
 
 function get_J_leaf(Y, p, canopy, m::FarquharModel)
@@ -400,7 +344,7 @@ function get_J_leaf(Y, p, canopy, m::FarquharModel)
 
     Jmax_leaf = get_Jmax_leaf(Y, p, canopy, m)
     (; θj, ϕ) = m.parameters
-    return @. lazy(electron_transport(APAR_leaf_moles, Jmax_leaf, θj, ϕ))
+    return @. lazy(electron_transport_farquhar(APAR_leaf_moles, Jmax_leaf, θj, ϕ))
 end
 
 include("./optimality_farquhar.jl")

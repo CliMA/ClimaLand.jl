@@ -9,8 +9,8 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     co2_compensation,
     rubisco_assimilation,
     light_assimilation,
-    max_electron_transport,
-    electron_transport,
+    max_electron_transport_farquhar,
+    electron_transport_farquhar,
     optimality_max_photosynthetic_rates,
     net_photosynthesis,
     moisture_stress,
@@ -428,16 +428,72 @@ function extinction_coeff(G_Function, cosθs::FT) where {FT}
 end
 
 # 2. Photosynthesis, Farquhar model
+"""
+    max_electron_transport_farquhar(Vcmax::FT) where {FT}
+
+Computes the maximum potential rate of electron transport (`Jmax`),
+in units of mol/m^2/s,
+as a function of Vcmax at 25 °C (`Vcmax25`),
+a constant (`ΔHJmax`), a standard temperature (`To`),
+the unversal gas constant (`R`), and the temperature (`T`);
+used in the Farquhar model.
+
+See Table 11.5 of G. Bonan's textbook,
+Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function max_electron_transport_farquhar(
+    Vcmax25::FT,
+    ΔHJmax::FT,
+    T::FT,
+    To::FT,
+    R::FT,
+) where {FT}
+    Jmax25 = Vcmax25 * FT(exp(1))
+    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
+    return Jmax
+end
 
 
 """
-    intercellular_co2(ca::FT, Γstar::FT, medlyn_factor::FT) where{FT}
+    electron_transport_farquhar(APAR_leaf_moles::FT,
+                       Jmax::FT,
+                       θj::FT,
+                       ϕ::FT) where {FT}
+
+Computes the rate of electron transport (`J`),
+in units of mol/m^2/s, as a function of
+the maximum potential rate of electron transport (`Jmax`),
+absorbed photosynthetically active radiation (`APAR_leaf_moles`),
+an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
+and the quantum yield of photosystem II (`ϕ`);
+used in the Farquhar model.
+
+See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function electron_transport_farquhar(
+    APAR_leaf_moles::FT,
+    Jmax::FT,
+    θj::FT,
+    ϕ::FT,
+) where {FT}
+    # Light utilization of APAR (leaf level)
+    IPSII = ϕ * APAR_leaf_moles / 2
+    # This is a solution to a quadratic equation
+    # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
+    J =
+        (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
+        (2 * θj)
+    return J
+end
+
+"""
+    intercellular_co2_farquhar(ca::FT, Γstar::FT, medlyn_factor::FT) where{FT}
 
 Computes the intercellular CO2 concentration (mol/mol) given the
 atmospheric concentration (`ca`, mol/mol), the CO2 compensation (`Γstar`,
  mol/mol), and the Medlyn factor (unitless); used in the Farquhar model.
 """
-function intercellular_co2(ca::FT, Γstar::FT, medlyn_term::FT) where {FT}
+function intercellular_co2_farquhar(ca::FT, Γstar::FT, medlyn_term::FT) where {FT}
     c_i = max(ca * (1 - 1 / medlyn_term), Γstar)
     return c_i
 end
@@ -486,48 +542,20 @@ end
     c3_rubisco_assimilation(Vcmax::FT,
                          ci::FT,
                          Γstar::FT,
-                         Kc::FT,
-                         Ko::FT,
-                         oi::FT) where {FT}
+                         Kmm::FT) where {FT}
 
 Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
 in units of moles CO2/m^2/s,
 as a function of the maximum rate of carboxylation of Rubisco (`Vcmax`),
 the leaf internal carbon dioxide partial pressure (`ci`),
-the CO2 compensation point (`Γstar`), and Michaelis-Menten parameters
-for CO2 and O2, respectively, (`Kc`) and (`Ko`); used in the Farquhar model.
+the CO2 compensation point (`Γstar`), and Michaelis-Menten parameter (`K_mm`).
 
-The empirical parameter oi is equal to 0.209 (mol/mol).
+Note that Kmm, ci, and Γstar must have the same units. In the Farquhar model, these are
+mol/mol, while in the Pmodel, these are Pa. The units of Vcmax are mol CO2/m^2/s.
+
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function c3_rubisco_assimilation(
-    Vcmax::FT,
-    ci::FT,
-    Γstar::FT,
-    Kc::FT,
-    Ko::FT,
-    oi::FT,
-) where {FT}
-    Ac = Vcmax * (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
-    return Ac
-end
-
-"""
-    c3_rubisco_assimilation_pmodel(
-        Vcmax::FT,
-        ci::FT,
-        Γstar::FT,
-        Kmm::FT,
-    ) where {FT}
-
-Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
-in units of moles CO2/m^2/s. Identical to the function above, except we take
-Kmm = Kc * (1 + oi / Ko)
-directly, where Kmm represents an effective Michaelis-Menten coefficient.
-
-Used in the Pmodel.
-"""
-function c3_rubisco_assimilation_pmodel(
     Vcmax::FT,
     ci::FT,
     Γstar::FT,

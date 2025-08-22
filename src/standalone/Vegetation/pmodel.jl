@@ -55,9 +55,9 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct PModelConstants{FT}
     """Gas constant (J mol^-1 K^-1)"""
     R::FT
-    """Michaelis-Menten parameter for carboxylation at 25°C (μmol mol^-1)"""
+    """Michaelis-Menten parameter for carboxylation at 25°C (Pa)"""
     Kc25::FT
-    """Michaelis-Menten parameter for oxygenation at 25°C (μmol mol^-1)"""
+    """Michaelis-Menten parameter for oxygenation at 25°C (Pa)"""
     Ko25::FT
     """Reference temperature equal to 25˚C (K)"""
     To::FT
@@ -121,12 +121,12 @@ Creates a `PModelConstants` object with default values for the P-model constants
 See Stocker et al. (2020) Table A2 and references within for more information.
 """
 function PModelConstants{FT}(;
-    Kc25 = FT(39.97), # Pa (see note on line 38 above)
-    Ko25 = FT(27480), # Pa (see note on line 38 above)
+    Kc25 = FT(39.97),
+    Ko25 = FT(27480),
     ΔHkc = FT(79430),
     ΔHko = FT(36380),
     ΔHΓstar = FT(37830),
-    Γstar25 = FT(4.332), # Pa (see note on line 38 above)
+    Γstar25 = FT(4.332),
     Ha_Vcmax = FT(71513),
     Hd_Vcmax = FT(200000),
     aS_Vcmax = FT(668.39),
@@ -928,7 +928,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         Vcmax # canopy level
 
     @. GPP = gross_photosynthesis(
-        c3_rubisco_assimilation(Vcmax, ci, Γstar, Kmm),
+        c3_rubisco_assimilation_pmodel(Vcmax, ci, Γstar, Kmm),
         c3_light_assimilation(J, ci, Γstar),
     )
 
