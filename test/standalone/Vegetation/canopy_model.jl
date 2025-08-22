@@ -360,7 +360,8 @@ import ClimaParams
             An = p.canopy.photosynthesis.An
             gcanopy = Array(
                 parent(
-                    ClimaLand.Canopy.upscale_leaf_conductance.(
+                    LAI .*
+                    ClimaLand.Canopy.conductance_molar_flux_to_m_per_s.(
                         medlyn_conductance.(
                             g0,
                             Drel,
@@ -368,7 +369,6 @@ import ClimaParams
                             An,
                             FT.(c_atmos(t0)),
                         ),
-                        LAI,
                         FT.(T_atmos(t0)),
                         R,
                         FT.(P_atmos(t0)),
