@@ -27,6 +27,9 @@ using CairoMakie, StatsBase
 
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 climaland_dir = pkgdir(ClimaLand)
 
 site_ID = "US-MOz"
@@ -131,7 +134,7 @@ composition_parameters = (; ν_ss_quartz, ν_ss_om, ν_ss_gravel)
 soil_model = Soil.EnergyHydrology{FT}(
     domain,
     forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     albedo = α_soil,
     runoff,
@@ -150,7 +153,7 @@ snow_model = Snow.SnowModel(
     FT,
     ClimaLand.Domains.obtain_surface_domain(domain),
     forcing,
-    earth_param_set,
+    toml_dict,
     dt;
     prognostic_land_components,
     α_snow,

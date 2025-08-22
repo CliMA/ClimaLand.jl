@@ -30,6 +30,9 @@ using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 climaland_dir = pkgdir(ClimaLand)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
@@ -179,7 +182,7 @@ soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
     soil_forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     albedo = soil_albedo,
@@ -233,7 +236,8 @@ maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
-    LAI;
+    LAI,
+    toml_dict;
     n_stem,
     n_leaf,
     h_stem,
@@ -257,7 +261,7 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     z_0m = z0_m,
     z_0b = z0_b,
     prognostic_land_components,

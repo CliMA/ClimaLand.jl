@@ -46,6 +46,9 @@ import ClimaLand.LandSimVis as LandSimVis;
 
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # We will use prescribed atmospheric and radiative forcing from the
 # US-NR1 tower.  We also
@@ -115,7 +118,7 @@ snow = Snow.SnowModel(
     FT,
     surface_domain,
     forcing,
-    earth_param_set,
+    toml_dict,
     Δt;
     prognostic_land_components,
     α_snow,
@@ -140,7 +143,7 @@ canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     (; atmos, radiation, ground),
     LAI,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     radiative_transfer,
 );
@@ -149,8 +152,7 @@ canopy = Canopy.CanopyModel{FT}(
 # defaults for the soil model, we don't need to provide anything for it.
 # For the canopy and snow models, we'll provide the models we just set up.
 
-land_model =
-    LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; snow, canopy);
+land_model = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy);
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,

@@ -23,6 +23,9 @@ import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 climaland_dir = pkgdir(ClimaLand)
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
@@ -133,7 +136,7 @@ composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
     forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     albedo = soil_albedo,
@@ -185,7 +188,8 @@ maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
-    LAI;
+    LAI,
+    toml_dict;
     n_stem,
     n_leaf,
     h_stem,
@@ -210,7 +214,7 @@ canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     z_0m = z0_m,
     z_0b = z0_b,
     prognostic_land_components,
@@ -226,7 +230,7 @@ snow = Snow.SnowModel(
     FT,
     surface_domain,
     forcing,
-    earth_param_set,
+    toml_dict,
     dt;
     prognostic_land_components,
 )

@@ -8,6 +8,8 @@ import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy: AbstractCanopyComponent, set_canopy_prescribed_field!
 using ClimaLand: AbstractGroundConditions, PrescribedGroundConditions
 using ClimaCore
+import ClimaLand.Parameters as LP
+import ClimaParams as CP
 using DocStringExtensions
 
 import ClimaLand:
@@ -83,6 +85,20 @@ function PrescribedSiteAreaIndex{FT}(
     RAI::FT,
 ) where {FT <: AbstractFloat}
     PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
+end
+
+function PrescribedSiteAreaIndex(
+    LAIfunction::AbstractTimeVaryingInput,
+    toml_dict::CP.AbstractTOMLDict;
+    SAI = toml_dict["SAI"],
+    RAI = toml_dict["RAI"],
+)
+    FT = CP.float_type(toml_dict)
+    return PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(
+        LAIfunction,
+        SAI,
+        RAI,
+    )
 end
 
 """
@@ -187,6 +203,32 @@ function PlantHydraulicsParameters(;
         rooting_depth,
     )
 end
+
+function PlantHydraulicsParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    ai_parameterization::PrescribedSiteAreaIndex{FT},
+    ν = toml_dict["plant_nu"],
+    S_s = toml_dict["plant_S_s"],
+    conductivity_model,
+    retention_model,
+    rooting_depth::Union{FT, ClimaCore.Fields.Field},
+) where {FT}
+    return PlantHydraulicsParameters{
+        FT,
+        typeof(ai_parameterization),
+        typeof(conductivity_model),
+        typeof(retention_model),
+        typeof(rooting_depth),
+    }(
+        ai_parameterization,
+        ν,
+        S_s,
+        conductivity_model,
+        retention_model,
+        rooting_depth,
+    )
+end
+
 
 """
     PlantHydraulicsModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
@@ -442,6 +484,16 @@ struct Weibull{FT} <: AbstractConductivityModel{FT}
     c::FT
 end
 
+function Weibull(
+    toml_dict::CP.AbstractTOMLDict;
+    K_sat_plant = toml_dict["K_sat_plant"],
+    ψ63 = toml_dict["psi_63"],
+    c = toml_dict["Weibull_c"],
+)
+    FT = CP.float_type(toml_dict)
+    return Weibull{FT}(K_sat_plant, ψ63, c)
+end
+
 """
     hydraulic_conductivity(conductivity_params::Weibull{FT}, ψ::FT) where {FT}
 
@@ -476,6 +528,14 @@ $(DocStringExtensions.FIELDS)
 struct LinearRetentionCurve{FT} <: AbstractRetentionModel{FT}
     "Bulk modulus of elasticity and slope of potential to volume curve. See also Corcuera, 2002, and Christoffersen, 2016."
     a::FT
+end
+
+function LinearRetentionCurve(
+    toml_dict::CP.AbstractTOMLDict;
+    a = toml_dict["a"],
+)
+    FT = CP.float_type(toml_dict)
+    return LinearRetentionCurve{FT}(a)
 end
 
 """

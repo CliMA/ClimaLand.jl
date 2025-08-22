@@ -37,6 +37,9 @@ device_suffix =
 
 FT = Float64
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the domain
@@ -67,7 +70,7 @@ soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     domain,
     soil_forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
 )
@@ -95,7 +98,7 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
 )
 

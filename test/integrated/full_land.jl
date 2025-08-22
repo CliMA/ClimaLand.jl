@@ -18,6 +18,9 @@ using ClimaCore
 
 for FT in (Float32, Float64)
     @testset "Default LandModel constructor, FT=$FT" begin
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
         domain = Domains.global_domain(FT)
         atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
         forcing = (; atmos, radiation)
@@ -28,7 +31,7 @@ for FT in (Float32, Float64)
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         )
@@ -54,7 +57,7 @@ for FT in (Float32, Float64)
             surface_domain,
             canopy_forcing,
             LAI,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components,
         )
 
@@ -64,7 +67,7 @@ for FT in (Float32, Float64)
             FT,
             surface_domain,
             forcing,
-            earth_param_set,
+            toml_dict,
             dt;
             prognostic_land_components,
         )
@@ -179,7 +182,10 @@ context = ClimaComms.context()
 nelements = (101, 15)
 Δt = 450.0
 FT = Float64
-earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = LP.LandParameters(toml_dict)
 
 domain = ClimaLand.Domains.global_domain(
     FT;
@@ -203,7 +209,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
 LAI =
     ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 
-land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt);
+land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()

@@ -6,6 +6,8 @@ using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
     AbstractSoilSource, AbstractSoilModel, RichardsModel, EnergyHydrology
+import ClimaLand.Parameters as LP
+import ClimaParams as CP
 export TOPMODELRunoff,
     NoRunoff,
     SurfaceRunoff,
@@ -205,6 +207,16 @@ function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT, F}
     return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
 end
 
+function TOPMODELRunoff(
+    toml_dict::CP.AbstractTOMLDict;
+    f_max::F,
+    f_over = toml_dict["f_over"],
+    R_sb = toml_dict["R_sb"],
+) where {F}
+    FT = CP.float_type(toml_dict)
+    subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
+    return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
+end
 
 """
     update_infiltration_water_flux!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)

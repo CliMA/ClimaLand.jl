@@ -79,7 +79,7 @@ end
     SoilCanopyModel{FT}(
         forcing,
         LAI,
-        earth_param_set,
+        toml_dict::CP.AbstractTOMLDict,
         domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
@@ -111,7 +111,7 @@ end
 
 A convenience constructor for setting up the default SoilCanpyModel,
 where all the parameterizations and parameter values are set to default values
-or passed in via the `earth_param_set`. The boundary conditions of all models
+or passed in via the `toml_dict`. The boundary conditions of all models
 correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
@@ -120,12 +120,12 @@ as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical
 function SoilCanopyModel{FT}(
     forcing,
     LAI,
-    earth_param_set,
+    toml_dict::CP.AbstractTOMLDict,
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :soil, :soilco2),
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
     ),
@@ -145,7 +145,7 @@ function SoilCanopyModel{FT}(
             ground = ClimaLand.PrognosticSoilConditions{FT}(),
         ),
         LAI,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :soil, :soilco2),
     ),
 ) where {FT}

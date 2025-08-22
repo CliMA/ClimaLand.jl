@@ -15,14 +15,18 @@ for FT in (Float32, Float64)
         domain = ClimaLand.Domains.global_domain(FT)
         atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
         forcing = (; atmos, radiation)
-        earth_param_set = LP.LandParameters(FT)
+        # earth_param_set = LP.LandParameters(FT)
+        toml_dict = ClimaLand.Parameters.create_toml_dict(
+            FT,
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+        )
         prognostic_land_components = (:canopy, :soil, :soilco2)
 
         # Soil model
         soil = EnergyHydrology{FT}(
             domain,
             forcing,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         )
@@ -48,7 +52,7 @@ for FT in (Float32, Float64)
             canopy_domain,
             canopy_forcing,
             LAI,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components,
         )
 

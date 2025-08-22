@@ -4,6 +4,7 @@ ClimaLand.jl Release Notes
 main
 -------
 - Fix divide by zero when VPD is zero PR[#1363](https://github.com/CliMA/ClimaLand.jl/pull/1363)
+- Use ClimaParams instead of hard coding values for long runs PR[#1300](https://github.com/CliMA/ClimaLand.jl/pull/1300)
 
 v0.18.2
 -------
