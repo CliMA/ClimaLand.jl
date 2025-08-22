@@ -61,7 +61,7 @@ const FT = Float64
 
 # Initialize land parameters and site configuration.
 earth_param_set = LP.LandParameters(FT)
-site_ID = "AU-Rob"
+site_ID = ARGS[1]
 # site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 
 # Get site-specific information: location coordinates, time offset, and sensor
@@ -70,8 +70,8 @@ site_ID = "AU-Rob"
     FluxnetSimulations.get_location(site_ID)
 
 # Get maximum simulation start and end dates in UTC; these must be included in the forcing data range
-start_date = DateTime(2014, 3, 1)
-stop_date = DateTime(2014, 7, 1)
+start_date = DateTime(2011, 3, 1)
+stop_date = DateTime(2011, 7, 1)
 Δt = 450.0; # seconds
 
 # ## Domain and Forcing Setup
@@ -331,6 +331,9 @@ EKP.get_ϕ_mean_final(prior, ensemble_kalman_process);
 # Now, let's analyze the calibration results by examining parameter evolution
 # and comparing model outputs across iterations.
 # 
+savedir =
+    joinpath(pkgdir(ClimaLand), "experiments/calibration/out/$(site_ID)/out")
+mkpath(savedir)
 # Plot the parameter ensemble evolution over iterations to visualize
 # convergence:
 
@@ -350,8 +353,8 @@ EKP.Visualize.plot_error_over_iters(
     fig[1, dim_size + 1],
     ensemble_kalman_process,
 )
-CairoMakie.save("experiments/integrated/fluxnet/$(site_ID)/constrained_params_and_error.png", fig)
-fig
+CairoMakie.save("$(savedir)/constrained_params_and_error.png", fig)
+# fig
 
 # Compare the model output between the first and last iterations to assess
 # improvement:
@@ -399,5 +402,5 @@ axislegend(
 )
 
 CairoMakie.resize_to_layout!(fig)
-CairoMakie.save("experiments/integrated/fluxnet/$(site_ID)/G_first_and_last.png", fig)
-fig
+CairoMakie.save("$(savedir)/G_first_and_last.png", fig)
+# fig
