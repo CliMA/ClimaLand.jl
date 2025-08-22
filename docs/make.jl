@@ -4,7 +4,7 @@ push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 using Distributed
 @everywhere using Documenter
 @everywhere using Literate
-using ClimaLand
+@everywhere using ClimaLand
 include("pages_helper.jl")
 include("list_tutorials.jl")
 
