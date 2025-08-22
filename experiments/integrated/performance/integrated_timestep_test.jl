@@ -119,6 +119,9 @@ device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set the model domain
@@ -212,7 +215,7 @@ composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 soil = Soil.EnergyHydrology{FT}(
     land_domain,
     soil_forcing,
-    earth_param_set;
+    toml_dict;
     prognostic_land_components,
     albedo = soil_albedo,
     runoff,
@@ -254,11 +257,7 @@ f_root_to_shoot = FT(3.5)
 RAI = maxLAI * f_root_to_shoot
 plant_ν = FT(1.44e-4)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-K_sat_plant = 5e-9
-ψ63 = FT(-4 / 0.0098)
-Weibull_param = FT(4)
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+conductivity_model = PlantHydraulics.Weibull(toml_dict)
 n_stem = Int64(1)
 n_leaf = Int64(1)
 h_stem = FT(9) # m
@@ -266,7 +265,8 @@ h_leaf = FT(9.5) # m
 h_canopy = h_stem + h_leaf
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
-    LAI;
+    LAI,
+    toml_dict;
     SAI,
     RAI,
     n_stem,
@@ -289,7 +289,7 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     z_0m,
     z_0b,
     prognostic_land_components,

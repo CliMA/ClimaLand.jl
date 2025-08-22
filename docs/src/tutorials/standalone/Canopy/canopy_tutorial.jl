@@ -64,6 +64,9 @@ import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml");
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # We will use prescribed atmospheric and radiative forcing from the
 # US-MOz tower.
@@ -167,7 +170,8 @@ conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     domain,
-    LAI;
+    LAI,
+    toml_dict;
     n_stem,
     n_leaf,
     h_stem,
@@ -194,7 +198,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     domain,
     forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     hydraulics,
     radiative_transfer,
     conductance,

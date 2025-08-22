@@ -62,6 +62,9 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float64;
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
 # Site-specific information
 time_offset = 7 # difference from UTC in hours
@@ -104,7 +107,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
     LAI,
-    earth_param_set;
+    toml_dict;
     energy,
 );
 
