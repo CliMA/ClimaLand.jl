@@ -11,7 +11,6 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     light_assimilation,
     max_electron_transport,
     electron_transport,
-    optimality_max_photosynthetic_rates,
     net_photosynthesis,
     moisture_stress,
     dark_respiration,
@@ -642,61 +641,6 @@ function electron_transport(APAR::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
         (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
         (2 * θj)
     return J
-end
-
-"""
-optimality_max_photosynthetic_rates(APAR::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
-
-Computes the photosynthesis rates Vcmax and Jmax in
-mol/m^2/s given absorbed photosynthetically active radiation (`APAR`),
-an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
- the quantum yield of photosystem II (`ϕ`), the intercellular
-o2 content (`oi`), the intercellular CO2 concentration (ci),
-Γstar, and Kc and Ko.
-
-See Smith et al. 2019.
-"""
-function optimality_max_photosynthetic_rates(
-    APAR::FT,
-    θj::FT,
-    ϕ::FT,
-    oi::FT,
-    ci::FT,
-    Γstar::FT,
-    Kc::FT,
-    Ko::FT,
-    c::FT,
-) where {FT}
-    # Light utilization of APAR
-    IPSII = ϕ * APAR / 2
-
-    mc = (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
-    m = (ci - Γstar) / (ci + 2 * Γstar)
-
-    # Corrected form of ω, see https://github.com/SmithEcophysLab/optimal_vcmax_R/issues/3
-    if ((θj < 1) & (8 * c > m) & (4 * c < m) & (m / c < 8 * θj)) |
-       ((θj > 1) & (4 * c > m))
-        ω =
-            (
-                -2 + 4 * θj - sqrt(
-                    ((-1 + θj) * (m - 8 * c * θj)^2) / (c * (-m + 4 * c * θj)),
-                )
-            ) / 2
-    elseif ((θj < 1) & (8 * c < m)) |
-           ((m / c > 8 * θj) & (8 * c > m) & (4 * c < m))
-        ω =
-            (
-                -2 +
-                4 * θj +
-                sqrt(((-1 + θj) * (m - 8 * c * θj)^2) / (c * (-m + 4 * c * θj)))
-            ) / 2
-    else
-        ω = FT(0)
-    end
-    ωstar = 1 + ω - sqrt((1 + ω)^2 - 4 * θj * ω)
-    Jmax = IPSII * ω
-    Vcmax = mc > eps(FT) ? IPSII * (m / mc) * ωstar / (8 * θj) : FT(0)
-    return Jmax, Vcmax
 end
 
 """
