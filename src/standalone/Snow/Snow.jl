@@ -145,6 +145,17 @@ function ZenithAngleAlbedoModel(
     ZenithAngleAlbedoModel(α_0, Δα, k, β, x0)
 end
 
+function ZenithAngleAlbedoModel(
+    toml_dict::CP.AbstractTOMLDict;
+    α_0 = toml_dict["alpha_0"],
+    Δα = toml_dict["delta_alpha"],
+    k = toml_dict["k"],
+    β = toml_dict["beta"],
+    x0 = toml_dict["x0"],
+)
+    return ZenithAngleAlbedoModel(α_0, Δα, k, β = β, x0 = x0)
+end
+
 """
     AbstractSnowCoverFractionModel{FT}
 
@@ -224,6 +235,16 @@ function WuWuSnowCoverFractionModel(
     return WuWuSnowCoverFractionModel(z0, β_scf, γ, β0, β_min, horz_degree_res)
 end
 
+function WuWuSnowCoverFractionModel(
+    toml_dict::CP.AbstractTOMLDict,
+    horz_degree_res;
+    γ = toml_dict["gamma"],
+    β0 = toml_dict["beta_0"],
+    β_min = toml_dict["beta_min"],
+    z0 = toml_dict["z0"],
+)
+    return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0 = z0)
+end
 
 """
     SnowParameters{FT <: AbstractFloat, PSE}
@@ -428,7 +449,7 @@ end
         FT,
         domain,
         forcing,
-        earth_param_set,
+        toml_dict::CP.AbstractTOMLDict,
         Δt;
         prognostic_land_components = (:snow,),
         z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
@@ -449,7 +470,7 @@ end
         ΔS = FT(0.1)
     )
 
-Creates a SnowModel model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
+Creates a SnowModel model with the given float type FT, domain, toml_dict, forcing, and prognostic land components.
 
 When running the snow model in standalone mode, provide `prognostic_land_components = (:snow,)`, while for running integrated 
 land models, this should be a list of the component models. This value of this argument must be the same across all 
@@ -461,26 +482,20 @@ function SnowModel(
     FT,
     domain,
     forcing,
-    earth_param_set,
+    toml_dict::CP.AbstractTOMLDict,
     Δt;
     prognostic_land_components = (:snow,),
-    z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
-    z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
-    ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
-    α_snow = ConstantAlbedoModel(LP.get_default_parameter(FT, :snow_albedo)),
-    density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
-    scf = WuWuSnowCoverFractionModel(
-        FT(0.106),
-        FT(1.81),
-        FT(0.08),
-        FT(1.77),
-        FT(1),
-        FT(1),
-    ),
-    θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
-    Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
-    ΔS = FT(0.1),
+    z_0m = toml_dict["snow_momentum_roughness_length"],
+    z_0b = toml_dict["snow_scalar_roughness_length"],
+    ϵ_snow = toml_dict["snow_emissivity"],
+    α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+    density = MinimumDensityModel(toml_dict["snow_density"]),
+    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+    θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+    Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+    ΔS = toml_dict["delta_S"],
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     parameters = SnowParameters{FT}(
         Δt;
         earth_param_set,

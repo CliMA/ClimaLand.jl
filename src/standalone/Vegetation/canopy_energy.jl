@@ -64,6 +64,14 @@ function BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
     return BigLeafEnergyParameters{FT}(ac_canopy)
 end
 
+function BigLeafEnergyParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    ac_canopy = toml_dict["ac_canopy"],
+)
+    FT = CP.float_type(toml_dict)
+    return BigLeafEnergyParameters{FT}(ac_canopy)
+end
+
 
 """
     BigLeafEnergyModel{FT} <: AbstractCanopyEnergyModel{FT}

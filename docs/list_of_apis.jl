@@ -23,4 +23,5 @@ apis = [
     "Integrated Models" => "APIs/ClimaLand.md",
     "Shared Utilities" =>
         ["APIs/Simulations.md", "APIs/shared_utilities.md"],
+    "Parameters" => "APIs/parameters.md",
 ]

@@ -65,17 +65,6 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":snow_capped_mountain: Low-Res Snowy Land"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land.jl
-        artifact_paths:
-          - "lowres_snowy_land_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
       - label: ":sunglasses: California regional simulation"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/land_region.jl

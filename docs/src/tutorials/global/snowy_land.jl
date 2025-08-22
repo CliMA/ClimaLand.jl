@@ -32,6 +32,9 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir);
 earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
 # Set timestep, start_date, stop_date:
 Δt = 450.0
@@ -63,7 +66,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
 LAI =
     ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 # Make the model:
-model = ClimaLand.LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt);
+model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 simulation = ClimaLand.Simulations.LandSimulation(
     start_date,
     stop_date,

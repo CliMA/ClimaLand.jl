@@ -51,6 +51,7 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
+    earth_param_set = LP.LandParameters(toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data
@@ -75,19 +76,22 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
 
     # Overwrite some defaults for the canopy model
     # Energy model
-    ac_canopy = FT(2.5e3)
-    energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+    energy_args = Canopy.BigLeafEnergyParameters(toml_dict)
+    energy = Canopy.BigLeafEnergyModel{FT}(energy_args)
 
     # Plant hydraulics
-    a = FT(0.2 * 0.0098) # 1/m
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
-    hydraulics =
-        Canopy.PlantHydraulicsModel{FT}(surface_domain, LAI; retention_model)
+    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(
+        surface_domain,
+        LAI,
+        toml_dict;
+        retention_model,
+    )
 
     # Roughness lengths
     h_canopy = hydraulics.compartment_surfaces[end]
-    z0_m = FT(0.13) * h_canopy
-    z0_b = FT(0.1) * z0_m
+    z_0m = FT(0.13) * h_canopy
+    z_0b = FT(0.1) * z_0m
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
@@ -96,36 +100,25 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         surface_domain,
         canopy_forcing,
         LAI,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
-        z_0m = z0_m,
-        z_0b = z0_b,
+        z_0m,
+        z_0b,
     )
 
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
-    )
+    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
-    scf = Snow.WuWuSnowCoverFractionModel(
-        FT(0.08),
-        FT(1.77),
-        FT(1.0),
-        horz_degree_res,
-    )
+    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     snow = Snow.SnowModel(
         FT,
         surface_domain,
         forcing,
-        earth_param_set,
+        toml_dict,
         Δt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         α_snow,
@@ -133,8 +126,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     )
 
     # Construct the land model with all default components except for snow
-    land =
-        LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
     return land
 end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
@@ -150,8 +142,10 @@ domain = ClimaLand.Domains.global_domain(
     nelements,
     mask_threshold = FT(0.99),
 )
-params = LP.LandParameters(FT)
-model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 user_callbacks = (
     ClimaLand.NaNCheckCallback(
         Dates.Month(6),

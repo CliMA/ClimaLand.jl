@@ -35,6 +35,9 @@ climaland_dir = pkgdir(ClimaLand)
 
 FT = Float32
 param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 context = ClimaComms.context()
 ClimaComms.init(context)
 
@@ -58,7 +61,7 @@ model = ClimaLand.Snow.SnowModel(
     FT,
     domain,
     forcing,
-    earth_param_set,
+    toml_dict,
     Δt;
     density,
     α_snow,
