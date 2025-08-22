@@ -325,16 +325,22 @@ or PR #645 for details.
 For now, this clipping is similar to what CLM and NOAH MP do.
 """
 function ClimaLand.Canopy.set_canopy_prescribed_field!(
-    component::PlantHydraulicsModel{FT},
-    p,
+    ::Type{M},
+    ai_parameterization::P,
+    area_index::NT,
     t,
-) where {FT}
-    (; SAI, RAI) = component.parameters.ai_parameterization
+    n_stem,
+    n_leaf,
+) where {NT, FT, M <: PlantHydraulicsModel{FT}, P}
+    (; SAI, RAI) = ai_parameterization
 
-    p.canopy.hydraulics.area_index.leaf .=
-        clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
-    @. p.canopy.hydraulics.area_index.stem = SAI
-    @. p.canopy.hydraulics.area_index.root = RAI
+    leaf = clip(area_index.leaf, FT(0.05))
+    stem = SAI
+    root = RAI
+    out = NT((root, stem, leaf))
+    lai_consistency_check(n_stem, n_leaf, NT((root, stem, leaf)))
+    return out
+    # return NamedTuple{NT.parameters[1]}((;leaf, stem, root))
 end
 
 """

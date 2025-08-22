@@ -744,8 +744,12 @@ A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_dark_respiration`, while 0.0 corresponds to C4 photsynthesis and calls
 `c4_dark_respiration`.
 """
-function dark_respiration(is_c3::AbstractFloat, args...)
-    is_c3 > 0.5 ? c3_dark_respiration(args...) : c4_dark_respiration(args...)
+function dark_respiration(
+    is_c3::AbstractFloat,
+    args::Vararg{FT, N},
+) where {FT, N}
+    is_c3 > FT(0.5) ? c3_dark_respiration(args...) :
+    c4_dark_respiration(args...)
 end
 """
     c4_dark_respiration(VCmax25::FT,
@@ -813,8 +817,8 @@ function c3_dark_respiration(
     To::FT,
     fC3::FT,
     ΔHRd::FT,
-    _...,
-) where {FT}
+    ::Vararg{FT, N},
+) where {FT, N}
     Rd = fC3 * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
     return Rd
 end

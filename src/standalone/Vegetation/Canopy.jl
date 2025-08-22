@@ -905,69 +905,95 @@ function ClimaLand.make_update_aux(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
-        <:Union{BeerLambertModel, TwoStreamModel},
+        R,
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
-        <:PlantHydraulicsModel,
+        H,
         <:AbstractCanopyEnergyModel,
     },
-) where {FT}
+) where {
+    FT,
+    H <: PlantHydraulicsModel,
+    R <: Union{BeerLambertModel, TwoStreamModel},
+}
     NVTX.@annotate function update_aux!(p, Y, t)
 
         # Extend to other fields when necessary
         # Update the prescribed fields to the current time `t`,
         # prior to updating the rest of the auxiliary state to
         # the current time, as they depend on prescribed fields.
-        set_canopy_prescribed_field!(canopy.hydraulics, p, t)
-
-        # Shortcut names
-        An = p.canopy.photosynthesis.An
+        n_stem = canopy.hydraulics.n_stem
+        n_leaf = canopy.hydraulics.n_leaf
+        p.canopy.hydraulics.area_index .=
+            set_canopy_prescribed_field!.(
+                H,
+                (canopy.hydraulics.parameters.ai_parameterization,),
+                p.canopy.hydraulics.area_index,
+                t,
+                n_stem,
+                n_leaf,
+            )
+        # # Shortcut names
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-        par_d = p.canopy.radiative_transfer.par_d
-        nir_d = p.canopy.radiative_transfer.nir_d
         cosθs = p.drivers.cosθs
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
         SAI = area_index.stem
 
-        bc = canopy.boundary_conditions
 
         # update radiative transfer
-        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
-        @. p.canopy.radiative_transfer.ϵ =
-            canopy.radiative_transfer.parameters.ϵ_canopy *
-            (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        RT = canopy.radiative_transfer
-        compute_PAR!(par_d, RT, bc.radiation, p, t)
-        compute_NIR!(nir_d, RT, bc.radiation, p, t)
-
-        compute_fractional_absorbances!(
-            p,
-            RT,
-            LAI,
-            ground_albedo_PAR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
+        rad_params = canopy.radiative_transfer.parameters
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        Ω,
+        λ_γ_PAR,
+        n_layers,
+        G_Function = getproperty.((rad_params,), propertynames(rad_params))
+        SW_d = p.drivers.SW_d
+        LW_d = p.drivers.LW_d
+        frac_diff = p.drivers.frac_diff
+        snow_cover_fraction = p.snow.snow_cover_fraction
+        α_snow = p.snow.α_snow
+        PAR_albedo = p.soil.PAR_albedo
+        NIR_albedo = p.soil.NIR_albedo
+        SW_n = p.canopy.radiative_transfer.SW_n
+        LW_n = p.canopy.radiative_transfer.LW_n
+        p.canopy.radiative_transfer .=
+            rt_update.(
+                R,
+                eltype(p.canopy.radiative_transfer),
                 t,
-            ),
-            ground_albedo_NIR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-        )
+                SW_n,
+                LW_n,
+                snow_cover_fraction,
+                α_snow,
+                PAR_albedo,
+                NIR_albedo,
+                frac_diff,
+                cosθs,
+                LAI,
+                SAI,
+                α_PAR_leaf,
+                τ_PAR_leaf,
+                α_NIR_leaf,
+                τ_NIR_leaf,
+                ϵ_canopy,
+                Ω,
+                λ_γ_PAR,
+                n_layers,
+                G_Function,
+                SW_d,
+                LW_d,
+            )
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
+        # (n_stem, n_leaf, ai_parameterization)
         (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
         # We can index into a field of Tuple{FT} to extract a field of FT
         # using the following notation: field.:index
@@ -1017,7 +1043,91 @@ function ClimaLand.make_update_aux(
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
-        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        photo_params = canopy.photosynthesis.parameters
+        Vcmax25 = photo_params.Vcmax25
+        "Γstar at 25 °C (mol/mol)"
+        Γstar25 = photo_params.Γstar25
+        Kc25 = photo_params.Kc25
+        Ko25 = photo_params.Ko25
+        ΔHkc = photo_params.ΔHkc
+        ΔHko = photo_params.ΔHko
+        ΔHVcmax = photo_params.ΔHVcmax
+        ΔHΓstar = photo_params.ΔHΓstar
+        ΔHJmax = photo_params.ΔHJmax
+        ΔHRd = photo_params.ΔHRd
+        To = photo_params.To
+        oi = photo_params.oi
+        ϕ = photo_params.ϕ
+        θj = photo_params.θj
+        fC3 = photo_params.fC3
+        fC4 = photo_params.fC4
+        sc = photo_params.sc
+        pc = photo_params.pc
+        Q10 = photo_params.Q10
+        s1 = photo_params.s1
+        s2 = photo_params.s2
+        s3 = photo_params.s3
+        s4 = photo_params.s4
+        s5 = photo_params.s5
+        s6 = photo_params.s6
+        E = photo_params.E
+        is_c3 = photo_params.is_c3
+        T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+        c_co2_air = p.drivers.c_co2
+        cosθs = p.drivers.cosθs
+        P_air = p.drivers.P
+        T_air = p.drivers.T
+        q_air = p.drivers.q
+        earth_param_set = canopy.parameters.earth_param_set
+        (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+        (; g1,) = canopy.conductance.parameters
+        p.canopy.photosynthesis .=
+            update_photosynthesis!.(
+                typeof(canopy.photosynthesis),
+                p.canopy.photosynthesis,
+                p.canopy.hydraulics,
+                p.canopy.radiative_transfer,
+                earth_param_set,
+                T_canopy,
+                c_co2_air,
+                cosθs,
+                P_air,
+                T_air,
+                q_air,
+                Vcmax25,
+                Γstar25,
+                Kc25,
+                Ko25,
+                ΔHkc,
+                ΔHko,
+                ΔHVcmax,
+                ΔHΓstar,
+                ΔHJmax,
+                ΔHRd,
+                To,
+                oi,
+                ϕ,
+                θj,
+                fC3,
+                fC4,
+                sc,
+                pc,
+                Q10,
+                s1,
+                s2,
+                s3,
+                s4,
+                s5,
+                s6,
+                E,
+                is_c3,
+                G_Function,
+                λ_γ_PAR,
+                Ω,
+                n_stem,
+                n_leaf,
+                g1,
+            )
 
         # update SIF
         update_SIF!(p, Y, canopy.sif, canopy)
@@ -1034,6 +1144,69 @@ function ClimaLand.make_update_aux(
         )
     end
     return update_aux!
+end
+
+
+# function req_fields(::Type{M}) where 
+function rt_update(
+    ::Type{M},
+    ::Type{NT},
+    t,
+    SW_n::FT,
+    LW_n::FT,
+    snow_cover_fraction::FT,
+    α_snow::FT,
+    PAR_albedo::FT,
+    NIR_albedo::FT,
+    frac_diff::FT,
+    cosθs::FT,
+    LAI::FT,
+    SAI::FT,
+    α_PAR_leaf::FT,
+    τ_PAR_leaf::FT,
+    α_NIR_leaf::FT,
+    τ_NIR_leaf::FT,
+    ϵ_canopy::FT,
+    Ω::FT,
+    λ_γ_PAR::FT,
+    n_layers,
+    G_Function,
+    SW_d::FT,
+    LW_d::FT,
+) where {FT, NT, M <: TwoStreamModel}
+    ϵ = ϵ_canopy * (1 - exp(-(LAI + SAI)))
+    par_d = SW_d / 2
+    nir_d = LW_d / 2
+
+
+    α_PAR =
+        (1 - snow_cover_fraction) * PAR_albedo + snow_cover_fraction * α_snow
+    α_NIR =
+        (1 - snow_cover_fraction) * NIR_albedo + snow_cover_fraction * α_snow
+    par = canopy_sw_rt_two_stream(
+        G_Function,
+        Ω,
+        n_layers,
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        LAI,
+        cosθs,
+        α_PAR,
+        frac_diff,
+    )
+    nir = canopy_sw_rt_two_stream(
+        G_Function,
+        Ω,
+        n_layers,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        LAI,
+        cosθs,
+        α_NIR,
+        frac_diff,
+    )
+
+    return NT((; nir_d, par_d, nir, par, LW_n, SW_n, ϵ))
 end
 
 """
