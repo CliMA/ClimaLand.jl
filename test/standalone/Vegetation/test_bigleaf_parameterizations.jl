@@ -9,48 +9,6 @@ import ClimaLand.Parameters as LP
 
 
 for FT in (Float32, Float64)
-    @testset "Optimality Photosynthesis model Parameterizations, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
-        P = FT(101325) #Pa
-        ci = FT(56.337) / P # convert to mol/mol
-        oi = FT(21225.1557) / P# convert to mol/mol
-        APAR = FT(1.8967 * 1e-6) # convert from μmol to mol
-        θj = FT(0.85) #unitless
-        ϕ = FT(0.514) # unitless
-        Γstar = FT(4.332) / P # convert from Pa to mol/mol
-        Kc = FT(41.03) / P# convert from Pa to mol/mol
-        Ko = FT(28210) / P# convert from Pa to mol/mol
-        c = FT(0.05336251)
-        c_light = FT(LP.light_speed(earth_param_set))
-        planck_h = FT(LP.planck_constant(earth_param_set))
-        N_a = FT(LP.avogadro_constant(earth_param_set))
-        Jmax, Vcmax = ClimaLand.Canopy.optimality_max_photosynthetic_rates(
-            APAR,
-            θj,
-            ϕ,
-            oi,
-            ci,
-            Γstar,
-            Kc,
-            Ko,
-            c,
-        )
-        # We are comparing to output from another code that didnt use exactly
-        # the same inputs, so we cant expect machine precision agreement
-        @test abs(Jmax - FT(5.683554489145192e-7)) < 1e-10
-        @test abs(Vcmax - FT(1.8572441998848603e-7)) < 1e-10
-        @test typeof(Jmax) == FT
-        @test typeof(Vcmax) == FT
-        params = OptimalityFarquharParameters(FT)
-        @test params.is_c3 ≈ 1.0
-        model = OptimalityFarquharModel(params)
-        @test ClimaLand.auxiliary_vars(model) ==
-              (:An, :GPP, :Rd, :Vcmax25, :Jmax25)
-        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT, FT)
-        @test ClimaLand.auxiliary_domain_names(model) ==
-              (:surface, :surface, :surface, :surface, :surface)
-
-    end
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)

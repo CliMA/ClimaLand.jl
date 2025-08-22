@@ -147,8 +147,8 @@ to the variables in the parameter structs as noted below:
 
 :canopy_emissivity => :ϵ_canopy (TwoStreamParameters, BeerLambertParameters)
 :min_stomatal_conductance => :g0 (MedlynConductanceParameters)
-:low_water_pressure_sensitivity => :sc (FarquharParameters, OptimalityFarquharParameters)
-:moisture_stress_ref_water_pressure => :pc (FarquharParameters, OptimalityFarquharParameters)
+:low_water_pressure_sensitivity => :sc (FarquharParameters)
+:moisture_stress_ref_water_pressure => :pc (FarquharParameters)
 
 :soil_conductivity => :κ_soil (BucketModelParameters)
 :soil_heat_capacity => :ρc_soil (BucketModelParameters)

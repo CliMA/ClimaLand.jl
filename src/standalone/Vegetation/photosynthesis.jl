@@ -295,8 +295,6 @@ function get_electron_transport(Y, p, canopy, m::FarquharModel)
     return @. lazy(electron_transport(APAR, Jmax, θj, ϕ))
 end
 
-include("./optimality_farquhar.jl")
-
 ## For interfacing with ClimaParams
 
 """
