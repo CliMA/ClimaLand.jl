@@ -50,10 +50,11 @@ pft_param_list = [
 
     # Conductance Model
     :g1, # Medlyn CO2 Sensitivity
+    # When running with the pmodel, this param is not used
 
     # Photosynthesis model
     :Vcmax25, # Max rate of carboxylation of Rubisco
-    # When running optimality Farquhar model, this param is not used
+    # When running with the pmodel, this param is not used
 
     # Plant Hydraulics and general plant parameters
     :f_root_to_shoot, # Root to Shoot Ratio

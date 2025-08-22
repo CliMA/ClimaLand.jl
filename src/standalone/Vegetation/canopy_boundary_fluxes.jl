@@ -158,7 +158,7 @@ end
                                 FT,
                                 <:AutotrophicRespirationModel,
                                 <:Union{BeerLambertModel, TwoStreamModel},
-                                <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+                                <:Union{FarquharModel, PModel},
                                 <:Union{MedlynConductanceModel, PModelConductance},
                                 <:PlantHydraulicsModel,
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
@@ -184,7 +184,7 @@ function canopy_boundary_fluxes!(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{FarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
