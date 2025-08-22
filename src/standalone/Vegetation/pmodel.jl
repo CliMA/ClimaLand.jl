@@ -500,7 +500,7 @@ function update_optimal_EMA(
         ca_pp = ca * P_air
 
         ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-        χ = Γstar / ca_pp + (1 - Γstar / ca_pp) * ξ / (ξ + sqrt(max(VPD, 0)))
+        χ = Γstar / ca_pp + (1 - Γstar / ca_pp) * ξ / (ξ + sqrt(VPD))
         γ = Γstar / ca_pp
         κ = Kmm / ca_pp
         mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
@@ -596,12 +596,16 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
+    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
-        ClimaLand.vapor_pressure_deficit(
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-            LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+        max(
+            ClimaLand.vapor_pressure_deficit(
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+            ),
+            sqrt(eps(FT)),
         ),
     )
     APAR = @. lazy(
@@ -685,12 +689,16 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         ),
     )
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
-        ClimaLand.vapor_pressure_deficit(
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-            LP.thermodynamic_parameters(earth_param_set),
+        max(
+            ClimaLand.vapor_pressure_deficit(
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                LP.thermodynamic_parameters(earth_param_set),
+            ),
+            sqrt(eps(FT)),
         ),
     )
     APAR = @. lazy(
@@ -817,12 +825,16 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     P_air = p.drivers.P
     ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
-        ClimaLand.vapor_pressure_deficit(
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-            LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+        max(
+            ClimaLand.vapor_pressure_deficit(
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+            ),
+            sqrt(eps(FT)),
         ),
     )
     APAR = @. lazy(
