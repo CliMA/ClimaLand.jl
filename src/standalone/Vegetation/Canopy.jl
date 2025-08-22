@@ -922,7 +922,6 @@ function ClimaLand.make_update_aux(
         set_canopy_prescribed_field!(canopy.hydraulics, p, t)
 
         # Shortcut names
-        An = p.canopy.photosynthesis.An
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa

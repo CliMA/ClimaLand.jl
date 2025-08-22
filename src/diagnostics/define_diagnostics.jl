@@ -206,7 +206,7 @@ function define_diagnostics!(land_model)
     # Autotrophic respiration
     add_diagnostic_variable!(
         short_name = "ra",
-        long_name = "Autotrophic Respiration",
+        long_name = "Canopy level autotrophic Respiration",
         standard_name = "autotrophic_respiration",
         units = "mol CO2 m^-2 s^-1",
         comments = "The canopy autotrophic respiration, the sum of leaves, stems and roots respiration.",
@@ -214,7 +214,7 @@ function define_diagnostics!(land_model)
             compute_autotrophic_respiration!(out, Y, p, t, land_model),
     )
 
-    ### Canopy - Conductance
+    ### Canopy - conductance
     # Stomatal conductance
     add_diagnostic_variable!(
         short_name = "gs",
@@ -349,20 +349,8 @@ function define_diagnostics!(land_model)
         long_name = "Gross Primary Productivity",
         standard_name = "gross_primary_productivity",
         units = "mol CO2 m^-2 s^-1",
-        comments = "Net photosynthesis (carbon assimilation) of the canopy. This is equivalent to leaf net assimilation scaled to the canopy level.",
         compute! = (out, Y, p, t) ->
-            compute_photosynthesis_net_canopy!(out, Y, p, t, land_model),
-    )
-
-    # Leaf net photosynthesis
-    add_diagnostic_variable!(
-        short_name = "an",
-        long_name = "Leaf Net Photosynthesis",
-        standard_name = "leaf_net_photosynthesis",
-        units = "mol CO2 m^-2 s^-1",
-        comments = "Net photosynthesis (carbon assimilation) of a leaf, computed for example by the Farquhar model.",
-        compute! = (out, Y, p, t) ->
-            compute_photosynthesis_net_leaf!(out, Y, p, t, land_model),
+            compute_gross_primary_productivity!(out, Y, p, t, land_model),
     )
 
     # Leaf respiration
@@ -373,17 +361,18 @@ function define_diagnostics!(land_model)
         units = "mol CO2 m^-2 s^-1",
         comments = "Leaf respiration, called dark respiration because usually measured in the abscence of radiation.",
         compute! = (out, Y, p, t) ->
-            compute_respiration_leaf!(out, Y, p, t, land_model),
+            compute_dark_respiration_leaf!(out, Y, p, t, land_model),
     )
 
     # Vcmax25
     add_diagnostic_variable!(
         short_name = "vcmax25",
-        long_name = "Vcmax25",
-        standard_name = "vcmax25",
+        long_name = "Vcmax25 at leaf level",
+        standard_name = "vcmax25_leaf",
         units = "mol CO2 m^-2 s^-1",
         comments = "The parameter vcmax at 25 degree celsius. Important for the Farquhar model of leaf photosynthesis.",
-        compute! = (out, Y, p, t) -> compute_vcmax25!(out, Y, p, t, land_model),
+        compute! = (out, Y, p, t) ->
+            compute_vcmax25_leaf!(out, Y, p, t, land_model),
     )
 
     ### Canopy - Radiative Transfer

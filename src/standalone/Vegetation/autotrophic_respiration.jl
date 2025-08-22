@@ -90,64 +90,65 @@ function update_autotrophic_respiration!(
     (; sc, pc) = canopy.photosynthesis.parameters
     (; G_Function, Ω) = canopy.radiative_transfer.parameters
     cosθs = p.drivers.cosθs
-    An = p.canopy.photosynthesis.An
-    Rd = p.canopy.photosynthesis.Rd
-
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
-    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
-    @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
-        autotrophic_respiration,
-        Vcmax25,
-        LAI,
-        SAI,
-        RAI,
-        extinction_coeff(G_Function, cosθs),
-        Ω,
-        An,
-        Rd,
-        β,
-        h_canopy,
-    )
+    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
+    @. p.canopy.autotrophic_respiration.Ra =
+        compute_canopy_autrophic_respiration(
+            autotrophic_respiration,
+            Vcmax25_leaf,
+            LAI,
+            SAI,
+            RAI,
+            extinction_coeff(G_Function, cosθs),
+            Ω,
+            An_leaf,
+            Rd_leaf,
+            β,
+            h_canopy,
+        )
+
 end
 
 """
-    compute_autrophic_respiration(model::AutotrophicRespirationModel,
-                                  Vcmax25,
+    compute_canopy_autrophic_respiration(model::AutotrophicRespirationModel,
+                                  Vcmax25_leaf,
                                   LAI,
                                   SAI,
                                   RAI,
                                   K,
                                   Ω,
-                                  An,
-                                  Rd,
+                                  An_leaf,
+                                  Rd_leaf,
                                   β,
                                   h,
                                  )
 
-Computes the autotrophic respiration (mol co2 m^-2 s^-1) as the sum of the plant maintenance
+Computes the canopy autotrophic respiration (mol co2 m^-2 s^-1) as the sum of the plant maintenance
 and growth respirations, according to the JULES model.
 
 Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 """
-function compute_autrophic_respiration(
+function compute_canopy_autrophic_respiration(
     model::AutotrophicRespirationModel,
-    Vcmax25,
+    Vcmax25_leaf,
     LAI,
     SAI,
     RAI,
     K,
     Ω,
-    An,
-    Rd,
+    An_leaf,
+    Rd_leaf,
     β,
     h,
 )
 
     (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
     Nl, Nr, Ns =
-        nitrogen_content(ne, Vcmax25, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
-    Rg = plant_respiration_growth(Rel, An, Rpm)
+        nitrogen_content(ne, Vcmax25_leaf, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
+    Rpm = plant_respiration_maintenance(Rd_leaf, β, Nl, Nr, Ns)
+    Rg = plant_respiration_growth(Rel, An_leaf, Rpm)
     Ra = Rpm + Rg
     return Ra * (1 - exp(-K * LAI * Ω)) / (K * Ω) # adjust to canopy level
 end

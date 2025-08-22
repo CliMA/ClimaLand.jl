@@ -827,7 +827,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
     APAR = @. lazy(
-        compute_APAR(
+        compute_APAR_canopy_moles(
             p.canopy.radiative_transfer.par.abs,
             p.canopy.radiative_transfer.par_d,
             canopy.radiative_transfer.parameters.λ_γ_PAR,
@@ -905,12 +905,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    # rubisco limited assimilation rate
-    Ac = @. lazy(c3_rubisco_assimilation(Vcmax, ci, Γstar, Kmm))
-
-    # light limited assimilation rate
-    Aj = @. lazy(c3_light_assimilation(J, ci, Γstar))
-
     # dark respiration
     @. Rd =
         constants.fC3 *
@@ -931,20 +925,29 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
                 constants.R,
             )
         ) *
-        Vcmax
+        Vcmax # canopy level
 
-    # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
-    # this factor to Vcmax and Jmax, we do not apply it again, so βm = FT(1.0) here.
-    @. GPP = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
+    @. GPP = gross_photosynthesis(
+        c3_rubisco_assimilation(Vcmax, ci, Γstar, Kmm),
+        c3_light_assimilation(J, ci, Γstar),
+    )
 
 end
 
-get_Vcmax25(p, m::PModel) = p.canopy.photosynthesis.OptVars.Vcmax25_opt
-
-function get_Jmax(Y, p, canopy, m::PModel)
+get_Vcmax25_leaf(p, m::PModel) = @. lazy(
+    p.canopy.photosynthesis.OptVars.Vcmax25_opt /
+    max(p.canopy.hydraulics.area_index.leaf, sqrt(eps(FT))),
+)
+get_Vcmax25_canopy(p, m::PModel) = p.canopy.photosynthesis.OptVars.Vcmax25_opt
+get_Rd_canopy(p, m::PModel) = p.canopy.photosynthesis.Rd
+get_Rd_leaf(p, m::PModel) = @. lazy(
+    p.canopy.photosynthesis.Rd /
+    max(p.canopy.hydraulics.area_index.leaf, sqrt(eps(FT))),
+)
+function get_Jmax_canopy(Y, p, canopy, m::PModel)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     constants = m.constants
-    return @. lazy(
+    Jmax_canopy = @. lazy(
         p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
             T_canopy,
             T_canopy,
@@ -956,9 +959,17 @@ function get_Jmax(Y, p, canopy, m::PModel)
             constants.R,
         ),
     )
+    return Jmax_canopy
 end
 
-function get_electron_transport(Y, p, canopy, m::PModel)
+function get_J_over_Jmax(Y, p, canopy, m::PModel)
+    J = get_J_canopy(Y, p, canopy, m)
+    Jmax = get_Jmax_canopy(Y, p, canopy, m)
+    FT = eltype(m.constants)
+    return J / max(Jmax, sqrt(eps(FT)))
+end
+
+function get_J_canopy(Y, p, canopy, m::PModel)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     earth_param_set = canopy.parameters.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
@@ -967,10 +978,11 @@ function get_electron_transport(Y, p, canopy, m::PModel)
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    APAR_canopy_moles = @. lazy(compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a))
-
-    Jmax = get_Jmax(Y, p, canopy, m)
+    APAR_canopy_moles = @. lazy(
+        compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
+    )
     parameters = m.parameters
+    Jmax_canopy = get_Jmax_canopy(Y, p, canopy, m)
     return @. lazy(
         electron_transport_pmodel(
             isnan(parameters.ϕ0) ?
@@ -982,7 +994,7 @@ function get_electron_transport(Y, p, canopy, m::PModel)
                 parameters.ϕa2,
             ) : parameters.ϕ0,
             APAR_canopy_moles,
-            Jmax,
+            Jmax_canopy,
         ),
     )
 end

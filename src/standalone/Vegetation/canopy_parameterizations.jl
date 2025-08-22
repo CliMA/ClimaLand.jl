@@ -34,8 +34,8 @@ export canopy_sw_rt_beer_lambert, # Radiative transfer
     compute_Kmm,
     optimal_co2_ratio_c3,
     intercellular_co2_pmodel,
-    gs_co2_pmodel,
-    gs_h2o_pmodel,
+    gcanopy_co2_pmodel,
+    gcanopy_h2o_pmodel,
     vcmax_pmodel,
     compute_LUE,
     compute_mj_with_jmax_limitation,
@@ -435,7 +435,7 @@ end
 
 Computes the intercellular CO2 concentration (mol/mol) given the
 atmospheric concentration (`ca`, mol/mol), the CO2 compensation (`Γstar`,
- mol/mol), and the Medlyn factor (unitless).
+ mol/mol), and the Medlyn factor (unitless); used in the Farquhar model.
 """
 function intercellular_co2(ca::FT, Γstar::FT, medlyn_term::FT) where {FT}
     c_i = max(ca * (1 - 1 / medlyn_term), Γstar)
@@ -453,7 +453,7 @@ Computes the CO2 compensation point (`Γstar`),
 in units of mol/mol,
 as a function of its value at 25 °C (`Γstar25`),
 a constant energy of activation (`ΔHΓstar`), a standard temperature (`To`),
-the unversal gas constant (`R`), and the temperature (`T`).
+the unversal gas constant (`R`), and the temperature (`T`); used in the Farquhar model.
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
@@ -471,7 +471,7 @@ end
 """
     rubisco_assimilation(is_c3::AbstractFloat, args...)
 
-Calls the correct rubisco assimilation function based on the `is_c3`.
+Calls the correct rubisco assimilation function based on the `is_c3`; used in the Farquhar model.
 
 A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_rubisco_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
@@ -495,7 +495,7 @@ in units of moles CO2/m^2/s,
 as a function of the maximum rate of carboxylation of Rubisco (`Vcmax`),
 the leaf internal carbon dioxide partial pressure (`ci`),
 the CO2 compensation point (`Γstar`), and Michaelis-Menten parameters
-for CO2 and O2, respectively, (`Kc`) and (`Ko`).
+for CO2 and O2, respectively, (`Kc`) and (`Ko`); used in the Farquhar model.
 
 The empirical parameter oi is equal to 0.209 (mol/mol).
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
@@ -513,7 +513,7 @@ function c3_rubisco_assimilation(
 end
 
 """
-    c3_rubisco_assimilation(
+    c3_rubisco_assimilation_pmodel(
         Vcmax::FT,
         ci::FT,
         Γstar::FT,
@@ -524,8 +524,10 @@ Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
 in units of moles CO2/m^2/s. Identical to the function above, except we take
 Kmm = Kc * (1 + oi / Ko)
 directly, where Kmm represents an effective Michaelis-Menten coefficient.
+
+Used in the Pmodel.
 """
-function c3_rubisco_assimilation(
+function c3_rubisco_assimilation_pmodel(
     Vcmax::FT,
     ci::FT,
     Γstar::FT,
@@ -540,7 +542,8 @@ end
 
 Computes the Rubisco limiting rate of photosynthesis for C4 plants (`Ac`)
 in units of moles CO2/m^2/s,
-as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`).
+as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`);
+used in the Farquhar model.
 """
 function c4_rubisco_assimilation(Vcmax::FT, _...) where {FT}
     Ac = Vcmax
@@ -554,7 +557,7 @@ Calls the correct light assimilation function based on the `is_c3`.
 
 A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_light_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
-`c4_light_assimilation`.
+`c4_light_assimilation`;used in the Farquhar model.
 """
 function light_assimilation(is_c3::AbstractFloat, args...)
     is_c3 > 0.5 ? c3_light_assimilation(args...) :
@@ -574,7 +577,7 @@ in units of moles CO2/m^2/s.
 For C3 plants, this is a function of
 the rate of electron transport (`J`), the leaf internal carbon dioxide partial pressure (`ci`),
 and the CO2 compensation point (`Γstar`).
-See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019);used in the Farquhar model.
 """
 function c3_light_assimilation(J::FT, ci::FT, Γstar::FT, _...) where {FT}
     Aj = J * (ci - Γstar) / (4 * (ci + 2 * Γstar))
@@ -582,74 +585,30 @@ function c3_light_assimilation(J::FT, ci::FT, Γstar::FT, _...) where {FT}
 end
 
 """
-    light_assimilation(::FT, ::FT, ::FT, APAR_leaf_moles::FT, E::FT) where {FT}
+    c4_light_assimilation(::FT, ::FT, ::FT, APAR_leaf_moles::FT, E::FT) where {FT}
 
 Computes the electron transport limiting rate (`Aj`),
 in units of moles CO2/m^2/s.
 
 For C4 plants, this is a function of APAR_leaf_moles and a efficiency parameter E, see Equation 11.70 of
- G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+ G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019);used in the Farquhar model.
 """
-function c4_light_assimilation(::FT, ::FT, ::FT, APAR_leaf_moles::FT, E::FT) where {FT}
+function c4_light_assimilation(
+    ::FT,
+    ::FT,
+    ::FT,
+    APAR_leaf_moles::FT,
+    E::FT,
+) where {FT}
     Aj = APAR_leaf_moles * E
     return Aj
 end
 
 """
-    max_electron_transport(Vcmax::FT) where {FT}
-
-Computes the maximum potential rate of electron transport (`Jmax`),
-in units of mol/m^2/s,
-as a function of Vcmax at 25 °C (`Vcmax25`),
-a constant (`ΔHJmax`), a standard temperature (`To`),
-the unversal gas constant (`R`), and the temperature (`T`).
-
-See Table 11.5 of G. Bonan's textbook,
-Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function max_electron_transport(
-    Vcmax25::FT,
-    ΔHJmax::FT,
-    T::FT,
-    To::FT,
-    R::FT,
-) where {FT}
-    Jmax25 = Vcmax25 * FT(exp(1))
-    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
-    return Jmax
-end
-
-"""
-    electron_transport(APAR_leaf_moles::FT,
-                       Jmax::FT,
-                       θj::FT,
-                       ϕ::FT) where {FT}
-
-Computes the rate of electron transport (`J`),
-in units of mol/m^2/s, as a function of
-the maximum potential rate of electron transport (`Jmax`),
-absorbed photosynthetically active radiation (`APAR_leaf_moles`),
-an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
-and the quantum yield of photosystem II (`ϕ`).
-
-See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function electron_transport(APAR_leaf_moles::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
-    # Light utilization of APAR (leaf level)
-    IPSII = ϕ * APAR_leaf_moles / 2
-    # This is a solution to a quadratic equation
-    # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
-    J =
-        (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
-        (2 * θj)
-    return J
-end
-
-"""
-optimality_max_photosynthetic_rates(APAR_leaf_moles::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
+optimality_max_photosynthetic_rates(APAR::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
 
 Computes the photosynthesis rates Vcmax and Jmax in
-mol/m^2/s given absorbed photosynthetically active radiation (`APAR_leaf_moles`),
+mol/m^2/s given absorbed photosynthetically active radiation (`APAR`),
 an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
  the quantum yield of photosystem II (`ϕ`), the intercellular
 o2 content (`oi`), the intercellular CO2 concentration (ci),
@@ -658,7 +617,7 @@ o2 content (`oi`), the intercellular CO2 concentration (ci),
 See Smith et al. 2019.
 """
 function optimality_max_photosynthetic_rates(
-    APAR_leaf_moles::FT,
+    APAR::FT,
     θj::FT,
     ϕ::FT,
     oi::FT,
@@ -669,7 +628,7 @@ function optimality_max_photosynthetic_rates(
     c::FT,
 ) where {FT}
     # Light utilization of APAR
-    IPSII = ϕ * APAR_leaf_moles / 2
+    IPSII = ϕ * APAR / 2
 
     mc = (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
     m = (ci - Γstar) / (ci + 2 * Γstar)
@@ -701,21 +660,17 @@ function optimality_max_photosynthetic_rates(
 end
 
 """
-    net_photosynthesis(Ac::FT,
-                       Aj::FT,
-                       Rd::FT,
-                       β::FT) where {FT}
+    gross_photosynthesis(Ac::FT,
+                       Aj::FT) where {FT}
 
-Computes the total carbon assimilation (`An`),
+Computes the gross carbon assimilation (`A`),
 in units of mol CO2/m^2/s, as a function of
-the Rubisco limiting factor (`Ac`), the electron transport limiting rate (`Aj`),
-dark respiration (`Rd`), and the moisture stress factor (`β`).
+the Rubisco limiting factor (`Ac`) and the electron transport limiting rate (`Aj`).
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function net_photosynthesis(Ac::FT, Aj::FT, Rd::FT, β::FT) where {FT}
-    An = max(0, min(Ac, Aj) * β - Rd)
-    return An
+function gross_photosynthesis(Ac::FT, Aj::FT) where {FT}
+    return min(Ac, Aj)
 end
 
 """
@@ -743,7 +698,7 @@ Calls the correct dark respiration function based on `is_c3`.
 
 A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_dark_respiration`, while 0.0 corresponds to C4 photsynthesis and calls
-`c4_dark_respiration`.
+`c4_dark_respiration`; used in the Farquhar model.
 """
 function dark_respiration(is_c3::AbstractFloat, args...)
     is_c3 > 0.5 ? c3_dark_respiration(args...) : c4_dark_respiration(args...)
@@ -766,7 +721,7 @@ in units of mol CO2/m^2/s, as a function of
  the moisture stress factor (`β`),
 the unversal gas constant (`R`), the temperature (`T`),
 Vcmax25, and
-other parameters.
+other parameters; used in the Farquhar model.
 
 See Equation 11.73 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
@@ -801,7 +756,7 @@ in units of mol CO2/m^2/s, as a function of
  the moisture stress factor (`β`),
 the unversal gas constant (`R`), and the temperature (`T`),
 Vcmax25,  and
-other parameters.
+other parameters; used in the Farquhar model.
 
 See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
@@ -828,7 +783,8 @@ end
 
 Computes the total canopy photosynthesis (`GPP`) as a function of
 the total leaf carbon assimilation (`An`), the extinction coefficient (`K`),
-leaf area index (`LAI`) and the clumping index (`Ω`).
+leaf area index (`LAI`) and the clumping index (`Ω`);
+used in the Farquhar model.
 """
 function GPP_from_leaf_level_An(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
     GPP = An * (1 - exp(-K * LAI * Ω)) / (K * Ω)
@@ -842,7 +798,8 @@ end
 This currently takes a leaf conductance (moles per leaf area per second)
 and (1) converts it to m/s, (2) upscales to the entire canopy, by assuming
 the leaves in the canopy are in parallel and hence multiplying
-by LAI.
+by LAI;
+used in the Farquhar model.
 """
 function upscale_leaf_conductance(
     gs::FT,
@@ -851,10 +808,17 @@ function upscale_leaf_conductance(
     R::FT,
     P::FT,
 ) where {FT}
-    # TODO: Check what CLM does, and check if we can use the same function
-    #  for GPP from An, and make more general.
-    canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
-    return canopy_conductance
+    return molar_conductance_to_m_per_s(gs, T, R, P) * LAI
+end
+
+"""
+    molar_conductance_to_m_per_s(gs::FT, T::FT, R::FT, P::FT) where {FT}
+
+This currently takes a conductance in moles per leaf area per second
+and converts it to m/s.
+"""
+function molar_conductance_to_m_per_s(gs::FT, T::FT, R::FT, P::FT) where {FT}
+    return gs * (R * T) / P # convert to m s-1
 end
 
 """
@@ -933,7 +897,8 @@ end
 Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
 in units of mol/m^2/s,
 as a function of temperature (`T`), the universal
-gas constant `R`, Vcmax25,  and other parameters.
+gas constant `R`, Vcmax25,  and other parameters;
+used in the Farquhar model.
 
 For C4 photosynthesis, this uses Equation 11.73 from G. Bonan
 Climate Change and Terrestrial Ecosystem Modeling (2019).
@@ -962,7 +927,8 @@ end
 Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
 in units of mol/m^2/s,
 as a function of temperature (`T`), the universal
-gas constant `R`, Vcmax25, and other parameters.
+gas constant `R`, Vcmax25, and other parameters;
+used in the Farquhar model.
 
 For C3 photosynthesis, this uses Table 11.5 from G. Bonan:
 Climate Change and Terrestrial Ecosystem Modeling (2019).
@@ -1071,9 +1037,9 @@ function penman_monteith(
 end
 
 """
-    canopy_nitrogen_content(
+    nitrogen_content(
                      ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-                     Vcmax2_leaf5::FT, #
+                     Vcmax25::FT, #
                      LAI::FT, # Leaf area index
                      SAI::FT,
                      RAI::FT,
@@ -1085,10 +1051,11 @@ end
                     ) where {FT}
 
 Computes the canopy nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
+#canopy or leaf Vcmax25?
 """
-function canopy_nitrogen_content(
+function nitrogen_content(
     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-    Vcmax25_leaf::FT, #
+    Vcmax25::FT, #
     LAI::FT, # Leaf area index
     SAI::FT,
     RAI::FT,
@@ -1100,7 +1067,7 @@ function canopy_nitrogen_content(
 ) where {FT}
     Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
     Rc = σl * RAI
-    nm = Vcmax25_leaf / ne
+    nm = Vcmax25 / ne
     Nl = nm * σl * LAI
     Nr = μr * nm * Rc
     Ns = μs * nm * Sc
@@ -1162,7 +1129,7 @@ end
     ) where {FT}
 
 Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol)
-as a function of temperature T (K) and a calibratable parameter c (unitless).
+as a function of temperature T (K) and a calibratable parameter c (unitless); used in the Pmodel.
 The functional form given in Bernacchi et al (2003) and used in Stocker
 et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0,
 ϕa1, and ϕa2.
@@ -1188,7 +1155,8 @@ end
     ) where {FT}
 
 Computes the viscosity of water in Pa s given temperature T (K) and density ρ_water (kg/m^3)
-according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050].
+according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050]
+; used in the Pmodel.
 
 Can consider simplifying if this level of precision is not needed
 """
@@ -1277,7 +1245,7 @@ end
         ρ_water::FT
     ) where {FT}
 
-Computes η*, the ratio of the viscosity of water at temperature T to that at To = 25˚C.
+Computes η*, the ratio of the viscosity of water at temperature T to that at To = 25˚C; used in the Pmodel.
 """
 function compute_viscosity_ratio(T::FT, To::FT, ρ_water::FT) where {FT}
     η25 = viscosity_h2o(To, ρ_water)
@@ -1293,7 +1261,7 @@ end
     ) where {FT}
 
 Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure (`P_air`)
-and a constant mixing ratio of O2 (`oi`), typically 0.209.
+and a constant mixing ratio of O2 (`oi`), typically 0.209; used in the Pmodel.
 """
 function po2(P_air::FT, oi::FT) where {FT}
     return oi * P_air
@@ -1310,7 +1278,7 @@ end
     ) where {FT}
 
 Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
-and pressure p (Pa). See Equation B5 of Stocker et al. (2020).
+and pressure p (Pa). See Equation B5 of Stocker et al. (2020); used in the Pmodel.
 """
 function co2_compensation_p(
     T::FT,
@@ -1342,7 +1310,7 @@ in units Pa, as a function of temperature T (K), atmospheric pressure p (Pa), an
 Kc25 (Michaelis-Menten coefficient for CO2 at 25 °C), Ko25 (Michaelis-Menten coefficient for O2 at 25 °C),
 ΔHkc (effective enthalpy of activation for Kc), ΔHko (effective enthalpy of activation for Ko),
 To (reference temperature, typically 298.15 K), R (universal gas constant), and oi (O2 mixing ratio,
-typically 0.209).
+typically 0.209); used in the Pmodel.
 """
 function compute_Kmm(
     T::FT,
@@ -1377,7 +1345,7 @@ carbon assimlated and costs of maintaining carboxylation capacity per unit carbo
 2) coordination hypothesis (assimilation is limited simultaneously by both light and Rubisco)
 are applied to compute the optimal ratio of intercellular to ambient CO2 concentration (`χ`)
 and auxiliary variables ξ, mj, and mc. mj and mc represent capacities for light and Rubisco-
-limited photosynthesis, respectively.
+limited photosynthesis, respectively; used in the Pmodel.
 
 Parameters: Kmm (effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis, Pa),
 Γstar (CO2 compensation point, Pa), ηstar (viscosity ratio), ca_pp (ambient CO2 partial pressure, Pa),
@@ -1411,7 +1379,8 @@ end
 
 Computes the intercellular co2 concentration (`ci`) as a function of the
 optimal `ξ` (sensitivity to dryness), `ca_pp` (ambient CO2 partial pressure),
-`Γstar` (CO2 compensation point), and `VPD` (vapor pressure deficit).
+`Γstar` (CO2 compensation point), and `VPD` (vapor pressure deficit)
+; used in the Pmodel.
 """
 function intercellular_co2_pmodel(
     ξ::FT,
@@ -1423,13 +1392,13 @@ function intercellular_co2_pmodel(
 end
 
 """
-    gs_co2_pmodel(
+    gcanopy_co2_pmodel(
         χ::FT,
         ca::FT,
         A::FT
     ) where {FT}
 
-Computes the stomatal conductance of CO2 (`gs_co2`), in units of mol CO2/m^2/s
+Computes the canopy conductance of CO2 (`gcanopy_co2`), in units of mol CO2/m^2/s
 via Fick's law. Parameters are the ratio of intercellular to ambient CO2
 concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), and the
 assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of water by a
@@ -1437,29 +1406,27 @@ factor Drel (default value = 1.6).
 
 Note that in the Pmodel, only the canopy level assimilation is computed, so A = GPP.
 """
-function gs_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
+function gcanopy_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
     return A / (ca * (1 - χ) + eps(FT))
 end
 
 """
-    gs_h2o_pmodel(
+    gcanopy_h2o_pmodel(
         χ::FT,
         ca::FT,
         A::FT,
         Drel::FT
     ) where {FT}
 
-Computes the stomatal conductance of H2O (`gs_h2o`), in units of mol H2O/m^2/s
+Computes the canopy conductance of H2O (`gcanopy_h2o`), in units of mol H2O/m^2/s
 via Fick's law. Parameters are the ratio of intercellular to ambient CO2
 concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), the
 assimilation rate (`A`, mol m^-2 s^-1), and the relative conductivity ratio `Drel` (unitless).
 
 Note that in the Pmodel, only the canopy level assimilation is computed, so A = GPP.
-
-I believe this is canopy level - confirm. if so rename
 """
-function gs_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
-    return Drel * gs_co2_pmodel(χ, ca, A)
+function gcanopy_h2o_pmodel(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
+    return Drel * gcanopy_co2_pmodel(χ, ca, A)
 end
 
 """
@@ -1470,7 +1437,7 @@ end
 
 Computes m' such that Aj = ϕ0 APAR * m' (a LUE model) by assuming that dA/dJmax = c
 is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
-at STP and using Vcmax/Jmax = 1.88.
+at STP and using Vcmax/Jmax = 1.88; used in the Pmodel.
 """
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
     arg = cstar / mj
@@ -1491,7 +1458,7 @@ end
 
 Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`ϕ0`),
 moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
-in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
+in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol; used in the Pmodel.
 """
 function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
     return ϕ0 * β * mprime * Mc
@@ -1510,9 +1477,15 @@ end
 Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using
 the intrinsic quantum yield (`ϕ0`), absorbed photosynthetically active radiation (`APAR_canopy_moles`),
 Jmax-adjusted capacity (`mprime`), a Rubisco-limited capacity (`mc`), and empirical
-soil moisture stress factor (`βm`). See Eqns 16 and 6 in Stocker et al. (2020).
+soil moisture stress factor (`βm`). See Eqns 16 and 6 in Stocker et al. (2020); used in the Pmodel.
 """
-function vcmax_pmodel(ϕ0::FT, APAR_canopy_moles::FT, mprime::FT, mc::FT, βm::FT) where {FT}
+function vcmax_pmodel(
+    ϕ0::FT,
+    APAR_canopy_moles::FT,
+    mprime::FT,
+    mc::FT,
+    βm::FT,
+) where {FT}
     Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
     return Vcmax
 end
@@ -1561,10 +1534,16 @@ end
     ) where {FT}
 
 Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel at the
-canopy level.
+canopy level; used in the Pmodel.
 """
-function electron_transport_pmodel(ϕ0::FT, APAR_canopy_moles::FT, Jmax::FT) where {FT}
-    J = 4 * ϕ0 * APAR_canopy_moles / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
+function electron_transport_pmodel(
+    ϕ0::FT,
+    APAR_canopy_moles::FT,
+    Jmax::FT,
+) where {FT}
+    J =
+        4 * ϕ0 * APAR_canopy_moles /
+        sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
     return J
 end
 
@@ -1585,7 +1564,7 @@ end
 Given Vcmax or Jmax that have acclimated according to T_acclim, this function computes
 the instantaneous temperature scaling factor f ∈ [0, ∞) for these maximum rates at the
 instantaneous current temperature T_canopy. To is a reference temperature for the constants
-and should be set to 298.15 K (25 °C). By default we assume that T_acclim = T_canopy.
+and should be set to 298.15 K (25 °C). By default we assume that T_acclim = T_canopy; used in the Pmodel.
 
 The parameters (`Ha`, `Hd`, `aS`, `bS`) come from Kattge & Knorr (2007)
 """
@@ -1624,7 +1603,7 @@ end
 
 Computes the instantaneous temperature scaling factor for dark respiration (Rd)
 at canopy temperature `T_canopy` given reference temperature `To`, the first order
-coefficient `aRd`, and the second order coefficient `bRd`.
+coefficient `aRd`, and the second order coefficient `bRd`; used in the Pmodel.
 
 Uses the log-quadratic functional form of Heskel et al. (2016)
 https://www.pnas.org/doi/full/10.1073/pnas.1520282113
@@ -1650,7 +1629,7 @@ end
 Computes the absorbed photosynthetically active radiation over ground area (mol photons m^-2 s^-1)
 given the fraction of absorbed PAR by the canopy (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2) per ground area,
 and the wavelength of PAR (`λ_γ_PAR`, in m), the physical constants necessary to compute
-the energy per mol PAR photons, and the LAI.
+the energy per mol PAR photons, and the LAI; used in the Pmodel.
 """
 function compute_APAR_canopy_moles(
     f_abs::FT,
@@ -1679,7 +1658,7 @@ end
 Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
 given the fraction of absorbed PAR by the canopy (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2) per ground area,
 and the wavelength of PAR (`λ_γ_PAR`, in m), the physical constants necessary to compute
-the energy per mol PAR photons, and the LAI.
+the energy per mol PAR photons, and the LAI; used in the Farquhar model.
 """
 function compute_APAR_leaf_moles(
     f_abs::FT,
@@ -1688,8 +1667,15 @@ function compute_APAR_leaf_moles(
     lightspeed::FT,
     planck_h::FT,
     N_a::FT,
-    LAI::FT
+    LAI::FT,
 ) where {FT}
-    APAR_canopy_moles =  compute_APAR_canopy_moles(f_abs, par_d, λ_γ_PAR, lightspeed, planck_h, N_a)
+    APAR_canopy_moles = compute_APAR_canopy_moles(
+        f_abs,
+        par_d,
+        λ_γ_PAR,
+        lightspeed,
+        planck_h,
+        N_a,
+    )
     return APAR_canopy_moles / max(LAI, sqrt(eps(FT)))
 end

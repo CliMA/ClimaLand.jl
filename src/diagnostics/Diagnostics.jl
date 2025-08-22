@@ -21,7 +21,7 @@ import ..Canopy:
     CanopyModel,
     medlyn_conductance,
     medlyn_term,
-    gs_h2o_pmodel,
+    gcanopy_h2o_pmodel,
     get_Vcmax25,
     MedlynConductanceModel,
     PModelConductance,

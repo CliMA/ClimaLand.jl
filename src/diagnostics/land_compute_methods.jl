@@ -176,15 +176,30 @@ function compute_stomatal_conductance!(
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa
-    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
-
+    GPP = p.canopy.photosynthesis.GPP             # canopy gross assimilation rate, mol m^-2 s^-1
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+        @. out = gcanopy_h2o_pmodel(
+            ci / (c_co2_air * P_air),
+            c_co2_air,
+            GPP / max(
+                p.canopy.hydraulics.area_index.leaf,
+                sqrt(eps(eltype(GPP))),
+            ),
+            Drel,
+        )
         return out
     else
-        @. out = gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+        @. out = gcanopy_h2o_pmodel(
+            ci / (c_co2_air * P_air),
+            c_co2_air,
+            GPP / max(
+                p.canopy.hydraulics.area_index.leaf,
+                sqrt(eps(eltype(GPP))),
+            ),
+            Drel,
+        )
     end
 end
 
@@ -352,26 +367,26 @@ end
 } p.canopy.hydraulics.area_index.stem
 
 # Canopy - Photosynthesis
-@diagnostic_compute "photosynthesis_net_canopy" Union{
+@diagnostic_compute "gross_primary_productivity" Union{
     SoilCanopyModel,
     LandModel,
     CanopyModel,
 } p.canopy.photosynthesis.GPP
-@diagnostic_compute "photosynthesis_net_leaf" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.An
-@diagnostic_compute "respiration_leaf" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.Rd
-@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25(
+
+@diagnostic_compute "dark_respiration_leaf" Union{SoilCanopyModel, LandModel} get_Rd_leaf(
     p,
     land_model.canopy.photosynthesis,
 )
-@diagnostic_compute "vcmax25" CanopyModel get_Vcmax25(
+@diagnostic_compute "dark_respiration_leaf" CanopyModel get_Rd_leaf(
+    p,
+    land_model.photosynthesis,
+)
+
+@diagnostic_compute "vcmax25_leaf" Union{SoilCanopyModel, LandModel} get_Vcmax25_leaf(
+    p,
+    land_model.canopy.photosynthesis,
+)
+@diagnostic_compute "vcmax25_leaf" CanopyModel get_Vcmax25_leaf(
     p,
     land_model.photosynthesis,
 )

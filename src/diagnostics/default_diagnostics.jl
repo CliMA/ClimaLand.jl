@@ -260,7 +260,6 @@ function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
         "rai",
         "sai",
         "gpp",
-        "an",
         "rd",
         "vcmax25",
         "nir",

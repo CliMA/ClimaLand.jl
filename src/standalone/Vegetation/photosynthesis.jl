@@ -17,7 +17,7 @@ Base.@kwdef struct FarquharParameters{
     MECH <: Union{FT, ClimaCore.Fields.Field},
     VC <: Union{FT, ClimaCore.Fields.Field},
 }
-    "Vcmax at 25 °C (mol CO2/m^2/s)"
+    "Vcmax at 25 °C (mol CO2/m^2/s; per leaf area)"
     Vcmax25::VC
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
@@ -93,15 +93,13 @@ ClimaLand.auxiliary_domain_names(::FarquharModel) =
     (:surface, :surface, :surface)
 
 
-function photosynthesis_at_a_point_Farquhar(
+function gross_leaf_photosynthesis_at_a_point_Farquhar(
     T,
-    β,
-    Rd,
     APAR_leaf_moles,
     c_co2,
     medlyn_factor,
     R,
-    Vcmax25,
+    Vcmax25_leaf,
     is_c3,
     Γstar25,
     ΔHJmax,
@@ -127,17 +125,28 @@ function photosynthesis_at_a_point_Farquhar(
     s6,
     E,
 )
-    Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+    Jmax = max_electron_transport(Vcmax25_leaf, ΔHJmax, T, To, R)
     J = electron_transport(APAR_leaf_moles, Jmax, θj, ϕ)
-    Vcmax =
-        compute_Vcmax(is_c3, Vcmax25, T, R, To, ΔHVcmax, Q10, s1, s2, s3, s4)
+    Vcmax_leaf = compute_Vcmax(
+        is_c3,
+        Vcmax25_leaf,
+        T,
+        R,
+        To,
+        ΔHVcmax,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+    )
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
     Aj = light_assimilation(is_c3, J, ci, Γstar, APAR_leaf_moles, E)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-    Ac = rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
-    return net_photosynthesis(Ac, Aj, Rd, β)
+    Ac = rubisco_assimilation(is_c3, Vcmax_leaf, ci, Γstar, Kc, Ko, oi)
+    return gross_photosynthesis(Ac, Aj)
 end
 
 """
@@ -149,7 +158,8 @@ end
 )
 
 Computes the net leaf photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar model, along with the
-dark respiration `Rd` (mol CO2/m^2/s) and gross primary productivity `GPP` (mol CO2/m^2/s), and updates them in place.
+dark respiration `Rd` (mol CO2/m^2/s) and gross primary productivity `GPP` (mol CO2/m^2/s), 
+and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (;
@@ -201,7 +211,6 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     R = LP.gas_constant(earth_param_set)
     thermo_params = earth_param_set.thermo_params
     (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
     (; sc, pc) = canopy.photosynthesis.parameters
     (; g1,) = canopy.conductance.parameters
     n_stem = canopy.hydraulics.n_stem
@@ -213,7 +222,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
-    
+
     @. Rd = dark_respiration(
         is_c3,
         Vcmax25,
@@ -228,58 +237,145 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
         s6,
         fC4,
     )
-    # TO DO: refactor to pass parameter struct, not the parameters individually
-    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs, par_d, λ_γ_PAR, lightspeed, planck_h, N_a, LAI))
-    @. An = photosynthesis_at_a_point_Farquhar(
-        T_canopy,
-        β,
-        Rd,
-        APAR_leaf_moles,
-        c_co2_air,
-        medlyn_factor,
-        R,
-        Vcmax25,
-        is_c3,
-        Γstar25,
-        ΔHJmax,
-        ΔHVcmax,
-        ΔHΓstar,
-        fC3,
-        fC4,
-        ΔHRd,
-        To,
-        θj,
-        ϕ,
-        oi,
-        Kc25,
-        Ko25,
-        ΔHkc,
-        ΔHko,
-        Q10,
-        s1,
-        s2,
-        s3,
-        s4,
-        s5,
-        s6,
-        E,
+    APAR_leaf_moles = @. lazy(
+        compute_APAR_leaf_moles(
+            f_abs,
+            par_d,
+            λ_γ_PAR,
+            lightspeed,
+            planck_h,
+            N_a,
+            LAI,
+        ),
     )
-    # Compute GPP: scale from leaf level An to canopy level GPP
-    @. GPP = GPP_from_leaf_level_An(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+    A_leaf = @. lazy(
+        gross_leaf_photosynthesis_at_a_point_Farquhar(
+            T_canopy,
+            APAR_leaf_moles,
+            c_co2_air,
+            medlyn_factor,
+            R,
+            Vcmax25,
+            is_c3,
+            Γstar25,
+            ΔHJmax,
+            ΔHVcmax,
+            ΔHΓstar,
+            fC3,
+            fC4,
+            ΔHRd,
+            To,
+            θj,
+            ϕ,
+            oi,
+            Kc25,
+            Ko25,
+            ΔHkc,
+            ΔHko,
+            Q10,
+            s1,
+            s2,
+            s3,
+            s4,
+            s5,
+            s6,
+            E,
+        ),
+    )
+    # Compute net from gross
+    # See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+    @. An = max(0, β * A_leaf - Rd)
+    # Compute GPP: scale from leaf level A to canopy level GPP
+    @. GPP = GPP_from_leaf_level_An(
+        A_leaf * β,
+        extinction_coeff(G_Function, cosθs),
+        LAI,
+        Ω,
+    )
 
 end
+
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
-get_Vcmax25(p, m::FarquharModel) = m.parameters.Vcmax25
-
-function get_Jmax(Y, p, canopy, m::FarquharModel)
+get_Vcmax25_leaf(p, m::FarquharModel) = m.parameters.Vcmax25
+get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
+get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
+function get_Jmax_leaf(Y, p, canopy, m::FarquharModel)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    earth_param_set = canopy.parameters.earth_param_set
     (; Vcmax25, ΔHJmax, To) = m.parameters
     R = LP.gas_constant(canopy.parameters.earth_param_set)
-    return @. lazy(max_electron_transport(Vcmax25, ΔHJmax, T_canopy, To, R))
+    Jmax_leaf =
+        @. lazy(max_electron_transport(Vcmax25, ΔHJmax, T_canopy, To, R))
+    return Jmax_leaf
 end
 
-function get_electron_transport(Y, p, canopy, m::FarquharModel)
+
+function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
+    J = get_J_leaf(Y, p, canopy, m)
+    Jmax = get_Jmax_leaf(Y, p, canopy, m)
+    FT = eltype(p.canopy.photosynthesis.An)
+    return @. lazy(J / max(Jmax, sqrt(eps(FT))))
+end
+"""
+    max_electron_transport(Vcmax::FT) where {FT}
+
+Computes the maximum potential rate of electron transport (`Jmax`),
+in units of mol/m^2/s,
+as a function of Vcmax at 25 °C (`Vcmax25`),
+a constant (`ΔHJmax`), a standard temperature (`To`),
+the unversal gas constant (`R`), and the temperature (`T`);
+used in the Farquhar model.
+
+See Table 11.5 of G. Bonan's textbook,
+Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function max_electron_transport(
+    Vcmax25::FT,
+    ΔHJmax::FT,
+    T::FT,
+    To::FT,
+    R::FT,
+) where {FT}
+    Jmax25 = Vcmax25 * FT(exp(1))
+    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
+    return Jmax
+end
+
+
+"""
+    electron_transport(APAR_leaf_moles::FT,
+                       Jmax::FT,
+                       θj::FT,
+                       ϕ::FT) where {FT}
+
+Computes the rate of electron transport (`J`),
+in units of mol/m^2/s, as a function of
+the maximum potential rate of electron transport (`Jmax`),
+absorbed photosynthetically active radiation (`APAR_leaf_moles`),
+an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
+and the quantum yield of photosystem II (`ϕ`);
+used in the Farquhar model.
+
+See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function electron_transport(
+    APAR_leaf_moles::FT,
+    Jmax::FT,
+    θj::FT,
+    ϕ::FT,
+) where {FT}
+    # Light utilization of APAR (leaf level)
+    IPSII = ϕ * APAR_leaf_moles / 2
+    # This is a solution to a quadratic equation
+    # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
+    J =
+        (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
+        (2 * θj)
+    return J
+end
+
+function get_J_leaf(Y, p, canopy, m::FarquharModel)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     earth_param_set = canopy.parameters.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
@@ -290,11 +386,21 @@ function get_electron_transport(Y, p, canopy, m::FarquharModel)
     N_a = LP.avogadro_constant(earth_param_set)
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
-    APAR_leaf_moles = @. lazy(compute_APAR_leaf_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a, LAI))
+    APAR_leaf_moles = @. lazy(
+        compute_APAR_leaf_moles(
+            f_abs_par,
+            par_d,
+            λ_γ_PAR,
+            c,
+            planck_h,
+            N_a,
+            LAI,
+        ),
+    )
 
-    Jmax = get_Jmax(Y, p, canopy, m)
+    Jmax_leaf = get_Jmax_leaf(Y, p, canopy, m)
     (; θj, ϕ) = m.parameters
-    return @. lazy(electron_transport(APAR_leaf_moles, Jmax, θj, ϕ))
+    return @. lazy(electron_transport(APAR_leaf_moles, Jmax_leaf, θj, ϕ))
 end
 
 include("./optimality_farquhar.jl")

@@ -165,9 +165,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
-            upscale_leaf_conductance(
-                gs_h2o_pmodel(χ, c_co2_air, An, Drel), # canopy level conductance in mol H2O Pa^-1
-                FT(0), # LAI = 0 since already canopy level
+            molar_conductance_to_m_per_s(
+                gcanopy_h2o_pmodel(χ, c_co2_air, An, Drel), # canopy level conductance in mol H2O Pa^-1
                 T_air,
                 R,
                 P_air,
