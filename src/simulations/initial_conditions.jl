@@ -2,7 +2,7 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
 
-export make_set_initial_state_from_file, make_set_initial_state_not_spunup
+export make_set_initial_state_from_file
 
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
@@ -326,65 +326,3 @@ function make_set_initial_state_from_file(
     return set_ic!
 end
 
-"""
-    make_set_initial_state_not_spunup(land::LandModel{FT}) where {FT}
-
-Returns a function which takes (Y,p,t0,land) as arguments, and updates
-the state Y in place with initial conditions that correspond to 
-Soil:
-θ_i = 0
-ϑ_l = ν/2
-T = T_atmos.
-
-Canopy:
-T = T_atmos
-ϑ_l = ν
-
-Snow:
-U = S = S_l = 0
-
-Soil CO2:
-C = 0.000412
-Fields in the cache `p` are used as pre-allocated memory and are updated as
-well, but this does not mean that the cache state is consitent with Y and t entirely.
-
-Currently only tested and used for global simulations, but the same returned
-function should work for column simulations.
-"""
-function make_set_initial_state_not_spunup(land::LandModel{FT}) where {FT}
-    function set_ic!(Y, p, t0, land)
-        atmos = land.soil.boundary_conditions.top.atmos
-
-        # Snow
-        Y.snow.U .= 0
-        Y.snow.S .= 0
-        Y.snow.S_l .= 0
-
-        # Soil CO2
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-
-        # Canopy
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-        # Soil
-        soil = land.soil
-        Y.soil.ϑ_l .= soil.parameters.ν
-        Y.soil.θ_i .= 0
-        ρc_s =
-            ClimaLand.Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                soil.parameters.ρc_ds,
-                soil.parameters.earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            ClimaLand.Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                max.(FT(273.16), Y.canopy.energy.T), # the atmospheric temperature, clipped to just above freezing to be consistent with water ice
-                soil.parameters.earth_param_set,
-            )
-    end
-    return set_ic!
-end
