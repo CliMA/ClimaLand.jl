@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
+function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
