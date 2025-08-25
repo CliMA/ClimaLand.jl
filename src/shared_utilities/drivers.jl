@@ -305,7 +305,7 @@ function default_zenith_angle(
         )
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
-    return zenith_only.(d, δ, η_UTC, longitude, latitude)
+    return @. lazy(zenith_only(d, δ, η_UTC, longitude, latitude))
 end
 
 """
