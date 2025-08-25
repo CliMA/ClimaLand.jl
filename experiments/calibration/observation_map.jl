@@ -165,12 +165,12 @@ function ClimaCalibrate.analyze_iteration(
 
     diagnostics_folder_path =
         joinpath(output_path, "global_diagnostics", "output_active")
-    LandSimVis.compute_monthly_leaderboard(
+    ext.compute_monthly_leaderboard(
         output_path,
         diagnostics_folder_path,
         "ERA5",
     )
-    LandSimVis.compute_seasonal_leaderboard(
+    ext.compute_seasonal_leaderboard(
         output_path,
         diagnostics_folder_path,
         "ERA5",
