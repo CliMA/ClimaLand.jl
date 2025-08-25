@@ -7,7 +7,6 @@ include(
 )
 
 using CairoMakie, GeoMakie, Printf, StatsBase
-import ClimaLand.LandSimVis as LandSimVis
 
 # Need access to get_era5_obs_var_dict and get_sim_var_dict
 ext = Base.get_extension(ClimaLand, :LandSimulationVisualizationExt)
@@ -165,12 +164,12 @@ function ClimaCalibrate.analyze_iteration(
 
     diagnostics_folder_path =
         joinpath(output_path, "global_diagnostics", "output_active")
-    LandSimVis.compute_monthly_leaderboard(
+    ext.compute_monthly_leaderboard(
         output_path,
         diagnostics_folder_path,
         "ERA5",
     )
-    LandSimVis.compute_seasonal_leaderboard(
+    ext.compute_seasonal_leaderboard(
         output_path,
         diagnostics_folder_path,
         "ERA5",
