@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Use correct van Genuchten parameters as a function of depth PR[#1304](https://github.com/CliMA/ClimaLand.jl/pull/1304)
 - Fix divide by zero when VPD is zero PR[#1363](https://github.com/CliMA/ClimaLand.jl/pull/1363)
 - Remove Smith Optimality model; use PModel instead PR[#1361](https://github.com/CliMA/ClimaLand.jl/pull/1361)
 - Use ClimaParams instead of hard coding values for long runs PR[#1300](https://github.com/CliMA/ClimaLand.jl/pull/1300)

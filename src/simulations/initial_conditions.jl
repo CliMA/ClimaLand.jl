@@ -325,4 +325,3 @@ function make_set_initial_state_from_file(
     end
     return set_ic!
 end
-
