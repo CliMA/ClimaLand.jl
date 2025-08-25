@@ -12,6 +12,13 @@ ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
 ClimaLand.Canopy.FarquharParameters
+ClimaLand.Canopy.FarquharParameters(
+    ::Type{FT},
+    is_c3::Union{FT, ClimaCore.Fields.Field};
+    kwargs...,
+)
+ClimaLand.Canopy.OptimalityFarquharModel
+ClimaLand.Canopy.OptimalityFarquharParameters
 ```
 
 ## FarquharModel Methods
