@@ -129,7 +129,7 @@ function compute_stomatal_conductance!(
     (; g1, g0, Drel) = conductance_model.parameters
     earth_param_set = canopy.parameters.earth_param_set
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
@@ -143,7 +143,7 @@ function compute_stomatal_conductance!(
                 p.drivers.q,
                 thermo_params,
             ),
-            p.canopy.photosynthesis.An,
+            An_leaf,
             p.drivers.c_co2,
         )
         return out
@@ -158,7 +158,7 @@ function compute_stomatal_conductance!(
                 p.drivers.q,
                 thermo_params,
             ),
-            p.canopy.photosynthesis.An,
+            An_leaf,
             p.drivers.c_co2,
         )
     end
@@ -176,15 +176,16 @@ function compute_stomatal_conductance!(
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa
-    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
-
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+        @. out =
+            gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An_leaf, Drel)
         return out
     else
-        @. out = gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An, Drel)
+        @. out =
+            gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An_leaf, Drel)
     end
 end
 
@@ -352,26 +353,32 @@ end
 } p.canopy.hydraulics.area_index.stem
 
 # Canopy - Photosynthesis
-@diagnostic_compute "photosynthesis_net_canopy" Union{
+@diagnostic_compute "photosynthesis_gross_canopy" Union{
     SoilCanopyModel,
     LandModel,
     CanopyModel,
 } p.canopy.photosynthesis.GPP
-@diagnostic_compute "photosynthesis_net_leaf" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.An
-@diagnostic_compute "respiration_leaf" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.Rd
-@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25(
+@diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} get_An_leaf(
     p,
     land_model.canopy.photosynthesis,
 )
-@diagnostic_compute "vcmax25" CanopyModel get_Vcmax25(
+@diagnostic_compute "photosynthesis_net_leaf" CanopyModel get_An_leaf(
+    p,
+    land_model.photosynthesis,
+)
+@diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} get_Rd_leaf(
+    p,
+    land_model.canopy.photosynthesis,
+)
+@diagnostic_compute "respiration_leaf" CanopyModel get_Rd_leaf(
+    p,
+    land_model.photosynthesis,
+)
+@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25_leaf(
+    p,
+    land_model.canopy.photosynthesis,
+)
+@diagnostic_compute "vcmax25" CanopyModel get_Vcmax25_leaf(
     p,
     land_model.photosynthesis,
 )

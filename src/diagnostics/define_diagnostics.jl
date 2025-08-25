@@ -218,7 +218,7 @@ function define_diagnostics!(land_model)
     # Stomatal conductance
     add_diagnostic_variable!(
         short_name = "gs",
-        long_name = "Stomatal Conductance",
+        long_name = "Leaf stomatal Conductance",
         standard_name = "stomatal_conductance",
         units = "mol H2O m^-2 s^-1",
         comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
@@ -349,9 +349,9 @@ function define_diagnostics!(land_model)
         long_name = "Gross Primary Productivity",
         standard_name = "gross_primary_productivity",
         units = "mol CO2 m^-2 s^-1",
-        comments = "Net photosynthesis (carbon assimilation) of the canopy. This is equivalent to leaf net assimilation scaled to the canopy level.",
+        comments = "Gross photosynthesis (carbon assimilation) of the canopy.",
         compute! = (out, Y, p, t) ->
-            compute_photosynthesis_net_canopy!(out, Y, p, t, land_model),
+            compute_photosynthesis_gross_canopy!(out, Y, p, t, land_model),
     )
 
     # Leaf net photosynthesis
@@ -360,7 +360,7 @@ function define_diagnostics!(land_model)
         long_name = "Leaf Net Photosynthesis",
         standard_name = "leaf_net_photosynthesis",
         units = "mol CO2 m^-2 s^-1",
-        comments = "Net photosynthesis (carbon assimilation) of a leaf, computed for example by the Farquhar model.",
+        comments = "Net photosynthesis (carbon assimilation) of a leaf",
         compute! = (out, Y, p, t) ->
             compute_photosynthesis_net_leaf!(out, Y, p, t, land_model),
     )
@@ -382,7 +382,7 @@ function define_diagnostics!(land_model)
         long_name = "Vcmax25",
         standard_name = "vcmax25",
         units = "mol CO2 m^-2 s^-1",
-        comments = "The parameter vcmax at 25 degree celsius. Important for the Farquhar model of leaf photosynthesis.",
+        comments = "The parameter vcmax of leaves at 25 degree celsius.",
         compute! = (out, Y, p, t) -> compute_vcmax25!(out, Y, p, t, land_model),
     )
 

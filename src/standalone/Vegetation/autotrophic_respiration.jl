@@ -12,7 +12,7 @@ Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model des
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
-    "Vcmax25 to N factor (mol CO2 m-2 s-1 kg C (kg C)-1)"
+    "Vcmax25 (leaf level) to N factor (mol CO2 m-2 s-1 kg C (kg C)-1)"
     ne::FT
     "Live stem wood coefficient (kg C m-3)"
     ηsl::FT
@@ -90,21 +90,20 @@ function update_autotrophic_respiration!(
     (; sc, pc) = canopy.photosynthesis.parameters
     (; G_Function, Ω) = canopy.radiative_transfer.parameters
     cosθs = p.drivers.cosθs
-    An = p.canopy.photosynthesis.An
-    Rd = p.canopy.photosynthesis.Rd
-
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
-    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
+    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
     @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
         autotrophic_respiration,
-        Vcmax25,
+        Vcmax25_leaf,
         LAI,
         SAI,
         RAI,
         extinction_coeff(G_Function, cosθs),
         Ω,
-        An,
-        Rd,
+        An_leaf,
+        Rd_leaf,
         β,
         h_canopy,
     )
@@ -190,4 +189,83 @@ function AutotrophicRespirationParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     AutotrophicRespirationParameters{FT}(; parameters..., kwargs...)
+end
+
+
+
+"""
+    nitrogen_content(
+                     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
+                     Vcmax25::FT, #
+                     LAI::FT, # Leaf area index
+                     SAI::FT,
+                     RAI::FT,
+                     ηsl::FT, # live stem  wood coefficient (kg C m-3)
+                     h::FT, # canopy height (m)
+                     σl::FT # Specific leaf density (kg C m-2 [leaf])
+                     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
+                     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
+                    ) where {FT}
+
+Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
+"""
+function nitrogen_content(
+    ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
+    Vcmax25::FT, #
+    LAI::FT, # Leaf area index
+    SAI::FT,
+    RAI::FT,
+    ηsl::FT, # live stem  wood coefficient (kg C m-3)
+    h::FT, # canopy height (m)
+    σl::FT, # Specific leaf density (kg C m-2 [leaf])
+    μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
+    μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
+) where {FT}
+    Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
+    Rc = σl * RAI
+    nm = Vcmax25 / ne
+    Nl = nm * σl * LAI
+    Nr = μr * nm * Rc
+    Ns = μs * nm * Sc
+    return Nl, Nr, Ns
+end
+
+"""
+    plant_respiration_maintenance(
+        Rd::FT, # Dark respiration
+        β::FT, # Soil moisture factor
+        Nl::FT, # Nitrogen content of leafs
+        Nr::FT, # Nitrogen content of roots
+        Ns::FT, # Nitrogen content of stems
+        ) where {FT}
+
+Computes plant maintenance respiration as a function of dark respiration (Rd),
+the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns),
+and the soil moisture factor (β).
+"""
+function plant_respiration_maintenance(
+    Rd::FT, # Dark respiration
+    β::FT, # Soil moisture factor
+    Nl::FT, # Nitrogen content of leafs
+    Nr::FT, # Nitrogen content of roots
+    Ns::FT, # Nitrogen content of stems
+) where {FT}
+    # When LAI is zero, Nl = 0
+    Rpm = Rd * (β + (Nr + Ns) / max(Nl, eps(FT)))
+    return Rpm
+end
+
+"""
+    plant_respiration_growth(
+        Rel::FT, # Factor of relative contribution
+        An::FT, # Net photosynthesis
+        Rpm::FT # Plant maintenance respiration
+        ) where {FT}
+
+Computes plant growth respiration as a function of net photosynthesis (An),
+plant maintenance respiration (Rpm), and a relative contribution factor, Rel.
+"""
+function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
+    Rg = Rel * (An - Rpm)
+    return Rg
 end

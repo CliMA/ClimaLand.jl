@@ -335,5 +335,7 @@ end
 
 @testset "Test edge cases" begin
     FT = Float64
-    @test !isnan(electron_transport_pmodel(FT(0.5), FT(0.5), FT(0)))
+    @test !isnan(
+        ClimaLand.Canopy.electron_transport_pmodel(FT(0.5), FT(0.5), FT(0)),
+    )
 end

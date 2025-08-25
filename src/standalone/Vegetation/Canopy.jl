@@ -42,6 +42,7 @@ include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
+include("./photosynthesis_farquhar.jl")
 include("./pmodel.jl")
 include("./radiation.jl")
 include("./solar_induced_fluorescence.jl")

@@ -67,21 +67,21 @@ for FT in (Float32, Float64)
         Vcmax =
             photosynthesisparams.Vcmax25 *
             arrhenius_function(T, To, R, photosynthesisparams.ΔHVcmax)
-        Kc = MM_Kc(
+        Kc = ClimaLand.Canopy.MM_Kc(
             photosynthesisparams.Kc25,
             photosynthesisparams.ΔHkc,
             T,
             To,
             R,
         )
-        Ko = MM_Ko(
+        Ko = ClimaLand.Canopy.MM_Ko(
             photosynthesisparams.Ko25,
             photosynthesisparams.ΔHko,
             T,
             To,
             R,
         )
-        Γstar = co2_compensation(
+        Γstar = ClimaLand.Canopy.co2_compensation_farquhar(
             photosynthesisparams.Γstar25,
             photosynthesisparams.ΔHΓstar,
             T,
@@ -101,23 +101,22 @@ for FT in (Float32, Float64)
         m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
 
         @test m_t == 1 + stomatal_g_params.g1 / sqrt(sqrt(eps(FT)) + VPD)
-        ci = intercellular_co2(ca, Γstar, m_t)
+        ci = ClimaLand.Canopy.intercellular_co2_farquhar(ca, Γstar, m_t)
         @test ci == ca * (1 - 1 / m_t)
-        @test intercellular_co2(ca, FT(1), m_t) == FT(1)
-
+        @test ClimaLand.Canopy.intercellular_co2_farquhar(ca, FT(1), m_t) ==
+              FT(1)
+        Kmm = @. Kc * (1 + photosynthesisparams.oi / Ko)
         Ac = rubisco_assimilation(
             photosynthesisparams.is_c3,
             Vcmax,
             ci,
             Γstar,
-            Kc,
-            Ko,
-            photosynthesisparams.oi,
+            Kmm,
         )
         @test Ac ==
               Vcmax * (ci - Γstar) /
               (ci + Kc * (1 + photosynthesisparams.oi / Ko))
-        Jmax = max_electron_transport(
+        Jmax = ClimaLand.Canopy.max_electron_transport_farquhar(
             photosynthesisparams.Vcmax25,
             photosynthesisparams.ΔHJmax,
             T,
@@ -130,7 +129,7 @@ for FT in (Float32, Float64)
               arrhenius_function(T, To, R, photosynthesisparams.ΔHJmax)
         APAR = FT(1)
         J =
-            electron_transport.(
+            ClimaLand.Canopy.electron_transport_farquhar.(
                 APAR,
                 Jmax,
                 photosynthesisparams.θj,
@@ -174,7 +173,7 @@ for FT in (Float32, Float64)
             To,
             ΔHRd,
         ) = photosynthesisparams
-        @test compute_Vcmax(
+        @test ClimaLand.Canopy.compute_Vcmax_farquhar(
             is_c3,
             Vcmax25,
             T,
@@ -189,18 +188,11 @@ for FT in (Float32, Float64)
         ) ==
               Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
               (1 + exp(s3 * (s4 - T)))
-        @test rubisco_assimilation(
-            is_c3,
-            Vcmax,
-            ci,
-            Γstar,
-            Kc,
-            Ko,
-            photosynthesisparams.oi,
-        ) == Vcmax
+        Kmm = @. Kc * (1 + photosynthesisparams.oi / Ko)
+        @test rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kmm) == Vcmax
         @test light_assimilation(is_c3, J, ci, Γstar, APAR, E) == APAR * E
 
-        Rd = dark_respiration(
+        Rd = ClimaLand.Canopy.dark_respiration_farquhar(
             is_c3,
             Vcmax25,
             β,
@@ -217,7 +209,8 @@ for FT in (Float32, Float64)
         @test Rd ≈
               photosynthesisparams.Vcmax25 * β * fC4 * Q10^((T - To) / 10) /
               (1 + exp(s5 * (T - s6)))
-        An = net_photosynthesis.(Ac, Aj, Rd, β)
+        A = ClimaLand.Canopy.gross_photosynthesis.(Ac, Aj)
+        An = ClimaLand.Canopy.net_photosynthesis.(A .* β, Rd)
         stomatal_conductance =
             medlyn_conductance.(
                 stomatal_g_params.g0,
@@ -234,21 +227,25 @@ for FT in (Float32, Float64)
                 )
             )
         )
-        GPP = compute_GPP.(An, K, LAI, RTparams.Ω) # mol m-2 s-1
+        GPP = ClimaLand.Canopy.GPP_from_leaf_level_A.(A, K, LAI, RTparams.Ω) # mol m-2 s-1
         @test all(
-            @.(GPP ≈ An * (1 - exp(-K * LAI * RTparams.Ω)) / (K * RTparams.Ω))
+            @.(GPP ≈ A * (1 - exp(-K * LAI * RTparams.Ω)) / (K * RTparams.Ω))
         )
 
         @test all(
             @.(
-                upscale_leaf_conductance(stomatal_conductance, LAI, T, R, P) ≈
-                stomatal_conductance * LAI * R * T / P
+                ClimaLand.Canopy.conductance_molar_flux_to_m_per_s(
+                    stomatal_conductance,
+                    T,
+                    R,
+                    P,
+                ) ≈ stomatal_conductance * R * T / P
             )
         )
 
         # Tests for Autotrophic Respiration parameterisation
         h_canopy = FT(1.0) # h planck defined above
-        Nl, Nr, Ns = nitrogen_content(
+        Nl, Nr, Ns = ClimaLand.Canopy.nitrogen_content(
             ARparams.ne,
             photosynthesisparams.Vcmax25,
             LAI,
@@ -260,8 +257,8 @@ for FT in (Float32, Float64)
             ARparams.μr,
             ARparams.μs,
         )
-        Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
-        Rg = plant_respiration_growth.(ARparams.Rel, An, Rpm)
+        Rpm = ClimaLand.Canopy.plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
+        Rg = ClimaLand.Canopy.plant_respiration_growth.(ARparams.Rel, An, Rpm)
 
         @test Nl ==
               photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl * LAI
