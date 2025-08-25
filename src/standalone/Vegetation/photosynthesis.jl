@@ -151,102 +151,8 @@ end
 Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar model, along with the
 dark respiration `Rd` (mol CO2/m^2/s) and gross primary productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
-function update_photosynthesis!(
-    ::Type{M},
-    p_photosynthesis::PP,
-    p_hydraulics,
-    P_radiative_transfer,
-    earth_param_set,
-    T_canopy,
-    c_co2_air::FT,
-    cosθs::FT,
-    P_air::FT,
-    T_air::FT,
-    q_air::FT,
-    Vcmax25::FT,
-    Γstar25::FT,
-    Kc25::FT,
-    Ko25::FT,
-    ΔHkc::FT,
-    ΔHko::FT,
-    ΔHVcmax::FT,
-    ΔHΓstar::FT,
-    ΔHJmax::FT,
-    ΔHRd::FT,
-    To::FT,
-    oi::FT,
-    ϕ::FT,
-    θj::FT,
-    fC3::FT,
-    fC4::FT,
-    sc::FT,
-    pc::FT,
-    Q10::FT,
-    s1::FT,
-    s2::FT,
-    s3::FT,
-    s4::FT,
-    s5::FT,
-    s6::FT,
-    E::FT,
-    is_c3::FT,
-    G_Function,
-    λ_γ_PAR,
-    Ω,
-    n_stem,
-    n_leaf,
-    g1,
-) where {FT, M <: FarquharModel, PP}
-
-    # unpack a bunch of stuff from p and params
-    Rd = p_photosynthesis.Rd
-    An = p_photosynthesis.An
-    GPP = p_photosynthesis.GPP
-
-    f_abs = P_radiative_transfer.par.abs
-    ψ = p_hydraulics.ψ
-
-
-    c = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    R = LP.gas_constant(earth_param_set)
-    thermo_params = earth_param_set.thermo_params
-
-    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
-    i_end = n_stem + n_leaf
-    par_d = P_radiative_transfer.par_d
-    area_index = p_hydraulics.area_index
-    LAI = area_index.leaf
-
-    β = moisture_stress(ψ.:($i_end) * ρ_l * grav, sc, pc)
-    medlyn_factor = medlyn_term(g1, T_air, P_air, q_air, thermo_params)
-
-    Rd = dark_respiration(
-        is_c3,
-        Vcmax25,
-        β,
-        T_canopy,
-        R,
-        To,
-        fC3,
-        ΔHRd,
-        Q10,
-        s5,
-        s6,
-        fC4,
-    )
-    # TO DO: refactor to pass parameter struct, not the parameters individually
-    An = photosynthesis_at_a_point_Farquhar(
-        T_canopy,
-        β,
-        Rd,
-        f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
-        c_co2_air,
-        medlyn_factor,
-        R,
+function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
+    (;
         Vcmax25,
         is_c3,
         Γstar25,
@@ -272,10 +178,99 @@ function update_photosynthesis!(
         s5,
         s6,
         E,
+    ) = model.parameters
+
+
+    # unpack a bunch of stuff from p and params
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    f_abs = p.canopy.radiative_transfer.par.abs
+    ψ = p.canopy.hydraulics.ψ
+    c_co2_air = p.drivers.c_co2
+    cosθs = p.drivers.cosθs
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    earth_param_set = canopy.parameters.earth_param_set
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    thermo_params = earth_param_set.thermo_params
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
+    (; sc, pc) = canopy.photosynthesis.parameters
+    (; g1,) = canopy.conductance.parameters
+    n_stem = canopy.hydraulics.n_stem
+    n_leaf = canopy.hydraulics.n_leaf
+    i_end = n_stem + n_leaf
+    par_d = p.canopy.radiative_transfer.par_d
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+
+
+    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+
+    Rd = @. lazy(
+        dark_respiration(
+            is_c3,
+            Vcmax25,
+            β,
+            T_canopy,
+            R,
+            To,
+            fC3,
+            ΔHRd,
+            Q10,
+            s5,
+            s6,
+            fC4,
+        ),
+    )
+    # TO DO: refactor to pass parameter struct, not the parameters individually
+    An = @. lazy(
+        photosynthesis_at_a_point_Farquhar(
+            T_canopy,
+            β,
+            Rd,
+            f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
+            c_co2_air,
+            medlyn_factor,
+            R,
+            Vcmax25,
+            is_c3,
+            Γstar25,
+            ΔHJmax,
+            ΔHVcmax,
+            ΔHΓstar,
+            fC3,
+            fC4,
+            ΔHRd,
+            To,
+            θj,
+            ϕ,
+            oi,
+            Kc25,
+            Ko25,
+            ΔHkc,
+            ΔHko,
+            Q10,
+            s1,
+            s2,
+            s3,
+            s4,
+            s5,
+            s6,
+            E,
+        ),
     )
     # Compute GPP: TODO - move to diagnostics only
-    GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
-    return PP((; An, GPP, Rd))
+    GPP = @. lazy(compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω))
+    NT = eltype(p.canopy.photosynthesis)
+    return NT.(tuple.(An, GPP, Rd))
+
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 

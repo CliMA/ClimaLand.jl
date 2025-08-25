@@ -340,7 +340,6 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     out = NT((root, stem, leaf))
     lai_consistency_check(n_stem, n_leaf, NT((root, stem, leaf)))
     return out
-    # return NamedTuple{NT.parameters[1]}((;leaf, stem, root))
 end
 
 """
