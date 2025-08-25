@@ -567,14 +567,14 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.AbstractTOMLDict;
-        z_0m = FT(2),
-        z_0b = FT(0.2),
+        z_0m = toml_dict["canopy_momentum_roughness_length"],
+        z_0b = toml_dict["canopy_scalar_roughness_length"],
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(),
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
-        hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
+        hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}

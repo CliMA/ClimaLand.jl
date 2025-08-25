@@ -245,7 +245,7 @@ end
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         ),
@@ -265,14 +265,14 @@ end
                 ground = ClimaLand.PrognosticSoilConditions{FT}(),
             ),
             LAI,
-            earth_param_set;
+            toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         ),
        snow = Snow.SnowModel(
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
             forcing,
-            earth_param_set,
+            toml_dict,
             Δt;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         ),
