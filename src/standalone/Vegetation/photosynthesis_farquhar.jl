@@ -94,9 +94,10 @@ function FarquharModel{FT}(
     return FarquharModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
-ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :Rd)
-ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT)
-ClimaLand.auxiliary_domain_names(::FarquharModel) = (:surface, :surface)
+ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :Rd, :GPP)
+ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.auxiliary_domain_names(::FarquharModel) =
+    (:surface, :surface, :surface)
 
 """
     gross_leaf_photosynthesis_at_a_point_Farquhar
@@ -168,7 +169,8 @@ end
 )
 
 Computes the net leaf-level photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar 
-model, along with the dark leaf-level respiration `Rd` (mol CO2/m^2/s).
+model, along with the dark leaf-level respiration `Rd` (mol CO2/m^2/s), and
+canopy level gross photosynthesis (mol CO2/m^2/s).
 """
 function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (;
@@ -202,6 +204,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     # unpack a bunch of stuff from p and params
     Rd = p.canopy.photosynthesis.Rd
     An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ψ = p.canopy.hydraulics.ψ
@@ -288,14 +291,15 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     ) # has moisture stress
     # Compute net assimilation:
     @. An = net_photosynthesis(A * β, Rd) # Rd has β accounted for already.
+    # GPP
+    @. GPP = A * β * LAI
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 get_Vcmax25_leaf(p, m::FarquharModel) = m.parameters.Vcmax25
 get_Rd_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.Rd
 get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
-get_GPP_canopy(p, m::FarquharModel) =
-    @. lazy(p.canopy.photosynthesis.An * p.canopy.hydraulics.area_index.leaf)
+
 function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
     Jmax = compute_Jmax_leaf(Y, p, canopy, m) # lazy
     J = compute_J_leaf(Y, p, canopy, m) # lazy

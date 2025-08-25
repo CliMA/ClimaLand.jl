@@ -356,11 +356,9 @@ end
 @diagnostic_compute "photosynthesis_gross_canopy" Union{
     SoilCanopyModel,
     LandModel,
-} get_GPP_canopy(p, land_model.canopy.photosynthesis)
-@diagnostic_compute "photosynthesis_gross_canopy" CanopyModel get_GPP_canopy(
-    p,
-    land_model.photosynthesis,
-)
+    CanopyModel,
+} p.canopy.photosynthesis.GPP
+
 @diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} get_An_leaf(
     p,
     land_model.canopy.photosynthesis,

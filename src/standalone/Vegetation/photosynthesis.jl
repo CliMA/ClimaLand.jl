@@ -26,7 +26,7 @@ function update_photosynthesis!(
 )
     nothing
 end
-get_GPP_canopy(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used by diagnostics
+
 get_Vcmax_leaf(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used by solar induced fluorescence, diagnostics, autotrophic respiration
 get_J_over_Jmax(
     Y,
