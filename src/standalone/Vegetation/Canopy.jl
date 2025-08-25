@@ -1045,8 +1045,7 @@ function ClimaLand.make_update_aux(
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
         (; g1,) = canopy.conductance.parameters
-        p.canopy.photosynthesis .=
-            update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
 
         # update SIF
         update_SIF!(p, Y, canopy.sif, canopy)

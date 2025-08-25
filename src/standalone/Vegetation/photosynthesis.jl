@@ -182,6 +182,9 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
 
 
     # unpack a bunch of stuff from p and params
+    Rd = p.canopy.photosynthesis.Rd
+    An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ψ = p.canopy.hydraulics.ψ
@@ -213,63 +216,60 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
 
-    Rd = @. lazy(
-        dark_respiration(
-            is_c3,
-            Vcmax25,
-            β,
-            T_canopy,
-            R,
-            To,
-            fC3,
-            ΔHRd,
-            Q10,
-            s5,
-            s6,
-            fC4,
-        ),
+
+    @. Rd = dark_respiration(
+        is_c3,
+        Vcmax25,
+        β,
+        T_canopy,
+        R,
+        To,
+        fC3,
+        ΔHRd,
+        Q10,
+        s5,
+        s6,
+        fC4,
     )
     # TO DO: refactor to pass parameter struct, not the parameters individually
-    An = @. lazy(
-        photosynthesis_at_a_point_Farquhar(
-            T_canopy,
-            β,
-            Rd,
-            f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
-            c_co2_air,
-            medlyn_factor,
-            R,
-            Vcmax25,
-            is_c3,
-            Γstar25,
-            ΔHJmax,
-            ΔHVcmax,
-            ΔHΓstar,
-            fC3,
-            fC4,
-            ΔHRd,
-            To,
-            θj,
-            ϕ,
-            oi,
-            Kc25,
-            Ko25,
-            ΔHkc,
-            ΔHko,
-            Q10,
-            s1,
-            s2,
-            s3,
-            s4,
-            s5,
-            s6,
-            E,
-        ),
+    @. An = photosynthesis_at_a_point_Farquhar(
+        T_canopy,
+        β,
+        Rd,
+        f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
+        c_co2_air,
+        medlyn_factor,
+        R,
+        Vcmax25,
+        is_c3,
+        Γstar25,
+        ΔHJmax,
+        ΔHVcmax,
+        ΔHΓstar,
+        fC3,
+        fC4,
+        ΔHRd,
+        To,
+        θj,
+        ϕ,
+        oi,
+        Kc25,
+        Ko25,
+        ΔHkc,
+        ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        E,
     )
     # Compute GPP: TODO - move to diagnostics only
-    GPP = @. lazy(compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω))
-    NT = eltype(p.canopy.photosynthesis)
-    return NT.(tuple.(An, GPP, Rd))
+    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+
+
 
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
