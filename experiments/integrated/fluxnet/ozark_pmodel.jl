@@ -230,8 +230,7 @@ snow = Snow.SnowModel(
     FT,
     surface_domain,
     forcing,
-    toml_dict,
-    dt;
+    toml_dict;
     prognostic_land_components,
 )
 

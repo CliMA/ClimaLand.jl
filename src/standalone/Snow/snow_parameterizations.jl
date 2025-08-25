@@ -353,13 +353,16 @@ end
 
 
 """
-    runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
+    runoff_timescale(z::FT, Ksat::FT) where {FT}
 
 Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
+
+To prevent numerical issues when the snowdepth is small, we clip to
+1 hour.
 """
-function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
-    τ = max(Δt, z / Ksat)
+function runoff_timescale(z::FT, Ksat::FT) where {FT}
+    τ = max(FT(3600), z / Ksat) # clip to 1 hour
     return τ
 end
 
@@ -396,7 +399,7 @@ function compute_water_runoff(
     z::FT,
     parameters,
 ) where {FT}
-    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
+    τ = runoff_timescale(z, parameters.Ksat)
     q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, parameters)
     S_safe = max(S, FT(0))
     return -(S_l - q_l_max * S_safe) / τ * heaviside(S_l - q_l_max * S_safe)

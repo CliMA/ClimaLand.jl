@@ -240,8 +240,7 @@ end
         forcing,
         LAI,
         toml_dict::CP.AbstractTOMLDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
-        Δt;
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -272,8 +271,7 @@ end
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
             forcing,
-            earth_param_set,
-            Δt;
+            earth_param_set;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         ),
    ) where {FT}
@@ -295,8 +293,7 @@ function LandModel{FT}(
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
-    },
-    Δt;
+    };
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -327,8 +324,7 @@ function LandModel{FT}(
         FT,
         ClimaLand.Domains.obtain_surface_domain(domain),
         forcing,
-        toml_dict,
-        Δt;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     ),
 ) where {FT}

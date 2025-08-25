@@ -66,7 +66,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
 LAI =
     ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 # Make the model:
-model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain);
 simulation = ClimaLand.Simulations.LandSimulation(
     start_date,
     stop_date,
