@@ -452,22 +452,15 @@ end
         toml_dict::CP.AbstractTOMLDict,
         Δt;
         prognostic_land_components = (:snow,),
-        z_0m = LP.get_default_parameter(FT, :snow_momentum_roughness_length),
-        z_0b = LP.get_default_parameter(FT, :snow_scalar_roughness_length),
-        ϵ_snow = LP.get_default_parameter(FT, :snow_emissivity),
-        α_snow = ConstantAlbedo(LP.get_default_parameter(FT, :snow_albedo)),
-        density = MinimumDensityModel(LP.get_default_parameter(FT, :snow_density)),
-        scf = WuWuSnowCoverFractionModel(
-            FT(0.106),
-            FT(1.81),
-            FT(0.08),
-            FT(1.77),
-            FT(1),
-            FT(1),
-        ),
-        θ_r = LP.get_default_parameter(FT, :holding_capacity_of_water_in_snow),
-        Ksat = LP.get_default_parameter(FT, :wet_snow_hydraulic_conductivity),
-        ΔS = FT(0.1)
+        z_0m = toml_dict["snow_momentum_roughness_length"],
+        z_0b = toml_dict["snow_scalar_roughness_length"],
+        ϵ_snow = toml_dict["snow_emissivity"],
+        α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+        density = MinimumDensityModel(toml_dict["snow_density"]),
+        scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+        θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+        Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+        ΔS = toml_dict["delta_S"],
     )
 
 Creates a SnowModel model with the given float type FT, domain, toml_dict, forcing, and prognostic land components.
