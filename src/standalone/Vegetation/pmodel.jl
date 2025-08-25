@@ -972,6 +972,8 @@ get_An_leaf(p, m::PModel) = @.lazy(
     ),
 )
 
+get_GPP_canopy(p, m::PModel) = p.canopy.photosynthesis.GPP
+
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
     Jmax = compute_Jmax_canopy(Y, p, canopy, m) # lazy
     J = compute_J_canopy(Y, p, canopy, m) # lazy

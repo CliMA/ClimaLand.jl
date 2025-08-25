@@ -227,10 +227,6 @@ for FT in (Float32, Float64)
                 )
             )
         )
-        GPP = ClimaLand.Canopy.GPP_from_leaf_level_A.(A, K, LAI, RTparams.Ω) # mol m-2 s-1
-        @test all(
-            @.(GPP ≈ A * (1 - exp(-K * LAI * RTparams.Ω)) / (K * RTparams.Ω))
-        )
 
         @test all(
             @.(

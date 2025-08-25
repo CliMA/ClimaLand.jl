@@ -3,6 +3,7 @@ export get_Vcmax25_leaf,
     get_Rd_leaf,
     get_An_leaf,
     get_J_over_Jmax,
+    get_GPP_canopy,
     rubisco_assimilation,
     light_assimilation,
     net_photosynthesis,
@@ -25,7 +26,7 @@ function update_photosynthesis!(
 )
     nothing
 end
-
+get_GPP_canopy(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used by diagnostics
 get_Vcmax_leaf(p, photosynthesis_model::AbstractPhotosynthesisModel) = nothing # used by solar induced fluorescence, diagnostics, autotrophic respiration
 get_J_over_Jmax(
     Y,
@@ -49,6 +50,10 @@ dark respiration (`Rd`).
 Note that if  moisture stress is factored into the model, it must be applied correctly to Rd
 and A prior to this function.
 
+Both A and Rd must either be leaf level (standard Farquhar), or 
+canopy level (p-model), but not mixed. The returned quantity is 
+similarily either leaf or canopy level.
+
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function net_photosynthesis(A::FT, Rd::FT) where {FT}
@@ -68,6 +73,10 @@ the Rubisco limiting factor (`Ac`), the electron transport limiting rate (`Aj`).
 Note that if  moisture stress is factored into the model, it must be applied correctly to Ac
 and Aj prior to this function.
 
+Both Ac and Aj must either be leaf level (standard Farquhar), or 
+canopy level (p-model), but not mixed. The returned quantity is 
+similarily either leaf or canopy level.
+
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function gross_photosynthesis(Ac::FT, Aj::FT) where {FT}
@@ -77,7 +86,9 @@ end
 """
     rubisco_assimilation(is_c3::AbstractFloat, args...)
 
-Calls the correct rubisco assimilation function based on the `is_c3`.
+Calls the correct rubisco assimilation function based on the `is_c3`;
+the returned quantity may be canopy-level (p-model) or leaf-level (standard
+Farquhar).
 
 A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_rubisco_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
@@ -102,7 +113,9 @@ the CO2 compensation point (`Γstar`), and the effective Michaelis-Menten parame
 `K_mm`.
 
 The units of ci, Γstar, and Kmm may be Pa or mol/mol, but they must be consistent. The
-units of Vcmax must be mol CO2/m^2.s.
+units of Vcmax must be mol CO2/m^2.s. Similarily, the assimilation rate
+may be leaf-level (standard Farquhar) or canopy level (p-model), 
+depending on the units of Vcmax.
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
@@ -122,6 +135,10 @@ end
 Computes the Rubisco limiting rate of photosynthesis for C4 plants (`Ac`)
 in units of moles CO2/m^2/s,
 as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`).
+
+The assimilation rate
+may be leaf-level (standard Farquhar) or canopy level (p-model), 
+depending on the units of Vcmax.
 """
 function c4_rubisco_assimilation(Vcmax::FT, _...) where {FT}
     Ac = Vcmax
@@ -131,7 +148,9 @@ end
 """
     light_assimilation(is_c3::AbstractFloat, args...)
 
-Calls the correct light assimilation function based on the `is_c3`.
+Calls the correct light assimilation function based on the `is_c3`;
+the returned quantity may be canopy-level (p-model) or leaf-level (standard
+Farquhar).
 
 A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
 `c3_light_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
@@ -152,6 +171,10 @@ end
 Computes the electron transport limiting rate (`Aj`),
 in units of moles CO2/m^2/s.
 
+The returned assimilation rate
+may be leaf-level (standard Farquhar) or canopy level (p-model), 
+depending on the units of J.
+
 For C3 plants, this is a function of
 the rate of electron transport (`J`), the leaf internal carbon dioxide partial pressure (`ci`),
 and the CO2 compensation point (`Γstar`).
@@ -167,6 +190,10 @@ end
 
 Computes the electron transport limiting rate (`Aj`),
 in units of moles CO2/m^2/s.
+
+The returned assimilation rate
+may be leaf-level (standard Farquhar) or canopy level (p-model), 
+depending on the units of APAR (per unit leaf area, or per ground area).
 
 For C4 plants, this is a function of APAR and a efficiency parameter E, see Equation 11.70 of
  G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
