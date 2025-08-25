@@ -260,9 +260,9 @@ function EnergyHydrology{FT}(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
-    z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
-    z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
-    emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
+    z_0m = toml_dict["soil_momentum_roughness_length"],
+    z_0b = toml_dict["soil_scalar_roughness_length"],
+    emissivity = toml_dict["emissivity_bare_soil"],
     additional_sources = (),
 ) where {FT <: AbstractFloat}
     # TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
@@ -277,6 +277,7 @@ function EnergyHydrology{FT}(
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
     sources = (additional_sources..., PhaseChange{FT}())
+    @info emissivity
     parameters = EnergyHydrologyParameters(
         FT;
         retention_parameters...,
