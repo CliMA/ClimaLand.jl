@@ -251,7 +251,7 @@ function DriverUpdateCallback(
     start_date = nothing,
     dt = nothing,
 )
-    affect! = (integrator) -> updatefunc(integrator.p, t)
+    affect! = (integrator) -> updatefunc(integrator.p, integrator.t)
     initialize =
         update_frequency == zero(update_frequency) ? affect! :
         SciMLBase.INITIALIZE_DEFAULT
@@ -312,6 +312,10 @@ function CheckpointCallback(
     model,
     dt = nothing,
 )
+    affect! = let output_dir = output_dir, model = model
+        (integrator) ->
+            save_checkpoint(integrator.u, integrator.t, output_dir; model)
+    end
     FrequencyBasedCallback(checkpoint_frequency, start_date, dt, affect!)
 end
 
