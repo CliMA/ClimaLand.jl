@@ -139,7 +139,7 @@ function LandSimulation(
         ClimaLand.ReportCallback(1000),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+    updateat = promote(t0, ITime(3600 * 3))[2],
     solver_kwargs = (;),
 )
     # Enforce `h_atmos >= h_canopy` for models with canopy
@@ -200,9 +200,12 @@ function LandSimulation(
     # Required callbacks
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    updateat =
-        updateat isa AbstractVector ? updateat : [promote(t0:updateat:tf...)...]
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(
+        updateat,
+        updatefunc;
+        dt = Δt,
+        start_date,
+    )
     required_callbacks = (driver_cb,) # TBD: can we update each step?
 
     diagnostics = isnothing(diagnostics) ? () : diagnostics
@@ -245,7 +248,7 @@ end
 
 A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s), setting the epoch of the ITime to nothing.
 If the `kwargs` contain `updateat`, it will
-convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
+convert the update frequency to an `ITime` as well. The same applies to values in `saveat` in `solver_kwargs`.
 
 If your simulation has a notion of a calendar date, please use one of the
 other constructors.

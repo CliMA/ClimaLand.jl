@@ -186,7 +186,6 @@ sv_hr = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv_hr, saveat)
-updateat = deepcopy(saveat)
 
 simulation = LandSimulation(
     start_date,
@@ -197,7 +196,7 @@ simulation = LandSimulation(
     solver_kwargs = (; saveat = deepcopy(saveat)),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
-    updateat = updateat,
+    updateat = Second(3600.0),
     diagnostics = (),
 );
 
@@ -235,14 +234,13 @@ sv_lr = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv_lr, saveat)
-updateat = deepcopy(saveat)
 simulation = LandSimulation(
     start_date,
     stop_date,
     dt,
     soil;
     set_ic! = set_ic!,
-    updateat = updateat,
+    updateat = Second(3600.0),
     solver_kwargs = (; saveat = deepcopy(saveat)),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),

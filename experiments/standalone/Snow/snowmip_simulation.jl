@@ -105,10 +105,9 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-updateat = copy(saveat)
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+driver_cb = ClimaLand.DriverUpdateCallback(Δt, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 sol = SciMLBase.solve(

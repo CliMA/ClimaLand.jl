@@ -105,10 +105,9 @@ diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(out, Y, p, t0; dt = Δt
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-updateat = collect(t0:Δt:tf);
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+driver_cb = ClimaLand.DriverUpdateCallback(Δt, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
 timestepper = ClimaTimeSteppers.RK4()
 ode_algo = ClimaTimeSteppers.ExplicitAlgorithm(timestepper)

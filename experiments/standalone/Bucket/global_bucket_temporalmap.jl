@@ -195,7 +195,7 @@ function setup_prob(start_date, stop_date, Δt, outdir)
         Δt,
         model;
         outdir = output_dir,
-        updateat = copy(saveat),
+        updateat = Second(Δt * 3),
         solver_kwargs = (; saveat = deepcopy(saveat)),
         user_callbacks = (saving_cb,),
         set_ic!,

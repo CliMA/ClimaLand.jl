@@ -243,19 +243,30 @@ function dss_helper!(
 
 Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
+If `update_frequency` is zero valued, then it will not be updated on initialization.
 """
 function DriverUpdateCallback(
     update_frequency,
     updatefunc;
     start_date = nothing,
+    dt = nothing,
 )
-    affect! = (integrator) -> updatefunc(integrator.p, t)
+    affect! = (integrator) -> updatefunc(integrator.p, integrator.t)
+    # when update_frequency is zero, do not initialize
+    no_init =
+        update_frequency isa ITime ? float(update_frequency) == 0 :
+        update_frequency == zero(update_frequency)
+    initialize =
+        no_init ? SciMLBase.INITIALIZE_DEFAULT :
+        (cb, u, t, integrator) -> affect!(integrator)
+
 
     FrequencyBasedCallback(
         update_frequency,
         start_date,
+        dt,
         affect!;
-        initialize = affect!,
+        initialize,
         save_positions = (false, false),
     )
 end
@@ -306,6 +317,10 @@ function CheckpointCallback(
     model,
     dt = nothing,
 )
+    affect! = let output_dir = output_dir, model = model
+        (integrator) ->
+            save_checkpoint(integrator.u, integrator.t, output_dir; model)
+    end
     FrequencyBasedCallback(checkpoint_frequency, start_date, dt, affect!)
 end
 
@@ -619,6 +634,7 @@ function FrequencyBasedCallback(
         if !isdivisible(frequency_period, dt_period)
             @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
         end
+        # TODO: we can make a more optimal scheduler 
     end
 
     cond = let schedule = schedule
@@ -687,6 +703,10 @@ function ReportCallback(Nsteps)
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
-    report_cb = SciMLBase.DiscreteCallback(DivisorSchedule(Nsteps), report)
+    schedule = DivisorSchedule(Nsteps)
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(cond, report)
     return report_cb
 end
