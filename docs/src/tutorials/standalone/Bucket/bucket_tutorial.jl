@@ -308,7 +308,6 @@ saved_values = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-updateat = deepcopy(saveat);
 
 # Create the LandSimulation object, which will also create and initialize the state vectors,
 # the cache, the driver callbacks, and set the initial conditions.
@@ -318,7 +317,7 @@ simulation = LandSimulation(
     Δt,
     model;
     set_ic! = set_ic!,
-    updateat = updateat,
+    updateat = Second(Δt),
     solver_kwargs = (; saveat = deepcopy(saveat)),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),

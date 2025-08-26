@@ -237,9 +237,6 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     average_period = :hourly,
 );
 
-# Create the callback function which updates the forcing variables,
-# or drivers.
-updateat = Array(start_date:Second(1800):stop_date);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -260,7 +257,7 @@ simulation = LandSimulation(
     dt,
     canopy;
     set_ic!,
-    updateat,
+    updateat = Second(1800),
     timestepper = ode_algo,
     user_callbacks = (),
     diagnostics,
