@@ -102,6 +102,9 @@ for FT in (Float32, Float64)
     end
 
     @testset "Plant hydraulics model integration tests, FT = $FT" begin
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
         domains = [
             Point(; z_sfc = FT(0.0)),
             Plane(;
@@ -112,11 +115,11 @@ for FT in (Float32, Float64)
             ),
         ]
 
-        AR_params = AutotrophicRespirationParameters(FT)
+        AR_params = AutotrophicRespirationParameters(toml_dict)
         RTparams = BeerLambertParameters(FT)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -233,7 +236,7 @@ for FT in (Float32, Float64)
 
         soil_driver = PrescribedGroundConditions{FT}()
 
-        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         RD = FT(0.5)
@@ -382,11 +385,14 @@ for FT in (Float32, Float64)
     @testset "No plant, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        AR_params = AutotrophicRespirationParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        AR_params = AutotrophicRespirationParameters(toml_dict)
         RTparams = BeerLambertParameters(FT)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -504,7 +510,7 @@ for FT in (Float32, Float64)
             compartment_midpoints = compartment_midpoints,
         )
 
-        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel(autotrophic_parameters)
 

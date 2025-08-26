@@ -156,6 +156,9 @@ end
         ref_outputs = csv_to_dict(outputs_data, outputs_header, output_row_idx)
 
         for FT in (Float32, Float64)
+            default_params_filepath =
+                joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+            toml_dict = LP.create_toml_dict(FT, default_params_filepath)
             # Convert ref_outputs to the correct FT
             ref_outputs_typed =
                 Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
@@ -165,7 +168,7 @@ end
                     println("Running test case: $testcase_name with FT = $FT")
 
                 # prepare constants, parameters, and drivers for the current FT
-                constants = PModelConstants{FT}()
+                constants = PModelConstants(toml_dict)
                 parameters = PModelParameters(inputs, FT)
 
                 T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
@@ -249,8 +252,8 @@ end
         forcing,
         LAI,
         toml_dict;
-        photosynthesis = PModel{FT}(),
-        conductance = PModelConductance{FT}(),
+        photosynthesis = PModel{FT}(toml_dict),
+        conductance = PModelConductance{FT}(toml_dict),
     )
     pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
     @test typeof(get_model_callbacks(canopy; start_date, Δt = dt)[1]) ==
@@ -263,6 +266,9 @@ end
     atol = 1e-6
 
     for FT in (Float32, Float64)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
         parameters = ClimaLand.Canopy.PModelParameters(
             cstar = FT(0.41),
             β = FT(146),
@@ -276,7 +282,7 @@ end
             pc = FT(-2e6),
         )
 
-        constants = PModelConstants{FT}()
+        constants = PModelConstants(toml_dict)
 
         T_canopy = FT(281.25)
         APAR = FT(0.0013948839623481035)

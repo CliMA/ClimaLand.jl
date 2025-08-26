@@ -71,7 +71,10 @@ for FT in (Float32, Float64)
         PAR_albedo = FT(0.2)
         albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(; PAR_albedo, NIR_albedo)
         # setup SoilCanopyModel with dummy params
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         radius = FT(6378.1e3)
         depth = FT(50)
         nelements = (50, 10)
@@ -127,7 +130,7 @@ for FT in (Float32, Float64)
             energy = Canopy.BigLeafEnergyModel{FT},
         )
         autotrophic_respiration_args =
-            (; parameters = Canopy.AutotrophicRespirationParameters(FT))
+            (; parameters = Canopy.AutotrophicRespirationParameters(toml_dict))
         radiative_transfer_args = (;
             parameters = Canopy.TwoStreamParameters(
                 FT;
@@ -138,8 +141,12 @@ for FT in (Float32, Float64)
                 τ_NIR_leaf = FT(0),
             )
         )
-        conductance_args =
-            (; parameters = Canopy.MedlynConductanceParameters(FT; g1 = FT(0)))
+        conductance_args = (;
+            parameters = Canopy.MedlynConductanceParameters(
+                toml_dict;
+                g1 = FT(0),
+            )
+        )
         photosynthesis_args = (;
             parameters = Canopy.FarquharParameters(FT, FT(0); Vcmax25 = FT(0))
         )
