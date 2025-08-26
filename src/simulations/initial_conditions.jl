@@ -110,11 +110,11 @@ end
 """
      enforce_residual_constraint(ϑ_l::FT ,θ_r::FT)
 
-Enforces the constraint that ϑ_l > θ_r by returning 1.05 θ_r
+Enforces the constraint that ϑ_l > θ_r by returning 1.1 θ_r
 if ϑ_l < θ_r, and ϑ_l otherwise.
 """
 function enforce_residual_constraint(ϑ_l::FT, θ_r::FT) where {FT}
-    if ϑ_l < θ_r
+    if ϑ_l < θ_r * FT(1.05)
         return θ_r * FT(1.05)
     else
         return ϑ_l
@@ -128,7 +128,7 @@ end
 Enforces the constraint that ϑ_l <= ν.
 """
 function enforce_porosity_constraint(ϑ_l::FT, ν::FT) where {FT}
-    if ϑ_l > ν # if we exceed porosity
+    if ϑ_l > ν * FT(0.95) # if we exceed porosity
         return FT(0.95) * ν # clip water content to 95% of available pore space
     else
         return ϑ_l
