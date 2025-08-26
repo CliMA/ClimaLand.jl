@@ -75,7 +75,7 @@ energy = Canopy.PrescribedCanopyTempModel{FT}();
 # The first way is to use the `BeerLambertModel` constructor with the default parameters.
 # This method requires the simulation domain as it reads in radiation
 # parameters from a map of CLM parameters by default.
-radiative_transfer = Canopy.BeerLambertModel{FT}(domain);
+radiative_transfer = Canopy.BeerLambertModel{FT}(domain, toml_dict);
 
 # Alternatively, we could use the same constructor but provide custom values for a subset of the parameters, and use the global maps for the remainder.
 # For example, we might want to use the global maps for albedo, but
@@ -84,7 +84,8 @@ radiative_transfer = Canopy.BeerLambertModel{FT}(domain);
 G_Function = Canopy.ConstantGFunction(FT(0.5)); # leaf angle distribution value 0.5
 Ω = 1; # clumping index
 radiation_parameters = (; G_Function, Ω);
-radiative_transfer = Canopy.BeerLambertModel{FT}(domain; radiation_parameters);
+radiative_transfer =
+    Canopy.BeerLambertModel{FT}(domain, toml_dict; radiation_parameters);
 
 # If you want to overwrite all of the parameters, you do not need to use
 # global maps, and therefore do not need the domain.
