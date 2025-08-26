@@ -78,37 +78,27 @@ end
 # For interfacing with ClimaParams
 
 """
-    function MedlynConductanceParameters(::Type{FT};
-        g1 = 790,
-        kwargs...
-    )
-    function MedlynConductanceParameters(toml_dict;
-        g1 = 790,
-        kwargs...
+    function MedlynConductanceParameters(
+        toml_dict;
+        g1 = toml_dict["g1"],
+        g0 = toml_dict["min_stomatal_conductance"],
     )
 
-Floating-point and toml dict based constructor supplying default values
-for the MedlynConductanceParameters struct.
-Additional parameter values can be directly set via kwargs.
+TOML dict based constructor supplying default values for the
+`MedlynConductanceParameters` struct.
 """
-MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    MedlynConductanceParameters(CP.create_toml_dict(FT); kwargs...)
-
 function MedlynConductanceParameters(
     toml_dict::CP.ParamDict;
-    g1 = 790,
-    kwargs...,
+    g1,
+    g0 = toml_dict["min_stomatal_conductance"],
 )
-    name_map = (;
-        :relative_diffusivity_of_water_vapor => :Drel,
-        :min_stomatal_conductance => :g0,
-    )
+    name_map = (; :relative_diffusivity_of_water_vapor => :Drel,)
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     g1 = FT.(g1)
     G1 = typeof(g1)
-    return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
+    return MedlynConductanceParameters{FT, G1}(; g0, g1, parameters...)
 end
 
 
