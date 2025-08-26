@@ -86,7 +86,7 @@ atmos = PrescribedAtmosphere(
 );
 
 # Define the boundary conditions
-top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
+top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation);
 zero_water_flux = WaterFluxBC((p, t) -> 0)
 zero_heat_flux = HeatFluxBC((p, t) -> 0)
 boundary_fluxes = (;
@@ -158,7 +158,7 @@ end
 zmax = FT(0)
 zmin = FT(-0.35)
 nelems = 28
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
 # Soil model, and create the prognostic vector Y and cache p:
@@ -167,7 +167,7 @@ soil = Soil.EnergyHydrology{FT}(;
     domain = soil_domain,
     boundary_conditions = boundary_fluxes,
     sources = (),
-)
+);
 
 # Timestepping:
 
@@ -208,7 +208,7 @@ sol_hr = solve!(simulation);
 zmax = FT(0)
 zmin = FT(-0.35)
 nelems = 7
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
 # Soil model, and create the prognostic vector Y and cache p:
@@ -217,7 +217,7 @@ soil = Soil.EnergyHydrology{FT}(;
     domain = soil_domain,
     boundary_conditions = boundary_fluxes,
     sources = (),
-)
+);
 
 # Timestepping:
 timestepper = CTS.ARS111();

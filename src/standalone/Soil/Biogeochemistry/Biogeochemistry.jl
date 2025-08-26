@@ -84,7 +84,7 @@ function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     name_map = (;
         :CO2_diffusion_coefficient => :D_ref,
         :soil_C_substrate_diffusivity => :D_liq,
-        :soilCO2_pre_expontential_factor => :α_sx,
+        :soilCO2_pre_exponential_factor => :α_sx,
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,

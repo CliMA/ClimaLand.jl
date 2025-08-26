@@ -21,7 +21,11 @@ apis = [
     "Bucket Model" => "APIs/Bucket.md",
     "Snow Model" => "APIs/Snow.md",
     "Integrated Models" => "APIs/ClimaLand.md",
-    "Shared Utilities" =>
-        ["APIs/Simulations.md", "APIs/shared_utilities.md"],
+    "Shared Utilities" => [
+        "Abstract Models and Functions" => "APIs/AbstractModels.md",
+        "Simulations" => "APIs/Simulations.md",
+        "Domains" => "APIs/Domains.md",
+        "Drivers" => "APIs/Drivers.md",
+    ],
     "Parameters" => "APIs/parameters.md",
 ]

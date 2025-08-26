@@ -1,30 +1,8 @@
-# Shared Utilities
+# ClimaLand Abstract Models and Functions
 
 ```@meta
 CurrentModule = ClimaLand
 ```
-
-## Domains
-
-```@docs
-ClimaLand.Domains.AbstractDomain
-ClimaLand.Domains.SphericalShell
-ClimaLand.Domains.SphericalSurface
-ClimaLand.Domains.HybridBox
-ClimaLand.Domains.Column
-ClimaLand.Domains.Plane
-ClimaLand.Domains.Point
-ClimaLand.Domains.coordinates
-ClimaLand.Domains.obtain_surface_space
-ClimaLand.Domains.obtain_surface_domain
-ClimaLand.Domains.top_center_to_surface
-ClimaLand.Domains.top_face_to_surface
-ClimaLand.Domains.linear_interpolation_to_surface!
-ClimaLand.Domains.get_Δz
-
-```
-
-## Models
 
 ```@docs
 ClimaLand.AbstractModel
@@ -65,26 +43,4 @@ ClimaLand.set_dfluxBCdY!
 ClimaLand.get_drivers
 ClimaLand.total_energy_per_area!
 ClimaLand.total_liq_water_vol_per_area!
-```
-
-## Drivers
-
-```@docs
-ClimaLand.PrescribedAtmosphere
-ClimaLand.PrescribedPrecipitation
-ClimaLand.PrescribedRadiativeFluxes
-ClimaLand.PrescribedSoilOrganicCarbon
-ClimaLand.CoupledAtmosphere
-ClimaLand.CoupledRadiativeFluxes
-ClimaLand.AbstractAtmosphericDrivers
-ClimaLand.AbstractRadiativeDrivers
-ClimaLand.turbulent_fluxes!
-ClimaLand.turbulent_fluxes_at_a_point
-ClimaLand.set_atmos_ts!
-ClimaLand.surface_air_density
-ClimaLand.surface_temperature
-ClimaLand.surface_resistance
-ClimaLand.surface_specific_humidity
-ClimaLand.default_zenith_angle
-ClimaLand.prescribed_forcing_era5
 ```

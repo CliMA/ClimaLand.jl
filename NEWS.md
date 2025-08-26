@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+v0.19.0
+-------
+- ![breaking change][badge-💥breaking] Rename `end_date` to `stop_date`; hide MODIS LAI path in function args PR[#1344](https://github.com/CliMA/ClimaLand.jl/pull/1344)
 - Use correct van Genuchten parameters as a function of depth PR[#1304](https://github.com/CliMA/ClimaLand.jl/pull/1304)
 - Fix divide by zero when VPD is zero PR[#1363](https://github.com/CliMA/ClimaLand.jl/pull/1363)
 - Remove Smith Optimality model; use PModel instead PR[#1361](https://github.com/CliMA/ClimaLand.jl/pull/1361)
