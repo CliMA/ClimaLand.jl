@@ -177,7 +177,7 @@ radiative_transfer =
 conductance = PModelConductance{FT}()
 
 # Set up photosynthesis
-photosynthesis = PModel{FT}()
+photosynthesis = PModel{FT}(toml_dict)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
