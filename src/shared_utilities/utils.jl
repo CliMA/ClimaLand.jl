@@ -1,6 +1,7 @@
 import ClimaCore
 import SciMLBase
-import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule, EveryDtSchedule
+import ClimaDiagnostics.Schedules:
+    EveryCalendarDtSchedule, EveryDtSchedule, DivisorSchedule
 import Dates
 
 using ClimaComms
@@ -236,39 +237,6 @@ function dss_helper!(
 ) end
 
 
-"""
-    DriverAffect{updateType, updateFType}
-
-This struct is used by `DriverUpdateCallback` to update the values of
-`p.drivers` at different timesteps specified by `updateat`, using the
-function `updatefunc` which takes as arguments (p, t).
-"""
-mutable struct DriverAffect{updateType, updateFType}
-    updateat::updateType
-    updatefunc::updateFType
-end
-
-"""
-    (affect!::DriverAffect)(integrator)
-
-This function is used by `DriverUpdateCallback` to perform the updating.
-"""
-function (affect!::DriverAffect)(integrator)
-    # If there are still update times in the queue and
-    # they are less than the current simulation time,
-    # cycle through until you reach the `updateat` value
-    # closest to, but less than, the current simulation time.
-    # This is important if the user happens to set update times
-    # such that there are multiple per timestep
-    while !isempty(affect!.updateat) && first(affect!.updateat) <= integrator.t
-        curr_t = popfirst!(affect!.updateat)
-        cond = curr_t <= integrator.t && curr_t > (integrator.t - integrator.dt)
-        if cond
-            # update all drivers to curr_t
-            affect!.updatefunc(integrator.p, curr_t)
-        end
-    end
-end
 
 """
     DriverUpdateCallback(updateat::Vector{FT}, updatefunc)
@@ -276,15 +244,18 @@ end
 Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
 """
-function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
-    issorted(updateat) || error("updateat must be sorted in ascending order")
-    cond = update_condition(updateat)
-    affect! = DriverAffect(updateat, updatefunc)
+function DriverUpdateCallback(
+    update_frequency,
+    updatefunc;
+    start_date = nothing,
+)
+    affect! = (integrator) -> updatefunc(integrator.p, t)
 
-    SciMLBase.DiscreteCallback(
-        cond,
+    FrequencyBasedCallback(
+        update_frequency,
+        start_date,
         affect!;
-        initialize = driver_initialize,
+        initialize = affect!,
         save_positions = (false, false),
     )
 end
@@ -313,71 +284,33 @@ checkpoint is saved at the correct time.
 The `save_checkpoint` function is called with the current state vector `u`, the
 current time `t`, and the `output_dir` to save the checkpoint to disk.
 """
-function CheckpointCallback(
-    checkpoint_frequency::Union{AbstractFloat, Dates.Period},
+CheckpointCallback(
+    checkpoint_frequency::Union{AbstractFloat, Dates.Period, ITime},
     output_dir,
     start_date,
     t_start;
     model,
     dt = nothing,
+) = CheckpointCallback(
+    checkpoint_frequency,
+    output_dir,
+    start_date + Dates.Millisecond(1000t_start);
+    model,
+    dt,
 )
-    # TODO: Move to a more general callback system. For the time being, we use
-    # the ClimaDiagnostics one because it is flexible and it supports calendar
-    # dates.
 
-    if checkpoint_frequency isa AbstractFloat
-        # Assume it is in seconds, but go through Millisecond to support
-        # fractional seconds
-        checkpoint_frequency_period =
-            Dates.Millisecond(1000checkpoint_frequency)
-    else
-        checkpoint_frequency_period = checkpoint_frequency
-    end
-
-    schedule = EveryCalendarDtSchedule(
-        checkpoint_frequency_period;
-        start_date,
-        date_last = start_date + Dates.Millisecond(1000t_start),
-    )
-
-    if !isnothing(dt)
-        dt_period = Dates.Millisecond(1000dt)
-        if !isdivisible(checkpoint_frequency_period, dt_period)
-            @warn "Checkpoint frequency ($(checkpoint_frequency_period)) is not an integer multiple of dt $(dt_period)"
-        end
-    end
-
-    cond = let schedule = schedule
-        (u, t, integrator) -> schedule(integrator)
-    end
-    affect! = let output_dir = output_dir, model = model
-        (integrator) ->
-            save_checkpoint(integrator.u, integrator.t, output_dir; model)
-    end
-
-    SciMLBase.DiscreteCallback(cond, affect!)
+function CheckpointCallback(
+    checkpoint_frequency::Union{AbstractFloat, Dates.Period, ITime},
+    output_dir,
+    start_date;
+    model,
+    dt = nothing,
+)
+    FrequencyBasedCallback(checkpoint_frequency, start_date, dt, affect!)
 end
 
-"""
-    driver_initialize(cb, u, t, integrator)
 
-This function updates `p.drivers` at the start of the simulation.
-"""
-function driver_initialize(cb, u, t, integrator)
-    cb.affect!.updatefunc(integrator.p, t)
-end
 
-"""
-    update_condition(updateat)
-
-This function returns a function with the type signature expected by
-`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets called in
-the callback. This implementation simply checks if the current time of the
-simulation is within the (inclusive) bounds of `updateat`.
-"""
-update_condition(updateat) =
-    (_, t, _) ->
-        !isempty(updateat) && t >= minimum(updateat) && t <= maximum(updateat)
 """
     SavingAffect{saveatType}
 
@@ -646,100 +579,27 @@ to check for NaNs based on the `nancheck_frequency`. The schedule is
 initialized with the `start_date` to ensure that it is first
 called at the correct time.
 """
-function NaNCheckCallback(
-    nancheck_frequency::Union{AbstractFloat, Dates.Period, ITime},
-    start_date,
-    dt;
-    mask = nothing,
-)
-    # TODO: Move to a more general callback system. For the time being, we use
-    # the ClimaDiagnostics one because it is flexible and it supports calendar
-    # dates.
+function NaNCheckCallback(nancheck_frequency, start_date, dt; mask = nothing)
 
-    if nancheck_frequency isa AbstractFloat
-        # Assume it is in seconds, but go through Millisecond to support
-        # fractional seconds
-        nancheck_frequency_period = Dates.Millisecond(1000nancheck_frequency)
-    else
-        nancheck_frequency_period = nancheck_frequency
-    end
-
-    schedule = EveryCalendarDtSchedule(
-        nancheck_frequency_period;
-        start_date,
-        date_last = start_date,
-    )
-
-    if !isnothing(dt)
-        dt_period =
-            typeof(dt) <: typeof(nancheck_frequency_period) ? dt :
-            Dates.Millisecond(1000float(dt))
-        if !isdivisible(nancheck_frequency_period, dt_period)
-            @warn "Callback frequency ($(nancheck_frequency_period)) is not an integer multiple of dt $(dt_period)"
-        end
-    end
-
-    cond = let schedule = schedule
-        (u, t, integrator) -> schedule(integrator)
-    end
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
-    return SciMLBase.DiscreteCallback(cond, affect!)
+    return FrequencyBasedCallback(nancheck_frequency, start_date, dt, affect!)
 end
 
-# no date version
-function NaNCheckCallback(
-    nancheck_frequency::Union{AbstractFloat, ITime},
-    start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
-    dt;
-    mask = nothing,
-)
-    schedule = EveryDtSchedule(nancheck_frequency)
-    if !isnothing(dt)
-        if !isdivisible(nancheck_frequency, dt)
-            @warn "Callback frequency ($(nancheck_frequency)) is not an integer multiple of dt $(dt)"
-        end
-    end
 
-    cond = let schedule = schedule
-        (u, t, integrator) -> schedule(integrator)
-    end
-    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
-    SciMLBase.DiscreteCallback(cond, affect!)
-end
 
-"""
-    FrequencyBasedCallback(
-        frequency::Union{AbstractFloat, Dates.Period},
-        start_date,
-        dt;
-        func,
-        func_args...
-    ) -> DiscreteCallback
+# TODO: Move to a more general callback system. For the time being, we use
+# the ClimaDiagnostics one because it is flexible and it supports calendar
+# dates.
 
-Constructs a `DiscreteCallback` that calls a given function with specified
-arguments at a specified frequency in simulation time.
-
-# Arguments
-- `frequency`: Either a `Float` (assumed to be in seconds) or a `Dates.Period`
-  (e.g., `Hour(6)`) indicating how often to trigger the callback.
-- `start_date`: The calendar start date of the simulation.
-- `dt`: The model timestep (used for divisibility warning).
-- `func`: The function to be called at each callback. It should accept the
-    integrator as its first argument and kwargs specified in
-    `func_args`. Typically, such a function will look something like:
-        (integrator; func_args) -> do_some_update(integrator.p, integrator.u, ...)
-    Note that func_args can be empty.
-
-The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when to
-call the function based on the `frequency`.
-"""
 function FrequencyBasedCallback(
-    frequency::Union{AbstractFloat, Dates.Period},
-    start_date::Dates.DateTime,
-    dt::Union{AbstractFloat, Dates.Period};
-    func,
-    func_args...,
+    frequency::Union{AbstractFloat, Dates.Period, ITime},
+    start_date,
+    dt,
+    affect!;
+    initialize = SciMLBase.INITIALIZE_DEFAULT,
+    save_positions = (true, true), # this preserves the old behavior, but I'm not sure if
+    # this is a good default
 )
     # Normalize frequency to a Dates.Period
     frequency_period =
@@ -754,7 +614,8 @@ function FrequencyBasedCallback(
 
     if !isnothing(dt)
         dt_period =
-            dt isa Dates.Period ? dt : Dates.Millisecond(1000 * float(dt))
+            typeof(dt) <: typeof(frequency_period) ? dt :
+            Dates.Millisecond(1000float(dt))
         if !isdivisible(frequency_period, dt_period)
             @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
         end
@@ -763,9 +624,57 @@ function FrequencyBasedCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> func(integrator; func_args...)
-    return SciMLBase.DiscreteCallback(cond, affect!)
+    return SciMLBase.DiscreteCallback(cond, affect!; initialize, save_positions)
 end
+
+
+function FrequencyBasedCallback(
+    frequency::Union{AbstractFloat, ITime},
+    start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
+    dt,
+    affect!;
+    initialize = SciMLBase.INITIALIZE_DEFAULT,
+    save_positions = (true, true), # this preserves the old behavior, but I'm not sure if
+    # this is a good default
+)
+    schedule = EveryDtSchedule(frequency)
+    if !isnothing(dt)
+        if !isdivisible(frequency, dt)
+            @warn "Callback frequency ($(frequency)) is not an integer multiple of dt $(dt)"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    SciMLBase.DiscreteCallback(cond, affect!; initialize, save_positions)
+end
+
+
+"""
+    FrequencyBasedCallback(
+        frequency,
+        start_date,
+        dt::Union{AbstractFloat, Dates.Period};
+        func,
+        func_args...,
+    ) -> DiscreteCallback
+
+A convinience function that creates an affect! function that takes `integrator` as the input,
+and calls `func(integrator; func_args...)`
+"""
+FrequencyBasedCallback(
+    frequency::Union{AbstractFloat, Dates.Period, ITime},
+    start_date,
+    dt::Union{AbstractFloat, Dates.Period};
+    func,
+    func_args...,
+) = FrequencyBasedCallback(
+    frequency,
+    start_date,
+    dt,
+    (integrator) -> func(integrator; func_args...),
+)
 
 """
     ReportCallback(every_n_steps)
@@ -775,10 +684,9 @@ where `every_n_steps` is an integer.
 """
 function ReportCallback(Nsteps)
     walltime_info = WallTimeInfo()
-    everyNsteps(u, t, integrator) = mod(integrator.step, Nsteps) == 0
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
-    report_cb = SciMLBase.DiscreteCallback(everyNsteps, report)
+    report_cb = SciMLBase.DiscreteCallback(DivisorSchedule(Nsteps), report)
     return report_cb
 end
