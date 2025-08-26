@@ -162,7 +162,6 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-    updateat = deepcopy(saveat)
 
     simulation = LandSimulation(
         t0,
@@ -173,7 +172,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         timestepper = ode_algo,
         set_ic!,
         user_callbacks = (saving_cb,),
-        updateat = updateat,
+        updateat = 10 * dt,
         solver_kwargs = (; saveat = deepcopy(saveat)),
     )
     sol = ClimaLand.Simulations.solve!(simulation)

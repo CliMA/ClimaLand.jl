@@ -98,7 +98,6 @@ sv = (;
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
-updateat = Array(start_date:Second(1800):stop_date)
 
 simulation = LandSimulation(
     start_date,
@@ -107,7 +106,7 @@ simulation = LandSimulation(
     canopy;
     set_ic! = set_ic!,
     user_callbacks = (saving_cb,),
-    updateat = updateat,
+    updateat = Second(1800),
     solver_kwargs = (; saveat = deepcopy(saveat)),
     diagnostics = nothing,
 )

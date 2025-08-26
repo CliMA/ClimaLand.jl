@@ -3,7 +3,8 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore: Spaces, Geometry, Fields
 using ClimaLand
-using ClimaLand: Domains, condition, SavingAffect, saving_initialize
+using ClimaLand:
+    Domains, condition, SavingAffect, saving_initialize, FrequencyBasedCallback
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 ## Callback tests
@@ -18,6 +19,56 @@ function upd_integrator(integrator::Integrator{FT}, dt) where {FT}
 end
 
 FT = Float32
+
+@testset "FrequencyBasedCallback" begin
+    # with epoch test
+    start_date = ITime(0, epoch = DateTime(2010))
+    dt = ITime(3600)
+
+    increment_p = (x) -> x.p .+= 1
+    # p is only incremented when the cb is triggered
+    function step(integrator, cb)
+        integrator.t += dt
+        cb.condition(nothing, integrator.t, integrator) &&
+            cb.affect!(integrator)
+        return
+    end
+
+    # test update every two hours (every two dt)
+    integrator = Integrator(start_date, [0])
+    cb = FrequencyBasedCallback(Hour(2), start_date, dt, increment_p)
+    step(integrator, cb)
+    @test integrator.p == [0]
+    step(integrator, cb)
+    @test integrator.p == [1]
+    for i in 1:38
+        step(integrator, cb)
+    end
+    @test integrator.p == [20]
+
+    # test monthly
+    integrator = Integrator(start_date, [0])
+    cb = FrequencyBasedCallback(Month(1), start_date, dt, increment_p)
+    for i in 1:(24 * 31)
+        step(integrator, cb)
+    end
+    @test integrator.p == [1]
+
+    # no epoch test
+    t0 = ITime(0)
+    integrator = Integrator(t0, [0])
+    t0, dt = promote(t0, dt)
+    cb = FrequencyBasedCallback(dt * 2, t0, dt, increment_p)
+    step(integrator, cb)
+    @test integrator.p == [0]
+    step(integrator, cb)
+    @test integrator.p == [1]
+    for i in 1:38
+        step(integrator, cb)
+    end
+    @test integrator.p == [20]
+end
+
 @testset "callback cond, affect! test, FT = $FT" begin
     t0 = Float64(0)
     dt = Float64(10)
@@ -72,7 +123,7 @@ FT = Float32
         @test affect!.saved_values.saveval == integ_saved.p
     end
 end
-
+# TODO: Add tests for FrequencyBasedCallback
 @testset "callback saving_initialize test, FT = $FT" begin
     t0 = Float64(0)
     dt = Float64(10)

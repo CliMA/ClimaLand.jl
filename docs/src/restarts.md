@@ -36,7 +36,7 @@ Example:
 # ... your ClimaLand simulation setup ...
 
 # Create a CheckpointCallback to save checkpoints every 6 hours
-checkpoint_cb = CheckpointCallback(Dates.Hour(6), output_dir, start_date, t_start; model, dt)
+checkpoint_cb = CheckpointCallback(Dates.Hour(6), output_dir, start_date; model, dt)
 
 # Add the callback to the callback set
 cb = SciMLBase.CallbackSet(checkpoint_cb, other_callbacks...)

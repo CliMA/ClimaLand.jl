@@ -192,7 +192,7 @@ simulation = LandSimulation(
     model;
     outdir = output_dir,
     solver_kwargs = (; saveat = copy(saveat)),
-    updateat = copy(saveat),
+    updateat = (3 * Δt),
     user_callbacks = (saving_cb,),
     set_ic!,
     timestepper = ode_algo,

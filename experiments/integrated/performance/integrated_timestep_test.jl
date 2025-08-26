@@ -343,7 +343,7 @@ for dt in dts
             )
         ),
         diagnostics = [],
-        updateat = vcat(collect(start_date:Dates.Hour(3):stop_date), stop_date),
+        updateat = Dates.Hour(3),
         timestepper = ode_algo,
         set_ic!,
     )
