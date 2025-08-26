@@ -16,56 +16,6 @@ using Dates
 
 
 for FT in (Float32, Float64)
-    @testset "LAI assertions, FT = $FT" begin
-        LAI = FT.([0, 1])
-        SAI = FT.([0, 1])
-        RAI = FT.([0, 1])
-        n_stem = [0, 1]
-        n_leaf = [1]
-        for L in LAI
-            for S in SAI
-                for R in RAI
-                    for n_s in n_stem
-                        for n_l in n_leaf
-                            area_index = (root = R, stem = S, leaf = L)
-                            if n_l == 0
-                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
-                                    n_s,
-                                    n_l,
-                                    area_index,
-                                )
-                            end
-
-                            if (L > eps(FT) || S > eps(FT)) && R < eps(FT)
-                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
-                                    n_s,
-                                    n_l,
-                                    area_index,
-                                )
-                            end
-
-                            if S > FT(0) && n_s == 0
-                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
-                                    n_s,
-                                    n_l,
-                                    area_index,
-                                )
-                            end
-
-                            if S < eps(FT) && n_s > 0
-                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
-                                    n_s,
-                                    n_l,
-                                    area_index,
-                                )
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
     @testset "Plant hydraulics parameterizations, FT = $FT" begin
         ν = FT(0.5)
         S_s = FT(1e-2)
@@ -136,8 +86,6 @@ for FT in (Float32, Float64)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
-        h_canopy = FT(20.0) # m, canopy height
-        h_sfc = FT(20.0) # m, canopy height
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
         shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
             z_0m,
@@ -203,13 +151,9 @@ for FT in (Float32, Float64)
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(5) # number of stem elements
         n_leaf = Int64(6) # number of leaf elements
+        h_canopy = Δz * (n_stem + n_leaf)
         SAI = FT(1) # m2/m2
         RAI = FT(1) # m2/m2
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            TimeVaryingInput(LAI),
-            SAI,
-            RAI,
-        )
         K_sat_plant = 1.8e-8 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless
@@ -246,13 +190,20 @@ for FT in (Float32, Float64)
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         rooting_depth = FT(0.5)
         plant_hydraulics_param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
             ν = plant_ν,
             S_s = plant_S_s,
-            rooting_depth = rooting_depth,
-            conductivity_model = conductivity_model,
-            retention_model = retention_model,
+            conductivity_model,
+            retention_model,
         )
+
+        biomass = Canopy.PrescribedBiomassModel{FT}(;
+            LAI = TimeVaryingInput(LAI),
+            SAI,
+            RAI,
+            rooting_depth,
+            height = h_canopy,
+        )
+
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = plant_hydraulics_param_set,
             transpiration = transpiration,
@@ -261,6 +212,7 @@ for FT in (Float32, Float64)
             compartment_surfaces = compartment_surfaces,
             compartment_midpoints = compartment_midpoints,
         )
+
         model = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
             domain = domain,
@@ -270,6 +222,7 @@ for FT in (Float32, Float64)
             conductance = stomatal_model,
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
+            biomass,
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,

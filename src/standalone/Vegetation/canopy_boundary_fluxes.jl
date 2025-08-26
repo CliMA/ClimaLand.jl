@@ -101,7 +101,7 @@ model.
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
 function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return FT(0.67) * model.hydraulics.compartment_surfaces[end]
+    return FT(0.67) * model.biomass.height
 end
 
 """
@@ -182,8 +182,8 @@ function canopy_boundary_fluxes!(
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
-    LAI = p.canopy.hydraulics.area_index.leaf
-    SAI = p.canopy.hydraulics.area_index.stem
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
     canopy_tf = p.canopy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
@@ -204,6 +204,7 @@ function canopy_boundary_fluxes!(
         root_water_flux,
         bc.ground,
         canopy.hydraulics,
+        canopy,
         Y,
         p,
         t,
@@ -213,6 +214,7 @@ function canopy_boundary_fluxes!(
         root_energy_flux,
         bc.ground,
         canopy.energy,
+        canopy,
         Y,
         p,
         t,
@@ -273,8 +275,8 @@ function ClimaLand.turbulent_fluxes!(
             p.drivers.thermal_state,
             u_air,
             h_air,
-            p.canopy.hydraulics.area_index.leaf,
-            p.canopy.hydraulics.area_index.stem,
+            p.canopy.biomass.area_index.leaf,
+            p.canopy.biomass.area_index.stem,
             atmos.gustiness,
             model.parameters.z_0m,
             model.parameters.z_0b,
@@ -316,8 +318,8 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             atmos.thermal_state,
             atmos.u,
             atmos.h,
-            p.canopy.hydraulics.area_index.leaf,
-            p.canopy.hydraulics.area_index.stem,
+            p.canopy.biomass.area_index.leaf,
+            p.canopy.biomass.area_index.stem,
             atmos.gustiness,
             model.parameters.z_0m,
             model.parameters.z_0b,

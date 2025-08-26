@@ -79,15 +79,10 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     )
 
     # Overwrite some defaults for the canopy model
-    # Energy model
-    energy_args = Canopy.BigLeafEnergyParameters(toml_dict)
-    energy = Canopy.BigLeafEnergyModel{FT}(energy_args)
-
     # Plant hydraulics
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         surface_domain,
-        LAI,
         toml_dict;
         retention_model,
     )
@@ -106,7 +101,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        energy,
         hydraulics,
         z_0m,
         z_0b,

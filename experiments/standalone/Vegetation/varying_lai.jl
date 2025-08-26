@@ -67,15 +67,12 @@ h_leaf = FT(9.5)
 f_root_to_shoot = FT(3.5)
 RAI = FT(2 * f_root_to_shoot)
 ν = FT(0.7)
-hydraulics = PlantHydraulicsModel{FT}(
-    land_domain,
-    LAI,
-    toml_dict;
-    n_leaf,
-    h_leaf,
-    RAI,
-    ν,
-)
+hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict; n_leaf, h_leaf, ν)
+rooting_depth = FT(1)
+SAI = FT(0)
+height = h_leaf
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
@@ -83,6 +80,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     LAI,
     toml_dict;
     hydraulics,
+    biomass,
 );
 
 

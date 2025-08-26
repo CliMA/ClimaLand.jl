@@ -91,7 +91,6 @@ ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 
-# Set up plant hydraulics
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 

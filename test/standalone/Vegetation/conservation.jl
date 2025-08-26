@@ -84,25 +84,28 @@ for FT in (Float32, Float64)
     LAI = TimeVaryingInput(t -> LAI_value) # m2 [leaf] m-2 [ground]
     RAI = FT(1)
     SAI = FT(1)
-    ai_parameterization =
-        PlantHydraulics.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
     n_stem = Int64(2) # number of stem elements
     n_leaf = Int64(1) # number of leaf elements
+    rooting_depth = FT(0.5)
     h_stem = h_leaf = FT(1)
+    h_canopy = h_stem + h_leaf
 
+    biomass = Canopy.PrescribedBiomassModel{FT}(;
+        LAI,
+        SAI,
+        RAI,
+        rooting_depth,
+        height = h_canopy,
+    )
     @testset "Canopy model total energy and water, FT = $FT" begin
         for domain in domains
             hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(
                 domain,
-                LAI,
                 toml_dict;
                 n_stem,
                 n_leaf,
                 h_stem,
                 h_leaf,
-                SAI,
-                RAI,
-                ai_parameterization,
             )
             canopy = ClimaLand.Canopy.CanopyModel{FT}(
                 domain,
@@ -110,7 +113,9 @@ for FT in (Float32, Float64)
                 LAI,
                 toml_dict;
                 hydraulics,
+                biomass,
             )
+
 
             Y, p, cds = initialize(canopy)
             ϑ0 = canopy.hydraulics.parameters.ν / 2

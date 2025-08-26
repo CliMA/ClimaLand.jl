@@ -72,13 +72,19 @@ tag = "LinearRetentionCurve"
 value = 0.0
 type = "float"
 description = "The constant stem area index (SAI; m2/m2)"
-tag = "PrescribedSiteAreaIndex"
+tag = "PrescribedAreaIndices"
 
 ["RAI"]
 value = 1.0
 type = "float"
 description = "The constant root area index (RAI; m2/m2)"
-tag = "PrescribedSiteAreaIndex"
+tag = "PrescribedAreaIndices"
+
+[canopy_height]
+value = 1.0
+type = "float"
+description = "The constant canopy height (m)"
+tag = "PrescribedBiomassModel"
 
 # Plant Hydraulics Parameters
 

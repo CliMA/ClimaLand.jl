@@ -329,7 +329,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (; λ_γ_PAR) = canopy.radiative_transfer.parameters
     (; g1,) = canopy.conductance.parameters
     par_d = p.canopy.radiative_transfer.par_d
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
 
     β = p.canopy.soil_moisture_stress.βm
@@ -427,7 +427,7 @@ function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to far
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    LAI = p.canopy.hydraulics.area_index.leaf
+    LAI = p.canopy.biomass.area_index.leaf
     APAR_leaf_moles = @. lazy(
         compute_APAR_leaf_moles(
             f_abs_par,

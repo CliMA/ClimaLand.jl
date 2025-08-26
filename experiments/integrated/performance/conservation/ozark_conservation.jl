@@ -169,7 +169,7 @@ for float_type in (Float32, Float64)
         # LAI (t)
         leaf_area_index = [
             parent(
-                getproperty(sv.saveval[k].canopy.hydraulics.area_index, :leaf),
+                getproperty(sv.saveval[k].canopy.biomass.area_index, :leaf),
             )[1] for k in 2:length(sol.t)
         ]
         # Top boundary flux (transpiration)

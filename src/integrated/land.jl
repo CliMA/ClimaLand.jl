@@ -692,3 +692,34 @@ Returns the surface albedo for the land model, which is computed
 from the ratio of the upwelling and downwelling shortwave radiation.
 """
 ClimaLand.surface_albedo(::LandModel, Y, p) = p.α_sfc
+
+"""
+    make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
+
+Creates the function with arguments (p,Y0,t0) that updates the cache
+`p` with initial values corresponding to Y0 and t0.
+
+We require a different method from the default for a model
+with a canopy, so this method is for any model with
+type ∈ Union{LandModel, SoilCanopyModel}. This is a close copy of
+the method for the CanopyModel, except unpacking `model.canopy` rather
+than using `model` directly.
+"""
+function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
+    update_cache! = make_update_cache(model)
+    canopy = model.canopy
+    function set_initial_cache!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
+        Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
+        # Make sure that the hydraulics scheme and the biomass scheme are compatible
+        hydraulics = canopy.hydraulics
+        n_stem = hydraulics.n_stem
+        n_leaf = hydraulics.n_leaf
+        Canopy.lai_consistency_check.(
+            n_stem,
+            n_leaf,
+            p.canopy.biomass.area_index,
+        )
+    end
+    return set_initial_cache!
+end

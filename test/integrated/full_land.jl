@@ -259,7 +259,7 @@ land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
     set_initial_cache!(p, Y, t0)
 
     # Check total
-    area_index = p.canopy.hydraulics.area_index.leaf
+    area_index = p.canopy.biomass.area_index.leaf
     h_canopy = land.canopy.hydraulics.compartment_surfaces[end]
     ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     ρ_liq = LP.ρ_cloud_liq(earth_param_set)

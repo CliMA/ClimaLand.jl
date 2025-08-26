@@ -64,7 +64,6 @@ LAI = TimeVaryingInput(fakeLAIfunction2)
 f_root_to_shoot = FT(3.5)
 SAI = FT(1.0)
 RAI = FT(3 * f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 ν = FT(0.7)
 S_s = FT(1e-2 * 0.0098)
 rooting_depth = FT(1.0);
@@ -79,10 +78,8 @@ conductivity_model =
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    ai_parameterization = ai_parameterization,
     ν = ν,
     S_s = S_s,
-    rooting_depth = rooting_depth,
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 );
@@ -100,6 +97,9 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_surfaces = compartment_surfaces,
     compartment_midpoints = compartment_midpoints,
 );
+height = h_leaf + h_stem
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
@@ -107,6 +107,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     LAI,
     toml_dict;
     hydraulics = plant_hydraulics,
+    biomass,
 );
 
 
