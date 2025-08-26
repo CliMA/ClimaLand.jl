@@ -57,6 +57,7 @@ function run_benchmarks(
 
 end
 
+# integrated profiling for cpu - flame graphs are hard to interpret when gpu is used
 function run_integrated_profiler(device, setup_simulation, outdir)
     simulation = setup_simulation()
     Profile.@profile ClimaLand.Simulations.solve!(simulation)
@@ -64,9 +65,20 @@ function run_integrated_profiler(device, setup_simulation, outdir)
     flame_file = joinpath(outdir, "flame_$device_suffix.html")
     ProfileCanvas.html_file(flame_file, results)
     @info "Saved compute flame to $flame_file"
+
+    simulation = setup_simulation()
+    Profile.Allocs.@profile sample_rate = 0.0025 ClimaLand.Simulations.solve!(
+        simulation,
+    )
+    results = Profile.Allocs.fetch()
+    profile = ProfileCanvas.view_allocs(results)
+    alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
+    ProfileCanvas.html_file(alloc_flame_file, profile)
+    @info "Saved allocation flame to $alloc_flame_file"
     return
 end
 
+# integrated profiling for CUDA - does not create output files
 function run_integrated_profiler(
     device::ClimaComms.CUDADevice,
     setup_simulation,
@@ -87,6 +99,7 @@ function run_integrated_profiler(
     return
 end
 
+# time `solve!(simulation)` - simulation setup is not timed
 function run_timing_benchmarks(
     device,
     setup_simulation;
