@@ -41,8 +41,12 @@ toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 start_date = DateTime(2008)
 stop_date = DateTime(2009);
 
-# Create the domain:
-nelements = (101, 15)
+# Create the domain - this is intentionally low resolution,
+# about 4.5 x 4.5 degrees horizontally, to avoid allocating a lot
+# of memory when building the documentation.
+# By default and for testing runs we use `nelements = (101, 15)`,
+# which is about 0.9 x 0.9 degrees horizontally with 15 layers vertically.
+nelements = (20, 7)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements);
 
 # Low-resolution forcing data from ERA5 is used here,

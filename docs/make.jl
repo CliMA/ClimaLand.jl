@@ -89,6 +89,8 @@ format = Documenter.HTML(
     collapselevel = 1,
     mathengine = mathengine,
     ansicolor = true,
+    size_threshold = 500_000,  # 500 KiB instead of default 200 KiB
+    size_threshold_warn = 300_000,  # 300 KiB instead of default 100 KiB
 )
 
 makedocs(
