@@ -157,13 +157,8 @@ model = BucketModel(
     atmosphere = bucket_atmos,
     radiation = bucket_rad,
 );
+saveat = 3 * Δt
 
-saveat = [promote(t0:(3 * Δt):tf...)...]
-saved_values = (;
-    t = Array{typeof(t0)}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-);
-saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
 
 function set_ic!(Y, p, t0, model)
     Y.bucket.T .= FT(270)
@@ -192,9 +187,9 @@ simulation = LandSimulation(
     Δt,
     model;
     outdir = output_dir,
-    solver_kwargs = (; saveat = copy(saveat)),
-    updateat = copy(saveat),
-    user_callbacks = (saving_cb,),
+    solver_kwargs = (; saveat),
+    updateat = (3 * Δt),
+    user_callbacks = (),
     set_ic!,
     timestepper = ode_algo,
     diagnostics = diags,

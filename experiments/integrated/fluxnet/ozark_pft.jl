@@ -313,16 +313,13 @@ diags = ClimaLand.default_diagnostics(
     reduction_period = :halfhourly,
 )
 
-## How often we want to update the drivers
-## defined in the simulatons file
-updateat = Array(start_date:Second(dt):stop_date)
 simulation = LandSimulation(
     start_date,
     stop_date,
     dt,
     land;
     set_ic! = set_ic!,
-    updateat,
+    updateat = Second(dt), # How often we want to update the drivers
     diagnostics = diags,
 )
 solve!(simulation)

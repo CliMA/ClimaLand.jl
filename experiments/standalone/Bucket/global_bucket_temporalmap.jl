@@ -172,12 +172,9 @@ function setup_prob(start_date, stop_date, Δt, outdir)
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 
-    saveat = collect(start_date:Second(Δt * 3):stop_date)
-    saved_values = (;
-        t = Array{DateTime}(undef, length(saveat)),
-        saveval = Array{NamedTuple}(undef, length(saveat)),
-    )
-    saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat)
+    saveat = Second(Δt * 3)
+    saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+    saved_values = saving_cb.affect!.saved_values
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         output_dir;
@@ -196,8 +193,8 @@ function setup_prob(start_date, stop_date, Δt, outdir)
         Δt,
         model;
         outdir = output_dir,
-        updateat = copy(saveat),
-        solver_kwargs = (; saveat = deepcopy(saveat)),
+        updateat = Second(Δt * 3),
+        solver_kwargs = (; saveat),
         user_callbacks = (saving_cb,),
         set_ic!,
         timestepper = ode_algo,

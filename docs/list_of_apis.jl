@@ -26,6 +26,7 @@ apis = [
         "Simulations" => "APIs/Simulations.md",
         "Domains" => "APIs/Domains.md",
         "Drivers" => "APIs/Drivers.md",
+        "Callbacks" => "APIs/Callbacks.md",
     ],
     "Parameters" => "APIs/parameters.md",
 ]

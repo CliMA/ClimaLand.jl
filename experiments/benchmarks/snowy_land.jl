@@ -188,11 +188,10 @@ function setup_prob(
         p,
     )
 
-    updateat = Array(t0:(3600 * 3):tf)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    updateat = 3600.0 * 3
+    cb = ClimaLand.DriverUpdateCallback(updatefunc, updateat, t0)
     return prob, cb
 end
 

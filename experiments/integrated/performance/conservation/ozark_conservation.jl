@@ -37,17 +37,26 @@ for float_type in (Float32, Float64)
         ),
     )
 
-    saveat = Array(t0:dt:tf)
+    saveat = dt
+    n_saves = length(t0:saveat:tf)
     sv = (;
-        t = Array{Float64}(undef, length(saveat)),
-        saveval = Array{NamedTuple}(undef, length(saveat)),
+        t = Array{Float64}(undef, n_saves),
+        saveval = Array{NamedTuple}(undef, n_saves),
     )
-    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+    saving_affect! = ClimaLand.SavingAffect(sv, 0)
+    saving_initialize = (_, _, _, x) -> saving_affect!(x)
+    saving_cb = ClimaLand.IntervalBasedCallback(
+        saveat,
+        t0,
+        dt,
+        saving_affect!;
+        callback_start = t0,
+        initialize = saving_initialize,
+    )
 
-    updateat = deepcopy(saveat)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, dt, t0)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
@@ -65,7 +74,7 @@ for float_type in (Float32, Float64)
         dt = dt,
         callback = cb,
         adaptive = false,
-        saveat = saveat,
+        saveat = collect(t0:saveat:tf),
     )
 
     # Check that simulation still has correct float type

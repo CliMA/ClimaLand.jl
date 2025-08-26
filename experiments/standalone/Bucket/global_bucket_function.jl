@@ -172,7 +172,7 @@ simulation = LandSimulation(
     Δt,
     model;
     outdir = output_dir,
-    updateat = collect(start_date:Second(Δt * 3):stop_date),
+    updateat = Second(Δt * 3),
     set_ic!,
     timestepper = ode_algo,
     diagnostics = diags,
