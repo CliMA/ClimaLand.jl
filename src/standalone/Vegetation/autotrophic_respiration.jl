@@ -156,24 +156,15 @@ Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is 
 ## For interfacing with ClimaParams
 
 """
-    AutotrophicRespirationParameters(FT; kwargs...)
-    AutotrophicRespirationParameters(toml_dict; kwargs...)
+    AutotrophicRespirationParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
 
-Constructors for the AutotrophicRespirationParameters struct. Two variants:
-1. Pass in the float-type and retrieve parameter values from the default TOML dict.
-2. Pass in a TOML dictionary to retrieve parameter values.
-With either constructor, you can manually override any parameter via kwargs:
+Constructor for the `AutotrophicRespirationParameters` struct by passing a TOML
+dictionary.
+You can manually override any parameter via keyword arguments:
 ```julia
-AutotrophicRespirationParameters(FT; ne = 99999)
 AutotrophicRespirationParameters(toml_dict; ne = 99999)
 ```
 """
-AutotrophicRespirationParameters(
-    ::Type{FT};
-    kwargs...,
-) where {FT <: AbstractFloat} =
-    AutotrophicRespirationParameters(CP.create_toml_dict(FT); kwargs...)
-
 function AutotrophicRespirationParameters(
     toml_dict::CP.AbstractTOMLDict;
     kwargs...,
