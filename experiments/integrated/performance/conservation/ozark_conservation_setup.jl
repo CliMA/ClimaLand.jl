@@ -155,7 +155,7 @@ radiative_transfer =
     Canopy.TwoStreamModel{FT}(canopy_domain; radiation_parameters, ϵ_canopy)
 
 # Set up conductance
-conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
@@ -191,7 +191,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 )
 
 # Set up energy model
-energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticSoilConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)

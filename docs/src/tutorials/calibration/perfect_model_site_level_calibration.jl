@@ -136,14 +136,19 @@ function model(Vcmax25)
     photosyn_defaults =
         Canopy.clm_photosynthesis_parameters(canopy_domain.space.surface)
     photosynthesis = Canopy.FarquharModel{FT}(
-        canopy_domain;
+        canopy_domain,
+        toml_dict;
         photosynthesis_parameters = (;
             is_c3 = photosyn_defaults.is_c3,
             Vcmax25,
         ),
     )
 
-    conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1 = FT(141))
+    conductance = Canopy.MedlynConductanceModel{FT}(
+        canopy_domain,
+        toml_dict;
+        g1 = FT(141),
+    )
 
     #md # Create canopy model
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
