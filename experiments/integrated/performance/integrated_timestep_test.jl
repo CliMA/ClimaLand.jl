@@ -243,11 +243,12 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(Canopy.TwoStreamParameters(FT))
 # Photosynthesis model
 Vcmax25 = FT(9e-5)
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
+photosynthesis =
+    FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
 # Conductance model
 g1 = FT(141)
-conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Hydraulics model
 LAI = TimeVaryingInput((t) -> 2.0)
