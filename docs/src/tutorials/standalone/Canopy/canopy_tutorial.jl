@@ -150,8 +150,12 @@ radiation_parameters = (;
     τ_PAR_leaf = FT(0.05),
     τ_NIR_leaf = FT(0.25),
 )
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(domain; radiation_parameters, ϵ_canopy = FT(0.99));
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    domain,
+    toml_dict;
+    radiation_parameters,
+    ϵ_canopy = FT(0.99),
+);
 
 # Construct canopy hydraulics with 1 stem and 1 leaf compartment.
 # By default, the model is constructed with a single leaf compartment and no stem.
@@ -186,11 +190,12 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 );
 
 # Construct the conductance model.
-conductance = Canopy.MedlynConductanceModel{FT}(domain; g1 = FT(141));
+conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict; g1 = FT(141));
 
 # Construct the photosynthesis model.
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
-photosynthesis = Canopy.FarquharModel{FT}(domain; photosynthesis_parameters)
+photosynthesis =
+    Canopy.FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters)
 
 
 # Set up the canopy model using defaults for all parameterizations and parameters,
