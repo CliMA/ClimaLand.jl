@@ -213,7 +213,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 )
 
 # Set up the energy model
-energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)

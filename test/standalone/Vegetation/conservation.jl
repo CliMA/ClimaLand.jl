@@ -30,10 +30,8 @@ for FT in (Float32, Float64)
     domains = [pt, plane]
 
     # Parameters
-    default_params_filepath =
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     # Time information
     t0 = 0.0

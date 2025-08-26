@@ -11,14 +11,15 @@ import ClimaLand.Parameters as LP
 for FT in (Float32, Float64)
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Test with defaults
-        ARparams = AutotrophicRespirationParameters(FT)
+        ARparams = AutotrophicRespirationParameters(toml_dict)
         RTparams = BeerLambertParameters(FT)
         RT = BeerLambertModel{FT}(RTparams)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesisparams = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
         RAI = FT(1.0)
