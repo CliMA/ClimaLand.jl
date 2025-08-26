@@ -303,13 +303,9 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default. We also need a callback to update the
 # drivers (atmos and radiation)
-saveat = collect(start_date:Second(Δt):stop_date);
-saved_values = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-);
-saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-updateat = deepcopy(saveat);
+saveat = Second(Δt)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
+saved_values = saving_cb.affect!.saved_values;
 
 # Create the LandSimulation object, which will also create and initialize the state vectors,
 # the cache, the driver callbacks, and set the initial conditions.
@@ -319,8 +315,8 @@ simulation = LandSimulation(
     Δt,
     model;
     set_ic! = set_ic!,
-    updateat = updateat,
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    updateat = Second(Δt),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),

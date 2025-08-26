@@ -169,14 +169,11 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 
-saveat = Array(start_date:Second(dt):stop_date)
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+saveat = Second(dt)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+sv = saving_cb.affect!.saved_values
 
-updateat = deepcopy(saveat)
+updateat = saveat
 
 simulation = LandSimulation(
     start_date,
@@ -185,8 +182,8 @@ simulation = LandSimulation(
     land;
     user_callbacks = (saving_cb,),
     set_ic! = set_ic!,
-    updateat,
-    solver_kwargs = (; saveat = saveat),
+    updateat = updateat,
+    solver_kwargs = (; saveat),
     diagnostics = nothing,
 )
 sol = solve!(simulation)

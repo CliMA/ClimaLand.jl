@@ -151,11 +151,11 @@ model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 user_callbacks = (
     ClimaLand.NaNCheckCallback(
         Dates.Month(6),
-        start_date,
-        ITime(Δt, epoch = start_date),
+        ITime(0, epoch = start_date);
+        dt = ITime(Δt, epoch = start_date),
         mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
     ),
-    ClimaLand.ReportCallback(10000),
+    ClimaLand.ReportCallback(Month(1), ITime(0, epoch = start_date)),
 )
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; user_callbacks, outdir)

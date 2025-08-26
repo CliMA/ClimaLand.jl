@@ -42,6 +42,7 @@ using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
+import ClimaUtilities.TimeManager: ITime
 import ClimaParams
 using Dates
 
@@ -235,8 +236,8 @@ end
 
     lat = FT(38.7441)
     long = FT(-92.2000)
-    start_date = DateTime(2025)
-    dt = 600.0 # 10 minutes
+    t0 = ITime(0, epoch = DateTime(2025))
+    dt = ITime(600)
     # Canopy domain
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 
@@ -256,8 +257,8 @@ end
         photosynthesis = PModel{FT}(canopy_domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
     )
-    pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
-    @test typeof(get_model_callbacks(canopy; start_date, Δt = dt)[1]) ==
+    pmodel_callback = make_PModel_callback(FT, t0, dt, canopy)
+    @test typeof(get_model_callbacks(canopy; t0, Δt = dt)[1]) ==
           typeof(pmodel_callback)
 end
 

@@ -3,7 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore: Spaces, Geometry, Fields
 using ClimaLand
-using ClimaLand: Domains, condition, SavingAffect, saving_initialize
+using ClimaLand: Domains, SavingAffect, IntervalBasedCallback
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 ## Callback tests
@@ -18,151 +18,142 @@ function upd_integrator(integrator::Integrator{FT}, dt) where {FT}
 end
 
 FT = Float32
-@testset "callback cond, affect! test, FT = $FT" begin
-    t0 = Float64(0)
-    dt = Float64(10)
-    tf = Float64(100)
-    t_range = collect(t0:dt:tf)
 
-    # specify when to save in the callback (test different dts)
-    saveats = (
-        collect(t0:dt:tf),
-        collect(t0:(2 * dt):tf),
-        collect(t0:(tf - t0):tf),
-        collect(t0:(0.5 * dt):tf),
-    )
-    for saveat in saveats
-        # note: delete non-multiples of dt in saveat before calling callback
-        deleteat!(saveat, findall(x -> (x - t0) % dt != 0, saveat))
+@testset "IntervalBasedCallback" begin
+    # with epoch test
+    start_date = ITime(0, epoch = DateTime(2010))
+    dt = ITime(3600)
 
-        saved_values = (;
-            t = Array{Float64}(undef, length(saveat)),
-            saveval = Array{Array{FT}}(undef, length(saveat)),
-        )
-
-        # set up components of callback
-        cond = condition(saveat)
-        saveiter = 0
-        affect! = SavingAffect(saved_values, saveat, saveiter)
-
-        p_init = copy(t_range)
-        integrator = Integrator{FT}(t0, p_init)
-
-        # use this to manually save `integrator` at various `t`
-        integ_saved = (;
-            t = Array{Float64}(undef, length(saveat)),
-            p = Array{Array{FT}}(undef, length(saveat)),
-        )
-
-        # simulate callback behavior
-        saveiter = 0
-        for t in t_range
-            if cond(0, t, 0)
-                affect!(integrator)
-
-                # save the current state of `integrator`
-                saveiter += 1
-                integ_saved.t[saveiter] = integrator.t
-                integ_saved.p[saveiter] = copy(integrator.p)
-            end
-            upd_integrator(integrator, dt)
-        end
-
-        @test affect!.saved_values.t == integ_saved.t
-        @test affect!.saved_values.saveval == integ_saved.p
+    increment_p = (x) -> x.p .+= 1
+    # p is only incremented when the cb is triggered
+    function step(integrator, cb)
+        integrator.t += dt
+        cb.condition(nothing, integrator.t, integrator) &&
+            cb.affect!(integrator)
+        return
     end
+
+    # test update every two hours (every two dt)
+    integrator = Integrator(start_date, [0])
+    cb = IntervalBasedCallback(Hour(2), start_date, dt, increment_p)
+    step(integrator, cb)
+    @test integrator.p == [0]
+    step(integrator, cb)
+    @test integrator.p == [1]
+    for i in 1:38
+        step(integrator, cb)
+    end
+    @test integrator.p == [20]
+
+    # test monthly
+    integrator = Integrator(start_date, [0])
+    cb = IntervalBasedCallback(Month(1), start_date, dt, increment_p)
+    for i in 1:(24 * 31)
+        step(integrator, cb)
+    end
+    @test integrator.p == [1]
+
+    # no epoch test
+    t0 = ITime(0)
+    integrator = Integrator(t0, [0])
+    t0, dt = promote(t0, dt)
+    cb = IntervalBasedCallback(dt * 2, t0, dt, increment_p)
+    step(integrator, cb)
+    @test integrator.p == [0]
+    step(integrator, cb)
+    @test integrator.p == [1]
+    for i in 1:38
+        step(integrator, cb)
+    end
+    @test integrator.p == [20]
 end
 
-@testset "callback saving_initialize test, FT = $FT" begin
-    t0 = Float64(0)
-    dt = Float64(10)
-    tf = Float64(100)
 
-    # we're only testing the save at t0 so one saveat range is sufficient
-    saveat = collect(t0:dt:tf)
-    saved_values = (;
-        t = Array{Float64}(undef, length(saveat)),
-        saveval = Array{Array{FT}}(undef, length(saveat)),
+
+@testset "NonInterpSavingCallback - DateTimes" begin
+    start_date = DateTime(2020)
+    stop_date = start_date + Hour(4)
+    dt = Hour(1)
+
+    saving_cb_every_hour =
+        ClimaLand.NonInterpSavingCallback(start_date, stop_date, Hour(1))
+
+    saving_cb_every_two_hour =
+        ClimaLand.NonInterpSavingCallback(start_date, stop_date, Hour(2))
+
+    saving_cb_late_start = ClimaLand.NonInterpSavingCallback(
+        start_date,
+        stop_date,
+        Hour(1);
+        first_save_date = start_date + Hour(2),
     )
 
-    saveiter = 0
-    affect! = SavingAffect(saved_values, saveat, saveiter)
-    cb = (; affect! = affect!)
 
-    p_init = collect(t0:dt:tf)
-    integrator = Integrator{FT}(t0, p_init)
-
-    # case 1: t not in saveat
-    t1 = FT(-1)
-    @test saving_initialize(cb, 0, t1, integrator) == false
-    @test cb.affect!.saved_values.t != integrator.t
-    @test cb.affect!.saved_values.saveval != integrator.p[1]
-
-    # case 2: t in saveat
-    t2 = t0
-    saving_initialize(cb, 0, t2, integrator)
-    @test cb.affect!.saved_values.t[1] == integrator.t[1]
-    @test cb.affect!.saved_values.saveval[1] == integrator.p
-end
-
-@testset "NonInterpSavingCallback" begin
-    start_date = ITime(0, Dates.Second(1), DateTime(2020))
-    stop_date = start_date + ITime(60.0 * 60)
-    dt = ITime(60.0)
-    save_interval = ITime(60.0 * 20)
-
-    saveat_itime = collect(start_date:save_interval:stop_date)
-    sv_itime = (;
-        t = Array{Union{Nothing, eltype(saveat_itime)}}(
-            nothing,
-            length(saveat_itime),
-        ),
-        saveval = Array{Any}(undef, length(saveat_itime)),
-    )
-    saving_cb_itime = ClimaLand.NonInterpSavingCallback(sv_itime, saveat_itime)
-
-    saveat_ft = collect(0:float(save_interval):float(stop_date - start_date))
-    sv_ft = (;
-        t = Array{Union{Nothing, eltype(saveat_ft)}}(
-            nothing,
-            length(saveat_ft),
-        ),
-        saveval = Array{Any}(undef, length(saveat_ft)),
-    )
-    saving_cb_ft = ClimaLand.NonInterpSavingCallback(sv_ft, saveat_ft)
-
-    saveat_date = collect(
-        date(start_date):Dates.Second(float(save_interval)):date(stop_date),
-    )
-    sv_date = (;
-        t = Array{Union{Nothing, eltype(saveat_date)}}(
-            nothing,
-            length(saveat_date),
-        ),
-        saveval = Array{Any}(undef, length(saveat_date)),
-    )
-    saving_cb_date = ClimaLand.NonInterpSavingCallback(sv_date, saveat_date)
-
+    all_cbs =
+        (saving_cb_every_hour, saving_cb_every_two_hour, saving_cb_late_start)
     for t in start_date:dt:stop_date
-        saving_cb_itime.condition(nothing, t, nothing) &&
-            saving_cb_itime.affect!(Integrator(t, [t]))
-        saving_cb_ft.condition(nothing, t, nothing) &&
-            saving_cb_ft.affect!(Integrator(t, [float(t)]))
-        saving_cb_date.condition(nothing, t, nothing) &&
-            saving_cb_date.affect!(Integrator(t, [date(t)]))
+        # our simulations use ITime internally, so check evaluating at ITimes
+        t_itime = ITime(Second(t - start_date).value, epoch = start_date)
+        integrator = Integrator(t_itime, [Hour(t)])
+        for cb in all_cbs
+            if t == start_date
+                cb.initialize(nothing, nothing, nothing, integrator)
+            else
+                cb.condition(nothing, t, integrator) && cb.affect!(integrator)
+            end
+        end
     end
-    for (i, t) in enumerate(saveat_itime)
-        @test sv_itime.t[i] == t
-        @test sv_itime.saveval[i] == [t]
+    @test saving_cb_every_hour.affect!.saved_values.t ==
+          collect(start_date:dt:stop_date)
+    @test saving_cb_every_two_hour.affect!.saved_values.t ==
+          collect(start_date:(2 * dt):stop_date)
+    @test saving_cb_late_start.affect!.saved_values.t ==
+          collect((start_date + Hour(2)):dt:stop_date)
+    # test saved values are as expected
+    @test all(
+        cb -> all(
+            first.(cb.affect!.saved_values.saveval) .==
+            Hour.(cb.affect!.saved_values.t),
+        ),
+        all_cbs,
+    )
+end
+
+@testset "NonInterpSavingCallback - Floats" begin
+    t0 = 0.0
+    tf = 4.0
+    dt = 1.0
+
+    save_every_dt = ClimaLand.NonInterpSavingCallback(t0, tf, dt)
+    save_every_other_dt = ClimaLand.NonInterpSavingCallback(t0, tf, 2 * dt)
+    save_every_dt_late_start =
+        ClimaLand.NonInterpSavingCallback(t0, tf, dt; t_first_save = 2.0)
+
+    all_cbs = (save_every_dt, save_every_dt_late_start, save_every_other_dt)
+    for t in t0:dt:tf
+        t_itime = ITime(t)
+        integrator = Integrator(t_itime, [t])
+        for cb in all_cbs
+            if t == t0
+                cb.initialize(nothing, nothing, nothing, integrator)
+            else
+                cb.condition(nothing, t, integrator) && cb.affect!(integrator)
+            end
+        end
     end
-    for (i, t) in enumerate(saveat_ft)
-        @test sv_ft.t[i] == t
-        @test sv_ft.saveval[i] == [t]
-    end
-    for (i, t) in enumerate(saveat_date)
-        @test sv_date.t[i] == t
-        @test sv_date.saveval[i] == [t]
-    end
+
+    @test save_every_dt.affect!.saved_values.t == collect(t0:dt:tf)
+    @test save_every_other_dt.affect!.saved_values.t == collect(t0:(2 * dt):tf)
+    @test save_every_dt_late_start.affect!.saved_values.t ==
+          collect((t0 + 2 * dt):dt:tf)
+    # test saved values are as expected
+    @test all(
+        cb -> all(
+            first.(cb.affect!.saved_values.saveval) .==
+            float.(cb.affect!.saved_values.t),
+        ),
+        all_cbs,
+    )
 end
 
 

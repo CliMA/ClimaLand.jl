@@ -123,9 +123,6 @@ diags = ClimaLand.default_diagnostics(
     reduction_period = :hourly,
 )
 
-# Construct the PModel callback
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, land.canopy)
-
 simulation = LandSimulation(
     start_date,
     stop_date,
@@ -133,7 +130,7 @@ simulation = LandSimulation(
     land;
     outdir,
     diagnostics = diags,
-    user_callbacks = (pmodel_cb,),
+    user_callbacks = (),
 )
 ClimaLand.Simulations.solve!(simulation)
 

@@ -243,20 +243,16 @@ ode_algo = CTS.IMEXAlgorithm(
 # By default, it
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
-saveat = collect(t0:FT(30000):tf);
-saved_values = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-);
-cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-
+saveat = FT(30000)
+cb = ClimaLand.NonInterpSavingCallback(t0, tf, saveat);
+saved_values = cb.affect!.saved_values;
 simulation = LandSimulation(
     t0,
     tf,
     dt,
     soil;
     set_ic! = set_ic!,
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (cb,),
     diagnostics = (),

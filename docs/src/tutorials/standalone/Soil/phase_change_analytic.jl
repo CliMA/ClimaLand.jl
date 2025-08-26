@@ -172,12 +172,9 @@ ode_algo = CTS.IMEXAlgorithm(
 );
 
 # Callbacks
-saveat = Array(t0:3600.0:tf);
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
+saveat = 3600.0
+saving_cb = ClimaLand.NonInterpSavingCallback(t0, tf, saveat);
+sv = saving_cb.affect!.saved_values;
 # Now we can create and solve the simulation
 simulation = LandSimulation(
     t0,
@@ -185,7 +182,7 @@ simulation = LandSimulation(
     dt,
     soil;
     set_ic! = set_ic!,
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),

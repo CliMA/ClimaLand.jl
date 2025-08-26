@@ -28,8 +28,8 @@ This function can be used throughout the duration of a simulation by
 triggering it via a callback. The `NaNCheckCallback` is designed for this
 purpose, and can be set up as follows:
 ```julia
-nancheck_freq = Dates.Month(1)
-nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_freq, start_date, t0, Δt)
+nancheck_interval = Dates.Month(1)
+nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_interval, start_date; dt = Δt)
 ```
 and then included along with any other callbacks in a `SciMLBase.CallbackSet`.
 

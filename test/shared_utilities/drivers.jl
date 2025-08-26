@@ -57,54 +57,6 @@ FT = Float32
           NamedTuple{all_papr_keys}(all_papr_vals)
 end
 
-## Driver update callback tests
-@testset "driver callback cond, affect! test, FT = $FT" begin
-    mutable struct Integrator{FT}
-        t::Any
-        dt::Any
-        p::NamedTuple
-    end
-
-    function upd_integrator(integrator::Integrator{FT}, dt) where {FT}
-        integrator.t += dt
-    end
-
-    t0 = Float64(0)
-    dt = Float64(1)
-    tf = Float64(100)
-    t_range = collect(t0:dt:tf)
-    nsteps = Int((tf - t0) / dt)
-    # specify when to update in the callback
-    updateat = collect((t0 + dt * 0.5):(5.5 * dt):tf)
-
-    # set up components of callback
-    cond = ClimaLand.update_condition(updateat)
-    @test cond(nothing, t0 - dt, nothing) == false
-    @test cond(nothing, tf, nothing) == false
-    @test cond(nothing, t0 + 0.5 * dt, nothing) == true
-    @test cond(nothing, updateat[end], nothing) == true
-    updatefunc = (p, t) -> p.drivers.q .= [t]
-    affect! = ClimaLand.DriverAffect(updateat, updatefunc)
-    @test affect!.updateat == updateat
-    @test affect!.updatefunc == updatefunc
-
-    p_init = (; drivers = (; q = [FT(-1)]))
-    integrator = Integrator{FT}(t0, dt, p_init)
-    cb = (; affect! = affect!)
-    ClimaLand.driver_initialize(cb, nothing, t0, integrator)
-    @test integrator.p.drivers.q == [t0]
-    # simulate callback behavior
-    for i in 1:nsteps
-        t = integrator.t
-        if cond(0, t, 0)
-            next_t = first(affect!.updateat)
-            affect!(integrator)
-            @test integrator.p.drivers.q == [next_t]
-        end
-        upd_integrator(integrator, dt)
-    end
-end
-
 @testset "Driver update functions" begin
     toml_dict = LP.create_toml_dict(FT)
     earth_param_set = LP.LandParameters(toml_dict)
