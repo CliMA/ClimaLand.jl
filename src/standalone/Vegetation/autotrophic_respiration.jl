@@ -74,12 +74,6 @@ function update_autotrophic_respiration!(
     autotrophic_respiration::AutotrophicRespirationModel,
     canopy,
 )
-    hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    h_canopy = hydraulics.compartment_surfaces[end]
-    i_end = n_stem + n_leaf
-    ψ = p.canopy.hydraulics.ψ
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
@@ -93,6 +87,7 @@ function update_autotrophic_respiration!(
     Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
     Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
     An_leaf = get_An_leaf(p, canopy.photosynthesis)
+    h_canopy = canopy.biomass.height
     @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
         autotrophic_respiration,
         Vcmax25_leaf,

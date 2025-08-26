@@ -145,19 +145,17 @@ function make_compute_imp_tendency(
 end
 
 """
-    root_energy_flux_per_ground_area!(
-        fa_energy::ClimaCore.Fields.Field,
+    root_energy_flux_per_ground_area!(p,
         ground::PrescribedGroundConditions{FT},
         model::AbstractCanopyEnergyModel{FT},
         canopy,
         Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
         t,
     ) where {FT}
 
 
-A method which updates the ClimaCore.Fields.Field `fa_energy` in place
-with  the energy flux associated with the root-soil
+A method which updates the ClimaCore.Fields.Field p.canopy.energy.fa_energy_roots
+ in place with  the energy flux associated with the root-soil
 water flux for the `CanopyModel` run in standalone mode,
 with a `PrescribedGroundConditions`.This value is ignored and set to zero
 in this case.
@@ -170,15 +168,14 @@ balance; therefore, in order to conserve energy, the canopy model
 must account for it as well.
 """
 function root_energy_flux_per_ground_area!(
-    fa_energy::ClimaCore.Fields.Field,
+    p,
     ground::PrescribedGroundConditions{FT},
     model::AbstractCanopyEnergyModel{FT},
     canopy,
     Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
     t,
 ) where {FT}
-    fa_energy .= FT(0)
+    p.canopy.energy.fa_energy_roots .= 0
 end
 
 function ClimaLand.make_compute_jacobian(

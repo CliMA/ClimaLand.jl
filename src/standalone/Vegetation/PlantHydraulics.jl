@@ -25,6 +25,7 @@ import ClimaLand:
     name,
     total_liq_water_vol_per_area!
 export PlantHydraulicsModel,
+    SteadyStateModel,
     AbstractPlantHydraulicsModel,
     water_flux,
     effective_saturation,
@@ -52,7 +53,6 @@ ClimaLand.name(::AbstractPlantHydraulicsModel) = :hydraulics
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
-
 An abstract type for types representing different models of
 transpiration (Prescribed or Diagnostic)
 """
@@ -134,8 +134,7 @@ transpiration. Note that the canopy height is specified as part of the
 PlantHydraulicsModel and the biomass model, these must be consistent.
 
 The model can be used in Canopy standalone mode by prescribing
-the soil matric potential at the root tips or flux in the roots. There is also the
-option (intendend only for debugging) to use a prescribed transpiration rate.
+the soil matric potential at the root tips or flux in the roots.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -162,9 +161,9 @@ function PlantHydraulicsModel{FT}(;
     n_leaf::Int64,
     compartment_midpoints::Vector{FT},
     compartment_surfaces::Vector{FT},
-    parameters::PlantHydraulicsParameters{FT},
-    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
-) where {FT}
+                                  parameters::PlantHydraulicsParameters{FT},
+                                  transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
+                                  ) where {FT}
     args = (parameters, transpiration)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
@@ -477,7 +476,6 @@ function make_compute_exp_tendency(
         n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
         fa_roots = p.canopy.hydraulics.fa_roots
-
         # Inside of a loop, we need to use a single dollar sign
         # for indexing into Fields of Tuples in non broadcasted
         # expressions, and two dollar signs for
@@ -503,13 +501,11 @@ function make_compute_exp_tendency(
 end
 
 """
-    root_water_flux_per_ground_area!(
-        fa::ClimaCore.Fields.Field,
+    root_water_flux_per_ground_area!(p,
         ground::PrescribedGroundConditions,
         model::PlantHydraulicsModel{FT},
         canopy,
         Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
         t,
     ) where {FT}
 
@@ -530,14 +526,14 @@ The returned flux is per unit ground area. This assumes that the stem compartmen
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_water_flux_per_ground_area!(
-    fa::ClimaCore.Fields.Field,
+    p,
     ground::PrescribedGroundConditions,
     model::PlantHydraulicsModel{FT},
     canopy,
     Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
     t,
 ) where {FT}
+    fa = p.canopy.hydraulics.fa_roots
     rooting_depth = canopy.biomass.rooting_depth
     (; conductivity_model,) = model.parameters
     area_index = p.canopy.biomass.area_index
@@ -579,7 +575,6 @@ end
 
 """
     PrescribedTranspiration{FT, F <: Function} <: AbstractTranspiration{FT}
-
 A concrete type used for dispatch when computing the transpiration
 from the leaves, in the case where transpiration is prescribed.
 """
@@ -598,12 +593,10 @@ end
         p,
         t,
     )::FT where {FT}
-
 A method which computes the transpiration in meters/sec between the leaf
 and the atmosphere,
 in the case of a standalone plant hydraulics model with prescribed
 transpiration rate.
-
 Transpiration should be per unit ground area, not per leaf area.
 """
 function transpiration_per_ground_area(
@@ -617,7 +610,6 @@ end
 
 """
     DiagnosticTranspiration{FT} <: AbstractTranspiration{FT}
-
 A concrete type used for dispatch in the case where transpiration is computed
 diagnostically, as a function of prognostic variables and parameters,
 and stored in `p` during the `update_aux!` step.
@@ -626,11 +618,9 @@ struct DiagnosticTranspiration{FT} <: AbstractTranspiration{FT} end
 
 """
     transpiration_per_ground_area(transpiration::DiagnosticTranspiration, Y, p, t)
-
 Returns the transpiration computed diagnostically using local conditions.
 In this case, it just returns the value which was computed and stored in
 the `aux` state during the update_aux! step.
-
 Transpiration should be per unit ground area, not per leaf area.
 """
 function transpiration_per_ground_area(
@@ -744,4 +734,73 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     end
     # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 end
+
+"""
+    SteadyStateModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
+
+Defines, and constructs instances of, the SteadyStateModel type, which is used
+for simulations where we do not track the canopy water content prognostically,
+and assume that the root flux exactly balances transpiration.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT} end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::SteadyStateModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value of
+the steady state plant hydraulics water, set to zero. Since the water content is
+fixed in time (via the assumption of steady state), the value does not matter.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::SteadyStateModel,
+    Y,
+    p,
+    t,
+)
+    surface_field .= 0
+    return nothing
 end
+
+
+"""
+   update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+
+As there are no cache variables for the SteadyStateModel, this does nothing.
+"""
+update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy) = nothing
+
+
+"""
+    root_water_flux_per_ground_area!(
+        fa::ClimaCore.Fields.Field,
+        ground::PrescribedGroundConditions,
+        model::SteadyStateModel{FT},
+        canopy,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        t,
+    ) where {FT}
+
+
+"""
+function root_water_flux_per_ground_area!(
+    p,
+    ground::PrescribedGroundConditions,
+    model::SteadyStateModel{FT},
+    canopy,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {FT}
+
+end
+
+end # module
