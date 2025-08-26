@@ -134,22 +134,23 @@ end
 
 
 """
-    function PModel{FT}(;
-        cstar = FT(0.41),
-        β = FT(146),
-        ϕc = FT(0.087),
-        ϕ0 = FT(NaN),
-        ϕa0 = FT(0.352),
-        ϕa1 = FT(0.022),
-        ϕa2 = FT(-0.00034),
-        α = FT(0.933),
-        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+    function PModel{FT}(
+        toml_dict::CP.AbstractTOMLDict;
+        cstar = toml_dict["pmodel_cstar"],
+        β = toml_dict["pmodel_beta"],
+        ϕc = toml_dict["pmodel_phi_c"],
+        ϕ0 = toml_dict["pmodel_phi0"],
+        ϕa0 = toml_dict["pmodel_phi_a0"],
+        ϕa1 = toml_dict["pmodel_phi_a1"],
+        ϕa2 = toml_dict["pmodel_phi_a2"],
+        α = toml_dict["pmodel_alpha0"],
+        sc = toml_dict["low_water_pressure_sensitivity"],
+        pc = toml_dict["moisture_stress_ref_water_pressure"],
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
 
-The following default parameters are used:
+The following default parameters (from the TOML file) are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
 - β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020)
 - ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020)
@@ -162,17 +163,18 @@ The following default parameters are used:
 - sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
 - pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
-function PModel{FT}(;
-    cstar = FT(0.41),
-    β = FT(146),
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN),
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
-    α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+function PModel{FT}(
+    toml_dict::CP.AbstractTOMLDict;
+    cstar = toml_dict["pmodel_cstar"],
+    β = toml_dict["pmodel_β"],
+    ϕc = toml_dict["pmodel_ϕc"],
+    ϕ0 = toml_dict["pmodel_ϕ0"],
+    ϕa0 = toml_dict["pmodel_ϕa0"],
+    ϕa1 = toml_dict["pmodel_ϕa1"],
+    ϕa2 = toml_dict["pmodel_ϕa2"],
+    α = toml_dict["pmodel_α"],
+    sc = toml_dict["low_water_pressure_sensitivity"],
+    pc = toml_dict["moisture_stress_ref_water_pressure"],
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
@@ -187,7 +189,7 @@ function PModel{FT}(;
         pc = pc,
     )
 
-    return PModel{FT}(parameters)
+    return PModel{FT}(toml_dict, parameters)
 end
 
 
@@ -397,7 +399,7 @@ function MedlynConductanceModel{FT}(
     g1 = clm_medlyn_g1(domain.space.surface),
     g0::FT = toml_dict["min_stomatal_conductance"],
 ) where {FT <: AbstractFloat}
-    parameters = MedlynConductanceParameters(FT; g0, g1)
+    parameters = MedlynConductanceParameters(toml_dict; g0, g1)
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
 end
 
