@@ -286,11 +286,16 @@ function default_zenith_angle(
     FT = eltype(latitude)
     current_datetime =
         T <: ITime ? date(t) : start_date + Dates.Second(round(t))
+    
+
+    # This is hardcoded because it is not currently in ClimaParams.
+    # Please see https://github.com/CliMA/Insolation.jl/issues/41
+    date0 = DateTime("2000-01-01T11:58:56.816")
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
-                start_date,
+                date0,
                 insol_params,
             )
         )
