@@ -62,12 +62,15 @@ include("./spatially_varying_parameters.jl")
 
 ## Autotrophic respiration models
 """
-    AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+    AutotrophicRespirationModel{FT}(toml_dict::CP.AbstractTOMLDict,
+                                   ) where {FT <: AbstractFloat}
 
-Creates a AutotrophicRespirationModel using default parameters of type FT.
+Create a `AutotrophicRespirationModel` using `toml_dict` of type `FT`.
 """
-function AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
-    parameters = AutotrophicRespirationParameters(FT)
+function AutotrophicRespirationModel{FT}(
+    toml_dict::CP.AbstractTOMLDict,
+) where {FT <: AbstractFloat}
+    parameters = AutotrophicRespirationParameters(toml_dict)
     return AutotrophicRespirationModel{FT, typeof(parameters)}(parameters)
 end
 
@@ -80,10 +83,10 @@ Creates a BigLeafEnergyModel using default parameters of type FT.
 The following default parameter is used:
 - ac_canopy = FT(2e3) (J m^-2 K^-1) - canopy specific heat per area
 """
-function BigLeafEnergyModel{FT}(;
-    ac_canopy::FT = FT(2e3),
+function BigLeafEnergyModel{FT}(
+    toml_dict::CP.AbstractTOMLDict;
+    ac_canopy::FT = toml_dict["ac_canopy"],
 ) where {FT <: AbstractFloat}
-    # TODO: move `ac_canopy` to ClimaParams.jl so we can call `get_default_parameter`.
     parameters = BigLeafEnergyParameters{FT}(ac_canopy)
     return BigLeafEnergyModel{FT, typeof(parameters)}(parameters)
 end
@@ -95,8 +98,8 @@ end
         photosynthesis_parameters = clm_photosynthesis_parameters(
             domain.space.surface,
         ),
-        sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+        sc::FT = toml_dict["low_water_pressure_sensitivity"],
+        pc::FT = toml_dict["moisture_stress_ref_water_pressure"],
     ) where {
         FT <: AbstractFloat,
         MECH <: Union{FT, ClimaCore.Fields.Field},
@@ -116,12 +119,13 @@ The following additional default parameters are used:
 - pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
 function FarquharModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
     photosynthesis_parameters = clm_photosynthesis_parameters(
         domain.space.surface,
     ),
-    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+    sc::FT = toml_dict["low_water_pressure_sensitivity"],
+    pc::FT = toml_dict["moisture_stress_ref_water_pressure"],
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
     parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
@@ -291,9 +295,10 @@ end
 ## Radiative transfer models
 """
     TwoStreamModel{FT}(
-        domain;
+        domain,
+        toml_dict::CP.AbstractTOMLDict;;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
-        ϵ_canopy = LP.get_default_parameter(FT, :canopy_emissivity),
+        ϵ_canopy = toml_dict["canopy_emissivity"],
         n_layers::Int = 20,
     )
 
@@ -313,11 +318,12 @@ Otherwise the default values from ClimaParams.jl are used.
 The number of layers in the canopy is set by `n_layers`, which defaults to 20.
 """
 function TwoStreamModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
     radiation_parameters = clm_canopy_radiation_parameters(
         domain.space.surface,
     ),
-    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    ϵ_canopy::FT = toml_dict["canopy_emissivity"],
     n_layers::Int = 20,
 ) where {FT <: AbstractFloat}
     parameters =
@@ -327,9 +333,10 @@ end
 
 """
     BeerLambertModel{FT}(
-        domain;
+        domain,
+        toml_dict::CP.AbstractTOMLDict;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
-        ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+        ϵ_canopy::FT = toml_dict["canopy_emissivity"],
     ) where {FT <: AbstractFloat}
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
@@ -345,11 +352,12 @@ as constants; these can be passed in as Floats by kwarg.
 Otherwise the default values from ClimaParams.jl are used.
 """
 function BeerLambertModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
     radiation_parameters = clm_canopy_radiation_parameters(
         domain.space.surface,
     ),
-    ϵ_canopy::FT = LP.get_default_parameter(FT, :canopy_emissivity),
+    ϵ_canopy::FT = toml_dict["canopy_emissivity"],
 ) where {FT <: AbstractFloat}
     # Filter out radiation parameters that are not needed for Beer-Lambert model
     radiation_parameters = NamedTuple{
@@ -366,8 +374,10 @@ end
 
 ## Stomatal conductance models
 """
-    MedlynConductanceModel{FT}(;
-        g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
+    MedlynConductanceModel{FT}(
+        domain,
+        toml_dict::CP.AbstractTOMLDict;
+        g0::FT = toml_dict["min_stomatal_conductance"],
         g1 = clm_medlyn_g1(domain.space.surface),
     ) where {FT <: AbstractFloat}
 
@@ -382,9 +392,10 @@ The following default parameter is used:
 - g0 = FT(1e-4) (mol m^-2 s^-1) - minimum stomatal conductance
 """
 function MedlynConductanceModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
     g1 = clm_medlyn_g1(domain.space.surface),
-    g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
+    g0::FT = toml_dict["min_stomatal_conductance"],
 ) where {FT <: AbstractFloat}
     parameters = MedlynConductanceParameters(FT; g0, g1)
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
@@ -572,12 +583,12 @@ end
         z_0m = toml_dict["canopy_momentum_roughness_length"],
         z_0b = toml_dict["canopy_scalar_roughness_length"],
         prognostic_land_components = (:canopy,),
-        autotrophic_respiration = AutotrophicRespirationModel{FT}(),
-        radiative_transfer = TwoStreamModel{FT}(domain),
-        photosynthesis = FarquharModel{FT}(domain),
-        conductance = MedlynConductanceModel{FT}(domain),
+        autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+        radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+        photosynthesis = FarquharModel{FT}(domain, toml_dict),
+        conductance = MedlynConductanceModel{FT}(domain, toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
-        energy = BigLeafEnergyModel{FT}(),
+        energy = BigLeafEnergyModel{FT}(toml_dict),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
 
@@ -611,12 +622,12 @@ function CanopyModel{FT}(
     z_0m = toml_dict["canopy_momentum_roughness_length"],
     z_0b = toml_dict["canopy_scalar_roughness_length"],
     prognostic_land_components = (:canopy,),
-    autotrophic_respiration = AutotrophicRespirationModel{FT}(),
-    radiative_transfer = TwoStreamModel{FT}(domain),
-    photosynthesis = FarquharModel{FT}(domain),
-    conductance = MedlynConductanceModel{FT}(domain),
+    autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    photosynthesis = FarquharModel{FT}(domain, toml_dict),
+    conductance = MedlynConductanceModel{FT}(domain, toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
-    energy = BigLeafEnergyModel{FT}(),
+    energy = BigLeafEnergyModel{FT}(toml_dict),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
