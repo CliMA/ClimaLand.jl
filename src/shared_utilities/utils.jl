@@ -253,7 +253,8 @@ function DriverUpdateCallback(
 )
     affect! = (integrator) -> updatefunc(integrator.p, integrator.t)
     initialize =
-        update_frequency == zero(update_frequency) ? affect! :
+        update_frequency != zero(update_frequency) ?
+        (cb, u, t, integrator) -> affect!(integrator) :
         SciMLBase.INITIALIZE_DEFAULT
 
     FrequencyBasedCallback(
