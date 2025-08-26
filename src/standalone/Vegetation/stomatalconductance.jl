@@ -48,7 +48,7 @@ ClimaLand.auxiliary_domain_names(::MedlynConductanceModel) = (:surface,)
 
 Computes and updates the canopy-level conductance (units of m/s) according to the Medlyn model.
 
-The moisture stress factor is applied to `An` already.
+The moisture stress factor is applied to `An_leaf` already.
 """
 function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
     c_co2_air = p.drivers.c_co2
@@ -60,18 +60,19 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
     (; g1, g0, Drel) = canopy.conductance.parameters
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
-    An = p.canopy.photosynthesis.An
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
     R = LP.gas_constant(earth_param_set)
-
+    FT = typeof(R)
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
     @. p.canopy.conductance.r_stomata_canopy =
-        1 / upscale_leaf_conductance(
-            medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air), #conductance, leaf level
-            LAI,
-            T_air,
-            R,
-            P_air,
-        )
+        1 / (
+            conductance_molar_flux_to_m_per_s(
+                medlyn_conductance(g0, Drel, medlyn_factor, An_leaf, c_co2_air), #conductance, leaf level
+                T_air,
+                R,
+                P_air,
+            ) * max(LAI, sqrt(eps(FT)))
+        ) # multiply by LAI treating all leaves as if they are in parallel
 end
 
 # For interfacing with ClimaParams
@@ -158,16 +159,15 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
     ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
-    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
+    An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
     R = LP.gas_constant(earth_param_set)
     FT = eltype(model.parameters)
 
     χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
-            upscale_leaf_conductance(
-                gs_h2o_pmodel(χ, c_co2_air, An, Drel), # leaf level conductance in mol H2O Pa^-1
-                LAI,
+            conductance_molar_flux_to_m_per_s(
+                gs_h2o_pmodel(χ, c_co2_air, An_canopy, Drel), # canopy level conductance in mol H2O/m^2/s
                 T_air,
                 R,
                 P_air,
