@@ -243,19 +243,25 @@ function dss_helper!(
 
 Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
+If `update_frequency` is zero valued, then it will not be updated on initialization.
 """
 function DriverUpdateCallback(
     update_frequency,
     updatefunc;
     start_date = nothing,
+    dt = nothing,
 )
     affect! = (integrator) -> updatefunc(integrator.p, t)
+    initialize =
+        update_frequency == zero(update_frequency) ? affect! :
+        SciMLBase.INITIALIZE_DEFAULT
 
     FrequencyBasedCallback(
         update_frequency,
         start_date,
+        dt,
         affect!;
-        initialize = affect!,
+        initialize,
         save_positions = (false, false),
     )
 end

@@ -69,11 +69,11 @@ if !known_broken
         (t0, tf),
         p,
     )
-    updateat = collect(t0:Δt:tf)
+
     checkpoint_frequency = 2Δt
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(Δt, updatefunc)
     checkpoint_cb = ClimaLand.CheckpointCallback(
         checkpoint_frequency,
         output_dir,
@@ -105,9 +105,7 @@ if !known_broken
         (t_restart, tf),
         p_restart,
     )
-    updateat_restarted = collect(t_restart:Δt:tf)
-    driver_cb_restarted =
-        ClimaLand.DriverUpdateCallback(updateat_restarted, updatefunc)
+    driver_cb_restarted = ClimaLand.DriverUpdateCallback(Δt, updatefunc)
     cb_restarted = SciMLBase.CallbackSet(driver_cb_restarted)
     sol_restarted = SciMLBase.solve(
         prob_restart,

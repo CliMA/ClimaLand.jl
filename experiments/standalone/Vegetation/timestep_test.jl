@@ -150,14 +150,13 @@ for dt in dts
 
     # Create update times for driver and saving callback
     saveat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
-    updateat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
     simulation = LandSimulation(
         start_date,
         stop_date,
         dt,
         canopy;
         set_ic! = set_ic!,
-        updateat = updateat,
+        updateat = Second(3 * 3600),
         solver_kwargs = (; saveat = deepcopy(saveat)),
         timestepper = ode_algo,
         user_callbacks = (),
