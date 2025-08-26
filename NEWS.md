@@ -6,6 +6,26 @@ main
 - ![][badge-🐛bugfix] Check for coupled forcing in available diagnostics PR[#1434](https://github.com/CliMA/ClimaLand.jl/pull/1434)
 - Remove the unused integrated constructors based on args and types PR[#1408](https://github.com/CliMA/ClimaLand.jl/pull/1408)
 - Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
+- ![breaking change][badge-💥breaking] All callbacks are now constructed with `IntervalBasedCallback`,  which uses ClimaDiagnostics for scheduling. PR[#1380](https://github.com/CliMA/ClimaLand.jl/pull/1380)
+  - `FrequencyBasedCallback` renamed to `IntervalBasedCallback`
+  - `NonInterpSavingCallback` can no longer be constructed with a vector of
+  times to save at. Instead, the callback can be constructed with one of the following methods
+
+      ```julia
+    # recommended constructors
+    saving_cb = NonInterpSavingCallback(start_date, stop_date, callback_period)
+    # OR
+    saving_cb = NonInterpSavingCallback(t0, tf, callback_period)
+    saved_values = saving_cb.affect!.saved_values # saved_values NamedTuple automatically constructed
+      ```
+
+  - `DriverUpdateCallback` can no longer be constructed with a vector of
+  update times. Instead, it can now be constructed with `DriverUpdateCallback(updatefunc, update_period, t0)`.
+  - The `LandSimulation` construtor now expects `updateat` to be the update period instead of a vector of times.
+  - `CheckpointCallback` signature is changed to `CheckpointCallback(checkpoint_period, output_dir, t0; model, dt = nothing)`
+  - `NaNCheckCallback` signature changed to `NaNCheckCallback(nancheck_period, t0; dt = nothing, mask = nothing)`
+  - The `ReportCallback` constructor no longer accepts the number of steps between reports as an argument. The
+  function signature is now `ReportCallback(period, t0; dt = nothing)`
 - ![breaking change][badge-💥breaking] Model constructors should use toml dict PR[#1385](https://github.com/CliMA/ClimaLand.jl/pull/1385)
 
 v0.20.1

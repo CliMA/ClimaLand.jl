@@ -34,7 +34,7 @@ import ClimaLand:
     get_model_callbacks,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-    FrequencyBasedCallback,
+    IntervalBasedCallback,
     Soil
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
@@ -1196,12 +1196,12 @@ end
 Creates the tuple of model callbacks for a CanopyModel
 by calling `get_model_callbacks` on each component model.
 """
-function get_model_callbacks(model::CanopyModel{FT}; start_date, Δt) where {FT}
+function get_model_callbacks(model::CanopyModel{FT}; t0, Δt) where {FT}
     components = canopy_components(model)
     callbacks = ()
     callback_list = map(components) do (component)
         submodel = getproperty(model, component)
-        cb = get_model_callbacks(submodel, model; start_date, Δt)
+        cb = get_model_callbacks(submodel, model; t0, Δt)
         callbacks = (callbacks..., cb...)
     end
     return callbacks

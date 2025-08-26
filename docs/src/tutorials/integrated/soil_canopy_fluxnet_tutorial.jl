@@ -111,7 +111,6 @@ diagnostics = ClimaLand.default_diagnostics(
 
 # Choose how often we want to update the forcing.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID));
-updateat = Array(start_date:data_dt:stop_date);
 
 # Now we can construct the simulation object and solve it.
 simulation = Simulations.LandSimulation(
@@ -120,7 +119,7 @@ simulation = Simulations.LandSimulation(
     Δt, # seconds
     land_model;
     set_ic!,
-    updateat,
+    updateat = Second(data_dt),
     user_callbacks = (),
     diagnostics,
 );

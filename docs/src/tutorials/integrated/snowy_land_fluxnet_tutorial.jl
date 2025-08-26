@@ -110,7 +110,6 @@ diagnostics = ClimaLand.default_diagnostics(
 # Choosing a frequency > the data frequency results in linear
 # interpolation in time to the intermediate times.
 data_dt = Second(FluxnetSimulations.get_data_dt(site_ID));
-updateat = Array(start_date:data_dt:stop_date);
 
 # Now we can construct the simulation object and solve it.
 simulation = Simulations.LandSimulation(
@@ -119,7 +118,7 @@ simulation = Simulations.LandSimulation(
     Δt, # seconds
     land_model;
     set_ic!,
-    updateat,
+    updateat = Second(data_dt),
     user_callbacks = (),
     diagnostics,
 );

@@ -763,13 +763,13 @@ end
 """
     function make_PModel_callback(
         ::Type{FT},
-        start_date::Dates.DateTime,
-        dt::Union{AbstractFloat, Dates.Period},
+        t0::ITime,
+        dt,
         canopy,
         longitude = nothing
     ) where {FT <: AbstractFloat}
 
-This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
+This constructs a IntervalBasedCallback for the P-model that updates the optimal photosynthetic capacities
 using an exponential moving average at local noon.
 
 We check for local noon using the provided `longitude` (once passing
@@ -780,7 +780,7 @@ application here (since meteorological drivers are often updated at coarser time
 
 Args
 - `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
-- `start_date`: datetime object for the start of the simulation (UTC).
+- `t0`: ITime, with epoch in UTC.
 - `dt`: timestep
 - `canopy`: the canopy object containing the P-model parameters and constants.
 - `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
@@ -788,13 +788,13 @@ Args
 """
 function make_PModel_callback(
     ::Type{FT},
-    start_date::Dates.DateTime,
-    dt::Union{AbstractFloat, Dates.Period},
+    t0::ITime,
+    dt,
     canopy,
     longitude = nothing,
 ) where {FT <: AbstractFloat}
     function seconds_after_midnight(date)
-        return Float64(
+        return FT(
             Hour(date).value * 3600 +
             Minute(date).value * 60 +
             Second(date).value,
@@ -816,21 +816,22 @@ function make_PModel_callback(
     # effects of obliquity and orbital eccentricity, so it is constant throughout the year
     # the max error is on the order of 20 minutes
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
-    start_t = seconds_after_midnight(start_date)
+    start_t = seconds_after_midnight(date(t0))
     local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
-
-    return FrequencyBasedCallback(
-        dt,         # period of this callback
-        start_date, # initial datetime, UTC
-        dt;         # integration timestep, in seconds
-        func = (integrator) -> call_update_optimal_EMA(
+    affect! =
+        (integrator) -> call_update_optimal_EMA(
             integrator.p,
             integrator.u,
             (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC;
             canopy = canopy,
             dt = dt,
             local_noon = local_noon,
-        ),
+        )
+    return IntervalBasedCallback(
+        dt,         # period of this callback
+        t0,         # simulation start
+        dt,         # integration timestep
+        affect!;
     )
 end
 
@@ -1471,13 +1472,8 @@ and not for the conductance component(PModelConductance).
 
 Note that the Δt passed here is an ITime because it is the Δt used in the simulation.
 """
-function get_model_callbacks(
-    component::PModel{FT},
-    canopy;
-    start_date,
-    Δt,
-) where {FT}
-    pmodel_cb = make_PModel_callback(FT, start_date, float(Δt), canopy)
+function get_model_callbacks(component::PModel{FT}, canopy; t0, Δt) where {FT}
+    pmodel_cb = make_PModel_callback(FT, t0, Δt, canopy)
     return (pmodel_cb,)
 end
 

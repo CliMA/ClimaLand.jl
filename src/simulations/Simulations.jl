@@ -8,7 +8,6 @@ import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
 using ClimaLand
 import ..Parameters as LP
-import ClimaLand.Domains: SphericalShell, HybridBox, SphericalSurface
 export step!, solve!, LandSimulation
 using NCDatasets
 include("initial_conditions.jl")
@@ -87,15 +86,15 @@ end
         ),
         user_callbacks = (
             ClimaLand.NaNCheckCallback(
-                isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
-                t0,
-                Δt;
+                isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1),
+                t0;
+                dt = Δt,
                 mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
             ),
-            ClimaLand.ReportCallback(1000),
+            ClimaLand.ReportCallback(div((tf - t0), 10), t0),
         ),
         diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-        updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+        updateat = ITime(3600 * 3),
         solver_kwargs = (;),
     )
 
@@ -133,15 +132,15 @@ function LandSimulation(
     ),
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
-            isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
-            t0,
-            Δt;
+            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1),
+            t0;
+            dt = Δt,
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
-        ClimaLand.ReportCallback(1000),
+        ClimaLand.ReportCallback(div((tf - t0), 10), t0),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+    updateat = ITime(3600 * 3),
     solver_kwargs = (;),
 )
     # Enforce `h_atmos >= h_canopy` for models with canopy
@@ -155,7 +154,6 @@ function LandSimulation(
         @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
     end
 
-    start_date = isnothing(t0.epoch) ? nothing : date(t0)
 
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
@@ -202,10 +200,9 @@ function LandSimulation(
     # Required callbacks
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    updateat =
-        updateat isa AbstractVector ? updateat : [promote(t0:updateat:tf...)...]
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    model_callbacks = ClimaLand.get_model_callbacks(model; start_date, Δt)# everything else you need should be in the model!
+    driver_cb =
+        ClimaLand.DriverUpdateCallback(updatefunc, updateat, t0; dt = Δt)
+    model_callbacks = ClimaLand.get_model_callbacks(model; t0, Δt)# everything else you need should be in the model!
 
     required_callbacks = (driver_cb, model_callbacks...) # TBD: can we update each step?
 
@@ -219,6 +216,12 @@ function LandSimulation(
     # in both user_cbs and diag_cbs, and the driver update happens between them
     callbacks =
         SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
+    if haskey(solver_kwargs, :saveat) && !(solver_kwargs[:saveat] isa Array)
+        solver_kwargs = merge(
+            (; solver_kwargs...),
+            (; :saveat => collect(t0:solver_kwargs[:saveat]:tf)),
+        )
+    end
     _integrator = SciMLBase.init(
         problem,
         timestepper;
@@ -229,7 +232,7 @@ function LandSimulation(
     return LandSimulation(
         model,
         timestepper,
-        start_date,
+        t0.epoch,
         user_callbacks,
         diagnostics,
         required_callbacks,
@@ -249,7 +252,7 @@ end
 
 A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s), setting the epoch of the ITime to nothing.
 If the `kwargs` contain `updateat`, it will
-convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
+convert the update frequency to an `ITime` as well. The same applies to values in `saveat` in `solver_kwargs`.
 
 If your simulation has a notion of a calendar date, please use one of the
 other constructors.
@@ -403,8 +406,9 @@ convert_updates(t0::ITime, update_time::Dates.DateTime) = promote(
         epoch = t0.epoch,
     ),
 )[2]
-convert_updates(t0::ITime, update_time::Dates.Period) =
+convert_updates(t0::ITime, update_time::Dates.ConvertiblePeriod) =
     promote(t0, ITime(Dates.value(convert(Dates.Second, update_time));))[2]
 convert_updates(t0::ITime, update_time::AbstractFloat) =
     promote(t0, ITime(update_time, epoch = t0.epoch))[2]
+convert_updates(t0, update_time) = t0 # fallback (used for non convertible Dates.Period(s))
 end#module

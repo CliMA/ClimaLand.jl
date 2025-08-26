@@ -129,9 +129,8 @@ update_radiation!(p, t0);
 # In general, then, we don't update drivers every timestep, but less frequently.
 # For example, the simulation timestep may be 10 minutes, but we may only update
 # the drivers every three hours:
-updateat = collect(seconds[1]:(3600 * 3):seconds[end]);
 updatefunc = update_radiation!;
-cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc);
+cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 
 # This callback must then be provided to the simulation [`solve`](https://docs.sciml.ai/DiffEqCallbacks/stable/) function.
 
