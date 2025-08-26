@@ -151,6 +151,187 @@ type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"
 
+# Medlyn Conductance Parameters
+[g1]
+value = 790.0
+type = "float"
+description = "Slope parameter, inversely proportional to the square root of marginal water use efficiency (Pa^{1/2})"
+tag = "MedlynConductanceParameters"
+
+# P model parameters
+[pmodel_cstar]
+value = 0.41
+type = "float"
+description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_β"]
+value = 146
+type = "float"
+description = "Unit cost ratio of Vcmax to transpiration (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕc"]
+value = 0.087
+type = "float"
+description = "Constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕ0"]
+value = nan
+type = "float"
+description = "Constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the temperature-dependent form (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕa0"]
+value = 0.352
+type = "float"
+description = "Constant term in quadratic intrinsic quantum yield (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕa1"]
+value = 0.022
+type = "float"
+description = "First order term in quadratic intrinsic quantum yield (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕa2"]
+value = -0.00034
+type = "float"
+description = "Second order term in quadratic intrinsic quantum yield (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_α"]
+value = 0.933
+type = "float"
+description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
+tag = "PModelParameters"
+
+# P Model constants (Stocker et al. (2020) Table A2 and references within for more information)
+[pmodel_Kc25]
+value = 39.97
+type = "float"
+description = "Michaelis-Menten parameter for oxygenation at 25°C (Pa)."
+tag = "PModelConstants"
+
+[pmodel_Ko25]
+value = 27480
+type = "float"
+description = "Reference temperature equal to 25˚C (K)."
+tag = "PModelConstants"
+
+["pmodel_ΔHkc"]
+value = 79430
+type = "float"
+description = "Energy of activation for Ko (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_ΔHko"]
+value = 36380
+type = "float"
+description = "Relative diffusivity of CO2 in the stomatal pores, equal to 1.6."
+tag = "PModelConstants"
+
+["pmodel_ΔHΓstar"]
+value = 37830
+type = "float"
+description = "Effective energy of activation for Γstar (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_Γstar25"]
+value = 4.332
+type = "float"
+description = "Photorespiratory compensation point at 25°C (Pa)."
+tag = "PModelConstants"
+
+[pmodel_Ha_Vcmax]
+value = 71513
+type = "float"
+description = "Effective energy of activation for Vcmax (J mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_Hd_Vcmax]
+value = 200000
+type = "float"
+description = "Effective energy of deactivation for Vcmax (J mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_aS_Vcmax]
+value = 668.39
+type = "float"
+description = "Intercept term for dS in Vcmax deactivation factor (J K^-1 mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_bS_Vcmax]
+value = 1.07
+type = "float"
+description = "Slope term for dS in Vcmax deactivation factor (J K^-2 mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_Ha_Jmax]
+value = 49884
+type = "float"
+description = "Effective energy of activation for Jmax (J mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_Hd_Jmax]
+value = 200000
+type = "float"
+description = "Effective energy of deactivation for Jmax (J mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_aS_Jmax]
+value = 659.70
+type = "float"
+description = "Intercept term for dS in Jmax deactivation factor (J K^-1 mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_bS_Jmax]
+value = 0.75
+type = "float"
+description = "Slope term for dS in Jmax deactivation factor (J K^-2 mol^-1)."
+tag = "PModelConstants"
+
+[pmodel_oi]
+value = 0.2095
+type = "float"
+description = "Intercellular O2 mixing ratio (unitless)."
+tag = "PModelConstants"
+
+[pmodel_aRd]
+value = 0.1012
+type = "float"
+description = "First order coefficient for temp-dependent Rd (K^-1)."
+tag = "PModelConstants"
+
+[pmodel_bRd]
+value = -0.0005
+type = "float"
+description = "Second order coefficient for temp-dependent Rd (K^-2)."
+tag = "PModelConstants"
+
+[pmodel_fC3]
+value = 0.015
+type = "float"
+description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
+tag = "PModelConstants"
+
+# P model conductance parameters
+
+[Drel]
+value = 1.6
+type = "float"
+description = "Relative diffusivity of H2O to CO2 (Bonan Table A.3)"
+tag = "PModelConductanceParameters"
+
+# Farquhar parameters
+
+[Vcmax25]
+value = 5e-5
+type = "float"
+description = "Vcmax at 25 °C (mol CO2/m^2/s); leaf level"
+tag = "FarquharParameters"
+
 # Bucket model parameters
 
 [land_bucket_capacity]
