@@ -61,8 +61,7 @@ model = ClimaLand.Snow.SnowModel(
     FT,
     domain,
     forcing,
-    toml_dict,
-    Δt;
+    toml_dict;
     density,
     α_snow,
 )
@@ -313,7 +312,7 @@ ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 ΔE_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_energy_flux)[end] for
+            parent(sv.saveval[k].snow.total_energy_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])
@@ -321,7 +320,7 @@ E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
 ΔW_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_water_flux)[end] for
+            parent(sv.saveval[k].snow.total_water_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])

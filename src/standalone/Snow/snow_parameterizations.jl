@@ -309,8 +309,9 @@ function snow_bulk_temperature(
     cp_s = specific_heat_capacity(q_l, parameters)
     _ΔS = parameters.ΔS
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    U_safe = min(-_ρ_l * S_safe * (1 - q_l) * _LH_f0, U)
     return _T_ref +
-           (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
+           (U_safe + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
            (_ρ_l * cp_s * (S_safe + _ΔS))
 end
 
@@ -352,13 +353,16 @@ end
 
 
 """
-    runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
+    runoff_timescale(z::FT, Ksat::FT) where {FT}
 
 Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
+
+To prevent numerical issues when the snowdepth is small, we clip to
+1 hour.
 """
-function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
-    τ = max(Δt, z / Ksat)
+function runoff_timescale(z::FT, Ksat::FT) where {FT}
+    τ = max(FT(3600), z / Ksat) # clip to 1 hour
     return τ
 end
 
@@ -374,7 +378,7 @@ function volumetric_internal_energy_liq(T, parameters)
     _cp_l = LP.cp_l(parameters.earth_param_set)
     _T_ref = LP.T_0(parameters.earth_param_set)
 
-    I_liq = _ρ_l * _cp_l * (T .- _T_ref)
+    I_liq = _ρ_l * _cp_l * (T - _T_ref)
     return I_liq
 end
 
@@ -395,7 +399,7 @@ function compute_water_runoff(
     z::FT,
     parameters,
 ) where {FT}
-    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
+    τ = runoff_timescale(z, parameters.Ksat)
     q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, parameters)
     S_safe = max(S, FT(0))
     return -(S_l - q_l_max * S_safe) / τ * heaviside(S_l - q_l_max * S_safe)
@@ -404,8 +408,30 @@ end
 """
      phase_change_flux(U::FT, S::FT, q_l::FT, energy_flux::FT, parameters) where {FT}
 
-Computes the volume flux of liquid water undergoing phase change, given the
-applied energy flux and current state of U,S,q_l.
+Computes the volume flux of liquid water undergoing phase change at
+constant U and S, given the
+applied energy flux and current state of U,S,q=q_l.
+
+Melting:
+If T > T_f (U(T,q) > U(T_f,q)), we set
+U(T, q) - U(T_f, q') = 0  (phase change at constant U, S),
+and solve for q'-q (the new T' = T_f). This yields
+ΔS_l = S(q'-q) = -cS(T_f-T)/[L+(c_l-c_i)(T_f-T_0)].
+The numerator is ΔU = U(T,q) - U(T_f, q).
+
+Since our equations are stepped explicitly, this flux could
+result in S_l < 0 (q < 0), but q is limited when used
+in other computations to be in [0,1].
+
+Refreezing:
+If T < T_f and q > 0, we compute the same.
+
+Since our equations are stepped explicitly, this flux could
+result in S_l > S (q > 1), but q is limited when used
+in other computations to be in [0,1].
+
+In both cases:
+We estimate the timescale as |ΔU/U̇|.
 """
 function phase_change_flux(
     U::FT,
@@ -417,9 +443,9 @@ function phase_change_flux(
     S_safe = max(S, FT(0))
 
     energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
-    Upred = U - energy_flux * parameters.Δt
-    energy_excess = Upred - energy_at_T_freeze
-
+    energy_excess = U - energy_at_T_freeze
+    # Timescale computed as |ΔU/U̇|
+    Δt = abs(energy_excess) / max(abs(energy_flux), sqrt(eps(FT)))
     _LH_f0 = LP.LH_f0(parameters.earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
     _cp_i = LP.cp_i(parameters.earth_param_set)
@@ -427,8 +453,10 @@ function phase_change_flux(
     _T_ref = LP.T_0(parameters.earth_param_set)
     _T_freeze = LP.T_freeze(parameters.earth_param_set)
     if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / parameters.Δt / _ρ_liq /
-               ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+        ΔS_l =
+            -energy_excess / _ρ_liq /
+            ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+        return ΔS_l / Δt
     else
         return FT(0)
     end
@@ -535,7 +563,7 @@ function update_density_and_depth!(
 ) where {FT}
     _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
-    @. z_snow = _ρ_l * Y.snow.S / ρ_snow
+    @. z_snow = _ρ_l * max(Y.snow.S, FT(0)) / ρ_snow
 
 
 end

@@ -381,8 +381,7 @@ if !isnothing(DataToolsExt)
         @test dens_model2.α == FT(test_alph)
         @test dens_model2.z_model[:final_scale].weight[2, 2] == FT(1 / Δt)
 
-        parameters = SnowParameters{FT}(
-            Δt;
+        parameters = SnowParameters{FT}(;
             earth_param_set = param_set,
             density = dens_model2,
         )
@@ -440,18 +439,6 @@ if !isnothing(DataToolsExt)
             dY = similar(Y)
             NeuralSnow.update_dzdt!(dY.snow.Z, dens_model2, Y)
             @test dY.snow.Z == zerofield
-
-            Z = FT(0.5)
-            S = FT(0.1)
-            dzdt = FT(1 / Δt)
-            dsdt = FT(1 / Δt)
-            @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt) == dzdt
-
-            @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt) ≈ FT(1.4 / Δt)
-
-            @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt) ≈
-                  FT(-Z / Δt)
-
 
             dswe_by_precip = 0.1
             Y.snow.P_avg .= FT(dswe_by_precip / Δt)
