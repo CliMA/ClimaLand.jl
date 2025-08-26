@@ -186,24 +186,27 @@ end
 
 
 """
-    function PModel{FT}(domain;
+    function PModel{FT}(
+        domain,
+        toml_dict::CP.ParamDict;
         is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
-        cstar = FT(0.41),
-        β = FT(146),
-        ϕ0_c3 = FT(0.052),
-        ϕ0_c4 = FT(0.057),
-        ϕa0_c3 = FT(0.087*0.352),
-        ϕa1_c3 = FT(0.087*0.022),
-        ϕa2_c3 = FT(-0.00034*0.087),
-        ϕa0_c4 = FT(0.352*0.087),
-        ϕa1_c4 = FT(0.022*0.087),
-        ϕa2_c4 = FT(-0.00034*0.087),
-        α = FT(0.933),
+        cstar = toml_dict["pmodel_cstar"],
+        β = toml_dict["pmodel_β"],
+        temperature_dep_yield = true,
+        ϕ0_c3 = toml_dict["pmodel_ϕ0_c3"],
+        ϕ0_c4 = toml_dict["pmodel_ϕ0_c4"],
+        ϕa0_c3 = toml_dict["pmodel_ϕ0_c3"],
+        ϕa1_c3 = toml_dict["pmodel_ϕa1_c3"],
+        ϕa2_c3 = toml_dict["pmodel_ϕa2_c3"],
+        ϕa0_c4 = toml_dict["pmodel_ϕa0_c4"],
+        ϕa1_c4 = toml_dict["pmodel_ϕa1_c4"],
+        ϕa2_c4 = toml_dict["pmodel_ϕa2_c4"],
+        α = toml_dict["pmodel_α"],
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
 
-The following default parameters are used:
+The following default parameters (from the TOML file) are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
 - β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020)
 - ϕ0_c3 = 0.052 (unitless) - constant intrinsic quantum yield. Skillman (2008)
@@ -217,20 +220,21 @@ The following default parameters are used:
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
 """
 function PModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.ParamDict;
     is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
-    cstar = FT(0.41),
-    β = FT(146),
+    cstar = toml_dict["pmodel_cstar"],
+    β = toml_dict["pmodel_β"],
     temperature_dep_yield = true,
-    ϕ0_c3 = FT(0.052),
-    ϕ0_c4 = FT(0.057),
-    ϕa0_c3 = FT(0.352 * 0.087),
-    ϕa1_c3 = FT(0.022 * 0.087),
-    ϕa2_c3 = FT(-0.00034 * 0.087),
-    ϕa0_c4 = FT(0.352 * 0.087),
-    ϕa1_c4 = FT(0.022 * 0.087),
-    ϕa2_c4 = FT(-0.00034 * 0.087),
-    α = FT(0.933),
+    ϕ0_c3 = toml_dict["pmodel_ϕ0_c3"],
+    ϕ0_c4 = toml_dict["pmodel_ϕ0_c4"],
+    ϕa0_c3 = toml_dict["pmodel_ϕ0_c3"],
+    ϕa1_c3 = toml_dict["pmodel_ϕa1_c3"],
+    ϕa2_c3 = toml_dict["pmodel_ϕa2_c3"],
+    ϕa0_c4 = toml_dict["pmodel_ϕa0_c4"],
+    ϕa1_c4 = toml_dict["pmodel_ϕa1_c4"],
+    ϕa2_c4 = toml_dict["pmodel_ϕa2_c4"],
+    α = toml_dict["pmodel_α"],
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar,
@@ -247,7 +251,7 @@ function PModel{FT}(
         α,
     )
 
-    return PModel{FT}(is_c3, parameters)
+    return PModel{FT}(is_c3, toml_dict, parameters)
 end
 
 
@@ -471,7 +475,7 @@ function MedlynConductanceModel{FT}(
     g1 = clm_medlyn_g1(domain.space.surface),
     g0::FT = toml_dict["min_stomatal_conductance"],
 ) where {FT <: AbstractFloat}
-    parameters = MedlynConductanceParameters(FT; g0, g1)
+    parameters = MedlynConductanceParameters(toml_dict; g0, g1)
     return MedlynConductanceModel{FT, typeof(parameters)}(parameters)
 end
 

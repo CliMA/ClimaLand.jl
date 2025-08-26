@@ -98,7 +98,7 @@ LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Construct the P model manually since it is not a default
-photosynthesis = PModel{FT}(canopy_domain)
+photosynthesis = PModel{FT}(canopy_domain, toml_dict)
 conductance = PModelConductance{FT}()
 
 canopy = Canopy.CanopyModel{FT}(

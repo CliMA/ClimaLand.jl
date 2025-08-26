@@ -178,7 +178,7 @@ conductance = PModelConductance{FT}()
 
 # Set up photosynthesis
 is_c3 = FT(1)
-photosynthesis = PModel{FT}(surface_domain; is_c3)
+photosynthesis = PModel{FT}(surface_domain, toml_dict; is_c3)
 
 # Set up soil moisture stress using soil retention parameters
 soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
