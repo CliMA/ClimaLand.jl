@@ -275,7 +275,7 @@ end
     end
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "ct", "sco2"]
+    output_vars = ["swc", "ct", "sco2", "lwp"]
     reduction_period = :every_dt
     reduction_type = :instantaneous
 
@@ -300,8 +300,12 @@ end
     )
 
     # Test that the diagnostics were correctly created and computed once at initialization
-    @test keys(simulation.diagnostics[1].output_writer.dict) ==
-          Set(["swc_1000s_inst", "ct_1000s_inst", "sco2_1000s_inst"])
+    @test keys(simulation.diagnostics[1].output_writer.dict) == Set([
+        "swc_1000s_inst",
+        "ct_1000s_inst",
+        "sco2_1000s_inst",
+        "lwp_1000s_inst",
+    ])
     @test all(
         ClimaCore.Fields.field2array(
             simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
@@ -316,6 +320,11 @@ end
         ClimaCore.Fields.field2array(
             simulation.diagnostics[1].output_writer.dict["sco2_1000s_inst"].vals[1],
         ) .== FT(0.000412),
+    )
+    @test all(
+        ClimaCore.Fields.field2array(
+            simulation.diagnostics[1].output_writer.dict["lwp_1000s_inst"].vals[1],
+        ) .== FT(0.0),
     )
 end
 

@@ -98,6 +98,8 @@ LAI =
 photosynthesis = PModel{FT}(canopy_domain, toml_dict)
 conductance = PModelConductance{FT}(toml_dict)
 
+# Use steady state hydraulics
+hydraulics = ClimaLand.PlantHydraulics.SteadyStateModel{FT}()
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
@@ -106,6 +108,7 @@ canopy = Canopy.CanopyModel{FT}(
     prognostic_land_components,
     photosynthesis,
     conductance,
+    hydraulics,
 )
 
 # Combine the soil and canopy models into a single prognostic land model

@@ -3,9 +3,61 @@
 
 Updates p.root_extraction and p.root_energy_extraction in place to account
 for the flux of water and energy between the soil and the canopy via
-root extraction.
+root extraction; these fields are always used by the soil model
+to compute its sources/sinks, and are optionally used by the canopy model
+as dictated by the choice of PlantHydraulics.
 """
 function update_root_extraction!(p, Y, t, land)
+    update_root_extraction!(p, Y, t, land, land.canopy.hydraulics)
+end
+
+"""
+    update_root_extraction!(p, Y, t, land, hydraulics::Canopy.SteadyStateModel)
+
+Updates p.root_extraction and p.root_energy_extraction in place 
+assuming that the total root extraction of water is equal to the transpiration,
+stored in `p.canopy.turbulent_fluxes.transpiration`.
+"""
+function update_root_extraction!(
+    p,
+    Y,
+    t,
+    land,
+    hydraulics::Canopy.SteadyStateModel,
+)
+    canopy = land.canopy
+    z = land.soil.domain.fields.z
+    transpiration = p.canopy.turbulent_fluxes.transpiration
+    # normalized distribution for root density
+    norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
+    # for soilcanopy and land models.
+    root_dist =
+        @. lazy(Canopy.root_distribution(z, canopy.biomass.rooting_depth))
+    ClimaCore.Operators.column_integral_definite!(norm, root_dist)
+    @. p.root_extraction =
+        transpiration *
+        Canopy.root_distribution(z, land.canopy.biomass.rooting_depth) / norm
+    @. p.root_energy_extraction =
+        p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
+            p.soil.T,
+            land.soil.parameters.earth_param_set,
+        )
+end
+
+"""
+    update_root_extraction!(p, Y, t, land, hydraulics::Canopy.PlantHydraulicsModel)
+
+Updates p.root_extraction and p.root_energy_extraction in place,
+using the matric potential in each soil layer and the potential in the canopy
+in its first layer to compute a flux between each soil layer and the canopy.
+"""
+function update_root_extraction!(
+    p,
+    Y,
+    t,
+    land,
+    hydraulics::Canopy.PlantHydraulicsModel,
+)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
     area_index = p.canopy.biomass.area_index
@@ -48,53 +100,77 @@ end
 
 """
     PlantHydraulics.root_water_flux_per_ground_area!(
-        fa::ClimaCore.Fields.Field,
+        p,
         s::PrognosticGroundConditions,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel,
         canopy,
         Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
         t,
     )
 
 An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function,
- which returns the
+ which updates the canopy water flux
+p.canopy.hydraulics.fa_roots with the value of the
 net flux of water between the
-roots and the soil, per unit ground area,
-when both soil and plant
-hydraulics are modeled prognostically. This is for use in an LSM.
+roots and the soil, per unit ground area, in the case when the soil
+and canopy water contents are modeled prognostically.
 
 It is computed by summing the flux of water per ground area between
 roots and soil at each soil layer.
 """
 function PlantHydraulics.root_water_flux_per_ground_area!(
-    fa::ClimaCore.Fields.Field,
+    p,
     s::PrognosticGroundConditions,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel,
     canopy,
     Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
     t,
 )
+    fa = p.canopy.hydraulics.fa_roots
     ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
 end
 
 """
+    PlantHydraulics.root_water_flux_per_ground_area!(
+        p,
+        s::PrognosticGroundConditions,
+        model::Canopy.PlantHydraulics.SteadyStateModel,
+        canopy,
+        Y::ClimaCore.Fields.FieldVector,
+        t,
+    )
+
+An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function, for use
+with a prognostic soil model and steady state plant hydraulics model. In the steady-state case,
+the canopy does not require an additional field for the root water flux, because it is
+equal to transpiration. This function then does nothing.
+"""
+function PlantHydraulics.root_water_flux_per_ground_area!(
+    p,
+    s::PrognosticGroundConditions,
+    model::Canopy.PlantHydraulics.SteadyStateModel,
+    canopy,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) end
+
+"""
     root_energy_flux_per_ground_area!(
-        fa_energy::ClimaCore.Fields.Field,
+        p,
         s::PrognosticGroundConditions,
         model::Canopy.AbstractCanopyEnergyModel,
         canopy,
         Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
         t,
     )
 
 
-A method computing the energy flux associated with the root-soil
-water flux, which returns 0 in cases where we do not need to track
-this quantity: in this case, when the canopy energy is tracked,
-but we are using a `PrescribedSoil` model (non-prognostic soil model).
+An extension of the `PlantHydraulics.root_energy_flux_per_ground_area!` function,
+ which updates the canopy energy flux
+p.canopy.hydraulics.fa_energy_roots with the value of the
+net flux of energy between the
+roots and the soil, per unit ground area, in the case when the soil
+is modeled prognostically. This sets the flux as required by the canopy model.
 
 Note that this energy flux is not typically included in land surface
 models. We account for it when the soil model is prognostic because
@@ -103,14 +179,14 @@ balance; therefore, in order to conserve energy, the canopy model
 must account for it as well.
 """
 function Canopy.root_energy_flux_per_ground_area!(
-    fa_energy::ClimaCore.Fields.Field,
+    p,
     s::PrognosticGroundConditions,
     model::Canopy.AbstractCanopyEnergyModel,
     canopy,
     Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
     t,
 )
+    fa_energy = p.canopy.energy.fa_energy_roots
     ClimaCore.Operators.column_integral_definite!(
         fa_energy,
         p.root_energy_extraction,

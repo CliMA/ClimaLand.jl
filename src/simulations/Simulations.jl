@@ -143,17 +143,6 @@ function LandSimulation(
     updateat = ITime(3600 * 3),
     solver_kwargs = (;),
 )
-    # Enforce `h_atmos >= h_canopy` for models with canopy
-    if hasproperty(model, :canopy)
-        h_atmos_min = first(extrema(model.canopy.boundary_conditions.atmos.h))
-        h_canopy = model.canopy.hydraulics.compartment_surfaces[end]
-        @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
-    elseif model isa ClimaLand.Canopy.CanopyModel
-        h_atmos_min = first(extrema(model.boundary_conditions.atmos.h))
-        h_canopy = model.hydraulics.compartment_surfaces[end]
-        @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
-    end
-
 
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
@@ -170,6 +159,20 @@ function LandSimulation(
     set_ic!(Y, p, t0, model)
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, t0)
+
+    # Enforce `h_atmos >= h_canopy` for models with canopy
+    if hasproperty(model, :canopy)
+        h_atmos_min = first(extrema(model.canopy.boundary_conditions.atmos.h))
+        h_canopy =
+            ClimaLand.displacement_height(model.canopy, Y, p) +
+            model.canopy.parameters.z_0m
+        @assert h_atmos_min >= h_canopy "Atmospheric height - (displacement+roughness length) for the canopy must be greater than 0. This was not satisfied at all locations."
+    elseif model isa ClimaLand.Canopy.CanopyModel
+        h_atmos_min = first(extrema(model.boundary_conditions.atmos.h))
+        h_canopy =
+            ClimaLand.displacement_height(model, Y, p) + model.parameters.z_0m
+        @assert h_atmos_min >= h_canopy "Atmospheric height - (displacement+roughness length) for the canopy must be greater than 0. This was not satisfied at all locations."
+    end
 
     # Create tendencies and jacobian update function
     exp_tendency! = make_exp_tendency(model)

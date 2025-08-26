@@ -186,26 +186,28 @@ function set_fluxnet_ic!(
     )
 
     Y.canopy.energy.T .= T_air_0
-    FT = eltype(Y.canopy.energy.T)
-    ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
-    ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
-    S_l_ini =
-        ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
-            hydraulics.parameters.retention_model,
-            ψ_comps,
-            hydraulics.parameters.ν,
-            hydraulics.parameters.S_s,
-        )
-    for i in 1:(n_stem + n_leaf)
-        Y.canopy.hydraulics.ϑ_l.:($i) .=
-            ClimaLand.Canopy.PlantHydraulics.augmented_liquid_fraction.(
+    if hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+        FT = eltype(Y.canopy.energy.T)
+        ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
+        ψ_leaf_0 = FT(-2e5 / 9800)
+        n_stem = hydraulics.n_stem
+        n_leaf = hydraulics.n_leaf
+        ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
+        S_l_ini =
+            ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+                hydraulics.parameters.retention_model,
+                ψ_comps,
                 hydraulics.parameters.ν,
-                S_l_ini[i],
+                hydraulics.parameters.S_s,
             )
+        for i in 1:(n_stem + n_leaf)
+            Y.canopy.hydraulics.ϑ_l.:($i) .=
+                ClimaLand.Canopy.PlantHydraulics.augmented_liquid_fraction.(
+                    hydraulics.parameters.ν,
+                    S_l_ini[i],
+                )
+        end
     end
 end
 

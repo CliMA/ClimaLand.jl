@@ -1211,9 +1211,11 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = model.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
+        if hydraulics isa PlantHydraulics.PlantHydraulicsModel
+            n_stem = hydraulics.n_stem
+            n_leaf = hydraulics.n_leaf
+            lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
+        end
     end
     return set_initial_cache!
 end
