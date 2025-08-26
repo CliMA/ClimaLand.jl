@@ -693,6 +693,10 @@ function ReportCallback(Nsteps)
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
-    report_cb = SciMLBase.DiscreteCallback(DivisorSchedule(Nsteps), report)
+    schedule = DivisorSchedule(Nsteps)
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(cond, report)
     return report_cb
 end

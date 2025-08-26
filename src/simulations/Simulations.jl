@@ -200,7 +200,12 @@ function LandSimulation(
     # Required callbacks
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc; dt = Δt)
+    driver_cb = ClimaLand.DriverUpdateCallback(
+        updateat,
+        updatefunc;
+        dt = Δt,
+        start_date,
+    )
     required_callbacks = (driver_cb,) # TBD: can we update each step?
 
     diagnostics = isnothing(diagnostics) ? () : diagnostics
