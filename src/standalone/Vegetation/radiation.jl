@@ -307,9 +307,6 @@ end
 Floating-point and toml dict based constructor supplying default values
 for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
 """
-TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
-
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
