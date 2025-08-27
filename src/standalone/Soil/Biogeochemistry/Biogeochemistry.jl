@@ -71,18 +71,16 @@ end
 
 
 """
-    SoilCO2ModelParameters(::Type{FT}; kwargs...)
-    SoilCO2ModelParameters(toml_dict; kwargs...)
+    SoilCO2ModelParameters(toml_dict::CP.ParamDict)
 
-SoilCO2ModelParameters has two constructors: float-type and toml dict based.
+SoilCO2ModelParameters provides a constructor using the TOML dict.
 Keywords arguments can be used to directly override any parameters.
 """
-SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
-
-function SoilCO2ModelParameters(toml_dict::CP.ParamDict; kwargs...)
+function SoilCO2ModelParameters(
+    toml_dict::CP.ParamDict;
+    D_ref = toml_dict["CO2_diffusion_coefficient"],
+)
     name_map = (;
-        :CO2_diffusion_coefficient => :D_ref,
         :soil_C_substrate_diffusivity => :D_liq,
         :soilCO2_pre_exponential_factor => :α_sx,
         :soilCO2_activation_energy => :Ea_sx,
@@ -97,8 +95,8 @@ function SoilCO2ModelParameters(toml_dict::CP.ParamDict; kwargs...)
     earth_param_set = LP.LandParameters(toml_dict)
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
+        D_ref,
         parameters...,
-        kwargs...,
     )
 end
 
@@ -140,8 +138,9 @@ end
 """
 SoilCO2Model{FT}(
         domain::ClimaLand.AbstractDomain,
-        drivers::DT;
-        parameters = SoilCO2ModelParameters(FT),
+        drivers::DT,
+        toml_dict::CP.ParamDict;
+        parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
         boundary_conditions::BC = (
             top = AtmosCO2StateBC(),
             bottom = SoilCO2FluxBC((p, t) -> 0.0) # no flux
@@ -155,8 +154,9 @@ These can be overridden by providing the appropriate keyword arguments.
 """
 function SoilCO2Model{FT}(
     domain::ClimaLand.AbstractDomain,
-    drivers::DT;
-    parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(FT),
+    drivers::DT,
+    toml_dict::CP.ParamDict;
+    parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
     boundary_conditions::BC = (
         top = AtmosCO2StateBC(),
         bottom = SoilCO2FluxBC((p, t) -> 0.0), # no flux

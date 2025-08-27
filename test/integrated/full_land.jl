@@ -45,7 +45,11 @@ for FT in (Float32, Float64)
             soil_organic_carbon,
             atmos,
         )
-        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            soilco2_drivers,
+            toml_dict,
+        )
 
         # Canopy model
         surface_domain = Domains.obtain_surface_domain(domain)

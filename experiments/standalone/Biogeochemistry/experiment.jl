@@ -97,7 +97,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Make biogeochemistry model
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
     C = FT(100)
 
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
@@ -110,7 +110,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
     soilco2 = SoilCO2Model{FT}(
         domain,
-        drivers;
+        drivers,
+        toml_dict;
         boundary_conditions = co2_boundary_conditions,
         parameters = co2_parameters,
     )

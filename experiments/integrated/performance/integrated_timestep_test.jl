@@ -230,7 +230,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
 # Canopy model setup
 # Radiative transfer model
