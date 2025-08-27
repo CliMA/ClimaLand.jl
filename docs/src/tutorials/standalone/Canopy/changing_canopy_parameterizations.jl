@@ -91,7 +91,8 @@ radiative_transfer =
 # global maps, and therefore do not need the domain.
 # In a case like this, we may want to use a different `BeerLambertModel` constructor,
 # which takes the parameters object directly:
-radiative_transfer_parameters = Canopy.BeerLambertParameters(FT; G_Function, Ω);
+radiative_transfer_parameters =
+    Canopy.BeerLambertParameters(toml_dict; G_Function, Ω);
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 # Note these parameters must all be scalars (or a single instance of a G_Function) or fields of floats and a field of a G_Function.
 

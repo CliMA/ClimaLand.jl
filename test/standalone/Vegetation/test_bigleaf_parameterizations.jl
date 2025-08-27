@@ -17,7 +17,7 @@ for FT in (Float32, Float64)
         earth_param_set = LP.LandParameters(toml_dict)
         # Test with defaults
         ARparams = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(FT)
+        RTparams = BeerLambertParameters(toml_dict)
         RT = BeerLambertModel{FT}(RTparams)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesisparams = FarquharParameters(FT, is_c3)
