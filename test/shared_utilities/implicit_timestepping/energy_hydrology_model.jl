@@ -12,6 +12,9 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
     @testset "Full Soil Jacobian entries, Flux BC, FT = $FT" begin
 
         ν = FT(0.495)

@@ -17,6 +17,9 @@ import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 FT = Float64
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 ν = FT(0.395)
 ν_ss_quartz = FT(0.92)
 ν_ss_om = FT(0.0)

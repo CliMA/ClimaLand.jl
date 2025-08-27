@@ -25,7 +25,10 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models.
 const FT = Float32;
-earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = LP.LandParameters(toml_dict);
 
 # Pick a site ID; convert the dash to an underscore:
 site_ID = "US-NR1";

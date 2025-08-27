@@ -80,7 +80,10 @@ function setup_prob(
     outdir = outdir,
     nelements = (101, 15),
 )
-    earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    earth_param_set = LP.LandParameters(toml_dict)
     domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -125,7 +128,7 @@ function setup_prob(
         surface_domain,
         canopy_forcing,
         LAI,
-        earth_param_set;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
