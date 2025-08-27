@@ -40,7 +40,8 @@ for FT in (Float32, Float64)
             soil_organic_carbon,
             atmos,
         )
-        soilco2 = Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
+        soilco2 =
+            Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers, toml_dict)
 
         # Canopy model
         canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
@@ -114,7 +115,7 @@ for FT in (Float32, Float64)
         )
         soil_args = (domain = domain, parameters = soil_params)
 
-        soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+        soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
         Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
             TimeVaryingInput((t) -> 5),
         )
@@ -212,6 +213,7 @@ for FT in (Float32, Float64)
             soil_organic_carbon = Csom,
         )
         model = SoilCanopyModel{FT}(;
+            toml_dict = toml_dict,
             soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT},
             soilco2_args = soilco2_args,
             land_args = land_input,

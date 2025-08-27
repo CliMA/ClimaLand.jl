@@ -24,7 +24,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
         D_ref = FT(0.0)
-        parameters = SoilCO2ModelParameters(FT; D_ref)
+        parameters = SoilCO2ModelParameters(toml_dict; D_ref)
 
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -69,7 +69,8 @@ for FT in (Float32, Float64)
 
         model = SoilCO2Model{FT}(
             soil_domain,
-            soil_drivers;
+            soil_drivers,
+            toml_dict;
             parameters,
             boundary_conditions,
             sources,
@@ -101,7 +102,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
 
-        parameters = SoilCO2ModelParameters(FT)
+        parameters = SoilCO2ModelParameters(toml_dict)
         C = FT(4)
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -149,7 +150,8 @@ for FT in (Float32, Float64)
 
         model = SoilCO2Model{FT}(
             soil_domain,
-            soil_drivers;
+            soil_drivers,
+            toml_dict;
             parameters,
             boundary_conditions,
             sources,

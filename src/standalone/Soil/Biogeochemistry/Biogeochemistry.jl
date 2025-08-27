@@ -71,15 +71,11 @@ end
 
 
 """
-    SoilCO2ModelParameters(::Type{FT}; kwargs...)
-    SoilCO2ModelParameters(toml_dict; kwargs...)
+    SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
 
-SoilCO2ModelParameters has two constructors: float-type and toml dict based.
+SoilCO2ModelParameters provides a constructor using the TOML dict.
 Keywords arguments can be used to directly override any parameters.
 """
-SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
-
 function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     name_map = (;
         :CO2_diffusion_coefficient => :D_ref,
@@ -135,7 +131,8 @@ end
 """
 SoilCO2Model{FT}(
         domain::ClimaLand.AbstractDomain,
-        drivers::DT;
+        drivers::DT,
+        toml_dict::CP.AbstractTOMLDict;
         parameters = SoilCO2ModelParameters(FT),
         boundary_conditions::BC = (
             top = AtmosCO2StateBC(),
@@ -150,8 +147,9 @@ These can be overridden by providing the appropriate keyword arguments.
 """
 function SoilCO2Model{FT}(
     domain::ClimaLand.AbstractDomain,
-    drivers::DT;
-    parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(FT),
+    drivers::DT,
+    toml_dict::CP.AbstractTOMLDict;
+    parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
     boundary_conditions::BC = (
         top = AtmosCO2StateBC(),
         bottom = SoilCO2FluxBC((p, t) -> 0.0), # no flux
