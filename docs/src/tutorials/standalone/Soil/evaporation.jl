@@ -114,7 +114,7 @@ z_0m = FT(1e-2)
 z_0b = FT(1e-2)
 d_ds = FT(0.01)
 params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,
