@@ -80,7 +80,7 @@ using ClimaCore
 
                     # Set the parameters based on the setup read from the file
                     RT_params = TwoStreamParameters(
-                        FT;
+                        toml_dict;
                         Ω = Ω,
                         G_Function = ConstantGFunction.(FT.(lds[i])),
                         α_PAR_leaf = α_PAR_leaf[i],
