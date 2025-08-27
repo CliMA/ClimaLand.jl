@@ -96,7 +96,7 @@ z_0m = FT(1e-3)
 z_0b = FT(1e-4)
 d_ds = FT(0.01)
 params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,
@@ -108,7 +108,6 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
     emissivity,
     z_0m,
     z_0b,
-    earth_param_set,
     d_ds,
 );
 

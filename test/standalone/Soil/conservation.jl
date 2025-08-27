@@ -153,7 +153,7 @@ for FT in (Float32, Float64)
     @testset "Energy Hydrology total energy and water, FT = $FT" begin
         sources = (Soil.PhaseChange{FT}(), FakeSource{FT}())
         params = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,

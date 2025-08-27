@@ -98,7 +98,7 @@ for FT in (Float32, Float64)
                 PAR_albedo_wet,
             )
             params = ClimaLand.Soil.EnergyHydrologyParameters(
-                FT;
+                toml_dict;
                 ν,
                 ν_ss_om,
                 ν_ss_quartz,
