@@ -39,6 +39,7 @@ in as needed.
 """
 function LandSoilBiogeochemistry{FT}(;
     land_args::NamedTuple,
+    toml_dict::CP.AbstractTOMLDict,
     soil_args::NamedTuple = (;),
     soilco2_args::NamedTuple = (;),
 ) where {FT}
@@ -55,7 +56,8 @@ function LandSoilBiogeochemistry{FT}(;
     )
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
         soilco2_args.domain,
-        soil_co2_drivers;
+        soil_co2_drivers,
+        toml_dict;
         boundary_conditions = soilco2_args.boundary_conditions,
         parameters = soilco2_args.parameters,
     )

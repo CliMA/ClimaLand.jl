@@ -15,8 +15,10 @@ function ParamViz.parameterisation(
     D_liq,
     D_oa,
 ) # constants
-
-    params = SoilCO2ModelParameters(FT; ν)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    params = SoilCO2ModelParameters(toml_dict; ν)
     # θ has to be lower than porosity
     if θ > ν
         θ = ν
