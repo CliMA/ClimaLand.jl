@@ -116,7 +116,7 @@ for FT in (Float32, Float64)
         ]
 
         AR_params = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(FT)
+        RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params = FarquharParameters(FT, is_c3)
         stomatal_g_params = MedlynConductanceParameters(toml_dict)
@@ -389,7 +389,7 @@ for FT in (Float32, Float64)
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
         toml_dict = LP.create_toml_dict(FT, default_params_filepath)
         AR_params = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(FT)
+        RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params = FarquharParameters(FT, is_c3)
         stomatal_g_params = MedlynConductanceParameters(toml_dict)
