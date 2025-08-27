@@ -23,7 +23,7 @@ for FT in (Float32, Float64)
         T_ref = FT(LP.T_0(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
 
-        parameters = SoilCO2ModelParameters(FT)
+        parameters = SoilCO2ModelParameters(toml_dict)
 
         # Test that parameterizations functions are working properly
         θ_a = volumetric_air_content(θ_w, ν)

@@ -68,7 +68,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
 
-        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
         C = FT(4)
         co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
@@ -111,6 +111,7 @@ for FT in (Float32, Float64)
             land_args = land_args,
             soil_args = soil_args,
             soilco2_args = soilco2_args,
+            toml_dict = toml_dict,
         )
         @test ClimaComms.context(model) == ClimaComms.context()
         @test ClimaComms.device(model) == ClimaComms.device()
