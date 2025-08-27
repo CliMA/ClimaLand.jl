@@ -325,3 +325,63 @@ function make_set_initial_state_from_file(
     end
     return set_ic!
 end
+
+function set_soil_initial_conditions_from_temperature_and_total_water!(
+    Y,
+    subsurface_space,
+    soil_ic_path,
+    soil;
+    water_varname = "swc",
+    temp_varname = "tsoil",
+    regridder_type = regridder_type,
+    extrapolation_bc = extrapolation_bc,
+    interpolation_method = interpolation_method,
+)
+    total_water_content = SpaceVaryingInput(
+        soil_ic_path,
+        water_varname,
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    temperature = SpaceVaryingInput(
+        soil_ic_path,
+        temp_varname,
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+   )
+   (;θ_r, ν, ρc_ds, earth_param_set) = soil.parameters
+   function liquid_soil_water(twc, T, θ_r, ν)
+       if T > 273.15
+           return twc
+       else
+           return θ_r
+       end
+   end
+
+    Y.soil.ϑ_l .= liquid_soil_water.(total_water_content, temperature, θ_r, ν)
+    Y.soil.θ_i .= total_water_content .- Y.soil.ϑ_l
+
+    Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
+    Y.soil.ϑ_l .= enforce_porosity_constraint.(Y.soil.ϑ_l, ν)
+    Y.soil.θ_i .=
+        enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
+    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            temperature,
+            earth_param_set,
+        )
+    return nothing
+end

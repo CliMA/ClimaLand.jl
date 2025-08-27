@@ -95,8 +95,10 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation = true,
     conservation_period = Day(10),
 )
+ic_path = "/net/sampo/data1/cchristo/clima/WeatherQuest/processing/data/era5_land_processed_20250701_1200.nc"
+set_ic!(Y,p,t,model) = set_soil_initial_conditions_from_temperature_and_total_water!(Y, domain.space.subsurface, ic_path, model)
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
 
 @info "Run: Global Soil Model"
 @info "Resolution: $nelements"
