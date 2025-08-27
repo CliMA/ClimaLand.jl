@@ -135,8 +135,13 @@ G_Function = Canopy.ConstantGFunction(FT(0.5)); # leaf angle distribution value 
 α_PAR_leaf = 0.2; # albedo in the PAR band
 α_NIR_leaf = 0.3; # albedo in the NIR band
 Ω = 1; # clumping index
-radiative_transfer_parameters =
-    Canopy.BeerLambertParameters(FT; G_Function, α_PAR_leaf, α_NIR_leaf, Ω);
+radiative_transfer_parameters = Canopy.BeerLambertParameters(
+    toml_dict;
+    G_Function,
+    α_PAR_leaf,
+    α_NIR_leaf,
+    Ω,
+);
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 
 # Now we can create the `CanopyModel` model with the specified radiative transfer
