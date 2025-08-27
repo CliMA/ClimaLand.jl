@@ -90,16 +90,16 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
         albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
         kwargs...,)
 
-EnergyHydrologyParameters has two constructors: float-type and toml dict based.
-Additional parameters must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm, K_sat, S_s, and θ_r
-All parameters can be manually overriden via keyword arguments. Note, however,
-that certain parameters must have the same type (e.g, if a field is
-supplied for porosity, it must be supplied for all other parameters
-defined in the interior of the domain). Some parameters are defined only
-on the surface of the domain (e.g albedo), while other are defined everywhere
-(e.g. porosity). These are indicated with types `F` and `SF`. If both dry/wet albedos
-and general albedos are given as keywords, the dry/wet albedos will override the general
-albedos.
+Construct `EnergyHydrologyParameters` with a TOML dict. Additional parameters
+must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm,
+K_sat, S_s, and θ_r. All parameters can be manually overriden via keyword
+arguments. Note, however, that certain parameters must have the same type (e.g,
+if a field is supplied for porosity, it must be supplied for all other
+parameters defined in the interior of the domain). Some parameters are defined
+only on the surface of the domain (e.g albedo), while other are defined
+everywhere (e.g. porosity). These are indicated with types `F` and `SF`. If both
+dry/wet albedos and general albedos are given as keywords, the dry/wet albedos
+will override the general albedos.
 
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
