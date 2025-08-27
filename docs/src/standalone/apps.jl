@@ -9,7 +9,7 @@ import ClimaLand.Parameters as LP
 FT = Float64
 toml_dict = create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
-RTparams = BeerLambertParameters(FT)
+RTparams = BeerLambertParameters(toml_dict)
 
 # Create server
 IPa = "127.0.0.1"

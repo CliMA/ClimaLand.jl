@@ -446,7 +446,8 @@ function BeerLambertModel{FT}(
     }(
         radiation_parameters,
     )
-    parameters = BeerLambertParameters(FT; radiation_parameters..., ϵ_canopy)
+    parameters =
+        BeerLambertParameters(toml_dict; radiation_parameters..., ϵ_canopy)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 

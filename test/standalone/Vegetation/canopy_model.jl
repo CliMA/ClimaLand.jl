@@ -54,8 +54,12 @@ import ClimaParams
             zipped_params
             AR_params = AutotrophicRespirationParameters(toml_dict)
             G_Function = ConstantGFunction.(ld)
-            RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
+            RTparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                G_Function,
+            )
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -585,8 +589,12 @@ end
             zipped_params
             toml_dict = LP.create_toml_dict(FT)
             G_Function = ConstantGFunction.(ld)
-            RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
+            RTparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                G_Function,
+            )
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
@@ -830,7 +838,7 @@ end
         g1 = FT(790)
         Vcmax25 = FT(9e-5)
         is_c3 = FT(1)
-        RTparams = BeerLambertParameters(FT)
+        RTparams = BeerLambertParameters(toml_dict)
         photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
@@ -1148,18 +1156,20 @@ end
             τ_NIR_leaf,
             χl,
         ) in zipped_params
-            default_params_filepath =
-                joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-            toml_dict = LP.create_toml_dict(FT, default_params_filepath)
-            BeerLambertparams = BeerLambertParameters(FT)
+            toml_dict = LP.create_toml_dict(FT)
+            BeerLambertparams = BeerLambertParameters(toml_dict)
             # TwoStreamModel parameters
             G_Function = CLMGFunction.(χl)
             λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
-            BeerLambertparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, λ_γ_PAR)
+            BeerLambertparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                λ_γ_PAR,
+            )
             TwoStreamparams = TwoStreamParameters(
-                FT;
+                toml_dict;
                 Ω,
                 α_PAR_leaf,
                 τ_PAR_leaf,
