@@ -136,7 +136,7 @@ subsurface_space = bucket_domain.space.subsurface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
-bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
+bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 
 # Forcing data
 era5_ncdata_path =
