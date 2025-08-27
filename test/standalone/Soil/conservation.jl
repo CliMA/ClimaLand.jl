@@ -76,6 +76,10 @@ end
 
 
 for FT in (Float32, Float64)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+
     cmax = FT(0)
     cmin = FT(-2)
     nelems = 10

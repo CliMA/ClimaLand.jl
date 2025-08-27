@@ -126,7 +126,7 @@ for FT in (Float32, Float64)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
@@ -399,7 +399,7 @@ for FT in (Float32, Float64)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(0.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum

@@ -92,6 +92,9 @@ import ClimaLand.Parameters as LP
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath);
 
 # Set the values of other parameters required by the model:
 ν = FT(0.535)
