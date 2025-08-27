@@ -208,7 +208,7 @@ z_0b = FT(1e-3);
 # Snow melt timescale
 τc = FT(3600);
 
-bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
+bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference
