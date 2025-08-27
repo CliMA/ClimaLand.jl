@@ -169,7 +169,10 @@ FT = Float32;
 # are combined in the object `BucketModelParameters` as follows:
 import ClimaLand
 import ClimaLand.Parameters as LP
-earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = LP.LandParameters(toml_dict);
 
 # Set up the model domain. At every surface coordinate point, we'll solve
 # an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.

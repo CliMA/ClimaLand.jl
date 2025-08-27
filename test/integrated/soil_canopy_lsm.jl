@@ -11,15 +11,14 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
 for FT in (Float32, Float64)
+    toml_dict = ClimaLand.Parameters.create_toml_dict(
+        FT,
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+    )
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
         atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
         forcing = (; atmos, radiation)
-        # earth_param_set = LP.LandParameters(FT)
-        toml_dict = ClimaLand.Parameters.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
         prognostic_land_components = (:canopy, :soil, :soilco2)
 
         # Soil model

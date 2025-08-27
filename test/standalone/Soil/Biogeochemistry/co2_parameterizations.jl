@@ -9,7 +9,10 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil CO2 production and transport, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Parameters should be supplied in m/kg/s (Pa... etc)
         ν = FT(0.556)
         # Prognostic variables

@@ -94,11 +94,10 @@ domain =
     ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
 
 # Parameters
-params = LP.LandParameters(FT)
-
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+params = LP.LandParameters(toml_dict)
 
 # Model
 model = setup_model(FT, start_date, domain, params, Δt, toml_dict)
@@ -134,7 +133,7 @@ simulation = LandSimulation(
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
-solve!(simulation);
+# solve!(simulation);
 
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
