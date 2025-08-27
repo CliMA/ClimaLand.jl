@@ -95,7 +95,10 @@ for FT in (Float32, Float64)
     # in these tests. That means that the liquid water and energy have zero explicit tendency, but nonzero
     # implicit tendencies, while ice content has zero tendency at all.
     @testset "Soil Energy and Water tendency unit tests, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
@@ -642,7 +645,10 @@ for FT in (Float32, Float64)
     end
 
     @testset "Phase change source term, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         ν = FT(0.495)
         K_sat = FT(0.0) # m/s
         S_s = FT(1e-3) #inverse meters

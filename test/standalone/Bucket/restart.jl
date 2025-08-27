@@ -3,6 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaLand
 import ClimaParams
+import ClimaLand.Parameters as LP
 import SciMLBase
 import ClimaTimeSteppers
 import Dates
@@ -43,8 +44,16 @@ if !known_broken
         α_bareground_func,
         bucket_domain.space.surface,
     )
-    bucket_parameters =
-        ClimaLand.Bucket.BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    bucket_parameters = ClimaLand.Bucket.BucketModelParameters(
+        toml_dict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+    )
 
     model = ClimaLand.Bucket.BucketModel(
         parameters = bucket_parameters,

@@ -96,7 +96,10 @@ import ClimaLand.Parameters as LP
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
-earth_param_set = LP.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = LP.LandParameters(toml_dict);
 
 
 # # Create the model

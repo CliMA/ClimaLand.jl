@@ -58,7 +58,10 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
-earth_param_set = ClimaLand.Parameters.LandParameters(FT);
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = ClimaLand.Parameters.LandParameters(toml_dict);
 outdir = "bucket_benchmark_$(device_suffix)"
 @info "device: $device"
 !ispath(outdir) && mkpath(outdir)
@@ -86,7 +89,9 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     # Construct albedo parameter object using temporal map
     albedo = PrescribedSurfaceAlbedo{FT}(start_date, surface_space)
 
-    bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
     # Precipitation:
     precip = (t) -> 0

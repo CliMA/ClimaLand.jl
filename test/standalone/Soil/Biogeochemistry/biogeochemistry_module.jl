@@ -11,6 +11,9 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
     @testset "Soil co2 biogeochemistry sources, FT = $FT" begin
         # Prognostic variables
         P_sfc = (t) -> 101e3
@@ -42,7 +45,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
@@ -119,7 +122,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
