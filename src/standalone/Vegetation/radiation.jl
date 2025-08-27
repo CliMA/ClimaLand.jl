@@ -283,16 +283,6 @@ end
 ## For interfacing with ClimaParams
 
 """
-    function TwoStreamParameters(FT::AbstractFloat;
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
-        τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
-        τ_NIR_leaf = 0.25,
-        Ω = 1,
-        n_layers = UInt64(20),
-        kwargs...
-    )
     function TwoStreamParameters(toml_dict;
         ld = (_) -> 0.5,
         α_PAR_leaf = 0.3,
@@ -307,9 +297,6 @@ end
 Floating-point and toml dict based constructor supplying default values
 for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
 """
-TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
-
 function TwoStreamParameters(
     toml_dict::CP.ParamDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
@@ -319,12 +306,9 @@ function TwoStreamParameters(
     τ_NIR_leaf::F = 0.25,
     Ω = 1,
     n_layers = UInt64(20),
-    kwargs...,
+    ϵ_canopy = toml_dict["canopy_emissivity"],
 ) where {F}
-    name_map = (;
-        :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :canopy_emissivity => :ϵ_canopy,
-    )
+    name_map = (; :wavelength_per_PAR_photon => :λ_γ_PAR,)
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
@@ -342,8 +326,8 @@ function TwoStreamParameters(
         τ_NIR_leaf,
         Ω,
         n_layers,
+        ϵ_canopy,
         parameters...,
-        kwargs...,
     )
 end
 
@@ -369,12 +353,6 @@ function BeerLambertParameters(
     ϵ_canopy = toml_dict["canopy_emissivity"],
     λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"],
 ) where {F}
-    name_map = (;
-        :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :canopy_emissivity => :ϵ_canopy,
-    )
-
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
@@ -385,8 +363,8 @@ function BeerLambertParameters(
         α_PAR_leaf,
         α_NIR_leaf,
         Ω,
-        parameters...,
-        kwargs...,
+        ϵ_canopy,
+        λ_γ_PAR,
     )
 end
 

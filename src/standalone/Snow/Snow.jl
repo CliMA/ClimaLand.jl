@@ -244,7 +244,7 @@ function WuWuSnowCoverFractionModel(
     β_min = toml_dict["beta_min"],
     z0 = toml_dict["z0"],
 )
-    return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0 = z0)
+    return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0)
 end
 
 """
@@ -493,7 +493,7 @@ function SnowModel(
     ϵ_snow = toml_dict["snow_emissivity"],
     α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
     density = MinimumDensityModel(toml_dict["snow_density"]),
-    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1.0)),
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],

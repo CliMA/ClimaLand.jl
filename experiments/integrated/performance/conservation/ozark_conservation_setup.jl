@@ -151,8 +151,12 @@ soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers)
 # Set up radiative transfer
 radiation_parameters =
     (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf)
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(canopy_domain; radiation_parameters, ϵ_canopy)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    canopy_domain,
+    toml_dict;
+    radiation_parameters,
+    ϵ_canopy,
+)
 
 # Set up conductance
 conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
