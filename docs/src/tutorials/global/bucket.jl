@@ -57,7 +57,7 @@ earth_param_set = LP.LandParameters(toml_dict)
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, domain.space.surface)
 bucket_parameters = BucketModelParameters(
-    FT;
+    toml_dict;
     albedo,
     σS_c = FT(0.2),
     W_f = FT(0.2),
