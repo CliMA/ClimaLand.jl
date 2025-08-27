@@ -96,7 +96,7 @@ z_0b = FT(1e-3);
 τc = FT(3600);
 Δt = 3600.0;
 
-bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
+bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);
 stop_date = start_date + Second(7 * 86400);
 
