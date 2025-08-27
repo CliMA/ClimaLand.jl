@@ -328,8 +328,12 @@ function TwoStreamModel{FT}(
     ϵ_canopy::FT = toml_dict["canopy_emissivity"],
     n_layers::Int = 20,
 ) where {FT <: AbstractFloat}
-    parameters =
-        TwoStreamParameters(FT; radiation_parameters..., ϵ_canopy, n_layers)
+    parameters = TwoStreamParameters(
+        toml_dict;
+        radiation_parameters...,
+        ϵ_canopy,
+        n_layers,
+    )
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
 end
 
