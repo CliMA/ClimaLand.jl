@@ -84,7 +84,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
 
 # Now we set up the canopy model, which mostly use defaults for:
 ground = ClimaLand.PrognosticSoilConditions{FT}()

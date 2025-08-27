@@ -256,6 +256,7 @@ end
                 PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
+            toml_dict,
         ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -311,6 +312,7 @@ function LandModel{FT}(
             PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
+        toml_dict,
     ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
