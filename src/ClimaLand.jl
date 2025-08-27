@@ -21,6 +21,7 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 
 import NCDatasets # Needed to load the ClimaUtilities.*VaryingInput
 using .Domains
+
 include("shared_utilities/checkpoints.jl")
 include("shared_utilities/utils.jl")
 include("shared_utilities/models.jl")
@@ -426,6 +427,28 @@ import .Diagnostics: default_diagnostics
 
 # Simulations
 include(joinpath("simulations", "Simulations.jl"))
+
+"""
+     get_model_callbacks(model::AbstractLandModel{FT};
+                         kwargs...
+                         ) where {FT}
+
+Creates the tuple of model callbacks for any AbstractLandModel
+by calling `get_model_callbacks` on each component model.
+
+Do *not* rely on the callbacks being in a particular order based on
+component order.
+"""
+function get_model_callbacks(model::AbstractLandModel{FT}; kwargs...) where {FT}
+    components = land_components(model)
+    callbacks = ()
+    callback_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        cb = get_model_callbacks(submodel; kwargs...)
+        callbacks = (callbacks..., cb...)
+    end
+    return callbacks
+end
 
 # Extensions
 include(joinpath("ext", "LandSimVis.jl"))

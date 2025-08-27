@@ -21,6 +21,7 @@ export AbstractModel,
     make_update_cache,
     add_drivers_to_cache,
     get_drivers,
+    get_model_callbacks,
     name,
     total_liq_water_vol_per_area!,
     total_energy_per_area!
@@ -508,4 +509,19 @@ per unit ground area for the `model`, computed from `Y`, `p`, and `t`.
 """
 function total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
     cache .= 0
+end
+
+"""
+    get_model_callbacks(model::AbstractModel; kwargs...)
+
+Returns the a tuple of required callbacks for the model, not including the
+forcing callbacks for radiation and atmospheric state, which are handled
+separately.
+
+These are used in the LandSimulation struct; model callbacks are evaluated
+after the user_callbacks (optional), forcing callbacks (required), but
+prior to the diagnostic callbacks (optional).
+"""
+function get_model_callbacks(model::ClimaLand.AbstractModel; kwargs...)
+    return ()
 end

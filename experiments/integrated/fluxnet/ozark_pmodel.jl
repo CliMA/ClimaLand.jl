@@ -255,13 +255,12 @@ diags = ClimaLand.default_diagnostics(
 
 ## How often we want to update the drivers.
 updateat = Array(start_date:Second(dt):stop_date)
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, land.canopy)
 simulation = LandSimulation(
     start_date,
     stop_date,
     dt,
     land;
-    user_callbacks = (pmodel_cb,),
+    user_callbacks = (),
     set_ic!,
     updateat,
     diagnostics = diags,

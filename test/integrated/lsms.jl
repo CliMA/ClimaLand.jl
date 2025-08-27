@@ -17,7 +17,8 @@ import ClimaLand:
     make_update_boundary_fluxes,
     make_update_aux,
     make_set_initial_cache,
-    land_components
+    land_components,
+    get_model_callbacks
 using ClimaLand
 
 
@@ -41,6 +42,7 @@ using ClimaLand
         ClimaLand.auxiliary_vars(::DummyModel1{FT}) = (:b,)
         ClimaLand.auxiliary_types(::DummyModel1{FT}) = (FT,)
         ClimaLand.auxiliary_domain_names(::DummyModel1{FT}) = (:surface,)
+        ClimaLand.get_model_callbacks(::DummyModel1) = (:foo,)# this should be a callback, but we are just testing that is is added correctly
         ClimaLand.name(::DummyModel2{FT}) = :m2
         ClimaLand.prognostic_vars(::DummyModel2{FT}) = (:c, :d)
         ClimaLand.prognostic_types(::DummyModel2{FT}) = (FT, FT)
@@ -85,6 +87,8 @@ using ClimaLand
         m1 = DummyModel1{FT}(d)
         m2 = DummyModel2{FT}(d)
         m = DummyModel{FT}(m1, m2)
+        @test get_model_callbacks(m) == (:foo,)
+        @test get_model_callbacks(m2) == ()
         Y, p, cds = ClimaLand.initialize(m)
         @test propertynames(p) == (:i1, :m1, :m2)
         exp_tendency! = make_exp_tendency(m)
