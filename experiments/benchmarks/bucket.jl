@@ -92,6 +92,7 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     default_params_filepath =
         joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
     toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
     # Precipitation:
     precip = (t) -> 0

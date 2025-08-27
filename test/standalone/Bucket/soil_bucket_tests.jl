@@ -67,7 +67,7 @@ for FT in (Float32, Float64)
                 ClimaLand.prescribed_analytic_forcing(FT; h_atmos = FT(1e-8))
             τc = FT(1.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
             model = BucketModel(
                 parameters = bucket_parameters,
@@ -148,7 +148,7 @@ for FT in (Float32, Float64)
             )
             τc = FT(100.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domain,
