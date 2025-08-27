@@ -71,7 +71,8 @@ import ClimaLand.Parameters as LP
 
 # - Define the float type desired (`Float64` or `Float32`), and get the parameter set, which holds constants used across CliMA models:
 const FT = Float32;
-earth_param_set = LP.LandParameters(FT);
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict);
 
 # # Set up the soil model
 

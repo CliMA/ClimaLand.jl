@@ -11,7 +11,8 @@ import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 
 FT = Float32;
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 
 vg_n = FT(2.9)
 vg_α = FT(6)

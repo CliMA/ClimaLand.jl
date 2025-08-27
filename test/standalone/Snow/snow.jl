@@ -14,12 +14,12 @@ import ClimaLand.Parameters as LP
 
 @testset "Snow Model" begin
     FT = Float32
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     start_date = DateTime(2005)
-    param_set = LP.LandParameters(FT)
     Δt = FT(180.0)
-    parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
+    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
     domain = Point(; z_sfc = FT(0))
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))

@@ -80,7 +80,9 @@ LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
 """
     LandParameters(toml_dict::CP.ParamDict)
 
-Construct `LandParameters` from `toml_dict`.
+A constructor from `toml_dict` for the ClimaLand `earth_param_set`
+(LandParameters) struct which contains the default values defined in ClimaParams
+with type FT (Float32, Float64)
 
 See [`ClimaLand.Parameters.create_toml_dict`](@ref).
 """

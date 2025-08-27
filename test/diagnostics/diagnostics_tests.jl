@@ -66,7 +66,8 @@ using Statistics
         α_bareground_func,
         bucket_domain.space.surface,
     )
-    bucket_parameters =
+    toml_dict = LP.create_toml_dict(FT)
+bucket_parameters =
         ClimaLand.Bucket.BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 
     model = ClimaLand.Bucket.BucketModel(

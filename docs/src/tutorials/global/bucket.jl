@@ -50,7 +50,8 @@ domain =
     ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple);
 
 # Parameters:
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, domain.space.surface)
 bucket_parameters = BucketModelParameters(

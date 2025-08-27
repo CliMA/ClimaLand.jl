@@ -76,6 +76,8 @@ end
 
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
+
     cmax = FT(0)
     cmin = FT(-2)
     nelems = 10
