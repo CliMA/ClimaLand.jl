@@ -235,7 +235,7 @@ end
             )
             τc = FT(1.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
             model = BucketModel(
                 parameters = bucket_parameters,
@@ -338,7 +338,7 @@ for (name, infile_path, varname) in name_ds_var_list
                 )
                 τc = FT(1.0)
                 bucket_parameters = BucketModelParameters(
-                    FT;
+                    toml_dict;
                     albedo = albedo_model,
                     z_0m,
                     z_0b,

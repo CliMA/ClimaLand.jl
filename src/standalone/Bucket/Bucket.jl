@@ -265,45 +265,6 @@ end
 ##For interfacing with ClimaParams
 """
     BucketModelParameters(
-        ::Type{FT};
-        albedo,
-        z_0m,
-        z_0b,
-        τc,
-        kwargs...,
-    )
-
-    BucketModelParameters(
-        toml_dict::CP.ParamDict;
-        albedo,
-        z_0m,
-        z_0b,
-        τc,
-        kwargs...,
-    )
-
-BucketModelParameters has a float-type and a toml-dict based constructor.
-Keyword arguments can be used to manually override any of the values in the struct.
-```julia
-BucketModelParameters(Float64; albedo, z_0m, z_0b, τc)
-BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
-```
-"""
-function BucketModelParameters(
-    ::Type{FT};
-    albedo,
-    z_0m,
-    z_0b,
-    τc,
-    kwargs...,
-) where {FT <: AbstractFloat}
-    # TODO: Remove this!!!!!!
-    toml_dict = LP.create_toml_dict(FT, LP.DEFAULT_PARAMS_FILEPATH)
-    return BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc, kwargs...)
-end
-
-"""
-    BucketModelParameters(
         toml_dict::CP.ParamDict;
         albedo,
         W_f = toml_dict["land_bucket_capacity"],
@@ -318,7 +279,7 @@ end
         τc = toml_dict["tau_c"],
     )
 
-Constructor for BucketModelParameters using a toml file
+Construct a `BucketModelParameters` from a TOML dict.
 """
 function BucketModelParameters(
     toml_dict::CP.ParamDict;
