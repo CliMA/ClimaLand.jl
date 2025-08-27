@@ -136,7 +136,7 @@ for FT in (Float32, Float64)
         ###
         K_sat = FT(0)
         hyd_off_en_on = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -496,7 +496,7 @@ for FT in (Float32, Float64)
 
         ### Test with both energy and hydrology on
         hyd_on_en_on = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -684,7 +684,7 @@ for FT in (Float32, Float64)
 
         ###
         hyd_off_en_on = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
