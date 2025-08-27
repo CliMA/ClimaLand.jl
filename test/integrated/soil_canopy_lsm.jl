@@ -132,7 +132,7 @@ for FT in (Float32, Float64)
             (; parameters = Canopy.AutotrophicRespirationParameters(toml_dict))
         radiative_transfer_args = (;
             parameters = Canopy.TwoStreamParameters(
-                FT;
+                toml_dict;
                 Ω = FT(0),
                 α_PAR_leaf = FT(0),
                 τ_PAR_leaf = FT(0),

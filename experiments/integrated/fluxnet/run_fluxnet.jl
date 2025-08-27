@@ -174,8 +174,12 @@ radiation_parameters = (;
     α_NIR_leaf,
     τ_NIR_leaf,
 )
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(surface_domain; radiation_parameters, ϵ_canopy)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    surface_domain,
+    toml_dict;
+    radiation_parameters,
+    ϵ_canopy,
+)
 
 # Set up conductance
 conductance = Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
