@@ -24,7 +24,6 @@ for FT in (Float32, Float64)
         domain = Domains.global_domain(FT)
         atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
         forcing = (; atmos, radiation)
-        earth_param_set = LP.LandParameters(FT)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
         # Soil model

@@ -25,7 +25,6 @@ const FT = Float64;
     context = ClimaComms.context()
     ClimaComms.init(context)
 
-    earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
     domain = ClimaLand.Domains.SphericalShell(;
@@ -98,6 +97,7 @@ end
 end
 
 @testset "Scalar Parameters" begin
+    toml_dict = LP.create_toml_dict(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters

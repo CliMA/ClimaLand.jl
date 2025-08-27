@@ -178,7 +178,8 @@ for (name, infile_path, varname) in name_ds_var_list
 end
 
 @testset "Test PrescribedBaregroundAlbedo - albedo from map, FT = $FT" begin
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     varname = "sw_alb"
     path = ClimaLand.Artifacts.bareground_albedo_dataset_path()
     α_snow = FT(0.8)
@@ -271,7 +272,8 @@ end
 
 for (name, infile_path, varname) in name_ds_var_list
     @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         σS_c = FT(0.2)
         W_f = FT(0.15)

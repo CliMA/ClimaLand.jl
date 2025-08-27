@@ -20,7 +20,8 @@ tf = Float64(10000)
 dt = Float64(10)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     # Make soil model
     ν = FT(0.556)

@@ -7,7 +7,8 @@ using ClimaLand.Soil.Biogeochemistry
 import ClimaParams as CP
 import ClimaLand.Parameters as LP
 FT = Float64
-earth_param_set = LP.LandParameters(FT)
+toml_dict = create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 RTparams = BeerLambertParameters(FT)
 
 # Create server

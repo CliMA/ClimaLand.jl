@@ -331,9 +331,9 @@ if !isnothing(DataToolsExt)
     @testset "Testing NeuralSnow module" begin
         #Model setup:
         FT = Float32
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         start_date = DateTime(2005)
-        param_set = LP.LandParameters(FT)
         Δt = FT(180.0)
         domain = Point(; z_sfc = FT(0))
         "Radiation"
@@ -383,7 +383,7 @@ if !isnothing(DataToolsExt)
 
         parameters = SnowParameters{FT}(
             Δt;
-            earth_param_set = param_set,
+            earth_param_set = earth_param_set,
             density = dens_model2,
         )
         model = ClimaLand.Snow.SnowModel(
