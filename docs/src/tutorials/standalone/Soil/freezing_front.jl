@@ -112,7 +112,7 @@ hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 ν_ss_quartz = FT(0.6)
 ν_ss_gravel = FT(0.0)
 params = Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,

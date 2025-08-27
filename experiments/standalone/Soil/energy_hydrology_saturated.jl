@@ -28,7 +28,7 @@ S_s = FT(1e-3)
 ν_ss_gravel = FT(0.0)
 
 params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,
