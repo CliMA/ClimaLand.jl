@@ -131,7 +131,7 @@ for FT in (Float32, Float64)
 
 
         soil_ps_col = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -158,7 +158,7 @@ for FT in (Float32, Float64)
         θ_r_field = θ_r .+ zero_field
 
         soil_ps_box = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν = ν_field,
             ν_ss_om = ν_ss_om_field,
             ν_ss_quartz = ν_ss_quartz_field,

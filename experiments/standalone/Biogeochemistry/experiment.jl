@@ -34,7 +34,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     soil_parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,

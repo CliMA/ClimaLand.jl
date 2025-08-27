@@ -121,7 +121,7 @@ vg_α = FT(7.5) # inverse meters
 hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 θ_r = FT(0.0)
 params = Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,

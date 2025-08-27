@@ -283,7 +283,7 @@ function EnergyHydrology{FT}(
     # sublimation and subsurface runoff are added automatically
     sources = (additional_sources..., PhaseChange{FT}())
     parameters = EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         retention_parameters...,
         composition_parameters...,
         albedo,

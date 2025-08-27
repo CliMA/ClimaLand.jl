@@ -112,7 +112,7 @@ end
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     default_params = ClimaLand.Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -130,7 +130,7 @@ end
           LP.get_default_parameter(FT, :soil_scalar_roughness_length)
 
     overwritten_params = ClimaLand.Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
