@@ -14,7 +14,8 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil respiration test set, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Make soil model args
         ν = FT(0.556)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -173,7 +174,7 @@ for FT in (Float32, Float64)
         )
     end
     @testset "PrognosticMet, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
         zmax = FT(0)
         zmin = FT(-1)
         nelems = 10

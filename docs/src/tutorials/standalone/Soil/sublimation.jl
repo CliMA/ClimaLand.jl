@@ -23,7 +23,8 @@ import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
 
 FT = Float64;
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
 start_date = DateTime(2005)

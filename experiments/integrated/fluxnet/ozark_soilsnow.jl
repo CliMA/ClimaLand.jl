@@ -26,10 +26,8 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, StatsBase
 
 const FT = Float64
-earth_param_set = LP.LandParameters(FT)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 climaland_dir = pkgdir(ClimaLand)
 
 site_ID = "US-MOz"

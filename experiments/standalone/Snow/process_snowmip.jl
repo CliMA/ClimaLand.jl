@@ -60,7 +60,8 @@ timestamp, mask, seconds, LWdown, SWdown, Psurf, q_air, Tair, u, rainf, snowf =
         snowf
     end
 # Required parameters for forcing
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
 # "Radiation"
 SW_d = TimeVaryingInput(seconds, SWdown; context)

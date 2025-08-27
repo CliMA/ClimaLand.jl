@@ -12,6 +12,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
     cmax = FT(0)
     cmin = FT(-2)
     nelems = 10
@@ -27,7 +28,7 @@ for FT in (Float32, Float64)
 
     t0 = 0.0
 
-    earth_param_set = LP.LandParameters(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     start_date = DateTime(2005)
     Δt = FT(180.0)
