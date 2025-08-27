@@ -78,19 +78,6 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
 """
     EnergyHydrologyParameters(
-        ::Type{FT};
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
-        kwargs...,)
-
-    EnergyHydrologyParameters(
         toml_dict;
         ν,
         ν_ss_om,
@@ -117,34 +104,6 @@ albedos.
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
 function EnergyHydrologyParameters(
-    ::Type{FT};
-    ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm,
-    K_sat,
-    S_s,
-    θ_r,
-    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
-    kwargs...,
-) where {FT <: AbstractFloat}
-    return EnergyHydrologyParameters(
-        CP.create_toml_dict(FT);
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        albedo,
-        kwargs...,
-    )
-end
-
-function EnergyHydrologyParameters(
     toml_dict::CP.AbstractTOMLDict;
     ν::F,
     ν_ss_om::F,
@@ -154,7 +113,7 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
+    albedo = Soil.ConstantTwoBandSoilAlbedo{CP.float_type(toml_dict)}(),
     kwargs...,
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)

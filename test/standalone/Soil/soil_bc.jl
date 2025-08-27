@@ -147,7 +147,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.0)
 
         parameters = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -208,7 +208,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.0)
 
         parameters = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -294,7 +294,7 @@ end
     ρp = FT(2.66 / 1e3 * 1e6)
     ρc_ds = @. FT(2e6 * (1.0 - ν))
     parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -324,7 +324,7 @@ end
     )
 
     parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,

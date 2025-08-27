@@ -98,7 +98,7 @@ for FT in (Float32, Float64)
             ),
         )
         soil_params = ClimaLand.Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν = FT(0.1),
             ν_ss_om = FT(0.01),
             ν_ss_quartz = FT(0.01),
