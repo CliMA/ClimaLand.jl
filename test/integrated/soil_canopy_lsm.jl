@@ -16,7 +16,7 @@ for FT in (Float32, Float64)
     )
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
         LAI = TimeVaryingInput((t) -> FT(1.0))

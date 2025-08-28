@@ -22,7 +22,7 @@ for FT in (Float32, Float64)
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
         toml_dict = LP.create_toml_dict(FT, default_params_filepath)
         domain = Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
