@@ -42,18 +42,18 @@ for FT in (Float32, Float64)
             FT(1),
         )
         # These values should match ClimaParams
-        ϵ_snow = FT(0.99)
-        z_0b = FT(0.00024)
+        ϵ_snow = FT(0.97)
+        z_0b = FT(8e-2)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
         ΔS = FT(0.1)
         Δt = Float64(180.0)
-        parameters = SnowParameters{FT}(
+        parameters = SnowParameters(
+            toml_dict,
             Δt,
             density = densitymodel,
             α_snow = α_snow,
-            earth_param_set = param_set,
         )
         @test parameters.density.ρ_min == ρ_min
         @test typeof(parameters.density.ρ_min) == FT
