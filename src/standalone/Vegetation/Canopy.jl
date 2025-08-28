@@ -39,6 +39,7 @@ using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
+include("./biomass.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")

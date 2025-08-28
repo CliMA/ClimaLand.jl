@@ -88,7 +88,11 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     forcing = (; atmos, radiation)
 
     # Read in LAI from MODIS data
-    LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
 
     # Overwrite some defaults for the canopy model
     # Energy model

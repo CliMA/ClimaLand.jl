@@ -94,7 +94,8 @@ canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 
 # Set up plant hydraulics
-LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Construct the P model manually since it is not a default
 photosynthesis = PModel{FT}()

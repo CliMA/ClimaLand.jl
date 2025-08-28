@@ -164,7 +164,7 @@ photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
-LAI = ClimaLand.prescribed_lai_modis(
+LAI = ClimaLand.Canopy.prescribed_lai_modis(
     surface_space,
     start_date + Second(t0),
     stop_date + Second(tf),

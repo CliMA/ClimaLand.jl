@@ -67,8 +67,11 @@ forcing = ClimaLand.prescribed_forcing_era5(
 );
 
 # MODIS LAI is prescribed for the canopy model:
-LAI =
-    ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
+LAI = ClimaLand.Canopy.prescribed_lai_modis(
+    domain.space.surface,
+    start_date,
+    stop_date,
+);
 # Make the model:
 model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 simulation = ClimaLand.Simulations.LandSimulation(
