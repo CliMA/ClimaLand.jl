@@ -238,7 +238,8 @@ CoupledRadiativeFluxes(::Type{FT}, args...) where {FT} =
         start_date::Dates.DateTime;
         latitude,
         longitude,
-        insol_params=LP.LandParameters(FT).insol_params,
+        toml_dict::AbstractTOMLDict,
+        insol_params=LP.LandParameters(toml_dict).insol_params,
     )
 Creates a `CoupledRadiativeFluxes` object with a default zenith angle function that uses Insolation.jl
 to compute the zenith angle at a given time and location.
@@ -247,7 +248,8 @@ function CoupledRadiativeFluxes{FT}(
     start_date::DT;
     latitude::LT,
     longitude::LT,
-    insol_params::IP = LP.LandParameters(FT).insol_params,
+    toml_dict::CP.AbstractTOMLDict,
+    insol_params::IP = LP.LandParameters(toml_dict).insol_params,
 ) where {FT, DT, LT, IP}
     zenith_angle =
         (t, s) -> default_zenith_angle(
@@ -1648,7 +1650,7 @@ end
 
 """
      prescribed_analytic_forcing(FT = Float32;
-                                 earth_param_set = LP.LandParameters(FT),
+                                 toml_dict::CP.AbstractTOMLDict,
                                  start_date = DateTime(2005),
                                  SW_d = (t) -> 0,
                                  LW_d = (t) -> 5.67e-8 * 280.0^4.0,
@@ -1667,7 +1669,7 @@ end
                                      TimeVaryingInput(P_atmos),
                                      start_date,
                                      h_atmos,
-                                     earth_param_set,
+                                     LP.LandParameters(toml_dict),
                                  ),
                                  radiation = PrescribedRadiativeFluxes(
                                      FT,
@@ -1682,7 +1684,7 @@ for a simple analytic case.
 """
 function prescribed_analytic_forcing(
     FT = Float32;
-    earth_param_set = LP.LandParameters(FT),
+    toml_dict::CP.AbstractTOMLDict,
     start_date = DateTime(2005),
     SW_d = (t) -> 0,
     LW_d = (t) -> 5.67e-8 * 280.0^4.0,
@@ -1701,7 +1703,7 @@ function prescribed_analytic_forcing(
         TimeVaryingInput(P_atmos),
         start_date,
         h_atmos,
-        earth_param_set,
+        LP.LandParameters(toml_dict),
     ),
     radiation = PrescribedRadiativeFluxes(
         FT,
