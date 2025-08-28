@@ -173,20 +173,7 @@ default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-
-# Construct the PModel callback
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, Δt, model.canopy)
-nancheck_cb = ClimaLand.NaNCheckCallback(
-    Dates.Month(6),
-    start_date,
-    ITime(Δt, epoch = start_date),
-    mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
-)
-report_cb = ClimaLand.ReportCallback(1000)
-user_callbacks = (pmodel_cb, nancheck_cb, report_cb)
-
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, user_callbacks)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"

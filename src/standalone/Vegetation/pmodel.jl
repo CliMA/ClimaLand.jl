@@ -1478,3 +1478,22 @@ function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
         bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2),
     )
 end
+
+"""
+    get_model_callbacks(component::AbstractCanopyComponent, canopy; kwargs...)
+
+Creates the pmodel callback and returns it as a single element tuple of model callbacks;
+we add the callback for the photosynthesis component,
+and not for the conductance component(PModelConductance).
+
+Note that the Δt passed here is an ITime because it is the Δt used in the simulation.
+"""
+function get_model_callbacks(
+    component::PModel{FT},
+    canopy;
+    start_date,
+    Δt,
+) where {FT}
+    pmodel_cb = make_PModel_callback(FT, start_date, float(Δt), canopy)
+    return (pmodel_cb,)
+end
