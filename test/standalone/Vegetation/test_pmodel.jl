@@ -252,9 +252,9 @@ end
         photosynthesis = PModel{FT}(),
         conductance = PModelConductance{FT}(),
     )
-
-    @test_nowarn pmodel_callback =
-        make_PModel_callback(FT, start_date, dt, canopy)
+    pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
+    @test typeof(get_model_callbacks(canopy; start_date, Δt = dt)[1]) ==
+          typeof(pmodel_callback)
 end
 
 

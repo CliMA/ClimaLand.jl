@@ -203,7 +203,9 @@ function LandSimulation(
     updateat =
         updateat isa AbstractVector ? updateat : [promote(t0:updateat:tf...)...]
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    required_callbacks = (driver_cb,) # TBD: can we update each step?
+    model_callbacks = ClimaLand.get_model_callbacks(model; start_date, Δt)# everything else you need should be in the model!
+
+    required_callbacks = (driver_cb, model_callbacks...) # TBD: can we update each step?
 
     diagnostics = isnothing(diagnostics) ? () : diagnostics
     diagnostic_handler =
@@ -403,5 +405,4 @@ convert_updates(t0::ITime, update_time::Dates.Period) =
     promote(t0, ITime(Dates.value(convert(Dates.Second, update_time));))[2]
 convert_updates(t0::ITime, update_time::AbstractFloat) =
     promote(t0, ITime(update_time, epoch = t0.epoch))[2]
-
 end#module

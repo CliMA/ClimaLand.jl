@@ -31,6 +31,7 @@ import ClimaLand:
     make_compute_imp_tendency,
     make_compute_jacobian,
     get_drivers,
+    get_model_callbacks,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
     FrequencyBasedCallback
@@ -1213,6 +1214,23 @@ However, for other photosynthesis models this is not needed, so do nothing by de
 """
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
     return nothing
+end
+
+"""
+     get_model_callbacks(model::CanopyModel{FT}; start_date, Δt) where {FT}
+
+Creates the tuple of model callbacks for a CanopyModel
+by calling `get_model_callbacks` on each component model.
+"""
+function get_model_callbacks(model::CanopyModel{FT}; start_date, Δt) where {FT}
+    components = canopy_components(model)
+    callbacks = ()
+    callback_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        cb = get_model_callbacks(submodel, model; start_date, Δt)
+        callbacks = (callbacks..., cb...)
+    end
+    return callbacks
 end
 
 end

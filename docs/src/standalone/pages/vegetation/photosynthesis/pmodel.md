@@ -2,17 +2,8 @@ The P-model is model for photosynthesis and stomatal conductance that extends th
 ## Usage in ClimaLand
 The P-model differs from other canopy component models in two main ways: 
 1) The P-model encompasses *both* a photosynthesis model *and* a stomatal conductance model. Therefore, `PModel` must be used for photosynthesis iff `PModelConductance` is used for stomatal conductance. 
-2) The P-model requires an extra callback `PModelCallback` which checks if it is local noon every model timestep and updates the optimal parameters according to local noon (see Implementation for scientific background). When you are constructing a simulation via `SciMLBase`, this callback can be constructed like so:
+2) The P-model requires an extra callback `PModelCallback` which checks if it is local noon every model timestep and updates the optimal parameters according to local noon (see Implementation for scientific background). When you are constructing a simulation via `LandSimulation`, this callback will be constructed and added to your simulation automatically.
 
-```julia
-# make the callback 
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, t0, dt, canopy)
-
-# add this callback to the CallbackSet with driver, diag
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb, pmodel_cb);
-```
-
-**To be implemented**: when using the P-model within a LandSimulation, automatically detect this and use the P-model callback. 
 ## Theory 
 The first assumption, which we'll call the "cost minimization principle", can be mathematically written as follows. We define a cost which is dependent on the transpiration $E$, maximum rate of Rubisco limited photosynthesis $V_{c\max}$, normalized to the rate of assimilation $A$:
 ```math

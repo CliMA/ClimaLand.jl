@@ -183,3 +183,16 @@ order of operations must be enforced by the developer who writes the `update_aux
 function.
 """
 function set_canopy_prescribed_field!(component::AbstractCanopyComponent, p, t) end
+
+"""
+    get_model_callbacks(component::AbstractCanopyComponent, canopy; kwargs...)
+
+Creates an empty tuple as a default set of model callbacks for canopy component models.
+"""
+function get_model_callbacks(
+    component::AbstractCanopyComponent,
+    canopy;
+    kwargs...,
+)
+    return ()
+end
