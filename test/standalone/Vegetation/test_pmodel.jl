@@ -1,8 +1,8 @@
 """
 # P-Model Regression Tests
 
-This module tests the ClimaLand P-Model implementation against reference outputs 
-from the R-based P-Model package. The P-Model predicts photosynthetic carbon 
+This module tests the ClimaLand P-Model implementation against reference outputs
+from the R-based P-Model package. The P-Model predicts photosynthetic carbon
 assimilation and related variables based on environmental conditions.
 
 ## Test Structure
@@ -48,7 +48,7 @@ using Dates
 """
     percent_difference(a, b)
 
-Calculate the percentage difference between `a` and `b` (reference). 
+Calculate the percentage difference between `a` and `b` (reference).
 """
 function percent_difference(a, b)
     return abs(a - b) / abs(b) * 100
@@ -64,7 +64,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
     β = FT(inputs["beta"])
     cstar = FT(0.41)
 
-    # handle temperature-dependent quantum yield 
+    # handle temperature-dependent quantum yield
     if Bool(inputs["do_ftemp_kphio"])
         ϕ0 = FT(NaN)
         ϕc = FT(inputs["kphio"])
@@ -86,8 +86,6 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
         α = FT(0),
-        sc = FT(0),
-        pc = FT(0),
     )
 end
 
@@ -197,10 +195,10 @@ end
 
                     if haskey(outputs, key_symbol)
                         r_out = ref_outputs_typed[key]
-                        # convert gpp to kg/m^2/s   
+                        # convert gpp to kg/m^2/s
                         r_out = key == "gpp" ? r_out / FT(1000.0) : r_out
 
-                        # convert gs to mol/m^2/s 
+                        # convert gs to mol/m^2/s
                         r_out = key == "gs" ? r_out * P_air : r_out
 
                         j_out = getproperty(outputs, key_symbol)
@@ -272,8 +270,6 @@ end
             ϕa1 = FT(0.022),
             ϕa2 = FT(-0.00034),
             α = FT(0),
-            sc = FT(2e-6),
-            pc = FT(-2e6),
         )
 
         constants = PModelConstants{FT}()
@@ -309,7 +305,7 @@ end
                 ca,
                 βm,
                 APAR,
-                FT(1.0), # force update 
+                FT(1.0), # force update
             )
             @test isapprox(
                 outputs_from_EMA.ξ_opt,

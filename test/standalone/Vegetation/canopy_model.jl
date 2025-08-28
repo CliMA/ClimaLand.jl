@@ -51,6 +51,7 @@ import ClimaParams
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction.(ld)
             RTparams =
@@ -177,7 +178,7 @@ import ClimaParams
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -220,7 +221,7 @@ import ClimaParams
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -235,6 +236,7 @@ import ClimaParams
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -479,7 +481,7 @@ end
                         step = Δz,
                         stop = Δz * (n_stem + n_leaf),
                     ),
-                )
+                ),
             )
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -580,6 +582,7 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
@@ -705,7 +708,7 @@ end
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -948,7 +951,7 @@ end
                         step = Δz,
                         stop = Δz * (n_stem + n_leaf),
                     ),
-                )
+                ),
             )
 
         soil_driver = PrescribedGroundConditions{FT}()
@@ -1088,7 +1091,7 @@ end
         ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
         @test (abs.(
             Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT)) -
-            ∂Ṫ∂T
+            ∂Ṫ∂T,
         ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
     end
 end
@@ -1141,6 +1144,7 @@ end
             τ_NIR_leaf,
             χl,
         ) in zipped_params
+
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             G_Function = CLMGFunction.(χl)
@@ -1281,7 +1285,7 @@ end
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -1376,6 +1380,7 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain)
         conductance = Canopy.MedlynConductanceModel{FT}(domain)
+        soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}()
         toml_dict = LP.create_toml_dict(
             FT,
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
@@ -1403,6 +1408,7 @@ end
                 radiative_transfer,
                 photosynthesis,
                 conductance,
+                soil_moisture_stress,
                 hydraulics,
                 energy,
                 sif,
@@ -1444,7 +1450,7 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -1459,6 +1465,7 @@ end
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)

@@ -161,7 +161,8 @@ end
                                 <:AbstractPhotosynthesisModel,
                                 <:AbstractStomatalConductanceModel,
                                 <:PlantHydraulicsModel,
-                                <:AbstractCanopyEnergyModel}
+                                <:AbstractCanopyEnergyModel,
+                                <:AbstractSoilMoistureStressModel,
                             },
                             Y::ClimaCore.Fields.FieldVector,
                             t,
@@ -188,6 +189,7 @@ function canopy_boundary_fluxes!(
         <:AbstractStomatalConductanceModel,
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
+        <:AbstractSoilMoistureStressModel,
     },
     Y::ClimaCore.Fields.FieldVector,
     t,

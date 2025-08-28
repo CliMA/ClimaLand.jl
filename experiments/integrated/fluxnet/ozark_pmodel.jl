@@ -112,7 +112,8 @@ dt = Float64(450) # 7.5 minutes
     atmos_h,
     start_date,
     earth_param_set,
-    FT,
+    FT;
+    construct_prescribed_soil = false,
 )
 
 
@@ -179,6 +180,17 @@ conductance = PModelConductance{FT}()
 # Set up photosynthesis
 photosynthesis = PModel{FT}()
 
+# Set up soil moisture stress
+soil_moisture_stress_params = PiecewiseMoistureStressParameters(
+    FT;
+    θ_c = FT(0.60),
+    θ_w = FT(0.10),
+    c = FT(1.0),
+    β0 = FT(1.0),
+)
+soil_moisture_stress =
+    PiecewiseMoistureStressModel{FT}(soil_moisture_stress_params)
+
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
@@ -222,6 +234,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    soil_moisture_stress,
     hydraulics,
     energy,
 )
@@ -265,7 +278,8 @@ simulation = LandSimulation(
     set_ic!,
     updateat,
     diagnostics = diags,
-);
+)
+
 @time solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
