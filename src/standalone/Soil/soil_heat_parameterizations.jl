@@ -66,10 +66,7 @@ function phase_change_source(
     # to the matric potential corresponding to the total water content (liquid and ice).
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
-    ψw0 = matric_potential(
-        hydrology_cm,
-        max(min(effective_saturation(ν, θtot, θ_r), FT(1)), FT(0)),
-    )
+    ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
     Tf_depressed = _T_freeze * exp(_grav * ψw0 / _LH_f0)
 
     ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
@@ -274,7 +271,7 @@ function kersten_number(
     else
         K_e = S_r^(FT(1) + ν_ss_om)
     end
-    return min(K_e, FT(1))
+    return K_e
 end
 
 
