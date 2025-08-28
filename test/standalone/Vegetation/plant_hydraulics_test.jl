@@ -116,7 +116,7 @@ for FT in (Float32, Float64)
         AR_params = AutotrophicRespirationParameters(toml_dict)
         RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesis_params = FarquharParameters(FT, is_c3)
+        photosynthesis_params = FarquharParameters(toml_dict; is_c3)
         stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -387,7 +387,7 @@ for FT in (Float32, Float64)
         AR_params = AutotrophicRespirationParameters(toml_dict)
         RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesis_params = FarquharParameters(FT, is_c3)
+        photosynthesis_params = FarquharParameters(toml_dict; is_c3)
         stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
