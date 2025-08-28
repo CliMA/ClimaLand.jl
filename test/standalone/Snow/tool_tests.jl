@@ -383,11 +383,7 @@ if !isnothing(DataToolsExt)
         @test dens_model2.α == FT(test_alph)
         @test dens_model2.z_model[:final_scale].weight[2, 2] == FT(1 / Δt)
 
-        parameters = SnowParameters{FT}(
-            Δt;
-            earth_param_set = earth_param_set,
-            density = dens_model2,
-        )
+        parameters = SnowParameters(toml_dict, Δt; density = dens_model2)
         model = ClimaLand.Snow.SnowModel(
             parameters = parameters,
             domain = domain,
