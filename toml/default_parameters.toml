@@ -1,3 +1,21 @@
+# Moisture stress models
+[moisture_stress_c]
+value = 1.0
+type = "float"
+description = "unitless"
+tag = "SoilMoistureStress"
+
+[moisture_stress_sc]
+value = 5.0e-6
+type = "float"
+description = "1/Pa"
+tag = "SoilMoistureStress"
+
+[moisture_stress_pc]
+value = -2.0e6
+type = "float"
+description = "Pa"
+tag = "SoilMoistureStress"
 # TOPMODELRunoff model
 
 [f_over]

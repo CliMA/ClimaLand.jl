@@ -228,6 +228,9 @@ function SoilCanopyModel{FT}(;
     end
 
     canopy = Canopy.CanopyModel{FT}(;
+        soil_moisture_stress = canopy_component_types.soil_moisture_stress(
+            canopy_component_args.soil_moisture_stress...,
+        ),
         autotrophic_respiration = canopy_component_types.autotrophic_respiration(
             canopy_component_args.autotrophic_respiration...,
         ),

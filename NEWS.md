@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
-
+- Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
 - Remove `PrognosticSoilConditions` in favor of using `PrognosticGroundConditions` more generally PR[#1411](https://github.com/CliMA/ClimaLand.jl/pull/1411)
 
 v0.20.0
