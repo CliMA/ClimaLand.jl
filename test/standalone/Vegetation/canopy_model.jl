@@ -51,6 +51,7 @@ import ClimaParams
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction.(ld)
             RTparams =
@@ -177,7 +178,7 @@ import ClimaParams
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -196,6 +197,7 @@ import ClimaParams
                 photosynthesis = photosynthesis_model,
                 conductance = stomatal_model,
                 hydraulics = plant_hydraulics,
+                soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                 boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                     atmos,
                     radiation,
@@ -235,6 +237,7 @@ import ClimaParams
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -479,7 +482,7 @@ end
                         step = Δz,
                         stop = Δz * (n_stem + n_leaf),
                     ),
-                )
+                ),
             )
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -580,6 +583,7 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
@@ -705,7 +709,7 @@ end
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -730,6 +734,7 @@ end
                 autotrophic_respiration = autotrophic_respiration_model,
                 energy = energy_model,
                 hydraulics = plant_hydraulics,
+                soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                 boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                     atmos,
                     radiation,
@@ -948,7 +953,7 @@ end
                         step = Δz,
                         stop = Δz * (n_stem + n_leaf),
                     ),
-                )
+                ),
             )
 
         soil_driver = PrescribedGroundConditions{FT}()
@@ -972,6 +977,7 @@ end
             autotrophic_respiration = autotrophic_respiration_model,
             energy = energy_model,
             hydraulics = plant_hydraulics,
+            soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,
@@ -1088,7 +1094,7 @@ end
         ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
         @test (abs.(
             Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT)) -
-            ∂Ṫ∂T
+            ∂Ṫ∂T,
         ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
     end
 end
@@ -1141,6 +1147,7 @@ end
             τ_NIR_leaf,
             χl,
         ) in zipped_params
+
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             G_Function = CLMGFunction.(χl)
@@ -1281,7 +1288,7 @@ end
                             step = Δz,
                             stop = Δz * (n_stem + n_leaf),
                         ),
-                    )
+                    ),
                 )
 
             soil_driver = PrescribedGroundConditions{FT}()
@@ -1305,6 +1312,7 @@ end
                     conductance = stomatal_model,
                     autotrophic_respiration = autotrophic_respiration_model,
                     energy = energy_model,
+                    soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                     hydraulics = plant_hydraulics,
                     boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                         atmos,
@@ -1381,6 +1389,8 @@ end
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
         )
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI, toml_dict)
+        soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
+
         energy = Canopy.BigLeafEnergyModel{FT}()
         sif = Canopy.Lee2015SIFModel{FT}()
 
@@ -1403,6 +1413,7 @@ end
                 radiative_transfer,
                 photosynthesis,
                 conductance,
+                soil_moisture_stress,
                 hydraulics,
                 energy,
                 sif,
@@ -1425,6 +1436,7 @@ end
             @test canopy.conductance == conductance
             @test canopy.hydraulics == hydraulics
             @test canopy.energy == energy
+            @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
             @test canopy.boundary_conditions == boundary_conditions
             @test canopy.parameters == parameters
@@ -1459,6 +1471,7 @@ end
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -1535,6 +1548,7 @@ end
             :autotrophic_respiration,
             :energy,
             :sif,
+            :soil_moisture_stress,
             :turbulent_fluxes,
         )
         for component in ClimaLand.Canopy.canopy_components(canopy)

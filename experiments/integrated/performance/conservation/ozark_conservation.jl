@@ -86,7 +86,7 @@ for float_type in (Float32, Float64)
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
             abs.(
-                cos.(radiation.θs.(sv.t, radiation.start_date)) .- cache_cosθs
+                cos.(radiation.θs.(sv.t, radiation.start_date)) .- cache_cosθs,
             ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
@@ -201,7 +201,7 @@ for float_type in (Float32, Float64)
             eps(FT) .+
             abs.(
                 (soil_mass_change_actual - soil_mass_change_exp) ./
-                soil_mass_change_exp
+                soil_mass_change_exp,
             ),
             label = "Soil Water Balance",
         )
@@ -211,7 +211,7 @@ for float_type in (Float32, Float64)
             eps(FT) .+
             abs.(
                 (canopy_mass_change_actual - canopy_mass_change_exp) ./
-                canopy_mass_change_exp
+                canopy_mass_change_exp,
             ),
             label = "Canopy Water Balance",
         )
@@ -272,7 +272,7 @@ for float_type in (Float32, Float64)
             eps(FT) .+
             abs.(
                 (soil_energy_change_actual - soil_energy_change_exp) ./
-                soil_energy_change_exp
+                soil_energy_change_exp,
             ),
             label = "Soil Energy Balance",
         )

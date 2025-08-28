@@ -180,6 +180,13 @@ conductance = PModelConductance{FT}()
 is_c3 = FT(1)
 photosynthesis = PModel{FT}(surface_domain; is_c3)
 
+# Set up soil moisture stress using soil retention parameters
+soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
+    land_domain,
+    toml_dict;
+    soil_params = retention_parameters,
+)
+
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
@@ -223,6 +230,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    soil_moisture_stress,
     hydraulics,
     energy,
 )
@@ -266,7 +274,8 @@ simulation = LandSimulation(
     set_ic!,
     updateat,
     diagnostics = diags,
-);
+)
+
 @time solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)

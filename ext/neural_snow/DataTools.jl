@@ -761,7 +761,7 @@ function serreze_qc(input::DataFrame, id::Int, state::AbstractString)
     data[!, :tmax] = maxmin[!, :tmax]
     flags =
         ismissing.(
-            data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]]
+            data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]],
         )
     flags[!, :date] = data[1:(end - 1), :date]
 
