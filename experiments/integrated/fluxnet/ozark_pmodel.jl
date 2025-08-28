@@ -187,6 +187,13 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
     soil_params = retention_parameters,
 )
 
+# Set up soil moisture stress using soil retention parameters
+soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
+    land_domain,
+    toml_dict;
+    soil_params = retention_parameters,
+)
+
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;

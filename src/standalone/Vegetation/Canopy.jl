@@ -64,7 +64,10 @@ include("./spatially_varying_parameters.jl")
 ## Soil Moisture Stress
 """
     PiecewiseMoistureStressModel{FT}(
+<<<<<<< HEAD
     domain,
+=======
+>>>>>>> 0d7d72ddf (Add AbstractMoistureStressModel with 3 options)
     toml_dict::CP.ParamDict;
     c::FT = toml_dict["moisture_stress_c"],
     soil_params
@@ -81,8 +84,11 @@ These may be fields or floats, but must be consistently one or the other.
 
 Currently this option is implemented to work with the `vanGenuchten` soil hydrology closure,
 but it can be extended to work with additional closures (e.g. `BrooksCorey`).
+<<<<<<< HEAD
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
+=======
+>>>>>>> 0d7d72ddf (Add AbstractMoistureStressModel with 3 options)
 """
 function PiecewiseMoistureStressModel{FT}(
     domain,
