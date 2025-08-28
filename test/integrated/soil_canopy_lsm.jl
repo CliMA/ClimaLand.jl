@@ -146,7 +146,11 @@ for FT in (Float32, Float64)
             )
         )
         photosynthesis_args = (;
-            parameters = Canopy.FarquharParameters(FT, FT(0); Vcmax25 = FT(0))
+            parameters = Canopy.FarquharParameters(
+                toml_dict;
+                is_c3 = FT(0),
+                Vcmax25 = FT(0),
+            )
         )
         ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
             TimeVaryingInput(identity),
