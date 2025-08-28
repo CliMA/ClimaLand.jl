@@ -8,7 +8,7 @@ root extraction.
 function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     above_ground_area_index = p.scratch1
     above_ground_area_index .=
         PlantHydraulics.harmonic_mean.(
@@ -38,10 +38,7 @@ function update_root_extraction!(p, Y, t, land)
                 p.canopy.hydraulics.ψ.:1,
             ),
         ) *
-        Canopy.PlantHydraulics.root_distribution(
-            z,
-            land.canopy.hydraulics.parameters.rooting_depth,
-        )
+        Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -54,6 +51,7 @@ end
         fa::ClimaCore.Fields.Field,
         s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
         model::Canopy.PlantHydraulics.PlantHydraulicsModel,
+        canopy,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -73,6 +71,7 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
     model::Canopy.PlantHydraulics.PlantHydraulicsModel,
+    canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
@@ -85,6 +84,7 @@ end
         fa_energy::ClimaCore.Fields.Field,
         s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
         model::Canopy.AbstractCanopyEnergyModel,
+        canopy,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -106,6 +106,7 @@ function Canopy.root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
     s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
     model::Canopy.AbstractCanopyEnergyModel,
+    canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
