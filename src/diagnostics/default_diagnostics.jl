@@ -361,10 +361,14 @@ specific to the integrated model, which must be passed in `integrated_diagnostic
 function get_integrated_diagnostics(model, integrated_diagnostics)
     diagnostics = String[]
     # Add diagnostics for each component of the integrated model
-    for component_name in ClimaLand.land_components(model)
-        component = getproperty(model, component_name)
-        append!(diagnostics, get_possible_diagnostics(component))
-    end
+    append!(
+        diagnostics,
+        map(
+            component_name ->
+                get_possible_diagnostics(getproperty(model, component_name)),
+            ClimaLand.land_components(model),
+        )...,
+    )
     # Add diagnostics that are specific to the integrated model
     append!(diagnostics, integrated_diagnostics)
     return unique!(diagnostics)
