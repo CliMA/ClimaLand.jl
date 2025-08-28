@@ -128,7 +128,7 @@ function FarquharModel{FT}(
     pc::FT = toml_dict["moisture_stress_ref_water_pressure"],
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
-    parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
+    parameters = FarquharParameters(toml_dict, is_c3; Vcmax25, sc, pc)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
 
