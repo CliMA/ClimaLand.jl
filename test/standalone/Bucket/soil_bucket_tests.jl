@@ -63,8 +63,11 @@ for FT in (Float32, Float64)
 
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
-            bucket_atmos, bucket_rad =
-                ClimaLand.prescribed_analytic_forcing(FT; h_atmos = FT(1e-8))
+            bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(
+                FT;
+                toml_dict,
+                h_atmos = FT(1e-8),
+            )
             τc = FT(1.0)
             bucket_parameters =
                 BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
