@@ -233,7 +233,19 @@ function default_diagnostics(
     return []
 end
 
+"""
+    add_diagnostics!(diagnostics, model, subcomponent)
 
+A function to add diagnostics for a specific subcomponent to the list of diagnostics
+for the provided model. This should be extended for any model with diagnostics
+that depend on the types of subcomponents, and then called from the corresponding
+`get_possible_diagnostics` method.
+
+The fallback method does nothing.
+"""
+add_diagnostics!(_, _::AbstractModel, _) = nothing
+
+## Possible diagnostics for standalone models
 """
     get_possible_diagnostics(model)
 
@@ -241,10 +253,40 @@ Return a list containing all possible diagnostics for the given model.
 See the file `src/diagnostics/land_compute_methods.jl` to see which model
 variable(s) each diagnostic comes from.
 """
-function get_possible_diagnostics(model::EnergyHydrology{FT}) where {FT}
-    return ["swc", "si", "sie", "tsoil", "et"]
+function get_possible_diagnostics(model::EnergyHydrology)
+    diags = ["swc", "si", "sie", "tsoil", "et", "shc", "stc", "swp"]
+
+    # Add diagnostics based on the top boundary condition type and runoff model
+    add_diagnostics!(diags, model, model.boundary_conditions.top)
+    add_diagnostics!(diags, model, model.boundary_conditions.top.runoff)
+    return diags
 end
-function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.AtmosDrivenFluxBC,
+)
+    append!(diagnostics, ["soilrn", "soillhf", "soilshf", "salb"])
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
+)
+    append!(diagnostics, ["sr"])
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
+)
+    append!(diagnostics, ["sr", "ssr"])
+end
+
+function get_possible_diagnostics(model::SoilCO2Model)
+    return ["sco2", "hr", "scd", "scms", "soc"]
+end
+function get_possible_diagnostics(model::CanopyModel)
     return [
         "sif",
         "ra",
@@ -287,143 +329,10 @@ function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
         "ws",
     ]
 end
-function get_possible_diagnostics(model::SoilCanopyModel{FT}) where {FT}
-    return [
-        "swa",
-        "sif", # start of canopy diagnostics
-        "ra",
-        "gs",
-        "trans",
-        "clhf",
-        "cshf",
-        "lwp",
-        # "fa", # return a Tuple
-        "far",
-        "lai",
-        "msf",
-        "rai",
-        "sai",
-        "gpp",
-        "an",
-        "rd",
-        "vcmax25",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "lwn",
-        "swn",
-        "ct",
-        "soc", # start of driver diagnostics
-        "airp",
-        "rain",
-        "lwd",
-        "swd",
-        "snow",
-        "qsfc",
-        "ws",
-        "infil", # start of soil diagnostics
-        "shc",
-        "stc",
-        "swp",
-        "soilrn",
-        "tsoil",
-        "soillhf",
-        "soilshf",
-        "hr",
-        "scd",
-        "scms",
-        "sco2",
-        "swc",
-        # "pwc", # return a Tuple
-        "si",
-        "sie",
-        "swu",
-        "lwu",
-        "er",
-        "et",
-        "sr",
-        "rn",
-        "lhf",
-        "shf",
-        "salb",
-    ]
+function get_possible_diagnostics(model::SnowModel)
+    return ["swe", "snd", "snowc"]
 end
-function get_possible_diagnostics(model::LandModel{FT}) where {FT}
-    return [
-        "swa",
-        "sif",
-        "ra",
-        "gs",
-        "trans",
-        "clhf",
-        "cshf",
-        "lwp",
-        # "fa", # return a Tuple
-        "far",
-        "lai",
-        "msf",
-        "rai",
-        "sai",
-        "gpp",
-        "an",
-        "rd",
-        "vcmax25",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "lwn",
-        "swn",
-        "soc",
-        "airp",
-        "rain",
-        "lwd",
-        "swd",
-        "snow",
-        "qsfc",
-        "infil",
-        "shc",
-        "stc",
-        "swp",
-        "soilrn",
-        "tsoil",
-        "soillhf",
-        "soilshf",
-        "hr",
-        "scd",
-        "scms",
-        "ct",
-        "sco2",
-        "swc",
-        # "pwc", # return a Tuple
-        "si",
-        "sie",
-        "swu",
-        "lwu",
-        "er",
-        "et",
-        "sr",
-        "swe",
-        "snd",
-        "rn",
-        "lhf",
-        "shf",
-        "iwc",
-        "snowc",
-        "tair",
-        "precip",
-    ]
-end
-function get_possible_diagnostics(model::BucketModel{FT}) where {FT}
+function get_possible_diagnostics(model::BucketModel)
     return [
         "swa",
         "rn",
@@ -441,60 +350,95 @@ function get_possible_diagnostics(model::BucketModel{FT}) where {FT}
     ]
 end
 
+## Possible diagnostics for integrated models
+"""
+    get_integrated_diagnostics(model, integrated_diagnostics)
+
+Helper function to create a list of diagnostics for an integrated model.
+This combines all diagnostics of component models and any additional diagnostics
+specific to the integrated model, which must be passed in `integrated_diagnostics`.
+"""
+function get_integrated_diagnostics(model, integrated_diagnostics)
+    diagnostics = String[]
+    # Add diagnostics for each component of the integrated model
+    append!(
+        diagnostics,
+        map(
+            component_name ->
+                get_possible_diagnostics(getproperty(model, component_name)),
+            ClimaLand.land_components(model),
+        )...,
+    )
+    # Add diagnostics that are specific to the integrated model
+    append!(diagnostics, integrated_diagnostics)
+    return unique!(diagnostics)
+end
+function get_possible_diagnostics(model::SoilCanopyModel)
+    integrated_diagnostics = ["swa", "swu", "lwu", "rn", "infil"]
+    return get_integrated_diagnostics(model, integrated_diagnostics)
+end
+function get_possible_diagnostics(model::LandModel)
+    integrated_diagnostics =
+        ["swa", "swu", "lwu", "rn", "infil", "iwc", "tair", "precip"]
+    return get_integrated_diagnostics(model, integrated_diagnostics)
+end
+
 """
     get_short_diagnostics(model)
 
 Return a shortened list of highlighted diagnostics for the given model.
 """
-function get_short_diagnostics(model::EnergyHydrology{FT}) where {FT}
-    return get_possible_diagnostics(model)
+function get_short_diagnostics(model::EnergyHydrology)
+    return ["swc", "si", "sie", "tsoil", "et"]
 end
-function get_short_diagnostics(model::CanopyModel{FT}) where {FT}
+function get_short_diagnostics(model::SoilCO2Model)
+    return ["sco2"]
+end
+function get_short_diagnostics(model::CanopyModel)
     return ["gpp", "ct", "lai", "trans", "er", "sif"]
 end
-function get_short_diagnostics(model::SoilCanopyModel{FT}) where {FT}
-    return [
-        "gpp",
-        "ct",
-        "lai",
-        "sco2",
-        "swc",
-        "si",
+function get_short_diagnostics(model::SnowModel)
+    return get_possible_diagnostics(model)
+end
+function get_short_diagnostics(model::SoilCanopyModel)
+    integrated_diagnostics = ["swa", "lwu", "swu"]
+    diagnostics = get_integrated_diagnostics(model, integrated_diagnostics)
+
+    # Add conditional diagnostics based on soil runoff type, since this
+    # isn't done for the soil short diagnostics.
+    add_diagnostics!(
+        diagnostics,
+        model.soil,
+        model.soil.boundary_conditions.top.runoff,
+    )
+    return unique!(diagnostics)
+end
+function get_short_diagnostics(model::LandModel)
+    integrated_diagnostics = [
         "swa",
         "lwu",
-        "et",
-        "er",
-        "sr",
-        "sif",
-    ]
-end
-function get_short_diagnostics(model::LandModel{FT}) where {FT}
-    return [
-        "gpp",
-        "swc",
-        "si",
-        "sie",
         "swu",
-        "lwu",
-        "et",
-        "sr",
-        "ssr",
-        "swe",
         "shf",
-        "lhf",
-        "trans",
-        "msf",
-        "lwp",
-        "tsoil",
-        "lai",
-        "iwc",
         "swd",
         "lwd",
-        "snowc",
         "tair",
         "precip",
+        "lhf",
+        "msf",
+        "lwp",
+        "iwc",
     ]
+    diagnostics = get_integrated_diagnostics(model, integrated_diagnostics)
+
+    # Add conditional diagnostics based on soil runoff type, since this
+    # isn't done for the soil short diagnostics.
+    add_diagnostics!(
+        diagnostics,
+        model.soil,
+        model.soil.boundary_conditions.top.runoff,
+    )
+    return unique!(diagnostics)
 end
-function get_short_diagnostics(model::BucketModel{FT}) where {FT}
+function get_short_diagnostics(model::BucketModel)
     return get_possible_diagnostics(model)
 end
