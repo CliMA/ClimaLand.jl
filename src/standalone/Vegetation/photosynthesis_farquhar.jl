@@ -350,13 +350,6 @@ end
 
 """
     function FarquharParameters(
-        ::Type{FT},
-        is_c3::Union{FT, ClimaCore.Fields.Field};
-        Vcmax25 = FT(5e-5),
-        kwargs...  # For individual parameter overrides
-    )
-
-    function FarquharParameters(
         toml_dict::CP.AbstractTOMLDict,
         is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
         Vcmax25 = FT(5e-5),
@@ -376,17 +369,10 @@ toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.FarquharParameters(toml_dict, 1.0f0; Vcmax25 = 99999999, pc = 444444444)
 ```
 """
-FarquharParameters(
-    ::Type{FT},
-    is_c3::Union{FT, ClimaCore.Fields.Field};
-    kwargs...,
-) where {FT <: AbstractFloat} =
-    FarquharParameters(CP.create_toml_dict(FT), is_c3; kwargs...)
-
 function FarquharParameters(
     toml_dict::CP.AbstractTOMLDict,
     is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
-    Vcmax25 = 5e-5,
+    Vcmax25 = toml_dict["Vcmax25"],
     kwargs...,
 )
     name_map = (;
