@@ -356,34 +356,20 @@ end
 ## For interfacing with ClimaParams
 """
     function SnowParameters(
-        FT,
-        Δt;
-        kwargs...  # For individual parameter overrides
-    )
-
-    function SnowParameters(
         toml_dict::CP.AbstractTOMLDict,
         Δt;
         kwargs...  # For individual parameter overrides
     )
 
-Constructors for the SnowParameters struct. Two variants:
-1. Pass in the float-type and retrieve parameter values from the default TOML dict.
-2. Pass in a TOML dictionary to retrieve parameter values. Possible calls:
+TOML dictionary constructor for the `SnowParameters`` struct.
 ```julia
 Δt = 450.0
-ClimaLand.Canopy.SnowParameters(Float64, Δt) # use the default values for all parameters
-# Kwarg overrides
-ClimaLand.Canopy.SnowParameters(Float64, Δt; ϵ_snow = 0.99)
 # TOML Dictionary:
 import ClimaParams as CP
 toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.SnowParameters(toml_dict, Δt; ϵ_snow = Float32(0.99), Ksat = Float32(1e-4))
 ```
 """
-SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
-    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
-
 function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
     name_map = (;
         :snow_momentum_roughness_length => :z_0m,
@@ -402,7 +388,6 @@ function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
     α_snow = ConstantAlbedoModel(parameters2.α_snow)
     FT = CP.float_type(toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
-    PSE = typeof(earth_param_set)
     return SnowParameters{FT}(
         Δt;
         earth_param_set,
