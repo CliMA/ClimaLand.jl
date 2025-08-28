@@ -57,7 +57,7 @@ time_interpolation_method =
 
 # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
 # If LONGER run, run for 20 years, with the correct forcing each year.
-start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
+start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)+Month(7)
 stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2009)
 Δt = 450.0
 nelements = (101, 15)
@@ -103,8 +103,15 @@ set_ic!(Y, p, t, model) =
         ic_path,
         model,
     )
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model;
+    outdir,
+    diagnostics,
+    set_ic!,
+)
 
 @info "Run: Global Soil Model"
 @info "Resolution: $nelements"

@@ -138,11 +138,11 @@ end
         enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
 
 Enforces the constraint that ϑ_l + θ_i <= ν, by clipping the ice content to be
-90% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
+95% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
 """
 function enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT) where {FT}
-    if ϑ_l + θ_i > FT(0.9) * ν # if we exceed porosity
-        return FT(0.9) * (ν - ϑ_l) # clip ice content to 95% of available pore space
+    if ϑ_l + θ_i > FT(0.95) * ν # if we exceed porosity
+        return FT(0.95) * (ν - ϑ_l) # clip ice content to 95% of available pore space
     else
         return θ_i
     end

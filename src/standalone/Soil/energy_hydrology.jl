@@ -1161,6 +1161,9 @@ function soil_compute_turbulent_fluxes_at_a_point(
     γT_ref::FT,
     earth_param_set::P,
 ) where {FT <: AbstractFloat, P}
+    # Limit these to physical values
+    # In particular, the linear interpolation to get θ_l_sfc
+    # may not respect the residual fraction limit
     θ_l_sfc = max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT)))
     θ_i_sfc = max(θ_i_sfc, FT(0))
     # Parameters
