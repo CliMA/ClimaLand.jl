@@ -33,7 +33,9 @@ if !known_broken
         nelements = (1, 10),
     )
 
-    bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    bucket_atmos, bucket_rad =
+        ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
     τc = FT(1.0)
     α_bareground_func = (coordinate_point) -> 0.2
     α_snow = FT(0.8)
