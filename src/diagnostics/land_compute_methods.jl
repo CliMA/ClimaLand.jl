@@ -49,6 +49,15 @@ macro diagnostic_compute(name, model, compute)
     )
 end
 
+## Helper functions so that we can use the same methods for integrated
+## and standalone models
+
+get_canopy(m::Union{SoilCanopyModel, LandModel}) = m.canopy
+get_canopy(m::CanopyModel) = m
+
+get_soil(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) = m.soil
+get_soil(m::EnergyHydrology) = m
+
 ### Conservation ##
 @diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
 @diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
@@ -101,29 +110,13 @@ function compute_stomatal_conductance!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel},
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
 )
-    conductance_model = land_model.canopy.conductance
-    compute_stomatal_conductance!(
-        out,
-        Y,
-        p,
-        t,
-        land_model.canopy,
-        conductance_model,
-    )
+    canopy = get_canopy(land_model)
+    conductance_model = canopy.conductance
+    compute_stomatal_conductance!(out, Y, p, t, canopy, conductance_model)
 end
 
-function compute_stomatal_conductance!(out, Y, p, t, land_model::CanopyModel)
-    compute_stomatal_conductance!(
-        out,
-        Y,
-        p,
-        t,
-        land_model,
-        land_model.conductance,
-    )
-end
 
 function compute_stomatal_conductance!(
     out,
@@ -201,12 +194,13 @@ function compute_canopy_transpiration!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
-) where {FT}
+    land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
+)
+    canopy = get_canopy(land_model)
     # Convert to a mass flux by multiplying by the density of liquid
     # water
     if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = p.canopy.turbulent_fluxes.transpiration * 1000
         return out
@@ -214,20 +208,6 @@ function compute_canopy_transpiration!(
         @. out = p.canopy.turbulent_fluxes.transpiration * 1000
     end
 end
-
-function compute_canopy_transpiration!(out, Y, p, t, land_model::CanopyModel)
-    # Convert to a mass flux by multiplying by the density of liquid
-    # water
-    if isnothing(out)
-        out = zeros(land_model.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
-        return out
-    else
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
-    end
-end
-
 
 # Canopy - Energy
 @diagnostic_compute "canopy_latent_heat_flux" Union{
@@ -249,29 +229,15 @@ function compute_leaf_water_potential!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel},
+    land_model::Union{CanopyModel, SoilCanopyModel, LandModel},
 )
-    hydraulics = land_model.canopy.hydraulics
+    canopy = get_canopy(land_model)
+    hydraulics = canopy.hydraulics
     n_stem = hydraulics.n_stem
     n_leaf = hydraulics.n_leaf
     n = n_stem + n_leaf
     if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .= p.canopy.hydraulics.ψ.:($n)
-        return out
-    else
-        out .= p.canopy.hydraulics.ψ.:($n)
-    end
-end
-
-function compute_leaf_water_potential!(out, Y, p, t, land_model::CanopyModel)
-    hydraulics = land_model.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    n = n_stem + n_leaf
-    if isnothing(out)
-        out = zeros(land_model.domain.space.surface) # Allocates
+        out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         out .= p.canopy.hydraulics.ψ.:($n)
         return out
@@ -428,10 +394,11 @@ function compute_precip!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
-) where {FT}
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
     if isnothing(out)
-        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        out = zeros(soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = (p.drivers.P_liq + p.drivers.P_snow) * 1000 # density of liquid water (1000kg/m^3)
         return out
@@ -442,7 +409,11 @@ end
 
 ## Soil Module ##
 
-@diagnostic_compute "infiltration" Union{SoilCanopyModel, LandModel} p.soil.infiltration
+@diagnostic_compute "infiltration" Union{
+    EnergyHydrology,
+    SoilCanopyModel,
+    LandModel,
+} p.soil.infiltration
 @diagnostic_compute "soil_hydraulic_conductivity" Union{
     SoilCanopyModel,
     LandModel,
@@ -463,20 +434,25 @@ end
     LandModel,
     EnergyHydrology,
 } p.soil.T
-@diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
+@diagnostic_compute "soil_net_radiation" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.R_n
 
 function compute_10cm_water_mass!(
     out,
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+    land_model::Union{EnergyHydrology{FT}, SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
+    soil = get_soil(land_model)
     ∫Hθdz = p.soil.sfc_scratch
     Hθ = p.soil.sub_sfc_scratch
     z = land_model.soil.domain.fields.z
     depth = FT(-0.1)
-    earth_param_set = land_model.soil.parameters.earth_param_set
+    earth_param_set = soil.parameters.earth_param_set
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     # Convert from volumetric water content to water mass per unit volume using density
@@ -492,7 +468,7 @@ function compute_10cm_water_mass!(
     column_integral_definite!(∫Hdz, H)
 
     if isnothing(out)
-        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        out = zeros(soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = ∫Hθdz / ∫Hdz * FT(0.1)
         return out
@@ -507,8 +483,9 @@ function compute_soil_albedo!(
     t,
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, EnergyHydrology{FT}},
 ) where {FT}
+    soil = get_soil(land_model)
     if isnothing(out)
-        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        out = zeros(soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
         return out
@@ -518,9 +495,21 @@ function compute_soil_albedo!(
 end
 
 # Soil - Turbulent Fluxes
-@diagnostic_compute "soil_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.lhf
-@diagnostic_compute "soil_sensible_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.shf
-@diagnostic_compute "vapor_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
+@diagnostic_compute "soil_latent_heat_flux" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.turbulent_fluxes.lhf
+@diagnostic_compute "soil_sensible_heat_flux" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.turbulent_fluxes.shf
+@diagnostic_compute "vapor_flux" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
 
 # Soil - SoilCO2
 function compute_heterotrophic_respiration!(
@@ -572,23 +561,21 @@ function compute_surface_runoff!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
-) where {FT}
-    return Runoff.get_surface_runoff(
-        land_model.soil.boundary_conditions.top.runoff,
-        Y,
-        p,
-    )
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    return Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p)
 end
 function compute_subsurface_runoff!(
     out,
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
-) where {FT}
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
     return Runoff.get_subsurface_runoff(
-        land_model.soil.boundary_conditions.top.runoff,
+        soil.boundary_conditions.top.runoff,
         Y,
         p,
     )
@@ -849,17 +836,3 @@ end
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
-function compute_surface_runoff!(out, Y, p, t, land_model::EnergyHydrology)
-    return Runoff.get_surface_runoff(
-        land_model.boundary_conditions.top.runoff,
-        Y,
-        p,
-    )
-end
-function compute_subsurface_runoff!(out, Y, p, t, land_model::EnergyHydrology)
-    return Runoff.get_subsurface_runoff(
-        land_model.boundary_conditions.top.runoff,
-        Y,
-        p,
-    )
-end
