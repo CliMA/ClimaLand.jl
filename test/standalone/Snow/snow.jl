@@ -19,7 +19,7 @@ import ClimaLand.Parameters as LP
 
     start_date = DateTime(2005)
     Δt = FT(180.0)
-    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    parameters = SnowParameters(toml_dict, Δt)
     domain = Point(; z_sfc = FT(0))
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
