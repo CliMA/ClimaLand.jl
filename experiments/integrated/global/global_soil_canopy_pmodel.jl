@@ -97,7 +97,7 @@ LAI =
 
 # Construct the P model manually since it is not a default
 photosynthesis = PModel{FT}(canopy_domain, toml_dict)
-conductance = PModelConductance{FT}()
+conductance = PModelConductance{FT}(toml_dict)
 
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,

@@ -176,7 +176,7 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 )
 
 # Set up conductance
-conductance = PModelConductance{FT}()
+conductance = PModelConductance{FT}(toml_dict)
 
 # Set up photosynthesis
 is_c3 = FT(1)

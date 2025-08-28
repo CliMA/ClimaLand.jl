@@ -485,14 +485,19 @@ function MedlynConductanceModel{FT}(
 end
 
 """
-    PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
+    PModelConductance{FT}(toml_dict;
+                          Drel = toml_dict["Drel"],
+                        ) where {FT <: AbstractFloat}
 
 Creates a PModelConductance using default parameters of type FT.
 
 The following default parameter is used:
 - Drel = FT(1.6) (unitless) - relative diffusivity of H2O to CO2 (Bonan Table A.3)
 """
-function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
+function PModelConductance{FT}(
+    toml_dict::CP.ParamDict;
+    Drel = toml_dict["Drel"],
+) where {FT <: AbstractFloat}
     cond_params = PModelConductanceParameters(Drel = Drel)
     return PModelConductance{FT}(cond_params)
 end
