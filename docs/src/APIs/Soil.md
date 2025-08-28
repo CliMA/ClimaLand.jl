@@ -3,18 +3,94 @@
 ```@meta
 CurrentModule = ClimaLand.Soil
 ```
+
 ## Soil Models
 
 ```@docs
 ClimaLand.Soil.AbstractSoilModel
 ClimaLand.Soil.RichardsModel
+ClimaLand.Soil.RichardsModel{FT}(;
+    parameters::RichardsParameters,
+    domain::D,
+    boundary_conditions::NamedTuple,
+    sources::Tuple,
+    lateral_flow::Bool = false,
+) where {FT, D}
+ClimaLand.Soil.RichardsModel{FT}(
+    domain,
+    forcing;
+    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
+        f_over = FT(3.28), # extract from EPS
+        R_sb = FT(1.484e-4 / 1000),# extract from EPS
+        f_max = topmodel_fmax(domain.space.surface, FT),
+    ),
+    retention_parameters = soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+) where {FT}
 ClimaLand.Soil.EnergyHydrology
+ClimaLand.Soil.EnergyHydrology{FT}(;
+    parameters::EnergyHydrologyParameters{FT, PSE},
+    domain::D,
+    boundary_conditions::NamedTuple,
+    sources::Tuple,
+    lateral_flow::Bool = false,
+) where {FT, D, PSE}
+ClimaLand.Soil.EnergyHydrology{FT}(
+    domain,
+    forcing,
+    toml_dict::CP.AbstractTOMLDict;
+    prognostic_land_components = (:soil,),
+    albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
+        clm_soil_albedo_parameters(domain.space.surface)...,
+    ),
+    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
+        toml_dict,
+        f_max = topmodel_fmax(domain.space.surface, FT),
+    ),
+    retention_parameters = soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    composition_parameters = soil_composition_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
+    z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
+    z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
+    emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
+    additional_sources = (),
+) where {FT <: AbstractFloat}
 ```
+
 ## Soil Parameter Structs
 
 ```@docs
 ClimaLand.Soil.RichardsParameters
+ClimaLand.Soil.RichardsParameters(;
+    hydrology_cm::C,
+    ν::F,
+    K_sat::F,
+    S_s::F,
+    θ_r::F,
+) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
 ClimaLand.Soil.EnergyHydrologyParameters
+ClimaLand.Soil.EnergyHydrologyParameters(
+    ::Type{FT};
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm,
+    K_sat,
+    S_s,
+    θ_r,
+    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
+    kwargs...,
+) where {FT <: AbstractFloat}
 ```
 
 ## Soil Hydrology Parameterizations

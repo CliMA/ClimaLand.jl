@@ -8,8 +8,15 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.MedlynConductanceModel
+ClimaLand.Canopy.MedlynConductanceModel{FT}(
+    domain;
+    g1 = clm_medlyn_g1(domain.space.surface),
+    g0::FT = LP.get_default_parameter(FT, :min_stomatal_conductance),
+) where {FT <: AbstractFloat}
 ClimaLand.Canopy.MedlynConductanceParameters
+ClimaLand.Canopy.MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}
 ClimaLand.Canopy.PModelConductance
+ClimaLand.Canopy.PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
 ClimaLand.Canopy.PModelConductanceParameters
 ```
 
