@@ -616,26 +616,35 @@ function FrequencyBasedCallback(
     save_positions = (true, true), # this preserves the old behavior, but I'm not sure if
     # this is a good default
 )
-    # Normalize frequency to a Dates.Period
+    # Normalize floating point frequency to a Dates.Period
     frequency_period =
         frequency isa AbstractFloat ? Dates.Millisecond(1000 * frequency) :
         frequency
 
-    schedule = EveryCalendarDtSchedule(
-        frequency_period;
-        start_date,
-        date_last = start_date,
-    )
-
-    if !isnothing(dt)
-        dt_period =
-            typeof(dt) <: typeof(frequency_period) ? dt :
-            Dates.Millisecond(1000float(dt))
+    dt_period = if typeof(dt) <: typeof(frequency_period) || isnothing(dt)
+        dt
+    else
+        Dates.Millisecond(1000float(dt))
+    end
+    # DivisorSchedule has less overhead than EveryCalendarDtSchedule
+    use_divisor_schedule = false
+    if !isnothing(dt_period)
         if !isdivisible(frequency_period, dt_period)
             @warn "Callback frequency ($frequency_period) is not an integer multiple of dt $dt_period"
+        else
+            use_divisor_schedule = true
         end
-        # TODO: we can make a more optimal scheduler 
     end
+
+    schedule =
+        use_divisor_schedule ?
+        DivisorSchedule(Int(frequency_period / dt_period)) :
+        EveryCalendarDtSchedule(
+            frequency_period;
+            start_date,
+            date_last = start_date,
+        )
+
 
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
@@ -653,13 +662,18 @@ function FrequencyBasedCallback(
     save_positions = (true, true), # this preserves the old behavior, but I'm not sure if
     # this is a good default
 )
-    schedule = EveryDtSchedule(frequency)
+    # DivisorSchedule has less overhead than EveryCalendarDtSchedule
+    use_divisor_schedule = false
     if !isnothing(dt)
         if !isdivisible(frequency, dt)
             @warn "Callback frequency ($(frequency)) is not an integer multiple of dt $(dt)"
+        else
+            use_divisor_schedule = true
         end
     end
-
+    schedule =
+        use_divisor_schedule ? DivisorSchedule(Int(frequency / dt)) :
+        EveryDtSchedule(frequency)
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
