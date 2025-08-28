@@ -265,6 +265,7 @@ for FT in (Float32, Float64)
                     photosynthesis = photosynthesis_model,
                     conductance = stomatal_model,
                     hydraulics = plant_hydraulics,
+                    soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                     boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                         atmos,
                         radiation,
@@ -516,6 +517,7 @@ for FT in (Float32, Float64)
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
             hydraulics = plant_hydraulics,
+            soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,
@@ -533,6 +535,7 @@ for FT in (Float32, Float64)
         end
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, FT(0.0))
+        @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1))
         @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
         @test all(parent(p.canopy.turbulent_fluxes.transpiration) .≈ FT(0.0))

@@ -124,8 +124,8 @@ for FT in (Float32, Float64)
         @test p.bucket.α_sfc ==
               FT.(
             α_bareground_func.(
-                ClimaCore.Fields.coordinate_field(surface_space)
-            )
+                ClimaCore.Fields.coordinate_field(surface_space),
+            ),
         )
         # Test that evaporation is zero
         @test all(parent(p.bucket.turbulent_fluxes.vapor_flux) .== FT(0.0))

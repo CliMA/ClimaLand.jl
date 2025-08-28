@@ -14,6 +14,46 @@ import ClimaUtilities.TimeManager: ITime, date
 export FTfromY, call_count_nans_state
 
 """
+    check_land_equality(field1, field2)
+
+Check that two fields are equal for masked domains;
+this assumes that the underlying space of field1 is the same
+as for field2, and this specific test is only required if
+the two fields have masked spaces, where the masked values
+are uninitialized. In this case, the masked values may be
+anything and a standard equality field1 == field2 will fail.
+
+This allocates two fields equal in size to field1/field2.
+"""
+function check_land_equality(
+    field1::ClimaCore.Fields.Field,
+    field2::ClimaCore.Fields.Field,
+)
+    tmp1 = ClimaCore.Fields.zeros(axes(field1)) # inherits the mask
+    tmp2 = ClimaCore.Fields.zeros(axes(field2)) # inherits the mask
+    FT = eltype(tmp1)
+    fill!(ClimaCore.Fields.field_values(tmp1), FT(0)) # fills all values to 0
+    fill!(ClimaCore.Fields.field_values(tmp2), FT(0)) # fills all values to 0
+    tmp1 .= field1 # only sets unmasked values/mask aware operation
+    tmp2 .= field2 # only sets unmasked values/mask aware operation
+    @assert tmp1 == tmp2 # checks all values
+end
+
+"""
+    check_land_equality(f1::Union{FT, Vector{FT}}, f2::Union{FT, Vector{FT}}) 
+        where {FT <: AbstractFloat}
+
+Check that two floats or vectors of floats are equal.
+"""
+function check_land_equality(
+    f1::Union{FT, Vector{FT}},
+    f2::Union{FT, Vector{FT}},
+) where {FT <: AbstractFloat}
+    @assert f1 == f2 # checks all values
+end
+
+
+"""
      heaviside(x::FT)::FT where {FT}
 
 Computes the heaviside function H(x) = 1 (x ≥0), 0 (x < 0)

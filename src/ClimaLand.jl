@@ -410,7 +410,8 @@ import .Canopy:
     ground_albedo_PAR,
     ground_albedo_NIR,
     canopy_radiant_energy_fluxes!,
-    root_energy_flux_per_ground_area!
+    root_energy_flux_per_ground_area!,
+    update_piecewise_soil_moisture_stress!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")

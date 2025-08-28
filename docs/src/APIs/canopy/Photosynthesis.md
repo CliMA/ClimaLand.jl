@@ -31,7 +31,6 @@ ClimaLand.Canopy.light_assimilation_farquhar
 ClimaLand.Canopy.max_electron_transport_farquhar
 ClimaLand.Canopy.electron_transport_farquhar
 ClimaLand.Canopy.net_photosynthesis
-ClimaLand.Canopy.moisture_stress
 ClimaLand.Canopy.dark_respiration_farquhar
 ClimaLand.Canopy.MM_Kc
 ClimaLand.Canopy.MM_Ko

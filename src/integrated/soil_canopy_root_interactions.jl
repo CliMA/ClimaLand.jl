@@ -164,3 +164,46 @@ function ClimaLand.source!(
     ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
     @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
 end
+
+"""
+    update_piecewise_soil_moisture_stress!(ground::PrognosticGroundConditions, p, Y, model, canopy)
+
+Updates the soil moisture stress using the piecewise model for a
+prognostic soil model, where θ is vertically resolved and prognostic.
+"""
+function update_piecewise_soil_moisture_stress!(
+    ground::PrognosticGroundConditions,
+    p,
+    Y,
+    model,
+    canopy,
+)
+    θ_l = p.soil.θ_l
+    (; θ_high, θ_low, c) = model
+    z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
+    # normalized distribution for root density
+    norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
+    # for soilcanopy and land models.
+    root_dist = @. lazy(
+        Canopy.PlantHydraulics.root_distribution(
+            z,
+            canopy.hydraulics.parameters.rooting_depth,
+        ),
+    )
+    # compute the root zone-averaged βm
+    ClimaCore.Operators.column_integral_definite!(norm, root_dist)
+    # per soil element
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l))
+    βm_root_distribution = @. lazy(
+        βm * Canopy.PlantHydraulics.root_distribution(
+            z,
+            canopy.hydraulics.parameters.rooting_depth,
+        ) / norm,
+    )
+
+    # compute the root zone-averaged βm
+    ClimaCore.Operators.column_integral_definite!(
+        p.canopy.soil_moisture_stress.βm,
+        βm_root_distribution,
+    )
+end
