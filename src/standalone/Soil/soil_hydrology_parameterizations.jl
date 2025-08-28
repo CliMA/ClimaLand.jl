@@ -22,6 +22,7 @@ simpler interface.
 function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
     ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
     ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+
     if ϑ_l_safe < ν_eff_safe
         θ_l = ϑ_l_safe
     else
@@ -36,8 +37,6 @@ end
 A point-wise function computing the effective saturation given the
 effective porosity, augmented liquid fraction, and residual water
 fraction as input.
-
-The output is guaranteed to lie in (0, 1].
 
 For Richards model, or any other parameterization where ice is not
 relevant, ν_eff = ν; and the clipping below is not required,
@@ -118,10 +117,13 @@ function pressure_head(
     # effective saturation clips ν_eff and ϑ_l
     # as needed so that S_l ∈ (0,1].
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else
-        ψ = (ϑ_l - ν_eff) / S_s
+        ψ = (ϑ_l_safe - ν_eff_safe) / S_s
     end
     return ψ
 end
@@ -281,6 +283,8 @@ function pressure_head(
     # effective saturation clips ν_eff and ϑ_l
     # as needed so that S_l ∈ (0,1].
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else

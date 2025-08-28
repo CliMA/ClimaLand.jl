@@ -58,7 +58,7 @@ time_interpolation_method =
 # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
 # If LONGER run, run for 20 years, with the correct forcing each year.
 start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
-stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
+stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2009)
 Δt = 450.0
 nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements)
@@ -96,7 +96,13 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation_period = Day(10),
 )
 ic_path = "/net/sampo/data1/cchristo/clima/WeatherQuest/processing/data/era5_land_processed_20250701_1200.nc"
-set_ic!(Y,p,t,model) = set_soil_initial_conditions_from_temperature_and_total_water!(Y, domain.space.subsurface, ic_path, model)
+set_ic!(Y, p, t, model) =
+    ClimaLand.Simulations.set_soil_initial_conditions_from_temperature_and_total_water!(
+        Y,
+        domain.space.subsurface,
+        ic_path,
+        model,
+    )
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
 
@@ -107,7 +113,7 @@ simulation =
 @info "Stop Date: $stop_date"
 ClimaLand.Simulations.solve!(simulation)
 
-short_names = ["swc", "sie", "si", "et"]
+short_names = ["swc", "sie", "si", "et", "tsoil"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
 LandSimVis.make_heatmaps(
     simulation;

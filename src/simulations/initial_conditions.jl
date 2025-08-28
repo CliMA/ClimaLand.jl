@@ -138,11 +138,11 @@ end
         enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
 
 Enforces the constraint that ϑ_l + θ_i <= ν, by clipping the ice content to be
-99% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
+90% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
 """
 function enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT) where {FT}
-    if ϑ_l + θ_i > ν # if we exceed porosity
-        return FT(0.95) * (ν - ϑ_l) # clip ice content to 95% of available pore space
+    if ϑ_l + θ_i > FT(0.9) * ν # if we exceed porosity
+        return FT(0.9) * (ν - ϑ_l) # clip ice content to 95% of available pore space
     else
         return θ_i
     end
@@ -331,8 +331,8 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
     subsurface_space,
     soil_ic_path,
     soil;
-    water_varname = "swc",
-    temp_varname = "tsoil",
+    water_varname = "swvl",
+    temp_varname = "stl",
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
     interpolation_method = interpolation_method,
@@ -344,22 +344,27 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-
+    raw_data = NCDataset(soil_ic_path)
+    raw_temp_data = raw_data[temp_varname][:]
+    FT = eltype(Y.soil.ϑ_l)
+    T_bounds = FT.(extrema(raw_temp_data[raw_temp_data .> 0]))
+    close(raw_data)
     temperature = SpaceVaryingInput(
         soil_ic_path,
         temp_varname,
         subsurface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
-   )
-   (;θ_r, ν, ρc_ds, earth_param_set) = soil.parameters
-   function liquid_soil_water(twc, T, θ_r, ν)
-       if T > 273.15
-           return twc
-       else
-           return θ_r
-       end
-   end
+    )
+    temperature .= clip_to_bounds.(temperature, T_bounds[1], T_bounds[2])
+    (; θ_r, ν, ρc_ds, earth_param_set) = soil.parameters
+    function liquid_soil_water(twc, T, θ_r, ν)
+        if T > 273.15
+            return twc
+        else
+            return θ_r
+        end
+    end
 
     Y.soil.ϑ_l .= liquid_soil_water.(total_water_content, temperature, θ_r, ν)
     Y.soil.θ_i .= total_water_content .- Y.soil.ϑ_l
