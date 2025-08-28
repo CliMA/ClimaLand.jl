@@ -65,19 +65,6 @@ insolation_parameters(ps::ALP) = ps.insol_params
 
 # interfacing with ClimaParams
 """
-    LandParameters(::Type{FT})
-
-A constructor for the ClimaLand `earth_param_set` (LandParameters)
-struct which contains the default values defined in ClimaParamsm
-with type FT (Float32, Float64)
-
-As these parameters are constants and not for calibrating, there
-is no option to change them individually.
-"""
-LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
-    LandParameters(CP.create_toml_dict(FT))
-
-"""
     LandParameters(toml_dict::CP.AbstractTOMLDict)
 
 A constructor from `toml_dict` for the ClimaLand `earth_param_set`

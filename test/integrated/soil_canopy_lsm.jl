@@ -17,7 +17,7 @@ for FT in (Float32, Float64)
     )
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
         prognostic_land_components = (:canopy, :soil, :soilco2)
 
@@ -87,7 +87,7 @@ for FT in (Float32, Float64)
         hcm = vanGenuchten{FT}(; α = FT(0), n = FT(0))
         # Radiation
         start_date = DateTime(2005)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)

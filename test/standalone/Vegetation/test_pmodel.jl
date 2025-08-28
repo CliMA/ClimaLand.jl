@@ -238,7 +238,10 @@ end
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 
     # Dummy atmospheric and radiation forcing
-    atmos, radiation = prescribed_analytic_forcing(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos = atmos, radiation = radiation, ground = ground)
     LAI = TimeVaryingInput(t -> FT(0.0))

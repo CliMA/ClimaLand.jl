@@ -1412,7 +1412,7 @@ end
         sif = Canopy.Lee2015SIFModel{FT}()
 
         # Use simple analytic forcing for atmosphere and radiation
-        atmos, radiation = prescribed_analytic_forcing(FT)
+        atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         soil_driver = PrescribedGroundConditions{FT}()
         boundary_conditions =
             Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
@@ -1518,9 +1518,13 @@ end
             nelements = 10,
         )
 
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+
         # Create a simple functions for LAI and forcings
         LAI = TimeVaryingInput(t -> FT(8))
-        atmos, radiation = prescribed_analytic_forcing(FT)
+        atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
         toml_dict = ClimaLand.Parameters.create_toml_dict(
