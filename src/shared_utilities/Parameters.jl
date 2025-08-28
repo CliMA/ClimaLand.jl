@@ -109,7 +109,7 @@ function LandParameters(toml_dict::CP.AbstractTOMLDict)
         :diffusivity_of_water_vapor => :D_vapor,
         :isobaric_specific_heat_liquid => :cp_l,
         :latent_heat_vaporization_at_reference => :LH_v0,
-        :gas_constant => :gas_constant,
+        :universal_gas_constant => :gas_constant,
         :thermal_conductivity_of_air => :K_therm,
         :gravitational_acceleration => :grav,
         :stefan_boltzmann_constant => :Stefan,

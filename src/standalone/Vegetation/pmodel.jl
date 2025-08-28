@@ -139,7 +139,7 @@ function PModelConstants{FT}(;
 ) where {FT <: AbstractFloat}
     # Note: physical constants are not exposed to the user
     return PModelConstants{FT}(
-        LP.get_default_parameter(FT, :gas_constant),
+        LP.get_default_parameter(FT, :universal_gas_constant),
         Kc25,
         Ko25,
         LP.get_default_parameter(FT, :kelvin_25C),
