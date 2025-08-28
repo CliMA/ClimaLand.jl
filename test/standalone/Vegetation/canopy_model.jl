@@ -62,7 +62,8 @@ import ClimaParams
                 α_NIR_leaf,
                 G_Function,
             )
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
+            photosynthesis_params =
+                FarquharParameters(toml_dict, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -597,7 +598,8 @@ end
                 α_NIR_leaf,
                 G_Function,
             )
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
+            photosynthesis_params =
+                FarquharParameters(toml_dict, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -842,7 +844,7 @@ end
         Vcmax25 = FT(9e-5)
         is_c3 = FT(1)
         RTparams = BeerLambertParameters(toml_dict)
-        photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
+        photosynthesis_params = FarquharParameters(toml_dict, is_c3; Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -1181,7 +1183,8 @@ end
                 τ_NIR_leaf,
                 G_Function,
             )
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
+            photosynthesis_params =
+                FarquharParameters(toml_dict, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)

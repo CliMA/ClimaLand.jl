@@ -82,7 +82,7 @@ for FT in (Float32, Float64)
     G_Function = ConstantGFunction(ld)
     RTparams =
         BeerLambertParameters(toml_dict; α_PAR_leaf, α_NIR_leaf, G_Function)
-    photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
+    photosynthesis_params = FarquharParameters(toml_dict, is_c3; Vcmax25)
     stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
     stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
     photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
