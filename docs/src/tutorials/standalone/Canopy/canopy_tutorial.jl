@@ -136,7 +136,8 @@ forcing = (; atmos, radiation, ground);
 
 # Now we read in time-varying LAI from a global MODIS dataset.
 surface_space = domain.space.surface;
-LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date);
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date);
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 

@@ -179,7 +179,8 @@ photosynthesis = FarquharModel{FT}(surface_domain; photosynthesis_parameters)
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
-LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot

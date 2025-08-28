@@ -97,7 +97,8 @@ forcing = (; atmos, radiation, ground);
 
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
-LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Overwrite energy parameter for stability
 energy = BigLeafEnergyModel{FT}(; ac_canopy = FT(1e3))
