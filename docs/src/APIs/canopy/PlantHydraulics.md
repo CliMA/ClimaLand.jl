@@ -17,7 +17,6 @@ ClimaLand.PlantHydraulics.Weibull
 ClimaLand.PlantHydraulics.LinearRetentionCurve
 ClimaLand.PlantHydraulics.PrescribedSiteAreaIndex
 ClimaLand.PlantHydraulics.AbstractTranspiration
-ClimaLand.PlantHydraulics.PrecribedTranspiration
 ClimaLand.PlantHydraulics.DiagnosticTranspiration
 ```
 
