@@ -25,7 +25,10 @@ const FT = Float64;
     context = ClimaComms.context()
     ClimaComms.init(context)
 
-    earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    earth_param_set = LP.LandParameters(toml_dict)
     radius = FT(6378.1e3)
     depth = FT(50)
     domain = ClimaLand.Domains.SphericalShell(;

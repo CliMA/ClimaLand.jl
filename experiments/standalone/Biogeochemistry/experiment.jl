@@ -20,7 +20,10 @@ tf = Float64(10000)
 dt = Float64(10)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     # Make soil model args
     ν = FT(0.556)
@@ -33,7 +36,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     soil_ps = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -72,7 +75,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Make biogeochemistry model args
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
     C = FT(100)
 
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
@@ -113,6 +116,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Create integrated model instance
     land_args = (atmos = atmos, soil_organic_carbon = Csom)
     model = LandSoilBiogeochemistry{FT}(;
+        toml_dict = toml_dict,
         land_args = land_args,
         soil_args = soil_args,
         soilco2_args = soilco2_args,

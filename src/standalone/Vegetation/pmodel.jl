@@ -112,37 +112,58 @@ Base.broadcastable(x::PModelParameters) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
 
 """
-    PModelConstants(FT)
+    PModelConstants(toml_dict::CP.AbstractTOMLDict;
+                    Kc25 = toml_dict["pmodel_Kc25"],
+                    Ko25 = toml_dict["pmodel_Ko25"],
+                    ΔHkc = toml_dict["pmodel_ΔHkc"],
+                    ΔHko = toml_dict["pmodel_ΔHko"],
+                    ΔHΓstar = toml_dict["pmodel_ΔHΓstar"],
+                    Γstar25 = toml_dict["pmodel_Γstar25"],
+                    Ha_Vcmax = toml_dict["pmodel_Ha_Vcmax"],
+                    Hd_Vcmax = toml_dict["pmodel_Hd_Vcmax"],
+                    aS_Vcmax = toml_dict["pmodel_aS_Vcmax"],
+                    bS_Vcmax = toml_dict["pmodel_bS_Vcmax"],
+                    Ha_Jmax = toml_dict["pmodel_Ha_Jmax"],
+                    Hd_Jmax = toml_dict["pmodel_Hd_Jmax"],
+                    aS_Jmax = toml_dict["pmodel_aS_Jmax"],
+                    bS_Jmax = toml_dict["pmodel_bS_Jmax"],
+                    oi = toml_dict["pmodel_oi"],
+                    aRd = toml_dict["pmodel_aRd"],
+                    bRd = toml_dict["pmodel_bRd"],
+                    fC3 = toml_dict["pmodel_fC3"],
+                )
 
 Creates a `PModelConstants` object with default values for the P-model constants.
 See Stocker et al. (2020) Table A2 and references within for more information.
 """
-function PModelConstants{FT}(;
-    Kc25 = FT(39.97),
-    Ko25 = FT(27480),
-    ΔHkc = FT(79430),
-    ΔHko = FT(36380),
-    ΔHΓstar = FT(37830),
-    Γstar25 = FT(4.332),
-    Ha_Vcmax = FT(71513),
-    Hd_Vcmax = FT(200000),
-    aS_Vcmax = FT(668.39),
-    bS_Vcmax = FT(1.07),
-    Ha_Jmax = FT(49884),
-    Hd_Jmax = FT(200000),
-    aS_Jmax = FT(659.70),
-    bS_Jmax = FT(0.75),
-    oi = FT(0.2095),
-    aRd = FT(0.1012),
-    bRd = FT(-0.0005),
-    fC3 = FT(0.015),
-) where {FT <: AbstractFloat}
+function PModelConstants(
+    toml_dict::CP.AbstractTOMLDict;
+    Kc25 = toml_dict["pmodel_Kc25"],
+    Ko25 = toml_dict["pmodel_Ko25"],
+    ΔHkc = toml_dict["pmodel_ΔHkc"],
+    ΔHko = toml_dict["pmodel_ΔHko"],
+    ΔHΓstar = toml_dict["pmodel_ΔHΓstar"],
+    Γstar25 = toml_dict["pmodel_Γstar25"],
+    Ha_Vcmax = toml_dict["pmodel_Ha_Vcmax"],
+    Hd_Vcmax = toml_dict["pmodel_Hd_Vcmax"],
+    aS_Vcmax = toml_dict["pmodel_aS_Vcmax"],
+    bS_Vcmax = toml_dict["pmodel_bS_Vcmax"],
+    Ha_Jmax = toml_dict["pmodel_Ha_Jmax"],
+    Hd_Jmax = toml_dict["pmodel_Hd_Jmax"],
+    aS_Jmax = toml_dict["pmodel_aS_Jmax"],
+    bS_Jmax = toml_dict["pmodel_bS_Jmax"],
+    oi = toml_dict["pmodel_oi"],
+    aRd = toml_dict["pmodel_aRd"],
+    bRd = toml_dict["pmodel_bRd"],
+    fC3 = toml_dict["pmodel_fC3"],
+)
     # Note: physical constants are not exposed to the user
+    FT = CP.float_type(toml_dict)
     return PModelConstants{FT}(
-        LP.get_default_parameter(FT, :universal_gas_constant),
+        toml_dict["universal_gas_constant"],
         Kc25,
         Ko25,
-        LP.get_default_parameter(FT, :kelvin_25C),
+        toml_dict["kelvin_25C"],
         ΔHkc,
         ΔHko,
         FT(1.6),
@@ -161,10 +182,10 @@ function PModelConstants{FT}(;
         aRd,
         bRd,
         fC3,
-        LP.get_default_parameter(FT, :planck_constant),
-        LP.get_default_parameter(FT, :light_speed),
-        LP.get_default_parameter(FT, :avogadro_constant),
-        LP.get_default_parameter(FT, :density_liquid_water),
+        toml_dict["planck_constant"],
+        toml_dict["light_speed"],
+        toml_dict["avogadro_constant"],
+        toml_dict["density_liquid_water"],
     )
 end
 
@@ -205,8 +226,9 @@ parameters with considerable uncertainty. PModelConstants is constructed by defa
 default values, but if you know what you are doing, you can override with your own constants.
 """
 function PModel{FT}(
+    toml_dict::CP.AbstractTOMLDict,
     parameters::PModelParameters{FT},
-    constants::PModelConstants{FT} = PModelConstants{FT}(),
+    constants::PModelConstants{FT} = PModelConstants(toml_dict),
 ) where {FT <: AbstractFloat}
     return PModel{FT, typeof(parameters), typeof(constants)}(
         parameters,

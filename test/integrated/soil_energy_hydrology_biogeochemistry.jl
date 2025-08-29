@@ -14,7 +14,10 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil respiration test set, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Make soil model args
         ν = FT(0.556)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -28,7 +31,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.0)
 
         soil_ps = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -67,7 +70,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
 
-        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
         C = FT(4)
         co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
@@ -110,6 +113,7 @@ for FT in (Float32, Float64)
             land_args = land_args,
             soil_args = soil_args,
             soilco2_args = soilco2_args,
+            toml_dict = toml_dict,
         )
         @test ClimaComms.context(model) == ClimaComms.context()
         @test ClimaComms.device(model) == ClimaComms.device()
@@ -173,7 +177,10 @@ for FT in (Float32, Float64)
         )
     end
     @testset "PrognosticMet, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         zmax = FT(0)
         zmin = FT(-1)
         nelems = 10
@@ -200,7 +207,7 @@ for FT in (Float32, Float64)
 
 
         soil_ps_col = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -227,7 +234,7 @@ for FT in (Float32, Float64)
         θ_r_field = θ_r .+ zero_field
 
         soil_ps_box = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν = ν_field,
             ν_ss_om = ν_ss_om_field,
             ν_ss_quartz = ν_ss_quartz_field,

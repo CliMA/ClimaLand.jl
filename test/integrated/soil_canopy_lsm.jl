@@ -11,15 +11,14 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
 for FT in (Float32, Float64)
+    toml_dict = ClimaLand.Parameters.create_toml_dict(
+        FT,
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
+    )
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
-        # earth_param_set = LP.LandParameters(FT)
-        toml_dict = ClimaLand.Parameters.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
         prognostic_land_components = (:canopy, :soil, :soilco2)
 
         # Soil model
@@ -41,7 +40,8 @@ for FT in (Float32, Float64)
             soil_organic_carbon,
             atmos,
         )
-        soilco2 = Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
+        soilco2 =
+            Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers, toml_dict)
 
         # Canopy model
         canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
@@ -71,7 +71,10 @@ for FT in (Float32, Float64)
         PAR_albedo = FT(0.2)
         albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(; PAR_albedo, NIR_albedo)
         # setup SoilCanopyModel with dummy params
-        earth_param_set = LP.LandParameters(FT)
+        default_params_filepath =
+            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        earth_param_set = LP.LandParameters(toml_dict)
         radius = FT(6378.1e3)
         depth = FT(50)
         nelements = (50, 10)
@@ -84,7 +87,7 @@ for FT in (Float32, Float64)
         hcm = vanGenuchten{FT}(; α = FT(0), n = FT(0))
         # Radiation
         start_date = DateTime(2005)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)
@@ -96,7 +99,7 @@ for FT in (Float32, Float64)
             ),
         )
         soil_params = ClimaLand.Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν = FT(0.1),
             ν_ss_om = FT(0.01),
             ν_ss_quartz = FT(0.01),
@@ -112,7 +115,7 @@ for FT in (Float32, Float64)
         )
         soil_args = (domain = domain, parameters = soil_params)
 
-        soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+        soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
         Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
             TimeVaryingInput((t) -> 5),
         )
@@ -127,10 +130,10 @@ for FT in (Float32, Float64)
             energy = Canopy.BigLeafEnergyModel{FT},
         )
         autotrophic_respiration_args =
-            (; parameters = Canopy.AutotrophicRespirationParameters(FT))
+            (; parameters = Canopy.AutotrophicRespirationParameters(toml_dict))
         radiative_transfer_args = (;
             parameters = Canopy.TwoStreamParameters(
-                FT;
+                toml_dict;
                 Ω = FT(0),
                 α_PAR_leaf = FT(0),
                 τ_PAR_leaf = FT(0),
@@ -138,10 +141,18 @@ for FT in (Float32, Float64)
                 τ_NIR_leaf = FT(0),
             )
         )
-        conductance_args =
-            (; parameters = Canopy.MedlynConductanceParameters(FT; g1 = FT(0)))
+        conductance_args = (;
+            parameters = Canopy.MedlynConductanceParameters(
+                toml_dict;
+                g1 = FT(0),
+            )
+        )
         photosynthesis_args = (;
-            parameters = Canopy.FarquharParameters(FT, FT(0); Vcmax25 = FT(0))
+            parameters = Canopy.FarquharParameters(
+                toml_dict,
+                FT(0);
+                Vcmax25 = FT(0),
+            )
         )
         ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
             TimeVaryingInput(identity),
@@ -206,6 +217,7 @@ for FT in (Float32, Float64)
             soil_organic_carbon = Csom,
         )
         model = SoilCanopyModel{FT}(;
+            toml_dict = toml_dict,
             soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT},
             soilco2_args = soilco2_args,
             land_args = land_input,

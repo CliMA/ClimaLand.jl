@@ -12,7 +12,10 @@ using Dates
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
-    earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    earth_param_set = LP.LandParameters(toml_dict)
     pa = ClimaLand.PrescribedAtmosphere(
         nothing,
         nothing,
@@ -105,7 +108,10 @@ end
 end
 
 @testset "Driver update functions" begin
-    earth_param_set = LP.LandParameters(FT)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    earth_param_set = LP.LandParameters(toml_dict)
     f = TimeVaryingInput((t) -> 10.0)
     pa = ClimaLand.PrescribedAtmosphere(
         f,
@@ -203,6 +209,9 @@ end
 end
 
 @testset "CoupledRadiativeFluxes" begin
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
     start_date = DateTime(Date(2020, 6, 15), Time(12, 0, 0))
     domain = ClimaLand.Domains.HybridBox(;
         xlim = FT.((0, 9)),
@@ -224,6 +233,7 @@ end
         start_date;
         latitude = coords.surface.lat,
         longitude = coords.surface.long,
+        toml_dict,
     )
     p = (; drivers = ClimaLand.initialize_drivers((crf,), coords))
     update_cosθs_only = ClimaLand.make_update_drivers((crf,))
