@@ -52,10 +52,22 @@ to ensure all of our source code is compatible with those setups.
 
 ### Formatting check
 
-The `JuliaFormatter` test checks if the PR is correctly formatted according
-to `.dev/climaformat.jl`. To ensure that this is the case, we recommend running
-`julia --project=.dev .dev/climaformat.jl` on each PR before requresting review.
-This command will apply the formatter and any changes it detects are necessary.
+The `JuliaFormatter` test checks if the PR is correctly formatted according to
+the project's style guidelines. The previous `.dev/climaformat.jl` script has
+been discontinued in favor of using the JuliaFormatter package directly.
+
+To format your code, first add JuliaFormatter to your base environment:
+
+```sh
+julia -e 'using Pkg; Pkg.add("JuliaFormatter")'
+```
+
+Then, in a Julia REPL, run:
+
+```julia
+using JuliaFormatter; format(".")
+```
+
 
 ### Documentation
 
