@@ -32,6 +32,11 @@ end
 
 Base.eltype(::SIFParameters{FT}) where {FT} = FT
 
+"""
+    Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
+
+`Lee2015SIFModel` struct.
+"""
 struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
     parameters::SP
     function Lee2015SIFModel{FT}() where {FT}

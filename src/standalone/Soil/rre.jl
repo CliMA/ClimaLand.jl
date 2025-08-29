@@ -20,6 +20,17 @@ struct RichardsParameters{
     θ_r::F
 end
 
+"""
+    RichardsParameters(;
+        hydrology_cm::C,
+        ν::F,
+        K_sat::F,
+        S_s::F,
+        θ_r::F,
+    ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
+
+Construct a `RichardsParameters`.
+"""
 function RichardsParameters(;
     hydrology_cm::C,
     ν::F,
