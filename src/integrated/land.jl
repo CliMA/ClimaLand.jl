@@ -276,7 +276,7 @@ end
             Δt;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         ),
-   ) where {FT}
+    ) where {FT}
 
 A convenience constructor for setting up the default LandModel,
 where all the parameterizations and parameter values are set to default values
