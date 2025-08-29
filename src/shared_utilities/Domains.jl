@@ -154,7 +154,9 @@ end
     Column(;
         zlim::Tuple{FT, FT},
         nelements::Int,
-        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing) where {FT}
+        device = ClimaComms.device(),
+        longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing)
 
 Outer constructor for the 1D `Column` domain.
 
@@ -182,11 +184,11 @@ The latitude and longitude of the returned domain can be accessed as follows:
 function Column(;
     zlim::Tuple{FT, FT},
     nelements::Int,
+    device = ClimaComms.device(),
     longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert zlim[1] < zlim[2]
-    device = ClimaComms.device()
     boundary_names = (:bottom, :top)
 
     if isnothing(longlat)
@@ -442,15 +444,15 @@ end
 
 """
     HybridBox(;
-        xlim::Tuple{FT, FT},
-        ylim::Tuple{FT, FT},
-        zlim::Tuple{FT, FT},
-        longlat = nothing,
-        nelements::Tuple{Int, Int, Int},
-        npolynomial::Int,
-        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-        periodic = (true, true),
-    ) where {FT}
+    xlim::Tuple{FT, FT},
+    ylim::Tuple{FT, FT},
+    zlim::Tuple{FT, FT},
+    nelements::Tuple{Int, Int, Int},
+    npolynomial::Int = 0,
+    device = ClimaComms.device(),
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+    longlat = nothing,
+    periodic::Tuple{Bool, Bool} = (true, true))
 
 Constructs the `HybridBox` domain
  with limits `xlim` `ylim` and `zlim
@@ -485,6 +487,7 @@ function HybridBox(;
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
     npolynomial::Int = 0,
+    device = ClimaComms.device(),
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
@@ -516,7 +519,6 @@ function HybridBox(;
             reverse_mode = true,
         )
     end
-    device = ClimaComms.device()
     vert_center_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
@@ -642,7 +644,7 @@ function SphericalShell(;
             reverse_mode = true,
         )
     end
-    device = ClimaComms.device()
+    device = ClimaComms.device(context)
     vert_center_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
