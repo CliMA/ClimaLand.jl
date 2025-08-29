@@ -8,34 +8,15 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.PModel
-ClimaLand.Canopy.PModel{FT}(;
-    cstar = FT(0.41),
-    β = FT(146),
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN),
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
-    α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.PModel()
 ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
-ClimaLand.Canopy.FarquharModel{FT}(
-    domain;
-    photosynthesis_parameters = clm_photosynthesis_parameters(
-        domain.space.surface,
-    ),
-    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.FarquharModel{FT}(domain)
 ClimaLand.Canopy.FarquharParameters
 ClimaLand.Canopy.FarquharParameters(
     ::Type{FT},
     is_c3::Union{FT, ClimaCore.Fields.Field};
-    kwargs...,
 ) where {FT <: AbstractFloat}
 ```
 

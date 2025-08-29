@@ -8,11 +8,10 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.AutotrophicRespirationModel
-ClimaLand.Canopy.AutotrophicRespirationModel{FT}() where {FT <: AbstractFloat}
+ClimaLand.Canopy.AutotrophicRespirationModel()
 ClimaLand.Canopy.AutotrophicRespirationParameters
 ClimaLand.Canopy.AutotrophicRespirationParameters(
-    ::Type{FT};
-    kwargs...,
+    ::Type{FT}
 ) where {FT <: AbstractFloat}
 ```
 
