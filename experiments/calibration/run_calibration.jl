@@ -22,11 +22,26 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     rng_seed = 42,
 )
 
+# true solution is at 0.96
+priors =
+    [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
+prior = EKP.combine_distributions(priors)
+ekp_process = EKP.Unscented(prior)
+ensemble_size = ekp_process.N_ens
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # Note: Using this script on Derecho requires changes to addprocs to use
-    # the PBSManager
-    addprocs(ClimaCalibrate.SlurmManager())
+    # addprocs is slightly different on derecho or central. Could add more.
+    if contains(gethostname(), "derecho") # Derecho
+        addprocs(
+            ClimaCalibrate.PBSManager(ensemble_size),
+            q = "main",
+            A = "UCIT0011",
+            l_select = "1:ngpus=1:ncpus=1",
+            l_walltime = "05:30:00",
+        )
+    elseif contains(gethostname(), "cluster") # Caltech central
+        addprocs(ClimaCalibrate.SlurmManager())
+    end
 
     include(
         joinpath(
@@ -45,10 +60,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         joinpath(experiment_dir, "calibration", "model_interface.jl"),
     )
 
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
-    prior = EKP.combine_distributions(priors)
 
     observation_vector =
         JLD2.load_object("experiments/calibration/land_observation_vector.jld2")
@@ -66,6 +77,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 length(observation_vector),
                 minibatch_size,
             ),
+            "metadata" => [
+                prior,
+                CALIBRATE_CONFIG.short_names,
+                CALIBRATE_CONFIG.nelements,
+            ],
         ),
     )
 
