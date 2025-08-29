@@ -42,7 +42,7 @@ ClimaLand.Canopy.CLMGFunction
 ClimaLand.Canopy.canopy_radiant_energy_fluxes!
 ClimaLand.Canopy.ground_albedo_PAR
 ClimaLand.Canopy.ground_albedo_NIR
-ClimaLand.Canopy.compute_fractional_absorbances
+ClimaLand.Canopy.compute_fractional_absorbances!
 ClimaLand.Canopy.canopy_sw_rt_beer_lambert
 ClimaLand.Canopy.canopy_sw_rt_two_stream
 ClimaLand.Canopy.extinction_coeff
