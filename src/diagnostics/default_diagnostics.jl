@@ -1,5 +1,7 @@
 export default_diagnostics
 
+using Dates
+
 # This file is included by Diagnostics.jl and defines all the defaults for
 # various models (e.g., Bucket, SoilCanopyModel). A model here is either a
 # standalone (e.g., Bucket) or integrated (e.g., SoilCanopy) model.
@@ -69,7 +71,12 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
     default_diagnostic_domain =
         haskey(domain.space, :subsurface) ? domain.space.subsurface :
         domain.space.surface
-    output_writer = NetCDFWriter(default_diagnostic_domain, outdir; start_date)
+    output_writer = NetCDFWriter(
+        default_diagnostic_domain,
+        outdir;
+        start_date,
+        sync_schedule = EveryCalendarDtSchedule(Dates.Month(6); start_date),
+    )
     return default_diagnostics(model, start_date; output_writer)
 end
 
