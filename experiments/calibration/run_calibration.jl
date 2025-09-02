@@ -13,7 +13,7 @@ include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["swu"],
     minibatch_size = 1,
-    n_iterations = 6,
+    n_iterations = 7,
     sample_date_ranges = [("2008-12-1", "2009-9-1"), ("2009-12-1", "2010-9-1"), ("2010-12-1", "2011-9-1"), ("2011-12-1", "2012-9-1"), ("2012-12-1", "2013-9-1"), ("2013-12-1", "2014-9-1")],
     extend = Dates.Month(3),
     spinup = Dates.Year(1),

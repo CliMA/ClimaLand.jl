@@ -183,7 +183,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     default_params_filepath =
         joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
     toml_dict =
-        LP.create_toml_dict(FT, default_params_filepath, calibrate_params_path)
+        LP.create_toml_dict(FT, default_params_filepath, calibrate_params_path, override = true)
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
@@ -193,6 +193,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     @info "Timestep: $Δt s"
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
+    CP.log_parameter_information(toml_dict, joinpath(ensemble_member_path, "log_params_$member.toml"))
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end
