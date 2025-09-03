@@ -20,5 +20,7 @@ ClimaLand.Canopy.AbstractCanopyEnergyModel
 ```@docs
 ClimaLand.Canopy.canopy_temperature
 ClimaLand.Canopy.root_energy_flux_per_ground_area!
+```
+```@docs; canonical = false
 ClimaLand.Canopy.total_energy_per_area!
 ```
