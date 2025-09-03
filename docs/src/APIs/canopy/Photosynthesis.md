@@ -8,34 +8,15 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.PModel
-ClimaLand.Canopy.PModel{FT}(;
-    cstar = FT(0.41),
-    β = FT(146),
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN),
-    ϕa0 = FT(0.352),
-    ϕa1 = FT(0.022),
-    ϕa2 = FT(-0.00034),
-    α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.PModel()
 ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
-ClimaLand.Canopy.FarquharModel{FT}(
-    domain;
-    photosynthesis_parameters = clm_photosynthesis_parameters(
-        domain.space.surface,
-    ),
-    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.FarquharModel{FT}(domain)
 ClimaLand.Canopy.FarquharParameters
 ClimaLand.Canopy.FarquharParameters(
     ::Type{FT},
     is_c3::Union{FT, ClimaCore.Fields.Field};
-    kwargs...,
 ) where {FT <: AbstractFloat}
 ```
 
@@ -43,20 +24,18 @@ ClimaLand.Canopy.FarquharParameters(
 
 ```@docs
 ClimaLand.Canopy.arrhenius_function
-ClimaLand.Canopy.intercellular_co2
-ClimaLand.Canopy.co2_compensation
+ClimaLand.Canopy.intercellular_co2_farquhar
+ClimaLand.Canopy.co2_compensation_farquhar
 ClimaLand.Canopy.rubisco_assimilation
 ClimaLand.Canopy.light_assimilation
-ClimaLand.Canopy.max_electron_transport
-ClimaLand.Canopy.electron_transport
+ClimaLand.Canopy.max_electron_transport_farquhar
+ClimaLand.Canopy.electron_transport_farquhar
 ClimaLand.Canopy.net_photosynthesis
-ClimaLand.Canopy.optimality_max_photosynthetic_rates
 ClimaLand.Canopy.moisture_stress
-ClimaLand.Canopy.dark_respiration
-ClimaLand.Canopy.compute_GPP
+ClimaLand.Canopy.dark_respiration_farquhar
 ClimaLand.Canopy.MM_Kc
 ClimaLand.Canopy.MM_Ko
-ClimaLand.Canopy.compute_Vcmax
+ClimaLand.Canopy.compute_Vcmax_farquhar
 ```
 
 ## PModel Methods
@@ -77,7 +56,8 @@ ClimaLand.Canopy.vcmax_pmodel
 ClimaLand.Canopy.compute_LUE
 ClimaLand.Canopy.compute_mj_with_jmax_limitation
 ClimaLand.Canopy.electron_transport_pmodel
-ClimaLand.Canopy.co2_compensation_p
+ClimaLand.Canopy.co2_compensation_pmodel
 ClimaLand.Canopy.quadratic_soil_moisture_stress
-ClimaLand.Canopy.compute_APAR
+ClimaLand.Canopy.compute_APAR_canopy_moles
+ClimaLand.Canopy.compute_APAR_leaf_moles
 ```

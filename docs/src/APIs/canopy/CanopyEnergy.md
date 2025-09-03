@@ -9,14 +9,9 @@ CurrentModule = ClimaLand.Canopy
 ```@docs
 ClimaLand.Canopy.PrescribedCanopyTempModel
 ClimaLand.Canopy.BigLeafEnergyModel
-ClimaLand.Canopy.BigLeafEnergyModel{FT}(;
-    ac_canopy::FT = FT(2e3),
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.BigLeafEnergyModel()
 ClimaLand.Canopy.BigLeafEnergyParameters
-ClimaLand.Canopy.BigLeafEnergyParameters(
-    toml_dict::CP.AbstractTOMLDict;
-    ac_canopy = toml_dict["ac_canopy"],
-)
+ClimaLand.Canopy.BigLeafEnergyParameters(toml_dict)
 ClimaLand.Canopy.AbstractCanopyEnergyModel
 ```
 
@@ -25,5 +20,7 @@ ClimaLand.Canopy.AbstractCanopyEnergyModel
 ```@docs
 ClimaLand.Canopy.canopy_temperature
 ClimaLand.Canopy.root_energy_flux_per_ground_area!
+```
+```@docs; canonical = false
 ClimaLand.Canopy.total_energy_per_area!
 ```
