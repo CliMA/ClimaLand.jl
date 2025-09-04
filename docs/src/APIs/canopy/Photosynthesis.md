@@ -8,16 +8,19 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.PModel
-ClimaLand.Canopy.PModel()
+ClimaLand.Canopy.PModel(toml_dict::CP.ParamDict)
 ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
-ClimaLand.Canopy.FarquharModel{FT}(domain)
+ClimaLand.Canopy.FarquharModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+) where {FT <: AbstractFloat}
 ClimaLand.Canopy.FarquharParameters
 ClimaLand.Canopy.FarquharParameters(
-    ::Type{FT},
-    is_c3::Union{FT, ClimaCore.Fields.Field};
-) where {FT <: AbstractFloat}
+    toml_dict::CP.ParamDict,
+    is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
+)
 ```
 
 ## FarquharModel Methods
