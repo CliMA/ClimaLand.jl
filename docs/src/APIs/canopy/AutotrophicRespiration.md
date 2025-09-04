@@ -8,11 +8,9 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.AutotrophicRespirationModel
-ClimaLand.Canopy.AutotrophicRespirationModel()
+ClimaLand.Canopy.AutotrophicRespirationModel{FT}(toml_dict::CP.ParamDict) where {FT <: AbstractFloat}
 ClimaLand.Canopy.AutotrophicRespirationParameters
-ClimaLand.Canopy.AutotrophicRespirationParameters(
-    ::Type{FT}
-) where {FT <: AbstractFloat}
+ClimaLand.Canopy.AutotrophicRespirationParameters(toml_dict::CP.ParamDict; kwargs...)
 ```
 
 ## Methods
