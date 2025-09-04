@@ -16,7 +16,7 @@ ClimaLand.Snow.SnowModel(
     Δt;
 )
 ClimaLand.Snow.SnowParameters
-ClimaLand.Snow.SnowParameters(::Type{FT}, Δt) where {FT <: AbstractFloat}
+ClimaLand.Snow.SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt)
 ```
 
 ## Snow Functions of State
