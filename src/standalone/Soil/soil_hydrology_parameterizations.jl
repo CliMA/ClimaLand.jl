@@ -37,8 +37,6 @@ A point-wise function computing the effective saturation given the
 effective porosity, augmented liquid fraction, and residual water
 fraction as input.
 
-The output is guaranteed to lie in (0, 1].
-
 For Richards model, or any other parameterization where ice is not
 relevant, ν_eff = ν; and the clipping below is not required,
 (and will do nothing; ν_eff_safe = ν_eff), but we leave it in for a 
@@ -115,13 +113,15 @@ function pressure_head(
     ν_eff::FT,
     S_s::FT,
 ) where {FT}
-    # effective saturation clips ν_eff and ϑ_l
-    # as needed so that S_l ∈ (0,1].
+    # The effective saturation function clips ν_eff and ϑ_l internally
+    # To be consistent, we need to do so here for the other branch
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else
-        ψ = (ϑ_l - ν_eff) / S_s
+        ψ = (ϑ_l_safe - ν_eff_safe) / S_s
     end
     return ψ
 end
@@ -134,7 +134,6 @@ with respect to ϑ for the van Genuchten formulation.
 """
 function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
     # effective saturation clips ν_eff and ϑ
-    # as needed so that S_l ∈ (0,1],
     # but we use ν_eff alone, so we clip that here.
     # The second clipping in effective saturation
     # will not change it further.
@@ -219,11 +218,8 @@ Computes and returns the derivative of the pressure head
 with respect to ϑ for the Brooks and Corey formulation.
 """
 function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
-    # effective saturation clips ν_eff and ϑ
-    # as needed so that S_l ∈ (0,1],
-    # but we use ν_eff alone, so we clip that here.
-    # The second clipping in effective saturation
-    # will not change it further.
+    # The effective saturation function clips ν_eff and ϑ_l internally
+    # To be consistent, we need to do so here for the first branch
     ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
     S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; ψb, c) = cm
@@ -278,14 +274,16 @@ function pressure_head(
     ν_eff::FT,
     S_s::FT,
 ) where {FT}
-    # effective saturation clips ν_eff and ϑ_l
-    # as needed so that S_l ∈ (0,1].
+    # The effective saturation function clips ν_eff and ϑ_l internally
+    # To be consistent, we need to do so here for the second branch
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else
         # For Brooks and Corey, S = 1 does not correspond to ψ = 0
-        ψ = (ϑ_l - ν_eff) / S_s + cm.ψb
+        ψ = (ϑ_l_safe - ν_eff_safe) / S_s + cm.ψb
     end
     return ψ
 end
