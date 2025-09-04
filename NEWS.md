@@ -4,6 +4,13 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.20.0
+-------
+- ![][badge-🐛bugfix] Correctly compare atmos/canopy heights when atmos height is Field or Float PR[#1394](https://github.com/CliMA/ClimaLand.jl/pull/1394)
+- Add a function to set soil ICs from temperature and total water PR[#1384](https://github.com/CliMA/ClimaLand.jl/pull/1384)
+- ![breaking change][badge-💥breaking] Move LAI artifact into Canopy module PR[#1386](https://github.com/CliMA/ClimaLand.jl/pull/1386)
+- Various docs improvements PR[#1391](https://github.com/CliMA/ClimaLand.jl/pull/1391), PR[#1367](https://github.com/CliMA/ClimaLand.jl/pull/1367)
+
 v0.19.0
 -------
 - ![breaking change][badge-💥breaking] Rename `end_date` to `stop_date`; hide MODIS LAI path in function args PR[#1344](https://github.com/CliMA/ClimaLand.jl/pull/1344)
