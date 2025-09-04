@@ -329,10 +329,10 @@ struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
     function CoupledAtmosphere{FT}() where {FT}
         return new{FT}(nothing, nothing, nothing, nothing)
     end
-    function CoupledAtmosphere{FT}(space) where {FT}
+    function CoupledAtmosphere{FT}(space, atmos_h) where {FT}
         return new{FT}(
             Fields.zeros(SVector{2, FT}, space),
-            Fields.zeros(space),
+            atmos_h, # Field of atmosphere height on `space`
             FT(1), # gustiness is always a spatial constant, for now
             Fields.zeros(Thermodynamics.PhaseEquil{FT}, space),
         )
