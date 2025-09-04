@@ -9,12 +9,14 @@ CurrentModule = ClimaLand.Canopy
 ```@docs
 ClimaLand.Canopy.TwoStreamModel
 ClimaLand.Canopy.TwoStreamModel{FT}(
-    domain
+    domain,
+    toml_dict::CP.AbstractTOMLDict
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.TwoStreamParameters
 ClimaLand.Canopy.BeerLambertModel
 ClimaLand.Canopy.BeerLambertModel{FT}(
-    domain;
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.BeerLambertParameters
 ClimaLand.Canopy.BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}

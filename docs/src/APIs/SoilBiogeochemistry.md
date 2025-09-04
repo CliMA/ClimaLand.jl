@@ -13,7 +13,7 @@ ClimaLand.Soil.Biogeochemistry.SoilCO2Model
 
 ```@docs
 ClimaLand.Soil.Biogeochemistry.SoilCO2ModelParameters
-ClimaLand.Soil.SoilCO2ModelParameters(::Type{FT}) where {FT <: AbstractFloat}
+ClimaLand.Soil.SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict)
 ```
 
 ## Model-specific Types
