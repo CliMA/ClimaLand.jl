@@ -157,7 +157,7 @@ end
                             canopy::CanopyModel,
                             Y::ClimaCore.Fields.FieldVector,
                             t,
-                            ) where {FT}
+                            )
 
 Computes the boundary fluxes for the canopy prognostic
 equations; updates the specific fields in the auxiliary
@@ -175,7 +175,7 @@ function canopy_boundary_fluxes!(
     canopy::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     t,
-) where {FT}
+)
     bc = canopy.boundary_conditions
     radiation = bc.radiation
     atmos = bc.atmos
