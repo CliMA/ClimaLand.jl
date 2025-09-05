@@ -920,101 +920,12 @@ function ClimaLand.make_update_aux(
         # the current time, as they depend on prescribed fields.
         set_canopy_prescribed_field!(canopy.hydraulics, p, t)
 
-        # Shortcut names
-        An = p.canopy.photosynthesis.An
-        ψ = p.canopy.hydraulics.ψ
-        ϑ_l = Y.canopy.hydraulics.ϑ_l
-        fa = p.canopy.hydraulics.fa
-        par_d = p.canopy.radiative_transfer.par_d
-        nir_d = p.canopy.radiative_transfer.nir_d
-        cosθs = p.drivers.cosθs
-        area_index = p.canopy.hydraulics.area_index
-        LAI = area_index.leaf
-        SAI = area_index.stem
+        # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
+        update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
 
-        bc = canopy.boundary_conditions
-
-        # update radiative transfer
-        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
-        @. p.canopy.radiative_transfer.ϵ =
-            canopy.radiative_transfer.parameters.ϵ_canopy *
-            (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        RT = canopy.radiative_transfer
-        compute_PAR!(par_d, RT, bc.radiation, p, t)
-        compute_NIR!(nir_d, RT, bc.radiation, p, t)
-
-        compute_fractional_absorbances!(
-            p,
-            RT,
-            LAI,
-            ground_albedo_PAR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-            ground_albedo_NIR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-        )
-
-        # update plant hydraulics aux
-        hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
-        (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
-        # We can index into a field of Tuple{FT} to extract a field of FT
-        # using the following notation: field.:index
-        @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
-            retention_model,
-            PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
-            ν,
-            S_s,
-        )
-        # Inside of a loop, we need to use a single dollar sign
-        # for indexing into Fields of Tuples in non broadcasted
-        # expressions, and two dollar signs for
-        # for broadcasted expressions using the macro @.
-        # field.:($index) .= value # works
-        # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf - 1)
-            ip1 = i + 1
-            @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
-                retention_model,
-                PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
-                ν,
-                S_s,
-            )
-
-            areai = getproperty(area_index, hydraulics.compartment_labels[i])
-            areaip1 =
-                getproperty(area_index, hydraulics.compartment_labels[ip1])
-
-            # Compute the flux*area between the current compartment `i`
-            # and the compartment above.
-            @. fa.:($$i) =
-                PlantHydraulics.water_flux(
-                    hydraulics.compartment_midpoints[i],
-                    hydraulics.compartment_midpoints[ip1],
-                    ψ.:($$i),
-                    ψ.:($$ip1),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ.:($$i),
-                    ),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ.:($$ip1),
-                    ),
-                ) * PlantHydraulics.harmonic_mean(areaip1, areai)
-        end
-        # We update the fa[n_stem+n_leaf] element once we have computed transpiration
+        # update the cache for hydraulics; what this update depends
+        # on the type of canopy.hydraulics
+        PlantHydraulics.update_hydraulics!(p, Y, canopy.hydraulics, canopy)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
