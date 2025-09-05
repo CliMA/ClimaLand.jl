@@ -10,7 +10,6 @@ using ClimaLand
 import ..Parameters as LP
 import ClimaLand.Domains: SphericalShell, HybridBox, SphericalSurface
 export step!, solve!, LandSimulation
-using NCDatasets
 include("initial_conditions.jl")
 
 import ..Diagnostics: close_output_writers
