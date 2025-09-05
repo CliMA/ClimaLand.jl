@@ -858,11 +858,11 @@ corresponding to the surface, with values equal to the topmost level.
 """
 function top_center_to_surface(center_field::ClimaCore.Fields.Field)
     center_space = axes(center_field)
-    N_minus_half = ClimaCore.Spaces.nlevels(center_space)
+    N = ClimaCore.Spaces.nlevels(center_space)
     surface_space = obtain_surface_space(center_space)
     return ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(center_field, N_minus_half),
+            ClimaCore.Fields.level(center_field, N),
         ),
         surface_space,
     )
