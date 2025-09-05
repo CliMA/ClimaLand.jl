@@ -890,3 +890,23 @@ end
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+function compute_surface_runoff!(out, Y, p, t, land_model::EnergyHydrology)
+    return Runoff.get_surface_runoff(
+        land_model.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
+function compute_subsurface_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::EnergyHydrology,
+)
+    return Runoff.get_subsurface_runoff(
+        land_model.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
