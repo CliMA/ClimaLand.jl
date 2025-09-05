@@ -187,7 +187,7 @@ simulation = LandSimulation(
     land;
     user_callbacks = (saving_cb,),
     set_ic! = set_ic!,
-    updateat,
+    updateat = Second(dt),
     solver_kwargs = (; saveat = saveat),
     diagnostics = nothing,
 )

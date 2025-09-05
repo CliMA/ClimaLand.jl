@@ -87,12 +87,12 @@ end
         ),
         user_callbacks = (
             ClimaLand.NaNCheckCallback(
-                isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
-                t0,
-                Δt;
+                isnothing(t0.epoch) ? (tf - t0) / 10 : Dates.Month(1);
+                start_date = t0,
+                dt = Δt,
                 mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
             ),
-            ClimaLand.ReportCallback(1000),
+            ClimaLand.ReportCallback((tf - t0) / 10),
         ),
         diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
         updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
@@ -133,15 +133,15 @@ function LandSimulation(
     ),
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
-            isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
-            t0,
-            Δt;
+            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1);
+            start_date = t0,
+            dt = Δt,
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
-        ClimaLand.ReportCallback(1000),
+        ClimaLand.ReportCallback(div((tf - t0), 10)),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+    updateat = promote(t0, ITime(3600 * 3))[2],
     solver_kwargs = (;),
 )
     # Enforce `h_atmos >= h_canopy` for models with canopy
@@ -202,9 +202,12 @@ function LandSimulation(
     # Required callbacks
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    updateat =
-        updateat isa AbstractVector ? updateat : [promote(t0:updateat:tf...)...]
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(
+        updateat,
+        updatefunc;
+        dt = Δt,
+        start_date,
+    )
     model_callbacks = ClimaLand.get_model_callbacks(model; start_date, Δt)# everything else you need should be in the model!
 
     required_callbacks = (driver_cb, model_callbacks...) # TBD: can we update each step?
@@ -249,7 +252,7 @@ end
 
 A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s), setting the epoch of the ITime to nothing.
 If the `kwargs` contain `updateat`, it will
-convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
+convert the update frequency to an `ITime` as well. The same applies to values in `saveat` in `solver_kwargs`.
 
 If your simulation has a notion of a calendar date, please use one of the
 other constructors.

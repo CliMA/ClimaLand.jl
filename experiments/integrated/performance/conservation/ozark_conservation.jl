@@ -46,10 +46,9 @@ for float_type in (Float32, Float64)
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 
-    updateat = deepcopy(saveat)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(dt, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
