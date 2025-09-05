@@ -125,6 +125,7 @@ for FT in (Float32, Float64)
             conductance = Canopy.MedlynConductanceModel{FT},
             hydraulics = Canopy.PlantHydraulicsModel{FT},
             energy = Canopy.BigLeafEnergyModel{FT},
+            soil_moisture_stress = Canopy.NoMoistureStressModel{FT},
         )
         autotrophic_respiration_args =
             (; parameters = Canopy.AutotrophicRespirationParameters(FT))
@@ -167,6 +168,7 @@ for FT in (Float32, Float64)
             compartment_surfaces = [FT(0.0), FT(0.0)],
         )
         energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(FT(0)),)
+        soil_moisture_stress_args = (;)
         canopy_component_args = (;
             autotrophic_respiration = autotrophic_respiration_args,
             radiative_transfer = radiative_transfer_args,
@@ -174,6 +176,7 @@ for FT in (Float32, Float64)
             conductance = conductance_args,
             hydraulics = plant_hydraulics_args,
             energy = energy_args,
+            soil_moisture_stress = soil_moisture_stress_args,
         )
         shared_params =
             Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(

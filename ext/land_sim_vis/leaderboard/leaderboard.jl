@@ -202,11 +202,10 @@ function compute_monthly_leaderboard(
         )
 
         # Partition months, rmse_vec, and bias_vec into years
-        months =
-            Dates.month.(
-                Dates.DateTime(sim_var.attributes["start_date"]) .+
-                Dates.Second.(times)
-            )
+        months = Dates.month.(
+            Dates.DateTime(sim_var.attributes["start_date"]) .+
+            Dates.Second.(times),
+        )
         months_split, sim_vec_split, rmse_vec_split, bias_vec_split =
             partition_by_val(12, months, sim_vec, rmse_vec, bias_vec)
 

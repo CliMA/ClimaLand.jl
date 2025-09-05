@@ -6,7 +6,7 @@ abstract type AbstractAutotrophicRespirationModel{FT} <:
 """
     AutotrophicRespirationParameters{FT<:AbstractFloat}
 
-The required parameters for the autrophic respiration model, which is based 
+The required parameters for the autrophic respiration model, which is based
 off of the JULES model.
 Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 $(DocStringExtensions.FIELDS)
@@ -29,7 +29,7 @@ end
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
 
 """
-    AutotrophicRespirationModel{FT, ARP <: AutotrophicRespirationParameters{FT},} <: AbstractAutotrophicRespirationModel{FT} 
+    AutotrophicRespirationModel{FT, ARP <: AutotrophicRespirationParameters{FT},} <: AbstractAutotrophicRespirationModel{FT}
 
 The JULES autotrophic respiration model.
 
@@ -65,7 +65,7 @@ ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
 Computes the autotrophic respiration rate  (mol co2 m^-2 s^-1) as the sum of the plant maintenance
 and growth respirations, according to the JULES model.
 
-Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model 
+Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model
 description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 """
 function update_autotrophic_respiration!(
@@ -87,10 +87,9 @@ function update_autotrophic_respiration!(
     earth_param_set = canopy.parameters.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    (; sc, pc) = canopy.photosynthesis.parameters
     (; G_Function, Ω) = canopy.radiative_transfer.parameters
     cosθs = p.drivers.cosθs
-    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    β = p.canopy.soil_moisture_stress.βm
     Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
     Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
     An_leaf = get_An_leaf(p, canopy.photosynthesis)

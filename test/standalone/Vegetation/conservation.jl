@@ -140,7 +140,7 @@ for FT in (Float32, Float64)
         FT.(
             Vector(
                 range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
-            )
+            ),
         )
 
     soil_driver = PrescribedGroundConditions{FT}()
