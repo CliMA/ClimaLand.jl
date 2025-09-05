@@ -54,13 +54,13 @@ A model for simulating the flow of water in a porous medium
 by solving the Richardson-Richards Equation.
 
 A variety of boundary condition types are supported, including
-FluxBC, RichardsAtmosDrivenFluxBC, MoistureStateBC, and FreeDrainage
+`FluxBC`, `RichardsAtmosDrivenFluxBC`, `MoistureStateBC`, and `FreeDrainage`
 (only for the bottom of the domain).
 
-If you wish to
-simulate soil hydrology under the context of a prescribed precipitation
-volume flux (m/s) as a function of time, the RichardsAtmosDrivenFluxBC
-type should be chosen. Please see the documentation for more details.
+If you wish to simulate soil hydrology under the context of a prescribed
+precipitation volume flux (m/s) as a function of time, the
+`RichardsAtmosDrivenFluxBC` type should be chosen. Please see the documentation
+for more details.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -485,7 +485,7 @@ end
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total liquid water volume per unit ground area for the `RichardsModel`.

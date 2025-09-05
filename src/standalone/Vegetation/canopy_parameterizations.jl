@@ -33,7 +33,8 @@ end
 
 Returns the leaf angle distribution value for CLM G function as a function of the
 cosine of the solar zenith angle and the leaf orientation index.
-See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf.
+See section 3.1 of
+[https://www2.cesm.ucar.edu/models/cesm2/land/CLM50\\_Tech\\_Note.pdf](https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf).
 
 Note that the zenith angle is defined ∈ [0,2π), so to prevent a negative value
 of G when the sun is below the horizon, we clip cosθs >= 0.
@@ -62,7 +63,7 @@ the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
-(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
+`(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))`
 """
 function compute_fractional_absorbances!(
     p,
@@ -110,7 +111,7 @@ soil albedo in the PAR and NIR bands.
 This model also depends on the diffuse fraction.
 Returns a
 NamedTuple of NamedTuple, of the form:
-(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
+`(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))`
 """
 function compute_fractional_absorbances!(
     p,
