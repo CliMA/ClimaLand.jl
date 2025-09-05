@@ -27,6 +27,47 @@ function define_diagnostics!(land_model)
     )
 
     add_diagnostic_variable!(
+        short_name = "bf",
+        long_name = "Bottom flux",
+        standard_name = "bottom_flux",
+        units = "m s^-1",
+        comments = "",
+        compute! = (out, Y, p, t) ->
+            compute_bottom_flux!(out, Y, p, t, land_model),
+    )
+
+
+    add_diagnostic_variable!(
+        short_name = "infc",
+        long_name = "infc",
+        standard_name = "infc",
+        units = "",
+        comments = "",
+        compute! = (out, Y, p, t) ->
+            compute_infc!(out, Y, p, t, land_model),
+    )
+    
+    add_diagnostic_variable!(
+        short_name = "inff",
+	long_name = "inff",
+        standard_name = "inff",
+        units = "",
+        comments = "",
+        compute! = (out, Y, p, t) ->
+            compute_inff!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "wtd",
+        long_name = "watertabledepth",
+        standard_name = "wtd",
+        units = "",
+        comments = "",
+        compute! = (out, Y, p, t) ->
+            compute_wtd!(out, Y, p, t, land_model),
+    )
+    
+    add_diagnostic_variable!(
         short_name = "epac",
         long_name = "Energy per unit ground area change",
         standard_name = "energy_per_area_change",
