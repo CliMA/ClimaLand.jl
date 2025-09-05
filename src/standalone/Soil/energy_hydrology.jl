@@ -1031,28 +1031,29 @@ function turbulent_fluxes!(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    dest .= soil_turbulent_fluxes_at_a_point.(
-        Val(false), # return_extra_fluxes
-        T_sfc,
-        θ_l_sfc,
-        θ_i_sfc,
-        h_sfc,
-        d_sfc,
-        hydrology_cm_sfc,
-        ν_sfc,
-        θ_r_sfc,
-        K_sat_sfc,
-        p.drivers.thermal_state,
-        u_air,
-        h_air,
-        atmos.gustiness,
-        z_0m,
-        z_0b,
-        Ω,
-        γ,
-        γT_ref,
-        Ref(earth_param_set),
-    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            Val(false), # return_extra_fluxes
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            p.drivers.thermal_state,
+            u_air,
+            h_air,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+        )
     return nothing
 end
 
@@ -1418,27 +1419,28 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    dest .= soil_turbulent_fluxes_at_a_point.(
-        Val(true), # return_extra_fluxes
-        T_sfc,
-        θ_l_sfc,
-        θ_i_sfc,
-        h_sfc,
-        d_sfc,
-        hydrology_cm_sfc,
-        ν_sfc,
-        θ_r_sfc,
-        K_sat_sfc,
-        atmos.thermal_state,
-        atmos.u,
-        atmos.h,
-        atmos.gustiness,
-        z_0m,
-        z_0b,
-        Ω,
-        γ,
-        γT_ref,
-        Ref(earth_param_set),
-    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            Val(true), # return_extra_fluxes
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+        )
     return nothing
 end

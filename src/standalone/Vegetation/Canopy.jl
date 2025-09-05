@@ -99,16 +99,19 @@ function PiecewiseMoistureStressModel{FT}(
         θ_low = soil_params.θ_r
     else
         function vg_air_entry(α, n, ν, θ_r)
-            Δh = 1/α/(n-1)*((2n-1)/n)^((2n-1)/n)*((n-1)/n)^((1-n)/n)
-            hb = 1/α*((n-1)/n)^((1-2n)/n) - Δh
-            S = (1+(α*hb)^n)^(-(1-1/n))
-            return S*(ν-θ_r)+θ_r
+            Δh =
+                1 / α / (n - 1) *
+                ((2n - 1) / n)^((2n - 1) / n) *
+                ((n - 1) / n)^((1 - n) / n)
+            hb = 1 / α * ((n - 1) / n)^((1 - 2n) / n) - Δh
+            S = (1 + (α * hb)^n)^(-(1 - 1 / n))
+            return S * (ν - θ_r) + θ_r
         end
 
         function vg_est_wip(α, n, ν, θ_r)
-            h = 1/α*((n-1)/n)^((1-2n)/n)
-            S = (1+(α*h)^n)^(-(1-1/n))
-            return S*(ν-θ_r)+θ_r
+            h = 1 / α * ((n - 1) / n)^((1 - 2n) / n)
+            S = (1 + (α * h)^n)^(-(1 - 1 / n))
+            return S * (ν - θ_r) + θ_r
         end
         α = soil_params.α
         n = soil_params.n

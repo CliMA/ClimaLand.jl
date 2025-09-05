@@ -160,24 +160,26 @@ import ClimaParams
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers = FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+            compartment_centers =
+                FT.(
+                    Vector(
+                        range(
+                            start = Δz / 2,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                        ),
                     ),
-                ),
-            )
-            compartment_faces = FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
+                )
+            compartment_faces =
+                FT.(
+                    Vector(
+                        range(
+                            start = 0.0,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf),
+                        ),
                     ),
-                ),
-            )
+                )
 
             soil_driver = PrescribedGroundConditions{FT}()
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -313,12 +315,13 @@ import ClimaParams
             Rn = FT(shortwave_radiation(t0))
             G = FT(0.0)
 
-            ts_in = Thermodynamics.PhaseEquil_pTq.(
-                thermo_params,
-                p.drivers.P,
-                p.drivers.T,
-                p.drivers.q,
-            )
+            ts_in =
+                Thermodynamics.PhaseEquil_pTq.(
+                    thermo_params,
+                    p.drivers.P,
+                    p.drivers.T,
+                    p.drivers.q,
+                )
             ρa = Thermodynamics.air_density.(thermo_params, ts_in)
             cp = FT(
                 cp_m(
@@ -327,16 +330,18 @@ import ClimaParams
                 ),
             )
 
-            es = Thermodynamics.saturation_vapor_pressure.(
-                thermo_params,
-                FT.(T_atmos(t0)),
-                Ref(Thermodynamics.Liquid()),
-            )
-            ea = Thermodynamics.partial_pressure_vapor.(
-                thermo_params,
-                FT(P_atmos(t0)),
-                Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
-            )
+            es =
+                Thermodynamics.saturation_vapor_pressure.(
+                    thermo_params,
+                    FT.(T_atmos(t0)),
+                    Ref(Thermodynamics.Liquid()),
+                )
+            ea =
+                Thermodynamics.partial_pressure_vapor.(
+                    thermo_params,
+                    FT(P_atmos(t0)),
+                    Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
+                )
 
             VPD = es .- ea
 
@@ -346,13 +351,14 @@ import ClimaParams
             γ = FT(66)
             R = FT(LP.gas_constant(earth_param_set))
             (; g1, g0, Drel) = canopy.conductance.parameters
-            medlyn_factor = medlyn_term.(
-                g1,
-                FT.(T_atmos(t0)),
-                FT.(P_atmos(t0)),
-                FT.(q_atmos(t0)),
-                thermo_params,
-            )
+            medlyn_factor =
+                medlyn_term.(
+                    g1,
+                    FT.(T_atmos(t0)),
+                    FT.(P_atmos(t0)),
+                    FT.(q_atmos(t0)),
+                    thermo_params,
+                )
             An = p.canopy.photosynthesis.An
             gcanopy = Array(
                 parent(
@@ -395,8 +401,9 @@ import ClimaParams
             @test ClimaLand.surface_height(canopy, Y, p) == compartment_faces[1]
             T_sfc = FT.(T_atmos(t0))
             @test all(
-                Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
-                [T_sfc],
+                Array(
+                    parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
+                ) .== [T_sfc],
             )
             @test ClimaLand.surface_temperature(canopy, Y, p, t0) isa
                   ClimaCore.Fields.Field
@@ -456,20 +463,26 @@ end
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(0) # number of stem elements
         n_leaf = Int64(1) # number of leaf elements
-        compartment_centers = FT.(
-            Vector(
-                range(
-                    start = Δz / 2,
-                    step = Δz,
-                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+        compartment_centers =
+            FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                    ),
                 ),
-            ),
-        )
-        compartment_faces = FT.(
-            Vector(
-                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
-            ),
-        )
+            )
+        compartment_faces =
+            FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
@@ -677,24 +690,26 @@ end
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers = FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+            compartment_centers =
+                FT.(
+                    Vector(
+                        range(
+                            start = Δz / 2,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                        ),
                     ),
-                ),
-            )
-            compartment_faces = FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
+                )
+            compartment_faces =
+                FT.(
+                    Vector(
+                        range(
+                            start = 0.0,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf),
+                        ),
                     ),
-                ),
-            )
+                )
 
             soil_driver = PrescribedGroundConditions{FT}()
 
@@ -785,8 +800,9 @@ end
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(
-                Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
-                FT(289),
+                Array(
+                    parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
+                ) .== FT(289),
             )
             @test all(
                 Array(
@@ -917,20 +933,26 @@ end
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(0) # number of stem elements
         n_leaf = Int64(1) # number of leaf elements
-        compartment_centers = FT.(
-            Vector(
-                range(
-                    start = Δz / 2,
-                    step = Δz,
-                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+        compartment_centers =
+            FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                    ),
                 ),
-            ),
-        )
-        compartment_faces = FT.(
-            Vector(
-                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
-            ),
-        )
+            )
+        compartment_faces =
+            FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
         soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -980,12 +1002,13 @@ end
             t0,
             T_sfc,
         )
-        q_sfc = Thermodynamics.q_vap_saturation_generic.(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Liquid(),
-        )
+        q_sfc =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc,
+                ρ_sfc,
+                Thermodynamics.Liquid(),
+            )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         jac = ClimaLand.FieldMatrixWithSolver(Y)
@@ -1006,12 +1029,13 @@ end
             t0,
             T_sfc2,
         )
-        q_sfc2 = Thermodynamics.q_vap_saturation_generic.(
-            thermo_params,
-            T_sfc2,
-            ρ_sfc2,
-            Thermodynamics.Liquid(),
-        )
+        q_sfc2 =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc2,
+                ρ_sfc2,
+                Thermodynamics.Liquid(),
+            )
         dY_2 = similar(Y_2)
         imp_tendency!(dY_2, Y_2, p_2, t0)
 
@@ -1026,16 +1050,20 @@ end
         )[1] < 0.01
 
         finitediff_SHF =
-            (p_2.canopy.turbulent_fluxes.shf .- p.canopy.turbulent_fluxes.shf) ./
-            ΔT
+            (
+                p_2.canopy.turbulent_fluxes.shf .-
+                p.canopy.turbulent_fluxes.shf
+            ) ./ ΔT
         estimated_SHF = p.canopy.turbulent_fluxes.∂SHF∂Tc
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
         )[1] < 0.15
 
         finitediff_LHF =
-            (p_2.canopy.turbulent_fluxes.lhf .- p.canopy.turbulent_fluxes.lhf) ./
-            ΔT
+            (
+                p_2.canopy.turbulent_fluxes.lhf .-
+                p.canopy.turbulent_fluxes.lhf
+            ) ./ ΔT
         estimated_LHF =
             p.canopy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
         @test Array(
@@ -1062,9 +1090,8 @@ end
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
         ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
         @test (abs.(
-            Array(
-                parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT),
-            ) - ∂Ṫ∂T,
+            Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT)) -
+            ∂Ṫ∂T,
         ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
     end
 end
@@ -1240,24 +1267,26 @@ end
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers = FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+            compartment_centers =
+                FT.(
+                    Vector(
+                        range(
+                            start = Δz / 2,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                        ),
                     ),
-                ),
-            )
-            compartment_faces = FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
+                )
+            compartment_faces =
+                FT.(
+                    Vector(
+                        range(
+                            start = 0.0,
+                            step = Δz,
+                            stop = Δz * (n_stem + n_leaf),
+                        ),
                     ),
-                ),
-            )
+                )
 
             soil_driver = PrescribedGroundConditions{FT}()
 

@@ -292,12 +292,13 @@ function default_zenith_angle(
         start_date + Dates.Second(round(t))
     end
 
-    d, δ, η_UTC = FT.(
-        Insolation.helper_instantaneous_zenith_angle(
-            current_datetime,
-            insol_params,
-        ),
-    )
+    d, δ, η_UTC =
+        FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                insol_params,
+            ),
+        )
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
     return zenith_only.(d, δ, η_UTC, longitude, latitude)
@@ -408,23 +409,24 @@ function turbulent_fluxes!(
     u_air = p.drivers.u
     h_air = atmos.h
 
-    dest .= turbulent_fluxes_at_a_point.(
-        Val(false), # return_extra_fluxes
-        T_sfc,
-        q_sfc,
-        ρ_sfc,
-        β_sfc,
-        h_sfc,
-        r_sfc,
-        d_sfc,
-        p.drivers.thermal_state,
-        u_air,
-        h_air,
-        atmos.gustiness,
-        model.parameters.z_0m,
-        model.parameters.z_0b,
-        model.parameters.earth_param_set,
-    )
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            Val(false), # return_extra_fluxes
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            p.drivers.thermal_state,
+            u_air,
+            h_air,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+        )
     return nothing
 end
 
@@ -455,23 +457,24 @@ function coupler_compute_turbulent_fluxes!(
     r_sfc = surface_resistance(model, Y, p, t)
     d_sfc = displacement_height(model, Y, p)
 
-    dest .= turbulent_fluxes_at_a_point.(
-        Val(true), # return_extra_fluxes
-        T_sfc,
-        q_sfc,
-        ρ_sfc,
-        β_sfc,
-        h_sfc,
-        r_sfc,
-        d_sfc,
-        atmos.thermal_state,
-        atmos.u,
-        atmos.h,
-        atmos.gustiness,
-        model.parameters.z_0m,
-        model.parameters.z_0b,
-        model.parameters.earth_param_set,
-    )
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            Val(true), # return_extra_fluxes
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+        )
     return nothing
 end
 

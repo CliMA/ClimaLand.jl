@@ -126,18 +126,22 @@ for FT in (Float32, Float64)
     Δz = FT(1.0) # height of compartments
     n_stem = Int64(2) # number of stem elements
     n_leaf = Int64(1) # number of leaf elements
-    compartment_centers = FT.(
-        Vector(
-            range(
-                start = Δz / 2,
-                step = Δz,
-                stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+    compartment_centers =
+        FT.(
+            Vector(
+                range(
+                    start = Δz / 2,
+                    step = Δz,
+                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                ),
             ),
-        ),
-    )
-    compartment_faces = FT.(
-        Vector(range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf))),
-    )
+        )
+    compartment_faces =
+        FT.(
+            Vector(
+                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
+            ),
+        )
 
     soil_driver = PrescribedGroundConditions{FT}()
 

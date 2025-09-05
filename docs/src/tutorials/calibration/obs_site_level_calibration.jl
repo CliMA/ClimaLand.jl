@@ -231,14 +231,15 @@ end;
 function G(Vcmax25, g1)
     simulation = model(Vcmax25, g1)
     lhf = get_lhf(simulation)
-    observation = Float64.(
-        get_diurnal_average(
-            lhf,
-            simulation.start_date,
-            simulation.start_date + Day(20),
-            stop_date,
-        ),
-    )
+    observation =
+        Float64.(
+            get_diurnal_average(
+                lhf,
+                simulation.start_date,
+                simulation.start_date + Day(20),
+                stop_date,
+            ),
+        )
     return observation
 end;
 

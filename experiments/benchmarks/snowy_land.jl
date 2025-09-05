@@ -143,12 +143,13 @@ function setup_prob(
     @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
     Y.soil.θ_i .= 0
     T = FT(276.85)
-    ρc_s = Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        ρc_ds,
-        earth_param_set,
-    )
+    ρc_s =
+        Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
     Y.soil.ρe_int .=
         Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, earth_param_set)
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air

@@ -715,10 +715,11 @@ function root_water_flux_per_ground_area!(
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
     ψ_soil = p.drivers.ψ
-    above_ground_area_index = harmonic_mean.(
-        getproperty(area_index, model.compartment_labels[1]),
-        getproperty(area_index, :root),
-    )
+    above_ground_area_index =
+        harmonic_mean.(
+            getproperty(area_index, model.compartment_labels[1]),
+            getproperty(area_index, :root),
+        )
     # since rooting_depth is positive by convention, add the sign in here to
     # convert it to a coordinate: z_roots = -rooting_depth
     @. fa .=
