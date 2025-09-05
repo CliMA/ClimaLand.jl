@@ -1,4 +1,4 @@
-import Dates: Hour, Day, Minute
+import Dates: Hour, Day, Minute, Second
 
 """
     monthly_maxs(FT, short_names...; output_writer,  start_date)
@@ -261,3 +261,26 @@ Return a `ScheduledDiagnostics` that computes the 30 minute average for the give
 """
 halfhourly_average(FT, short_names; output_writer, start_date) =
     halfhourly_averages(FT, short_names; output_writer, start_date)[1]
+
+"""
+    every_dt_inst(FT, dt, short_names...; output_writer,  start_date)
+
+Return a list of `ScheduledDiagnostics` that compute the instantaneous value
+at every time step for the given variables.
+"""
+every_dt_inst(FT, dt, short_names...; output_writer, start_date) =
+    common_diagnostics(
+        Second(dt),
+        nothing, # reduction
+        output_writer,
+        start_date,
+        short_names...;
+    )
+
+"""
+    every_dt_inst(FT, short_names; output_writer,  start_date)
+
+Return a `ScheduledDiagnostics` that computes the 30 minute average for the given variable.
+"""
+every_dt_inst(FT, dt, short_names; output_writer, start_date) =
+    every_dt_inst(FT, dt, short_names; output_writer, start_date)[1]

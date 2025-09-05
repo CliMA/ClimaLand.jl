@@ -74,7 +74,7 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
 end
 
 """
-    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly)
+    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly, dt = nothing)
 
 For a general AbstractModel, we need a specification of output_vars to determine which diagnostics to output.
 
@@ -85,6 +85,13 @@ The input `output_vars` can have 3 values:
 
 If a user-defined list is provided for `output_vars`, it must be a vector of strings that are
 valid short names of diagnostics for the model.
+
+The following options for `average_period` are currently supported:
+    - `:instantaneous` (note: `dt` must be specified in this case)
+    - `:halfhourly`
+    - `:hourly`
+    - `:daily`
+    - `:monthly`
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
 Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
@@ -102,6 +109,7 @@ function default_diagnostics(
     output_writer,
     output_vars = :short,
     average_period = :monthly,
+    dt = nothing,
 ) where {FT}
     define_diagnostics!(model)
 
@@ -129,6 +137,10 @@ function default_diagnostics(
     elseif average_period == :monthly
         default_outputs =
             monthly_averages(FT, diagnostics...; output_writer, start_date)
+    elseif average_period == :instantaneous
+        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
+        default_outputs =
+            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
     else
         @error("Invalid diagnostics average period $(average_period)")
     end
@@ -144,6 +156,7 @@ end
         average_period = :monthly,
         conservation = false,
         conservation_period = Day(10),
+        dt = nothing,
     ) where {FT}
 
 Define a method specific to the EnergyHydrology model so that we can
@@ -157,6 +170,13 @@ The input `output_vars` can have 3 values:
 If a user-defined list is provided for `output_vars`, it must be a vector of strings that are
 valid short names of diagnostics for the model.
 
+The following options for `average_period` are currently supported:
+    - `:instantaneous` (note: `dt` must be specified in this case)
+    - `:halfhourly`
+    - `:hourly`
+    - `:daily`
+    - `:monthly`
+
 Conservation diagnostics should not be provided as part of the `output_vars` argument,
 but rather included by providing `conservation = true`.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics.
@@ -169,6 +189,7 @@ function default_diagnostics(
     average_period = :monthly,
     conservation = false,
     conservation_period = Day(10),
+    dt = nothing,
 ) where {FT}
 
     define_diagnostics!(land_model)
@@ -194,6 +215,10 @@ function default_diagnostics(
     elseif average_period == :monthly
         default_outputs =
             monthly_averages(FT, diagnostics...; output_writer, start_date)
+    elseif average_period == :instantaneous
+        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
+        default_outputs =
+            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
     else
         @error("Invalid diagnostics average period $(average_period)")
     end

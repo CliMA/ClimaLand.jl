@@ -9,8 +9,10 @@ import ClimaParams
 import SciMLBase
 import ClimaTimeSteppers
 import ClimaDiagnostics
+import ClimaCore
 using Dates
 using Statistics
+
 
 # Define some variables to reuse for each model
 FT = Float32
@@ -64,8 +66,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "sie", "swp"]
-    # TODO compute and output at every dt instead of half hourly (this is the ClimaDiagnostics default)
-    average_period = :halfhourly
+    average_period = :instantaneous
 
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
@@ -73,6 +74,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
         output_writer,
         output_vars,
         average_period,
+        dt,
     )
 
     simulation = LandSimulation(
@@ -85,18 +87,56 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
         user_callbacks = (),
     )
 
-    (; p, t) = simulation._integrator
-    Y = simulation._integrator.u
-
-    # Construct a DiagnosticsHandler object so we can manually compute diagnostics
-    diagnostics_handler_init =
-        ClimaDiagnostics.DiagnosticsHandler(simulation.diagnostics, Y, p, t; dt)
-    ClimaDiagnostics.orchestrate_diagnostics(
-        simulation._integrator,
-        diagnostics_handler,
+    # Test that the diagnostics were correctly created and computed once at initialization
+    @test keys(simulation.diagnostics[1].output_writer.dict) ==
+          Set(["swp_1000s_inst", "swc_1000s_inst", "sie_1000s_inst"])
+    @test length(
+        simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
+    ) == 1 # number of diagnostic computations so far
+    @test all(
+        ClimaCore.Fields.field2array(
+            simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1],
+        ) .== FT(0.24),
     )
 
+    # Step the simulation once to compute diagnostics again
     step!(simulation)
+
+    @test length(
+        simulation.diagnostics[1].output_writer.dict["swp_1000s_inst"].keys,
+    ) == 2 # number of diagnostic computations so far
+    # Check that the SWC values have changed after the second computation
+    @test simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[1] !=
+          simulation.diagnostics[1].output_writer.dict["swc_1000s_inst"].vals[2]
+end
+
+@testset "Invalid diagnostic variable" begin
+    ground = ClimaLand.PrognosticSoilConditions{FT}()
+    LAI = TimeVaryingInput((t) -> FT(1.0))
+    model = ClimaLand.SoilCanopyModel{FT}(
+        (; atmos, radiation, ground),
+        LAI,
+        toml_dict,
+        domain,
+    )
+
+    output_writer = ClimaDiagnostics.Writers.DictWriter()
+    output_vars = ["swc", "ct", "invalid_diagnostic"]
+    average_period = :instantaneous
+
+    # This will fail because "invalid_diagnostic" is not an available diagnostic for this model
+    @test_throws AssertionError ClimaLand.Diagnostics.default_diagnostics(
+        model,
+        start_date;
+        output_writer,
+        output_vars,
+        average_period,
+        dt,
+    )
+end
+
+@testset "Test runoff diagnostics" begin
+    # TODO test with different runoff parameterizations
 end
 
 @testset "Diagnostics writing and reading" begin
