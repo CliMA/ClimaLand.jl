@@ -405,7 +405,7 @@ import .Snow: snow_boundary_fluxes!
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics
-import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
+import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!, update_piecewise_soil_moisture_stress!
 import .Canopy:
     ground_albedo_PAR,
     ground_albedo_NIR,

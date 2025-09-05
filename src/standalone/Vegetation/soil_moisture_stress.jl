@@ -5,7 +5,8 @@ export TuzetMoistureStressParameters,
        PiecewiseMoistureStressModel,
        PiecewiseMoistureStressParametersFromHydrology,
        compute_piecewise_moisture_stress,
-       compute_tuzet_moisture_stress
+    compute_tuzet_moisture_stress,
+    update_piecewise_soil_moisture_stress!
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
@@ -241,41 +242,15 @@ function update_soil_moisture_stress!(
     Y,
     model::PiecewiseMoistureStressModel,
     canopy,
-)
-    # compute root-integrated soil water content
-    if :soil in canopy.boundary_conditions.prognostic_land_components
-        θ_l = p.soil.θ_l
-        (; θ_high, θ_low, c) = model.parameters
-        z = ClimaCore.Fields.coordinate_field(axes(ϑ_l)).z
-        
-        # normalized distribution for root density
-        norm = @. lazy(
-            Canopy.PlantHydraulics.root_distribution_CDF(
-                z,
-                canopy.hydraulics.parameters.rooting_depth,
-            ),
-        )
-
-        # per soil element
-        βm = @. lazy(
-            compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
-        )
-        βm_root_distribution = @. lazy(
-            βm * Canopy.PlantHydraulics.root_distribution(
-                z,
-                canopy.hydraulics.parameters.rooting_depth,
-            ) / norm,
-        )
-
-        # compute the root zone-averaged βm
-        ClimaCore.Operators.column_integral_definite!(
-            p.canopy.soil_moisture_stress.βm,
-            βm_root_distribution,
-        )
-    else
-        (; θ_high, θ_low, c,) = model.parameters
-        # Interpret p.drivers.θ as the root zone value.
-        @. p.canopy.soil_moisture_stress.βm =
-            compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)
-    end
+    )
+    ground = canopy.boundary_conditions.ground
+    update_piecewise_soil_moisture_stress!(ground, p, Y, model, canopy)
 end
+
+function update_piecewise_soil_moisture_stress!(ground::PrescribedGroundConditions, p, Y, model, canopy)
+    (; θ_high, θ_low, c,) = model.parameters
+    # Interpret p.drivers.θ as the root zone value.
+    @. p.canopy.soil_moisture_stress.βm =
+        compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)
+end
+

@@ -226,7 +226,16 @@ function SoilCanopyModel{FT}(;
     else
         energy_model = PrescribedCanopyTempModel{FT}()
     end
-
+    if :soil_moisture_stress in propertynames(canopy_component_types)
+        soil_moisture_stress_model =
+            canopy_component_types.soil_moisture_stress(
+                canopy_component_args.soil_moisture_stress...,
+            )
+    else
+        @info "No soil moisture stress model provided, using NoMoistureStressModel (βm = 1.0)"
+        soil_moisture_stress_model =
+            ClimaLand.Canopy.NoMoistureStressModel{FT}()
+    end
     canopy = Canopy.CanopyModel{FT}(;
         autotrophic_respiration = canopy_component_types.autotrophic_respiration(
             canopy_component_args.autotrophic_respiration...,
@@ -244,7 +253,9 @@ function SoilCanopyModel{FT}(;
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
-        energy = energy_model,
+                                    energy = energy_model,
+                                    soil_moisture_stress = soil_moisture_stress_model,
+                                    
         boundary_conditions = Canopy.AtmosDrivenCanopyBC(
             atmos,
             radiation,
