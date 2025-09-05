@@ -31,6 +31,9 @@ Base.broadcastable(x::TuzetMoistureStressParameters) = tuple(x)
 
 An implementation of the Tuzet moisture stress function.
 
+βm = min(1, (1 + exp(sc * pc)) / (1 + exp(sc * (pc - p_leaf)))), where sc and pc
+are stored in the parameter struct.
+
 TUZET, A., PERRIER, A. and LEUNING, R. (2003), A coupled model of stomatal conductance,
     photosynthesis and transpiration. Plant, Cell & Environment, 26: 1097-1116.
     https://doi.org/10.1046/j.1365-3040.2003.01035.x
@@ -81,7 +84,6 @@ function compute_tuzet_moisture_stress(
     β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - p_leaf))))
     return β
 end
-
 
 """
     update_soil_moisture_stress!(
@@ -146,56 +148,20 @@ end
 
 The required parameters for the piecewise moisture stress model.
 
-Note: θ_high should be higher than θ_low
+The parameters should fall within
+the following ranges:
+- θ_high>θ_low should be in (θ_r, ν] where ν is the porosity of the soil
+- c should be positive
 """
-Base.@kwdef struct PiecewiseMoistureStressParameters{
+Base.@kwdef struct PiecewiseMoistureStressParameters{FT,
     F <: Union{AbstractFloat, ClimaCore.Fields.Field},
-}
+} where {FT}
     """Field capacity volumetric water content or porosity (m^3 / m^3)"""
     θ_high::F
     """Wilting point volumetric water content or residual water fraction(m^3 / m^3)"""
     θ_low::F
     """Curvature parameter (unitless)"""
-    c::F
-    """Intrinsic moisture stress factor (unitless)"""
-    β0::F
-    """Depth of lowest soil cell face (m), negative"""
-    soil_zmin::F
-end
-
-
-"""
-    PiecewiseMoistureStressParameters(
-        ::Type{FT};
-        θ_high,
-        θ_low,
-        c,
-        β0,
-        soil_zmin
-    ) where {FT <: AbstractFloat}
-
-An outer constructor for PiecewiseMoistureStressParameters. The parameters should fall within
-the following ranges:
-- θ_high, θ_low should be in [θ_r, ν] where ν is the porosity of the soil
-- c should be positive
-- β should be in [0, 1]
-- soil_zmin should be negative
-"""
-function PiecewiseMoistureStressParameters(
-    ::Type{FT};
-    θ_high, # no defaults values as this varies with soil porosity
-    θ_low, # no defaults values as this varies with soil porosity
-    c = FT(1.0),
-    β0 = FT(1.0),
-    soil_zmin = FT(-1.0),
-) where {FT <: AbstractFloat}
-    return PiecewiseMoistureStressParameters{FT}(
-        θ_high,
-        θ_low,
-        c,
-        β0,
-        soil_zmin,
-    )
+    c::FT
 end
 
 Base.eltype(::PiecewiseMoistureStressParameters{FT}) where {FT} = FT
@@ -205,6 +171,14 @@ Base.broadcastable(x::PiecewiseMoistureStressParameters) = tuple(x)
     PiecewiseMoistureStressModel{FT, TMSP <: PiecewiseMoistureStressParameters{FT}}
     <: AbstractSoilMoistureStressModel{FT}
 
+An implementation of a piecewise moisture stress model, taking the form
+
+βm(z) = min(1, [(θ(z)-θ_low)/(θ_high - θ_low)]^c), where θ_high,
+θ_low, and c are parameters, and θ(z) is the soil moisture at z.
+
+See  Egea et al. (2011) for details.
+
+Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
 """
 struct PiecewiseMoistureStressModel{
     FT,
@@ -221,105 +195,23 @@ function PiecewiseMoistureStressModel{FT}(
     )
 end
 
-ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm)
+ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
 ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} =
-    (FT, FT)
+    (FT,)
 ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) =
-    (:surface, :surface)
-
-"""
-    Piecewise_moisture_stress_params_from_hydrology(
-        hydrology_cm,
-        ν,
-        θ_r;
-        c = 1.0,
-        β0 = 1.0,
-        ψ_fc = -3.36,  # Field capacity matric potential (m H2O, equivalent to -33 kPa)
-        ψ_wp = -152.9  # Wilting point matric potential (m H2O, equivalent to -1500 kPa)
-    )
-
-Helper function to create `PiecewiseMoistureStressParameters` by calculating field capacity (θ_high)
-and wilting point (θ_low) from the soil hydraulic closure model `hydrology_cm`.
-
-# Arguments
-- `hydrology_cm`: Soil hydraulic closure model (e.g., vanGenuchten or BrooksCorey)
-- `ν`: Soil porosity (m^3/m^3)
-- `θ_r`: Residual water content (m^3/m^3)
-- `soil_zmin`: Depth of the lowest soil cell face (m), must be negative
-- `c`: Curvature parameter (unitless), default 1.0
-- `β0`: Intrinsic moisture stress factor (unitless), default 1.0
-- `ψ_fc`: Field capacity matric potential (m H2O), default -3.36 m (-33 kPa)
-- `ψ_wp`: Wilting point matric potential (m H2O), default -152.9 m (-1500 kPa)
-
-The function uses the `inverse_matric_potential` function to calculate the effective
-saturation at field capacity and wilting point, then converts to volumetric water content.
-"""
-function PiecewiseMoistureStressParametersFromHydrology(
-    ::Type{FT},
-    hydrology_cm,
-    ν::Union{FT, ClimaCore.Fields.Field},
-    θ_r::Union{FT, ClimaCore.Fields.Field},
-    soil_zmin::Union{FT, ClimaCore.Fields.Field};
-    c::FT = FT(1.0),
-    β0::FT = FT(1.0),
-    ψ_fc::FT = FT(-3.36734694),    # -33 kPa, equivalent in m H2O
-    ψ_wp::FT = FT(-153.06122449),  # -1500 kPa, equivalent in m H2O
-    verbose::Bool = false,
-) where {FT <: AbstractFloat}
-    if c <= 0
-        throw(
-            ArgumentError("Curvature parameter `c` must be greater than zero"),
-        )
-    end
-    if β0 <= 0
-        throw(
-            ArgumentError(
-                "Intrinsic moisture stress factor `β0` must be greater than zero",
-            ),
-        )
-    end
-
-    c = FT(c)
-    β0 = FT(β0)
-    ψ_fc = FT(ψ_fc)
-    ψ_wp = FT(ψ_wp)
-
-    # Calculate effective saturation at field capacity and wilting point
-    if hydrology_cm isa ClimaCore.Fields.Field
-        S_fc = @. ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_fc)
-        S_wp = @. ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_wp)
-        θ_high = @. S_fc * (ν - θ_r) + θ_r
-        θ_low = @. S_wp * (ν - θ_r) + θ_r
-    else
-        S_fc = ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_fc)
-        S_wp = ClimaLand.Soil.inverse_matric_potential(hydrology_cm, ψ_wp)
-        θ_high = S_fc * (ν - θ_r) + θ_r
-        θ_low = S_wp * (ν - θ_r) + θ_r
-    end
-
-    return PiecewiseMoistureStressParameters(
-        θ_high = θ_high,
-        θ_low = θ_low,
-        c = c,
-        β0 = β0,
-        soil_zmin = soil_zmin,
-    )
-end
+    (:surface,)
 
 """
     compute_piecewise_moisture_stress(
         θ_high::FT,
         θ_low::FT,
         c::FT,
-        β0::FT,
         θ::FT,
     ) where {FT}
 
 This function computes at a point the soil moisture stress factor using the volumetric water content θ (m^3/m^3)
 and four parameters: `θ_high` (field capacity, m^3/m^3), `θ_low` (wilting point, m^3/m^3), `c` (curvature parameter,
-unitless), and `β0` (intrinsic moisture stress factor, unitless). This is a modification to
-the piecewise formulation defined in Egea et al. (2011) where the entire functional form is multiplied by
-`β0` to allow for some "intrinsic moisture stress" even in well-watered conditions.
+unitless). See  Egea et al. (2011).
 
 Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
 """
@@ -327,13 +219,11 @@ function compute_piecewise_moisture_stress(
     θ_high::FT,
     θ_low::FT,
     c::FT,
-    β0::FT,
     θ::FT,
 ) where {FT}
     # avoid taking e.g. sqrt of negative numbers for rational c
     arg = max((θ - θ_low) / (θ_high - θ_low), FT(0))
-
-    return β0 * max(FT(0), min(FT(1), arg^c))
+    return min(FT(1), arg^c)
 end
 
 """
@@ -354,22 +244,21 @@ function update_soil_moisture_stress!(
 )
     # compute root-integrated soil water content
     if :soil in canopy.boundary_conditions.prognostic_land_components
-        # unpack soil moisture field, parameters
-        ϑ_l = Y.soil.ϑ_l
-        (; θ_high, θ_low, c, β0, soil_zmin) = model.parameters
+        θ_l = p.soil.θ_l
+        (; θ_high, θ_low, c) = model.parameters
         z = ClimaCore.Fields.coordinate_field(axes(ϑ_l)).z
-
+        
         # normalized distribution for root density
         norm = @. lazy(
             Canopy.PlantHydraulics.root_distribution_CDF(
-                soil_zmin,
+                z,
                 canopy.hydraulics.parameters.rooting_depth,
             ),
         )
 
         # per soil element
         βm = @. lazy(
-            compute_piecewise_moisture_stress(θ_high, θ_low, c, β0, ϑ_l),
+            compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
         )
         βm_root_distribution = @. lazy(
             βm * Canopy.PlantHydraulics.root_distribution(
@@ -384,8 +273,9 @@ function update_soil_moisture_stress!(
             βm_root_distribution,
         )
     else
-        (; θ_high, θ_low, c, β0, soil_zmin) = model.parameters
+        (; θ_high, θ_low, c,) = model.parameters
+        # Interpret p.drivers.θ as the root zone value.
         @. p.canopy.soil_moisture_stress.βm =
-            compute_piecewise_moisture_stress(θ_high, θ_low, c, β0, p.drivers.θ)
+            compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)
     end
 end

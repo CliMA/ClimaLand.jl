@@ -60,6 +60,82 @@ include("./spatially_varying_parameters.jl")
 ########################################################
 # Convenience constructors for Canopy model components
 ########################################################
+## Soil Moisture Stress
+"""
+    PiecewiseMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
+    c::FT = toml_dict["moisture_stress_c"],
+    porosity_residual = true,
+    soil_params
+) where {FT <: AbstractFloat}
+
+Helper function to create `PiecewiseMoistureStressModel` by calculating field capacity (θ_high)
+and wilting point (θ_low) from the soil parameters.
+
+The soil parameters are expected to include ν and θ_r (if porosity_residual
+== true) AND  the van Genuchten parameters α and n (if porosity_residual == false). These
+may be fields or floats, but must be consistently one or the other.
+
+If porosity_residual == true, we use the porosity as θ_high, and the residual as θ_low; if false,
+we compute the air entry θ (θ_high) and use the intersection of the tangent of the van Genuchten curve at
+the inflection point with θ = 0 as θ_low.
+"""
+function PiecewiseMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.AbstractTOMLDict;
+    c::FT = toml_dict["moisture_stress_c"],
+    porosity_residual = true,
+    soil_params,
+    vangenuchten = true
+) where {FT <: AbstractFloat}
+    if c <= 0
+        throw(
+            ArgumentError("Curvature parameter `c` must be greater than zero"),
+        )
+    end
+    if porosity_residual
+        θ_high = soil_params.ν
+        θ_low = soil_params.θ_r
+    else
+        function vg_air_entry(α, n, ν, θ_r)
+            Δh = 1/α/(n-1)*((2n-1)/n)^((2n-1)/n)*((n-1)/n)^((1-n)/n)
+            hb = 1/α*((n-1)/n)^((1-2n)/n) - Δh
+            S = (1+(α*hb)^n)^(-(1-1/n))
+            return S*(ν-θ_r)+θ_r
+        end
+        
+        function vg_est_wip(α, n, ν, θ_r)
+            h = 1/α*((n-1)/n)^((1-2n)/n)
+            S = (1+(α*h)^n)^(-(1-1/n))
+            return S*(ν-θ_r)+θ_r
+        end
+        α = soil_params.α
+        n = soil_params.n
+        ν = soil_params.ν
+        θ_r = soil_params.θ_r
+        θ_low = @. vg_est_wp(α, n, ν, θ_r)
+        θ_high = @. vg_air_entry(α, n, ν, θ_r)
+    end
+
+    params =  PiecewiseMoistureStressParameters{FT, typeof(θ_low)}(
+        θ_high,
+        θ_low,
+        c,
+    )
+    return PiecewiseMoistureStressModel{FT}(params)
+end
+    
+"""
+    TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"])
+
+A constructor for TuzetMoistureStressModel which uses the toml_dict
+values, allowing optional overrides by keyword argument.
+"""
+function TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"])
+    params = TuzetMoistureStressParameters{FT}(sc, pc)
+    return TuzetMoistureStressModel{FT}(params)
+end
 
 ## Autotrophic respiration models
 """
@@ -111,21 +187,15 @@ The `photosynthesis_parameters` argument is a NamedTuple that contains
 - `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
 By default, these parameters are set by the `clm_photosynthesis_parameters` function,
 which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.
-
-The following additional default parameters are used:
-- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
-- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
 function FarquharModel{FT}(
     domain;
     photosynthesis_parameters = clm_photosynthesis_parameters(
         domain.space.surface,
     ),
-    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
-    parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
+    parameters = FarquharParameters(FT, is_c3; Vcmax25)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
 
@@ -396,24 +466,6 @@ function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
     return PModelConductance{FT}(cond_params)
 end
 
-"""
-    TuzetMoistureStressModel{FT}() where {FT <: AbstractFloat}
-
-Creates a TuzetMoistureStressModel using default parameters of type FT.
-
-The parameters are set to:
-- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure
-- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor
-"""
-function TuzetMoistureStressModel{FT}(;
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
-) where {FT <: AbstractFloat}
-    parameters = TuzetMoistureStressParameters{FT}(sc, pc)
-    return TuzetMoistureStressModel{eltype(parameters), typeof(parameters)}(
-        parameters,
-    )
-end
 
 ########################################################
 # End component model convenience constructors
@@ -513,7 +565,7 @@ end
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
-        soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{FT}(),
+        soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
@@ -539,9 +591,7 @@ function CanopyModel{FT}(;
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
     hydraulics::AbstractPlantHydraulicsModel{FT},
-    soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{
-        FT,
-    }(),
+    soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
     boundary_conditions::B,
@@ -598,7 +648,7 @@ end
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
-            soil_moisture_stress = TuzetMoistureStressModel{FT}(),
+        soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
@@ -638,7 +688,7 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
-    soil_moisture_stress = TuzetMoistureStressModel{FT}(),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
