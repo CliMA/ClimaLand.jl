@@ -6,7 +6,11 @@ export BeerLambertParameters,
     ConstantGFunction,
     CLMGFunction,
     ground_albedo_PAR,
-    ground_albedo_NIR
+    ground_albedo_NIR,
+    canopy_sw_rt_beer_lambert,
+    canopy_sw_rt_two_stream,
+    extinction_coeff,
+    compute_G
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
