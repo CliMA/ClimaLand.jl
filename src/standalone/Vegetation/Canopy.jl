@@ -879,18 +879,9 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-     ClimaLand.make_update_aux(canopy::CanopyModel{FT,
-                                                  <:AutotrophicRespirationModel,
-                                                  <:AbstractRadiationModel,
-                                                  <:AbstractPhotosynthesisModel,
-                                                  <:AbstractStomatalConductanceModel,
-                                                  <:PlantHydraulicsModel,},
-                              ) where {FT}
+     ClimaLand.make_update_aux(canopy::CanopyModel)
 
-Creates the `update_aux!` function for the `CanopyModel`; a specific
-method for `update_aux!` for the case where the canopy model components
-are of the type in the parametric type signature: `AutotrophicRespirationModel`, `AbstractRadiationModel`,
-`FarquharModel`, `MedlynConductanceModel`, and `PlantHydraulicsModel`.
+Creates the `update_aux!` function for the `CanopyModel`
 
 Please note that the plant hydraulics model has auxiliary variables
 that are updated in its prognostic `compute_exp_tendency!` function.
@@ -901,17 +892,7 @@ The other sub-components rely heavily on each other,
 so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
-function ClimaLand.make_update_aux(
-    canopy::CanopyModel{
-        FT,
-        <:AutotrophicRespirationModel,
-        <:AbstractRadiationModel,
-        <:AbstractPhotosynthesisModel,
-        <:AbstractStomatalConductanceModel,
-        <:PlantHydraulicsModel,
-        <:AbstractCanopyEnergyModel,
-    },
-) where {FT}
+function ClimaLand.make_update_aux(canopy::CanopyModel)
     function update_aux!(p, Y, t)
 
         # Extend to other fields when necessary
@@ -952,17 +933,7 @@ end
 
 Creates and returns the compute_exp_tendency! for the `CanopyModel`.
 """
-function make_compute_exp_tendency(
-    canopy::CanopyModel{
-        FT,
-        <:AutotrophicRespirationModel,
-        <:AbstractRadiationModel,
-        <:AbstractPhotosynthesisModel,
-        <:AbstractStomatalConductanceModel,
-        <:PlantHydraulicsModel,
-        <:AbstractCanopyEnergyModel,
-    },
-) where {FT}
+function make_compute_exp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
     compute_exp_tendency_list = map(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
@@ -982,17 +953,7 @@ end
 
 Creates and returns the compute_imp_tendency! for the `CanopyModel`.
 """
-function make_compute_imp_tendency(
-    canopy::CanopyModel{
-        FT,
-        <:AutotrophicRespirationModel,
-        <:AbstractRadiationModel,
-        <:AbstractPhotosynthesisModel,
-        <:AbstractStomatalConductanceModel,
-        <:PlantHydraulicsModel,
-        <:AbstractCanopyEnergyModel,
-    },
-) where {FT}
+function make_compute_imp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
     compute_imp_tendency_list = map(
         x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
@@ -1012,17 +973,7 @@ end
 
 Creates and returns the compute_jacobian! for the `CanopyModel`.
 """
-function ClimaLand.make_compute_jacobian(
-    canopy::CanopyModel{
-        FT,
-        <:AutotrophicRespirationModel,
-        <:AbstractRadiationModel,
-        <:AbstractPhotosynthesisModel,
-        <:AbstractStomatalConductanceModel,
-        <:PlantHydraulicsModel,
-        <:AbstractCanopyEnergyModel,
-    },
-) where {FT}
+function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
     components = canopy_components(canopy)
     update_jacobian_list = map(
         x -> make_compute_jacobian(getproperty(canopy, x), canopy),
