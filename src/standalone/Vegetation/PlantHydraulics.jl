@@ -326,8 +326,8 @@ prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
 
 A function which returns the names of the auxiliary
 variables of the `PlantHydraulicsModel`,
-the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
-and the volume flux*root cross section in the roots `fa_roots` (1/s),
+the water potential `ψ` (m), the volume flux\\*cross section `fa` (1/s),
+and the volume flux\\*root cross section in the roots `fa_roots` (1/s),
 where the cross section can be represented by an area index.
 """
 auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa, :fa_roots, :area_index)
@@ -418,9 +418,9 @@ mean for effective conducticity between the two layers
 
 To account for different path lengths in the two compartments Δz1 and
 Δz2, we would require the following conductance k (1/s)
-k_eff = K1/Δz1*K2/Δz2/(K1/Δz1+K2/Δz2)
+k\\_eff = K1/Δz1*K2/Δz2/(K1/Δz1+K2/Δz2)
 and a water flux of
-F = -k_eff * (ψ1 +z1 - ψ2 - z2) (m/s).
+F = -k\\_eff * (ψ1 +z1 - ψ2 - z2) (m/s).
 
 This currently assumes the path lengths are equal.
 """

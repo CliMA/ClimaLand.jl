@@ -9,8 +9,8 @@ export PrescribedCanopyTempModel,
 """
     AbstractCanopyEnergyModel{FT}
 
-An abstract struct for the Canopy Energy Models. Both PrescribedCanopyTempModel and
-BigLeafEnergyModel are subtypes of this abstract type.
+An abstract struct for the Canopy Energy Models. Both `PrescribedCanopyTempModel` and
+`BigLeafEnergyModel` are subtypes of this abstract type.
 """
 abstract type AbstractCanopyEnergyModel{FT} <: AbstractCanopyComponent{FT} end
 

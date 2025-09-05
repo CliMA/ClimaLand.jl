@@ -209,16 +209,22 @@ using .Biogeochemistry
                          additional_sources = (),
                          ) where {FT <: AbstractFloat}
 
-Creates a EnergyHydrology model with the given float type FT, domain, toml_dict, forcing, and prognostic land components.
+Creates a EnergyHydrology model with the given float type `FT`, `domain`,
+`toml_dict`, `forcing`, and prognostic land components.
 
-The argument `forcing` should be a NamedTuple containing two fields: `atmos` and `radiation`.
+The argument `forcing` should be a NamedTuple containing two fields: `atmos` and
+`radiation`.
 
-When running the soil model in standalone mode, `prognostic_land_components = (:soil,)`, while for running integrated land models,
-this should be a list of the component models. This value of this argument must be the same across all components in the land model.
+When running the soil model in standalone mode, `prognostic_land_components =
+(:soil,)`, while for running integrated land models, this should be a list of
+the component models. This value of this argument must be the same across all
+components in the land model.
 
-Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
-changed with keyword arguments. Note that these parameters must all be of the same type: either `FT` or ClimaCore Fields.
-By default they are Fields read in from data, so in practice this means if some values are provided as Floats, all of these
+Default spatially varying parameters (for retention curve parameters,
+composition, and specific storativity) are provided but can be changed with
+keyword arguments. Note that these parameters must all be of the same type:
+either `FT` or ClimaCore Fields. By default they are Fields read in from data,
+so in practice this means if some values are provided as Floats, all of these
 parameter defaults must be overwritten as Floats.
 
 `retention_parameters` should be a NamedTuple with the following fields:
@@ -305,7 +311,7 @@ end
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
                          )
 
-Creates a RichardsModel model with the given float type FT, domain, earth_param_set and forcing.
+Creates a RichardsModel model with the given float type `FT`, `domain` and `forcing`.
 Here, `forcing` should be a `NamedTuple` containing a field `atmos` with the atmospheric forcing.
 
 Default spatially varying parameters (for retention curve parameters and specific storativity) are provided but can be
