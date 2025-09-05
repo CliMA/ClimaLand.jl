@@ -70,13 +70,7 @@ ClimaLand.Soil.EnergyHydrology{FT}(
 
 ```@docs
 ClimaLand.Soil.RichardsParameters
-ClimaLand.Soil.RichardsParameters(;
-    hydrology_cm::C,
-    ν::F,
-    K_sat::F,
-    S_s::F,
-    θ_r::F,
-) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
+ClimaLand.Soil.RichardsParameters()
 ClimaLand.Soil.EnergyHydrologyParameters
 ClimaLand.Soil.EnergyHydrologyParameters(
     ::Type{FT};
@@ -137,7 +131,6 @@ ClimaLand.Soil.SurfaceRunoff
 ClimaLand.Soil.TOPMODELRunoff
 ClimaLand.Soil.TOPMODELSubsurfaceRunoff
 ClimaLand.Soil.subsurface_runoff_source
-ClimaLand.Soil.update_runoff!
 ```
 
 ## Soil Albedo Types and Methods

@@ -36,7 +36,11 @@ are used in the comments in the code below.
 
 export Pft, default_pfts, params_from_pfts, pft_param_list
 
-# List of parameters that PFTs need to define in order to be valid
+"""
+    pft_param_list
+
+List of parameters that PFTs need to define in order to be valid.
+"""
 pft_param_list = [
     # TwoStreamModel parameters
     :Ω,          # Clumping Index
@@ -67,7 +71,7 @@ pft_param_list = [
 
 """
 Define a PFT type that can be used to store the parameters for each PFT.
-Each PFT has a name and a list of parameters. The parameters are stored as 
+Each PFT has a name and a list of parameters. The parameters are stored as
 NamedTuples mapping parameter names to values. The inner constructor checks to
 ensure all required parameters are defined for the PFT.
 """
@@ -480,7 +484,11 @@ C4G = Pft(
     ),
 )
 
-# Lists of defaults to pass to parameter constructing function
+"""
+    default_pfts
+
+Lists of defaults to pass to `params_from_pfts`.
+"""
 default_pfts = [
     NET_Temp,
     NET_Bor,
@@ -498,19 +506,23 @@ default_pfts = [
     C4G,
 ]
 
+"""
+    params_from_pfts(pft_cover::Vector{Float64},
+                     pfts::Vector{Pft} = default_pfts
+                    )
+
+Takes in a vector of PFT cover percentages and returns the correct parameter set
+corresponding to the most dominant PFT by cover percentage.
+
+May optionally take in a vector of PFTs to use instead of the default PFTs. In
+this case, the pfts_cover vector must be the same length and in the
+corresponding order to the PFTs in the pfts vector. This allows a user to define
+their own PFT scheme and plug it into the model.
+"""
 function params_from_pfts(
     pft_cover::Vector{Float64},
     pfts::Vector{Pft} = default_pfts,
 )
-    """
-    Takes in a vector of PFT cover percentages and returns the correct parameter set
-    corresponding to the most dominant PFT by cover percentage.
-
-    May optionally take in a vector of PFTs to use instead of the default PFTs.
-    In this case, the pfts_cover vector must be the same length and in the
-    corresponding order to the PFTs in the pfts vector. This allows a user to
-    define their own PFT scheme and plug it into the model.
-    """
     # Find the index of the dominant PFT by cover percentage
     max_ind = argmax(pft_cover)
 

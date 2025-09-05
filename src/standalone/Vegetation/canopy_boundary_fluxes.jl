@@ -154,19 +154,10 @@ end
 
 """
     canopy_boundary_fluxes!(p::NamedTuple,
-                            canopy::CanopyModel{
-                                FT,
-                                <:AutotrophicRespirationModel,
-                                <:AbstractRadiationModel,
-                                <:AbstractPhotosynthesisModel,
-                                <:AbstractStomatalConductanceModel,
-                                <:PlantHydraulicsModel,
-                                <:AbstractCanopyEnergyModel,
-                                <:AbstractSoilMoistureStressModel,
-                            },
+                            canopy::CanopyModel,
                             Y::ClimaCore.Fields.FieldVector,
                             t,
-                            ) where {FT}
+                            )
 
 Computes the boundary fluxes for the canopy prognostic
 equations; updates the specific fields in the auxiliary
@@ -181,19 +172,10 @@ within the explicit tendency of the canopy model.
 """
 function canopy_boundary_fluxes!(
     p::NamedTuple,
-    canopy::CanopyModel{
-        FT,
-        <:AutotrophicRespirationModel,
-        <:AbstractRadiationModel,
-        <:AbstractPhotosynthesisModel,
-        <:AbstractStomatalConductanceModel,
-        <:PlantHydraulicsModel,
-        <:AbstractCanopyEnergyModel,
-        <:AbstractSoilMoistureStressModel,
-    },
+    canopy::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     t,
-) where {FT}
+)
     bc = canopy.boundary_conditions
     radiation = bc.radiation
     atmos = bc.atmos

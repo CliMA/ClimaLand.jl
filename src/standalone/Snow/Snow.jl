@@ -435,6 +435,15 @@ struct SnowModel{FT, PS <: SnowParameters{FT}, BC, D} <: AbstractSnowModel{FT}
     domain::D
 end
 
+"""
+    SnowModel(;
+        parameters::SnowParameters{FT, DM, PSE},
+        domain::ClimaLand.Domains.AbstractDomain,
+        boundary_conditions::BC
+    ) where {FT, DM, PSE, BC}
+
+Construct a `SnowModel` with `parameters`, `domain`, and `boundary_conditions`.
+"""
 function SnowModel(;
     parameters::SnowParameters{FT, DM, PSE},
     domain::ClimaLand.Domains.AbstractDomain,

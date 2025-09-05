@@ -32,6 +32,13 @@ end
 
 Base.eltype(::SIFParameters{FT}) where {FT} = FT
 
+"""
+    Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
+
+`Lee2015SIFModel` struct containing the parameters needed to compute
+the SIF parameterization described in:
+Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948.
+"""
 struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
     parameters::SP
     function Lee2015SIFModel{FT}() where {FT}

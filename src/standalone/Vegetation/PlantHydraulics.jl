@@ -838,4 +838,73 @@ function ClimaLand.total_liq_water_vol_per_area!(
     return nothing
 end
 
+
+"""
+   update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
+
+Updates the following cache variables in place:
+- p.canopy.hydraulics.ψ
+- p.canopy.hydraulics.fa[1:end-1] (within plant fluxes)
+
+Other types of AbstractPlantHydraulicsModel may update different variables.
+"""
+function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
+    ψ = p.canopy.hydraulics.ψ
+    ϑ_l = Y.canopy.hydraulics.ϑ_l
+    fa = p.canopy.hydraulics.fa
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+    SAI = area_index.stem
+    n_stem = hydraulics.n_stem
+    n_leaf = hydraulics.n_leaf
+    lai_consistency_check.(n_stem, n_leaf, area_index)
+    (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
+    # We can index into a field of Tuple{FT} to extract a field of FT
+    # using the following notation: field.:index
+    @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
+            retention_model,
+            PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
+            ν,
+            S_s,
+        )
+        # Inside of a loop, we need to use a single dollar sign
+        # for indexing into Fields of Tuples in non broadcasted
+        # expressions, and two dollar signs for
+        # for broadcasted expressions using the macro @.
+        # field.:($index) .= value # works
+        # @ field.:($$index) = value # works
+        @inbounds for i in 1:(n_stem + n_leaf - 1)
+            ip1 = i + 1
+            @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
+                retention_model,
+                PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
+                ν,
+                S_s,
+            )
+
+            areai = getproperty(area_index, hydraulics.compartment_labels[i])
+            areaip1 =
+                getproperty(area_index, hydraulics.compartment_labels[ip1])
+
+            # Compute the flux*area between the current compartment `i`
+            # and the compartment above.
+            @. fa.:($$i) =
+                PlantHydraulics.water_flux(
+                    hydraulics.compartment_midpoints[i],
+                    hydraulics.compartment_midpoints[ip1],
+                    ψ.:($$i),
+                    ψ.:($$ip1),
+                    PlantHydraulics.hydraulic_conductivity(
+                        conductivity_model,
+                        ψ.:($$i),
+                    ),
+                    PlantHydraulics.hydraulic_conductivity(
+                        conductivity_model,
+                        ψ.:($$ip1),
+                    ),
+                ) * PlantHydraulics.harmonic_mean(areaip1, areai)
+        end
+        # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 end
+end
+

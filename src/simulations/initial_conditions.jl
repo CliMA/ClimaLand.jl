@@ -138,10 +138,10 @@ end
         enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
 
 Enforces the constraint that ϑ_l + θ_i <= ν, by clipping the ice content to be
-99% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
+95% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
 """
 function enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT) where {FT}
-    if ϑ_l + θ_i > ν # if we exceed porosity
+    if ϑ_l + θ_i > FT(0.95) * ν # if we exceed porosity
         return FT(0.95) * (ν - ϑ_l) # clip ice content to 95% of available pore space
     else
         return θ_i
@@ -324,4 +324,75 @@ function make_set_initial_state_from_file(
         )
     end
     return set_ic!
+end
+
+function set_soil_initial_conditions_from_temperature_and_total_water!(
+    Y,
+    subsurface_space,
+    soil_ic_path,
+    soil;
+    water_varname = "swvl",
+    temp_varname = "stl",
+    regridder_type = regridder_type,
+    extrapolation_bc = extrapolation_bc,
+    interpolation_method = interpolation_method,
+)
+    total_water_content = SpaceVaryingInput(
+        soil_ic_path,
+        water_varname,
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    temperature = SpaceVaryingInput(
+        soil_ic_path,
+        temp_varname,
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    # The interpolation of gridded date to field is not mask aware.
+    # This results in unphysical values along the coast.
+    # To mitigate, we find the bounds of the land values in the data
+    # (ocean values assumed set to zero),
+    # and clip the interpolated field to lie within those bounds.
+    raw_data = NCDataset(soil_ic_path)
+    raw_temp_data = raw_data[temp_varname][:]
+    FT = eltype(Y.soil.ϑ_l)
+    T_bounds = FT.(extrema(raw_temp_data[raw_temp_data .> 0]))
+    close(raw_data)
+    temperature .= clip_to_bounds.(temperature, T_bounds[1], T_bounds[2])
+    (; θ_r, ν, ρc_ds, earth_param_set) = soil.parameters
+    _T_freeze = LP.T_freeze(earth_param_set)
+    function liquid_soil_water(twc, T, θ_r, ν)
+        if T > _T_freeze
+            return twc
+        else
+            return θ_r
+        end
+    end
+
+    Y.soil.ϑ_l .= liquid_soil_water.(total_water_content, temperature, θ_r, ν)
+    Y.soil.θ_i .= total_water_content .- Y.soil.ϑ_l
+
+    Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
+    Y.soil.ϑ_l .= enforce_porosity_constraint.(Y.soil.ϑ_l, ν)
+    Y.soil.θ_i .=
+        enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
+    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            temperature,
+            earth_param_set,
+        )
+    return nothing
 end

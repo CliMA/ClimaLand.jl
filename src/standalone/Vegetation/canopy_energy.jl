@@ -60,10 +60,22 @@ end
 
 Base.eltype(::BigLeafEnergyParameters{FT}) where {FT} = FT
 
+"""
+    BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
+
+Construct `BigLeafEnergyParameters` with the default `ac_canopy = 2e3`.
+"""
 function BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
     return BigLeafEnergyParameters{FT}(ac_canopy)
 end
 
+"""
+    BigLeafEnergyParameters(toml_dict::CP.AbstractTOMLDict;
+                            ac_canopy = toml_dict["ac_canopy"],
+                        )
+
+Construct `BigLeafEnergyParameters` from a TOML dict.
+"""
 function BigLeafEnergyParameters(
     toml_dict::CP.AbstractTOMLDict;
     ac_canopy = toml_dict["ac_canopy"],
