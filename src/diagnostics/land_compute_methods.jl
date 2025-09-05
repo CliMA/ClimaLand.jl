@@ -50,7 +50,7 @@ macro diagnostic_compute(name, model, compute)
 end
 
 ### Conservation ##
-@diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
+@diagnostic_compute "water_volume_per_area" Union{EnergyHydrology, LandModel} p.soil.total_water
 @diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
 @diagnostic_compute "water_volume_per_area_change" EnergyHydrology Y.soil.∫F_vol_liq_water_dt
 @diagnostic_compute "energy_per_area_change" EnergyHydrology Y.soil.∫F_e_dt
@@ -470,10 +470,10 @@ function compute_precip!(
     if isnothing(out)
         out = zeros(land_model.soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = (p.drivers.P_liq + p.drivers.P_snow) * 1000 # density of liquid water (1000kg/m^3)
+        @. out = (p.drivers.P_liq + p.drivers.P_snow)
         return out
     else
-        @. out = (p.drivers.P_liq + p.drivers.P_snow) * 1000# density of liquid water (1000kg/m^3)
+        @. out = (p.drivers.P_liq + p.drivers.P_snow)
     end
 end
 
@@ -594,7 +594,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 p.soil.turbulent_fluxes.vapor_flux_ice +
                 p.canopy.turbulent_fluxes.transpiration
-            ) * 1000 # density of liquid water (1000kg/m^3)
+            )
         return out
     else
         out .=
@@ -602,7 +602,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
                 p.canopy.turbulent_fluxes.transpiration
-            ) .* 1000 # density of liquid water (1000kg/m^3)
+            )
     end
 end
 
@@ -624,7 +624,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_ice +
                 p.canopy.turbulent_fluxes.transpiration +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-            ) * 1000 # density of liquid water (1000kg/m^3)
+            )
         return out
     else
         @. out =
@@ -635,10 +635,77 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_ice +
                 p.canopy.turbulent_fluxes.transpiration +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-            ) * 1000 # density of liquid water (1000kg/m^3)
+            )
     end
 end
 @diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.transpiration
+
+function compute_bottom_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.soil.bottom_bc.water
+        return out
+    else
+        @. out = p.soil.bottom_bc.water
+    end
+end
+
+function compute_inff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out .= p.soil.infiltration
+        return out
+    else
+        out .= p.soil.infiltration
+    end
+end
+
+function compute_wtd!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = land_model.soil.domain.fields.depth - p.soil.h∇
+        return out
+    else
+        @. out = land_model.soil.domain.fields.depth - p.soil.h∇
+    end
+end
+function compute_infc!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out = soil_infiltration_capacity(land_model.soil, Y, p)
+        return out
+    else
+        out = soil_infiltration_capacity(land_model.soil, Y, p)
+    end
+end
 
 function compute_total_respiration!(
     out,
