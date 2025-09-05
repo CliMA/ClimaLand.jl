@@ -1321,43 +1321,4 @@ function get_model_callbacks(model::CanopyModel{FT}; start_date, Δt) where {FT}
     return callbacks
 end
 
-"""
-    required_model_callbacks(start_date, t0, dt, model::CanopyModel)
-
-For some canopy components (namely the P-model), we need a callback to ensure regular
-updates at a preset frequency. This method dispatches off of the type of the photosynthesis
-model.
-"""
-function required_model_callbacks(start_date, t0, dt, model::CanopyModel)
-    return required_photosynthesis_model_callbacks(
-        start_date,
-        t0,
-        dt,
-        model,
-        model.photosynthesis,
-    )
-end
-
-
-"""
-    required_photosynthesis_model_callbacks(
-        start_date,
-        t0,
-        dt,
-        canopy,
-        photo_model::AbstractPhotosynthesisModel,
-    )
-
-For an AbstractPhotosynthesisModel in general, add no additional model callbacks.
-"""
-function required_photosynthesis_model_callbacks(
-    start_date,
-    t0,
-    dt,
-    canopy,
-    photo_model::AbstractPhotosynthesisModel,
-)
-    return ()
-end
-
 end
