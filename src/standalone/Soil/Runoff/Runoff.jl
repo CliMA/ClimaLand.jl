@@ -165,7 +165,7 @@ The runoff flux is given by Equation 12 of Niu et al. (2005),
 use in global climate models".
 
 This is currently treated implicitly (evaluated at the next value of
-ϑ_l) but not included in the Jacobian approximation. This is because
+ϑ\\_l) but not included in the Jacobian approximation. This is because
 `update_infiltration_water_flux` is called as part of the implicit tendency.
 
 $(DocStringExtensions.FIELDS)

@@ -56,14 +56,14 @@ end
         SF <: Union{FT, ClimaCore.Fields.Field},
     } <: AbstractSoilAlbedoParameterization
 
-A parameterization for soil albedo: the soil albedo is 
+A parameterization for soil albedo: the soil albedo is
 defined in two bands (PAR and NIR), and can spatially vary or
 be set to scalar. However, it varies temporally due to a
 dependence on soil water content at the surface,
-via the effective saturation S(θ_sfc):
-α = α_wet*S + α_dry*(1-S)
+via the effective saturation S(θ\\_sfc):
+α = α\\_wet*S + α\\_dry*(1-S)
 
-We use a value for θ_sfc averaged over the depth `albedo_calc_top_thickness`.
+We use a value for θ\\_sfc averaged over the depth `albedo_calc_top_thickness`.
 If the model resolution is such that the first layer is thicker than this depth,
 the value from the first layer is used.
 
@@ -128,16 +128,16 @@ Calculates and updates PAR and NIR albedo as a function of volumetric soil water
 the top of the soil. If the soil layers are larger than the specified `albedo_calc_top_thickness`,
 the water content of the top layer is used in the calclulation. For the PAR and NIR bands,
 
-α_band = α_{band,dry} * (1 - S_e) +  α_{band,wet} * (S_e)
+α\\_band = α\\_{band,dry} * (1 - S\\_e) +  α\\_{band,wet} * (S\\_e)
 
-where S_e is the relative soil wetness above some depth, `albedo_calc_top_thickness`. This
+where S\\_e is the relative soil wetness above some depth, `albedo_calc_top_thickness`. This
 is a modified version of Equation (1) of:
 
 Braghiere, R. K., Wang, Y., Gagné-Landmann, A., Brodrick, P. G., Bloom, A. A., Norton,
 A. J., et al. (2023). The importance of hyperspectral soil albedo information for improving
 Earth system model projections. AGU Advances, 4, e2023AV000910. https://doi.org/10.1029/2023AV000910
 
-where effective saturation is used in place of volumetric soil water content.The dry and wet
+where effective saturation is used in place of volumetric soil water content. The dry and wet
 albedo values come from a global soil color map and soil color to albedo map from CLM.
 
 CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model

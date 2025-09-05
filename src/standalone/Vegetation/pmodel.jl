@@ -175,15 +175,15 @@ end
            F <: Union{FT, ClimaCore.Fields.Field},
            } <: AbstractPhotosynthesisModel{FT}
 
-    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020).
+An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020).
 
-    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T.,
-        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating
-        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581,
-        https://doi.org/10.5194/gmd-13-1545-2020, 2020.
+Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T.,
+    and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating
+    ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581,
+    https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 
-    The P-model computes photosynthesis rates at the canopy level, and ci, Γstar, Ko, Kc are in
-    units of Pa.
+The P-model computes photosynthesis rates at the canopy level, and ci, Γstar, Ko, Kc are in
+units of Pa.
 """
 struct PModel{
     FT,
@@ -284,22 +284,22 @@ Args:
 
 Returns: named tuple with the following keys and descriptions:
 Output name         Description (units)
-    "gpp"           Gross primary productivity (kg m^-2 s^-1)
-    "gammastar"     CO2 compensation point (Pa)
-    "kmm"           Effective MM coefficient for Rubisco-limited photosynthesis (Pa)
-    "ns_star"       Viscosity of water normalized to 25 deg C (unitless)
-    "chi"           Optimal ratio of intercellular to ambient CO2 (unitless)
-    "xi"            Sensitivity of χ to VPD (Pa^1/2)
-    "mj"            CO2 limitation factor for light-limited photosynthesis (unitless)
-    "mc"            CO2 limitation factor for Rubisco-limited photosynthesis (unitless)
-    "ci"            Intercellular CO2 concentration (Pa)
-    "iwue"          Intrinsic water use efficiency (Pa)
-    "gs"            Stomatal conductance (mol m^-2 s^-1 Pa^-1)
-    "vcmax"         Maximum rate of carboxlation (mol m^-2 s^-1)
-    "vcmax25"       Vcmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
-    "jmax"          Maximum rate of electron transport (mol m^-2 s^-1)
-    "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
-    "Rd"            Dark respiration rate (mol m^-2 s^-1)
+- "gpp"           Gross primary productivity (kg m^-2 s^-1)
+- "gammastar"     CO2 compensation point (Pa)
+- "kmm"           Effective MM coefficient for Rubisco-limited photosynthesis (Pa)
+- "ns_star"       Viscosity of water normalized to 25 deg C (unitless)
+- "chi"           Optimal ratio of intercellular to ambient CO2 (unitless)
+- "xi"            Sensitivity of χ to VPD (Pa^1/2)
+- "mj"            CO2 limitation factor for light-limited photosynthesis (unitless)
+- "mc"            CO2 limitation factor for Rubisco-limited photosynthesis (unitless)
+- "ci"            Intercellular CO2 concentration (Pa)
+- "iwue"          Intrinsic water use efficiency (Pa)
+- "gs"            Stomatal conductance (mol m^-2 s^-1 Pa^-1)
+- "vcmax"         Maximum rate of carboxlation (mol m^-2 s^-1)
+- "vcmax25"       Vcmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
+- "jmax"          Maximum rate of electron transport (mol m^-2 s^-1)
+- "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
+- "Rd"            Dark respiration rate (mol m^-2 s^-1)
 """
 function compute_full_pmodel_outputs(
     parameters::PModelParameters{FT},
@@ -1487,7 +1487,6 @@ end
 Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
 and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
 """
-
 function compute_mc(is_c3::AbstractFloat, args...)
     return is_c3 > 0.5 ? c3_compute_mc(args...) : c4_compute_mc(args...)
 end

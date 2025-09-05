@@ -443,7 +443,7 @@ end
         g1 = clm_medlyn_g1(domain.space.surface),
     ) where {FT <: AbstractFloat}
 
-Creates a MedlynConductanceModel using default parameters of type FT.
+Creates a `MedlynConductanceModel` using default parameters of type `FT`.
 
 The `conductance_parameters` argument is a NamedTuple that contains
 - `g1`: a Float or ClimaCore Field representing the slope parameter (PA^{1/2})
@@ -663,7 +663,7 @@ end
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
 
-Creates a CanopyModel with the provided domain, forcing, and parameters.
+Creates a `CanopyModel` with the provided `domain`, `forcing`, and `parameters`.
 
 Defaults are provided for each canopy component model, which can be overridden
 by passing in a different instance of that type of model. Default parameters are also provided
@@ -671,11 +671,12 @@ for each canopy component, and can be changed with keyword arguments. Please see
 of each component model for details on the default parameters.
 
 The required argument `forcing` should be a NamedTuple with the following field:
-- `atmos`: a PrescribedAtmosphere or CoupledAtmosphere object
-- `radiation`: a PrescribedRadiativeFluxes or CoupledRadiativeFluxes object
-- `ground`: a PrescribedGroundConditions or PrognosticGroundConditions object
+- `atmos`: a `PrescribedAtmosphere` or `CoupledAtmosphere` object
+- `radiation`: a `PrescribedRadiativeFluxes` or `CoupledRadiativeFluxes` object
+- `ground`: a `PrescribedGroundConditions` or `PrognosticGroundConditions` object
 
-The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
+The required argument `LAI` should be a `ClimaUtilities.TimeVaryingInputs.TimeVaryingInput`
+for leaf area index.
 
 When running the canopy model in standalone mode, set `prognostic_land_components = (:canopy,)`,
 while for running integrated land models, this should be a list of the individual models.
@@ -1092,7 +1093,7 @@ Base.broadcastable(C::CanopyModel) = tuple(C)
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total energy per unit ground area for the `CanopyModel`.
@@ -1117,7 +1118,7 @@ end
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total liquid water volume per unit ground area for the `CanopyModel`.

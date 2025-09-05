@@ -8,7 +8,7 @@ CurrentModule = ClimaLand.Canopy
 
 ```@docs
 ClimaLand.Canopy.PModel
-ClimaLand.Canopy.PModel()
+ClimaLand.Canopy.PModel{FT}(domain)
 ClimaLand.Canopy.PModelParameters
 ClimaLand.Canopy.PModelConstants
 ClimaLand.Canopy.FarquharModel
@@ -47,7 +47,6 @@ ClimaLand.Canopy.make_PModel_callback
 ClimaLand.Canopy.intrinsic_quantum_yield
 ClimaLand.Canopy.compute_viscosity_ratio
 ClimaLand.Canopy.compute_Kmm
-ClimaLand.Canopy.optimal_co2_ratio_c3
 ClimaLand.Canopy.intercellular_co2_pmodel
 ClimaLand.Canopy.gs_co2_pmodel
 ClimaLand.Canopy.gs_h2o_pmodel

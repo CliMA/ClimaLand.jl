@@ -304,7 +304,7 @@ These include the broadband albedo of the land surface
 `α_sfc`, defined as the ratio of SW_u/SW_d,
 and `T_sfc`, defined as the temperature a blackbody with emissivity
 `ϵ_sfc` would have
-in order to emit the same LW_u as the land surface does. This is called the
+in order to emit the same `LW_u` as the land surface does. This is called the
 [effective temperature](https://en.wikipedia.org/wiki/Effective_temperature) in some fields,
 and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """

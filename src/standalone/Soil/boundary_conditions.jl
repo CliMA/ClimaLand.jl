@@ -30,17 +30,17 @@ An abstract type for boundary conditions for Richards equation.
 abstract type AbstractWaterBC <: ClimaLand.AbstractBC end
 
 """
-   MoistureStateBC <: AbstractWaterBC
+    MoistureStateBC <: AbstractWaterBC
 
 A simple concrete type of boundary condition, which enforces a
-state boundary condition ϑ_l = f(p,t) at either the top or bottom of the domain.
+state boundary condition ϑ\\_l = f(p,t) at either the top or bottom of the domain.
 """
 struct MoistureStateBC{F <: Function} <: AbstractWaterBC
     bc::F
 end
 
 """
-   WaterFluxBC <: AbstractWaterBC
+    WaterFluxBC <: AbstractWaterBC
 
 A simple concrete type of boundary condition, which enforces a
 normal flux boundary condition f(p,t) at either the top or bottom of the domain.
@@ -64,7 +64,7 @@ struct FreeDrainage <: AbstractWaterBC end
 
 
 """
-   RichardsAtmosDrivenFluxBC{F <: PrescribedPrecipitation, R <: AbstractRunoffModel} <: AbstractWaterBC
+    RichardsAtmosDrivenFluxBC{F <: PrescribedPrecipitation, R <: AbstractRunoffModel} <: AbstractWaterBC
 
 A concrete type of boundary condition intended only for use with the RichardsModel,
 which uses a prescribed precipitation rate (m/s) to compute the infiltration
@@ -73,7 +73,7 @@ into the soil.
 A runoff model is used
 to simulate surface and subsurface runoff and this is accounted
 for when setting boundary conditions. In order to run the simulation
-*without* runoff, choose runoff = NoRunoff() - this is also the default.
+*without* runoff, choose `runoff = NoRunoff()` - this is also the default.
 
 If you wish to simulate precipitation and runoff in the full `EnergyHydrology` model,
 you must use the `AtmosDrivenFluxBC` type.
@@ -437,7 +437,7 @@ An abstract type for boundary conditions for the soil heat equation.
 abstract type AbstractHeatBC <: ClimaLand.AbstractBC end
 
 """
-   TemperatureStateBC <: AbstractHeatBC
+    TemperatureStateBC <: AbstractHeatBC
 
 A simple concrete type of boundary condition, which enforces a
 state boundary condition T = f(p,t) at either the top or bottom of the domain.
