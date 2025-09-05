@@ -79,31 +79,31 @@ tag = "PlantHydraulicsParameters"
 # ZenithAngleAlbedoModel parameters
 
 [alpha_0]
-value = 0.64
+value = 0.62
 type = "float"
 description = "Free parameter controlling the minimum snow albedo"
 tag = "ZenithAngleAlbedoModel"
 
 [delta_alpha]
-value = 0.06
+value = 0.21
 type = "float"
 description = "Free parameter controlling the snow albedo when θs = 90∘"
 tag = "ZenithAngleAlbedoModel"
 
 [k]
-value = 2.0
+value = 1.0
 type = "float"
 description = "Rate at which albedo drops to its minimum value with zenith angle"
 tag = "ZenithAngleAlbedoModel"
 
 [beta]
-value = 0.4
+value = 0.9
 type = "float"
 description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
 
 [x0]
-value = 0.2
+value = 0.8
 type = "float"
 description = "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
