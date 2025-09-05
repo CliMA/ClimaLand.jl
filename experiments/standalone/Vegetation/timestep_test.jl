@@ -115,13 +115,12 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 (; retention_model, ν, S_s) = canopy.hydraulics.parameters;
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
+S_l_ini = inverse_water_retention_curve.(
+    retention_model,
+    [ψ_stem_0, ψ_leaf_0],
+    ν,
+    S_s,
+)
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(

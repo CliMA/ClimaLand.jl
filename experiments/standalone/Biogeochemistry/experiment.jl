@@ -130,13 +130,12 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             params.ρc_ds,
             params.earth_param_set,
         )
-        Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(
-                FT(0.0),
-                ρc_s,
-                T,
-                params.earth_param_set,
-            )
+        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+            FT(0.0),
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
     end
 
     function init_co2!(Y, z)

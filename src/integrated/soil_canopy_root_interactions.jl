@@ -10,14 +10,10 @@ function update_root_extraction!(p, Y, t, land)
     (; conductivity_model) = land.canopy.hydraulics.parameters
     area_index = p.canopy.hydraulics.area_index
     above_ground_area_index = p.scratch1
-    above_ground_area_index .=
-        PlantHydraulics.harmonic_mean.(
-            getproperty(
-                area_index,
-                land.canopy.hydraulics.compartment_labels[1],
-            ),
-            getproperty(area_index, :root),
-        )
+    above_ground_area_index .= PlantHydraulics.harmonic_mean.(
+        getproperty(area_index, land.canopy.hydraulics.compartment_labels[1]),
+        getproperty(area_index, :root),
+    )
     # Note that we model the flux between each soil layer and the canopy as:
     # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
     # K_eff = K_soil K_canopy /(K_canopy + K_soil)
@@ -165,8 +161,19 @@ function ClimaLand.source!(
     @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
 end
 
+"""
+    update_piecewise_soil_moisture_stress!(ground::Union{PrognosticSoilConditions, PrognosticGroundConditions}, p, Y, model, canopy)
 
-function update_piecewise_soil_moisture_stress!(ground::Union{PrognosticSoilConditions, PrognosticGroundConditions}, p, Y, model, canopy)
+Updates the soil moisture stress using the piecewise model for a
+prognostic soil model, where θ is vertically resolved and prognostic.
+"""
+function update_piecewise_soil_moisture_stress!(
+    ground::Union{PrognosticSoilConditions, PrognosticGroundConditions},
+    p,
+    Y,
+    model,
+    canopy,
+)
     # compute root-integrated soil water content
     θ_l = p.soil.θ_l
     (; θ_high, θ_low, c) = model.parameters
@@ -177,24 +184,19 @@ function update_piecewise_soil_moisture_stress!(ground::Union{PrognosticSoilCond
         Canopy.PlantHydraulics.root_distribution(
             z,
             canopy.hydraulics.parameters.rooting_depth,
-        )
+        ),
     )
     # compute the root zone-averaged βm
-    ClimaCore.Operators.column_integral_definite!(
-        norm,
-        root_dist,
-    )
+    ClimaCore.Operators.column_integral_definite!(norm, root_dist)
     # per soil element
-    βm = @. lazy(
-        compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l),
-    )
+    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l))
     βm_root_distribution = @. lazy(
         βm * Canopy.PlantHydraulics.root_distribution(
             z,
             canopy.hydraulics.parameters.rooting_depth,
         ) / norm,
     )
-    
+
     # compute the root zone-averaged βm
     ClimaCore.Operators.column_integral_definite!(
         p.canopy.soil_moisture_stress.βm,

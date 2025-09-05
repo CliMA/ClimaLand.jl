@@ -87,7 +87,7 @@ function PiecewiseMoistureStressModel{FT}(
     c::FT = toml_dict["moisture_stress_c"],
     porosity_residual = true,
     soil_params,
-    vangenuchten = true
+    vangenuchten = true,
 ) where {FT <: AbstractFloat}
     if c <= 0
         throw(
@@ -104,7 +104,7 @@ function PiecewiseMoistureStressModel{FT}(
             S = (1+(α*hb)^n)^(-(1-1/n))
             return S*(ν-θ_r)+θ_r
         end
-        
+
         function vg_est_wip(α, n, ν, θ_r)
             h = 1/α*((n-1)/n)^((1-2n)/n)
             S = (1+(α*h)^n)^(-(1-1/n))
@@ -118,21 +118,22 @@ function PiecewiseMoistureStressModel{FT}(
         θ_high = @. vg_air_entry(α, n, ν, θ_r)
     end
 
-    params =  PiecewiseMoistureStressParameters{FT, typeof(θ_low)}(
-        θ_high,
-        θ_low,
-        c,
-    )
+    params =
+        PiecewiseMoistureStressParameters{FT, typeof(θ_low)}(θ_high, θ_low, c)
     return PiecewiseMoistureStressModel{FT}(params)
 end
-    
+
 """
     TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"])
 
 A constructor for TuzetMoistureStressModel which uses the toml_dict
 values, allowing optional overrides by keyword argument.
 """
-function TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"])
+function TuzetMoistureStressModel{FT}(
+    toml_dict;
+    sc::FT = toml_dict["moisture_stress_sc"],
+    pc::FT = toml_dict["moisture_stress_pc"],
+)
     params = TuzetMoistureStressParameters{FT}(sc, pc)
     return TuzetMoistureStressModel{FT}(params)
 end

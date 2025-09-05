@@ -93,18 +93,17 @@ function set_fluxnet_ic!(
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
         θ_l_0 = model.parameters.ν / 2
     else
-        θ_l_0 =
-            min.(
-                FT(
-                    get_data_at_start_date(
-                        data[:, column_name_map["SWC_F_MDS_1"]],
-                        Δ_date;
-                        preprocess_func = x -> x / 100,
-                        val,
-                    ),
+        θ_l_0 = min.(
+            FT(
+                get_data_at_start_date(
+                    data[:, column_name_map["SWC_F_MDS_1"]],
+                    Δ_date;
+                    preprocess_func = x -> x / 100,
+                    val,
                 ),
-                model.parameters.ν .* FT(0.9),
-            )
+            ),
+            model.parameters.ν .* FT(0.9),
+        )
     end
     Y.soil.ϑ_l .= θ_l_0
     Y.soil.θ_i .= 0
@@ -132,20 +131,18 @@ function set_fluxnet_ic!(
         )
     end
 
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            model.parameters.ρc_ds,
-            model.parameters.earth_param_set,
-        )
-    Y.soil.ρe_int =
-        ClimaLand.Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            FT(T_soil_0),
-            model.parameters.earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        model.parameters.ρc_ds,
+        model.parameters.earth_param_set,
+    )
+    Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        FT(T_soil_0),
+        model.parameters.earth_param_set,
+    )
 end
 
 """
@@ -183,13 +180,12 @@ function set_fluxnet_ic!(
     n_stem = hydraulics.n_stem
     n_leaf = hydraulics.n_leaf
     ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
-    S_l_ini =
-        ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
-            hydraulics.parameters.retention_model,
-            ψ_comps,
-            hydraulics.parameters.ν,
-            hydraulics.parameters.S_s,
-        )
+    S_l_ini = ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+        hydraulics.parameters.retention_model,
+        ψ_comps,
+        hydraulics.parameters.ν,
+        hydraulics.parameters.S_s,
+    )
     for i in 1:(n_stem + n_leaf)
         Y.canopy.hydraulics.ϑ_l.:($i) .=
             ClimaLand.Canopy.PlantHydraulics.augmented_liquid_fraction.(

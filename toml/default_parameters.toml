@@ -16,12 +16,6 @@ value = -2.0e6
 type = "float"
 description = "Pa"
 tag = "SoilMoistureStress"
-
-[R_sb]
-value = 1.484e-7
-type = "float"
-description = "Units are m/s"
-tag = "TOPMODELRunoff"
 # TOPMODELRunoff model
 
 [f_over]

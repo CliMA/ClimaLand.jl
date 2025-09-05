@@ -715,11 +715,10 @@ function root_water_flux_per_ground_area!(
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
     ψ_soil = p.drivers.ψ
-    above_ground_area_index =
-        harmonic_mean.(
-            getproperty(area_index, model.compartment_labels[1]),
-            getproperty(area_index, :root),
-        )
+    above_ground_area_index = harmonic_mean.(
+        getproperty(area_index, model.compartment_labels[1]),
+        getproperty(area_index, :root),
+    )
     # since rooting_depth is positive by convention, add the sign in here to
     # convert it to a coordinate: z_roots = -rooting_depth
     @. fa .=
@@ -862,49 +861,47 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
+        retention_model,
+        PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
+        ν,
+        S_s,
+    )
+    # Inside of a loop, we need to use a single dollar sign
+    # for indexing into Fields of Tuples in non broadcasted
+    # expressions, and two dollar signs for
+    # for broadcasted expressions using the macro @.
+    # field.:($index) .= value # works
+    # @ field.:($$index) = value # works
+    @inbounds for i in 1:(n_stem + n_leaf - 1)
+        ip1 = i + 1
+        @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
             retention_model,
-            PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
+            PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
             ν,
             S_s,
         )
-        # Inside of a loop, we need to use a single dollar sign
-        # for indexing into Fields of Tuples in non broadcasted
-        # expressions, and two dollar signs for
-        # for broadcasted expressions using the macro @.
-        # field.:($index) .= value # works
-        # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf - 1)
-            ip1 = i + 1
-            @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
-                retention_model,
-                PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
-                ν,
-                S_s,
-            )
 
-            areai = getproperty(area_index, hydraulics.compartment_labels[i])
-            areaip1 =
-                getproperty(area_index, hydraulics.compartment_labels[ip1])
+        areai = getproperty(area_index, hydraulics.compartment_labels[i])
+        areaip1 = getproperty(area_index, hydraulics.compartment_labels[ip1])
 
-            # Compute the flux*area between the current compartment `i`
-            # and the compartment above.
-            @. fa.:($$i) =
-                PlantHydraulics.water_flux(
-                    hydraulics.compartment_midpoints[i],
-                    hydraulics.compartment_midpoints[ip1],
+        # Compute the flux*area between the current compartment `i`
+        # and the compartment above.
+        @. fa.:($$i) =
+            PlantHydraulics.water_flux(
+                hydraulics.compartment_midpoints[i],
+                hydraulics.compartment_midpoints[ip1],
+                ψ.:($$i),
+                ψ.:($$ip1),
+                PlantHydraulics.hydraulic_conductivity(
+                    conductivity_model,
                     ψ.:($$i),
+                ),
+                PlantHydraulics.hydraulic_conductivity(
+                    conductivity_model,
                     ψ.:($$ip1),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ.:($$i),
-                    ),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ.:($$ip1),
-                    ),
-                ) * PlantHydraulics.harmonic_mean(areaip1, areai)
-        end
-        # We update the fa[n_stem+n_leaf] element once we have computed transpiration
+                ),
+            ) * PlantHydraulics.harmonic_mean(areaip1, areai)
+    end
+    # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 end
 end
-

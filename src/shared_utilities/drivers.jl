@@ -292,13 +292,12 @@ function default_zenith_angle(
         start_date + Dates.Second(round(t))
     end
 
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                insol_params,
-            ),
-        )
+    d, δ, η_UTC = FT.(
+        Insolation.helper_instantaneous_zenith_angle(
+            current_datetime,
+            insol_params,
+        ),
+    )
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
     return zenith_only.(d, δ, η_UTC, longitude, latitude)
@@ -409,24 +408,23 @@ function turbulent_fluxes!(
     u_air = p.drivers.u
     h_air = atmos.h
 
-    dest .=
-        turbulent_fluxes_at_a_point.(
-            Val(false), # return_extra_fluxes
-            T_sfc,
-            q_sfc,
-            ρ_sfc,
-            β_sfc,
-            h_sfc,
-            r_sfc,
-            d_sfc,
-            p.drivers.thermal_state,
-            u_air,
-            h_air,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            model.parameters.earth_param_set,
-        )
+    dest .= turbulent_fluxes_at_a_point.(
+        Val(false), # return_extra_fluxes
+        T_sfc,
+        q_sfc,
+        ρ_sfc,
+        β_sfc,
+        h_sfc,
+        r_sfc,
+        d_sfc,
+        p.drivers.thermal_state,
+        u_air,
+        h_air,
+        atmos.gustiness,
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        model.parameters.earth_param_set,
+    )
     return nothing
 end
 
@@ -457,24 +455,23 @@ function coupler_compute_turbulent_fluxes!(
     r_sfc = surface_resistance(model, Y, p, t)
     d_sfc = displacement_height(model, Y, p)
 
-    dest .=
-        turbulent_fluxes_at_a_point.(
-            Val(true), # return_extra_fluxes
-            T_sfc,
-            q_sfc,
-            ρ_sfc,
-            β_sfc,
-            h_sfc,
-            r_sfc,
-            d_sfc,
-            atmos.thermal_state,
-            atmos.u,
-            atmos.h,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            model.parameters.earth_param_set,
-        )
+    dest .= turbulent_fluxes_at_a_point.(
+        Val(true), # return_extra_fluxes
+        T_sfc,
+        q_sfc,
+        ρ_sfc,
+        β_sfc,
+        h_sfc,
+        r_sfc,
+        d_sfc,
+        atmos.thermal_state,
+        atmos.u,
+        atmos.h,
+        atmos.gustiness,
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        model.parameters.earth_param_set,
+    )
     return nothing
 end
 
@@ -1078,7 +1075,7 @@ abstract type AbstractGroundConditions{FT} <: AbstractClimaLandDrivers{FT} end
      PrescribedGroundConditions <: AbstractGroundConditions
 
 A container for holding prescribed ground conditions needed by the canopy model
-when running the canopy in standalone mode, including the soil water content, surface
+when running the canopy in standalone mode, including the soil pressure, surface
 temperature, albedo, and emissivity.
 $(DocStringExtensions.FIELDS)
 """
@@ -1086,10 +1083,9 @@ struct PrescribedGroundConditions{
     FT,
     F1 <: AbstractTimeVaryingInput,
     F2 <: AbstractTimeVaryingInput,
-    C,
 } <: AbstractGroundConditions{FT}
-    "Prescribed soil water content (m^3 m^-3) in the root zone as a function of time"
-    θ::F1
+    "Prescribed soil potential (m) in the root zone as a function of time"
+    ψ::F1
     "Prescribed ground surface temperature (K) as a function of time"
     T::F2
     "Ground albedo for PAR"
@@ -1098,12 +1094,6 @@ struct PrescribedGroundConditions{
     α_NIR::FT
     "Ground emissivity"
     ϵ::FT
-    "Soil porosity"
-    ν::FT
-    "The residual water fraction (m^3/m^3)"
-    θ_r::FT
-    "The soil hydrology closure model: van Genuchten or Brooks and Corey"
-    hydrology_cm::C
 end
 
 """
@@ -1116,33 +1106,21 @@ end
      ) where {FT}
 
 An outer constructor for the PrescribedGroundConditions allowing the user to
-specify the ground parameters by keyword arguments. The defaults should be
-overriden for physically meaningful results.
+specify the ground parameters by keyword arguments.
 """
 function PrescribedGroundConditions{FT}(;
-    θ = TimeVaryingInput((t) -> 0.0),
+    ψ = TimeVaryingInput((t) -> 0.0),
     T = TimeVaryingInput((t) -> 298.0),
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),
-    ν = FT(0.4),
-    θ_r = FT(0),
-    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(1.5)),
 ) where {FT <: AbstractFloat}
-        return PrescribedGroundConditions{
-        FT,
-        typeof(θ),
-        typeof(T),
-        typeof(hydrology_cm),
-    }(
-      θ,
+    return PrescribedGroundConditions{FT, typeof(ψ), typeof(T)}(
+        ψ,
         T,
         α_PAR,
         α_NIR,
-        ,ϵ,
-                ν,
-        θ_r,
-        hydrology_cm,
+        ϵ,
     )
 end
 
@@ -1171,14 +1149,14 @@ struct PrognosticGroundConditions{FT} <: AbstractGroundConditions{FT} end
     initialize_drivers(a::PrescribedGroundConditions{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedGroundConditions` driver,
-with variables `θ` (water content of the soil in the root zone), `T` (temperature
+with variables `ψ` (matric potential in the soil in the root zone), `T` (temperature
 of the surface of the ground).
 """
 function initialize_drivers(
     a::PrescribedGroundConditions{FT},
     coords,
 ) where {FT}
-    keys = (:θ, :T_ground)
+    keys = (:ψ, :T_ground)
     types = (FT, FT)
     domain_names = (:surface, :surface)
     model_name = :drivers
@@ -1351,7 +1329,7 @@ in the case of a PrescribedGroundConditions.
 """
 function make_update_drivers(a::PrescribedGroundConditions{FT}) where {FT}
     function update_drivers!(p, t)
-        evaluate!(p.drivers.θ, a.θ, t)
+        evaluate!(p.drivers.ψ, a.ψ, t)
         evaluate!(p.drivers.T_ground, a.T, t)
     end
     return update_drivers!

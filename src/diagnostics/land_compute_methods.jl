@@ -533,8 +533,8 @@ end # Convert from kg C to mol CO2.
 
 ## Other ##
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
-@diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel, CanopyModel} p.LW_u
-@diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel, CanopyModel} p.SW_u
+@diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
+@diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
 @diagnostic_compute "surface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_s
 @diagnostic_compute "subsurface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_ss
 
@@ -734,18 +734,16 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                AI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            AI,
+        )
         return out
     else
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                AI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            AI,
+        )
     end
 end
 function compute_canopy_temperature!(
@@ -761,18 +759,16 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.energy, land_model, Y, p),
-                AI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.energy, land_model, Y, p),
+            AI,
+        )
         return out
     else
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.energy, land_model, Y, p),
-                AI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.energy, land_model, Y, p),
+            AI,
+        )
     end
 end
 

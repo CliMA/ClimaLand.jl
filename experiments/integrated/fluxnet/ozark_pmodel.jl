@@ -183,10 +183,9 @@ photosynthesis = PModel{FT}()
 # Set up soil moisture stress
 soil_moisture_stress_params = PiecewiseMoistureStressParameters(
     FT;
-    θ_c = FT(0.60),
-    θ_w = FT(0.10),
+    θ_high = soil.parameters.ν,
+    θ_low = soil.parameters.θ_r,
     c = FT(1.0),
-    β0 = FT(1.0),
 )
 soil_moisture_stress =
     PiecewiseMoistureStressModel{FT}(soil_moisture_stress_params)

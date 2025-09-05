@@ -1,10 +1,10 @@
 export TuzetMoistureStressParameters,
-       TuzetMoistureStressModel,
-       NoMoistureStressModel,
-       PiecewiseMoistureStressParameters,
-       PiecewiseMoistureStressModel,
-       PiecewiseMoistureStressParametersFromHydrology,
-       compute_piecewise_moisture_stress,
+    TuzetMoistureStressModel,
+    NoMoistureStressModel,
+    PiecewiseMoistureStressParameters,
+    PiecewiseMoistureStressModel,
+    PiecewiseMoistureStressParametersFromHydrology,
+    compute_piecewise_moisture_stress,
     compute_tuzet_moisture_stress,
     update_piecewise_soil_moisture_stress!
 
@@ -154,7 +154,8 @@ the following ranges:
 - θ_high>θ_low should be in (θ_r, ν] where ν is the porosity of the soil
 - c should be positive
 """
-Base.@kwdef struct PiecewiseMoistureStressParameters{FT,
+Base.@kwdef struct PiecewiseMoistureStressParameters{
+    FT,
     F <: Union{AbstractFloat, ClimaCore.Fields.Field},
 } where {FT}
     """Field capacity volumetric water content or porosity (m^3 / m^3)"""
@@ -199,8 +200,7 @@ end
 ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
 ClimaLand.auxiliary_types(model::PiecewiseMoistureStressModel{FT}) where {FT} =
     (FT,)
-ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) =
-    (:surface,)
+ClimaLand.auxiliary_domain_names(::PiecewiseMoistureStressModel) = (:surface,)
 
 """
     compute_piecewise_moisture_stress(
@@ -242,15 +242,29 @@ function update_soil_moisture_stress!(
     Y,
     model::PiecewiseMoistureStressModel,
     canopy,
-    )
+)
     ground = canopy.boundary_conditions.ground
     update_piecewise_soil_moisture_stress!(ground, p, Y, model, canopy)
 end
 
-function update_piecewise_soil_moisture_stress!(ground::PrescribedGroundConditions, p, Y, model, canopy)
-    (; θ_high, θ_low, c,) = model.parameters
-    # Interpret p.drivers.θ as the root zone value.
-    @. p.canopy.soil_moisture_stress.βm =
-        compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)
-end
+"""
+    update_piecewise_soil_moisture_stress!(ground::PrescribedGroundConditions, p, Y, model, canopy)
 
+Updates the soil moisture stress using the piecewise model for Prescribed
+GroundConditions (p.drivers.θ prescribed).
+"""
+function update_piecewise_soil_moisture_stress!(
+    ground::PrescribedGroundConditions,
+    p,
+    Y,
+    model,
+    canopy,
+)
+    @error(
+        "You cannot use the PiecewiseSoilMoistureStress model with a prescribed soil yet."
+    )
+    #(; θ_high, θ_low, c,) = model.parameters
+    # Interpret p.drivers.θ as the root zone value.
+    #@. p.canopy.soil_moisture_stress.βm =
+    #    compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)
+end

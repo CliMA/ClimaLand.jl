@@ -386,17 +386,15 @@ function rectify_daily_hourly(
         elseif Symbol(var) in hourly_only
             combined[!, Symbol(var)] .= combined[!, Symbol(var * "_1")]
         elseif Symbol(var) in prioritize_hour
-            combined[!, Symbol(var)] .=
-                coalesce.(
-                    combined[!, Symbol(var * "_1")],
-                    combined[!, Symbol(var)],
-                )
+            combined[!, Symbol(var)] .= coalesce.(
+                combined[!, Symbol(var * "_1")],
+                combined[!, Symbol(var)],
+            )
         else
-            combined[!, Symbol(var)] .=
-                coalesce.(
-                    combined[!, Symbol(var)],
-                    combined[!, Symbol(var * "_1")],
-                )
+            combined[!, Symbol(var)] .= coalesce.(
+                combined[!, Symbol(var)],
+                combined[!, Symbol(var * "_1")],
+            )
         end
     end
     return sort(select(combined, vars), :date)
@@ -548,8 +546,7 @@ and remove days when z != 0 but SWE = 0. Defauly eps is 0.005 m (5 cm, since z i
 """
 function train_filter(data::DataFrame; eps::Real = 0.005)
     zero_condition1 =
-        (data[!, :SWE] .< eps) .&
-        (data[!, :z] .< eps) .&
+        (data[!, :SWE] .< eps) .& (data[!, :z] .< eps) .&
         (data[!, :dprecipdt] .< eps / 86400.0)
     data = data[Not(zero_condition1), :]
     zero_condition2 = (data[!, :z] .!= 0.0f0) .& (data[!, :SWE] .== 0.0f0)
@@ -759,10 +756,9 @@ function serreze_qc(input::DataFrame, id::Int, state::AbstractString)
     data = data[in.(data[!, :date], [overlap]), :]
     data[!, :tmin] = maxmin[!, :tmin]
     data[!, :tmax] = maxmin[!, :tmax]
-    flags =
-        ismissing.(
-            data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]],
-        )
+    flags = ismissing.(
+        data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]],
+    )
     flags[!, :date] = data[1:(end - 1), :date]
 
     dswes = data[2:end, :SWE] - data[1:(end - 1), :SWE]

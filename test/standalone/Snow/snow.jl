@@ -78,12 +78,11 @@ import ClimaLand.Parameters as LP
 
     Y.snow.S .= FT(0.1)
     Y.snow.S_l .= FT(0.0)
-    Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(
-            Y.snow.S,
-            FT(273.0),
-            Ref(model.parameters),
-        )
+    Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+        Y.snow.S,
+        FT(273.0),
+        Ref(model.parameters),
+    )
     set_initial_cache! = ClimaLand.make_set_initial_cache(model)
     t0 = FT(0.0)
     set_initial_cache!(p, Y, t0)
@@ -112,8 +111,7 @@ import ClimaLand.Parameters as LP
     )
     @test p.snow.R_n == R_n_copy
     @test p.snow.q_l == liquid_mass_fraction.(Y.snow.S, Y.snow.S_l)
-    @test p.snow.T ==
-          snow_bulk_temperature.(
+    @test p.snow.T == snow_bulk_temperature.(
         Y.snow.U,
         Y.snow.S,
         p.snow.q_l,
@@ -199,10 +197,7 @@ import ClimaLand.Parameters as LP
     )
 
     @test all(
-        ClimaLand.Snow.clip_water_flux.(
-            [0.1, 1.0, 2.0],
-            [1.0, 1.0, 1.0],
-            1.0,
-        ) .== [0.1, 1.0, 1.0],
+        ClimaLand.Snow.clip_water_flux.([0.1, 1.0, 2.0], [1.0, 1.0, 1.0], 1.0) .==
+        [0.1, 1.0, 1.0],
     )
 end

@@ -401,19 +401,17 @@ if !isnothing(DataToolsExt)
         # The snow module is broken when using CUDA because the density model is stored in
         # the snow parameters, but the network is not copied to the GPU.
         if ClimaComms.device() isa ClimaComms.CUDADevice
-            @test_broken Y.snow.U .=
-                ClimaLand.Snow.energy_from_T_and_swe.(
-                    Y.snow.S,
-                    FT(273.0),
-                    Ref(model.parameters),
-                )
+            @test_broken Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+                Y.snow.S,
+                FT(273.0),
+                Ref(model.parameters),
+            )
         else
-            Y.snow.U .=
-                ClimaLand.Snow.energy_from_T_and_swe.(
-                    Y.snow.S,
-                    FT(273.0),
-                    Ref(model.parameters),
-                )
+            Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+                Y.snow.S,
+                FT(273.0),
+                Ref(model.parameters),
+            )
             Y.snow.Z .= FT(0.2)
             set_initial_cache! = ClimaLand.make_set_initial_cache(model)
             t0 = FT(0.0)

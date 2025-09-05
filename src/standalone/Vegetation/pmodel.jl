@@ -721,7 +721,7 @@ end
         longitude = nothing
     ) where {FT <: AbstractFloat}
 
-This constructs a PeriodicCallback for the P-model that updates the optimal photosynthetic capacities
+This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
 using an exponential moving average at local noon.
 
 We check for local noon using the provided `longitude` (once passing
@@ -1471,31 +1471,5 @@ function get_model_callbacks(
     Δt,
 ) where {FT}
     pmodel_cb = make_PModel_callback(FT, start_date, float(Δt), canopy)
-    return (pmodel_cb,)
-end
-
-"""
-    required_photosynthesis_model_callbacks(
-        start_date,
-        t0,
-        dt,
-        canopy,
-        photo_model::PModel,
-    )
-
-Construct the P-model callback.
-"""
-function required_photosynthesis_model_callbacks(
-    start_date,
-    t0,
-    dt,
-    canopy,
-    photo_model::PModel,
-)
-    FT = eltype(photo_model)
-
-    # if dt is an ITime, this converts it to Float64 for the callback
-    dt = float(dt)
-    pmodel_cb = make_PModel_callback(FT, start_date, dt, canopy)
     return (pmodel_cb,)
 end

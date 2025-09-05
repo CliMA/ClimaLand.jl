@@ -158,17 +158,16 @@ Updates the dY.snow.Z field in places with the predicted change in snow depth (r
 density paramterization.
 """
 function update_dzdt!(dzdt, density::NeuralDepthModel, Y)
-    dzdt .=
-        eval_nn.(
-            Ref(density),
-            Y.snow.Z,
-            Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
-            Y.snow.P_avg,
-            Y.snow.T_avg,
-            Y.snow.R_avg,
-            Y.snow.Qrel_avg,
-            Y.snow.u_avg,
-        )
+    dzdt .= eval_nn.(
+        Ref(density),
+        Y.snow.Z,
+        Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
+        Y.snow.P_avg,
+        Y.snow.T_avg,
+        Y.snow.R_avg,
+        Y.snow.Qrel_avg,
+        Y.snow.u_avg,
+    )
 end
 
 """

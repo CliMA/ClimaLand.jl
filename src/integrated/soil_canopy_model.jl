@@ -253,9 +253,9 @@ function SoilCanopyModel{FT}(;
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
-                                    energy = energy_model,
-                                    soil_moisture_stress = soil_moisture_stress_model,
-                                    
+        energy = energy_model,
+        soil_moisture_stress = soil_moisture_stress_model,
+
         boundary_conditions = Canopy.AtmosDrivenCanopyBC(
             atmos,
             radiation,

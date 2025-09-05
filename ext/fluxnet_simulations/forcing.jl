@@ -80,16 +80,14 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     # Convert the local timestamp to UTC
     # Since it was read in as Float64 type, convert to a string before
     # converting to a DateTime
-    local_datetime_start =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
+    local_datetime_start = DateTime.(
+        string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
+        "yyyymmddHHMM",
+    )
+    local_datetime_end = DateTime.(
+        string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
+        "yyyymmddHHMM",
+    )
     local_datetime =
         local_datetime_start .+
         (local_datetime_end .- local_datetime_start) ./ 2
@@ -319,16 +317,14 @@ function FluxnetSimulations.get_data_dates(
     # Convert the local timestamp to UTC
     # Since it was read in as Float64 type, convert to a string before
     # converting to a DateTime
-    local_datetime_start =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
+    local_datetime_start = DateTime.(
+        string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
+        "yyyymmddHHMM",
+    )
+    local_datetime_end = DateTime.(
+        string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
+        "yyyymmddHHMM",
+    )
     local_datetime =
         local_datetime_start .+
         (local_datetime_end .- local_datetime_start) ./ 2
@@ -454,20 +450,18 @@ function FluxnetSimulations.get_comparison_data(
     )
 
 
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
+    local_datetime_end = DateTime.(
+        string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
+        "yyyymmddHHMM",
+    )
     data_dt = Second(local_datetime_end[2] - local_datetime_end[1]).value # seconds  
     if timestamp_end
         UTC_datetime = local_datetime_end .+ Dates.Hour(hour_offset_from_UTC)
     else
-        local_datetime_start =
-            DateTime.(
-                string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-                "yyyymmddHHMM",
-            )
+        local_datetime_start = DateTime.(
+            string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
+            "yyyymmddHHMM",
+        )
         local_datetime =
             local_datetime_start .+
             (local_datetime_end .- local_datetime_start) ./ 2

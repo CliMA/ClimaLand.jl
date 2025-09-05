@@ -791,39 +791,44 @@ Updates the following cache variables in place:
 This implies that all concrete types of AbstractRadiationModel must
 set these variables.
 """
-function update_radiative_transfer!(p, Y, t, radiative_transfer::AbstractRadiationModel, canopy)
+function update_radiative_transfer!(
+    p,
+    Y,
+    t,
+    radiative_transfer::AbstractRadiationModel,
+    canopy,
+)
     par_d = p.canopy.radiative_transfer.par_d
     nir_d = p.canopy.radiative_transfer.nir_d
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
     bc = canopy.boundary_conditions
-    
+
     # update radiative transfer
-    (; G_Function, Ω, λ_γ_PAR) =radiative_transfer.parameters
+    (; G_Function, Ω, λ_γ_PAR) = radiative_transfer.parameters
     @. p.canopy.radiative_transfer.ϵ =
-        radiative_transfer.parameters.ϵ_canopy *
-        (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
     compute_PAR!(par_d, radiative_transfer, bc.radiation, p, t)
     compute_NIR!(nir_d, radiative_transfer, bc.radiation, p, t)
-    
+
     compute_fractional_absorbances!(
         p,
         radiative_transfer,
         LAI,
-            ground_albedo_PAR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-            ground_albedo_NIR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-        )
+        ground_albedo_PAR(
+            Val(bc.prognostic_land_components),
+            bc.ground,
+            Y,
+            p,
+            t,
+        ),
+        ground_albedo_NIR(
+            Val(bc.prognostic_land_components),
+            bc.ground,
+            Y,
+            p,
+            t,
+        ),
+    )
 end

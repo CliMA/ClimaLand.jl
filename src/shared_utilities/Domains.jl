@@ -861,9 +861,7 @@ function top_center_to_surface(center_field::ClimaCore.Fields.Field)
     N = ClimaCore.Spaces.nlevels(center_space)
     surface_space = obtain_surface_space(center_space)
     return ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(center_field, N),
-        ),
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(center_field, N)),
         surface_space,
     )
 end
