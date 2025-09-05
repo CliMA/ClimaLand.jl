@@ -13,16 +13,13 @@ import Insolation
 using Dates
 
 for FT in (Float32, Float64)
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
     soil_moisture_stress_models = (
-        TuzetMoistureStressModel{FT}(
-            TuzetMoistureStressParameters{FT}(
-                sc = FT(0.01), # Pa^-1
-                pc = FT(-0.5e6), # Pa
-            ),
-        ),
+        TuzetMoistureStressModel{FT}(; sc = FT(0.01), pc = FT(-0.5e6)),
         NoMoistureStressModel{FT}(),
     )
-
     soil_moisture_stress_names = ("Tuzet", "No Stress")
 
     lat = FT(38.7441)
@@ -42,7 +39,7 @@ for FT in (Float32, Float64)
             domain,
             forcing,
             LAI,
-            earth_param_set;
+            toml_dict;
             soil_moisture_stress = sms_model,
         )
         @testset "Initialize canopy with type $name for float type $FT" begin
@@ -50,11 +47,6 @@ for FT in (Float32, Float64)
 
             @test all(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(0.0))
 
-            if name == "Piecewise"
-                @test all(
-                    parent(p.canopy.soil_moisture_stress.ϑ_root) .≈ FT(0.0),
-                )
-            end
 
             # # set initial conditions
             n_stem = 0
@@ -74,51 +66,38 @@ for FT in (Float32, Float64)
 
     @testset "Test correctness for piecewise soil moisture stress for float type $FT" begin
         # construct piecewise moisture stress parameters from hydrology
-        hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2))
+        α = FT(0.04)
+        n = FT(2)
         ν = FT(0.5)
         θ_r = FT(0.1)
-        c = FT(0.5)
-        β0 = FT(0.87)
-        soil_zmin = FT(-10)
-        sms_params = PiecewiseMoistureStressParametersFromHydrology(
-            FT,
-            hydrology_cm,
-            ν,
-            θ_r,
-            soil_zmin,
-            c = c,
-            β0 = β0,
+        sms = PiecewiseMoistureStressModel{FT}(
+            toml_dict;
+            porosity_residual = true,
+            soil_params = (; ν, θ_r),
         )
-        θ_w = sms_params.θ_w
-        θ_c = sms_params.θ_c
-        println("Wilting point = $θ_w, field capacity = $θ_c, c = $c, β0 = $β0")
-
-        # check that \theta_w and \theta_c are physical
-        @test θ_w < θ_c
-        @test θ_w > FT(0.0)
-        @test θ_c > FT(0.0)
-        @test θ_w < FT(1.0)
-        @test θ_c < FT(1.0)
-
-        # check correctness
-        θ_root = (θ_w + θ_c) / 2 # midpoint
-        βm_expected = β0 * ((θ_root - θ_w) / (θ_c - θ_w))^c
-        βm_computed = compute_piecewise_moisture_stress(θ_c, θ_w, c, β0, θ_root)
+        @test θ_r == sms.θ_low
+        @test ν == sms.θ_high
+        βm_expected = FT(0.5)
+        βm_computed = compute_piecewise_moisture_stress(
+            sms.θ_high,
+            sms.θ_low,
+            sms.c,
+            θ_r + (ν - θ_r) / 2,
+        )
         @test βm_computed ≈ βm_expected
-
-        θ_root = (θ_w) / 2 # drier than wilting point
-        βm_expected = FT(0)
-        βm_computed = compute_piecewise_moisture_stress(θ_c, θ_w, c, β0, θ_root)
-        @test βm_computed ≈ βm_expected
-
-        θ_root = (θ_w) / 2 # drier than wilting point
-        βm_expected = FT(0)
-        βm_computed = compute_piecewise_moisture_stress(θ_c, θ_w, c, β0, θ_root)
-        @test βm_computed ≈ βm_expected
-
-        θ_root = (1 + θ_c) / 2 # wetter than field capacity
-        βm_expected = β0
-        βm_computed = compute_piecewise_moisture_stress(θ_c, θ_w, c, β0, θ_root)
+        sms = PiecewiseMoistureStressModel{FT}(
+            toml_dict;
+            porosity_residual = false,
+            soil_params = (; ν, θ_r, α, n),
+        )
+        βm_expected =
+            (θ_r + (ν - θ_r) / 2 - sms.θ_low) / (sms.θ_high - sms.θ_low)
+        βm_computed = compute_piecewise_moisture_stress(
+            sms.θ_high,
+            sms.θ_low,
+            sms.c,
+            θ_r + (ν - θ_r) / 2,
+        )
         @test βm_computed ≈ βm_expected
     end
 

@@ -1,7 +1,5 @@
-export TuzetMoistureStressParameters,
-    TuzetMoistureStressModel,
+export TuzetMoistureStressModel,
     NoMoistureStressModel,
-    PiecewiseMoistureStressParameters,
     PiecewiseMoistureStressModel,
     PiecewiseMoistureStressParametersFromHydrology,
     compute_piecewise_moisture_stress,
@@ -12,23 +10,7 @@ export TuzetMoistureStressParameters,
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
 
 """
-    TuzetMoistureStressParameters{FT <: AbstractFloat}
-
-The required parameters for the Tuzet plant moisture stress model.
-"""
-Base.@kwdef struct TuzetMoistureStressParameters{FT <: AbstractFloat}
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1})"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa)"
-    pc::FT
-end
-
-Base.eltype(::TuzetMoistureStressParameters{FT}) where {FT} = FT
-Base.broadcastable(x::TuzetMoistureStressParameters) = tuple(x)
-
-"""
-    TuzetMoistureStressModel{FT, TMSP <: TuzetMoistureStressParameters{FT}}
-    <: AbstractSoilMoistureStressModel{FT}
+    TuzetMoistureStressModel{FT} <: AbstractSoilMoistureStressModel{FT}
 
 An implementation of the Tuzet moisture stress function.
 
@@ -39,26 +21,12 @@ TUZET, A., PERRIER, A. and LEUNING, R. (2003), A coupled model of stomatal condu
     photosynthesis and transpiration. Plant, Cell & Environment, 26: 1097-1116.
     https://doi.org/10.1046/j.1365-3040.2003.01035.x
 """
-struct TuzetMoistureStressModel{
-    FT,
-    TMSP <: TuzetMoistureStressParameters{FT},
-} <: AbstractSoilMoistureStressModel{FT}
-    parameters::TMSP
-end
-
-"""
-    TuzetMoistureStressModel{FT}(
-        parameters::TuzetMoistureStressParameters{FT},
-    ) where {FT <: AbstractFloat}
-
-Outer constructor for TuzetMoistureStressModel.
-"""
-function TuzetMoistureStressModel{FT}(
-    parameters::TuzetMoistureStressParameters{FT},
-) where {FT <: AbstractFloat}
-    return TuzetMoistureStressModel{eltype(parameters), typeof(parameters)}(
-        parameters,
-    )
+Base.@kwdef struct TuzetMoistureStressModel{FT} <:
+                   AbstractSoilMoistureStressModel{FT}
+    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1})"
+    sc::FT
+    "Reference water pressure for the moisture stress factor (Pa)"
+    pc::FT
 end
 
 ClimaLand.name(model::AbstractSoilMoistureStressModel) = :soil_moisture_stress
@@ -70,18 +38,15 @@ ClimaLand.auxiliary_domain_names(::TuzetMoistureStressModel) = (:surface,)
 
 """
     compute_tuzet_moisture_stress(
-        parameters::TuzetMoistureStressParameters{FT},
-        p_leaf::FT
+        p_leaf::FT,
+        pc::FT,
+        sc::FT
     ) where {FT}
 
 This pointwise function computes the soil moisture stress factor using the leaf water potential (Pa) and two
 parameters `sc` (sensitivity to low water potential, Pa^-1) and `pc` (reference water potential, Pa).
 """
-function compute_tuzet_moisture_stress(
-    parameters::TuzetMoistureStressParameters{FT},
-    p_leaf::FT,
-) where {FT}
-    (; sc, pc) = parameters
+function compute_tuzet_moisture_stress(p_leaf::FT, pc::FT, sc::FT) where {FT}
     β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - p_leaf))))
     return β
 end
@@ -112,10 +77,10 @@ function update_soil_moisture_stress!(
 
     ψ = p.canopy.hydraulics.ψ
     p_leaf = @. lazy(ψ.:($$i_end) * ρ_water * grav) # converts head to hydrostatic pressure
-
+    (; sc, pc) = model
     # Compute the moisture stress factor
     @. p.canopy.soil_moisture_stress.βm =
-        compute_tuzet_moisture_stress(model.parameters, p_leaf)
+        compute_tuzet_moisture_stress(p_leaf, pc, sc)
 end
 
 """
@@ -137,27 +102,31 @@ function update_soil_moisture_stress!(
     model::NoMoistureStressModel,
     canopy,
 )
-    FT = eltype(model)
-    @. p.canopy.soil_moisture_stress.βm = FT(1.0)
+    @. p.canopy.soil_moisture_stress.βm = 1
 end
 
-
 """
-    struct PiecewiseMoistureStressParameters{
-        F <: Union{AbstractFloat, ClimaCore.Fields.Field},
-    }
+    PiecewiseMoistureStressModel{FT,  F <: Union{FT, ClimaCore.Fields.Field}}
+    <: AbstractSoilMoistureStressModel{FT}
 
-The required parameters for the piecewise moisture stress model.
+An implementation of a piecewise moisture stress model, taking the form
+
+βm(z) = min(1, [(θ(z)-θ_low)/(θ_high - θ_low)]^c), where θ_high,
+θ_low, and c are parameters, and θ(z) is the soil moisture at z.
 
 The parameters should fall within
 the following ranges:
 - θ_high>θ_low should be in (θ_r, ν] where ν is the porosity of the soil
 - c should be positive
+
+See  Egea et al. (2011) for details.
+
+Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
 """
-Base.@kwdef struct PiecewiseMoistureStressParameters{
+struct PiecewiseMoistureStressModel{
     FT,
-    F <: Union{AbstractFloat, ClimaCore.Fields.Field},
-} where {FT}
+    F <: Union{FT, ClimaCore.Fields.Field},
+} <: AbstractSoilMoistureStressModel{FT}
     """Field capacity volumetric water content or porosity (m^3 / m^3)"""
     θ_high::F
     """Wilting point volumetric water content or residual water fraction(m^3 / m^3)"""
@@ -166,35 +135,12 @@ Base.@kwdef struct PiecewiseMoistureStressParameters{
     c::FT
 end
 
-Base.eltype(::PiecewiseMoistureStressParameters{FT}) where {FT} = FT
-Base.broadcastable(x::PiecewiseMoistureStressParameters) = tuple(x)
-
-"""
-    PiecewiseMoistureStressModel{FT, TMSP <: PiecewiseMoistureStressParameters{FT}}
-    <: AbstractSoilMoistureStressModel{FT}
-
-An implementation of a piecewise moisture stress model, taking the form
-
-βm(z) = min(1, [(θ(z)-θ_low)/(θ_high - θ_low)]^c), where θ_high,
-θ_low, and c are parameters, and θ(z) is the soil moisture at z.
-
-See  Egea et al. (2011) for details.
-
-Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
-"""
-struct PiecewiseMoistureStressModel{
-    FT,
-    TMSP <: PiecewiseMoistureStressParameters{FT},
-} <: AbstractSoilMoistureStressModel{FT}
-    parameters::TMSP
-end
-
-function PiecewiseMoistureStressModel{FT}(
-    parameters::PiecewiseMoistureStressParameters{FT},
+function PiecewiseMoistureStressModel{FT}(;
+    θ_high,
+    θ_low,
+    c::FT,
 ) where {FT <: AbstractFloat}
-    return PiecewiseMoistureStressModel{eltype(parameters), typeof(parameters)}(
-        parameters,
-    )
+    return PiecewiseMoistureStressModel{FT, typeof(θ_high)}(θ_high, θ_low, c)
 end
 
 ClimaLand.auxiliary_vars(model::PiecewiseMoistureStressModel) = (:βm,)
@@ -263,7 +209,7 @@ function update_piecewise_soil_moisture_stress!(
     @error(
         "You cannot use the PiecewiseSoilMoistureStress model with a prescribed soil yet."
     )
-    #(; θ_high, θ_low, c,) = model.parameters
+    #(; θ_high, θ_low, c,) = model
     # Interpret p.drivers.θ as the root zone value.
     #@. p.canopy.soil_moisture_stress.βm =
     #    compute_piecewise_moisture_stress(θ_high, θ_low, c, p.drivers.θ)

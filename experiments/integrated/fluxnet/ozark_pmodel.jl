@@ -112,8 +112,7 @@ dt = Float64(450) # 7.5 minutes
     atmos_h,
     start_date,
     earth_param_set,
-    FT;
-    construct_prescribed_soil = false,
+    FT,
 )
 
 

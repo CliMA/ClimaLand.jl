@@ -197,6 +197,7 @@ import ClimaParams
                 photosynthesis = photosynthesis_model,
                 conductance = stomatal_model,
                 hydraulics = plant_hydraulics,
+                soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                 boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                     atmos,
                     radiation,
@@ -221,7 +222,7 @@ import ClimaParams
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :θ,
+                :ψ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -733,6 +734,7 @@ end
                 autotrophic_respiration = autotrophic_respiration_model,
                 energy = energy_model,
                 hydraulics = plant_hydraulics,
+                soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                 boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                     atmos,
                     radiation,
@@ -975,6 +977,7 @@ end
             autotrophic_respiration = autotrophic_respiration_model,
             energy = energy_model,
             hydraulics = plant_hydraulics,
+            soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,
@@ -1309,6 +1312,7 @@ end
                     conductance = stomatal_model,
                     autotrophic_respiration = autotrophic_respiration_model,
                     energy = energy_model,
+                    soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
                     hydraulics = plant_hydraulics,
                     boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                         atmos,
@@ -1380,12 +1384,13 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain)
         conductance = Canopy.MedlynConductanceModel{FT}(domain)
-        soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}()
         toml_dict = LP.create_toml_dict(
             FT,
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
         )
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI, toml_dict)
+        soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
+
         energy = Canopy.BigLeafEnergyModel{FT}()
         sif = Canopy.Lee2015SIFModel{FT}()
 
@@ -1431,6 +1436,7 @@ end
             @test canopy.conductance == conductance
             @test canopy.hydraulics == hydraulics
             @test canopy.energy == energy
+            @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
             @test canopy.boundary_conditions == boundary_conditions
             @test canopy.parameters == parameters
@@ -1450,7 +1456,7 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :θ,
+                :ψ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)

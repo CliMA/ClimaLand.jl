@@ -63,7 +63,6 @@ include("./spatially_varying_parameters.jl")
 ## Soil Moisture Stress
 """
     PiecewiseMoistureStressModel{FT}(
-    domain,
     toml_dict::CP.AbstractTOMLDict;
     c::FT = toml_dict["moisture_stress_c"],
     porosity_residual = true,
@@ -82,12 +81,10 @@ we compute the air entry θ (θ_high) and use the intersection of the tangent of
 the inflection point with θ = 0 as θ_low.
 """
 function PiecewiseMoistureStressModel{FT}(
-    domain,
     toml_dict::CP.AbstractTOMLDict;
     c::FT = toml_dict["moisture_stress_c"],
     porosity_residual = true,
     soil_params,
-    vangenuchten = true,
 ) where {FT <: AbstractFloat}
     if c <= 0
         throw(
@@ -105,13 +102,13 @@ function PiecewiseMoistureStressModel{FT}(
                 ((n - 1) / n)^((1 - n) / n)
             hb = 1 / α * ((n - 1) / n)^((1 - 2n) / n) - Δh
             S = (1 + (α * hb)^n)^(-(1 - 1 / n))
-            return S * (ν - θ_r) + θ_r
+            return min(S * (ν - θ_r) + θ_r, ν)
         end
 
-        function vg_est_wip(α, n, ν, θ_r)
+        function vg_est_wp(α, n, ν, θ_r)
             h = 1 / α * ((n - 1) / n)^((1 - 2n) / n)
             S = (1 + (α * h)^n)^(-(1 - 1 / n))
-            return S * (ν - θ_r) + θ_r
+            return max(S * (ν - θ_r) + θ_r, θ_r)
         end
         α = soil_params.α
         n = soil_params.n
@@ -120,14 +117,11 @@ function PiecewiseMoistureStressModel{FT}(
         θ_low = @. vg_est_wp(α, n, ν, θ_r)
         θ_high = @. vg_air_entry(α, n, ν, θ_r)
     end
-
-    params =
-        PiecewiseMoistureStressParameters{FT, typeof(θ_low)}(θ_high, θ_low, c)
-    return PiecewiseMoistureStressModel{FT}(params)
+    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
 end
 
 """
-    TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"])
+    TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"]) where{FT}
 
 A constructor for TuzetMoistureStressModel which uses the toml_dict
 values, allowing optional overrides by keyword argument.
@@ -136,9 +130,8 @@ function TuzetMoistureStressModel{FT}(
     toml_dict;
     sc::FT = toml_dict["moisture_stress_sc"],
     pc::FT = toml_dict["moisture_stress_pc"],
-)
-    params = TuzetMoistureStressParameters{FT}(sc, pc)
-    return TuzetMoistureStressModel{FT}(params)
+) where {FT}
+    return TuzetMoistureStressModel{FT}(; sc, pc)
 end
 
 ## Autotrophic respiration models
@@ -491,7 +484,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, SMSM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -741,6 +734,7 @@ function CanopyModel{FT}(
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,

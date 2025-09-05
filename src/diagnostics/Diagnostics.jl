@@ -27,7 +27,6 @@ import ..Canopy:
     get_Rd_leaf,
     MedlynConductanceModel,
     PModelConductance,
-    moisture_stress,
     canopy_temperature
 import ..Domains:
     top_center_to_surface, AbstractDomain, SphericalShell, HybridBox

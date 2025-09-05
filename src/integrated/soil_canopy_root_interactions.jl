@@ -180,7 +180,7 @@ function update_piecewise_soil_moisture_stress!(
 )
     # compute root-integrated soil water content
     θ_l = p.soil.θ_l
-    (; θ_high, θ_low, c) = model.parameters
+    (; θ_high, θ_low, c) = model
     z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
     # normalized distribution for root density
     norm = p.soil.sfc_scratch
