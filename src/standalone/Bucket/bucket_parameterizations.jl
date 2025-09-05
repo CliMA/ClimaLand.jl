@@ -78,11 +78,11 @@ end
 Computes the beta factor which scales the evaporation/sublimation from the potential
 rate. The beta factor is given by:
 
-β = (x/x_c)^p x < x_c
+β = (x/x\\_c)^p x < x\\_c
     1         otherwise
 
-where x = W and x_c = f_bucket * W_f for the bucket,
-and x = σS and x_c = f_snow *σS_c for snow.
+where x = W and x\\_c = f\\_bucket * W\\_f for the bucket,
+and x = σS and x\\_c = f\\_snow *σS\\_c for snow.
 
 """
 function beta_factor(W::FT, σS::FT, fW_f::FT, fσS_c::FT, p::FT) where {FT}

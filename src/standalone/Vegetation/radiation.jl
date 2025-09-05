@@ -252,8 +252,8 @@ end
 """
     ground_albedo_PAR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
 
-Returns the ground albedo in the PAR for a PrescribedGroundConditions driver. In this case,
-the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
+Returns the ground albedo in the PAR for a `PrescribedGroundConditions` driver. In this case,
+the `prognostic_land_components` only contain `:canopy`, because the canopy is being run in standalone
 mode.
 """
 function ground_albedo_PAR(
@@ -267,8 +267,8 @@ end
 """
     ground_albedo_NIR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
 
-Returns the ground albedo in the NIR for a PrescribedGroundConditions driver. In this case,
-the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
+Returns the ground albedo in the NIR for a `PrescribedGroundConditions` driver. In this case,
+the `prognostic_land_components` only contain `:canopy`, because the canopy is being run in standalone
 mode.
 """
 function ground_albedo_NIR(

@@ -104,15 +104,15 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
         kwargs...,)
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
-Additional parameters must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm, K_sat, S_s, and θ_r
-All parameters can be manually overriden via keyword arguments. Note, however,
-that certain parameters must have the same type (e.g, if a field is
-supplied for porosity, it must be supplied for all other parameters
-defined in the interior of the domain). Some parameters are defined only
-on the surface of the domain (e.g albedo), while other are defined everywhere
-(e.g. porosity). These are indicated with types `F` and `SF`. If both dry/wet albedos
-and general albedos are given as keywords, the dry/wet albedos will override the general
-albedos.
+Additional parameters must be added manually: `ν`, `ν_ss_om`, `ν_ss_quartz`,
+`ν_ss_gravel`, `hydrology_cm``, `K_sat`, `S_s`, and `θ_r`. All parameters can be
+manually overriden via keyword arguments. Note, however, that certain parameters
+must have the same type (e.g, if a field is supplied for porosity, it must be
+supplied for all other parameters defined in the interior of the domain). Some
+parameters are defined only on the surface of the domain (e.g albedo), while
+other are defined everywhere (e.g. porosity). These are indicated with types `F`
+and `SF`. If both dry/wet albedos and general albedos are given as keywords, the
+dry/wet albedos will override the general albedos.
 
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
@@ -244,9 +244,9 @@ in a porous medium by solving the Richardson-Richards equation
 and the heat equation, including terms for phase change.
 
 A variety of boundary condition types are supported, including
-FluxBC, MoistureStateBC/TemperatureStateBC,
-FreeDrainage (only for the bottom of the domain),
-and an AtmosDrivenFluxBC (under which radiative fluxes and
+`FluxBC`, `MoistureStateBC`/`TemperatureStateBC`,
+`FreeDrainage` (only for the bottom of the domain),
+and an `AtmosDrivenFluxBC` (under which radiative fluxes and
 turbulent surface fluxes are computed and used as boundary conditions).
 Please see the documentation for this boundary condition type for more
 details.
@@ -806,12 +806,12 @@ prognostic variables.
 end
 
 """
-     source!(dY::ClimaCore.Fields.FieldVector,
-             src::PhaseChange{FT},
-             Y::ClimaCore.Fields.FieldVector,
-             p::NamedTuple,
-             model
-             )
+    source!(dY::ClimaCore.Fields.FieldVector,
+            src::PhaseChange{FT},
+            Y::ClimaCore.Fields.FieldVector,
+            p::NamedTuple,
+            model
+            )
 
 Computes the source terms for phase change
 explicitly in time.
@@ -899,12 +899,12 @@ in ϑ_l, ρe_int but explicitly in θ_i.
     explicit::Bool = false
 end
 """
-     source!(dY::ClimaCore.Fields.FieldVector,
-             src::SoilSublimation{FT},
-             Y::ClimaCore.Fields.FieldVector,
-             p::NamedTuple,
-             model
-             )
+    source!(dY::ClimaCore.Fields.FieldVector,
+            src::SoilSublimation{FT},
+            Y::ClimaCore.Fields.FieldVector,
+            p::NamedTuple,
+            model
+            )
 
 Updates dY.soil.θ_i in place with a term due to sublimation; this only affects
 the surface layer of soil.
@@ -1334,7 +1334,7 @@ end
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total liquid water volume per unit ground area for the `EnergyHydrology`.
@@ -1366,7 +1366,7 @@ end
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total energy per unit ground area for the `EnergyHydrology`.
