@@ -1,6 +1,7 @@
 using ClimaLand
 using ClimaLand.Artifacts
 using DelimitedFiles
+using Logging
 
 script = joinpath(pkgdir(ClimaLand), "experiments/calibration/test_calibration.jl")
 

@@ -49,6 +49,9 @@ import Random
 using Dates
 using ClimaAnalysis, GeoMakie, Printf, StatsBase
 
+using CSV
+using DataFrames
+using DelimitedFiles
 # ## Configuration and Site Setup
 # 
 # Configure the experiment parameters and set up the FLUXNET site (US-MOz) with
@@ -88,7 +91,7 @@ stop_date = DateTime(2011, 7, 1)
 # vertical layers.
 zmin = FT(-2)  # 2m depth
 zmax = FT(0)   # surface
-domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));
+domain = Column(; zlim = (zmin, zmax), nelements = 20, longlat = (long, lat));
 
 # Load prescribed atmospheric and radiative forcing from FLUXNET data
 forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -326,7 +329,11 @@ end;
 
 # ## Results Analysis and Visualization
 # Get the mean of the final parameter ensemble:
-EKP.get_ϕ_mean_final(prior, ensemble_kalman_process);
+final_mean_params = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process);
+
+ϕ = EKP.get_ϕ_final(prior, ensemble_kalman_process);
+y = EKP.get_obs(ensemble_kalman_process);
+metrics = EKP.get_error_metrics(ensemble_kalman_process);
 
 # Now, let's analyze the calibration results by examining parameter evolution
 # and comparing model outputs across iterations.
@@ -334,6 +341,30 @@ EKP.get_ϕ_mean_final(prior, ensemble_kalman_process);
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/calibration/out/$(site_ID)/out")
 mkpath(savedir)
+
+# Save the final parameter ensemble and error metrics to CSV files for further analysis
+# or record-keeping.
+writedlm(
+    joinpath(savedir, "final_mean_parameters_$(site_ID).csv"),
+    final_mean_params,
+    ',',
+)
+
+writedlm(
+    joinpath(savedir, "final_parameter_ensemble_$(site_ID).csv"),
+    ϕ,
+    ',',
+)
+
+writedlm(
+    joinpath(savedir, "latest_data_vector_$(site_ID).csv"),
+    y,
+    ',',
+)
+
+df = DataFrame(metrics)
+CSV.write(savedir, "error_metrics_$(site_ID).csv", df)
+
 # Plot the parameter ensemble evolution over iterations to visualize
 # convergence:
 
@@ -349,6 +380,7 @@ for i in 1:dim_size
     )
 end
 
+# TODO save numerical error over iterations
 EKP.Visualize.plot_error_over_iters(
     fig[1, dim_size + 1],
     ensemble_kalman_process,
@@ -364,6 +396,18 @@ first_G_ensemble = EKP.get_g(ensemble_kalman_process, 1)
 last_iter = EKP.get_N_iterations(ensemble_kalman_process)
 last_G_ensemble = EKP.get_g(ensemble_kalman_process, last_iter)
 n_ens = EKP.get_N_ens(ensemble_kalman_process)
+
+writedlm(
+    joinpath(savedir, "first_iteration_G_ensemble_$(site_ID).csv"),
+    first_G_ensemble,
+    ',',
+)
+
+writedlm(
+    joinpath(savedir, "last_iteration_G_ensemble_$(site_ID).csv"),
+    last_G_ensemble,
+    ',',
+)
 
 ax = Axis(
     fig[1, 1];
@@ -381,13 +425,21 @@ for g in eachcol(last_G_ensemble)
     lines!(ax, 1:length(g), g; color = (:blue, 0.6), linewidth = 1.5)
 end
 
-lines!(
-    ax,
-    1:length(observations),
-    observations;
-    color = (:black, 0.6),
-    linewidth = 3,
-)
+# --- Add shaded noise around observations ---
+xvals = 1:length(observations)
+
+# Say you have obs variance as `obs_var` (same length as `observations`)
+# If you don’t, but only have noise covariance = 0.05*I, you can just use sqrt(0.05)
+obs_std = sqrt.(0.05) .* length(observations)  # or your own per-point std
+
+band!(ax, xvals,
+      observations .- 2 .* obs_std,
+      observations .+ 2 .* obs_std;
+      color = (:gray, 0.3),
+      transparency = true)
+
+# now lines on top
+lines!(ax, xvals, observations; color = (:black, 0.8), linewidth = 3)
 
 axislegend(
     ax,
