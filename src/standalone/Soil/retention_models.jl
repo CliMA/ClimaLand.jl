@@ -44,7 +44,7 @@ function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
 end
 
 """
-   BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
+    BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
 
 The Brooks and Corey soil hydrology closure, chosen when the
 hydraulic conductivity and matric potential are modeled

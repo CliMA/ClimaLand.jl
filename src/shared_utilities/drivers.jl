@@ -201,7 +201,7 @@ must be `nothing`, or both must not be `nothing``.
 During the driver update, cosθs is unchanged if `θs` is `nothing`. This behavior differs from
 the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `θs` is `nothing`.
 Otherwise, `θs` recieves the following arguments:
-(time_from_start, `start_date`), and is expected to return zenith angle at the given time.
+(`time_from_start`, `start_date`), and is expected to return zenith angle at the given time.
 $(DocStringExtensions.FIELDS)
 """
 struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}, T} <:
@@ -1460,23 +1460,23 @@ end
                              regridder_type = :InterpolationsRegridder,
                              interpolation_method = Interpolations.Constant(),)
 
-A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
-from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
-and the earth_param_set.
+A helper function which constructs the `PrescribedAtmosphere` and
+`PrescribedRadiativeFluxes` from a file path pointing to the ERA5 data in a netcdf file, the
+`surface_space`, the `start_date`, and the `earth_param_set`.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
 
 The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
-by passing interpolation_method = Interpolations.Linear().
+by passing `interpolation_method = Interpolations.Linear()`.
 
-########## WARNING ##########
-
-High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5
-reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed,
-with a value give in m/s,
-is used to clip these if it is not `nothing`.
-See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds
+!!! warning "Clipped values"
+    High wind speed anomalies (10-100x increase and decrease over a period of a
+    several hours) appear in the ERA5 reanalysis data. These generate very large
+    surface fluxes (due to wind speeds up to 300 m/s), which lead to
+    instability. The kwarg `max_wind_speed`, with a value give in m/s, is used to
+    clip these if it is not `nothing`. See
+    [here](https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds).
 """
 function prescribed_forcing_era5(
     era5_ncdata_path,

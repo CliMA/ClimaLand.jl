@@ -13,7 +13,7 @@ abstract type AbstractSnowBC <: ClimaLand.AbstractBC end
     } <: AbstractSnowBC
 
 A struct used to specify the snow fluxes, referred
-to as ``boundary conditions", at the surface and
+to as "boundary conditions", at the surface and
 bottom of the snowpack, for water and energy.
 
 These fluxes include turbulent surface fluxes
@@ -49,10 +49,10 @@ end
 Updates in place various volumetric water flux (m/s) and energy
 flux (W/m^2) terms for the snow model:
 
-- p.snow.turbulent fluxes (latent, sensible, and evaporative fluxes)
-- p.snow.R_n (radiative fluxes)
-- p.snow.total_water_flux
-- p.snow.total_energy_flux
+- `p.snow.turbulent fluxes` (latent, sensible, and evaporative fluxes)
+- `p.snow.R_n` (radiative fluxes)
+- `p.snow.total_water_flux`
+- `p.snow.total_energy_flux`
 
 The two latter fluxes also include contributions from fluxes due to melt and
 precipitation, but note that precipitation and melt flux are not computed or

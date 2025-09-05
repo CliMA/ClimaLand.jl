@@ -13,10 +13,10 @@ export volumetric_liquid_fraction,
 
 A pointwise function returning the volumetric liquid fraction
 given the augmented liquid fraction and the effective porosity.
-The output is guaranteed to be in (θ_r, ν_eff].
+The output is guaranteed to be in `(θ_r, ν_eff]`.
 
-For Richards model, ν_eff = ν; and the clipping below is not required,
-(and will do nothing; ν_eff_safe = ν_eff), but we leave it in for a 
+For Richards model, `ν_eff = ν`; and the clipping below is not required,
+(and will do nothing; `ν_eff_safe = ν_eff`), but we leave it in for a
 simpler interface.
 """
 function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
@@ -63,7 +63,7 @@ function matric_potential(cm::vanGenuchten{FT}, S::FT) where {FT}
 end
 
 """
-     inverse_matric_potential(cm::vanGenuchten{FT}, ψ::FT) where {FT}
+    inverse_matric_potential(cm::vanGenuchten{FT}, ψ::FT) where {FT}
 
 A point-wise function returning the effective saturation, given
 the matric potential, using the
@@ -127,10 +127,10 @@ function pressure_head(
 end
 
 """
-   dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s)
+    dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s)
 
 Computes and returns the derivative of the pressure head
-with respect to ϑ for the van Genuchten formulation.
+with respect to `ϑ` for the van Genuchten formulation.
 """
 function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
     # effective saturation clips ν_eff and ϑ
@@ -153,7 +153,7 @@ end
 
 
 """
-     hydraulic_conductivity(cm::vanGenuchten{FT}, K_sat::FT, S::FT) where {FT}
+    hydraulic_conductivity(cm::vanGenuchten{FT}, K_sat::FT, S::FT) where {FT}
 
 A point-wise function returning the hydraulic conductivity, using the
 van Genuchten formulation.
@@ -186,7 +186,7 @@ function matric_potential(cm::BrooksCorey{FT}, S::FT) where {FT}
 end
 
 """
-     inverse_matric_potential(cm::BrooksCorey{FT}, ψ::FT) where {FT}
+    inverse_matric_potential(cm::BrooksCorey{FT}, ψ::FT) where {FT}
 
 A point-wise function returning the effective saturation, given
 the matric potential, using the

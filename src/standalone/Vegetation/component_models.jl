@@ -45,7 +45,7 @@ passed in as an argument.
 ClimaLand.prognostic_vars(::AbstractCanopyComponent) = ()
 
 """
-   prognostic_domain_names(m::AbstractCanopyComponent)
+    prognostic_domain_names(m::AbstractCanopyComponent)
 
 Returns the domain names for the prognostic variables in the form of a tuple.
 """
@@ -60,7 +60,7 @@ passed in as an argument.
 ClimaLand.auxiliary_vars(::AbstractCanopyComponent) = ()
 
 """
-   auxiliary_domain_names(m::AbstractCanopyComponent)
+    auxiliary_domain_names(m::AbstractCanopyComponent)
 
 Returns the domain names for the auxiliary variables in the form of a tuple.
 """

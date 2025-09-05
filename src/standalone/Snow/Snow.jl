@@ -109,11 +109,12 @@ end
 
 Establishes the albedo parameterization where albedo
 depends on the cosine of the zenith angle of the sun, as
-    α = f(x) * [α_0 + Δα*exp(-k*cos(θs))],
 
-where cos θs is the cosine of the zenith angle, α_0, Δα, and k
+``\\alpha = f(x) [\\alpha_0 + \\Delta\\alpha \\cdot \\text{exp}(-k\\cos(\\theta s))]``
+
+where cos θs is the cosine of the zenith angle, α\\_0, Δα, and k
 are free parameters. The factor out front is a function of
-x = ρ_snow/ρ_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
+x = ρ\\_snow/ρ\\_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
 x0 ∈ [0,1] and β ∈ [0,1] are free. Choose β = 0 to remove this dependence on snow density.
 
 
@@ -174,16 +175,16 @@ Establishes the snow cover parameterization of Wu, Tongwen, and
 Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535,
-    scf = min(β_scf * z̃ / (z̃ + 1), 1),
+    scf = min(β\\_scf * z̃ / (z̃ + 1), 1),
 
-where z̃ = snow depth per ground area / 0.106 m, and β_scf
-is computed using a resolution dependent formula:
-β_scf = max(β0 - γ(horz_degree_res - 1.5), β_min), where horz_degree_res is the
-horizontal resolution of the simulation, in degrees, and β0, β_min and γ
-are unitless. It is correct to think of β0, β_min, γ, and z0 as the free
-parameters, while horz_degree_res is provided and β_scf is determined.
+where z̃ = snow depth per ground area / 0.106 m, and β\\_scf is computed using a
+resolution dependent formula: β\\_scf = max(β0 - γ(horz\\_degree\\_res - 1.5),
+β\\_min), where horz\\_degree\\_res is the horizontal resolution of the
+simulation, in degrees, and β0, β\\_min and γ are unitless. It is correct to
+think of β0, β\\_min, γ, and z0 as the free parameters, while
+horz\\_degree\\_res is provided and β\\_scf is determined.
 
-β0, β_min, γ, and β_scf must be > 0.
+β0, β\\_min, γ, and β\\_scf must be > 0.
 
 From Wu and Wu et al, β0 ∼ 1.77 and γ ∼ 0.08, over a range of 1.5-4.5∘
 """
@@ -580,14 +581,19 @@ density_prog_names(::AbstractDensityModel) = ()
     auxiliary_vars(::SnowModel)
 
 Returns the auxiliary variable names for the snow model. These
-include the specific humidity at the surface of the snow `(`q_sfc`, unitless),
-the mass fraction in liquid water (`q_l`, unitless),
-the thermal conductivity (`κ`, W/m/K),
-the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K), the snow depth (`z_snow`, m),
-the bulk snow density (`ρ_snow`, kg/m^3)
-the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
-the net radiation (`R_n, J/m^2/s)`, the energy flux in liquid water runoff
-(`energy_runoff`, J/m^2/s), the water volume in runoff (`water_runoff`, m/s), and the total energy and water fluxes applied to the snowpack.
+include
+- the specific humidity at the surface of the snow (`q_sfc`, unitless),
+- the mass fraction in liquid water (`q_l`, unitless),
+- the thermal conductivity (`κ`, W/m/K),
+- the bulk temperature (`T`, K),
+- the surface temperature (`T_sfc`, K),
+- the snow depth (`z_snow`, m),
+- the bulk snow density (`ρ_snow`, kg/m^3)
+- the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
+- the net radiation (`R_n, J/m^2/s)`,
+- the energy flux in liquid water runoff (`energy_runoff`, J/m^2/s),
+- the water volume in runoff (`water_runoff`, m/s),
+and the total energy and water fluxes applied to the snowpack.
 
 Since the snow can melt completely in one timestep, we clip the water and energy fluxes
 such that SWE cannot become negative and U cannot become unphysical. The
@@ -858,7 +864,7 @@ include("./boundary_fluxes.jl")
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total liquid water volume per unit ground area for the `SnowModel`.
@@ -886,7 +892,7 @@ end
         Y,
         p,
         t,
-)
+    )
 
 A function which updates `surface_field` in place with the value for
 the total energy per unit ground area for the `SnowModel`.
