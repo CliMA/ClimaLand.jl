@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
-
+- ![breaking change][badge-💥breaking] Add moisture stress module to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
 v0.19.0
 -------
 - ![breaking change][badge-💥breaking] Rename `end_date` to `stop_date`; hide MODIS LAI path in function args PR[#1344](https://github.com/CliMA/ClimaLand.jl/pull/1344)
