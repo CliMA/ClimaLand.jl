@@ -794,7 +794,7 @@ set these variables.
 function update_radiative_transfer!(p, Y, t, radiative_transfer::AbstractRadiationModel, canopy)
     par_d = p.canopy.radiative_transfer.par_d
     nir_d = p.canopy.radiative_transfer.nir_d
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
     bc = canopy.boundary_conditions

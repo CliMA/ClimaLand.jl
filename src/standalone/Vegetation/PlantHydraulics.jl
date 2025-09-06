@@ -681,7 +681,7 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
     fa = p.canopy.hydraulics.fa
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
     n_stem = hydraulics.n_stem
