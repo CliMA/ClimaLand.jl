@@ -1,5 +1,5 @@
 using ..ClimaLand.Canopy
-export  moisture_stress,
+export moisture_stress,
     # Conductance
     medlyn_term,
     medlyn_conductance,

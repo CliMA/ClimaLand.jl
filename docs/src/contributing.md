@@ -59,7 +59,7 @@ been discontinued in favor of using the JuliaFormatter package directly.
 To format your code, first add JuliaFormatter to your base environment:
 
 ```sh
-julia -e 'using Pkg; Pkg.add("JuliaFormatter")'
+julia -e 'using Pkg; Pkg.add(PackageSpec("JuliaFormatter", v"1.0.62"))'
 ```
 
 Then, in a Julia REPL, run:
