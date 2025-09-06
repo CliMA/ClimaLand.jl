@@ -30,6 +30,9 @@ using ClimaCore
     # Floating point precision to use
     for FT in (Float32, Float64)
         @testset "Two-Stream Model Correctness, FT = $FT" begin
+            default_params_filepath =
+                joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+            toml_dict = LP.create_toml_dict(FT, default_params_filepath)
             # Read the conditions for each setup parameter from the test file
             column_names = test_set[1, :]
             cosθs = FT.(test_set[2:end, column_names .== "mu"])
@@ -77,7 +80,7 @@ using ClimaCore
 
                     # Set the parameters based on the setup read from the file
                     RT_params = TwoStreamParameters(
-                        FT;
+                        toml_dict;
                         Ω = Ω,
                         G_Function = ConstantGFunction.(FT.(lds[i])),
                         α_PAR_leaf = α_PAR_leaf[i],

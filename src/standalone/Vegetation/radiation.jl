@@ -307,9 +307,6 @@ end
 Floating-point and toml dict based constructor supplying default values
 for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
 """
-TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
-
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
@@ -348,13 +345,6 @@ function TwoStreamParameters(
 end
 
 """
-    function BeerLambertParameters(::Type{FT};
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
-        Ω = 1,
-        kwargs...
-    )
     function BeerLambertParameters(toml_dict;
         ld = (_) -> 0.5,
         α_PAR_leaf = 0.1,
@@ -363,12 +353,10 @@ end
         kwargs...
     )
 
-Floating-point and toml dict based constructor supplying default values
-for the BeerLambertParameters struct. Additional parameter values can be directly set via kwargs.
+TOML dict based constructor supplying default values for the
+BeerLambertParameters struct. Additional parameter values can be directly set
+via kwargs.
 """
-BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    BeerLambertParameters(CP.create_toml_dict(FT); kwargs...)
-
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),

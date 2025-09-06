@@ -95,6 +95,7 @@ end
                 PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
+            toml_dict,
         ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -136,6 +137,7 @@ function SoilCanopyModel{FT}(
             PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
+        toml_dict,
     ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -179,6 +181,7 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function SoilCanopyModel{FT}(;
+    toml_dict::CP.AbstractTOMLDict,
     soilco2_type::Type{MM},
     soilco2_args::NamedTuple = (;),
     land_args::NamedTuple = (;),
@@ -270,7 +273,8 @@ function SoilCanopyModel{FT}(;
         (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
     soilco2 = soilco2_type(
         soilco2_args.domain,
-        soilco2_drivers;
+        soilco2_drivers,
+        toml_dict;
         boundary_conditions = soilco2_boundary_conditions,
         sources = soilco2_sources,
         parameters = soilco2_args.parameters,

@@ -4,6 +4,7 @@ using ClimaLand.Diagnostics: @with_error
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams
+import ClimaLand.Parameters as LP
 import SciMLBase
 import ClimaTimeSteppers
 import ClimaDiagnostics
@@ -47,7 +48,10 @@ bucket_domain = ClimaLand.SphericalShell(;
     nelements = (1, 10),
 )
 
-bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
 τc = FT(1.0)
 α_bareground_func = (coordinate_point) -> 0.2
 α_snow = FT(0.8)
@@ -58,8 +62,11 @@ albedo = ClimaLand.Bucket.PrescribedBaregroundAlbedo{FT}(
     α_bareground_func,
     bucket_domain.space.surface,
 )
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 bucket_parameters =
-    ClimaLand.Bucket.BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    ClimaLand.Bucket.BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
 model = ClimaLand.Bucket.BucketModel(
     parameters = bucket_parameters,

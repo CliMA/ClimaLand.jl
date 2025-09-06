@@ -25,7 +25,6 @@ const FT = Float64;
     context = ClimaComms.context()
     ClimaComms.init(context)
 
-    earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
     domain = ClimaLand.Domains.SphericalShell(;
@@ -98,6 +97,9 @@ end
 end
 
 @testset "Scalar Parameters" begin
+    default_params_filepath =
+        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
+    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -112,7 +114,7 @@ end
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     default_params = ClimaLand.Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -130,7 +132,7 @@ end
           LP.get_default_parameter(FT, :soil_scalar_roughness_length)
 
     overwritten_params = ClimaLand.Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,

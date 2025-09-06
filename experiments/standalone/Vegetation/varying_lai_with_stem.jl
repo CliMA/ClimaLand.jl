@@ -20,10 +20,10 @@ import ClimaUtilities.OutputPathGenerator: generate_output_path
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 const FT = Float32;
-earth_param_set = LP.LandParameters(FT);
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+earth_param_set = LP.LandParameters(toml_dict);
 
 time_offset = 7
 lat = FT(38.7441) # degree
