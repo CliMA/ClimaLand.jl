@@ -4,35 +4,14 @@ on:
   push:
     tags: '*'
   pull_request:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  merge_group:
 
 jobs:
   format:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v4
-
-    - uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          julia_file_change:
-            - added|modified: '**.jl'
-    - uses: julia-actions/setup-julia@latest
-      if: steps.filter.outputs.julia_file_change == 'true'
-      with:
-        version: '1.11'
-
-    - name: Apply JuliaFormatter
-      if: steps.filter.outputs.julia_file_change == 'true'
-      run: |
-        julia --project=.dev .dev/climaformat.jl .
-
-    - name: Check formatting diff
-      if: steps.filter.outputs.julia_file_change == 'true'
-      run: |
-        git diff --color=always --exit-code
+      - uses: julia-actions/julia-format@v3
+        with:
+          version: '1' # Set `version` to '1.0.62' if you run into issues
+          # To use the same JuliaFormatter version locally, run: `julia -e 'using Pkg; Pkg.add(PackageSpec("JuliaFormatter", v"1.0.62"))'`
+          suggestion-label: 'format-suggest' # leave this unset or empty to show suggestions for all PRs
