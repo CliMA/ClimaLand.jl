@@ -171,19 +171,17 @@ conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     domain,
-    LAI,
     toml_dict;
     n_stem,
     n_leaf,
     h_stem,
     h_leaf,
-    SAI,
-    RAI,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
-    rooting_depth = FT(1),
 );
+rooting_depth = FT(1)
+biomass = Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth)
 
 # Construct the conductance model.
 conductance = Canopy.MedlynConductanceModel{FT}(domain; g1 = FT(141));
@@ -204,6 +202,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     radiative_transfer,
     conductance,
     photosynthesis,
+    biomass,
 );
 
 # Provide initial conditions for the canopy hydraulics model

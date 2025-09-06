@@ -244,6 +244,9 @@ function SoilCanopyModel{FT}(;
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
+        biomass = canopy_component_types.biomass(;
+            canopy_component_args.biomass...,
+        ),
         energy = energy_model,
         boundary_conditions = Canopy.AtmosDrivenCanopyBC(
             atmos,

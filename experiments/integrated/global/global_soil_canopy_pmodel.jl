@@ -93,7 +93,6 @@ ground = ClimaLand.PrognosticSoilConditions{FT}()
 canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 
-# Set up plant hydraulics
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
@@ -125,9 +124,6 @@ diags = ClimaLand.default_diagnostics(
     average_period = :hourly,
 )
 
-# Construct the PModel callback
-pmodel_cb = ClimaLand.make_PModel_callback(FT, start_date, dt, land.canopy)
-
 simulation = LandSimulation(
     start_date,
     stop_date,
@@ -135,7 +131,7 @@ simulation = LandSimulation(
     land;
     outdir,
     diagnostics = diags,
-    user_callbacks = (pmodel_cb,),
+    user_callbacks = (),
 )
 ClimaLand.Simulations.solve!(simulation)
 
