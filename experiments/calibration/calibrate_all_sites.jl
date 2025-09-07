@@ -2,8 +2,14 @@ using ClimaLand
 using ClimaLand.Artifacts
 using DelimitedFiles
 using Logging
+using Base.Threads
+
+using CUDA
+using ClimaComms
+ClimaComms.@import_required_backends()
 
 script = joinpath(pkgdir(ClimaLand), "experiments/calibration/test_calibration.jl")
+include(script)  # to load dependencies
 
 # Get all site IDs from the metadata file
 fluxnet2015_data_path = ClimaLand.Artifacts.fluxnet2015_data_path()
@@ -19,16 +25,17 @@ site_id_col = findfirst(==("site_id"), header)
 site_ids = table[:, site_id_col]  # vector of all site IDs
 unique_site_ids = unique(site_ids)
 
-
-
 # Run the script for each unique site ID
-for site_ID in unique_site_ids
-    println("Running $script with file: $site_ID")
+Threads.@threads for i in 1:length(unique_site_ids) 
+    site_ID = unique_site_ids[i]
+
+    @info "Running $script with file: $site_ID."
     try
-        run(`julia --project=.buildkite $script $site_ID`)
-        println("Success on $site_ID")
+        # run(`julia --project=.buildkite $script $site_ID`)
+        calibrate_at_site(site_ID)
+        @info "Success on $site_ID"
     catch e
-        println("Failed on $site_ID: $e")
+        @info "Failed on $site_ID: $e"
         continue
     end
 end
