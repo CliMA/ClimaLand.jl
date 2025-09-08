@@ -125,6 +125,7 @@ for FT in (Float32, Float64)
             conductance = Canopy.MedlynConductanceModel{FT},
             hydraulics = Canopy.PlantHydraulicsModel{FT},
             energy = Canopy.BigLeafEnergyModel{FT},
+            biomass = Canopy.PrescribedBiomassModel{FT},
         )
         autotrophic_respiration_args =
             (; parameters = Canopy.AutotrophicRespirationParameters(FT))
@@ -143,19 +144,12 @@ for FT in (Float32, Float64)
         photosynthesis_args = (;
             parameters = Canopy.FarquharParameters(FT, FT(0); Vcmax25 = FT(0))
         )
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            TimeVaryingInput(identity),
-            FT(0),
-            FT(0),
-        )
-
+        rooting_depth = FT(0)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(FT(0))
         conductivity_model = PlantHydraulics.Weibull{FT}(FT(0), FT(0), FT(0))
         plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
             ν = FT(0),
             S_s = FT(0),
-            rooting_depth = FT(0),
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )
@@ -167,6 +161,12 @@ for FT in (Float32, Float64)
             compartment_surfaces = [FT(0.0), FT(0.0)],
         )
         energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(FT(0)),)
+        biomass_args = (
+            LAI = TimeVaryingInput(identity),
+            SAI = FT(0),
+            RAI = FT(0),
+            rooting_depth = rooting_depth,
+        )
         canopy_component_args = (;
             autotrophic_respiration = autotrophic_respiration_args,
             radiative_transfer = radiative_transfer_args,
@@ -174,6 +174,7 @@ for FT in (Float32, Float64)
             conductance = conductance_args,
             hydraulics = plant_hydraulics_args,
             energy = energy_args,
+            biomass = biomass_args,
         )
         shared_params =
             Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(

@@ -99,12 +99,7 @@ for FT in (Float32, Float64)
         AutotrophicRespirationModel{FT}(autotrophic_parameters)
     RAI = FT(1)
     SAI = FT(1)
-    lai_fun = t -> LAI
-    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-        TimeVaryingInput(lai_fun),
-        SAI,
-        RAI,
-    )
+    lai_fun = TimeVaryingInput(t -> LAI)
     K_sat_plant = FT(1.8e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -116,10 +111,8 @@ for FT in (Float32, Float64)
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
     rooting_depth = FT(0.5)
     param_set = PlantHydraulics.PlantHydraulicsParameters(;
-        ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
-        rooting_depth = rooting_depth,
         conductivity_model = conductivity_model,
         retention_model = retention_model,
     )
@@ -152,6 +145,12 @@ for FT in (Float32, Float64)
         compartment_surfaces = compartment_faces,
         compartment_midpoints = compartment_centers,
     )
+    biomass = Canopy.PrescribedBiomassModel{FT}(;
+        LAI = lai_fun,
+        SAI,
+        RAI,
+        rooting_depth,
+    )
     @testset "Canopy model total energy and water, FT = $FT" begin
         for domain in domains
             canopy = ClimaLand.Canopy.CanopyModel{FT}(;
@@ -163,6 +162,7 @@ for FT in (Float32, Float64)
                 autotrophic_respiration = autotrophic_respiration_model,
                 energy = energy_model,
                 hydraulics = plant_hydraulics,
+                biomass,
                 boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                     atmos,
                     rad,

@@ -87,7 +87,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         surface_domain,
-        LAI,
         toml_dict;
         retention_model,
     )

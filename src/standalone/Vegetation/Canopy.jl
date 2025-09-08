@@ -191,15 +191,11 @@ end
 """
     PlantHydraulicsModel{FT}(
         domain,
-        LAI::AbstractTimeVaryingInput,
         toml_dict::CP.AbstractTOMLDict;
         n_stem::Int = 0,
         n_leaf::Int = 1,
         h_stem::FT = FT(0),
         h_leaf::FT = FT(1),
-        SAI::FT = FT(0),
-        RAI::FT = FT(1),
-        ai_parameterization = PrescribedSiteAreaIndex{FT}(forcing.LAI, SAI, RAI),
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
@@ -208,21 +204,16 @@ end
             c = FT(4),
         ),
         retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
-        rooting_depth = clm_rooting_depth(domain.space.surface),
         transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
-
-The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
 The following default parameters are used:
 - n_stem = 0 (unitless) - number of stem compartments
 - n_leaf = 1 (unitless) - number of leaf compartments
 - h_stem = 0 (m) - height of the stem compartment
 - h_leaf = 1 (m) - height of the leaf compartment
-- SAI = 0 (m2/m2) - stem area index
-- RAI = 1 (m2/m2) - root area index
 - ν = 1.44e-4 (m3/m3) - porosity
 - S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
 - K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
@@ -238,24 +229,15 @@ https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
     domain,
-    LAI::AbstractTimeVaryingInput,
     toml_dict::CP.AbstractTOMLDict;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
     h_leaf::FT = FT(1),
-    SAI::FT = toml_dict["SAI"],
-    RAI::FT = toml_dict["RAI"],
-    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-        LAI,
-        SAI,
-        RAI,
-    ),
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
     retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
-    rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
     # TODO: move hydraulics paramters to ClimaParams.jl so we can call `get_default_parameter`.
@@ -271,12 +253,10 @@ function PlantHydraulicsModel{FT}(
         n_stem > 0 ? [zmax, h_stem, h_stem + h_leaf] : [zmax, h_leaf]
 
     parameters = PlantHydraulics.PlantHydraulicsParameters(;
-        ai_parameterization,
         ν,
         S_s,
         conductivity_model,
         retention_model,
-        rooting_depth,
     )
     return PlantHydraulics.PlantHydraulicsModel{FT}(;
         n_stem,
@@ -285,6 +265,43 @@ function PlantHydraulicsModel{FT}(
         compartment_surfaces,
         parameters,
         transpiration,
+    )
+end
+
+"""
+    PrescribedBiomassModel{FT}(
+        domain,
+        LAI::AbstractTimeVaryingInput,
+        toml_dict::CP.AbstractTOMLDict;
+        SAI::FT = toml_dict["SAI"],
+        RAI::FT = toml_dict["RAI"],
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+    ) where {FT <: AbstractFloat}
+
+Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
+
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
+
+The following default parameters are used:
+- SAI = 0 (m2/m2) - stem area index
+- RAI = 1 (m2/m2) - root area index
+"""
+function PrescribedBiomassModel{FT}(
+    domain,
+    LAI::AbstractTimeVaryingInput,
+    toml_dict::CP.AbstractTOMLDict;
+    SAI::FT = toml_dict["SAI"],
+    RAI::FT = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+) where {FT <: AbstractFloat}
+    ai_parameterization = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    return PrescribedBiomassModel{
+        FT,
+        typeof(ai_parameterization),
+        typeof(rooting_depth),
+    }(
+        ai_parameterization,
+        rooting_depth,
     )
 end
 
@@ -466,7 +483,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, BM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -482,6 +499,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
     energy::EM
     "SIF model, a canopy component model"
     sif::SIFM
+    "Biomass parameterization, a canopy component model"
+    biomass::BM
     "Boundary Conditions"
     boundary_conditions::B
     "Shared canopy parameters between component models"
@@ -499,6 +518,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
+        biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
@@ -523,6 +543,7 @@ function CanopyModel{FT}(;
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
+    biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
@@ -552,6 +573,7 @@ function CanopyModel{FT}(;
         hydraulics,
         energy,
         sif,
+        biomass,
         boundary_conditions,
         parameters,
         domain,
@@ -576,7 +598,8 @@ end
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
-        hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
+        hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+        biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
@@ -615,7 +638,8 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
-    hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
+    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}
@@ -634,6 +658,7 @@ function CanopyModel{FT}(
         conductance,
         hydraulics,
         energy,
+        biomass,
         sif,
     ]
         # For component models without parameters, skip the check
@@ -643,6 +668,8 @@ function CanopyModel{FT}(
                 axes(component.parameters) == domain.space.surface
     end
 
+    # Confirm that the LAI passed agrees with the LAI of the biomass model
+    @assert biomass.ai_parameterization.LAI == LAI
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
@@ -650,7 +677,6 @@ function CanopyModel{FT}(
         prognostic_land_components,
     )
 
-    # TODO: move z_0m, z_0b to ClimaParams so we can call `get_default_parameter`.
     earth_param_set = LP.LandParameters(toml_dict)
     parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z_0m,
@@ -665,6 +691,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         sif,
+        biomass,
         boundary_conditions,
         parameters,
         domain,
@@ -692,6 +719,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :biomass,
 )
 
 """
@@ -894,13 +922,6 @@ has a single update_aux! function, given here.
 """
 function ClimaLand.make_update_aux(canopy::CanopyModel)
     function update_aux!(p, Y, t)
-
-        # Extend to other fields when necessary
-        # Update the prescribed fields to the current time `t`,
-        # prior to updating the rest of the auxiliary state to
-        # the current time, as they depend on prescribed fields.
-        set_canopy_prescribed_field!(canopy.hydraulics, p, t)
-
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
 
@@ -1062,8 +1083,16 @@ sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
+        for component in canopy_components(model)
+            set_canopy_prescribed_field!(getproperty(model, component), p, t0) # updated with callback otherwise
+        end
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
+        # Make sure that the hydraulics scheme and the biomass scheme are compatible
+        hydraulics = model.hydraulics
+        n_stem = hydraulics.n_stem
+        n_leaf = hydraulics.n_leaf
+        lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
     end
     return set_initial_cache!
 end
