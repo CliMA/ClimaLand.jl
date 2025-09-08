@@ -10,7 +10,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: julia-actions/julia-format@v3
+      - uses: julia-actions/julia-format@v4
         with:
           version: '1' # Set `version` to '1.0.62' if you run into issues
           # To use the same JuliaFormatter version locally, run: `julia -e 'using Pkg; Pkg.add(PackageSpec("JuliaFormatter", v"1.0.62"))'`
