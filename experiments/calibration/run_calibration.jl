@@ -11,22 +11,39 @@ import JLD2
 include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["lwu"],
+    short_names = ["swu"],
     minibatch_size = 1,
-    n_iterations = 3,
-    sample_date_ranges = [("2007-12-1", "2008-9-1")],
+    n_iterations = 6,
+    sample_date_ranges = [("2008-12-1", "2009-9-1"), ("2009-12-1", "2010-9-1"), ("2010-12-1", "2011-9-1"), ("2011-12-1", "2012-9-1"), ("2012-12-1", "2013-9-1"), ("2013-12-1", "2014-9-1")],
     extend = Dates.Month(3),
-    spinup = Dates.Month(3),
+    spinup = Dates.Year(1),
     nelements = (101, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
 )
 
+priors =
+[EKP.constrained_gaussian("alpha_0", 0.6, 0.1, 0.1, 0.8),
+ EKP.constrained_gaussian("delta_alpha", 0.2, 0.05, 0.0, 0.3),
+ EKP.constrained_gaussian("k", 10.0, 2.0, 1.0, 20.0),
+ EKP.constrained_gaussian("beta", 0.4, 0.2, 0.05, 0.9),
+ EKP.constrained_gaussian("x0", 0.2, 0.05, 0.1, 0.8)]
+prior = EKP.combine_distributions(priors)
+ekp_process = EKP.Unscented(prior)
+ensemble_size = ekp_process.N_ens
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # Note: Using this script on Derecho requires changes to addprocs to use
-    # the PBSManager
-    addprocs(ClimaCalibrate.SlurmManager())
+    if ClimaCalibrate.get_backend() == ClimaCalibrate.DerechoBackend
+        addprocs(
+            ClimaCalibrate.PBSManager(ensemble_size),
+            q = "main",
+            A = "UCIT0011",
+            l_select = "1:ngpus=1:ncpus=4",
+            l_walltime = "11:30:00",
+        )
+    elseif ClimaCalibrate.get_backend() == ClimaCalibrate.CaltechHPCBackend
+        addprocs(ClimaCalibrate.SlurmManager())
+    end
 
     include(
         joinpath(
@@ -45,11 +62,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         joinpath(experiment_dir, "calibration", "model_interface.jl"),
     )
 
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
-    prior = EKP.combine_distributions(priors)
-
     observation_vector =
         JLD2.load_object("experiments/calibration/land_observation_vector.jld2")
 
@@ -66,13 +78,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 length(observation_vector),
                 minibatch_size,
             ),
+                        "metadata" => [
+                prior,
+                CALIBRATE_CONFIG.short_names,
+                CALIBRATE_CONFIG.nelements,
+            ],
         ),
     )
 
     rng_seed = CALIBRATE_CONFIG.rng_seed
     rng = Random.MersenneTwister(rng_seed)
 
-    # Note: You should check that the ensemble size is the same as the number of
+    # Note: For Slurm, you should check that the ensemble size is the same as the number of
     # tasks in the batch script
     # For example, if you are calibrating 3 parameters and are using
     # EKP.TransformUnscented, then the number of tasks should be 7, since
