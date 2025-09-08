@@ -270,7 +270,7 @@ end
     LandSimulation(
         start_date::Dates.DateTime,
         stop_date::Dates.DateTime,
-        Δt::Union{AbstractFloat, Dates.Second},
+        Δt::Union{AbstractFloat, Dates.Second, ITime},
         args...;
         kwargs...,
     )
@@ -282,7 +282,7 @@ convert the update times to `ITime`(s) as well. The same applies to `saveat` in 
 function LandSimulation(
     start_date::Dates.DateTime,
     stop_date::Dates.DateTime,
-    Δt::Union{AbstractFloat, Dates.Second},
+    Δt::Union{AbstractFloat, Dates.Second, ITime},
     args...;
     kwargs...,
 )
@@ -291,7 +291,13 @@ function LandSimulation(
         Dates.value(convert(Dates.Second, stop_date - start_date)),
         epoch = start_date,
     )
-    Δt = ITime(Δt isa Dates.Second ? Δt.value : Δt, epoch = start_date)
+    if Δt isa Dates.Second
+        Δt = ITime(Δt.value, epoch = start_date)
+    elseif Δt isa AbstractFloat
+        Δt = ITime(Δt, epoch = start_date)
+    else
+        @assert Δt.epoch == start_date "If `Δt` is an ITime, its epoch must be the same as `start_date`."
+    end
     t0_itime, tf_itime, Δt_itime = promote(t0, tf, Δt)
     kwargs = convert_kwarg_updates(t0_itime, kwargs)
     LandSimulation(t0_itime, tf_itime, Δt_itime, args...; kwargs...)
