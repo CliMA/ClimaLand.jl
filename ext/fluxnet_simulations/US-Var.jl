@@ -31,11 +31,15 @@ end
 Returns geographical information for US-Var (California Vaira Ranch Ione) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
+
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-8 for Pacific Standard Time (PST).
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Var};
-    time_offset = 8,
+    time_offset = -8,
     lat = FT(38.4133),
     long = FT(-120.9508),
     atmos_h = FT(2),

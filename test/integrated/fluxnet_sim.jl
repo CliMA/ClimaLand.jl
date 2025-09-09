@@ -42,7 +42,7 @@ end
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == 5
+    @test time_offset == -5
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
     @test atmos_h == FT(30)
@@ -236,7 +236,7 @@ end
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == 7
+    @test time_offset == -7
     @test lat == FT(40.0329)
     @test long == FT(-105.5464)
     @test atmos_h == FT(21.5)
@@ -317,7 +317,7 @@ end
 
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
-    @test time_offset == 8
+    @test time_offset == -8
     @test lat == FT(38.4133)
     @test long == FT(-120.9508)
     @test atmos_h == FT(2)

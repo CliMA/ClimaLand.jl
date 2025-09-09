@@ -32,11 +32,15 @@ end
 Returns geographical information for US-MOz (Missouri Ozark) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
+
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-6 for Central Standard Time (CST).
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_MOz};
-    time_offset = 7,
+    time_offset = -6,
     lat = FT(38.7441),
     long = FT(-92.2000),
     atmos_h = FT(32),

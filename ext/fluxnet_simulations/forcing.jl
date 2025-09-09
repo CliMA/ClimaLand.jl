@@ -93,7 +93,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     local_datetime =
         local_datetime_start .+
         (local_datetime_end .- local_datetime_start) ./ 2
-    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
 
     # The TimeVaryingInput interface for columns expects the time in seconds
     # from the start date of the simulation
@@ -227,11 +227,11 @@ end
     get_maxLAI_at_site(date, lat, long;
                        ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Dates.year(date)))
 
-A helper function to get the maximum LAI at a site from the MODIS LAI data for the 
-year corresponding to `date`. This is used in some simulations to 
+A helper function to get the maximum LAI at a site from the MODIS LAI data for the
+year corresponding to `date`. This is used in some simulations to
 set the root area index.
 
-By default, this uses MODIS data for the year desired; the default file 
+By default, this uses MODIS data for the year desired; the default file
 at `ncd_path` is expected to contain latitude and longitude in variables
 "lat" and "lon", and LAI in the variable "lai". The function finds the maximum LAI
 at the closest latitude and longitude to the given `lat` and `long` values over all dates
@@ -332,7 +332,7 @@ function FluxnetSimulations.get_data_dates(
     local_datetime =
         local_datetime_start .+
         (local_datetime_end .- local_datetime_start) ./ 2
-    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
     earliest_date, latest_date = extrema(UTC_datetime)
     Dates.value(start_offset) < 0 && error("start_offset must be non-negative")
     if !isnothing(duration) && Dates.value(duration) < 0
@@ -423,7 +423,7 @@ ClimaLand diagnostics are averaged, accumulated, or otherwise reduced
 over a time period (e.g. hourly, daily, monthly). They are saved with the first date following
 that average period. For example, the hourly average from 11-noon is saved with a timestamp of
 noon. To make a true comparison to Fluxnet data, therefore, we must use halfhourly diagnostics in ClimaLAnd,
-and return the UTC time that corresponds to the end 
+and return the UTC time that corresponds to the end
 of the averaging period in fluxnet; this is true by default. If `timestamp_end = false`,
 we return the point halfway between TIMESTAMP_START and TIMESTAMP_END
 """
@@ -459,9 +459,9 @@ function FluxnetSimulations.get_comparison_data(
             string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
             "yyyymmddHHMM",
         )
-    data_dt = Second(local_datetime_end[2] - local_datetime_end[1]).value # seconds  
+    data_dt = Second(local_datetime_end[2] - local_datetime_end[1]).value # seconds
     if timestamp_end
-        UTC_datetime = local_datetime_end .+ Dates.Hour(hour_offset_from_UTC)
+        UTC_datetime = local_datetime_end .- Dates.Hour(hour_offset_from_UTC)
     else
         local_datetime_start =
             DateTime.(
@@ -471,7 +471,7 @@ function FluxnetSimulations.get_comparison_data(
         local_datetime =
             local_datetime_start .+
             (local_datetime_end .- local_datetime_start) ./ 2
-        UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+        UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
     end
     gpp = FluxnetSimulations.get_comparison_data(
         data,
