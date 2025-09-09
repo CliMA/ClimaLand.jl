@@ -52,6 +52,68 @@ struct SoilSnowModel{
 end
 
 """
+    SoilSnowModel{FT}(
+        forcing,
+        toml_dict::CP.ParamDict,
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        Δt;
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components = (:snow, :soil),
+            additional_sources = (),
+        ),
+        snow = Snow.SnowModel(
+            FT,
+            ClimaLand.Domains.obtain_surface_domain(domain),
+            forcing,
+            toml_dict,
+            Δt;
+            prognostic_land_components = (:snow, :soil,),
+        ),
+    ) where {FT}
+
+A convenience constructor for setting up the default `SoilSnowModel`,
+where all the parameterizations and parameter values are set to default values
+or passed in via the `toml_dict`. The boundary conditions of all models
+correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
+of the form (;atmos, radiation), with `atmos` an `AbstractAtmosphericDriver` and `radiation`
+an `AbstractRadiativeDriver`. The domain must be a ClimaLand domain with a vertical extent.
+Finally, since the snow model requires the timestep, that is a required argument as well.
+
+"""
+function SoilSnowModel{FT}(
+    forcing,
+    toml_dict::CP.ParamDict,
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
+    Δt;
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components = (:snow, :soil),
+        additional_sources = (),
+    ),
+    snow = Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components = (:snow, :soil),
+    ),
+) where {FT}
+    return SoilSnowModel{FT}(; snow, soil)
+end
+
+
+
+"""
     lsm_aux_vars(m::SoilSnowModel)
 
 The names of the additional auxiliary variables that are

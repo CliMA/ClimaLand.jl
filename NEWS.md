@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
-
+- Remove the unused integrated constructors based on args and types PR[#1408](https://github.com/CliMA/ClimaLand.jl/pull/1408)
 - Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
 
 v0.20.1
