@@ -25,7 +25,7 @@ default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
 
-time_offset = 7
+time_offset = -6
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))

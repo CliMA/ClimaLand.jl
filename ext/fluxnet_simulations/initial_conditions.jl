@@ -11,7 +11,7 @@ updates `Y` in place with an estimated set of initial conditions
 based on the fluxnet observations at `site_ID` at the `start_date` in UTC,
 and the type of the `model`.
 In order to convert between local time and UTC, the hour offset from
-UTC is required. 
+UTC is required.
 """
 function FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
@@ -51,7 +51,7 @@ function set_fluxnet_ic!(
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     # Convert local datetime to time in UTC
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
     for component in ClimaLand.land_components(model)
         set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
@@ -65,11 +65,11 @@ Sets the values of Y.soil in place with:
 - \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date, unless this is larger than 90% of porosity.
 - θ_i: no ice (θ_i = 0)
 - \rho e_int: an internal energy computed using the above θ_l, θ_i, and the temperature of the soil
-  in the first layer, at the observation date closest to the start date. If the soil 
+  in the first layer, at the observation date closest to the start date. If the soil
   temperature is not available, the air temperature is used.
 
 Here, `Y` is the prognostic field vector, `data` is the raw data for the site read from
-a CSV file, `columns` is the list of column names, 
+a CSV file, `columns` is the list of column names,
 `Δ_date` is the vector of date differences between the observations (in UTC) and the
 start date (in UTC), and `model` indicates which part of `Y` we are updating, and how to update it,
 via different methods of `set_fluxnet_ic!`.

@@ -27,7 +27,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     (; time_offset, lat, long) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == 5
+    @test time_offset == -5
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
 
@@ -147,8 +147,8 @@ end
 
     # geographical info
     (; time_offset, lat, long) =
-        FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
-    @test time_offset == 5
+        FluxnetSimulations.get_location(FT, Val(site_ID))
+    @test time_offset == -6
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
 
@@ -233,7 +233,7 @@ end
     (; time_offset, lat, long) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == 7
+    @test time_offset == -7
     @test lat == FT(40.0329)
     @test long == FT(-105.5464)
 
@@ -317,7 +317,7 @@ end
 
     (; time_offset, lat, long) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
-    @test time_offset == 8
+    @test time_offset == -8
     @test lat == FT(38.4133)
     @test long == FT(-120.9508)
 

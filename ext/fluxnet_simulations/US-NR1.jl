@@ -32,11 +32,15 @@ end
 Returns geographical information for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
+
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-7 for Mountain Standard Time (MST).
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_NR1};
-    time_offset = 7,
+    time_offset = -7,
     lat = FT(40.0329),
     long = FT(-105.5464),
 )
