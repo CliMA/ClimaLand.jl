@@ -69,7 +69,7 @@ struct SoilCanopyModel{
         @assert canopy.hydraulics.transpiration isa
                 Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
-        @assert soilco2.drivers.met isa Soil.Biogeochemistry.PrognosticMet
+        @assert soilco2.drivers.met isa PrognosticMet
 
         return new{FT, MM, SM, VM}(soilco2, soil, canopy)
     end
@@ -91,7 +91,7 @@ end
         soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
             domain,
             Soil.Biogeochemistry.SoilDrivers(
-               Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+               PrognosticMet(soil.parameters),
                 PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
@@ -132,7 +132,7 @@ function SoilCanopyModel{FT}(
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
-            Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+            PrognosticMet(soil.parameters),
             PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
@@ -149,133 +149,6 @@ function SoilCanopyModel{FT}(
         prognostic_land_components = (:canopy, :soil, :soilco2),
     ),
 ) where {FT}
-    return SoilCanopyModel{FT}(soilco2, soil, canopy)
-end
-
-
-
-"""
-    SoilCanopyModel{FT}(;
-        soilco2_type::Type{MM},
-        soilco2_args::NamedTuple = (;),
-        land_args::NamedTuple = (;),
-        soil_model_type::Type{SM},
-        soil_args::NamedTuple = (;),
-        canopy_component_types::NamedTuple = (;),
-        canopy_component_args::NamedTuple = (;),
-        canopy_model_args::NamedTuple = (;),
-        ) where {
-            FT,
-            SM <: Soil.EnergyHydrology{FT},
-            MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-            }
-
-A constructor for the `SoilCanopyModel`, which takes in the concrete model
-type and required arguments for each component, constructs those models,
-and constructs the `SoilCanopyModel` from them.
-
-Each component model is constructed with everything it needs to be stepped
-forward in time, including boundary conditions, source terms, and interaction
-terms.
-"""
-function SoilCanopyModel{FT}(;
-    soilco2_type::Type{MM},
-    soilco2_args::NamedTuple = (;),
-    land_args::NamedTuple = (;),
-    soil_model_type::Type{SM},
-    soil_args::NamedTuple = (;),
-    canopy_component_types::NamedTuple = (;),
-    canopy_component_args::NamedTuple = (;),
-    canopy_model_args::NamedTuple = (;),
-) where {
-    FT,
-    SM <: Soil.EnergyHydrology{FT},
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-}
-
-    (; atmos, radiation, soil_organic_carbon) = land_args
-    # These should always be set by the constructor.
-    sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
-    prognostic_land_components = (:canopy, :soil, :soilco2)
-    if :runoff ∈ propertynames(land_args)
-        runoff_model = land_args.runoff
-    else
-        runoff_model = ClimaLand.Soil.Runoff.NoRunoff()
-    end
-    top_bc = ClimaLand.AtmosDrivenFluxBC(
-        atmos,
-        radiation,
-        runoff_model,
-        prognostic_land_components,
-    )
-    zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions =
-        (; top = top_bc, bottom = Soil.EnergyWaterFreeDrainage())
-    soil = soil_model_type(;
-        boundary_conditions = boundary_conditions,
-        sources = sources,
-        soil_args...,
-    )
-
-    transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions = PrognosticGroundConditions{FT}()
-    if :energy in propertynames(canopy_component_args)
-        energy_model = canopy_component_types.energy(
-            canopy_component_args.energy.parameters,
-        )
-    else
-        energy_model = PrescribedCanopyTempModel{FT}()
-    end
-
-    canopy = Canopy.CanopyModel{FT}(;
-        autotrophic_respiration = canopy_component_types.autotrophic_respiration(
-            canopy_component_args.autotrophic_respiration...,
-        ),
-        radiative_transfer = canopy_component_types.radiative_transfer(
-            canopy_component_args.radiative_transfer...,
-        ),
-        photosynthesis = canopy_component_types.photosynthesis(
-            canopy_component_args.photosynthesis...,
-        ),
-        conductance = canopy_component_types.conductance(
-            canopy_component_args.conductance...,
-        ),
-        hydraulics = canopy_component_types.hydraulics(;
-            transpiration = transpiration,
-            canopy_component_args.hydraulics...,
-        ),
-        energy = energy_model,
-        boundary_conditions = Canopy.AtmosDrivenCanopyBC(
-            atmos,
-            radiation,
-            ground_conditions,
-            prognostic_land_components,
-        ),
-        canopy_model_args...,
-    )
-
-
-    co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-    soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-        co2_prognostic_soil,
-        soil_organic_carbon,
-        atmos,
-    )
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-    soilco2 = soilco2_type(
-        soilco2_args.domain,
-        soilco2_drivers;
-        boundary_conditions = soilco2_boundary_conditions,
-        sources = soilco2_sources,
-        parameters = soilco2_args.parameters,
-    )
-
     return SoilCanopyModel{FT}(soilco2, soil, canopy)
 end
 
