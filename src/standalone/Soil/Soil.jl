@@ -194,7 +194,7 @@ using .Biogeochemistry
 # Soil model constructor useful for working with simulations forced by
 # the atmosphere
 """
-    EnergyHydrology{FT}(domain, forcing, toml_dict::CP.AbstractTOMLDict;
+    EnergyHydrology{FT}(domain, forcing, toml_dict::CP.ParamDict;
                          prognostic_land_components = (:soil),
                          albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
                          runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(toml_dict,
@@ -241,7 +241,7 @@ by kwarg; otherwise the default values are used.
 function EnergyHydrology{FT}(
     domain,
     forcing,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,

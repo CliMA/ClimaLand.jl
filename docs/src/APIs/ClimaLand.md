@@ -11,7 +11,7 @@ ClimaLand.LandModel{FT}()
 ClimaLand.LandModel{FT}(
     forcing,
     LAI,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     domain::Union{
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,
@@ -23,7 +23,7 @@ ClimaLand.SoilCanopyModel
 ClimaLand.SoilCanopyModel{FT}(
     forcing,
     LAI,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
 ) where {FT}
 ClimaLand.LandHydrology

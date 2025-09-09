@@ -145,7 +145,7 @@ function EnergyHydrologyParameters(
 end
 
 function EnergyHydrologyParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     ν::F,
     ν_ss_om::F,
     ν_ss_quartz::F,

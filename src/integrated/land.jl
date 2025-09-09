@@ -239,7 +239,7 @@ end
     LandModel{FT}(
         forcing,
         LAI,
-        toml_dict::CP.AbstractTOMLDict,
+        toml_dict::CP.ParamDict,
         domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
         Δt;
         soil = Soil.EnergyHydrology{FT}(
@@ -290,7 +290,7 @@ Finally, since the snow model requires the timestep, that is a required argument
 function LandModel{FT}(
     forcing,
     LAI,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     domain::Union{
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,

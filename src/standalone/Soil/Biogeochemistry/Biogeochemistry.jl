@@ -80,7 +80,7 @@ Keywords arguments can be used to directly override any parameters.
 SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
     SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
 
-function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
+function SoilCO2ModelParameters(toml_dict::CP.ParamDict; kwargs...)
     name_map = (;
         :CO2_diffusion_coefficient => :D_ref,
         :soil_C_substrate_diffusivity => :D_liq,

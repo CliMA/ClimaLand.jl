@@ -357,7 +357,7 @@ end
     )
 
     function FarquharParameters(
-        toml_dict::CP.AbstractTOMLDict,
+        toml_dict::CP.ParamDict,
         is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides
@@ -384,7 +384,7 @@ FarquharParameters(
     FarquharParameters(CP.create_toml_dict(FT), is_c3; kwargs...)
 
 function FarquharParameters(
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
     Vcmax25 = 5e-5,
     kwargs...,
