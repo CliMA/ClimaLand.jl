@@ -175,7 +175,8 @@ domain = ClimaLand.Domains.global_domain(
 )
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+override_path = joinpath(pkgdir(ClimaLand),"calibrate_pmodel_params.toml")
+toml_dict = LP.create_toml_dict(FT, default_params_filepath, override_path, override=true)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

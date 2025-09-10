@@ -1,0 +1,19 @@
+["pmodel_β"]
+value = 245.87037838688366
+type = "float"
+
+[low_water_pressure_sensitivity]
+value = 1.6074758027540765e-6
+type = "float"
+
+[a]
+value = 0.0013393153054320778
+type = "float"
+
+[pmodel_cstar]
+value = 0.4861779496600657
+type = "float"
+
+[moisture_stress_ref_water_pressure]
+value = -7.398223007733691e6
+type = "float"
