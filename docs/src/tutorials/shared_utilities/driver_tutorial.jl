@@ -49,8 +49,8 @@ import ClimaParams
 
 # Assume the local_datetime array is read in from the data file.
 local_datetime = DateTime(2013):Dates.Hour(1):DateTime(2013, 1, 7); # one week, hourly data
-# Timezone (offset of local time from UTC in hrs)
-time_offset = 7;
+# Timezone (offset of local time from UTC in hrs) for the Missouri Ozark site
+time_offset = -6;
 # Site latitude and longitude
 lat = 38.7441; # degree
 long = -92.2000; # degree

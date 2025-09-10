@@ -32,11 +32,15 @@ end
 Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the corresponding
 keyword arguments to this function.
+
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-5 for Eastern Standard Time (EST).
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Ha1};
-    time_offset = 5,
+    time_offset = -5,
     lat = FT(42.5378),
     long = FT(-72.1715),
 )
