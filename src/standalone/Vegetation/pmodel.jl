@@ -796,7 +796,7 @@ function make_PModel_callback(
     local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
 
     return FrequencyBasedCallback(
-        dt,         # period of this callback
+        dt isa Dates.Period ? dt : Dates.Second(dt),         # period of this callback
         start_date, # initial datetime, UTC
         dt;         # integration timestep, in seconds
         func = (integrator) -> call_update_optimal_EMA(

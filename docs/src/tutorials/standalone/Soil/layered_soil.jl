@@ -124,7 +124,7 @@ simulation = LandSimulation(
     dt,
     soil;
     set_ic! = set_ic!,
-    solver_kwargs = (; saveat = saveat),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (),
     diagnostics = (),

@@ -166,13 +166,9 @@ ode_algo = CTS.IMEXAlgorithm(
 );
 
 # Saving callback
-saveat = Array(start_date:Hour(1):stop_date);
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-cb = SciMLBase.CallbackSet(saving_cb);
+saveat = Hour(1)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+sv = saving_cb.affect!.saved_values
 simulation = LandSimulation(
     start_date,
     stop_date,
@@ -180,7 +176,7 @@ simulation = LandSimulation(
     soil;
     set_ic! = set_ic!,
     updateat = Second(0),
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),
@@ -203,12 +199,9 @@ soil = Soil.EnergyHydrology{FT}(;
 )
 
 timestepper = CTS.ARS111();
-saveat = Array(start_date:Hour(1):stop_date);
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+saveat = Hour(1)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+sv = saving_cb.affect!.saved_values
 
 simulation = LandSimulation(
     start_date,
@@ -217,7 +210,7 @@ simulation = LandSimulation(
     soil;
     set_ic! = set_ic!,
     updateat = Hour(1),
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),
@@ -249,12 +242,9 @@ soil = Soil.EnergyHydrology{FT}(;
     boundary_conditions = no_drainage_boundary_fluxes,
     sources = (),
 )
-saveat = Array(start_date:Hour(1):stop_date);
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+saveat = Hour(1)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
+sv = saving_cb.affect!.saved_values;
 simulation = LandSimulation(
     start_date,
     stop_date,
@@ -262,7 +252,7 @@ simulation = LandSimulation(
     soil;
     set_ic! = set_ic!,
     updateat = Hour(1),
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),

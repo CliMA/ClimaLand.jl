@@ -240,23 +240,18 @@ function dss_helper!(
 
 """
     DriverUpdateCallback(
-    update_period,
-    updatefunc;
-    start_date = nothing,
-    dt = nothing,
-)
+        updatefunc,
+        update_period,
+        t0;
+        dt = nothing,
+    )
 
 Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
 If `update_period` is zero valued, then `updatefunc` will not be called during the simulation
 or during intialization.
 """
-function DriverUpdateCallback(
-    update_period,
-    updatefunc;
-    start_date = nothing,
-    dt = nothing,
-)
+function DriverUpdateCallback(updatefunc, update_period, t0; dt = nothing)
     affect! = (integrator) -> updatefunc(integrator.p, integrator.t)
     # when update_period is zero, do not initialize
     no_init =
@@ -267,12 +262,12 @@ function DriverUpdateCallback(
         (cb, u, t, integrator) -> affect!(integrator)
 
 
-    FrequencyBasedCallback(update_period, start_date, dt, affect!; initialize)
+    FrequencyBasedCallback(update_period, t0, dt, affect!; initialize)
 end
 
 """
-    CheckpointCallback(checkpoint_period::Union{AbstractFloat, Dates.Period},
-                        output_dir, start_date; t_start, model, dt)
+    CheckpointCallback(checkpoint_period::Union{AbstractFloat, Dates.Period, ITime,
+                        output_dir, start_date; model, dt)
 
 Constructs a DiscreteCallback which saves the state to disk with the
 `save_checkpoint` function.
@@ -310,16 +305,16 @@ end
 
 
 """
-    SavingAffect{saveatType}
+    SavingAffect{NT}
 
 This struct is used by `NonInterpSavingCallback` to fill `saved_values` with
 values of `p` at various timesteps. The `saveiter` field allows us to
 allocate `saved_values` before the simulation and fill it during the run,
 rather than pushing to an initially empty structure.
+# TODO:
 """
-mutable struct SavingAffect{NT <: NamedTuple, saveatType}
+mutable struct SavingAffect{NT <: NamedTuple}
     saved_values::NT
-    saveat::saveatType
     saveiter::Int
 end
 
@@ -329,67 +324,142 @@ end
 This function is used by `NonInterpSavingCallback` to perform the saving.
 """
 function (affect!::SavingAffect)(integrator)
-    integrator_t = convert_t_saveat(affect!.saveat, integrator.t)
-    while !isempty(affect!.saveat) && first(affect!.saveat) <= integrator_t
-        affect!.saveiter += 1
-        curr_t = popfirst!(affect!.saveat)
-        # @assert curr_t == integrator.t
-        if curr_t == integrator_t
-            affect!.saved_values.t[affect!.saveiter] = curr_t
-            affect!.saved_values.saveval[affect!.saveiter] =
-                deepcopy(integrator.p)
-        end
+
+    T_saved_t = Base.typesplit(eltype(affect!.saved_values.t), Nothing)
+    affect!.saveiter += 1
+    if integrator.t isa T_saved_t
+        # needs a special case because ITime(::ITime) is not defined
+        affect!.saved_values.t[affect!.saveiter] = integrator.t
+    else
+        affect!.saved_values.t[affect!.saveiter] = T_saved_t(integrator.t)
     end
+    affect!.saved_values.saveval[affect!.saveiter] = deepcopy(integrator.p)
 end
 
-convert_t_saveat(saveat, t) = eltype(saveat)(t)
-convert_t_saveat(saveat::Vector{T}, t::T) where {T} = t
+
+
 
 """
-    saving_initialize(cb, u, t, integrator)
+    NonInterpSavingCallback(
+        saved_values,
+        period::Union{ITime, Dates.Period};
+        dt = nothing,
+        start_date = nothing,
+        init_saving = false,
+        callback_start = start_date,
+    )
 
-This function saves t and p at the start of the simulation, as long as the
-initial time is in `saveat`. To run the simulation without saving these
-initial values, don't pass the `initialize` argument to the `DiscreteCallback`
-constructor.
-"""
-function saving_initialize(cb, u, t, integrator)
-    saveat = cb.affect!.saveat
-    (convert_t_saveat(saveat, t) in saveat) && cb.affect!(integrator)
-end
-
-"""
-    NonInterpSavingCallback(saved_values, saveat::Vector{FT})
-
-Constructs a DiscreteCallback which saves the time and cache `p` at each time
-specified by `saveat`. The first argument must be a named
-tuple containing `t` and `saveval`, each having the same length as `saveat`.
-
-Important: The times in `saveat` must be times the simulation is
-evaluated at for this function to work.
+Constructs a DiscreteCallback which saves the time and cache `p` at `callback_start`
+and every `period` after. `saved_values` must be a named tuple containing
+`t` and `saveval`, each having the same length as the total number of `period`s in the
+simulation.
 
 Note that unlike SciMLBase's SavingCallback, this version does not
 interpolate if a time in saveat is not a multiple of our timestep. This
 function also doesn't work with adaptive timestepping.
-"""
-function NonInterpSavingCallback(saved_values, saveat::Vector{FT}) where {FT}
-    # This assumes that saveat contains multiples of the timestep
-    cond = condition(saveat)
-    saveiter = 0
-    affect! = SavingAffect(saved_values, saveat, saveiter)
 
-    SciMLBase.DiscreteCallback(cond, affect!; initialize = saving_initialize)
+This method should only be used for simulations that do not use `ITime` or the
+`LandSimulation` struct.
+"""
+function NonInterpSavingCallback(
+    saved_values,
+    period;
+    dt = nothing,
+    start_date = nothing,
+    init_saving = false,
+    callback_start = start_date,
+)
+    affect! = SavingAffect(saved_values, 0)
+    return FrequencyBasedCallback(
+        period,
+        start_date,
+        dt,
+        affect!;
+        initialize = init_saving ? (_, _, _, x) -> affect!(x) :
+                     (_, _, _, _) -> nothing,
+        callback_start,
+    )
 end
 
 """
-    condition(saveat)
+    NonInterpSavingCallback(
+        start_date::Dates.DateTime,
+        stop_date::Dates.DateTime,
+        callback_period::Dates.Period;
+        first_save_date = start_date,
+    )
 
-This function returns a function with the type signature expected by
-`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
-called in the callback. This implementation simply checks if the current time
-is contained in the list of affect times used for the callback.
+Constructs a `DiscreteCallback` which saves the time and cache `p` at `first_save_date` and
+every `callback_period` after. Times are saved as DateTimes, and the saved times and caches
+are each saved in a vector. They are stored in a `NamedTuple`, which is the `saved_values`
+property of the `affect!` property of the `DiscreteCallback`. For example:
+
+`cb = NonInterpSavingCallback(start_date, stop_date, callback_period)`
+`saved_values = cb.affect!.saved_values`
+`saved_times = saved_values.t` - Vector of DateTimes
+`saved_cache = saved_values.saveval` - A vector of caches
 """
-condition(saveat) = (_, t, _) -> convert_t_saveat(saveat, t) in saveat
+function NonInterpSavingCallback(
+    start_date::Dates.DateTime,
+    stop_date::Dates.DateTime,
+    callback_period::Dates.Period;
+    first_save_date = start_date,
+)
+    first_save_during_init = first_save_date == start_date
+    callback_start =
+        first_save_during_init ? first_save_date :
+        first_save_date - callback_period
+    n_saves = length(first_save_date:callback_period:stop_date)
+    sv = (;
+        t = Vector{Union{Dates.DateTime, Nothing}}(nothing, n_saves),
+        saveval = Vector{Any}(undef, n_saves),
+    )
+    return NonInterpSavingCallback(
+        sv,
+        callback_period;
+        start_date,
+        callback_start,
+        init_saving = first_save_during_init,
+    )
+end
+
+"""
+    NonInterpSavingCallback(t0, tf, callback_period; t_first_save = t0)
+
+Constructs a `DiscreteCallback` which saves the time and cache `p` at `t_first_save`
+and every `callback_period` after. Times are saved as the same type as `t0`,
+and the saved times and caches are each saved in a vector. They are stored in a `NamedTuple`,
+which is the `saved_values` property of the `affect!` property of the `DiscreteCallback`.
+For example:
+
+`cb = NonInterpSavingCallback(t0, tf, callback_period)`
+`saved_values = cb.affect!.saved_values`
+`saved_times = saved_values.t` - Vector of typeof(t0)
+`saved_cache = saved_values.saveval` - A vector of caches
+"""
+function NonInterpSavingCallback(t0, tf, callback_period; t_first_save = t0)
+    t0_itime = ITime(t0)
+    tf_itime = ITime(tf)
+    dt_itime = ITime(callback_period)
+    sv_itime = ITime(t_first_save)
+    t0_itime, tf_itime, dt_itime, sv_itime =
+        promote(t0_itime, tf_itime, dt_itime, sv_itime)
+
+    first_save_during_init = t_first_save == t0
+    callback_start = first_save_during_init ? sv_itime : sv_itime - dt_itime
+    n_saves = length(sv_itime:dt_itime:tf_itime)
+    sv = (;
+        t = Vector{Union{typeof(t0), Nothing}}(nothing, n_saves),
+        saveval = Vector{Any}(undef, n_saves),
+    )
+    return NonInterpSavingCallback(
+        sv,
+        dt_itime;
+        callback_start = callback_start,
+        init_saving = first_save_during_init,
+    )
+end
+
 
 function FTfromY(Y::ClimaCore.Fields.FieldVector)
     return eltype(Y)
@@ -609,20 +679,21 @@ when the simulation has a start date.
 The returned callback has a condition function that is built on a ClimaDiagnostics
 `EveryCalendarDtSchedule`. The `initialize` argument is passed
 to the DiscreteCallback as keyword arguments.
+TODO:
 """
 function FrequencyBasedCallback(
-    period::Union{AbstractFloat, Dates.Period, ITime},
-    start_date::Union{Dates.DateTime, ITime{<:Any, <:Any, <:Dates.DateTime}},
+    period::Dates.Period,
+    start_date,
     dt,
     affect!;
     initialize = (_, _, _, _) -> nothing,
+    callback_start = start_date,
 )
-    # Normalize period to a Dates.Period
-    period =
-        period isa AbstractFloat ? Dates.Millisecond(1000 * period) : period
-
-    schedule =
-        EveryCalendarDtSchedule(period; start_date, date_last = start_date)
+    schedule = EveryCalendarDtSchedule(
+        period;
+        start_date = start_date,
+        date_last = callback_start,
+    )
 
     if !isnothing(dt)
         dt_period =
@@ -633,7 +704,7 @@ function FrequencyBasedCallback(
     end
 
     cond = let schedule = schedule
-        (u, t, integrator) -> schedule(integrator)
+        (_, _, integrator) -> schedule(integrator)
     end
     return SciMLBase.DiscreteCallback(cond, affect!; initialize)
 end
@@ -652,17 +723,21 @@ used when `t0` does not contain an `epoch`.
 The returned callback has a condition function that is built on a ClimaDiagnostics
 `EveryDtSchedule`. The `initialize` argument is passed
 to the DiscreteCallback as keyword arguments.
+TODO:
 """
 function FrequencyBasedCallback(
-    period::T,
-    t0::Union{Nothing, T},
+    period,
+    t0,
     dt,
     affect!;
     initialize = (_, _, _, _) -> nothing,
-) where {T <: Union{AbstractFloat, ITime{<:Any, <:Any, Nothing}}}
-    schedule =
-        isnothing(t0) ? EveryDtSchedule(period) :
-        EveryDtSchedule(period; t_last = t0)
+    callback_start = t0,
+)
+    if period isa ITime && callback_start isa ITime
+        period, callback_start = promote(period, callback_start)
+    end
+    schedule = EveryDtSchedule(period; t_last = callback_start)
+
     if !isnothing(dt)
         if !isdivisible(period, dt)
             @warn "Callback period ($(period)) is not an integer multiple of dt $(dt)"
@@ -680,7 +755,7 @@ end
     FrequencyBasedCallback(
         period,
         start_date,
-        dt::Union{AbstractFloat, Dates.Period};
+        dt;
         func,
         func_args...,
     ) -> DiscreteCallback
@@ -688,18 +763,13 @@ end
 A convenience function that creates an affect! function that takes `integrator` as the input,
 and calls `func(integrator; func_args...)`
 """
-FrequencyBasedCallback(
-    period::Union{AbstractFloat, Dates.Period, ITime},
-    start_date,
-    dt::Union{AbstractFloat, Dates.Period};
-    func,
-    func_args...,
-) = FrequencyBasedCallback(
-    period,
-    start_date,
-    dt,
-    (integrator) -> func(integrator; func_args...),
-)
+FrequencyBasedCallback(period, start_date, dt; func, func_args...) =
+    FrequencyBasedCallback(
+        period,
+        start_date,
+        dt,
+        (integrator) -> func(integrator; func_args...),
+    )
 
 """
     ReportCallback(period; start_date = nothing, dt = nothing)

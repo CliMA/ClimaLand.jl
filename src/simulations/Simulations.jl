@@ -86,15 +86,15 @@ end
         ),
         user_callbacks = (
             ClimaLand.NaNCheckCallback(
-                isnothing(t0.epoch) ? (tf - t0) / 10 : Dates.Month(1);
+                isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1);
                 start_date = t0,
                 dt = Δt,
                 mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
             ),
-            ClimaLand.ReportCallback((tf - t0) / 10),
+            ClimaLand.ReportCallback(div((tf - t0), 10)),
         ),
         diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-        updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+        updateat = ITime(3600 * 3),
         solver_kwargs = (;),
     )
 
@@ -154,7 +154,6 @@ function LandSimulation(
         @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
     end
 
-    start_date = isnothing(t0.epoch) ? nothing : date(t0)
 
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
@@ -201,13 +200,9 @@ function LandSimulation(
     # Required callbacks
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(
-        updateat,
-        updatefunc;
-        dt = Δt,
-        start_date,
-    )
-    model_callbacks = ClimaLand.get_model_callbacks(model; start_date, Δt)# everything else you need should be in the model!
+    driver_cb =
+        ClimaLand.DriverUpdateCallback(updatefunc, updateat, t0; dt = Δt)
+    model_callbacks = ClimaLand.get_model_callbacks(model; start_date = t0, Δt)# everything else you need should be in the model!
 
     required_callbacks = (driver_cb, model_callbacks...) # TBD: can we update each step?
 
@@ -221,6 +216,12 @@ function LandSimulation(
     # in both user_cbs and diag_cbs, and the driver update happens between them
     callbacks =
         SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
+    if haskey(solver_kwargs, :saveat) && !(solver_kwargs[:saveat] isa Array)
+        solver_kwargs = merge(
+            (; solver_kwargs...),
+            (; :saveat => collect(t0:solver_kwargs[:saveat]:tf)),
+        )
+    end
     _integrator = SciMLBase.init(
         problem,
         timestepper;
@@ -231,7 +232,7 @@ function LandSimulation(
     return LandSimulation(
         model,
         timestepper,
-        start_date,
+        t0.epoch,
         user_callbacks,
         diagnostics,
         required_callbacks,
@@ -286,6 +287,7 @@ function LandSimulation(
     stop_date::Dates.DateTime,
     Δt::Union{AbstractFloat, Dates.Second},
     args...;
+    solver_kwargs = (;),
     kwargs...,
 )
     t0 = ITime(0, Dates.Second(1), start_date)
@@ -295,8 +297,15 @@ function LandSimulation(
     )
     Δt = ITime(Δt isa Dates.Second ? Δt.value : Δt, epoch = start_date)
     t0_itime, tf_itime, Δt_itime = promote(t0, tf, Δt)
-    kwargs = convert_kwarg_updates(t0_itime, kwargs)
-    LandSimulation(t0_itime, tf_itime, Δt_itime, args...; kwargs...)
+    solver_kwargs = convert_kwarg_updates(t0, solver_kwargs, :saveat)
+    LandSimulation(
+        t0_itime,
+        tf_itime,
+        Δt_itime,
+        args...;
+        solver_kwargs,
+        kwargs...,
+    )
 end
 
 """

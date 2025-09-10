@@ -149,7 +149,7 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     )
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(3Δt, updatefunc)
+    driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, 3Δt, t0)
     cb = SciMLBase.CallbackSet(driver_cb)
 
     return prob, cb

@@ -99,12 +99,9 @@ end
 
 
 n = 16
-saveat = Array(start_date:Second(n * dt):stop_date)
-sv = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
+saveat = Second(n * dt)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
+sv = saving_cb.affect!.saved_values;
 drivers = ClimaLand.get_drivers(canopy)
 
 simulation = LandSimulation(
@@ -115,7 +112,7 @@ simulation = LandSimulation(
     set_ic! = set_ic!,
     user_callbacks = (saving_cb,),
     updateat = Second(1800),
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     diagnostics = nothing,
 )
 sol = solve!(simulation)

@@ -181,13 +181,9 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-
-saveat = Array(start_date:Second(3600.0):stop_date);
-sv_hr = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv_hr, saveat)
+saveat = Second(3600.0)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat)
+sv_hr = saving_cb.affect!.saved_values
 
 simulation = LandSimulation(
     start_date,
@@ -195,7 +191,7 @@ simulation = LandSimulation(
     dt,
     soil;
     set_ic! = set_ic!,
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     updateat = Second(3600.0),
@@ -230,12 +226,9 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-saveat = Array(start_date:Second(3600.0):stop_date);
-sv_lr = (;
-    t = Array{DateTime}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv_lr, saveat)
+saveat = Second(3600.0)
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
+sv_lr = saving_cb.affect!.saved_values;
 simulation = LandSimulation(
     start_date,
     stop_date,
@@ -243,7 +236,7 @@ simulation = LandSimulation(
     soil;
     set_ic! = set_ic!,
     updateat = Second(3600.0),
-    solver_kwargs = (; saveat = deepcopy(saveat)),
+    solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
     diagnostics = (),

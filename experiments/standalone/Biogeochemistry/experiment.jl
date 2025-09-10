@@ -156,12 +156,9 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     timestepper = CTS.RK4()
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-    saveat = collect(t0:FT(10 * dt):tf)
-    sv = (;
-        t = Array{Float64}(undef, length(saveat)),
-        saveval = Array{NamedTuple}(undef, length(saveat)),
-    )
-    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+    saveat = FT(10 * dt)
+    cb = ClimaLand.NonInterpSavingCallback(t0, tf, saveat)
+    sv = saving_cb.affect!.saved_values
 
     simulation = LandSimulation(
         t0,
@@ -173,7 +170,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         set_ic!,
         user_callbacks = (saving_cb,),
         updateat = 10 * dt,
-        solver_kwargs = (; saveat = deepcopy(saveat)),
+        solver_kwargs = (; saveat),
     )
     sol = ClimaLand.Simulations.solve!(simulation)
 
