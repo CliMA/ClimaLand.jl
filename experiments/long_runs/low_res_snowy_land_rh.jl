@@ -146,9 +146,7 @@ domain = ClimaLand.Domains.global_domain(
     nelements,
     mask_threshold = FT(0.99),
 )
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 user_callbacks = (
     ClimaLand.NaNCheckCallback(

@@ -61,9 +61,7 @@ of constructing one.
 import ClimaLand.Parameters as LP
 
 # Store parameters for running long runs
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 
 # Store parameters for running bucket model
 bucket_params_filepath =
