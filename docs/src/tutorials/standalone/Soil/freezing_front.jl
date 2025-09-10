@@ -79,6 +79,8 @@ using CairoMakie
 
 using ClimaCore
 import ClimaParams as CP
+using ClimaUtilities.Utils: linear_interpolation
+using Statistics
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -198,18 +200,9 @@ end
 # We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 50);
+dt = Float64(100);
 
-dt = Float64(100)
-
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
-
+# Create the simulation and solve
 simulation = LandSimulation(
     t0,
     tf,
@@ -217,13 +210,10 @@ simulation = LandSimulation(
     soil;
     set_ic! = set_ic!,
     solver_kwargs = (; save_everystep = true),
-    timestepper = ode_algo,
     user_callbacks = (),
     diagnostics = (),
 );
 sol = solve!(simulation);
-
-# Now we can create and solve the simulation.
 
 # # Comparison to data
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained
@@ -274,41 +264,46 @@ limits!(ax3, 0.2, 0.5, -0.2, 0.0)
 
 
 z = parent(soil.domain.fields.z)[:];
-
+id_12h = findfirst(FT.(sol.t) ./ 3600 .== 12)
+sim_12h = parent(sol.u[id_12h].soil.ϑ_l .+ sol.u[id_12h].soil.θ_i)[:]
 scatter!(ax1, vwc[mask_12h], -depth[mask_12h], label = "", color = "orange")
-lines!(
-    ax1,
-    parent(sol.u[13].soil.ϑ_l .+ sol.u[13].soil.θ_i)[:],
-    z,
-    label = "",
-    color = :blue,
-    linewidth = 3,
-)
+lines!(ax1, sim_12h, z, label = "", color = :blue, linewidth = 3)
 
 
 scatter!(ax2, vwc[mask_24h], -depth[mask_24h], label = "", color = "orange")
-lines!(
-    ax2,
-    parent(sol.u[25].soil.ϑ_l .+ sol.u[25].soil.θ_i)[:],
-    z,
-    label = "",
-    color = :blue,
-    linewidth = 3,
-)
+id_24h = findfirst(FT.(sol.t) ./ 3600 .== 24)
+sim_24h = parent(sol.u[id_24h].soil.ϑ_l .+ sol.u[id_24h].soil.θ_i)[:]
+lines!(ax2, sim_24h, z, label = "", color = :blue, linewidth = 3)
 
 scatter!(ax3, vwc[mask_50h], -depth[mask_50h], label = "Data", color = "orange")
-lines!(
-    ax3,
-    parent(sol.u[51].soil.ϑ_l .+ sol.u[51].soil.θ_i)[:],
-    z,
-    label = "Model",
-    color = :blue,
-    linewidth = 3,
-)
+id_50h = findfirst(FT.(sol.t) ./ 3600 .== 50)
+sim_50h = parent(sol.u[id_50h].soil.ϑ_l .+ sol.u[id_50h].soil.θ_i)[:]
+lines!(ax3, sim_50h, z, label = "Model", color = :blue, linewidth = 3)
 axislegend(ax3, position = :rb, framevisible = false)
 
 save("mizoguchi_data_comparison.png", fig);
 # ![](mizoguchi_data_comparison.png)
+
+# Goodness of fit metrics: define a function which computes mean absolute error
+# and interpolate the simulation output to the data depths
+mae(x, obs) = mean(abs.(x .- obs));
+sim_12h_interp = [
+    linear_interpolation(z, sim_12h, data_depth) for
+    data_depth in -depth[mask_12h]
+]
+mae(sim_12h_interp, vwc[mask_12h])
+#-
+sim_24h_interp = [
+    linear_interpolation(z, sim_24h, data_depth) for
+    data_depth in -depth[mask_24h]
+]
+mae(sim_24h_interp, vwc[mask_24h])
+#-
+sim_50h_interp = [
+    linear_interpolation(z, sim_50h, data_depth) for
+    data_depth in -depth[mask_50h]
+]
+mae(sim_50h_interp, vwc[mask_50h])
 
 # # Discussion and Model Explanation
 

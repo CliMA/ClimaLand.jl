@@ -12,8 +12,10 @@ using ClimaCore
 import ClimaParams as CP
 using SurfaceFluxes
 using StaticArrays
+using Statistics
 using Dates
 using DelimitedFiles: readdlm
+using ClimaUtilities.Utils: linear_interpolation
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -95,10 +97,10 @@ boundary_fluxes = (;
 );
 
 # Define the parameters
-# n and alpha estimated by matching vG curve.
+# n and alpha estimated by matching air entry and Δh_cap values in Lehmann paper
 K_sat = FT(225.1 / 3600 / 24 / 1000)
-vg_n = FT(8.91)#FT(6.34) optimized values by root finding
-vg_α = FT(3) #FT(7.339) optimized values by root finding
+vg_n = FT(8.91)
+vg_α = FT(3)
 hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 ν = FT(0.43)
 θ_r = FT(0.043)
@@ -252,23 +254,54 @@ simulation = LandSimulation(
 # Solve
 sol_lr = solve!(simulation);
 
-# Figures
-
-# Extract the evaporation at each saved step
-evap_hr = [
-    parent(sv_hr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
-    k in 1:length(sol_hr.t)
-]
-evap_lr = [
-    parent(sv_lr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
-    k in 1:length(sol_lr.t)
-]
+# Extract the evaporation at each saved step, and convert to mm/day
+evap_hr =
+    [
+        parent(sv_hr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+        k in 1:length(sol_hr.t)
+    ] .* (1000 * 3600 * 24)
+evap_lr =
+    [
+        parent(sv_lr.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+        k in 1:length(sol_lr.t)
+    ] .* (1000 * 3600 * 24)
 evaporation_data = ClimaLand.Artifacts.lehmann2008_evaporation_data();
 ref_soln_E = readdlm(evaporation_data, ',')
 ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
 data_dates = ref_soln_E_350mm[:, 1]
 data_e = ref_soln_E_350mm[:, 2];
 
+# Goodness of fit metrics: Mean Absolute Error (MAE) and Kling-Gupta Efficiency (KGE)
+mae(x, obs) = mean(abs.(x .- obs));
+function kge(x, obs)
+    σx = std(x)
+    σo = std(obs)
+    μx = mean(x)
+    μo = mean(obs)
+    α = σx / σo
+    β = μx / μo
+    r = mean((x .- μx) .* (obs .- μo)) / (σx * σo)
+    return 1 - sqrt((β - 1)^2 + (r - 1)^2 + (α - 1)^2)
+end;
+# We need to interpolate the simulation output to the timestamps of the data
+interpolated_lr = [
+    linear_interpolation(FT.(sol_lr.t) ./ 3600 ./ 24, evap_lr, data_date)
+    for data_date in data_dates
+]
+interpolated_hr = [
+    linear_interpolation(FT.(sol_hr.t) ./ 3600 ./ 24, evap_hr, data_date)
+    for data_date in data_dates
+];
+#-
+@show mae(interpolated_lr, data_e)
+#-
+@show mae(interpolated_hr, data_e)
+#-
+@show kge(interpolated_lr, data_e)
+#-
+@show kge(interpolated_hr, data_e)
+
+# Figures
 fig = Figure(size = (800, 400), fontsize = 22)
 ax = Axis(
     fig[1, 1],
@@ -289,7 +322,7 @@ CairoMakie.lines!(
 CairoMakie.lines!(
     ax,
     FT.(sol_lr.t) ./ 3600 ./ 24,
-    evap_lr .* (1000 * 3600 * 24),
+    evap_lr,
     label = "Model, 7 elements",
     color = :blue,
     linewidth = 3,
@@ -297,7 +330,7 @@ CairoMakie.lines!(
 CairoMakie.lines!(
     ax,
     FT.(sol_hr.t) ./ 3600 ./ 24,
-    evap_hr .* (1000 * 3600 * 24),
+    evap_hr,
     label = "Model, 28 elements",
     color = :blue,
     linestyle = :dash,
@@ -332,21 +365,15 @@ CairoMakie.lines!(
     color = :orange,
     linewidth = 3,
 )
-CairoMakie.lines!(
-    ax,
-    mass_loss_lr,
-    evap_lr .* (1000 * 3600 * 24),
-    color = :blue,
-    linewidth = 3,
-)
+CairoMakie.lines!(ax, mass_loss_lr, evap_lr, color = :blue, linewidth = 3)
 CairoMakie.lines!(
     ax,
     mass_loss_hr,
-    evap_hr .* (1000 * 3600 * 24),
+    evap_hr,
     color = :blue,
     linewidth = 3,
     linestyle = :dash,
 )
 
-save("evaporation_lehmann2008_fig8b.png", fig);
-# ![](evaporation_lehmann2008_fig8b.png)
+save("evaporation_lehmann2008_fig8.png", fig);
+# ![](evaporation_lehmann2008_fig8.png)
