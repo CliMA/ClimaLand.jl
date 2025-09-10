@@ -180,10 +180,8 @@ function ClimaCalibrate.forward_model(iteration, member)
 
     calibrate_params_path =
         ClimaCalibrate.parameter_path(output_dir, iteration, member)
-    default_params_filepath =
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
     toml_dict =
-        LP.create_toml_dict(FT, default_params_filepath, calibrate_params_path)
+        LP.create_toml_dict(FT, override_files = [calibrate_params_path])
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 

@@ -264,7 +264,6 @@ function PlantHydraulicsModel{FT}(
     rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
-    # TODO: move hydraulics paramters to ClimaParams.jl so we can call `get_default_parameter`.
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
     @assert h_stem >= 0 "Stem height must be non-negative"
