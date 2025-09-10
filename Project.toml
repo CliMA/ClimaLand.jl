@@ -1,7 +1,7 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 authors = ["Clima Land Team"]
-version = "0.20.0"
+version = "0.20.1"
 
 [deps]
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"

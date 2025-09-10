@@ -4,6 +4,10 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.20.1
+-------
+- `LandSimulation` constructor now accepts start and end dates as DateTimes with timestep as ITime PR[#1401](https://github.com/CliMA/ClimaLand.jl/pull/1404)
+
 v0.20.0
 -------
 - ![][badge-🐛bugfix] Correctly compare atmos/canopy heights when atmos height is Field or Float PR[#1394](https://github.com/CliMA/ClimaLand.jl/pull/1394)
