@@ -246,10 +246,7 @@ end
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos = atmos, radiation = radiation, ground = ground)
     LAI = TimeVaryingInput(t -> FT(0.0))
-    toml_dict = ClimaLand.Parameters.create_toml_dict(
-        FT,
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-    )
+    toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
     canopy = CanopyModel{FT}(
         canopy_domain,

@@ -10,10 +10,7 @@ using ClimaParams
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
-    toml_dict = ClimaLand.Parameters.create_toml_dict(
-        FT,
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-    )
+    toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
     @testset "Default constructors, FT = $FT" begin
         domain = ClimaLand.Domains.global_domain(FT)
         atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)

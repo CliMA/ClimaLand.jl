@@ -153,22 +153,19 @@ function get_default_parameter(FT, climaparams_name)
 end
 
 """
-    create_toml_dict(FT, filepaths...; override = false)
+    create_toml_dict(FT; override_files = [])
 
-Construct a `ParamDict{FT}` struct from `filepaths`.
-
-If `override = false`, then non-unique TOML entries are not allowed. If
-`override = true`, then parameters from later TOML files in `filepaths` will
-overwrite the parameters from earlier TOML files.
+Construct a `ParamDict{FT}` struct from the default parameters with any
+parameter overrides specified in `override_files`
 """
-function create_toml_dict(FT, filepaths...; override = false)
-    all(filepath -> endswith(filepath, ".toml"), filepaths) ||
-        error("File paths ($filepaths) must be TOML files")
+function create_toml_dict(FT; override_files = [])
+    all(filepath -> endswith(filepath, ".toml"), override_files) ||
+        error("File paths ($override_files) must be TOML files")
     toml_dict = CP.create_toml_dict(
         FT,
         override_file = CP.merge_toml_files(
-            [filepaths...],
-            override = override,
+            [DEFAULT_PARAMS_FILEPATH, override_files...],
+            override = true,
         ),
     )
     return toml_dict

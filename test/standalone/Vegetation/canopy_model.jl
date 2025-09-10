@@ -1525,10 +1525,7 @@ end
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
-        toml_dict = ClimaLand.Parameters.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
+        toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
         canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict)
 
