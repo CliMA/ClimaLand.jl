@@ -50,7 +50,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(FT, start_date, stop_date, domain, toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -122,15 +122,14 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT,
         surface_domain,
         forcing,
-        toml_dict,
-        Δt;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         α_snow,
         scf,
     )
 
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain; snow, canopy)
     return land
 end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
@@ -149,7 +148,7 @@ domain = ClimaLand.Domains.global_domain(
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
-model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+model = setup_model(FT, start_date, stop_date, domain, toml_dict)
 user_callbacks = (
     ClimaLand.NaNCheckCallback(
         Dates.Month(6),

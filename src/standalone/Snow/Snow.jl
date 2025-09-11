@@ -42,6 +42,7 @@ export SnowParameters,
     ZenithAngleAlbedoModel,
     WuWuSnowCoverFractionModel
 
+
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
 
@@ -283,8 +284,6 @@ Base.@kwdef struct SnowParameters{
     Ksat::FT
     "Thermal conductivity of ice (W/m/K)"
     κ_ice::FT
-    "Timestep of the model (s)"
-    Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
     ΔS::FT
     "Snow cover fraction parameterization"
@@ -294,8 +293,7 @@ Base.@kwdef struct SnowParameters{
 end
 
 """
-   SnowParameters{FT}(Δt;
-                      density = MinimumDensityModel(200),
+   SnowParameters{FT}(;density = MinimumDensityModel(200),
                       z_0m = FT(0.0024),
                       z_0b = FT(0.00024),
                       α_snow = ConstantAlbedoModel(FT(0.8)),
@@ -310,8 +308,7 @@ end
 An outer constructor for `SnowParameters` which supplies defaults for
 all arguments but `earth_param_set`.
 """
-function SnowParameters{FT}(
-    Δt;
+function SnowParameters{FT}(;
     density::DM = MinimumDensityModel(FT(200)),
     z_0m = FT(0.0024),
     z_0b = FT(0.00024),
@@ -346,7 +343,6 @@ function SnowParameters{FT}(
         θ_r,
         Ksat,
         κ_ice,
-        float(Δt),
         ΔS,
         scf,
         earth_param_set,
@@ -356,14 +352,12 @@ end
 ## For interfacing with ClimaParams
 """
     function SnowParameters(
-        FT,
-        Δt;
+        FT,;
         kwargs...  # For individual parameter overrides
     )
 
     function SnowParameters(
-        toml_dict::CP.ParamDict,
-        Δt;
+        toml_dict::CP.ParamDict;
         kwargs...  # For individual parameter overrides
     )
 
@@ -381,10 +375,10 @@ toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.SnowParameters(toml_dict, Δt; ϵ_snow = Float32(0.99), Ksat = Float32(1e-4))
 ```
 """
-SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
-    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
+SnowParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    SnowParameters(CP.create_toml_dict(FT); kwargs...)
 
-function SnowParameters(toml_dict::CP.ParamDict, Δt; kwargs...)
+function SnowParameters(toml_dict::CP.ParamDict; kwargs...)
     name_map = (;
         :snow_momentum_roughness_length => :z_0m,
         :snow_scalar_roughness_length => :z_0b,
@@ -403,8 +397,7 @@ function SnowParameters(toml_dict::CP.ParamDict, Δt; kwargs...)
     FT = CP.float_type(toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
-    return SnowParameters{FT}(
-        Δt;
+    return SnowParameters{FT}(;
         earth_param_set,
         parameters...,
         density,
@@ -458,8 +451,7 @@ end
         FT,
         domain,
         forcing,
-        toml_dict::CP.ParamDict,
-        Δt;
+        toml_dict::CP.ParamDict;
         prognostic_land_components = (:snow,),
         z_0m = toml_dict["snow_momentum_roughness_length"],
         z_0b = toml_dict["snow_scalar_roughness_length"],
@@ -484,8 +476,7 @@ function SnowModel(
     FT,
     domain,
     forcing,
-    toml_dict::CP.ParamDict,
-    Δt;
+    toml_dict::CP.ParamDict;
     prognostic_land_components = (:snow,),
     z_0m = toml_dict["snow_momentum_roughness_length"],
     z_0b = toml_dict["snow_scalar_roughness_length"],
@@ -498,8 +489,7 @@ function SnowModel(
     ΔS = toml_dict["delta_S"],
 )
     earth_param_set = LP.LandParameters(toml_dict)
-    parameters = SnowParameters{FT}(
-        Δt;
+    parameters = SnowParameters{FT}(;
         earth_param_set,
         scf,
         α_snow,
@@ -610,15 +600,11 @@ auxiliary_vars(snow::SnowModel) = (
     :liquid_water_flux,
     :total_energy_flux,
     :total_water_flux,
-    :applied_energy_flux,
-    :applied_water_flux,
     :snow_cover_fraction,
     boundary_vars(snow.boundary_conditions, ClimaLand.TopBoundary())...,
 )
 
 auxiliary_types(snow::SnowModel{FT}) where {FT} = (
-    FT,
-    FT,
     FT,
     FT,
     FT,
@@ -643,8 +629,6 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -703,7 +687,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.water_runoff = compute_water_runoff(
             Y.snow.S,
-            Y.snow.S_l,
+            p.snow.q_l,
             p.snow.T,
             p.snow.ρ_snow,
             p.snow.z_snow,
@@ -728,113 +712,30 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
     function update_boundary_fluxes!(p, Y, t)
         # First compute the boundary fluxes
         snow_boundary_fluxes!(model.boundary_conditions, model, Y, p, t)
-        # Next, clip them in case the snow will melt in this timestep
-        @. p.snow.applied_water_flux = clip_water_flux(
-            Y.snow.S,
-            p.snow.total_water_flux,
-            model.parameters.Δt,
-        )
 
-        @. p.snow.applied_energy_flux = clip_total_snow_energy_flux(
-            Y.snow.U,
-            Y.snow.S,
-            p.snow.total_energy_flux,
-            p.snow.total_water_flux,
-            model.parameters.Δt,
-        )
-        # We now estimate the phase change flux: if the applied energy flux is such that T > T_f on the next step, use the residual after warming to T_f to melt snow
-        # This estimate uses the current S and q_l.
         @. p.snow.phase_change_flux = phase_change_flux(
             Y.snow.U,
             Y.snow.S,
             p.snow.q_l,
-            p.snow.applied_energy_flux,
+            p.snow.total_energy_flux, # has snow cover fraction applied
             model.parameters,
         )
-        @. p.snow.liquid_water_flux +=
-            p.snow.phase_change_flux * p.snow.snow_cover_fraction
-        @. p.snow.liquid_water_flux = clip_liquid_water_flux(
-            Y.snow.S_l,
-            Y.snow.S,
-            p.snow.liquid_water_flux,
-            p.snow.applied_water_flux,
-            model.parameters.Δt,
-        )
+        @. p.snow.liquid_water_flux += p.snow.phase_change_flux
+
     end
 end
 
 function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
         # positive fluxes are TOWARDS atmos; negative fluxes increase quantity in snow
-        @. dY.snow.S = -p.snow.applied_water_flux
+        @. dY.snow.S = -p.snow.total_water_flux
         @. dY.snow.S_l = -p.snow.liquid_water_flux
-        @. dY.snow.U = -p.snow.applied_energy_flux
+        @. dY.snow.U = -p.snow.total_energy_flux
         update_density_prog!(model.parameters.density, model, dY, Y, p)
     end
     return compute_exp_tendency!
 end
 
-"""
-    clip_water_flux(S, total_water_flux, Δt)
-
-A helper function which clips the total water flux so that
-snow water equivalent S will not become negative in a timestep Δt.
-"""
-function clip_water_flux(S::FT, total_water_flux::FT, Δt::FT) where {FT}
-    if S - total_water_flux * Δt < 0
-        return S / Δt
-    else
-        return total_water_flux
-    end
-end
-
-"""
-    clip_liquid_water_flux(S_l::FT, S::FT, liquid_water_flux::FT, applied_water_flux::FT, Δt::FT) where {FT}
-
-A helper function which clips the liquid water flux so that
-snow liquid water S_l will not become negative or exceed S in a timestep Δt.
-"""
-function clip_liquid_water_flux(
-    S_l::FT,
-    S::FT,
-    liquid_water_flux::FT,
-    applied_water_flux::FT,
-    Δt::FT,
-) where {FT}
-    predicted_S = S - applied_water_flux * Δt
-    predicted_S_l = S_l - liquid_water_flux * Δt
-    if predicted_S_l < 0
-        return S_l / Δt
-    elseif predicted_S_l > predicted_S
-        return (S_l - predicted_S) / Δt
-    else
-        return liquid_water_flux
-    end
-end
-
-"""
-     clip_total_snow_energy_flux(U, S, total_energy_flux, total_water_flux, Δt)
-
-A helper function which clips the total energy flux such that
-snow energy per unit ground area U will not become positive, and
-which ensures that if the snow water equivalent S goes to zero in a step,
-U will too.
-"""
-function clip_total_snow_energy_flux(
-    U,
-    S,
-    total_energy_flux,
-    total_water_flux,
-    Δt,
-)
-    if (U - total_energy_flux * Δt) > 0
-        return U / Δt
-    elseif S - total_water_flux * Δt < 0
-        return U / Δt
-    else
-        return total_energy_flux
-    end
-end
 
 """
     ClimaLand.get_drivers(model::SnowModel)

@@ -73,7 +73,7 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
     stop_date,
 );
 # Make the model:
-model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+model = ClimaLand.LandModel{FT}(forcing, LAI, toml_dict, domain);
 simulation = ClimaLand.Simulations.LandSimulation(
     start_date,
     stop_date,

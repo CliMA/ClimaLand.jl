@@ -137,8 +137,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT,
         surface_domain,
         forcing,
-        toml_dict,
-        Δt;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         α_snow,
         scf,

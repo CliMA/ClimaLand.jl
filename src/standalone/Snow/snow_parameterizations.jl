@@ -15,6 +15,40 @@ export snow_surface_temperature,
     energy_flux_falling_snow,
     energy_flux_falling_rain
 
+
+"""
+    compute_safe_S(S::FT)
+
+Clips the snow water equivalent to be ≥ϵ; used in diagnostic
+functions only since the snow equations do not enforce positivity.
+"""
+compute_safe_S(S::FT) where {FT} = max(S, eps(FT))
+
+"""
+    compute_safe_S_l(S::FT, S_l::FT)
+
+Clips the liquid portion of the snow water equivalent to be S ≥ S_l ≥0; 
+used in diagnostic functions only since the snow equations do not enforce 
+positivity.
+"""
+function compute_safe_S_l(S::FT, S_l::FT) where {FT}
+    S_safe = compute_safe_S(S) # S >=ϵ
+    return max(min(S_l, S_safe), FT(0)) # S_l <= S
+end
+
+"""
+    compute_safe_z(S::FT, z::FT)
+
+Clips the snow depth to be z ≥ S ≥ ϵ; used in diagnostic 
+functions only since the snow equations do not enforce 
+positivity.
+"""
+function compute_safe_z(S::FT, z::FT) where {FT}
+    S_safe = compute_safe_S(S) # S >=0
+    z_safe = max(S_safe, z) # z >= S
+    return z_safe
+end
+
 """
     update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t, earth_param_set)
 
@@ -70,7 +104,7 @@ function update_snow_cover_fraction!(
     earth_param_set,
 )
     z = p.snow.z_snow
-    @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
+    @. scf = min(m.β_scf * (z / m.z0)^2 / ((z / m.z0)^2 + 1), 1)
 end
 
 """
@@ -278,8 +312,8 @@ while preventing from division by zero and enforcing that q_l = S_l/S must
 lie between 0 and 1.
 """
 function liquid_mass_fraction(S::FT, S_l::FT)::FT where {FT}
-    S_safe = max(S, eps(FT))
-    S_l_safe = min(max(S_l, FT(0)), S_safe)
+    S_safe = compute_safe_S(S)
+    S_l_safe = compute_safe_S_l(S, S_l)
     return S_l_safe / S_safe
 end
 
@@ -302,15 +336,16 @@ function snow_bulk_temperature(
     q_l::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    S_safe = max(S, FT(0))
+    S_safe = compute_safe_S(S)
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
     _ΔS = parameters.ΔS
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    U_safe = min(-_ρ_l * S_safe * (1 - q_l) * _LH_f0, U)
     return _T_ref +
-           (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
+           (U_safe + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
            (_ρ_l * cp_s * (S_safe + _ΔS))
 end
 
@@ -324,10 +359,23 @@ function snow_bulk_density(
     parameters::SnowParameters{FT},
 )::FT where {FT}
     _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
-    ε = eps(FT) #for preventing dividing by zero
-    #return SWE/z * ρ_l but tend to ρ_l as SWE → 0
-    #also handle instabilities when z, SWE both near machine precision
-    return max(SWE, ε) / max(z, SWE, ε) * _ρ_l
+    S_safe = compute_safe_S(SWE)
+    z_safe = compute_safe_z(SWE, z)
+    return S_safe / z_safe * _ρ_l
+end
+
+"""
+    snow_depth(SWE::FT, ρ_snow::FT, ρ_liq::FR) where {FT}
+
+Returns the snow depth given the current model state when density and SWE are available.
+"""
+function snow_depth(
+    SWE::FT,
+    ρ_snow::FT,
+    ρ_liq::FT,
+)::FT where {FT}
+    S_safe = compute_safe_S(SWE)
+    return S_safe / ρ_snow * ρ_liq
 end
 
 """
@@ -352,13 +400,16 @@ end
 
 
 """
-    runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
+    runoff_timescale(z::FT, Ksat::FT) where {FT}
 
 Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
+
+To prevent numerical issues when the snowdepth is small, we clip to
+1 hour.
 """
-function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
-    τ = max(Δt, z / Ksat)
+function runoff_timescale(z::FT, Ksat::FT) where {FT}
+    τ = max(FT(3600), z / Ksat) # clip to 1 hour
     return τ
 end
 
@@ -374,13 +425,13 @@ function volumetric_internal_energy_liq(T, parameters)
     _cp_l = LP.cp_l(parameters.earth_param_set)
     _T_ref = LP.T_0(parameters.earth_param_set)
 
-    I_liq = _ρ_l * _cp_l * (T .- _T_ref)
+    I_liq = _ρ_l * _cp_l * (T - _T_ref)
     return I_liq
 end
 
 
 """
-    compute_energy_runoff(S::FT, S_l::FT, T::FT, parameters) where {FT}
+    compute_energy_runoff(S::FT, q_l::FT, T::FT, parameters) where {FT}
 
 Computes the rate of change in the snow water equivalent S due to loss of
 liquid water (runoff) from the snowpack.
@@ -389,23 +440,45 @@ Runoff occurs as the snow melts and exceeds the water holding capacity.
 """
 function compute_water_runoff(
     S::FT,
-    S_l::FT,
+    q_l::FT,
     T::FT,
     ρ_snow::FT,
     z::FT,
     parameters,
 ) where {FT}
-    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
+    S_safe = compute_safe_S(S)
+    τ = runoff_timescale(z, parameters.Ksat)
     q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, parameters)
-    S_safe = max(S, FT(0))
-    return -(S_l - q_l_max * S_safe) / τ * heaviside(S_l - q_l_max * S_safe)
+    return -(q_l - q_l_max) * S_safe / τ * heaviside(q_l - q_l_max)
 end
 
 """
      phase_change_flux(U::FT, S::FT, q_l::FT, energy_flux::FT, parameters) where {FT}
 
-Computes the volume flux of liquid water undergoing phase change, given the
-applied energy flux and current state of U,S,q_l.
+Computes the volume flux of liquid water undergoing phase change at
+constant U and S, given the
+applied energy flux and current state of U,S,q=q_l.
+
+Melting:
+If T > T_f (U(T,q) > U(T_f,q)), we set
+U(T, q) - U(T_f, q') = 0  (phase change at constant U, S),
+and solve for q'-q (the new T' = T_f). This yields
+ΔS_l = S(q'-q) = -cS(T_f-T)/[L+(c_l-c_i)(T_f-T_0)].
+The numerator is ΔU = U(T,q) - U(T_f, q).
+
+Since our equations are stepped explicitly, this flux could
+result in S_l < 0 (q < 0), but q is limited when used
+in other computations to be in [0,1].
+
+Refreezing:
+If T < T_f and q > 0, we compute the same.
+
+Since our equations are stepped explicitly, this flux could
+result in S_l > S (q > 1), but q is limited when used
+in other computations to be in [0,1].
+
+In both cases:
+We estimate the timescale as |ΔU/U̇|.
 """
 function phase_change_flux(
     U::FT,
@@ -414,21 +487,23 @@ function phase_change_flux(
     energy_flux::FT,
     parameters,
 ) where {FT}
-    S_safe = max(S, FT(0))
-
-    energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
-    Upred = U - energy_flux * parameters.Δt
-    energy_excess = Upred - energy_at_T_freeze
-
     _LH_f0 = LP.LH_f0(parameters.earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
     _cp_i = LP.cp_i(parameters.earth_param_set)
     _cp_l = LP.cp_l(parameters.earth_param_set)
     _T_ref = LP.T_0(parameters.earth_param_set)
     _T_freeze = LP.T_freeze(parameters.earth_param_set)
+
+    S_safe = compute_safe_S(S)
+    energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
+    energy_excess = U - energy_at_T_freeze
+    # Timescale computed as |ΔU/U̇|
+    Δt = abs(energy_excess) / max(abs(energy_flux), sqrt(eps(FT)))
     if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / parameters.Δt / _ρ_liq /
-               ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+        ΔS_l =
+            -energy_excess / _ρ_liq /
+            ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+        return ΔS_l / Δt
     else
         return FT(0)
     end
@@ -535,7 +610,7 @@ function update_density_and_depth!(
 ) where {FT}
     _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
-    @. z_snow = _ρ_l * Y.snow.S / ρ_snow
+    @. z_snow = snow_depth(compute_safe_S(Y.snow.S), ρ_snow, _ρ_l)
 
 
 end

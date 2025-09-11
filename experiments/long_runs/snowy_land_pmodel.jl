@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(FT, start_date, stop_date, domain, toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
@@ -146,15 +146,14 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT,
         surface_domain,
         forcing,
-        toml_dict,
-        Δt;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         α_snow,
         scf,
     )
 
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain; snow, canopy)
     return land
 end
 
@@ -176,7 +175,7 @@ domain = ClimaLand.Domains.global_domain(
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
 toml_dict = LP.create_toml_dict(FT, default_params_filepath)
-model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+model = setup_model(FT, start_date, stop_date, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"

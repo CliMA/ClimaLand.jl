@@ -157,7 +157,7 @@ function model(Vcmax25)
     )
 
     #md # Create integrated land model
-    land_model = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; canopy)
+    land_model = LandModel{FT}(forcing, LAI, toml_dict, domain; canopy)
 
     #md # Set initial conditions from FLUXNET data
     set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(

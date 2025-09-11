@@ -9,9 +9,12 @@ import ClimaLand.Snow:
     density_prog_types,
     density_prog_names,
     update_density_and_depth!,
-    update_density_prog!
+update_density_prog!,
+compute_safe_S,
+compute_safe_z
 import ClimaLand.Parameters as LP
 using Thermodynamics
+using LazyBroadcast: lazy
 
 using HTTP, Flux, BSON
 include("./ModelTools.jl")
@@ -127,8 +130,8 @@ function update_density_and_depth!(
     p,
     params::SnowParameters,
 )
-    @. z_snow = Y.snow.Z
-    @. ρ_snow = snow_bulk_density(Y.snow.S, z_snow, params)
+    @. p.snow.z_snow = compute_safe_z(Y.snow.S, Y.snow.Z)
+    @. ρ_snow = snow_bulk_density(Y.snow.S, Y.snow.Z, params)
 end
 
 
@@ -158,41 +161,19 @@ Updates the dY.snow.Z field in places with the predicted change in snow depth (r
 density paramterization.
 """
 function update_dzdt!(dzdt, density::NeuralDepthModel, Y)
+    safe_S = @. lazy(compute_safe_S(Y.snow.S))
+    safe_Z = @. lazy(compute_safe_z(Y.snow.S, Y.snow.Z))
     dzdt .=
         eval_nn.(
             Ref(density),
-            Y.snow.Z,
-            Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
+            safe_Z,
+            safe_S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
             Y.snow.P_avg,
             Y.snow.T_avg,
             Y.snow.R_avg,
             Y.snow.Qrel_avg,
             Y.snow.u_avg,
         )
-end
-
-"""
-    clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT
-
-A helper function which clips the tendency of Z such that
-its behavior is consistent with that of S: if all snow melts
-within a timestep, we clip the tendency of S so that it does
-not become negative, and here we also clip the tendency of Z
-so that depth does not become negative. Additionally, if the
-tendencies of Z and S are such that we would encounter Z < S
-(rho_snow > rho_liq), we also clip the tendency.
-"""
-function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
-    #Case if S is set to zero:
-    if (S + dSdt * Δt) <= 0
-        return -Z / Δt
-        #Case if Z would have been set to Z < S:
-    elseif (Z + dZdt * Δt) < (S + dSdt * Δt)
-        #more stable form for very small Z, S
-        return ((dSdt * Δt + S) - Z) / Δt
-    else
-        return dZdt
-    end
 end
 
 """
@@ -209,16 +190,6 @@ function update_density_prog!(
     p,
 )
     update_dzdt!(dY.snow.Z, density, Y)
-
-    # Now we clip the tendency so that Z stays within approximately physical bounds.
-    @. dY.snow.Z = clip_dZdt(
-        Y.snow.S,
-        Y.snow.Z,
-        dY.snow.S, #assumes dY.snow.S is updated (and clipped) before dY.snow.Z
-        dY.snow.Z,
-        model.parameters.Δt,
-    )
-
     @. dY.snow.P_avg = density.α * (abs(p.drivers.P_snow) - Y.snow.P_avg)
     @. dY.snow.T_avg =
         density.α *

@@ -75,8 +75,7 @@ outdir = "snowy_land_benchmark_$(device_suffix)"
 
 function setup_prob(
     start_date,
-    stop_date,
-    Δt;
+    stop_date;
     outdir = outdir,
     nelements = (101, 15),
 )
@@ -134,7 +133,7 @@ function setup_prob(
     )
 
     # Construct land model with all default components
-    land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; canopy)
+    land = LandModel{FT}(forcing, LAI, earth_param_set, domain; canopy)
 
     Y, p, cds = initialize(land)
 
@@ -200,7 +199,7 @@ function setup_simulation(; greet = false)
     stop_date = Second(60 * 60.0 * 6) + start_date
     Δt = 450.0
     nelements = (101, 15)
-    prob, cb = setup_prob(start_date, stop_date, Δt; nelements)
+    prob, cb = setup_prob(start_date, stop_date; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
