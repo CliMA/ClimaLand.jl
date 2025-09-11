@@ -18,13 +18,13 @@ description = "Pa"
 tag = "SoilMoistureStress"
 # TOPMODELRunoff model
 
-[f_over]
+["f_over"]
 value = 3.28
 type = "float"
 description = "Units are 1/m"
 tag = "TOPMODELRunoff"
 
-[R_sb]
+["R_sb"]
 value = 1.484e-7
 type = "float"
 description = "Units are m/s"
@@ -32,7 +32,7 @@ tag = "TOPMODELRunoff"
 
 # Big leaf energy parameters
 
-[ac_canopy]
+["ac_canopy"]
 value = 2.5e3
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
@@ -40,19 +40,19 @@ tag = "BigLeafEnergyModel"
 
 # Weibull model
 
-[K_sat_plant]
+["K_sat_plant"]
 value = 7e-8
 type = "float"
 description = "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation. Units are m / s."
 tag = "Weibull"
 
-[psi_63]
+["psi_63"]
 value = -408.163265306122448
 type = "float"
 description = "The absolute water potential in xylem (or xylem water potential) at which ∼63% of maximum xylem conductance is lost (Liu, 2020). Computed by -4 / 0.0098. Holtzman's original parameter value is -4 MPa"
 tag = "Weibull"
 
-[Weibull_c]
+["Weibull_c"]
 value = 4
 type = "float"
 description = "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016). Unitless. Holtzman's original c param value."
@@ -60,7 +60,7 @@ tag = "Weibull"
 
 # Linear Retention Curve
 
-[a]
+["a"]
 value = 0.00196
 type = "float"
 description = "Units are 1/m. Bulk modulus of elasticity and slope of potential to volume curve. See also Corcuera, 2002, and Christoffersen, 2016. Computed by 0.2 * 0.0098."
@@ -68,13 +68,13 @@ tag = "LinearRetentionCurve"
 
 # PrescribedSiteAreaIndex
 
-[SAI]
+["SAI"]
 value = 0.0
 type = "float"
 description = "The constant stem area index (SAI; m2/m2)"
 tag = "PrescribedSiteAreaIndex"
 
-[RAI]
+["RAI"]
 value = 1.0
 type = "float"
 description = "The constant root area index (RAI; m2/m2)"
@@ -82,13 +82,13 @@ tag = "PrescribedSiteAreaIndex"
 
 # Plant Hydraulics Parameters
 
-[plant_nu]
+["plant_nu"]
 value = 1.44e-4
 type = "float"
 description = "Porosity (m3/m3)"
 tag = "PlantHydraulicsParameters"
 
-[plant_S_s]
+["plant_S_s"]
 value = 9.8e-5
 type = "float"
 description = "Storativity (m3/m3). Computed by 1e-2 * 0.0098."
@@ -96,88 +96,81 @@ tag = "PlantHydraulicsParameters"
 
 # ZenithAngleAlbedoModel parameters
 
-[alpha_0]
+["alpha_0"]
 value = 0.64
 type = "float"
 description = "Free parameter controlling the minimum snow albedo"
 tag = "ZenithAngleAlbedoModel"
 
-[delta_alpha]
+["delta_alpha"]
 value = 0.06
 type = "float"
 description = "Free parameter controlling the snow albedo when θs = 90∘"
 tag = "ZenithAngleAlbedoModel"
 
-[k]
+["k"]
 value = 2.0
 type = "float"
 description = "Rate at which albedo drops to its minimum value with zenith angle"
 tag = "ZenithAngleAlbedoModel"
 
-[beta]
+["beta"]
 value = 0.4
 type = "float"
 description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
 
-[x0]
+["x0"]
 value = 0.2
 type = "float"
 description = "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
 
-[delta_S]
+["delta_S"]
 value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
 # Shared Canopy Parameters
 
-[canopy_momentum_roughness_length]
+["canopy_momentum_roughness_length"]
 value = 0.1
 type = "float"
 description = "Roughness length for momentum (m)"
 
-[canopy_scalar_roughness_length]
+["canopy_scalar_roughness_length"]
 value = 0.2
 type = "float"
 description = "Roughness length for scalars (m)"
 
 # WuWuSnowCoverFractionModel parameters
 
-[gamma]
+["gamma"]
 value = 0.08
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
 
-[beta_0]
+["beta_0"]
 value = 1.77
 type = "float"
 description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
-[beta_min]
+["beta_min"]
 value = 1.0
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
-[z0]
+["z0"]
 value = 0.106
 type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"
 
-# Medlyn Conductance Parameters
-[g1]
-value = 790.0
-type = "float"
-description = "Slope parameter, inversely proportional to the square root of marginal water use efficiency (Pa^{1/2})"
-tag = "MedlynConductanceParameters"
-
 # P model parameters
-[pmodel_cstar]
+["pmodel_cstar"]
 value = 0.41
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
@@ -243,14 +236,14 @@ type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
 
-# P Model constants (Stocker et al. (2020) Table A2 and references within for more information)
-[pmodel_Kc25]
+# P Model constants (see Stocker et al. (2020) Table A2 and references within for more information)
+["pmodel_Kc25"]
 value = 39.97
 type = "float"
 description = "Michaelis-Menten parameter for oxygenation at 25°C (Pa)."
 tag = "PModelConstants"
 
-[pmodel_Ko25]
+["pmodel_Ko25"]
 value = 27480
 type = "float"
 description = "Reference temperature equal to 25˚C (K)."
@@ -280,73 +273,73 @@ type = "float"
 description = "Photorespiratory compensation point at 25°C (Pa)."
 tag = "PModelConstants"
 
-[pmodel_Ha_Vcmax]
+["pmodel_Ha_Vcmax"]
 value = 71513
 type = "float"
 description = "Effective energy of activation for Vcmax (J mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_Hd_Vcmax]
+["pmodel_Hd_Vcmax"]
 value = 200000
 type = "float"
 description = "Effective energy of deactivation for Vcmax (J mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_aS_Vcmax]
+["pmodel_aS_Vcmax"]
 value = 668.39
 type = "float"
 description = "Intercept term for dS in Vcmax deactivation factor (J K^-1 mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_bS_Vcmax]
+["pmodel_bS_Vcmax"]
 value = 1.07
 type = "float"
 description = "Slope term for dS in Vcmax deactivation factor (J K^-2 mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_Ha_Jmax]
+["pmodel_Ha_Jmax"]
 value = 49884
 type = "float"
 description = "Effective energy of activation for Jmax (J mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_Hd_Jmax]
+["pmodel_Hd_Jmax"]
 value = 200000
 type = "float"
 description = "Effective energy of deactivation for Jmax (J mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_aS_Jmax]
+["pmodel_aS_Jmax"]
 value = 659.70
 type = "float"
 description = "Intercept term for dS in Jmax deactivation factor (J K^-1 mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_bS_Jmax]
+["pmodel_bS_Jmax"]
 value = 0.75
 type = "float"
 description = "Slope term for dS in Jmax deactivation factor (J K^-2 mol^-1)."
 tag = "PModelConstants"
 
-[pmodel_oi]
+["pmodel_oi"]
 value = 0.2095
 type = "float"
 description = "Intercellular O2 mixing ratio (unitless)."
 tag = "PModelConstants"
 
-[pmodel_aRd]
+["pmodel_aRd"]
 value = 0.1012
 type = "float"
 description = "First order coefficient for temp-dependent Rd (K^-1)."
 tag = "PModelConstants"
 
-[pmodel_bRd]
+["pmodel_bRd"]
 value = -0.0005
 type = "float"
 description = "Second order coefficient for temp-dependent Rd (K^-2)."
 tag = "PModelConstants"
 
-[pmodel_fC3]
+["pmodel_fC3"]
 value = 0.015
 type = "float"
 description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
@@ -354,77 +347,69 @@ tag = "PModelConstants"
 
 # P model conductance parameters
 
-[Drel]
+["Drel"]
 value = 1.6
 type = "float"
 description = "Relative diffusivity of H2O to CO2 (Bonan Table A.3)"
 tag = "PModelConductanceParameters"
 
-# Farquhar parameters
-
-[Vcmax25]
-value = 5e-5
-type = "float"
-description = "Vcmax at 25 °C (mol CO2/m^2/s); leaf level"
-tag = "FarquharParameters"
-
 # Bucket model parameters
 
-[land_bucket_capacity]
+["land_bucket_capacity"]
 value = 0.2
 type = "float"
 description = "Capacity of the land bucket (m)"
 tag = "BucketModelParameters"
 
-[bucket_capacity_fraction]
+["bucket_capacity_fraction"]
 value = 0.75
 type = "float"
 description = "Fraction of bucket capacity at which evaporation β begins to decay to zero (unitless)"
 tag = "BucketModelParameters"
 
-[bucket_z_0b]
+["bucket_z_0b"]
 value = 0.001
 type = "float"
 description = "Roughness length for scalars (m)"
 tag = "BucketModelParameters"
 
-[bucket_soil_heat_capacity]
+["bucket_soil_heat_capacity"]
 value = 2.0e6
 type = "float"
 description = "Volumetric heat capacity of the soil (J/m^3/K); constant"
 tag = "BucketModelParameters"
 
-[critical_snow_fraction]
+["critical_snow_fraction"]
 value = 0.0
 type = "float"
 description = "Fraction of critical amount of snow at which sublimation β begins to decay to zero (unitless)"
 tag = "BucketModelParameters"
 
-[bucket_z_0m]
+["bucket_z_0m"]
 value = 0.01
 type = "float"
 description = "Roughness length for momentum (m)"
 tag = "BucketModelParameters"
 
-[critical_snow_water_equivalent]
+["critical_snow_water_equivalent"]
 value = 0.2
 type = "float"
 description = "Critical σSWE amount (m) where surface transitions from to snow-covered"
 tag = "BucketModelParameters"
 
-[bucket_beta_decay_exponent]
+["bucket_beta_decay_exponent"]
 value = 1.0
 type = "float"
 description = "Exponent used in β decay (unitless)"
 tag = "BucketModelParameters"
 
-[bucket_soil_conductivity]
+["bucket_soil_conductivity"]
 value = 1.5
 type = "float"
 description = "Conductivity of the soil (W/K/m); constant"
 tag = "BucketModelParameters"
 
-[alpha_snow]
+["alpha_snow"]
 value = 0.8
 type = "float"
 tag = "PrescribedBaregroundAlbedo"
