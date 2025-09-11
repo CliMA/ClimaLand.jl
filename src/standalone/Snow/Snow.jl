@@ -146,7 +146,7 @@ function ZenithAngleAlbedoModel(
 end
 
 function ZenithAngleAlbedoModel(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     α_0 = toml_dict["alpha_0"],
     Δα = toml_dict["delta_alpha"],
     k = toml_dict["k"],
@@ -236,7 +236,7 @@ function WuWuSnowCoverFractionModel(
 end
 
 function WuWuSnowCoverFractionModel(
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     horz_degree_res;
     γ = toml_dict["gamma"],
     β0 = toml_dict["beta_0"],
@@ -362,7 +362,7 @@ end
     )
 
     function SnowParameters(
-        toml_dict::CP.AbstractTOMLDict,
+        toml_dict::CP.ParamDict,
         Δt;
         kwargs...  # For individual parameter overrides
     )
@@ -384,7 +384,7 @@ ClimaLand.Canopy.SnowParameters(toml_dict, Δt; ϵ_snow = Float32(0.99), Ksat = 
 SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
     SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
 
-function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
+function SnowParameters(toml_dict::CP.ParamDict, Δt; kwargs...)
     name_map = (;
         :snow_momentum_roughness_length => :z_0m,
         :snow_scalar_roughness_length => :z_0b,
@@ -458,7 +458,7 @@ end
         FT,
         domain,
         forcing,
-        toml_dict::CP.AbstractTOMLDict,
+        toml_dict::CP.ParamDict,
         Δt;
         prognostic_land_components = (:snow,),
         z_0m = toml_dict["snow_momentum_roughness_length"],
@@ -484,7 +484,7 @@ function SnowModel(
     FT,
     domain,
     forcing,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     Δt;
     prognostic_land_components = (:snow,),
     z_0m = toml_dict["snow_momentum_roughness_length"],

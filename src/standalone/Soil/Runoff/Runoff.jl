@@ -208,7 +208,7 @@ function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT, F}
 end
 
 function TOPMODELRunoff(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     f_max::F,
     f_over = toml_dict["f_over"],
     R_sb = toml_dict["R_sb"],

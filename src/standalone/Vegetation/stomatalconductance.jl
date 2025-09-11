@@ -95,7 +95,7 @@ MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
     MedlynConductanceParameters(CP.create_toml_dict(FT); kwargs...)
 
 function MedlynConductanceParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     g1 = 790,
     kwargs...,
 )

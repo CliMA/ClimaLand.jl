@@ -89,7 +89,7 @@ end
 
 function PrescribedSiteAreaIndex(
     LAIfunction::AbstractTimeVaryingInput,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     SAI = toml_dict["SAI"],
     RAI = toml_dict["RAI"],
 )
@@ -205,7 +205,7 @@ function PlantHydraulicsParameters(;
 end
 
 function PlantHydraulicsParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν = toml_dict["plant_nu"],
     S_s = toml_dict["plant_S_s"],
@@ -485,7 +485,7 @@ struct Weibull{FT} <: AbstractConductivityModel{FT}
 end
 
 function Weibull(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     K_sat_plant = toml_dict["K_sat_plant"],
     ψ63 = toml_dict["psi_63"],
     c = toml_dict["Weibull_c"],
@@ -530,10 +530,7 @@ struct LinearRetentionCurve{FT} <: AbstractRetentionModel{FT}
     a::FT
 end
 
-function LinearRetentionCurve(
-    toml_dict::CP.AbstractTOMLDict;
-    a = toml_dict["a"],
-)
+function LinearRetentionCurve(toml_dict::CP.ParamDict; a = toml_dict["a"])
     FT = CP.float_type(toml_dict)
     return LinearRetentionCurve{FT}(a)
 end

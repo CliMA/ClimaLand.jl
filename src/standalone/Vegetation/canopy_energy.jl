@@ -70,14 +70,14 @@ function BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
 end
 
 """
-    BigLeafEnergyParameters(toml_dict::CP.AbstractTOMLDict;
+    BigLeafEnergyParameters(toml_dict::CP.ParamDict;
                             ac_canopy = toml_dict["ac_canopy"],
                         )
 
 Construct `BigLeafEnergyParameters` from a TOML dict.
 """
 function BigLeafEnergyParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     ac_canopy = toml_dict["ac_canopy"],
 )
     FT = CP.float_type(toml_dict)

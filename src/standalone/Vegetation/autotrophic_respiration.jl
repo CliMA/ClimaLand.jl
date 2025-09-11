@@ -174,10 +174,7 @@ AutotrophicRespirationParameters(
 ) where {FT <: AbstractFloat} =
     AutotrophicRespirationParameters(CP.create_toml_dict(FT); kwargs...)
 
-function AutotrophicRespirationParameters(
-    toml_dict::CP.AbstractTOMLDict;
-    kwargs...,
-)
+function AutotrophicRespirationParameters(toml_dict::CP.ParamDict; kwargs...)
     name_map = (;
         :N_factor_Vcmax25 => :ne,
         :live_stem_wood_coeff => :ηsl,
