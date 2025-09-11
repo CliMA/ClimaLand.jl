@@ -17,7 +17,12 @@ export default_diagnostics
                                 pre_output_hook! = nothing,
                                )
 
-Helper function to define functions like `daily_max`.
+For each variable specified in `short_names`, create a `ClimaDiagnostics.ScheduledDiagnostic`.
+Diagnostics are computed at every step, and output at the
+specified period with the provided reduction.
+The type of `output_writer` determines where the output will be saved to.
+This must be a `ClimaDiagnostics.AbstractWriter` object: concrete options include
+`NetCDFWriter`, `HDF5Writer`, and `DictWriter`.
 """
 function common_diagnostics(
     period,
@@ -74,9 +79,9 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
 end
 
 """
-    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly)
+    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly, dt = nothing)
 
-For a general AbstractModel, we need a specification of output_vars to determine which diagnostics to output.
+Construct a list of `ScheduledDiagnostics` that outputs the given variables at the specified average period.
 
 The input `output_vars` can have 3 values:
 - `:long` - all diagnostics are output
@@ -85,11 +90,17 @@ The input `output_vars` can have 3 values:
 
 If a user-defined list is provided for `output_vars`, it must be a vector of strings that are
 valid short names of diagnostics for the model.
+Please see the method `get_possible_diagnostics` for the list of available diagnostics for each model.
+
+`average_period` specifies the frequency at which to average the diagnostics. The following options are currently supported:
+    - `:instantaneous` (note: `dt` must be specified in this case)
+    - `:halfhourly`
+    - `:hourly`
+    - `:daily`
+    - `:monthly`
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
 Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
-
-Please see the method `get_possible_diagnostics` for the list of available diagnostics for each model.
 """
 function default_diagnostics(
     model::Union{
@@ -102,6 +113,7 @@ function default_diagnostics(
     output_writer,
     output_vars = :short,
     average_period = :monthly,
+    dt = nothing,
 ) where {FT}
     define_diagnostics!(model)
 
@@ -129,6 +141,10 @@ function default_diagnostics(
     elseif average_period == :monthly
         default_outputs =
             monthly_averages(FT, diagnostics...; output_writer, start_date)
+    elseif average_period == :instantaneous
+        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
+        default_outputs =
+            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
     else
         @error("Invalid diagnostics average period $(average_period)")
     end
@@ -144,6 +160,7 @@ end
         average_period = :monthly,
         conservation = false,
         conservation_period = Day(10),
+        dt = nothing,
     ) where {FT}
 
 Define a method specific to the EnergyHydrology model so that we can
@@ -157,6 +174,13 @@ The input `output_vars` can have 3 values:
 If a user-defined list is provided for `output_vars`, it must be a vector of strings that are
 valid short names of diagnostics for the model.
 
+The following options for `average_period` are currently supported:
+    - `:instantaneous` (note: `dt` must be specified in this case)
+    - `:halfhourly`
+    - `:hourly`
+    - `:daily`
+    - `:monthly`
+
 Conservation diagnostics should not be provided as part of the `output_vars` argument,
 but rather included by providing `conservation = true`.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics.
@@ -169,6 +193,7 @@ function default_diagnostics(
     average_period = :monthly,
     conservation = false,
     conservation_period = Day(10),
+    dt = nothing,
 ) where {FT}
 
     define_diagnostics!(land_model)
@@ -194,6 +219,10 @@ function default_diagnostics(
     elseif average_period == :monthly
         default_outputs =
             monthly_averages(FT, diagnostics...; output_writer, start_date)
+    elseif average_period == :instantaneous
+        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
+        default_outputs =
+            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
     else
         @error("Invalid diagnostics average period $(average_period)")
     end
@@ -233,7 +262,19 @@ function default_diagnostics(
     return []
 end
 
+"""
+    add_diagnostics!(diagnostics, model, subcomponent)
 
+A function to add diagnostics for a specific subcomponent to the list of diagnostics
+for the provided model. This should be extended for any model with diagnostics
+that depend on the types of subcomponents, and then called from the corresponding
+`get_possible_diagnostics` method.
+
+The fallback method does nothing.
+"""
+add_diagnostics!(_, _::AbstractModel, _) = nothing
+
+## Possible diagnostics for standalone models
 """
     get_possible_diagnostics(model)
 
@@ -241,10 +282,40 @@ Return a list containing all possible diagnostics for the given model.
 See the file `src/diagnostics/land_compute_methods.jl` to see which model
 variable(s) each diagnostic comes from.
 """
-function get_possible_diagnostics(model::EnergyHydrology{FT}) where {FT}
-    return ["swc", "si", "sie", "tsoil", "et"]
+function get_possible_diagnostics(model::EnergyHydrology)
+    diagnostics = ["swc", "si", "sie", "tsoil", "et", "shc", "stc", "swp"]
+
+    # Add diagnostics based on the top boundary condition type and runoff model
+    add_diagnostics!(diagnostics, model, model.boundary_conditions.top)
+    add_diagnostics!(diagnostics, model, model.boundary_conditions.top.runoff)
+    return unique!(diagnostics)
 end
-function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.AtmosDrivenFluxBC,
+)
+    append!(diagnostics, ["soilrn", "soillhf", "soilshf", "salb"])
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
+)
+    append!(diagnostics, ["sr"])
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
+)
+    append!(diagnostics, ["sr", "ssr"])
+end
+
+function get_possible_diagnostics(model::SoilCO2Model)
+    return ["sco2", "hr", "scd", "scms", "soc"]
+end
+function get_possible_diagnostics(model::CanopyModel)
     return [
         "sif",
         "ra",
@@ -287,143 +358,10 @@ function get_possible_diagnostics(model::CanopyModel{FT}) where {FT}
         "ws",
     ]
 end
-function get_possible_diagnostics(model::SoilCanopyModel{FT}) where {FT}
-    return [
-        "swa",
-        "sif", # start of canopy diagnostics
-        "ra",
-        "gs",
-        "trans",
-        "clhf",
-        "cshf",
-        "lwp",
-        # "fa", # return a Tuple
-        "far",
-        "lai",
-        "msf",
-        "rai",
-        "sai",
-        "gpp",
-        "an",
-        "rd",
-        "vcmax25",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "lwn",
-        "swn",
-        "ct",
-        "soc", # start of driver diagnostics
-        "airp",
-        "rain",
-        "lwd",
-        "swd",
-        "snow",
-        "qsfc",
-        "ws",
-        "infil", # start of soil diagnostics
-        "shc",
-        "stc",
-        "swp",
-        "soilrn",
-        "tsoil",
-        "soillhf",
-        "soilshf",
-        "hr",
-        "scd",
-        "scms",
-        "sco2",
-        "swc",
-        # "pwc", # return a Tuple
-        "si",
-        "sie",
-        "swu",
-        "lwu",
-        "er",
-        "et",
-        "sr",
-        "rn",
-        "lhf",
-        "shf",
-        "salb",
-    ]
+function get_possible_diagnostics(model::SnowModel)
+    return ["swe", "snd", "snowc"]
 end
-function get_possible_diagnostics(model::LandModel{FT}) where {FT}
-    return [
-        "swa",
-        "sif",
-        "ra",
-        "gs",
-        "trans",
-        "clhf",
-        "cshf",
-        "lwp",
-        # "fa", # return a Tuple
-        "far",
-        "lai",
-        "msf",
-        "rai",
-        "sai",
-        "gpp",
-        "an",
-        "rd",
-        "vcmax25",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "lwn",
-        "swn",
-        "soc",
-        "airp",
-        "rain",
-        "lwd",
-        "swd",
-        "snow",
-        "qsfc",
-        "infil",
-        "shc",
-        "stc",
-        "swp",
-        "soilrn",
-        "tsoil",
-        "soillhf",
-        "soilshf",
-        "hr",
-        "scd",
-        "scms",
-        "ct",
-        "sco2",
-        "swc",
-        # "pwc", # return a Tuple
-        "si",
-        "sie",
-        "swu",
-        "lwu",
-        "er",
-        "et",
-        "sr",
-        "swe",
-        "snd",
-        "rn",
-        "lhf",
-        "shf",
-        "iwc",
-        "snowc",
-        "tair",
-        "precip",
-    ]
-end
-function get_possible_diagnostics(model::BucketModel{FT}) where {FT}
+function get_possible_diagnostics(model::BucketModel)
     return [
         "swa",
         "rn",
@@ -441,60 +379,108 @@ function get_possible_diagnostics(model::BucketModel{FT}) where {FT}
     ]
 end
 
+## Possible diagnostics for integrated models
+"""
+    get_component_diagnostics(model::AbstractLandModel, diagnostics_function::Function)
+
+Helper function for integrated models that combines the sets of diagnostics
+for all of its component models.
+
+Based on the input `diagnostics_function`, this function can be used to return either
+all possible diagnostics or the short diagnostics of the component models.
+`diagnostics_function` should be a Function that takes in a model as its single argument.
+This may be `get_possible_diagnostics` or `get_short_diagnostics`.
+"""
+function get_component_diagnostics(
+    model::AbstractLandModel,
+    diagnostics_function::Function,
+)
+    diagnostics = String[]
+    @assert diagnostics_function in
+            (get_possible_diagnostics, get_short_diagnostics) "Invalid diagnostics_function $(diagnostics_function)"
+    # Add diagnostics for each component of the integrated model
+    append!(
+        diagnostics,
+        map(
+            component_name ->
+                diagnostics_function(getproperty(model, component_name)),
+            ClimaLand.land_components(model),
+        )...,
+    )
+    return diagnostics
+end
+function get_possible_diagnostics(model::SoilCanopyModel)
+    component_diags = get_component_diagnostics(model, get_possible_diagnostics)
+    additional_diagnostics = ["swa", "swu", "lwu", "rn", "infil"]
+
+    return unique!(append!(component_diags, additional_diagnostics))
+end
+function get_possible_diagnostics(model::LandModel)
+    component_diags = get_component_diagnostics(model, get_possible_diagnostics)
+    additional_diagnostics =
+        ["swa", "swu", "lwu", "rn", "infil", "iwc", "tair", "precip"]
+
+    return unique!(append!(component_diags, additional_diagnostics))
+end
+
 """
     get_short_diagnostics(model)
 
 Return a shortened list of highlighted diagnostics for the given model.
 """
-function get_short_diagnostics(model::EnergyHydrology{FT}) where {FT}
-    return get_possible_diagnostics(model)
+function get_short_diagnostics(model::EnergyHydrology)
+    return ["swc", "si", "sie", "tsoil", "et"]
 end
-function get_short_diagnostics(model::CanopyModel{FT}) where {FT}
+function get_short_diagnostics(model::SoilCO2Model)
+    return ["sco2"]
+end
+function get_short_diagnostics(model::CanopyModel)
     return ["gpp", "ct", "lai", "trans", "er", "sif"]
 end
-function get_short_diagnostics(model::SoilCanopyModel{FT}) where {FT}
-    return [
-        "gpp",
-        "ct",
-        "lai",
-        "sco2",
-        "swc",
-        "si",
+function get_short_diagnostics(model::SnowModel)
+    return get_possible_diagnostics(model)
+end
+function get_short_diagnostics(model::SoilCanopyModel)
+    component_diagnostics =
+        get_component_diagnostics(model, get_short_diagnostics)
+
+    # Add conditional diagnostics based on soil runoff type, since this
+    # isn't done for the soil short diagnostics.
+    add_diagnostics!(
+        component_diagnostics,
+        model.soil,
+        model.soil.boundary_conditions.top.runoff,
+    )
+    additional_diagnostics = ["swa", "lwu", "swu"]
+    return unique!(append!(component_diagnostics, additional_diagnostics))
+end
+function get_short_diagnostics(model::LandModel)
+    component_diagnostics =
+        get_component_diagnostics(model, get_short_diagnostics)
+    additional_diagnostics = [
         "swa",
         "lwu",
-        "et",
-        "er",
-        "sr",
-        "sif",
-    ]
-end
-function get_short_diagnostics(model::LandModel{FT}) where {FT}
-    return [
-        "gpp",
-        "swc",
-        "si",
-        "sie",
         "swu",
-        "lwu",
-        "et",
-        "sr",
-        "ssr",
-        "swe",
         "shf",
-        "lhf",
-        "trans",
-        "msf",
-        "lwp",
-        "tsoil",
-        "lai",
-        "iwc",
         "swd",
         "lwd",
-        "snowc",
         "tair",
         "precip",
+        "lhf",
+        "msf",
+        "lwp",
+        "iwc",
     ]
+
+    # Add conditional diagnostics based on soil runoff type, since this
+    # isn't done for the soil short diagnostics.
+    add_diagnostics!(
+        component_diagnostics,
+        model.soil,
+        model.soil.boundary_conditions.top.runoff,
+    )
+    return unique!(append!(component_diagnostics, additional_diagnostics))
 end
-function get_short_diagnostics(model::BucketModel{FT}) where {FT}
+function get_short_diagnostics(model::BucketModel)
     return get_possible_diagnostics(model)
 end

@@ -438,7 +438,11 @@ end
 
 ## Drivers Module ##
 
-@diagnostic_compute "soil_organic_carbon" Union{SoilCanopyModel, LandModel} p.drivers.soc # need to fix this in src/shared_utilities/drivers
+@diagnostic_compute "soil_organic_carbon" Union{
+    SoilCanopyModel,
+    LandModel,
+    SoilCO2Model,
+} p.drivers.soc # need to fix this in src/shared_utilities/drivers
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
 @diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
 @diagnostic_compute "radiation_longwave_down" Union{
@@ -483,14 +487,24 @@ end
 @diagnostic_compute "soil_hydraulic_conductivity" Union{
     SoilCanopyModel,
     LandModel,
+    EnergyHydrology,
 } p.soil.K
 @diagnostic_compute "soil_thermal_conductivity" Union{
     SoilCanopyModel,
     LandModel,
+    EnergyHydrology,
 } p.soil.κ
-@diagnostic_compute "soil_water_potential" Union{SoilCanopyModel, LandModel} p.soil.ψ
+@diagnostic_compute "soil_water_potential" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.ψ
+@diagnostic_compute "soil_temperature" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.T
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
-@diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
 function compute_10cm_water_mass!(
     out,
@@ -532,7 +546,7 @@ function compute_soil_albedo!(
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, EnergyHydrology{FT}},
 ) where {FT}
     if isnothing(out)
         out = zeros(land_model.soil.domain.space.surface) # Allocates
@@ -555,6 +569,22 @@ function compute_heterotrophic_respiration!(
     Y,
     p,
     t,
+    land_model::SoilCO2Model{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.top_bc * FT(83.26)
+        return out
+    else
+        out .= p.top_bc .* FT(83.26)
+    end
+end # Convert from kg C to mol CO2.
+function compute_heterotrophic_respiration!(
+    out,
+    Y,
+    p,
+    t,
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
@@ -569,6 +599,8 @@ end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
 
+@diagnostic_compute "soilco2_diffusivity" SoilCO2Model p.D
+@diagnostic_compute "soilco2_source_microbe" SoilCO2Model p.Sm
 @diagnostic_compute "soilco2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" Union{SoilCanopyModel, LandModel} p.soilco2.Sm
 
@@ -576,8 +608,32 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
 @diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
 @diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
-@diagnostic_compute "surface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_s
-@diagnostic_compute "subsurface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_ss
+function compute_surface_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    return Runoff.get_surface_runoff(
+        land_model.soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
+function compute_subsurface_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    return Runoff.get_subsurface_runoff(
+        land_model.soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
 
 function compute_evapotranspiration!(
     out,
@@ -834,3 +890,17 @@ end
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+function compute_surface_runoff!(out, Y, p, t, land_model::EnergyHydrology)
+    return Runoff.get_surface_runoff(
+        land_model.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
+function compute_subsurface_runoff!(out, Y, p, t, land_model::EnergyHydrology)
+    return Runoff.get_subsurface_runoff(
+        land_model.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end

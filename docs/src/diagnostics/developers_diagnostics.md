@@ -16,11 +16,49 @@ Internally, this is done by using the [`ClimaDiagnostics.jl`](https://github.com
  - `define_diagnostics.jl`, mentioned above, contains a function `define_diagnostics!(land_model)` which contains all default diagnostic variables by calling.
  `add_diagnostic_variable!`, and dispatch off the type of land\_model to define how to compute a diagnostic (for example, surface temperature is computed in `p.bucket.T_sfc` in the bucket model).
  - compute methods are defined in a separate file, for example, `bucket_compute_methods.jl`.
- - `standard_diagnostic_frequencies.jl` defines standard functions to schedule diagnostics, for example, hourly average or monthly max, these functions are called on a list of diagnostic variables. As developers, we can add more standard functions that users may want to have access to easily in this file.
- - `default_diagnostics.jl` defines default diagnostics functions to use on a model simulation. For example, `default_diagnostics(land_model::BucketModel, output_writer)`.
- will return a `ScheduledDiagnostics` that computes hourly averages for all Bucket variables, along with their metadata, ready to be written on a NetCDF file when running a Bucket simulation.
+ - `standard_diagnostic_frequencies.jl` defines standard functions to schedule diagnostics, for example, hourly average or monthly max, these functions are called on a list of diagnostic variables.
+ - `default_diagnostics.jl` defines default diagnostics variables to use on a model simulation.
 
-The following section give more details on these functions, along with examples. As developers, we want to extand these functionality as ClimaLand progresses.
+The following section give more details on these functions, along with examples.
+
+# Default diagnostics
+
+For each model, we define a function `default_diagnostics` which retrieves the set of diagnostic
+variables to compute for this model, and over which time period to average the values.
+
+## "Long" diagnostics (`output_vars = :long`)
+Each model has a method of the function `get_possible_diagnostics` which contains a
+list of all available diagnostics for the model. This is exactly the set of diagnostics
+output when `output_vars = :long`.
+For standalone models, the list is mostly hardcoded, though it may also depend on
+which parameterizations are available in the model. For integrated models, the list
+contains all possible diagnostics for each component model, as well as any additional
+diagnostics specific to the integrated model.
+
+## "Short" diagnostics (`output_vars = :short`)
+Similarly, each model has a method of `get_short_diagnostics`, which is a selected subset
+of the overall available diagnostics for the model that gets used when `output_vars = :short`.
+As is the case with `get_possible_diagnostics`, the set of variables for integrated models is
+based on its component models, and any additional integrated model-specific variables.
+
+# Standard diagnostic frequencies
+
+We have defined functions which compute statistical metrics of the instantaneous diagnostic variables at different standard frequencies. For example,
+
+```Julia
+hourly_averages(FT, short_names...; output_writer) = common_diagnostics(
+    60 * 60 * one(FT),
+    (+),
+    output_writer,
+    nothing, # start_date
+    short_names...;
+    pre_output_hook! = average_pre_output_hook!,
+)
+```
+
+will return a list of `ScheduledDiagnostics` that compute the hourly average for the given variables listed in `short_names`.
+We also, so far, provide functions for mins, maxs and averages aggregated monthly, over ten days, daily, hourly, and half-hourly.
+As a developer, you may want to add more standard diagnostics here.
 
 # Compute methods
 
@@ -59,60 +97,3 @@ add_diagnostic_variable!(
         compute! = (out, Y, p, t) -> compute_albedo!(out, Y, p, t, land_model),
     )
 ```
-
-# Default diagnostics
-
-For each model, we define a function `default_diagnostics` which will define what diagnostic variables to compute by default for a specific model, and
-on what schedule (for example, hourly average). For example,
-
-```Julia
-function default_diagnostics(land_model::BucketModel{FT}; output_writer) where {FT}
-
-    define_diagnostics!(land_model)
-
-    bucket_diagnostics = [
-        "alpha",
-        "rn",
-        "tsfc",
-        "qsfc",
-        "lhf",
-        "rae",
-        "shf",
-        "vflux",
-        "rhosfc",
-        "t",
-        "w",
-        "ws",
-        "sigmas",
-    ]
-
-    default_outputs =
-        hourly_averages(FT, bucket_diagnostics...; output_writer)
-    return [default_outputs...]
-end
-```
-
-is the default for the BucketModel, it will return hourly averages for the variables listed in `bucket_diagnostics` (which are all variables in the BucketModel).
-
-For SoilCanopyModel, LandModel, and SoilModel, we added two keyword arguments: `output_vars` (can be :long or :short) and `average_period` (can be :hourly, :daily, or :monthly).
-If `output_vars = :long` (the default), then `soilcanopy_diagnostics` is an Array of all short\_name, if `output_vars = :short`, then we have a subset of all short\_name: `soilcanopy_diagnostics = ["gpp", "ct", "lai", "sco2", "swc", "si", "swa", "lwu", "et", "er", "sr", "sif"]`.
-If `average_period = :hourly`, `default_outputs` calls `hourly_averages`, et cetera.
-
-# Standard diagnostic frequencies
-
-We defined some functions of diagnostic schedule that may often be used in `standard_diagnostic_frequencies.jl`, for example
-
-```Julia
-hourly_averages(FT, short_names...; output_writer) = common_diagnostics(
-    60 * 60 * one(FT),
-    (+),
-    output_writer,
-    nothing, # start_date
-    short_names...;
-    pre_output_hook! = average_pre_output_hook!,
-)
-```
-
-will return a list of `ScheduledDiagnostics` that compute the hourly average for the given variables listed in `short_names`.
-We also, so far, provide functions for mins, maxs and averages aggregated monthly, over ten days, daily, and hourly.
-As a developer, you may want to add more standard diagnostics here.
