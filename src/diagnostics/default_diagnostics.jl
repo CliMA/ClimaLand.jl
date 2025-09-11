@@ -1,3 +1,4 @@
+using Dates
 export default_diagnostics
 
 # This file is included by Diagnostics.jl and defines all the defaults for
@@ -8,9 +9,8 @@ export default_diagnostics
 # more high level interfaces, add them here. Feel free to include extra files.
 
 """
-    function common_diagnostics(
-                                period,
-                                reduction,
+    function common_diagnostics(reduction_period,
+                                reduction_type,
                                 output_writer,
                                 start_date,
                                 short_names...;
@@ -18,26 +18,35 @@ export default_diagnostics
                                )
 
 For each variable specified in `short_names`, create a `ClimaDiagnostics.ScheduledDiagnostic`.
-Diagnostics are computed at every step, and output at the
-specified period with the provided reduction.
+Diagnostics are computed at every step, and output at the specified period with the provided reduction.
+
 The type of `output_writer` determines where the output will be saved to.
 This must be a `ClimaDiagnostics.AbstractWriter` object: concrete options include
 `NetCDFWriter`, `HDF5Writer`, and `DictWriter`.
+
+The provided `pre_output_hook!` is a function that is called after applying the reduction,
+but before outputting the diagnostic. This is typically not needed (`nothing`), but to
+compute an average we use `ClimaDiagnostics.average_pre_output_hook!`.
 """
 function common_diagnostics(
-    period,
-    reduction,
+    reduction_period,
+    reduction_type,
     output_writer,
     start_date,
     short_names...;
+    dt = nothing,
     pre_output_hook! = nothing,
 )
+    # Convert the provided period and reduction to the appropriate types
+    period = get_period(reduction_period, dt)
+    reduction = get_reduction(reduction_type)
+    reduction_type == Val(:average) &&
+        (pre_output_hook! = average_pre_output_hook!)
+    # Make a list of ScheduledDiagnostic objects
     return vcat(
         map(short_names) do short_name
             output_schedule_func =
-                period isa Period ?
-                EveryCalendarDtSchedule(period; start_date) :
-                EveryDtSchedule(period)
+                EveryCalendarDtSchedule(period; start_date)
             return ScheduledDiagnostic(
                 variable = get_diagnostic_variable(short_name),
                 compute_schedule_func = EveryStepSchedule(),
@@ -50,7 +59,50 @@ function common_diagnostics(
     )
 end
 
-include("standard_diagnostic_frequencies.jl")
+"""
+    get_period(val, dt)
+
+Helper function to convert from a user-provided Symbol
+to the corresponding Dates.Period.
+
+Currently, the following periods are supported:
+- :every_dt (requires `dt` to be provided separately)
+- :halfhourly
+- :hourly
+- :daily
+- :tendaily
+- :monthly
+"""
+
+get_period(::Val{:every_dt}, dt) = Second(dt)
+get_period(::Val{:halfhourly}, dt) = Minute(30)
+get_period(::Val{:hourly}, dt) = Hour(1)
+get_period(::Val{:daily}, dt) = Day(1)
+get_period(::Val{:tendaily}, dt) = Day(10)
+get_period(::Val{:monthly}, dt) = Month(1)
+get_period(val, dt) = @error("Diagnostic reduction period $val not supported.")
+
+"""
+    get_reduction(val)
+
+Helper function to convert from a user-provided Symbol
+to the corresponding diagnostic reduction Function.
+
+Currently, the following reduction types are supported:
+- :instantaneous (should be used with `reduction_period = :every_dt`)
+- :average (requires `pre_output_hook! = average_pre_output_hook!` when creating the `ScheduledDiagnostic`)
+- :max
+- :min
+
+New methods of this function can be added to compute different types of reductions.
+For any new methods, the returned function should be one that can act on a list of Float inputs.
+"""
+get_reduction(::Val{:instantaneous}) = nothing
+get_reduction(::Val{:average}) = (+)
+get_reduction(::Val{:max}) = max
+get_reduction(::Val{:min}) = min
+get_reduction(val) = @error("Diagnostic reduction type $val not supported.")
+
 
 default_diagnostics(
     model::ClimaLand.AbstractModel,
@@ -79,7 +131,13 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
 end
 
 """
-    default_diagnostics(model::AbstractModel{FT}, start_date; output_writer, output_vars = :short, average_period = :monthly, dt = nothing)
+    default_diagnostics(model::AbstractModel{FT},
+                        start_date;
+                        output_writer,
+                        output_vars = :short,
+                        reduction_period = :monthly,
+                        reduction_type = :average,
+                        dt = nothing)
 
 Construct a list of `ScheduledDiagnostics` that outputs the given variables at the specified average period.
 
@@ -92,12 +150,10 @@ If a user-defined list is provided for `output_vars`, it must be a vector of str
 valid short names of diagnostics for the model.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics for each model.
 
-`average_period` specifies the frequency at which to average the diagnostics. The following options are currently supported:
-    - `:instantaneous` (note: `dt` must be specified in this case)
-    - `:halfhourly`
-    - `:hourly`
-    - `:daily`
-    - `:monthly`
+`reduction_period` specifies the frequency at which to average the diagnostics, and
+`reduction_type` specifies the type of reduction to apply.
+Please see the docstring of `get_period` for the list of available periods,
+and the docstring of `get_reduction` for the list of available reduction types.
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
 Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
@@ -112,7 +168,8 @@ function default_diagnostics(
     start_date;
     output_writer,
     output_vars = :short,
-    average_period = :monthly,
+    reduction_period = :monthly,
+    reduction_type = :average,
     dt = nothing,
 ) where {FT}
     define_diagnostics!(model)
@@ -128,26 +185,16 @@ function default_diagnostics(
         diagnostics = output_vars
     end
 
+    default_outputs = common_diagnostics(
+        Val(reduction_period),
+        Val(reduction_type),
+        output_writer,
+        start_date,
+        diagnostics...;
+        dt,
+        pre_output_hook! = nothing,
+    )
 
-    if average_period == :halfhourly
-        default_outputs =
-            halfhourly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :hourly
-        default_outputs =
-            hourly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :daily
-        default_outputs =
-            daily_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :monthly
-        default_outputs =
-            monthly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :instantaneous
-        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
-        default_outputs =
-            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
-    else
-        @error("Invalid diagnostics average period $(average_period)")
-    end
     return [default_outputs...]
 end
 
@@ -157,7 +204,8 @@ end
         start_date;
         output_writer,
         output_vars = :short,
-        average_period = :monthly,
+        reduction_period = :monthly,
+        reduction_type = :average,
         conservation = false,
         conservation_period = Day(10),
         dt = nothing,
@@ -174,12 +222,10 @@ The input `output_vars` can have 3 values:
 If a user-defined list is provided for `output_vars`, it must be a vector of strings that are
 valid short names of diagnostics for the model.
 
-The following options for `average_period` are currently supported:
-    - `:instantaneous` (note: `dt` must be specified in this case)
-    - `:halfhourly`
-    - `:hourly`
-    - `:daily`
-    - `:monthly`
+`reduction_period` specifies the frequency at which to average the diagnostics, and
+`reduction_type` specifies the type of reduction to apply.
+Please see the docstring of `get_period` for the list of available periods,
+and the docstring of `get_reduction` for the list of available reduction types.
 
 Conservation diagnostics should not be provided as part of the `output_vars` argument,
 but rather included by providing `conservation = true`.
@@ -190,7 +236,8 @@ function default_diagnostics(
     start_date;
     output_writer,
     output_vars = :short,
-    average_period = :monthly,
+    reduction_period = :monthly,
+    reduction_type = :average,
     conservation = false,
     conservation_period = Day(10),
     dt = nothing,
@@ -207,25 +254,15 @@ function default_diagnostics(
         diagnostics = output_vars
     end
 
-    if average_period == :halfhourly
-        default_outputs =
-            halfhourly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :hourly
-        default_outputs =
-            hourly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :daily
-        default_outputs =
-            daily_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :monthly
-        default_outputs =
-            monthly_averages(FT, diagnostics...; output_writer, start_date)
-    elseif average_period == :instantaneous
-        @assert !isnothing(dt) "dt must be specified when `average_period = :instantaneous`"
-        default_outputs =
-            every_dt_inst(FT, dt, diagnostics...; output_writer, start_date)
-    else
-        @error("Invalid diagnostics average period $(average_period)")
-    end
+    default_outputs = common_diagnostics(
+        Val(reduction_period),
+        Val(reduction_type),
+        output_writer,
+        start_date,
+        diagnostics...;
+        dt,
+        pre_output_hook! = nothing,
+    )
 
     if conservation
         additional_diags = ["epa", "epac", "wvpa", "wvpac"]
@@ -254,7 +291,7 @@ function default_diagnostics(
     start_date = nothing;
     output_writer = nothing,
     output_vars = nothing,
-    average_period = nothing,
+    reduction_period = nothing,
 )
     @warn(
         "No default diagnostics defined for model type $(nameof(typeof(model))); consider extending `default_diagnostics` for this model type."

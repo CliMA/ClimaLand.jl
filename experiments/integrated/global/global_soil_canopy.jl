@@ -127,7 +127,7 @@ diags = ClimaLand.default_diagnostics(
     land,
     start_date;
     output_writer = nc_writer,
-    average_period = :hourly,
+    reduction_period = :hourly,
 )
 
 simulation = LandSimulation(

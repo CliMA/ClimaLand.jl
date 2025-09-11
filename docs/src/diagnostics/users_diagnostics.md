@@ -28,7 +28,8 @@ on what schedule (for example, hourly average).
 - `output_writer`: An object of type `ClimaDiagnostics.AbstractWriter`. Specifically this may be a `NetCDFWriter`, `HDF5Writer`, or `DictWriter`, which save output to a NetCDF file, HDF5 file, or dictionary in Julia memory, respectively. For more details about the diagnostics writers, please see the ClimaDiagnostics.jl documentation.
 - `output_vars`: This argument may be `:short` to output a default list of variables defined for each model, `:long` to output all
 available variables for the model, or a user-defined list of variable "short names".
-- `average_period`: How often to compute and save the average of the diagnostics.
+- `reduction_period`: How often to compute and save the provided temporal reduction of the diagnostics.
+- `reduction_type`: A temporal reduction to apply to the diagnostics over each provided time period, e.g. `:average`, `:max`, `:min`, `:instantaneous` (no reduction)
 - `dt`: Simulation timestep; only required for instantaneous diagnostics.
 
 ## Example: diagnostics for a `CanopyModel`
@@ -41,7 +42,8 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     start_date;
     output_vars = :short,
     output_writer = diag_writer,
-    average_period = :hourly,
+    reduction_period = :hourly,
+    reduction_type = :average,
 );
 ```
 
@@ -54,7 +56,8 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     start_date;
     output_vars = ["gpp", "trans"],
     output_writer = diag_writer,
-    average_period = :hourly,
+    reduction_period = :hourly,
+    reduction_type = :average,
 );
 ```
 A description of available diagnostics and their short names can be found on the [Available diagnostic variables](@ref) documentation page.
@@ -140,30 +143,29 @@ add_diagnostic_variable!(
 
 ### Define how often to output your variables, and how to combine them.
 
-We have many common output periods and reductions defined in `src/diagnostics/standard_diagnostic_frequencies.jl`,
-including averages, maximums, and minimums over different periods of time, and instantaneous outputs.
+We support a range of reduction periods and reduction types, defined in `src/diagnostics/default_diagnostics.jl`,
+which should be passed to `default_diagnostics` as Symbols.
+Currently, the following periods are supported:
+- :every_dt (requires `dt` to be provided separately)
+- :halfhourly
+- :hourly
+- :daily
+- :tendaily
+- :monthly
+
+And the following reduction types are supported:
+- :instantaneous
+- :average (requires `pre_output_hook! = average_pre_output_hook!` when creating the `ScheduledDiagnostic`)
+- :max
+- :min
 
 You can also define your own output frequencies and reductions. For example, if you want the seasonal maximum of your
-variables, where season is defined as 90 days, you could add the following function.
+variables, where season is defined as 90 days, you could add the following `get_period` function, and then provide
+this new reduction period to `default_diagnostics`.
 
 ```Julia
-seasonal_maxs(FT, short_names...; output_writer) = common_diagnostics(
-    FT(90 * 24 * 60 * 60), # 90 days in seconds
-    max,
-    output_writer,
-    nothing, # start_date
-    short_names...,
-)
-```
-
-### Define a function to return your `ScheduledDiagnostics`
-
-Now, you can call your schedule with your variables.
-
-```Julia
-my_custom_diagnostics = ["lhf", "bor"]
-
-diags = seasonal_maxs(FT, my_custom_diagnostics...; output_writer)
+get_period(:seasonal) = Day(90)
+default_diagnostics(model, start_date, output_writer; output_vars, reduction_period = :seasonal, reduction_type = :max)
 ```
 
 ### Analyze your simulation output

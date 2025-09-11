@@ -168,7 +168,7 @@ diagnostics = ClimaLand.default_diagnostics(
     start_date;
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
     output_vars,
-    average_period = :hourly,
+    reduction_period = :hourly,
 );
 
 # Choose how often we want to update the forcing.
