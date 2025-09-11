@@ -16,7 +16,7 @@ ClimaLand.Canopy.CanopyModel{FT}(
     },
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
 ) where {FT}
 ClimaLand.Canopy.SharedCanopyParameters
 ClimaLand.Canopy.AbstractCanopyComponent

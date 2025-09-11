@@ -41,7 +41,7 @@ ClimaLand.Soil.EnergyHydrology{FT}(;
 ClimaLand.Soil.EnergyHydrology{FT}(
     domain,
     forcing,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,

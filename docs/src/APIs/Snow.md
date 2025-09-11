@@ -12,7 +12,7 @@ ClimaLand.Snow.SnowModel(
     FT,
     domain,
     forcing,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     Δt;
 )
 ClimaLand.Snow.SnowParameters

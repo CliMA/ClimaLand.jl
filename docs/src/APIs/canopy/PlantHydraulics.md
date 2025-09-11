@@ -26,7 +26,7 @@ ClimaLand.PlantHydraulics.DiagnosticTranspiration
 ClimaLand.Canopy.PlantHydraulicsModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
 ) where {FT <: AbstractFloat}
 ```
 

@@ -311,7 +311,7 @@ TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
     TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
 
 function TwoStreamParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
     α_PAR_leaf::F = 0.3,
     τ_PAR_leaf::F = 0.2,
@@ -370,7 +370,7 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
     BeerLambertParameters(CP.create_toml_dict(FT); kwargs...)
 
 function BeerLambertParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
     α_PAR_leaf::F = 0.1,
     α_NIR_leaf::F = 0.4,

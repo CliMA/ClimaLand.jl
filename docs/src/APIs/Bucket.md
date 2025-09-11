@@ -11,7 +11,7 @@ ClimaLand.Bucket.BucketModelParameters(
     ::Type{FT};
 ) where {FT <: AbstractFloat}
 ClimaLand.Bucket.BucketModelParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
 )
 ClimaLand.Bucket.PrescribedBaregroundAlbedo
 ClimaLand.Bucket.PrescribedSurfaceAlbedo

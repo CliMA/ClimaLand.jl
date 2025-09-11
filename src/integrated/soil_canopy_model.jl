@@ -79,7 +79,7 @@ end
     SoilCanopyModel{FT}(
         forcing,
         LAI,
-        toml_dict::CP.AbstractTOMLDict,
+        toml_dict::CP.ParamDict,
         domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
@@ -120,7 +120,7 @@ as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical
 function SoilCanopyModel{FT}(
     forcing,
     LAI,
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
     soil = Soil.EnergyHydrology{FT}(
         domain,

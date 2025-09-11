@@ -78,13 +78,13 @@ LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
     LandParameters(CP.create_toml_dict(FT))
 
 """
-    LandParameters(toml_dict::CP.AbstractTOMLDict)
+    LandParameters(toml_dict::CP.ParamDict)
 
 Construct `LandParameters` from `toml_dict`.
 
 See [`ClimaLand.Parameters.create_toml_dict`](@ref).
 """
-function LandParameters(toml_dict::CP.AbstractTOMLDict)
+function LandParameters(toml_dict::CP.ParamDict)
     thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
 

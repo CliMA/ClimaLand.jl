@@ -192,7 +192,7 @@ end
     PlantHydraulicsModel{FT}(
         domain,
         LAI::AbstractTimeVaryingInput,
-        toml_dict::CP.AbstractTOMLDict;
+        toml_dict::CP.ParamDict;
         n_stem::Int = 0,
         n_leaf::Int = 1,
         h_stem::FT = FT(0),
@@ -239,7 +239,7 @@ https://doi.org/10.1029/2023WR035481
 function PlantHydraulicsModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
@@ -568,7 +568,7 @@ end
         },
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
-        toml_dict::CP.AbstractTOMLDict;
+        toml_dict::CP.ParamDict;
         z_0m = toml_dict["canopy_momentum_roughness_length"],
         z_0b = toml_dict["canopy_scalar_roughness_length"],
         prognostic_land_components = (:canopy,),
@@ -607,7 +607,7 @@ function CanopyModel{FT}(
     },
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     z_0m = toml_dict["canopy_momentum_roughness_length"],
     z_0b = toml_dict["canopy_scalar_roughness_length"],
     prognostic_land_components = (:canopy,),

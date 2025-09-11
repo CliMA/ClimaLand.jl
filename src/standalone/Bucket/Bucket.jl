@@ -139,7 +139,7 @@ function PrescribedBaregroundAlbedo{FT}(
 end
 
 """
-     PrescribedBaregroundAlbedo(toml_dict::CP.AbstractTOMLDict,
+     PrescribedBaregroundAlbedo(toml_dict::CP.ParamDict,
                                 surface_space::ClimaCore.Spaces.AbstractSpace;
                                 α_snow = toml_dict["alpha_snow"],
                                 kwargs...)
@@ -148,7 +148,7 @@ An outer constructor for the PrescribedBaregroundAlbedo model which get the
 value for α_snow from `toml_dict` or the keyword argument `α_snow`.
 """
 function PrescribedBaregroundAlbedo(
-    toml_dict::CP.AbstractTOMLDict,
+    toml_dict::CP.ParamDict,
     surface_space::ClimaCore.Spaces.AbstractSpace;
     α_snow = toml_dict["alpha_snow"],
     kwargs...,
@@ -274,7 +274,7 @@ end
     )
 
     BucketModelParameters(
-        toml_dict::CP.AbstractTOMLDict;
+        toml_dict::CP.ParamDict;
         albedo,
         z_0m,
         z_0b,
@@ -303,7 +303,7 @@ end
 
 """
     BucketModelParameters(
-        toml_dict::CP.AbstractTOMLDict;
+        toml_dict::CP.ParamDict;
         albedo,
         W_f = toml_dict["land_bucket_capacity"],
         f_bucket = toml_dict["bucket_capacity_fraction"],
@@ -320,7 +320,7 @@ end
 Constructor for BucketModelParameters using a toml file
 """
 function BucketModelParameters(
-    toml_dict::CP.AbstractTOMLDict;
+    toml_dict::CP.ParamDict;
     albedo,
     W_f = toml_dict["land_bucket_capacity"],
     f_bucket = toml_dict["bucket_capacity_fraction"],
