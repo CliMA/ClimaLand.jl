@@ -15,9 +15,7 @@ Internally, this is done by using the [`ClimaDiagnostics.jl`](https://github.com
  `DiagnosticVariable` from its `short_name`, if it exists.
  - `define_diagnostics.jl`, mentioned above, contains a function `define_diagnostics!(land_model)` which contains all default diagnostic variables by calling.
  `add_diagnostic_variable!`, and dispatch off the type of land\_model to define how to compute a diagnostic (for example, surface temperature is computed in `p.bucket.T_sfc` in the bucket model).
- - compute methods are defined in a separate file, for example, `bucket_compute_methods.jl`.
- - `standard_diagnostic_frequencies.jl` defines standard functions to schedule diagnostics, for example, hourly average or monthly max, these functions are called on a list of diagnostic variables.
- - `default_diagnostics.jl` defines default diagnostics variables to use on a model simulation.
+ - `land_compute_methods.jl` defines how to compute diagnostics for various ClimaLand models.
 
 The following section give more details on these functions, along with examples.
 
@@ -47,12 +45,11 @@ We have defined functions which compute statistical metrics of the instantaneous
 
 ```Julia
 hourly_averages(FT, short_names...; output_writer) = common_diagnostics(
-    60 * 60 * one(FT),
-    (+),
+    :hourly,
+    :average,
     output_writer,
     nothing, # start_date
     short_names...;
-    pre_output_hook! = average_pre_output_hook!,
 )
 ```
 

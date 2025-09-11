@@ -186,7 +186,7 @@ function setup_prob(start_date, stop_date, Δt, outdir)
         model,
         start_date;
         output_writer = nc_writer,
-        average_period = :daily,
+        reduction_period = :daily,
     )
 
     simulation = LandSimulation(

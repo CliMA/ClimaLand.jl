@@ -99,7 +99,7 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     start_date;
     output_vars = ["ct", "trans"],
     output_writer = diag_writer,
-    average_period = :hourly,
+    reduction_period = :hourly,
 );
 
 # Now construct the `LandSimulation` object, which contains the model

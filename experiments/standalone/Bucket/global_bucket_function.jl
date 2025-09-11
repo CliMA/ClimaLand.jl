@@ -152,7 +152,7 @@ diags = ClimaLand.default_diagnostics(
     model,
     start_date;
     output_writer = nc_writer,
-    average_period = :daily,
+    reduction_period = :daily,
 )
 
 timestepper = CTS.RK4()
