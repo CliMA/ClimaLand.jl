@@ -73,9 +73,9 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa1_c3 = FT(0.022)
         ϕa2_c3 = FT(-0.00034)
         # Scott and Smith 2022
-        ϕa0_c4 = FT(-0.008)
-        ϕa1_c4 = FT(0.00375)
-        ϕa2_c4 = FT(-0.011)
+        ϕa0_c4 = FT(-0.0805)
+        ϕa1_c4 = FT(0.022)
+        ϕa2_c4 = FT(-0.00034)
     else
         ϕ0 = FT(inputs["kphio"])
         ϕc, ϕa0_c3, ϕa1_c3, ϕa2_c3, ϕa0_c4, ϕa1_c4, ϕa2_c4 =
