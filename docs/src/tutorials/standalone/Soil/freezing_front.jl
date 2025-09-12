@@ -174,13 +174,11 @@ soil = Soil.EnergyHydrology{FT}(;
 
 # We can specify the initial condition:
 
-function set_ic!(Ysoil, p, t0, model)
+function set_ic!(Y, p, t0, model)
     params = model.parameters
-    z = model.domain.fields.z
-    ν = params.ν
-    FT = eltype(Ysoil.soil.ϑ_l)
-    Ysoil.soil.ϑ_l .= FT(0.33)
-    Ysoil.soil.θ_i .= FT(0.0)
+    FT = eltype(Y.soil.ϑ_l)
+    Y.soil.ϑ_l .= FT(0.33)
+    Y.soil.θ_i .= FT(0.0)
     T = FT(279.85)
     ρc_s = Soil.volumetric_heat_capacity(
         FT(0.33),
@@ -188,7 +186,7 @@ function set_ic!(Ysoil, p, t0, model)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Ysoil.soil.ρe_int .=
+    Y.soil.ρe_int .=
         Soil.volumetric_internal_energy.(
             FT(0.0),
             ρc_s,

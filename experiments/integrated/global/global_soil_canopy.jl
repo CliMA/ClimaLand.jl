@@ -107,9 +107,7 @@ canopy = Canopy.CanopyModel{FT}(
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
 ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-set_ic! =
-    (Y, p, t0, model) ->
-        ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, model)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
 stepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
