@@ -211,7 +211,7 @@ z = parent(soil.domain.fields.z)[:];
 lines!(ax1, sol_T, z, label = "Model", color = :blue, linewidth = 3)
 
 # # Analytic Solution of Neumann
-# All details here are taken from [DallAmico2011](@cite) (see also [CarslawJaeger](@cite)), and the reader is referred to that
+# All details here are taken from [DallAmico2011](@citet) (see also [CarslawJaeger1959](@citet)), and the reader is referred to that
 # for further information on the solution. It takes the form of a function
 # for T(z) on each side of the freezing front interface, which depends on
 # the thermal properties in that region, and which is also parameterized by

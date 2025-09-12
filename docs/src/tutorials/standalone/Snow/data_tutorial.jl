@@ -5,7 +5,7 @@
 # in training artificial intelligence models for seasonal snow forecasting.
 # The code below contains a basic version of the code used to produce
 # `training_data.csv`, which is used in the [base tutorial](../base_tutorial/) for snow forecasting,
-# as well as the [paper](https://arxiv.org/abs/2412.06819). However, exploration of the optional arguments
+# as well as the [Charbonneau2024](@citet). However, exploration of the optional arguments
 # or requesting of alternative [SNOTEL data codes](https://www.nrcs.usda.gov/wps/portal/wcc/home/dataAccessHelp/webService/webServiceReference#elementCodes) offers
 # additional utility in creating alternative data sets for further investigation.
 
@@ -52,7 +52,7 @@ DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 
 # We first define constants that will be used in the cleaning of the SNOTEL data,
 # such as conversion constants from imperial to metric units, and the sensor limits
-# defined in the [SNOTEL Engineering Handbook](https://directives.sc.egov.usda.gov/OpenNonWebContent.aspx?content=27630.wba). Some SNOTEL sensors measure
+# defined in the [USDASNOTELHandbook](@citet). Some SNOTEL sensors measure
 # in imperial units, and some measure in metric units, and the data portal will round
 # converted values if a sensor stream is requested in units other than its original
 # measurement. Therefore, we will scrape data in the originally measured units to limit
@@ -88,7 +88,7 @@ scales = Dict{Symbol, Real}(
 # to yield the full dataset (if special cases are handled) found in
 # `training_data.csv` used in the [base tutorial](../base_tutorial/). Stations were
 # selected based upon their availability of the features utilized in
-# creating the model used in the [paper](https://arxiv.org/abs/2412.06819):
+# creating the model used in the [Charbonneau2024](@citet):
 
 # - `*` Indicates alternative handling of the `rectify_daily_hourly()` function.
 

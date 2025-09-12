@@ -1,7 +1,7 @@
 # This sets up the simulation that mimicks the coarse sand
 # lab experiment
 # presented in Figures 7 and 8a of
-# Lehmann, Assouline, Or  (Phys Rev E 77, 2008).
+# [Lehmann2008](@citet)
 
 using CairoMakie
 import SciMLBase

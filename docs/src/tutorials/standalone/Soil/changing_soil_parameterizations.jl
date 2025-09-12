@@ -14,8 +14,7 @@
 # The `ConstantTwoBandSoilAlbedo` parameterization is useful for cases where the soil albedo is
 # known to be constant over time, such as in some idealized simulations or when using a fixed albedo value.
 
-# CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model
-# (CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
+# CLM reference: [LawrenceChase2007](@citet)
 
 # First we import the necessary Julia packages:
 import ClimaParams as CP
@@ -70,7 +69,7 @@ albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(
 );
 
 # Now we can create the `EnergyHydrology` model with the specified albedo parameterization
-# passed as a [keyword argument](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments).
+# passed as a [keyword argument](@extref Julia Keyword-Arguments).
 model =
     Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict; albedo);
 # That's it! Now that you have the model, you can create
