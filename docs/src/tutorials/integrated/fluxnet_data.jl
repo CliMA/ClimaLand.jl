@@ -2,8 +2,8 @@
 
 # In this tutorial, we will demonstrate how we read in forcing data at a Fluxnet site
 # using our ClimaLand infrastructure. To see an example running a simulation at a
-# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl) 
-# or [LandModel](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.jl)
+# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](@ref "Fluxnet simulations with an integrated soil and canopy model")
+# or [LandModel](@ref "Fluxnet simulations with the full land model: snow, soil, canopy")
 # To access the forcing data (LAI from MODIS, SW\_d, LW\_d, T\_air, q\_air,
 # P\_air, and precipitation from fluxtower data), you first need the
 # the fluxtower site ID.
@@ -43,7 +43,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 
 # ClimaLand also needs to know the height at which the atmospheric data
-# was recorded. 
+# was recorded.
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # It is also useful to know the bounds of the data,

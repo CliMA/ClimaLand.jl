@@ -5,8 +5,22 @@ using Distributed
 @everywhere using Documenter
 @everywhere using Literate
 @everywhere using ClimaLand
+@everywhere using DocumenterInterLinks
+@everywhere using DocumenterCitations
 include("pages_helper.jl")
 include("list_tutorials.jl")
+
+links = InterLinks(
+                   "Julia" => (
+                               "https://docs.julialang.org/en/v1/",
+                              ),
+                   "ClimaCore" => ("https://clima.github.io/ClimaCore.jl/dev/",),
+                  );
+
+bib = CitationBibliography(
+    joinpath(@__DIR__, "src", "refs.bib");
+    style=:numeric
+)
 
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLand)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
@@ -102,7 +116,8 @@ makedocs(
     doctest = true,
     warnonly = true,
     clean = true,
-    modules = [ClimaLand],
+    modules = [ClimaLand];
+    plugins = [bib],
 )
 
 deploydocs(

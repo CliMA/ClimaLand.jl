@@ -9,7 +9,7 @@
 # and we'll highlight the changes between them.
 
 # Note: we use SI units unless otherwise specified.
-# See our [Physical Units](https://clima.github.io/ClimaLand.jl/stable/physical_units/) documentation for more information.
+# See our [Physical Units](@ref "Physical units") documentation for more information.
 
 # First import the Julia packages we'll need.
 import ClimaParams as CP

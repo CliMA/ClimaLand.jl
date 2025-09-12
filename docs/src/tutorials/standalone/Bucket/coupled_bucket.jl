@@ -1,11 +1,11 @@
 # # Setting up a Coupled Simulation
 
 # For more information about the bucket model,
-# please see [the bucket model tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/bucket_tutorial/).
+# please see [the bucket model tutorial](@ref "Introduction to the Land Bucket Model").
 
 # This tutorial shows how to set up a simulation for a coupled simulation. More detail for coupled runs can be
-# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/stable/). In
-# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/LSM_single_column_tutorial/) as well as being familiar
+# found in the ClimaCoupler.jl [documentation](@extref ClimaCoupler.ClimaCoupler.jl). In
+# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](@ref "Global full land (snow+soil+canopy) run") as well as being familiar
 # with multiple dispatch programming in Julia.
 
 # # Background
@@ -59,8 +59,8 @@
 # prescribed_radiation = PrescribedRadiativeFluxes{FT}(*driver data passed in here*)
 # ```
 
-# These are stored in the [BucketModel](https://clima.github.io/ClimaLand.jl/stable/APIs/Bucket/#ClimaLand.Bucket.BucketModel) object,
-# along with [BucketParameters](https://clima.github.io/ClimaLand.jl/stable/APIs/Bucket/#ClimaLand.Bucket.BucketParameters).
+# These are stored in the [BucketModel](@ref `ClimaLand.BucketModel`) object,
+# along with [BucketParameters](@ref `ClimaLand.Bucket.BucketModelParameters`).
 # In order to compute turbulent surface fluxes, we call [turbulent_fluxes!](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.turbulent_fluxes!),
 # with arguments including `prescribed_atmos`. Since this argument is of the type `PrescribedAtmosphere`, the method of `turbulent_fluxes` which is executed is one which computes the turbulent surface fluxes
 # using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
