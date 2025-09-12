@@ -222,7 +222,7 @@ import ClimaParams
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -1456,7 +1456,7 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -1534,7 +1534,7 @@ end
             :LW_d,
             :cosθs,
             :frac_diff,
-            :ψ,
+            :θ,
             :T_ground,
         )
         # Check that structure of Y is valid (will error if not)

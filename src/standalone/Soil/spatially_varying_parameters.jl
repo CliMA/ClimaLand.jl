@@ -27,17 +27,17 @@ of CLM data for the PAR and NIR albedo of wet and dry soil.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`interpolation_method` 
+`interpolation_method`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data, and (3) changed the spatial interpolation method. 
+data, and (3) changed the spatial interpolation method.
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 
-Since these parameters are read from discretized data sets, 
+Since these parameters are read from discretized data sets,
 they carry an inherent land/sea mask. This land/sea mask may not match the
-underlying land sea mask of the simulation. 
+underlying land sea mask of the simulation.
 """
 function clm_soil_albedo_parameters(
     surface_space;
@@ -94,7 +94,7 @@ Reads spatially varying van Genuchten parameters for the soil model, from NetCDF
 based the van Genuchten data product from Gupta et al 2020,
  and regrids them to the grid defined by the
 `subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
-Returns a NamedTuple of ClimaCore Fields. 
+Returns a NamedTuple of ClimaCore Fields.
 
 In particular, this file returns a field for
 - (α, n, m) (van Genuchten parameters)
@@ -104,17 +104,17 @@ In particular, this file returns a field for
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`interpolation_method` 
+`interpolation_method`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.
 
-Since these parameters are read from discretized data sets, 
+Since these parameters are read from discretized data sets,
 they carry an inherent land/sea mask. This land/sea mask may not match the
 underlying land sea mask of the simulation. While values over the ocean do
 not matter, we need to ensure that values in the simulation are set to
 something physical, even if they are not set in the data.
-In the future, this should be handled by ClimaUtilities via extrpolation.
+In the future, this should be handled by ClimaUtilities via extrapolation.
 Here we set them manually.
 """
 function soil_vangenuchten_parameters(
@@ -250,14 +250,14 @@ Reads spatially varying parameters for the soil model, from NetCDF files
 based on SoilGrids,
  and regrids them to the grid defined by the
 `subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
-Returns a NamedTuple of ClimaCore Fields. 
+Returns a NamedTuple of ClimaCore Fields.
 
 In particular, this file returns a field for
 - various texture variables: volumetric fractions of organic matter, coarse fragments, and quartz.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`interpolation_method` 
+`interpolation_method`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.
@@ -338,7 +338,7 @@ parameterization; this is read from a nc file and then regridded
 to the simulation grid.
 
 The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`interpolation_method` 
+`interpolation_method`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data, and (3) changed the spatial interpolation method.

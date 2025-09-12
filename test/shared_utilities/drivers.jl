@@ -257,8 +257,8 @@ end
         dest = [-1.0]
         t = 2.0
 
-        evaluate!(dest, soil_driver.ψ, t)
-        @test dest[1] == FT(0.0)
+        evaluate!(dest, soil_driver.θ, t)
+        @test dest[1] == FT(0.4)
         evaluate!(dest, soil_driver.T, t)
         @test dest[1] == FT(298.0)
 
@@ -272,7 +272,7 @@ end
         zero_instance = ClimaCore.Fields.zeros(axes(coords.surface))
         p_soil_driver = (;
             drivers = (;
-                ψ = copy(zero_instance),
+                θ = copy(zero_instance),
                 T_ground = copy(zero_instance),
             )
         )
@@ -280,20 +280,17 @@ end
               p_soil_driver.drivers
         update_drivers! = make_update_drivers((soil_driver,))
         update_drivers!(p_soil_driver, 0.0)
-        @test p_soil_driver.drivers.ψ == zero_instance
+        @test p_soil_driver.drivers.θ == zero_instance .+ FT(0.4)
         @test p_soil_driver.drivers.T_ground == zero_instance .+ 298
 
         @test ClimaLand.initialize_drivers((prognostic_soil_driver,), coords) ==
               (;)
         update_drivers! = make_update_drivers((prognostic_soil_driver,))
-        p_soil_driver.drivers.ψ .= -1
+        p_soil_driver.drivers.θ .= FT(0.1)
         p_soil_driver.drivers.T_ground .= -1
         update_drivers!(p_soil_driver, 0.0)
         # no change
-        @test p_soil_driver.drivers.ψ == (zero_instance .- 1)
+        @test p_soil_driver.drivers.θ == (zero_instance .+ FT(0.1))
         @test p_soil_driver.drivers.T_ground == (zero_instance .- 1)
-
-
-
     end
 end

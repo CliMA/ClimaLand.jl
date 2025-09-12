@@ -51,7 +51,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     K_sat::F
     "The specific storativity (1/m)"
     S_s::F
-    "The residual water fraction (m^3/m^3"
+    "The residual water fraction (m^3/m^3)"
     θ_r::F
     "Ice impedance factor for the hydraulic conductivity"
     Ω::FT
@@ -106,7 +106,7 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
 Additional parameters must be added manually: `ν`, `ν_ss_om`, `ν_ss_quartz`,
 `ν_ss_gravel`, `hydrology_cm``, `K_sat`, `S_s`, and `θ_r`. All parameters can be
-manually overriden via keyword arguments. Note, however, that certain parameters
+manually overridden via keyword arguments. Note, however, that certain parameters
 must have the same type (e.g, if a field is supplied for porosity, it must be
 supplied for all other parameters defined in the interior of the domain). Some
 parameters are defined only on the surface of the domain (e.g albedo), while
