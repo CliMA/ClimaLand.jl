@@ -762,7 +762,6 @@ function CanopyModel{FT}(
         prognostic_land_components,
     )
 
-    # TODO: move z_0m, z_0b to ClimaParams so we can call `get_default_parameter`.
     earth_param_set = LP.LandParameters(toml_dict)
     parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z_0m,

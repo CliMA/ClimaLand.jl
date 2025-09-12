@@ -115,44 +115,6 @@ function LandParameters(toml_dict::CP.ParamDict)
 end
 
 """
-    get_default_parameter(FT, climaparams_name)
-
-Helper function for accessing and returning the default
-parameter value (a float of type `FT`) from  the ClimaParams
-dictionary. To look up the value, you must use the name
-of the parameter from ClimaParams (`climaparams_name`).
-For example, the following keys in the ClimaParams dictionary map
-to the variables in the parameter structs as noted below:
-
-:soil_momentum_roughness_length => :z_0m (EnergyHydrologyParameters)
-:soil_scalar_roughness_length => :z_0b (EnergyHydrologyParameters)
-:emissivity_bare_soil => :emissivity (EnergyHydrologyParameters)
-
-:snow_momentum_roughness_length => :z_0m (SnowParameters)
-:snow_scalar_roughness_length => :z_0b (SnowParameters)
-:snow_emissivity => :ϵ_snow (SnowParameters)
-:holding_capacity_of_water_in_snow => :θ_r (SnowParameters)
-:wet_snow_hydraulic_conductivity => :Ksat (SnowParameters)
-
-:canopy_emissivity => :ϵ_canopy (TwoStreamParameters, BeerLambertParameters)
-:min_stomatal_conductance => :g0 (MedlynConductanceParameters)
-:low_water_pressure_sensitivity => :sc (FarquharParameters)
-:moisture_stress_ref_water_pressure => :pc (FarquharParameters)
-
-:soil_conductivity => :κ_soil (BucketModelParameters)
-:soil_heat_capacity => :ρc_soil (BucketModelParameters)
-:critical_snow_water_equivalent => :σS_c (BucketModelParameters)
-:land_bucket_capacity => :W_f (BucketModelParameters)
-:critical_snow_fraction => :f_snow (BucketModelParameters)
-:bucket_capacity_fraction => :f_bucket (BucketModelParameters)
-:bucket_beta_decay_exponent => :p (BucketModelParameters)
-"""
-function get_default_parameter(FT, climaparams_name)
-    toml_dict = CP.create_toml_dict(FT)
-    return CP.get_parameter_values(toml_dict, string(climaparams_name))[climaparams_name]
-end
-
-"""
     create_toml_dict(FT; override_files = [])
 
 Construct a `ParamDict{FT}` struct from the default parameters with any

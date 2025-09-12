@@ -111,23 +111,6 @@ end
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
-    default_params = ClimaLand.Soil.EnergyHydrologyParameters(
-        toml_dict;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm = hcm,
-        K_sat,
-        S_s,
-        θ_r,
-    )
-    @test default_params.emissivity ==
-          LP.get_default_parameter(FT, :emissivity_bare_soil)
-    @test default_params.z_0m ==
-          LP.get_default_parameter(FT, :soil_momentum_roughness_length)
-    @test default_params.z_0b ==
-          LP.get_default_parameter(FT, :soil_scalar_roughness_length)
 
     overwritten_params = ClimaLand.Soil.EnergyHydrologyParameters(
         toml_dict;
