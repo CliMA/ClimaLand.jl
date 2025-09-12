@@ -112,17 +112,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     energy,
 );
 
-(; retention_model, ν, S_s) = canopy.hydraulics.parameters;
-ψ_leaf_0 = FT(-2e5 / 9800)
-ψ_stem_0 = FT(-1e5 / 9800)
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
-
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -132,6 +121,18 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 function set_ic!(Y, p, t0, model)
+    atmos = model.boundary_conditions.atmos
+    (; retention_model, ν, S_s) = model.hydraulics.parameters
+    ψ_leaf_0 = FT(-2e5 / 9800)
+    ψ_stem_0 = FT(-1e5 / 9800)
+    S_l_ini =
+        inverse_water_retention_curve.(
+            retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            ν,
+            S_s,
+        )
+
     Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
