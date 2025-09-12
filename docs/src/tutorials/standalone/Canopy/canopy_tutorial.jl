@@ -234,7 +234,7 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     start_date;
     output_vars = ["gpp", "trans"],
     output_writer = diag_writer,
-    average_period = :hourly,
+    reduction_period = :hourly,
 );
 
 # Create the callback function which updates the forcing variables,

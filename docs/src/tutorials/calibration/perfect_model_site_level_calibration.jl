@@ -1,5 +1,5 @@
 # # Perfect Model Site-Level Calibration Tutorial
-# 
+#
 # This tutorial demonstrates how to perform a perfect model calibration
 # experiment using ClimaLand. In a perfect model experiment, we generate
 # synthetic observations from our model with known parameters, then use ensemble
@@ -9,32 +9,32 @@
 
 # In this tutorial we will calibrate the Vcmax25 parameter using latent heat
 # flux observations from the FLUXNET site (US-MOz).
-# 
+#
 # ## Overview
-# 
+#
 # The tutorial covers:
 # 1. Setting up a land surface model for a FLUXNET site (US-MOz)
 # 2. Creating a synthetic observation dataset
 # 3. Implementing Ensemble Kalman Inversion
 # 4. Analyzing the calibration results
-# 
+#
 #nb # ## Prerequisites
-#nb # 
+#nb #
 #nb # First, ensure you have the required packages installed:
 
-#nb ENV["JULIA_PKG_PRECOMPILE_AUTO"]=0 
-#nb using Pkg 
-#nb required_pkgs = ["ClimaLand", "ClimaDiagnostics", "CairoMakie", 
-#nb "EnsembleKalmanProcesses", "Random", "Logging"] 
-#nb Pkg.add(required_pkgs) 
-#nb plotting_pkgs = ["ClimaAnalysis", "GeoMakie", "Printf", "StatsBase"] 
-#nb Pkg.add(plotting_pkgs) 
-#nb Pkg.add(Pkg.PackageSpec(;name="ClimaLand", rev="main")) # TODO REMOVE THIS AFTER RELEASE 
-#nb Pkg.instantiate() 
+#nb ENV["JULIA_PKG_PRECOMPILE_AUTO"]=0
+#nb using Pkg
+#nb required_pkgs = ["ClimaLand", "ClimaDiagnostics", "CairoMakie",
+#nb "EnsembleKalmanProcesses", "Random", "Logging"]
+#nb Pkg.add(required_pkgs)
+#nb plotting_pkgs = ["ClimaAnalysis", "GeoMakie", "Printf", "StatsBase"]
+#nb Pkg.add(plotting_pkgs)
+#nb Pkg.add(Pkg.PackageSpec(;name="ClimaLand", rev="main")) # TODO REMOVE THIS AFTER RELEASE
+#nb Pkg.instantiate()
 #nb Pkg.precompile()
 
 # ## Setup and Imports
-# 
+#
 # Load all the necessary packages for land surface modeling, diagnostics,
 # plotting, and ensemble methods:
 
@@ -57,7 +57,7 @@ using Dates
 using ClimaAnalysis, GeoMakie, Printf, StatsBase
 
 # ## Configuration and Site Setup
-# 
+#
 # Configure the experiment parameters and set up the FLUXNET site (US-MOz) with
 # its specific location, time settings, and atmospheric conditions.
 
@@ -87,7 +87,7 @@ stop_date = DateTime(2010, 4, 1, 6, 30)  # Set the stop date manually
 Δt = 450.0  # seconds
 
 # ## Domain and Forcing Setup
-# 
+#
 # Create the computational domain and load the necessary forcing data for the
 # land surface model.
 
@@ -117,7 +117,7 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
 );
 
 # ## Model Setup
-# 
+#
 # Create an integrated land model that couples canopy, snow, soil, and soil CO2
 # components. This comprehensive model allows us to simulate the full land
 # surface system and its interactions.
@@ -174,7 +174,7 @@ function model(Vcmax25)
         start_date;
         output_writer = ClimaDiagnostics.Writers.DictWriter(),
         output_vars,
-        average_period = :hourly,
+        reduction_period = :hourly,
     )
 
     #md # Create and run the simulation
@@ -192,7 +192,7 @@ function model(Vcmax25)
 end
 
 # ## Observation and Helper Functions
-# 
+#
 # Define the observation function `G` that maps from parameter space to
 # observation space, along with supporting functions for data processing:
 
@@ -237,7 +237,7 @@ function get_diurnal_average(var, start_date, spinup_date)
 end
 
 # ## Perfect Model Experiment Setup
-# 
+#
 # Since this is a perfect model experiment, we generate synthetic observations
 # from our target parameter value. This parameter will be recovered by the
 # calibration.
@@ -249,7 +249,7 @@ observations = G(true_Vcmax25)
 noise_covariance = 0.05 * EKP.I
 
 # ## Prior Distribution and Calibration Configuration
-# 
+#
 # Set up the prior distribution for the parameter and configure the ensemble
 # Kalman inversion:
 
@@ -261,7 +261,7 @@ ensemble_size = 10
 N_iterations = 3
 
 # ## Ensemble Kalman Inversion
-# 
+#
 # Initialize and run the ensemble Kalman process:
 
 # Sample the initial parameter ensemble from the prior distribution
@@ -296,7 +296,7 @@ EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)
 
 # Now, let's analyze the calibration results by examining parameter evolution
 # and comparing model outputs across iterations.
-# 
+#
 # Plot the parameter ensemble evolution over iterations to visualize
 # convergence:
 
