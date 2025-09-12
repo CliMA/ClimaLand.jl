@@ -1088,7 +1088,7 @@ end
 """
     intrinsic_quantum_yield(
         is_c3::FT, T::FT, parameters) where {FT}
-Computes the intrinsic quantum yield of photosystem II 
+Computes the intrinsic quantum yield of photosystem II.
 """
 function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
     is_c3 > 0.5 ?
@@ -1101,7 +1101,7 @@ function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
     ) :
     c3c4_intrinsic_quantum_yield(
         T,
-        FT(1),
+        parameters.ϕc,
         parameters.ϕa0_c4,
         parameters.ϕa1_c4,
         parameters.ϕa2_c4,

@@ -139,7 +139,7 @@ end
         ϕa0_c3 = FT(0.352),
         ϕa1_c3 = FT(0.022),
         ϕa2_c3 = FT(-0.00034),
-        ϕa0_c4 = FT(-0.0805),
+        ϕa0_c4 = FT(0.352),
         ϕa1_c4 = FT(0.022),
         ϕa2_c4 = FT(-0.00034),
         α = FT(0.933),
@@ -158,7 +158,7 @@ The following default parameters are used:
 - ϕa0_c3 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
 - ϕa1_c3 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
 - ϕa2_c3 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa0_c4 = -0.0805 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa0_c4 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - ϕa1_c4 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - ϕa2_c4 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
@@ -175,7 +175,7 @@ function PModel{FT}(
     ϕa0_c3 = FT(0.352),
     ϕa1_c3 = FT(0.022),
     ϕa2_c3 = FT(-0.00034),
-    ϕa0_c4 = FT(-0.0805),
+    ϕa0_c4 = FT(0.352),
     ϕa1_c4 = FT(0.022),
     ϕa2_c4 = FT(-0.00034),
     α = FT(0.933),

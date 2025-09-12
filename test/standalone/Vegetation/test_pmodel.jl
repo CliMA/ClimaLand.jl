@@ -73,7 +73,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa1_c3 = FT(0.022)
         ϕa2_c3 = FT(-0.00034)
         # Scott and Smith 2022
-        ϕa0_c4 = FT(-0.0805)
+        ϕa0_c4 = FT(0.352)
         ϕa1_c4 = FT(0.022)
         ϕa2_c4 = FT(-0.00034)
     else
