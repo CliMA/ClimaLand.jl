@@ -22,7 +22,7 @@ dt = Float64(10)
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     earth_param_set = LP.LandParameters(FT)
 
-    # Make soil model args
+    # Make soil model
     ν = FT(0.556)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -32,7 +32,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
-    soil_ps = Soil.EnergyHydrologyParameters(
+    soil_parameters = Soil.EnergyHydrologyParameters(
         FT;
         ν,
         ν_ss_om,
@@ -48,7 +48,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     zmin = FT(-1)
     nelems = 20
 
-    lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
     top_flux_bc_w = Soil.WaterFluxBC((p, t) -> -0.00001)
     bot_flux_bc_w = Soil.FreeDrainage()
@@ -58,27 +58,16 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
 
 
     sources = (PhaseChange{FT}(),)
-    boundary_fluxes = (;
+    boundary_conditions = (;
         top = WaterHeatBC(; water = top_flux_bc_w, heat = bot_flux_bc_h),
         bottom = WaterHeatBC(; water = bot_flux_bc_w, heat = bot_flux_bc_h),
     )
-    soil_args = (;
-        boundary_conditions = boundary_fluxes,
-        sources = sources,
-        domain = lsm_domain,
-        parameters = soil_ps,
+    soil = EnergyHydrology{FT}(;
+        boundary_conditions,
+        sources,
+        domain,
+        parameters = soil_parameters,
     )
-
-    # Make biogeochemistry model args
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-    C = FT(100)
-
-    co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
-    co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
-    co2_sources = (MicrobeProduction{FT}(),)
-    co2_boundary_conditions = (; top = co2_top_bc, bottom = co2_bot_bc)
 
     # Make a PrescribedAtmosphere - we only care about atmos_p though
     precipitation_function = (t) -> 1.0
@@ -103,20 +92,29 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         earth_param_set;
         c_co2 = TimeVaryingInput(atmos_co2),
     )
-    soilco2_args = (;
+
+    # Make biogeochemistry model
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+    C = FT(100)
+
+    co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
+    co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
+    co2_boundary_conditions = (; top = co2_top_bc, bottom = co2_bot_bc)
+    drivers = Soil.Biogeochemistry.SoilDrivers(
+        PrognosticMet(soil_parameters),
+        Csom,
+        atmos,
+    )
+    soilco2 = SoilCO2Model{FT}(
+        domain,
+        drivers;
         boundary_conditions = co2_boundary_conditions,
-        sources = co2_sources,
-        domain = lsm_domain,
         parameters = co2_parameters,
     )
 
-    # Create integrated model instance
-    land_args = (atmos = atmos, soil_organic_carbon = Csom)
-    model = LandSoilBiogeochemistry{FT}(;
-        land_args = land_args,
-        soil_args = soil_args,
-        soilco2_args = soilco2_args,
-    )
+    model = LandSoilBiogeochemistry{FT}(soil, soilco2)
 
     function init_soil!(Y, z, params)
         ν = params.ν
