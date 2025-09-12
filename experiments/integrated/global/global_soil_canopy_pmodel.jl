@@ -89,7 +89,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
 soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers)
 
 # Now we set up the canopy model, which mostly use defaults for:
-ground = ClimaLand.PrognosticSoilConditions{FT}()
+ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 

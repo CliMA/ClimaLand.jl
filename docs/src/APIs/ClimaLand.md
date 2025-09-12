@@ -50,7 +50,6 @@ ClimaLand.RunoffBC
 
 ```@docs
 ClimaLand.RootExtraction
-ClimaLand.PrognosticSoilConditions
 ```
 
 ## LandSoilBiogeochemistry
