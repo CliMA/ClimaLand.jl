@@ -68,7 +68,7 @@ struct SoilCanopyModel{
         @assert Soil.PhaseChange{FT}() in soil.sources
         @assert canopy.hydraulics.transpiration isa
                 Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
-        @assert canopy_bc.ground isa PrognosticSoilConditions{FT}
+        @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa Soil.Biogeochemistry.PrognosticMet
 
         return new{FT, MM, SM, VM}(soilco2, soil, canopy)
@@ -101,7 +101,7 @@ end
             (;
                 atmos = forcing.atmos,
                 radiation = forcing.radiation,
-                ground = ClimaLand.PrognosticSoilConditions{FT}(),
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
             ),
             LAI,
             toml_dict;
@@ -142,7 +142,7 @@ function SoilCanopyModel{FT}(
         (;
             atmos = forcing.atmos,
             radiation = forcing.radiation,
-            ground = ClimaLand.PrognosticSoilConditions{FT}(),
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
         ),
         LAI,
         toml_dict;
@@ -218,7 +218,7 @@ function SoilCanopyModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions = PrognosticSoilConditions{FT}()
+    ground_conditions = PrognosticGroundConditions{FT}()
     if :energy in propertynames(canopy_component_args)
         energy_model = canopy_component_types.energy(
             canopy_component_args.energy.parameters,

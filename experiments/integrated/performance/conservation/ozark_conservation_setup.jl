@@ -193,7 +193,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 # Set up energy model
 energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
 
-ground = ClimaLand.PrognosticSoilConditions{FT}()
+ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
 # Construct the canopy model using defaults for autotrophic respiration and SIF models
 canopy = Canopy.CanopyModel{FT}(

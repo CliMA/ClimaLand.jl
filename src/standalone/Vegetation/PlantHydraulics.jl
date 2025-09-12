@@ -6,7 +6,7 @@ import ClimaUtilities.TimeVaryingInputs:
 import ClimaUtilities.TimeManager: ITime
 import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy: AbstractCanopyComponent, set_canopy_prescribed_field!
-using ClimaLand: AbstractGroundConditions, PrescribedGroundConditions
+using ClimaLand: PrescribedGroundConditions
 using ClimaCore
 import ClimaLand.Parameters as LP
 import ClimaParams as CP

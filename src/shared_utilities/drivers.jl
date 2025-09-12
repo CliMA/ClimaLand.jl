@@ -1128,21 +1128,13 @@ function PrescribedGroundConditions{FT}(;
 end
 
 """
-     PrognosticSoilConditions <: AbstractGroundConditions
-
- A type of AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is used for dispatch
-with the canopy model.
-"""
-struct PrognosticSoilConditions{FT} <: AbstractGroundConditions{FT} end
-
-"""
      PrognosticGroundConditions <: Canopy.AbstractGroundConditions
 
-A type of AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`, and the snow model is prognostic and included.
+A type of AbstractGroundConditions to use when running the CanopyModel
+as part of an integrated model, i.e. with a prognostic `EnergyHydrology`
+soil model and either with or without a snow model.
 
-Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
+Note that this struct is linked with the `EnergyHydrology`/`SnowModel` models. If we ever had a different
 soil model, we might need to construct a different `PrognosticGroundConditions` because
 the fields may be stored in different places.
 """

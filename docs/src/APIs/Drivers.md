@@ -11,6 +11,7 @@ ClimaLand.PrescribedRadiativeFluxes
 ClimaLand.PrescribedSoilOrganicCarbon
 ClimaLand.CoupledAtmosphere
 ClimaLand.CoupledRadiativeFluxes
+ClimaLand.PrognosticGroundConditions
 ClimaLand.AbstractAtmosphericDrivers
 ClimaLand.AbstractRadiativeDrivers
 ClimaLand.turbulent_fluxes!

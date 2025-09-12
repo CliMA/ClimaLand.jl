@@ -262,7 +262,7 @@ end
             (;
                 atmos = forcing.atmos,
                 radiation = forcing.radiation,
-                ground = ClimaLand.PrognosticSoilConditions{FT}(),
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
             ),
             LAI,
             toml_dict;
