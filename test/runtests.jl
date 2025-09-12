@@ -120,6 +120,9 @@ end
 @safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
 end
+@safetestset "PFT tests" begin
+    include("standalone/Vegetation/test_pfts.jl")
+end
 
 # Integrated LSM tests
 @safetestset "Integrated LSM unit tests" begin
