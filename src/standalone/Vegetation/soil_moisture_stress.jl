@@ -186,6 +186,8 @@ end
     )
 
 This updates the soil moisture stress factor according to the piecewise soil moisture stress model.
+It calls the function `update_piecewise_soil_moisture_stress!`, which has different methods
+for `PrognosticGroundConditions` and `PrescribedGroundConditions`.
 """
 function update_soil_moisture_stress!(
     p,
@@ -200,8 +202,9 @@ end
 """
     update_piecewise_soil_moisture_stress!(ground::PrescribedGroundConditions, p, Y, model, canopy)
 
-Updates the soil moisture stress using the piecewise model for Prescribed
-GroundConditions (p.drivers.θ prescribed).
+Updates the soil moisture stress using the piecewise model for PrescribedGroundConditions.
+Since θ is prescribed, we access the relevant parameters from the moisture
+stress model and compute the stress factor directly from `p.drivers.θ`.
 """
 function update_piecewise_soil_moisture_stress!(
     ground::PrescribedGroundConditions,
@@ -210,7 +213,10 @@ function update_piecewise_soil_moisture_stress!(
     model,
     canopy,
 )
-    @error(
-        "You cannot use the PiecewiseSoilMoistureStress model with a prescribed soil yet."
+    @. p.canopy.soil_moisture_stress.βm = compute_piecewise_moisture_stress(
+        model.θ_high,
+        model.θ_low,
+        model.c,
+        p.drivers.θ,
     )
 end

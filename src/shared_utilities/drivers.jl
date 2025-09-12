@@ -1078,17 +1078,23 @@ abstract type AbstractGroundConditions{FT} <: AbstractClimaLandDrivers{FT} end
      PrescribedGroundConditions <: AbstractGroundConditions
 
 A container for holding prescribed ground conditions needed by the canopy model
-when running the canopy in standalone mode, including the soil pressure, surface
-temperature, albedo, and emissivity.
+when running the canopy in standalone mode, including the surface temperature,
+albedo, and emissivity, and soil water content, porosity, residual water fraction,
+and hydrology closure model.
+
+Note that internally we enforce that the soil water content `θ` must be within the
+range `(θ\\_r, ν]`.
+
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedGroundConditions{
     FT,
     F1 <: AbstractTimeVaryingInput,
     F2 <: AbstractTimeVaryingInput,
+    C,
 } <: AbstractGroundConditions{FT}
-    "Prescribed soil potential (m) in the root zone as a function of time"
-    ψ::F1
+    "Prescribed soil water content (m^3/m^3) in the root zone as a function of time"
+    θ::F1
     "Prescribed ground surface temperature (K) as a function of time"
     T::F2
     "Ground albedo for PAR"
@@ -1097,33 +1103,55 @@ struct PrescribedGroundConditions{
     α_NIR::FT
     "Ground emissivity"
     ϵ::FT
+    "Soil porosity (m^3/m^3"
+    ν::FT
+    "The soil residual water fraction (m^3/m^3)"
+    θ_r::FT
+    "The soil hydrology closure model: van Genuchten or Brooks and Corey"
+    hydrology_cm::C
 end
 
 """
-     function PrescribedGroundConditions{FT}(;
-         ψ::TimeVaryingInput,
-         T::TimeVaryingInput,
-         α_PAR::FT,
-         α_NIR::FT,
-         ϵ::FT
-     ) where {FT}
+    function PrescribedGroundConditions{FT}(;
+        ν = FT(0.4),
+        θ = TimeVaryingInput((t) -> ν),
+        T = TimeVaryingInput((t) -> 298.0),
+        α_PAR = FT(0.2),
+        α_NIR = FT(0.4),
+        ϵ = FT(0.99),
+        θ_r = FT(0),
+        hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(1.5)),
+    ) where {FT <: AbstractFloat}
 
 An outer constructor for the PrescribedGroundConditions allowing the user to
 specify the ground parameters by keyword arguments.
+
+The defaults should be overridden for physically meaningful results.
 """
 function PrescribedGroundConditions{FT}(;
-    ψ = TimeVaryingInput((t) -> 0.0),
+    ν = FT(0.4),
+    θ = TimeVaryingInput((t) -> ν),
     T = TimeVaryingInput((t) -> 298.0),
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),
+    θ_r = FT(0),
+    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(1.5)),
 ) where {FT <: AbstractFloat}
-    return PrescribedGroundConditions{FT, typeof(ψ), typeof(T)}(
-        ψ,
+    return PrescribedGroundConditions{
+        FT,
+        typeof(θ),
+        typeof(T),
+        typeof(hydrology_cm),
+    }(
+        θ,
         T,
         α_PAR,
         α_NIR,
         ϵ,
+        ν,
+        θ_r,
+        hydrology_cm,
     )
 end
 
@@ -1144,14 +1172,14 @@ struct PrognosticGroundConditions{FT} <: AbstractGroundConditions{FT} end
     initialize_drivers(a::PrescribedGroundConditions{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedGroundConditions` driver,
-with variables `ψ` (matric potential in the soil in the root zone), `T` (temperature
+with variables `θ` (water content in the soil in the root zone), `T` (temperature
 of the surface of the ground).
 """
 function initialize_drivers(
     a::PrescribedGroundConditions{FT},
     coords,
 ) where {FT}
-    keys = (:ψ, :T_ground)
+    keys = (:θ, :T_ground)
     types = (FT, FT)
     domain_names = (:surface, :surface)
     model_name = :drivers
@@ -1324,7 +1352,7 @@ in the case of a PrescribedGroundConditions.
 """
 function make_update_drivers(a::PrescribedGroundConditions{FT}) where {FT}
     function update_drivers!(p, t)
-        evaluate!(p.drivers.ψ, a.ψ, t)
+        evaluate!(p.drivers.θ, a.θ, t)
         evaluate!(p.drivers.T_ground, a.T, t)
     end
     return update_drivers!
