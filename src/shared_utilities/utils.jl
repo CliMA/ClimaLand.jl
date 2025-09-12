@@ -267,7 +267,7 @@ end
 
 """
     CheckpointCallback(checkpoint_period::Union{AbstractFloat, Dates.Period, ITime,
-                        output_dir, start_date; model, dt)
+                        output_dir, t0; model, dt)
 
 Constructs a DiscreteCallback which saves the state to disk with the
 `save_checkpoint` function.
@@ -276,13 +276,13 @@ Constructs a DiscreteCallback which saves the state to disk with the
 - `checkpoint_period`: The interval between times where checkpoints are saved. Can be
   specified as a float (in seconds) `Dates.Period`, or `ITime`.
 - `output_dir`: The directory where the checkpoint files will be saved.
-- `start_date`: The start date of the simulation.
+- `t0`: The start of the simulation.
 - `model`: The ClimaLand model object.
 - `dt`: The timestep of the model (optional), used to check for consistency.
 
 The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
 to save checkpoints based on the `checkpoint_period`. The schedule is
-initialized with the `start_date` to ensure that the first
+initialized with the `t0` to ensure that the first
 checkpoint is saved at the correct time.
 
 The `save_checkpoint` function is called with the current state vector `u`, the
@@ -291,7 +291,7 @@ current time `t`, and the `output_dir` to save the checkpoint to disk.
 function CheckpointCallback(
     checkpoint_period::Union{AbstractFloat, Dates.Period, ITime},
     output_dir,
-    start_date;
+    t0;
     model,
     dt = nothing,
 )
@@ -299,7 +299,7 @@ function CheckpointCallback(
         (integrator) ->
             save_checkpoint(integrator.u, integrator.t, output_dir; model)
     end
-    IntervalBasedCallback(checkpoint_period, start_date, dt, affect!)
+    IntervalBasedCallback(checkpoint_period, t0, dt, affect!)
 end
 
 
@@ -337,11 +337,11 @@ end
 """
     NonInterpSavingCallback(
         saved_values,
-        period::Union{ITime, Dates.Period};
+        period;
         dt = nothing,
-        start_date = nothing,
+        t0 = nothing,
         init_saving = false,
-        callback_start = start_date,
+        callback_start = t0,
     )
 
 Constructs a DiscreteCallback which saves the time and cache `p` at `callback_start`
@@ -360,14 +360,14 @@ function NonInterpSavingCallback(
     saved_values,
     period;
     dt = nothing,
-    start_date = nothing,
+    t0 = nothing,
     init_saving = false,
-    callback_start = start_date,
+    callback_start = t0,
 )
     affect! = SavingAffect(saved_values, 0)
     return IntervalBasedCallback(
         period,
-        start_date,
+        t0,
         dt,
         affect!;
         initialize = init_saving ? (_, _, _, x) -> affect!(x) :
@@ -622,7 +622,7 @@ end
 """
     NaNCheckCallback(
         nancheck_period;
-        start_date = nothing,
+        t0 = nothing,
         dt = nothing;
         mask = nothing,
     )
@@ -633,25 +633,23 @@ and produces a warning if any are found.
 # Arguments
 - `nancheck_period`: The interrval between times when the state is checked for NaNs.
   Can be specified as a float (in seconds) or a `Dates.Period`.
-- `start_date`: The start date of the simulation.
+- `t0`: The start of the simulation.
 - `dt`: The timestep of the model (optional), used to check for consistency.
 - `mask`: NaNs will not be counted in areas where `mask` is zero
 
-The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
-to check for NaNs based on the `nancheck_period`. The schedule is
-initialized with the `start_date` to ensure that it is first
-called at the correct time.
+The callback uses `ClimaDiagnostics` schedules to determine when
+to check for NaNs based on the `nancheck_period`.
 """
 function NaNCheckCallback(
-    nancheck_period;
-    start_date = nothing,
+    nancheck_period,
+    t0;
     dt = nothing,
     mask = nothing,
 )
 
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
-    return IntervalBasedCallback(nancheck_period, start_date, dt, affect!)
+    return IntervalBasedCallback(nancheck_period, t0, dt, affect!)
 end
 
 
@@ -749,7 +747,7 @@ end
 """
     IntervalBasedCallback(
         period,
-        start_date,
+        t0,
         dt;
         func,
         func_args...,
@@ -758,24 +756,24 @@ end
 A convenience function that creates an affect! function that takes `integrator` as the input,
 and calls `func(integrator; func_args...)`
 """
-IntervalBasedCallback(period, start_date, dt; func, func_args...) =
+IntervalBasedCallback(period, t0, dt; func, func_args...) =
     IntervalBasedCallback(
         period,
-        start_date,
+        t0,
         dt,
         (integrator) -> func(integrator; func_args...),
     )
 
 """
-    ReportCallback(period; start_date = nothing, dt = nothing)
+    ReportCallback(period, t0; dt = nothing)
 
 Return a callback that prints performance and progress summaries every `period`
 """
-function ReportCallback(period; start_date = nothing, dt = nothing)
+function ReportCallback(period, t0; dt = nothing)
     walltime_info = WallTimeInfo()
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
-    report_cb = IntervalBasedCallback(period, start_date, dt, report)
+    report_cb = IntervalBasedCallback(period, t0, dt, report)
     return report_cb
 end

@@ -132,12 +132,12 @@ function LandSimulation(
     ),
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
-            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1);
-            start_date = t0,
+            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1),
+            t0;
             dt = Δt,
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
-        ClimaLand.ReportCallback(div((tf - t0), 10)),
+        ClimaLand.ReportCallback(div((tf - t0), 10), t0),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
     updateat = ITime(3600 * 3),
