@@ -1,6 +1,6 @@
 """
 Adds tests for the PFTs module, ensuring that PFTs cannot be created without
-populating all required parameters, and ensuring that loading parameters based 
+populating all required parameters, and ensuring that loading parameters based
 on percentage PFT cover works as expected.
 """
 
@@ -20,6 +20,9 @@ pft_params = (
     α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
+    χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
+    ac_canopy = 2.5e3, # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
     # Stomatal Conductance Model
     g1 = 74.31, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -28,11 +31,10 @@ pft_params = (
     Vcmax25 = 5.1e-5, # mol CO2/m^2/s ⋅ CLM2 PFT Data
 
     # Plant Hydraulics and general plant parameters
-    SAI = 1.0,             # m^2/m^2
     f_root_to_shoot = 1.0, # Unitless ⋅ CLM2 PFT Data
     K_sat_plant = 5e-9,    # m/s
     ψ63 = -4 / 0.0098,     # / MPa to m
-    capacity = 10.0,       # kg/m^2r
+    plant_ν = 2e-4,        # Unitless
     rooting_depth = 3.90,  # m ⋅ Bonan Table 2.3
 )
 
@@ -63,6 +65,9 @@ pft_param_2 = (
     α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
+    χl = 0.1,         # Unitless ⋅ CLM2 PFT Data
+    ac_canopy = 2.5e3, # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
     # Stomatal Conductance Model
     g1 = 51.22, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -71,11 +76,10 @@ pft_param_2 = (
     Vcmax25 = 2.4e-5, # mol CO2/m^2/s ⋅ CLM2 PFT Data
 
     # Plant Hydraulics and general plant parameters
-    SAI = 0.0,               # m^2/m^2
     f_root_to_shoot = 3.0,   # Unitless ⋅ CLM2 PFT Data
     K_sat_plant = 5e-9,      # m/s
     ψ63 = -2.7 / 0.0098,     # / MPa to m
-    capacity = 2.0,          # kg/m^2
+    plant_ν = 2e-4,        # Unitless
     rooting_depth = 2.60,    # m ⋅ Bonan Table 2.3
 )
 
@@ -88,6 +92,9 @@ pft_param_3 = (
     α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ϵ_canopy = 0.975,  # Unitless ⋅ Ma et al. 2019
+    χl = 0.01,         # Unitless ⋅ CLM2 PFT Data
+    ac_canopy = 745,   # Jm^-2K^-1 ⋅ Bonan et al. 2018
 
     # Stomatal Conductance Model
     g1 = 148.63, # kPa^(1/2) ⋅ CLM5.0 Table 2.9.1
@@ -96,11 +103,10 @@ pft_param_3 = (
     Vcmax25 = 1.7e-5, # mol CO2/m^2/s ⋅ CLM2 PFT Data
 
     # Plant Hydraulics and general plant parameters
-    SAI = 1.0,             # m^2/m^2
     f_root_to_shoot = 1.0, # Unitless ⋅ CLM2 PFT Data
     K_sat_plant = 5e-9,    # m/s
     ψ63 = -4 / 0.0098,     # / MPa to m
-    capacity = 10.0,       # kg/m^2
+    plant_ν = 5e-4,        # Unitless
     rooting_depth = 5.20,  # m ⋅ Bonan Table 2.3
 )
 
