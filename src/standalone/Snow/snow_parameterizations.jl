@@ -253,10 +253,10 @@ of the snow, according to Equation
 Jordan (1991).
 
 We have adjusted the original equation to make the coefficients
-non-dimensional by multiplying by the first by x = ρ_ice/ρ_ice
-and the second by x², with ρ_ice in kg/m³.
+non-dimensional by multiplying by the first by x = ρ\\_ice/ρ\\_ice
+and the second by x², with ρ\\_ice in kg/m³.
 
-When ρ_snow = ρ_ice, we recover κ_snow = κ_ice.
+When ρ\\_snow = ρ\\_ice, we recover κ\\_snow = κ\\_ice.
 """
 function snow_thermal_conductivity(
     ρ_snow::FT,
