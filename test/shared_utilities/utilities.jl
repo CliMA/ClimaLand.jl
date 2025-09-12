@@ -3,7 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore: Spaces, Geometry, Fields
 using ClimaLand
-using ClimaLand: Domains, SavingAffect, FrequencyBasedCallback
+using ClimaLand: Domains, SavingAffect, IntervalBasedCallback
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 ## Callback tests
@@ -19,7 +19,7 @@ end
 
 FT = Float32
 
-@testset "FrequencyBasedCallback" begin
+@testset "IntervalBasedCallback" begin
     # with epoch test
     start_date = ITime(0, epoch = DateTime(2010))
     dt = ITime(3600)
@@ -35,7 +35,7 @@ FT = Float32
 
     # test update every two hours (every two dt)
     integrator = Integrator(start_date, [0])
-    cb = FrequencyBasedCallback(Hour(2), start_date, dt, increment_p)
+    cb = IntervalBasedCallback(Hour(2), start_date, dt, increment_p)
     step(integrator, cb)
     @test integrator.p == [0]
     step(integrator, cb)
@@ -47,7 +47,7 @@ FT = Float32
 
     # test monthly
     integrator = Integrator(start_date, [0])
-    cb = FrequencyBasedCallback(Month(1), start_date, dt, increment_p)
+    cb = IntervalBasedCallback(Month(1), start_date, dt, increment_p)
     for i in 1:(24 * 31)
         step(integrator, cb)
     end
@@ -57,7 +57,7 @@ FT = Float32
     t0 = ITime(0)
     integrator = Integrator(t0, [0])
     t0, dt = promote(t0, dt)
-    cb = FrequencyBasedCallback(dt * 2, t0, dt, increment_p)
+    cb = IntervalBasedCallback(dt * 2, t0, dt, increment_p)
     step(integrator, cb)
     @test integrator.p == [0]
     step(integrator, cb)

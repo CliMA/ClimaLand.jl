@@ -262,7 +262,7 @@ function DriverUpdateCallback(updatefunc, update_period, t0; dt = nothing)
         (cb, u, t, integrator) -> affect!(integrator)
 
 
-    FrequencyBasedCallback(update_period, t0, dt, affect!; initialize)
+    IntervalBasedCallback(update_period, t0, dt, affect!; initialize)
 end
 
 """
@@ -299,7 +299,7 @@ function CheckpointCallback(
         (integrator) ->
             save_checkpoint(integrator.u, integrator.t, output_dir; model)
     end
-    FrequencyBasedCallback(checkpoint_period, start_date, dt, affect!)
+    IntervalBasedCallback(checkpoint_period, start_date, dt, affect!)
 end
 
 
@@ -311,7 +311,6 @@ This struct is used by `NonInterpSavingCallback` to fill `saved_values` with
 values of `p` at various timesteps. The `saveiter` field allows us to
 allocate `saved_values` before the simulation and fill it during the run,
 rather than pushing to an initially empty structure.
-# TODO:
 """
 mutable struct SavingAffect{NT <: NamedTuple}
     saved_values::NT
@@ -324,7 +323,6 @@ end
 This function is used by `NonInterpSavingCallback` to perform the saving.
 """
 function (affect!::SavingAffect)(integrator)
-
     T_saved_t = Base.typesplit(eltype(affect!.saved_values.t), Nothing)
     affect!.saveiter += 1
     if integrator.t isa T_saved_t
@@ -335,9 +333,6 @@ function (affect!::SavingAffect)(integrator)
     end
     affect!.saved_values.saveval[affect!.saveiter] = deepcopy(integrator.p)
 end
-
-
-
 
 """
     NonInterpSavingCallback(
@@ -351,8 +346,8 @@ end
 
 Constructs a DiscreteCallback which saves the time and cache `p` at `callback_start`
 and every `period` after. `saved_values` must be a named tuple containing
-`t` and `saveval`, each having the same length as the total number of `period`s in the
-simulation.
+`t` and `saveval`, each with a length greater than the total number of `period`s
+from `callback_start` to the simulation end.
 
 Note that unlike SciMLBase's SavingCallback, this version does not
 interpolate if a time in saveat is not a multiple of our timestep. This
@@ -370,7 +365,7 @@ function NonInterpSavingCallback(
     callback_start = start_date,
 )
     affect! = SavingAffect(saved_values, 0)
-    return FrequencyBasedCallback(
+    return IntervalBasedCallback(
         period,
         start_date,
         dt,
@@ -656,7 +651,7 @@ function NaNCheckCallback(
 
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
-    return FrequencyBasedCallback(nancheck_period, start_date, dt, affect!)
+    return IntervalBasedCallback(nancheck_period, start_date, dt, affect!)
 end
 
 
@@ -665,7 +660,7 @@ end
 # the ClimaDiagnostics one because it is flexible and it supports calendar
 # dates.
 """
-    FrequencyBasedCallback(
+    IntervalBasedCallback(
         period::Union{AbstractFloat, Dates.Period, ITime},
         start_date,
         dt,
@@ -681,7 +676,7 @@ The returned callback has a condition function that is built on a ClimaDiagnosti
 to the DiscreteCallback as keyword arguments.
 TODO:
 """
-function FrequencyBasedCallback(
+function IntervalBasedCallback(
     period::Dates.Period,
     start_date,
     dt,
@@ -710,7 +705,7 @@ function FrequencyBasedCallback(
 end
 
 """
-    FrequencyBasedCallback(
+    IntervalBasedCallback(
         period::Union{AbstractFloat, ITime},
         t0::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
         dt,
@@ -725,7 +720,7 @@ The returned callback has a condition function that is built on a ClimaDiagnosti
 to the DiscreteCallback as keyword arguments.
 TODO:
 """
-function FrequencyBasedCallback(
+function IntervalBasedCallback(
     period,
     t0,
     dt,
@@ -752,7 +747,7 @@ end
 
 
 """
-    FrequencyBasedCallback(
+    IntervalBasedCallback(
         period,
         start_date,
         dt;
@@ -763,8 +758,8 @@ end
 A convenience function that creates an affect! function that takes `integrator` as the input,
 and calls `func(integrator; func_args...)`
 """
-FrequencyBasedCallback(period, start_date, dt; func, func_args...) =
-    FrequencyBasedCallback(
+IntervalBasedCallback(period, start_date, dt; func, func_args...) =
+    IntervalBasedCallback(
         period,
         start_date,
         dt,
@@ -781,6 +776,6 @@ function ReportCallback(period; start_date = nothing, dt = nothing)
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
-    report_cb = FrequencyBasedCallback(period, start_date, dt, report)
+    report_cb = IntervalBasedCallback(period, start_date, dt, report)
     return report_cb
 end

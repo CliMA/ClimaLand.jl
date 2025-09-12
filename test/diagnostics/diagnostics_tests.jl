@@ -117,13 +117,13 @@ using Statistics
 
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-drivers = ClimaLand.get_drivers(model)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
-timestepper = ClimaTimeSteppers.RK4()
-ode_algo = ClimaTimeSteppers.ExplicitAlgorithm(timestepper)
-SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+    drivers = ClimaLand.get_drivers(model)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
+    driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
+    cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
+    timestepper = ClimaTimeSteppers.RK4()
+    ode_algo = ClimaTimeSteppers.ExplicitAlgorithm(timestepper)
+    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
     using ClimaAnalysis
     simdir = ClimaAnalysis.SimDir(tmpdir)

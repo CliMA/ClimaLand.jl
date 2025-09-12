@@ -5,7 +5,7 @@ CurrentModule = ClimaLand
 ```
 
 ```@docs
-ClimaLand.FrequencyBasedCallback
+ClimaLand.IntervalBasedCallback
 ClimaLand.ReportCallback
 ClimaLand.NaNCheckCallback
 ClimaLand.NonInterpSavingCallback

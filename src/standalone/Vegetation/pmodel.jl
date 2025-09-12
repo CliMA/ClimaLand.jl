@@ -744,7 +744,7 @@ end
         longitude = nothing
     ) where {FT <: AbstractFloat}
 
-This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
+This constructs a IntervalBasedCallback for the P-model that updates the optimal photosynthetic capacities
 using an exponential moving average at local noon.
 
 We check for local noon using the provided `longitude` (once passing
@@ -795,7 +795,7 @@ function make_PModel_callback(
     start_t = seconds_after_midnight(start_date)
     local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
 
-    return FrequencyBasedCallback(
+    return IntervalBasedCallback(
         dt isa Dates.Period ? dt : Dates.Second(dt),         # period of this callback
         start_date, # initial datetime, UTC
         dt;         # integration timestep, in seconds
