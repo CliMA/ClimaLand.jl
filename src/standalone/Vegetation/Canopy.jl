@@ -34,7 +34,7 @@ import ClimaLand:
     get_model_callbacks,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-    FrequencyBasedCallback
+    IntervalBasedCallback
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!

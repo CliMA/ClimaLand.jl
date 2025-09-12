@@ -99,16 +99,22 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 )
-saveat = FT.(collect(t0:Δt:tf))
+
+saveat = Δt
+n_saves = length(t0:saveat:tf)
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-);
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-updateat = copy(saveat)
+    t = Array{Float64}(undef, n_saves),
+    saveval = Array{NamedTuple}(undef, n_saves),
+)
+saving_cb = ClimaLand.NonInterpSavingCallback(
+    sv,
+    saveat;
+    callback_start = t0,
+    init_saving = true,
+)
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 sol = SciMLBase.solve(

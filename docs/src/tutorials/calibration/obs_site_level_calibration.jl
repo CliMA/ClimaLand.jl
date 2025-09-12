@@ -205,16 +205,13 @@ function model(Vcmax25, g1)
     )
 
     #md # Create and run the simulation
-    data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
-    updateat = Array(start_date:Second(Δt):stop_date)
-    #md # Create and run the simulation
     simulation = Simulations.LandSimulation(
         start_date,
         stop_date,
         Δt,
         land_model;
         set_ic!,
-        updateat,
+        updateat = Second(Δt),
         user_callbacks = (),
         diagnostics,
     )

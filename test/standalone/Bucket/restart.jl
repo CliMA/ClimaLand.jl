@@ -69,18 +69,13 @@ if !known_broken
         (t0, tf),
         p,
     )
-    updateat = collect(t0:Δt:tf)
-    checkpoint_frequency = 2Δt
+
+    checkpoint_period = 2Δt
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    checkpoint_cb = ClimaLand.CheckpointCallback(
-        checkpoint_frequency,
-        output_dir,
-        start_date,
-        t0;
-        model,
-    )
+    driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
+    checkpoint_cb =
+        ClimaLand.CheckpointCallback(checkpoint_period, output_dir, t0; model)
     cb = SciMLBase.CallbackSet(driver_cb, checkpoint_cb)
 
     timestepper = ClimaTimeSteppers.RK4()
@@ -105,9 +100,7 @@ if !known_broken
         (t_restart, tf),
         p_restart,
     )
-    updateat_restarted = collect(t_restart:Δt:tf)
-    driver_cb_restarted =
-        ClimaLand.DriverUpdateCallback(updateat_restarted, updatefunc)
+    driver_cb_restarted = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
     cb_restarted = SciMLBase.CallbackSet(driver_cb_restarted)
     sol_restarted = SciMLBase.solve(
         prob_restart,
