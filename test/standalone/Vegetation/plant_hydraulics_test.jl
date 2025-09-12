@@ -102,6 +102,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Plant hydraulics model integration tests, FT = $FT" begin
+        toml_dict = LP.create_toml_dict(FT)
         domains = [
             Point(; z_sfc = FT(0.0)),
             Plane(;
@@ -112,18 +113,18 @@ for FT in (Float32, Float64)
             ),
         ]
 
-        AR_params = AutotrophicRespirationParameters(FT)
-        RTparams = BeerLambertParameters(FT)
+        AR_params = AutotrophicRespirationParameters(toml_dict)
+        RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesis_params = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        photosynthesis_params = FarquharParameters(toml_dict; is_c3)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
@@ -233,7 +234,7 @@ for FT in (Float32, Float64)
 
         soil_driver = PrescribedGroundConditions{FT}()
 
-        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         RD = FT(0.5)
@@ -382,18 +383,19 @@ for FT in (Float32, Float64)
     @testset "No plant, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        AR_params = AutotrophicRespirationParameters(FT)
-        RTparams = BeerLambertParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        AR_params = AutotrophicRespirationParameters(toml_dict)
+        RTparams = BeerLambertParameters(toml_dict)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesis_params = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        photosynthesis_params = FarquharParameters(toml_dict; is_c3)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(0.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
@@ -504,7 +506,7 @@ for FT in (Float32, Float64)
             compartment_midpoints = compartment_midpoints,
         )
 
-        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel(autotrophic_parameters)
 

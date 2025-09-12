@@ -3,6 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaLand
 import ClimaParams
+import ClimaLand.Parameters as LP
 import SciMLBase
 import ClimaTimeSteppers
 import Dates
@@ -32,7 +33,9 @@ if !known_broken
         nelements = (1, 10),
     )
 
-    bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    bucket_atmos, bucket_rad =
+        ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
     τc = FT(1.0)
     α_bareground_func = (coordinate_point) -> 0.2
     α_snow = FT(0.8)
@@ -43,8 +46,14 @@ if !known_broken
         α_bareground_func,
         bucket_domain.space.surface,
     )
-    bucket_parameters =
-        ClimaLand.Bucket.BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    toml_dict = LP.create_toml_dict(FT)
+    bucket_parameters = ClimaLand.Bucket.BucketModelParameters(
+        toml_dict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+    )
 
     model = ClimaLand.Bucket.BucketModel(
         parameters = bucket_parameters,

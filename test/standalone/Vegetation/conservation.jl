@@ -28,7 +28,8 @@ for FT in (Float32, Float64)
 
     domains = [col, box]
     t0 = 0.0
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     start_date = DateTime(2005)
     Δt = FT(180.0)
     "Radiation"
@@ -77,9 +78,10 @@ for FT in (Float32, Float64)
     Vcmax25 = FT(5e-6)
     g1 = FT(120)
     G_Function = ConstantGFunction(ld)
-    RTparams = BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
-    photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
-    stomatal_g_params = MedlynConductanceParameters(FT; g1)
+    RTparams =
+        BeerLambertParameters(toml_dict; α_PAR_leaf, α_NIR_leaf, G_Function)
+    photosynthesis_params = FarquharParameters(toml_dict; is_c3, Vcmax25)
+    stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
     stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
     photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
     rt_model = BeerLambertModel{FT}(RTparams)
@@ -94,7 +96,7 @@ for FT in (Float32, Float64)
         z_0b,
         earth_param_set,
     )
-    autotrophic_parameters = AutotrophicRespirationParameters(FT)
+    autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
     autotrophic_respiration_model =
         AutotrophicRespirationModel{FT}(autotrophic_parameters)
     RAI = FT(1)

@@ -67,6 +67,7 @@ import ClimaLand.Parameters as LP
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
+toml_dict = LP.create_toml_dict(FT);
 
 # Set the values of other parameters required by the model:
 ν = FT(0.535)
@@ -81,7 +82,7 @@ hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 ν_ss_quartz = FT(0.2)
 ν_ss_gravel = FT(0.0)
 params = Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,

@@ -331,9 +331,9 @@ if !isnothing(DataToolsExt)
     @testset "Testing NeuralSnow module" begin
         #Model setup:
         FT = Float32
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         start_date = DateTime(2005)
-        param_set = LP.LandParameters(FT)
         Δt = FT(180.0)
         domain = Point(; z_sfc = FT(0))
         "Radiation"
@@ -381,11 +381,7 @@ if !isnothing(DataToolsExt)
         @test dens_model2.α == FT(test_alph)
         @test dens_model2.z_model[:final_scale].weight[2, 2] == FT(1 / Δt)
 
-        parameters = SnowParameters{FT}(
-            Δt;
-            earth_param_set = param_set,
-            density = dens_model2,
-        )
+        parameters = SnowParameters(toml_dict, Δt; density = dens_model2)
         model = ClimaLand.Snow.SnowModel(
             parameters = parameters,
             domain = domain,

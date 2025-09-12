@@ -73,7 +73,8 @@ end
 FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
-earth_param_set = LP.LandParameters(FT);
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -113,7 +114,7 @@ function setup_prob(start_date, stop_date, Δt, outdir)
     # Construct albedo parameter object using temporal map
     albedo = PrescribedSurfaceAlbedo{FT}(start_date, surface_space)
 
-    bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
     # Precipitation:
     precip = (t) -> 0

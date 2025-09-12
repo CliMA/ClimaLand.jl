@@ -32,9 +32,7 @@ Note: we use SI units unless otherwise specified.
 See our [Physical Units](https://clima.github.io/ClimaLand.jl/stable/physical_units/) documentation for more information.
 ```julia
 FT = Float32
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath);
+toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict);
 ```
 

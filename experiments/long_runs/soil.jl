@@ -62,9 +62,7 @@ stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
 Δt = 450.0
 nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 params = LP.LandParameters(toml_dict)
 # Forcing data
 if LONGER_RUN

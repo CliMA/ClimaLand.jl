@@ -8,7 +8,8 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "integrated Energy and Hydrology Parameterizations, FT = $FT" begin
-        param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        param_set = LP.LandParameters(toml_dict)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -55,7 +56,7 @@ for FT in (Float32, Float64)
         κ_liq = FT(0.57)
 
         parameters = EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -281,7 +282,8 @@ for FT in (Float32, Float64)
     end
 
     @testset "Freezing and Thawing, FT = $FT" begin
-        param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        param_set = LP.LandParameters(toml_dict)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -311,7 +313,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.1)
         ν_ss_quartz = FT(0.1)
         parameters = EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,

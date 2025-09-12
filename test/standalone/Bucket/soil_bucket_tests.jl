@@ -23,7 +23,8 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     α_bareground_func = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
     σS_c = FT(0.2)
@@ -60,11 +61,14 @@ for FT in (Float32, Float64)
 
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
-            bucket_atmos, bucket_rad =
-                ClimaLand.prescribed_analytic_forcing(FT; h_atmos = FT(1e-8))
+            bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(
+                FT;
+                toml_dict,
+                h_atmos = FT(1e-8),
+            )
             τc = FT(1.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
             model = BucketModel(
                 parameters = bucket_parameters,
@@ -145,7 +149,7 @@ for FT in (Float32, Float64)
             )
             τc = FT(100.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domain,
