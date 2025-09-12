@@ -26,8 +26,8 @@ ClimaLand.Canopy.FarquharParameters(
 ClimaLand.Canopy.arrhenius_function
 ClimaLand.Canopy.intercellular_co2_farquhar
 ClimaLand.Canopy.co2_compensation_farquhar
-ClimaLand.Canopy.rubisco_assimilation
-ClimaLand.Canopy.light_assimilation
+ClimaLand.Canopy.rubisco_assimilation_farquhar
+ClimaLand.Canopy.light_assimilation_farquhar
 ClimaLand.Canopy.max_electron_transport_farquhar
 ClimaLand.Canopy.electron_transport_farquhar
 ClimaLand.Canopy.net_photosynthesis
@@ -52,6 +52,8 @@ ClimaLand.Canopy.optimal_co2_ratio_c3
 ClimaLand.Canopy.intercellular_co2_pmodel
 ClimaLand.Canopy.gs_co2_pmodel
 ClimaLand.Canopy.gs_h2o_pmodel
+ClimaLand.Canopy.compute_mj
+ClimaLand.Canopy.compute_mc
 ClimaLand.Canopy.vcmax_pmodel
 ClimaLand.Canopy.compute_LUE
 ClimaLand.Canopy.compute_mj_with_jmax_limitation

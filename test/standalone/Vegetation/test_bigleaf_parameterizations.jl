@@ -106,7 +106,7 @@ for FT in (Float32, Float64)
         @test ClimaLand.Canopy.intercellular_co2_farquhar(ca, FT(1), m_t) ==
               FT(1)
         Kmm = @. Kc * (1 + photosynthesisparams.oi / Ko)
-        Ac = rubisco_assimilation(
+        Ac = ClimaLand.Canopy.rubisco_assimilation_farquhar(
             photosynthesisparams.is_c3,
             Vcmax,
             ci,
@@ -143,7 +143,13 @@ for FT in (Float32, Float64)
             )
         )
 
-        Aj = light_assimilation.(Ref(photosynthesisparams.is_c3), J, ci, Γstar)
+        Aj =
+            ClimaLand.Canopy.light_assimilation_farquhar.(
+                Ref(photosynthesisparams.is_c3),
+                J,
+                ci,
+                Γstar,
+            )
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
         β = moisture_stress(
             p_l,
@@ -189,8 +195,21 @@ for FT in (Float32, Float64)
               Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
               (1 + exp(s3 * (s4 - T)))
         Kmm = @. Kc * (1 + photosynthesisparams.oi / Ko)
-        @test rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kmm) == Vcmax
-        @test light_assimilation(is_c3, J, ci, Γstar, APAR, E) == APAR * E
+        @test ClimaLand.Canopy.rubisco_assimilation_farquhar(
+            is_c3,
+            Vcmax,
+            ci,
+            Γstar,
+            Kmm,
+        ) == Vcmax
+        @test ClimaLand.Canopy.light_assimilation_farquhar(
+            is_c3,
+            J,
+            ci,
+            Γstar,
+            APAR,
+            E,
+        ) == APAR * E
 
         Rd = ClimaLand.Canopy.dark_respiration_farquhar(
             is_c3,
