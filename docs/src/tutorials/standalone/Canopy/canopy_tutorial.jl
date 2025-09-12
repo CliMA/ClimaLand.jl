@@ -207,18 +207,18 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 );
 
 # Provide initial conditions for the canopy hydraulics model
-(; retention_model, ν, S_s) = canopy.hydraulics.parameters
-ψ_stem_0 = FT(-1e5 / 9800)
-ψ_leaf_0 = FT(-2e5 / 9800)
-
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
 function set_ic!(Y, p, t0, model)
+    (; retention_model, ν, S_s) = model.hydraulics.parameters
+    ψ_stem_0 = FT(-1e5 / 9800)
+    ψ_leaf_0 = FT(-2e5 / 9800)
+
+    S_l_ini =
+        inverse_water_retention_curve.(
+            retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            ν,
+            S_s,
+        )
     for i in 1:2
         Y.canopy.hydraulics.ϑ_l.:($i) .=
             augmented_liquid_fraction.(ν, S_l_ini[i])
