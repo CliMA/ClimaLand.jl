@@ -412,7 +412,7 @@ function NonInterpSavingCallback(
     return NonInterpSavingCallback(
         sv,
         callback_period;
-        start_date,
+        t0 = start_date,
         callback_start,
         init_saving = first_save_during_init,
     )
@@ -450,6 +450,7 @@ function NonInterpSavingCallback(t0, tf, callback_period; t_first_save = t0)
     return NonInterpSavingCallback(
         sv,
         dt_itime;
+        t0 = t0_itime,
         callback_start = callback_start,
         init_saving = first_save_during_init,
     )
@@ -640,12 +641,7 @@ and produces a warning if any are found.
 The callback uses `ClimaDiagnostics` schedules to determine when
 to check for NaNs based on the `nancheck_period`.
 """
-function NaNCheckCallback(
-    nancheck_period,
-    t0;
-    dt = nothing,
-    mask = nothing,
-)
+function NaNCheckCallback(nancheck_period, t0; dt = nothing, mask = nothing)
 
     affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
