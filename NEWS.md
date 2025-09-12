@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -------
 
+- Remove `PrognosticSoilConditions` in favor of using `PrognosticGroundConditions` more generally PR[#1411](https://github.com/CliMA/ClimaLand.jl/pull/1411)
+
 v0.20.0
 -------
 - ![][badge-🐛bugfix] Correctly compare atmos/canopy heights when atmos height is Field or Float PR[#1394](https://github.com/CliMA/ClimaLand.jl/pull/1394)

@@ -301,7 +301,7 @@ end
 end
 
 @testset "Invalid diagnostic variable" begin
-    ground = ClimaLand.PrognosticSoilConditions{FT}()
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
     LAI = TimeVaryingInput((t) -> FT(1.0))
     model = ClimaLand.SoilCanopyModel{FT}(
         (; atmos, radiation, ground),

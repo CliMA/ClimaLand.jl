@@ -283,7 +283,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 z_0m = FT(0.13) * h_canopy
 z_0b = FT(0.1) * z_0m
 canopy_domain = obtain_surface_domain(land_domain)
-ground = ClimaLand.PrognosticSoilConditions{FT}()
+ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,

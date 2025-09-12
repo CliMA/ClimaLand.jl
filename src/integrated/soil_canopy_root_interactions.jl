@@ -52,7 +52,7 @@ end
 """
     PlantHydraulics.root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
+        s::PrognosticGroundConditions,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -71,7 +71,7 @@ roots and soil at each soil layer.
 """
 function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
+    s::PrognosticGroundConditions,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -83,7 +83,7 @@ end
 """
     root_energy_flux_per_ground_area!(
         fa_energy::ClimaCore.Fields.Field,
-        s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
+        s::PrognosticGroundConditions,
         model::Canopy.AbstractCanopyEnergyModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -104,7 +104,7 @@ must account for it as well.
 """
 function Canopy.root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    s::Union{PrognosticSoilConditions, PrognosticGroundConditions},
+    s::PrognosticGroundConditions,
     model::Canopy.AbstractCanopyEnergyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,

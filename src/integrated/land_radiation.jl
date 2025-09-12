@@ -17,7 +17,7 @@ end
 
 """
     Canopy.canopy_radiant_energy_fluxes!(p::NamedTuple,
-                                         s::Union{PrognosticGroundConditions,PrognosticSoilConditions},
+                                         s::PrognosticGroundConditions,
                                          canopy,
                                          radiation::PrescribedRadiativeFluxes,
                                          earth_param_set::PSE,
@@ -37,7 +37,7 @@ and `p.canopy.radiative_transfer.SW_n`.
 """
 function Canopy.canopy_radiant_energy_fluxes!(
     p::NamedTuple,
-    s::Union{PrognosticGroundConditions, PrognosticSoilConditions},
+    s::PrognosticGroundConditions,
     canopy,
     radiation::AbstractRadiativeDrivers,
     earth_param_set::PSE,
@@ -50,7 +50,7 @@ end
 """
     Canopy.ground_albedo_PAR(
         prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-        ground::PrognosticSoilConditions,
+        ground,
         Y,
         p,
         t,
@@ -60,7 +60,7 @@ A method of Canopy.Canopy.ground_albedo_PAR for a prognostic soil.
 """
 function Canopy.ground_albedo_PAR(
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    ground::PrognosticSoilConditions,
+    ground,
     Y,
     p,
     t,
@@ -71,7 +71,7 @@ end
 """
     Canopy.ground_albedo_NIR(
         prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-        ground::PrognosticSoilConditions,
+        ground,
         Y,
         p,
         t,
@@ -81,7 +81,7 @@ A method of Canopy.ground_albedo_NIR for a prognostic soil.
 """
 function Canopy.ground_albedo_NIR(
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    ground::PrognosticSoilConditions,
+    ground,
     Y,
     p,
     t,
@@ -93,7 +93,7 @@ end
 """
     Canopy.ground_albedo_PAR(
         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
+        ground,
         Y,
         p,
         t,
@@ -104,7 +104,7 @@ the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_PAR(
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
+    ground,
     Y,
     p,
     t,
@@ -118,7 +118,7 @@ end
 """
     Canopy.ground_albedo_NIR(
         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
+        ground,
         Y,
         p,
         t,
@@ -129,7 +129,7 @@ the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_NIR(
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
+    ground,
     Y,
     p,
     t,

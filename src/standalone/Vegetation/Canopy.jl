@@ -591,7 +591,7 @@ of each component model for details on the default parameters.
 The required argument `forcing` should be a NamedTuple with the following field:
 - `atmos`: a PrescribedAtmosphere or CoupledAtmosphere object
 - `radiation`: a PrescribedRadiativeFluxes or CoupledRadiativeFluxes object
-- `ground`: a PrescribedGroundConditions, PrognosticGroundConditions, or PrognosticSoilConditions object
+- `ground`: a PrescribedGroundConditions or PrognosticGroundConditions object
 
 The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 

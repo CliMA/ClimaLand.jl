@@ -46,7 +46,7 @@ for FT in (Float32, Float64)
         # Canopy model
         canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
         LAI = TimeVaryingInput((t) -> FT(1.0))
-        ground = ClimaLand.PrognosticSoilConditions{FT}()
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
         canopy_forcing = (; atmos, radiation, ground)
         canopy = Canopy.CanopyModel{FT}(
             canopy_domain,
