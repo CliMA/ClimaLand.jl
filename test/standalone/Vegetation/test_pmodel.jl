@@ -64,35 +64,33 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
     β = FT(inputs["beta"])
     cstar = FT(0.41)
 
-    # handle temperature-dependent quantum yield 
-    if Bool(inputs["do_ftemp_kphio"])
-        ϕ0 = FT(NaN)
-        ϕc = FT(inputs["kphio"])
-        # Eqn 20 from Stocker 2020
-        ϕa0_c3 = FT(0.352)
-        ϕa1_c3 = FT(0.022)
-        ϕa2_c3 = FT(-0.00034)
-        # Scott and Smith 2022
-        ϕa0_c4 = FT(0.352)
-        ϕa1_c4 = FT(0.022)
-        ϕa2_c4 = FT(-0.00034)
-    else
-        ϕ0 = FT(inputs["kphio"])
-        ϕc, ϕa0_c3, ϕa1_c3, ϕa2_c3, ϕa0_c4, ϕa1_c4, ϕa2_c4 =
-            FT(NaN), FT(NaN), FT(NaN), FT(NaN), FT(NaN), FT(NaN), FT(NaN)
-    end
+    # handle temperature-dependent quantum yield
+    # John B. Skillman, Quantum yield variation across the three pathways of photosynthesis: not yet out of the dark, Journal of Experimental Botany, Volume 59, Issue 7, May 2008
+    ϕ0_c3 = FT(inputs["kphio"])
+    ϕ0_c4 = FT(inputs["kphio"])
+    ϕc = FT(inputs["kphio"])
+    # Eqn 20 from Stocker 2020
+    ϕa0_c3 = FT(0.352 * ϕc)
+    ϕa1_c3 = FT(0.022 * ϕc)
+    ϕa2_c3 = FT(-0.00034 * ϕc)
+    # Scott and Smith 2022
+    ϕa0_c4 = FT(0.352 * ϕc)
+    ϕa1_c4 = FT(0.022 * ϕc)
+    ϕa2_c4 = FT(-0.00034 * ϕc)
+    temperature_dep_yield = Bool(inputs["do_ftemp_kphio"])
 
-    return ClimaLand.Canopy.PModelParameters(
-        cstar = cstar,
-        β = β,
-        ϕc = ϕc,
-        ϕ0 = ϕ0,
-        ϕa0_c3 = ϕa0_c3,
-        ϕa1_c3 = ϕa1_c3,
-        ϕa2_c3 = ϕa2_c3,
-        ϕa0_c4 = ϕa0_c4,
-        ϕa1_c4 = ϕa1_c4,
-        ϕa2_c4 = ϕa2_c4,
+    return ClimaLand.Canopy.PModelParameters(;
+        cstar,
+        β,
+        temperature_dep_yield,
+        ϕ0_c3,
+        ϕ0_c4,
+        ϕa0_c3,
+        ϕa1_c3,
+        ϕa2_c3,
+        ϕa0_c4,
+        ϕa1_c4,
+        ϕa2_c4,
         α = FT(0),
         sc = FT(0),
         pc = FT(0),
@@ -275,14 +273,15 @@ end
         parameters = ClimaLand.Canopy.PModelParameters(
             cstar = FT(0.41),
             β = FT(146),
-            ϕc = FT(0.087),
-            ϕ0 = FT(NaN),
-            ϕa0_c3 = FT(0.352),
-            ϕa1_c3 = FT(0.022),
-            ϕa2_c3 = FT(-0.00034),
-            ϕa0_c4 = FT(-0.008),
-            ϕa1_c4 = FT(0.00375),
-            ϕa2_c4 = FT(-0.011),
+            temperature_dep_yield = true,
+            ϕ0_c3 = FT(0.052),
+            ϕ0_c4 = FT(0.057),
+            ϕa0_c3 = FT(0.352 * 0.087),
+            ϕa1_c3 = FT(0.022 * 0.087),
+            ϕa2_c3 = FT(-0.00034 * 0.087),
+            ϕa0_c4 = FT(-0.352 * 0.087),
+            ϕa1_c4 = FT(0.022 * 0.087),
+            ϕa2_c4 = FT(-0.00034 * 0.087),
             α = FT(0),
             sc = FT(2e-6),
             pc = FT(-2e6),

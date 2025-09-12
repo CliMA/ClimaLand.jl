@@ -134,14 +134,14 @@ end
         is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
         cstar = FT(0.41),
         β = FT(146),
-        ϕc = FT(0.087),
-        ϕ0 = FT(NaN),
-        ϕa0_c3 = FT(0.352),
-        ϕa1_c3 = FT(0.022),
-        ϕa2_c3 = FT(-0.00034),
-        ϕa0_c4 = FT(0.352),
-        ϕa1_c4 = FT(0.022),
-        ϕa2_c4 = FT(-0.00034),
+        ϕ0_c3 = FT(0.052),
+        ϕ0_c4 = FT(0.057),
+        ϕa0_c3 = FT(0.087*0.352),
+        ϕa1_c3 = FT(0.087*0.022),
+        ϕa2_c3 = FT(-0.00034*0.087),
+        ϕa0_c4 = FT(0.352*0.087),
+        ϕa1_c4 = FT(0.022*0.087),
+        ϕa2_c4 = FT(-0.00034*0.087),
         α = FT(0.933),
         sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
         pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
@@ -152,15 +152,14 @@ Constructs a P-model (an optimality model for photosynthesis) using default para
 The following default parameters are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
 - β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020)
-- ϕc = 0.087 (unitless) - constant linear scaling factor for the intrinsic quantum yield (hat{c}_L in Stocker 2020)
-- ϕ0 = NaN (unitless) - constant intrinsic quantum yield. If set to NaN, intrinsic quantum yield is computed from the
-                        temperature-dependent form (Stocker 2020)
-- ϕa0_c3 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa1_c3 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa2_c3 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa0_c4 = 0.352 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
-- ϕa1_c4 = 0.022 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
-- ϕa2_c4 = -0.00034 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕ0_c3 = 0.052 (unitless) - constant intrinsic quantum yield. Skillman (2008)
+- ϕ0_c4 = 0.057 (unitless) - constant intrinsic quantum yield. Skillman (2008)
+- ϕa0_c3 = 0.352*0.087 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa1_c3 = 0.022*0.087 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa2_c3 = -0.00034*0.087 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
+- ϕa0_c4 = 0.352*0.087 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa1_c4 = 0.022*0.087 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa2_c4 = -0.00034*0.087 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
 - sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
 - pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
@@ -170,32 +169,34 @@ function PModel{FT}(
     is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
     cstar = FT(0.41),
     β = FT(146),
-    ϕc = FT(0.087),
-    ϕ0 = FT(NaN),
-    ϕa0_c3 = FT(0.352),
-    ϕa1_c3 = FT(0.022),
-    ϕa2_c3 = FT(-0.00034),
-    ϕa0_c4 = FT(0.352),
-    ϕa1_c4 = FT(0.022),
-    ϕa2_c4 = FT(-0.00034),
+    temperature_dep_yield = true,
+    ϕ0_c3 = FT(0.052),
+    ϕ0_c4 = FT(0.057),
+    ϕa0_c3 = FT(0.352 * 0.087),
+    ϕa1_c3 = FT(0.022 * 0.087),
+    ϕa2_c3 = FT(-0.00034 * 0.087),
+    ϕa0_c4 = FT(0.352 * 0.087),
+    ϕa1_c4 = FT(0.022 * 0.087),
+    ϕa2_c4 = FT(-0.00034 * 0.087),
     α = FT(0.933),
     sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
     pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
-        cstar = cstar,
-        β = β,
-        ϕc = ϕc,
-        ϕ0 = ϕ0,
-        ϕa0_c3 = ϕa0_c3,
-        ϕa1_c3 = ϕa1_c3,
-        ϕa2_c3 = ϕa2_c3,
-        ϕa0_c4 = ϕa0_c4,
-        ϕa1_c4 = ϕa1_c4,
-        ϕa2_c4 = ϕa2_c4,
-        α = α,
-        sc = sc,
-        pc = pc,
+        cstar,
+        β,
+        temperature_dep_yield,
+        ϕ0_c3,
+        ϕ0_c4,
+        ϕa0_c3,
+        ϕa1_c3,
+        ϕa2_c3,
+        ϕa0_c4,
+        ϕa1_c4,
+        ϕa2_c4,
+        α,
+        sc,
+        pc,
     )
 
     return PModel{FT}(is_c3, parameters)

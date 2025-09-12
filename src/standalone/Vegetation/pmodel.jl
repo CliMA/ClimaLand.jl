@@ -18,10 +18,12 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     cstar::FT
     "Ratio of unit costs of transpiration and carboxylation (unitless)"
     β::FT
-    "Scaling parameter for temp-dependent intrinsic quantum yield (unitless); C3"
-    ϕc::FT
-    "Temp-independent intrinsic quantum yield. (unitless); C3 and C4"
-    ϕ0::FT
+    "A boolean flag indicating if the quantum yield is a function of temperature or not"
+    temperature_dep_yield::Bool
+    "Temp-independent intrinsic quantum yield. (unitless); C3"
+    ϕ0_c3::FT
+    "Temp-independent intrinsic quantum yield. (unitless); C4"
+    ϕ0_c4::FT
     """Constant term in temp-dependent intrinsic quantum yield (unitless); C3."""
     ϕa0_c3::FT
     """First order term in temp-dependent intrinsic quantum yield (K^-1); C3."""
@@ -206,7 +208,7 @@ Base.eltype(::PModel{FT, OPFT, OPCT, F}) where {FT, OPFT, OPCT, F} = FT
 """
 PModel{FT}(is_c3,
     parameters::PModelParameters{FT},
-    constants::PModelConstants{FT} = PModelConstants(FT),
+    constants::PModelConstants{FT} = PModelConstants(FT)
 )
 
 Outer constructor for the PModel struct. This takes a PModelParameters struct which includes
@@ -315,7 +317,7 @@ function compute_full_pmodel_outputs(
     is_c3 = FT(1),
 ) where {FT}
     # Unpack parameters
-    (; cstar, β, ϕ0) = parameters
+    (; cstar, β) = parameters
 
     # Unpack constants
     (;
@@ -351,8 +353,7 @@ function compute_full_pmodel_outputs(
     ca_pp = ca * P_air
 
     # Compute intermediate values
-    ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(is_c3, T_canopy, parameters) : ϕ0
-
+    ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
@@ -487,7 +488,7 @@ function update_optimal_EMA(
 ) where {FT}
     if local_noon_mask == FT(1.0)
         # Unpack parameters
-        (; cstar, β, ϕ0, α) = parameters
+        (; cstar, β, α) = parameters
 
         # Unpack constants
         (;
@@ -520,9 +521,7 @@ function update_optimal_EMA(
         ) = constants
 
         # Compute intermediate values
-        ϕ0 =
-            isnan(ϕ0) ? intrinsic_quantum_yield(is_c3, T_canopy, parameters) :
-            ϕ0
+        ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
 
         Γstar =
             co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
@@ -659,8 +658,8 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     parameters_init = PModelParameters(
         cstar = parameters.cstar,
         β = parameters.β,
-        ϕc = parameters.ϕc,
-        ϕ0 = parameters.ϕ0,
+        ϕ0_c4 = parameters.ϕ0_c4,
+        ϕ0_c3 = parameters.ϕ0_c3,
         ϕa0_c3 = parameters.ϕa0_c3,
         ϕa1_c3 = parameters.ϕa1_c3,
         ϕa2_c3 = parameters.ϕa2_c3,
@@ -925,9 +924,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     J = @. lazy(
         electron_transport_pmodel(
-            isnan(parameters.ϕ0) ?
-            intrinsic_quantum_yield(model.is_c3, T_canopy, parameters) :
-            parameters.ϕ0,
+            intrinsic_quantum_yield(model.is_c3, T_canopy, parameters),
             APAR_canopy_moles,
             Jmax,
         ),
@@ -1036,12 +1033,7 @@ function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel p
     constants = m.constants
     return @. lazy(
         electron_transport_pmodel(
-            isnan(parameters.ϕ0) ?
-            intrinsic_quantum_yield(
-                canopy.photosynthesis.is_c3,
-                T_canopy,
-                parameters,
-            ) : parameters.ϕ0,
+            intrinsic_quantum_yield(m.is_c3, T_canopy, parameters),
             APAR_canopy_moles,
             Jmax_canopy,
         ),
@@ -1091,50 +1083,49 @@ end
 Computes the intrinsic quantum yield of photosystem II.
 """
 function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
-    is_c3 > 0.5 ?
-    c3c4_intrinsic_quantum_yield(
-        T,
-        parameters.ϕc,
-        parameters.ϕa0_c3,
-        parameters.ϕa1_c3,
-        parameters.ϕa2_c3,
-    ) :
-    c3c4_intrinsic_quantum_yield(
-        T,
-        parameters.ϕc,
-        parameters.ϕa0_c4,
-        parameters.ϕa1_c4,
-        parameters.ϕa2_c4,
-    )
+    if is_c3 > 0.5
+        parameters.temperature_dep_yield ?
+        quadratic_intrinsic_quantum_yield(
+            T,
+            parameters.ϕa0_c3,
+            parameters.ϕa1_c3,
+            parameters.ϕa2_c3,
+        ) : parameters.ϕ0_c3
+    else
+        parameters.temperature_dep_yield ?
+        quadratic_intrinsic_quantum_yield(
+            T,
+            parameters.ϕa0_c4,
+            parameters.ϕa1_c4,
+            parameters.ϕa2_c4,
+        ) : parameters.ϕ0_c4
+    end
 end
 
 """
-    c3c4intrinsic_quantum_yield(
+    quadratic_intrinsic_quantum_yield(
         T::FT,
-        ϕc::FT,
         ϕa0::FT,
         ϕa1::FT,
         ϕa2::FT
     ) where {FT}
 
 Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol)
-as a function of temperature T (K); appropriate for C3 or C4 plants depending on the values
-passed for ϕc (unitless), ϕa0 (unitless), ϕa1 (1/degrees C), ϕa2 (1/degrees C^2). 
+as a function of temperature T (K); appropriate for C3 or C4 plants depending on the values of ϕa0 (unitless), ϕa1 (1/degrees C), ϕa2 (1/degrees C^2). 
 
 The functional form given in Bernacchi et al (2003) and used in Stocker
 et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0,
 ϕa1, and ϕa2.
 """
-function c3c4_intrinsic_quantum_yield(
+function quadratic_intrinsic_quantum_yield(
     T::FT,
-    ϕc::FT,
     ϕa0::FT,
     ϕa1::FT,
     ϕa2::FT,
 ) where {FT}
     # convert to C
     T = T - FT(273.15)
-    ϕ = ϕc * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
+    ϕ = ϕa0 + ϕa1 * T + ϕa2 * T^2
     return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
 end
 
