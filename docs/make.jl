@@ -5,8 +5,23 @@ using Distributed
 @everywhere using Documenter
 @everywhere using Literate
 @everywhere using ClimaLand
+@everywhere using DocumenterInterLinks
+@everywhere using DocumenterCitations
 include("pages_helper.jl")
 include("list_tutorials.jl")
+
+@everywhere links = InterLinks(
+    "Julia" => "https://docs.julialang.org/en/v1/objects.inv",
+    "ClimaCore" => "https://clima.github.io/ClimaCore.jl/dev/objects.inv",
+    "Documenter" => "https://documenter.juliadocs.org/stable/objects.inv",
+    # ClimaCoupler does not generate objects.inv for some reason
+    #                   "ClimaCoupler" => "https://clima.github.io/ClimaCoupler.jl/dev/objects.inv",
+);
+
+@everywhere bib = CitationBibliography(
+    joinpath(@__DIR__, "src", "refs.bib");
+    style = :numeric,
+)
 
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLand)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
@@ -32,7 +47,7 @@ mkpath(GENERATED_DIR)
         Literate.markdown(
             input;
             execute = true,
-            documenter = false,
+            documenter = true,
             preprocess = mdpre,
         )
     end
@@ -73,6 +88,7 @@ pages = Any[
     ],
     "APIs" => apis,
     "Contributor guide" => "contributing.md",
+    "References" => "references.md",
 ]
 
 mathengine = MathJax(
@@ -102,7 +118,8 @@ makedocs(
     doctest = true,
     warnonly = [:missing_docs, :footnote, :cross_references],
     clean = true,
-    modules = [ClimaLand],
+    modules = [ClimaLand];
+    plugins = [bib, links],
 )
 
 deploydocs(

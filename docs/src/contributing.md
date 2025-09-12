@@ -73,3 +73,16 @@ using JuliaFormatter; format(".")
 
 The `Documentation` test rebuilds the documentation for the PR and checks if the docs
 are consistent and generate valid output.
+
+To add internal references, for example to another documentation page or API, see the relevant
+`Documenter.jl` `@ref` [documentation page](@extref Documenter Named-@refs), example syntax:
+`[see contributor guide](@ref "Contributing")` for a page or
+`[Abstract type for soil model](@ref ClimaLand.Soil.AbstractSoilModel)` for an API.
+
+To add external references, for example to another package documentation page or API, see
+the documentation of [DocumenterInterLinks](https://juliadocs.org/DocumenterInterLinks.jl/stable/).
+Example syntax: `[how to us @ref](@extref Documenter Named-@refs)`.
+
+To add a reference from the literature, see the documentation of
+[DocumenterCitations.jl](https://juliadocs.org/DocumenterCitations.jl/stable/), in short, add your reference
+to `docs/src/refs.bib` and then refer to it with this syntax `[authors1999](@citet)`.
