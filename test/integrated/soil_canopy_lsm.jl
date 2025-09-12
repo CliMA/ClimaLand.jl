@@ -18,43 +18,7 @@ for FT in (Float32, Float64)
             FT,
             joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
         )
-        prognostic_land_components = (:canopy, :soil, :soilco2)
-
-        # Soil model
-        soil = EnergyHydrology{FT}(
-            domain,
-            forcing,
-            toml_dict;
-            prognostic_land_components,
-            additional_sources = (ClimaLand.RootExtraction{FT}(),),
-        )
-
-        # SoilCO2 model
-        co2_prognostic_soil =
-            Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-        soil_organic_carbon = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
-            TimeVaryingInput((t) -> 5),
-        )
-        soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-            co2_prognostic_soil,
-            soil_organic_carbon,
-            atmos,
-        )
-        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
-
-        # Canopy model
-        canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
         LAI = TimeVaryingInput((t) -> FT(1.0))
-        ground = ClimaLand.PrognosticGroundConditions{FT}()
-        canopy_forcing = (; atmos, radiation, ground)
-        canopy = Canopy.CanopyModel{FT}(
-            canopy_domain,
-            canopy_forcing,
-            LAI,
-            toml_dict;
-            prognostic_land_components,
-        )
-
         model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain)
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
