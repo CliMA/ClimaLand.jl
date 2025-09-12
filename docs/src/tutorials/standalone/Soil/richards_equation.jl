@@ -47,7 +47,7 @@
 # hydraulic conductivity is only a function of liquid moisture content.
 
 # Lastly, our formulation of this equation allows for a continuous solution in both
-# saturated and unsaturated areas, following Woodward and Dawson (2000).
+# saturated and unsaturated areas, following [WoodwardDawson2000](@citet).
 
 # # Preliminary setup
 
@@ -186,7 +186,7 @@ p.soil |> propertynames
 
 
 # Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/stable/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
+# Since we have the vectors (composed of [ClimaCore Fields](@extref ClimaCore.Fields.Field)) handy, we can now set them to the desired initial
 # conditions.
 sol = solve!(simulation);
 
@@ -238,5 +238,3 @@ plot!(hydrostatic_equilibrium.(z, -0.56), z, label = "equilibrium solution");
 # Save the output:
 savefig("equilibrium_test_ϑ_l.png");
 # ![](equilibrium_test_ϑ_l.png)
-# # References
-# - Woodward and Dawson, (2000) SIAM J. Numer. Anal., 37, 701–724

@@ -1,5 +1,5 @@
 # The `AbstractModel`
-# [tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/model_tutorial)
+# [tutorial](@ref "Creating a model")
 # describes how a user can run
 # simulations of a physical system governed by differential equations.
 # In this framework, the user must define a model type for their problem,

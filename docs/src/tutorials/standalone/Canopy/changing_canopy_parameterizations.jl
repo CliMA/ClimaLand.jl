@@ -1,5 +1,5 @@
 # # Changing Canopy Parameterizations
-# In [Default Canopy](docs/src/tutorials/standalone/Canopy/default_canopy.jl), we ran a simple canopy model simulation
+# In [Default Canopy](@ref "Default Canopy Model Tutorial"), we ran a simple canopy model simulation
 # using all of the default parameterizations and parameters.
 # ClimaLand provides multiple options for many parameterizations;
 # in this tutorial, we will demonstrate how to change a canopy model parameterization.
@@ -44,7 +44,7 @@ dt = 900.0;
 # first two from ERA5 data, and specify that the following ground conditions will
 # be prescribed: emissivity, albedo, temperature, and soil moisture.
 # We also set up a constant leaf area index (LAI); for an example reading LAI from
-# MODIS data, please see the [canopy_tutorial.jl tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/standalone/Canopy/canopy_tutorial/).
+# MODIS data, please see the [canopy tutorial](@ref "Default Canopy Model Tutorial").
 # This differs from the soil example because we have the extra inputs of the ground conditions and LAI.
 era5_ncdata_path =
     ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
@@ -108,7 +108,7 @@ radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 # The set of available constructors for all ClimaLand models can be found in the "APIs" section of the documentation.
 
 # Now we can create the `CanopyModel` model with the specified energy and radiative transfer
-# parameterizations passed as [keyword arguments](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments).
+# parameterizations passed as [keyword arguments](@extref Julia Keyword-Arguments).
 model = Canopy.CanopyModel{FT}(
     domain,
     (; atmos, radiation, ground),
@@ -179,5 +179,4 @@ LandSimVis.make_diurnal_timeseries(
 # How are the results different? How are they the same?
 
 # Atmospheric forcing data citation:
-# Hersbach, Hans, et al. "The ERA5 global reanalysis."
-# Quarterly journal of the royal meteorological society 146.730 (2020): 1999-2049.
+# [Hersbach2020](@citet)

@@ -13,8 +13,8 @@
 # and a conductive ground heat flux). This boundary condition type includes the atmospheric and radiative
 # forcings, and, importantly, a Tuple which indicates which components of the land are present.
 # The last argument is what we will describe here. For more information on how to supply the prescribed forcing
-# data, please see the tutorial linked [here](@ref shared_utilities/driver_tutorial.jl). For an explanation of the
-# same design implementation for the Soil model, please see [here](@ref integrated/handling_soil_fluxes.jl).
+# data, please see the tutorial linked [here](@ref "Using atmospheric and radiative drivers"). For an explanation of the
+# same design implementation for the Soil model, please see [here](@ref "Boundary conditions for the soil model").
 
 # # Adjusting the boundary conditions for the snow model when run as part of an integrated land model
 
@@ -39,7 +39,7 @@
 # `boundary_condition = ClimaLand.Snow.AtmosDrivenSnowBC(atmos_forcing, radiative_forcing, prognostic_land_components)`
 
 # Note that the land components are *always* in alphabetical order, and the symbols associated with each
-# land model component are *always* the same as the name of that component, i.e., 
+# land model component are *always* the same as the name of that component, i.e.,
 
 # `ClimaLand.name(snow_model) = :snow`
 

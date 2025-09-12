@@ -1,24 +1,20 @@
-# # Fluxnet simulations with the full land model: snow, soil, canopy
+# # [Fluxnet simulations with the full land model: snow, soil, canopy](@id soilcanopy_fluxnet)
 
 # In the
-# [SoilCanopyModel tutorial](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl),
+# [SoilCanopyModel tutorial](@ref "Fluxnet simulations with an integrated soil and canopy model"),
 # we demonstrated how to run the an integrated model with a soil and
 # canopy component at the US-MOz fluxnet site.
 # Here we add in a snow component, and run at the Niwot Ridge site instead.
 # The forcing data was obtained from
-# AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871141
-
-# Citation: Peter D. Blanken, Russel K. Monson, Sean P. Burns,
-# David R. Bowling, Andrew A. Turnipseed (2022),
-# AmeriFlux FLUXNET-1F US-NR1 Niwot Ridge Forest (LTER NWT1),
-# Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1871141
+# [AmeriFlux FLUXNET](https://doi.org/10.17190/AMF/1871141)
+# [Blanken2022](@citet)
 
 # The focus of this tutorial is to learn the steps towards setting up and
 # running an integrated simulation, and less on the parameterization
 # choices. As such, the default parameters are implicitly set.
-# To experiment with modularity in the parameters and parameterizations, please see the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl),
-# the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl),
-# or the [snowy land parameterizations tutorial](docs/src/tutorials/integrated/changing_snowy_land_parameterizations.jl).
+# To experiment with modularity in the parameters and parameterizations, please see the [soil parameterizations tutorial](@ref "Changing Soil Parameterizations"),
+# the [canopy parameterizations tutorial](@ref "Changing Canopy Parameterizations"),
+# or the [snowy land parameterizations tutorial](@ref "Changing LandModel Parameterizations").
 
 # # Preliminary Setup
 using Dates
@@ -85,7 +81,7 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
 # # Setup the integrated model
 
 # We want to simulate the canopy-soil-snow system together, so the model type
-# [`LandModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/ClimaLand/#Integrated-Land-Model-Types-and-methods)
+# [`LandModel`](@ref "Integrated Land Model Types and methods")
 # is chosen. Here we use the highest level model constructor, which uses default parameters,
 # and parameterizations, for the soil, snow, and canopy models.
 
