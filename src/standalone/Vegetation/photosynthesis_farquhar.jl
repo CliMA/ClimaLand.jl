@@ -76,7 +76,7 @@ Base.eltype(::FarquharParameters{FT}) where {FT} = FT
    FarquharModel{FT, FP <: FarquharParameters{FT}}
 
 A photosynthesis model taking leaf-level Vcmax25 and multiple other
-constants and predicting dark respiration at the leaf level, net 
+constants and predicting dark respiration at the leaf level, net
 photosynthesis at the leaf level, and GPP at the canopy level.
 
 The Farquhar model computes photosynthetic rates using leaf-level
@@ -281,7 +281,7 @@ end
         canopy
 )
 
-Computes the net leaf-level photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar 
+Computes the net leaf-level photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar
 model, along with the dark leaf-level respiration `Rd` (mol CO2/m^2/s), and
 canopy level gross photosynthesis (mol CO2/m^2/s).
 """
@@ -344,7 +344,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
 
-    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    β = p.canopy.soil_moisture_stress.βm
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
 
     @. Rd = dark_respiration_farquhar(

@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -------
 
+- Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
+
 v0.20.1
 -------
 - Add C4 plant support to PModel PR[#1356](https://github.com/CliMA/ClimaLand.jl/pull/1356)
