@@ -70,7 +70,7 @@ albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(
 );
 
 # Now we can create the `EnergyHydrology` model with the specified albedo parameterization
-# passed as a [keyword argument](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments).
+# passed as a [keyword argument](@extref Julia."Keyword Arguments").
 model =
     Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict; albedo);
 # That's it! Now that you have the model, you can create

@@ -185,7 +185,7 @@ p.soil |> propertynames
 
 
 # Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/stable/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
+# Since we have the vectors (composed of [ClimaCore Fields](@extref ClimaCore.ClimaCore.Fields.Field)) handy, we can now set them to the desired initial
 # conditions.
 sol = solve!(simulation);
 
