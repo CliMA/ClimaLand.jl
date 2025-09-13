@@ -4,7 +4,15 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.20.1
+-------
+- Add C4 plant support to PModel PR[#1356](https://github.com/CliMA/ClimaLand.jl/pull/1356)
 - Remove `PrognosticSoilConditions` in favor of using `PrognosticGroundConditions` more generally PR[#1411](https://github.com/CliMA/ClimaLand.jl/pull/1411)
+- Diagnostics improvements PR[#1350](https://github.com/CliMA/ClimaLand.jl/pull/1350), PR[#1410](https://github.com/CliMA/ClimaLand.jl/pull/1410)
+- Update to ClimaParams v1 PR[#1406](https://github.com/CliMA/ClimaLand.jl/pull/1406)
+- Add error metrics to tutorials PR[#1407](https://github.com/CliMA/ClimaLand.jl/pull/1407)
+- Fix Fluxnet UTC offset sign convention PR[#1405](https://github.com/CliMA/ClimaLand.jl/pull/1405)
+- Format fix PR[#1402](https://github.com/CliMA/ClimaLand.jl/pull/1402)
 
 v0.20.0
 -------
