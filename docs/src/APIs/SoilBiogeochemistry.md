@@ -1,5 +1,7 @@
 # Soil Biogeochemistry
 
+## This component model is available for use, but is still under development and is not yet fully debugged. Note that errors in this component do not propagate back to other component models.
+
 ```@meta
 CurrentModule = ClimaLand.Soil.Biogeochemistry
 ```
