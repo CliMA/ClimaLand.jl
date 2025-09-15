@@ -6,6 +6,7 @@ main
 - ![][badge-🐛bugfix] Check for coupled forcing in available diagnostics PR[#1434](https://github.com/CliMA/ClimaLand.jl/pull/1434)
 - Remove the unused integrated constructors based on args and types PR[#1408](https://github.com/CliMA/ClimaLand.jl/pull/1408)
 - Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
+- ![breaking change][badge-💥breaking] Model constructors should use toml dict PR[#1385](https://github.com/CliMA/ClimaLand.jl/pull/1385)
 
 v0.20.1
 -------
