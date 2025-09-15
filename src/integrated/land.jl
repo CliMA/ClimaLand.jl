@@ -77,6 +77,19 @@ struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
 
+        # Check that soil moisture stress parameters are consistent between canopy and soil
+        if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
+            # Note that these functions allocate. These checks should not occur except on initialization.
+            check_land_equality(
+                canopy.soil_moisture_stress.θ_high,
+                soil.parameters.ν,
+            )
+            check_land_equality(
+                canopy.soil_moisture_stress.θ_low,
+                soil.parameters.θ_r,
+            )
+        end
+
         # LandModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
@@ -89,8 +102,6 @@ struct LandModel{
         return new{FT, MM, SM, VM, SnM}(soilco2, soil, canopy, snow)
     end
 end
-
-
 
 """
     LandModel{FT}(;
@@ -185,6 +196,9 @@ function LandModel{FT}(;
     end
 
     canopy = Canopy.CanopyModel{FT}(;
+        soil_moisture_stress = canopy_component_types.soil_moisture_stress(
+            canopy_component_args.soil_moisture_stress...,
+        ),
         autotrophic_respiration = canopy_component_types.autotrophic_respiration(
             canopy_component_args.autotrophic_respiration...,
         ),

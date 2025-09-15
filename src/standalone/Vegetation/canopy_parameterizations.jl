@@ -1,28 +1,13 @@
 using ..ClimaLand.Canopy
-export moisture_stress,
+export canopy_sw_rt_beer_lambert, # Radiative transfer
+    canopy_sw_rt_two_stream,
+    extinction_coeff,
+    compute_G,
     # Conductance
     medlyn_term,
     medlyn_conductance,
     penman_monteith,
     quadratic_soil_moisture_stress
-
-"""
-    moisture_stress(pl::FT,
-                    sc::FT,
-                    pc::FT) where {FT}
-
-Computes the moisture stress factor (`β`), which is unitless,
- as a function of
-a constant (`sc`, 1/Pa), a reference pressure (`pc`, Pa), and
-the leaf water pressure (`pl`, Pa) .
-
-See Eqn 12.57 of G. Bonan's textbook,
-Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
-    β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl))))
-    return β
-end
 
 """
     conductance_molar_flux_to_m_per_s(gs::FT, T::FT, R::FT, P::FT) where {FT}

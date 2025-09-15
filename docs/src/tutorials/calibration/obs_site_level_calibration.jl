@@ -238,7 +238,7 @@ function G(Vcmax25, g1)
                 simulation.start_date,
                 simulation.start_date + Day(20),
                 stop_date,
-            )
+            ),
         )
     return observation
 end;

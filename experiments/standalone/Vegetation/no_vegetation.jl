@@ -76,11 +76,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     hydraulics,
 )
 
-
-
-
-
-
 ψ_leaf_0 = FT(-2e5 / 9800)
 (; retention_model, ν, S_s) = canopy.hydraulics.parameters;
 S_l_ini = inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
