@@ -19,49 +19,85 @@ struct LandSoilBiogeochemistry{
     soil::SEH
     "The biochemistry model"
     soilco2::SB
+    function LandSoilBiogeochemistry{FT}(
+        soil::SEH,
+        soilco2::SB,
+    ) where {
+        FT,
+        SEH <: Soil.Soil.EnergyHydrology{FT},
+        SB <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    }
+        @assert soil.domain == soilco2.domain
+
+        @assert soil.parameters.earth_param_set ==
+                soilco2.parameters.earth_param_set
+
+        @assert soilco2.drivers.met isa PrognosticMet
+        comparison = PrognosticMet(soil.parameters)
+        # check_land_equality allocates, and should only be used in initialization
+        for property in propertynames(soilco2.drivers.met)
+            check_land_equality(
+                getproperty(soilco2.drivers.met, property),
+                getproperty(comparison, property),
+            )
+        end
+        if soil.boundary_conditions.top isa Soil.AtmosDrivenFluxBC
+            @assert soil.boundary_conditions.top.atmos == soilco2.drivers.atmos
+        end
+
+        return new{FT, typeof(soil), typeof(soilco2)}(soil, soilco2)
+    end
 end
 
 """
-    LandSoilBiogeochemistry{FT}(;
-        soil_args::NamedTuple = (;),
-        biogeochemistry_args::NamedTuple = (;),
+    LandSoilBiogeochemistry{FT}(
+        forcing,
+        toml_dict::CP.ParamDict,
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+        ),
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            Soil.Biogeochemistry.SoilDrivers(
+               Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+                forcing.atmos,
+            ),
+        ),
     ) where {FT}
-A constructor for the `LandSoilBiogeochemistry` model, which takes in
-the required arguments for each component, constructs those models,
-and constructs the `LandSoilBiogeochemistry` from them.
 
-Each component model is constructed with everything it needs to be stepped
-forward in time, including boundary conditions, source terms, and interaction
-terms.
-
-Additional arguments, like parameters and driving atmospheric data, can be passed
-in as needed.
+A convenience constructor for setting up the default `LandSoilBiogeochemistry`,
+where all the parameterizations and parameter values are set to default values
+or passed in via the `toml_dict`. The boundary conditions of all models
+correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
+of the form `(;atmos, radiation)`, with `atmos` an `AbstractAtmosphericDriver` and `radiation`
+an `AbstractRadiativeDriver`. The domain must be a ClimaLand domain with a vertical extent.
 """
-function LandSoilBiogeochemistry{FT}(;
-    land_args::NamedTuple,
-    soil_args::NamedTuple = (;),
-    soilco2_args::NamedTuple = (;),
-) where {FT}
-
-    (; atmos, soil_organic_carbon) = land_args
-    soil = Soil.EnergyHydrology{FT}(;
-        soil_args..., # soil_args must have sources, boundary_conditions, domain, parameters
-    )
-    prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-    soil_co2_drivers = Soil.Biogeochemistry.SoilDrivers(
-        prognostic_soil,
-        soil_organic_carbon,
-        atmos,
-    )
+function LandSoilBiogeochemistry{FT}(
+    forcing,
+    toml_dict::CP.ParamDict,
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    };
+    soil = Soil.EnergyHydrology{FT}(domain, forcing, toml_dict;),
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
-        soilco2_args.domain,
-        soil_co2_drivers;
-        boundary_conditions = soilco2_args.boundary_conditions,
-        parameters = soilco2_args.parameters,
-    )
-    args = (soil, soilco2)
-    return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            Soil.Biogeochemistry.PrognosticMet(soil.parameters),
+            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+            forcing.atmos,
+        ),
+    ),
+) where {FT}
+    return LandSoilBiogeochemistry{FT}(soil, soilco2)
 end
+
+
 """
     PrognosticMet <: AbstractSoilDriver
 

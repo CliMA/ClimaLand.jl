@@ -7,7 +7,6 @@ CurrentModule = ClimaLand
 
 ```@docs
 ClimaLand.LandModel
-ClimaLand.LandModel{FT}()
 ClimaLand.LandModel{FT}(
     forcing,
     LAI,
@@ -26,11 +25,18 @@ ClimaLand.SoilCanopyModel{FT}(
     toml_dict::CP.ParamDict,
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
 ) where {FT}
-ClimaLand.LandHydrology
-ClimaLand.LandHydrology{FT}()
 ClimaLand.LandSoilBiogeochemistry
-ClimaLand.LandSoilBiogeochemistry{FT}()
+ClimaLand.LandSoilBiogeochemistry{FT}(
+    forcing,
+    toml_dict::CP.ParamDict,
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+) where {FT}
 ClimaLand.SoilSnowModel
+ClimaLand.SoilSnowModel{FT}(
+    forcing,
+    toml_dict::CP.ParamDict,
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+) where {FT}
 ClimaLand.land_components
 ClimaLand.lsm_aux_vars
 ClimaLand.lsm_aux_types
