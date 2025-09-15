@@ -71,6 +71,18 @@ struct SoilCanopyModel{
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa Soil.Biogeochemistry.PrognosticMet
 
+        if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
+            # Note that these functions allocate. These checks should not occur except on initialization.
+            check_land_equality(
+                canopy.soil_moisture_stress.θ_high,
+                soil.parameters.ν,
+            )
+            check_land_equality(
+                canopy.soil_moisture_stress.θ_low,
+                soil.parameters.θ_r,
+            )
+        end
+
         return new{FT, MM, SM, VM}(soilco2, soil, canopy)
     end
 end
@@ -228,6 +240,9 @@ function SoilCanopyModel{FT}(;
     end
 
     canopy = Canopy.CanopyModel{FT}(;
+        soil_moisture_stress = canopy_component_types.soil_moisture_stress(
+            canopy_component_args.soil_moisture_stress...,
+        ),
         autotrophic_respiration = canopy_component_types.autotrophic_respiration(
             canopy_component_args.autotrophic_respiration...,
         ),

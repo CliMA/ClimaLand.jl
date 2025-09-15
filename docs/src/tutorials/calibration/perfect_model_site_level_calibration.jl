@@ -206,7 +206,7 @@ function G(Vcmax25)
                 lhf,
                 simulation.start_date,
                 simulation.start_date + Day(20),
-            )
+            ),
         )
     return observation
 end

@@ -34,7 +34,8 @@ import ClimaLand:
     get_model_callbacks,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-    FrequencyBasedCallback
+    FrequencyBasedCallback,
+    Soil
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
@@ -42,6 +43,7 @@ include("./component_models.jl")
 include("./biomass.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
+include("./soil_moisture_stress.jl")
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./photosynthesis_farquhar.jl")
@@ -59,6 +61,60 @@ include("./spatially_varying_parameters.jl")
 ########################################################
 # Convenience constructors for Canopy model components
 ########################################################
+## Soil Moisture Stress
+"""
+    PiecewiseMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    c::FT = toml_dict["moisture_stress_c"],
+    soil_params
+) where {FT <: AbstractFloat}
+
+Helper function to create `PiecewiseMoistureStressModel` by calculating field capacity (θ_high)
+and wilting point (θ_low) from the soil parameters.
+
+The low and high thresholds for the piecewise soil moisture stress function are given by
+the residual soil water content and the soil porosity, respectively.
+
+The soil parameters should be a named tuple with keys of `ν` and `θ_r` 
+(additional keys may be present but they will not be used). These may 
+be ClimaCore fields or floats, but must be consistently one or the other.
+
+Note that unlike other Canopy components, this model is defined on the subsurface domain.
+"""
+function PiecewiseMoistureStressModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    c::FT = toml_dict["moisture_stress_c"],
+    soil_params = Soil.soil_vangenuchten_parameters(
+        domain.space.subsurface,
+        FT,
+    ),
+) where {FT <: AbstractFloat}
+    if c <= 0
+        throw(
+            ArgumentError("Curvature parameter `c` must be greater than zero"),
+        )
+    end
+    θ_high = soil_params.ν
+    θ_low = soil_params.θ_r
+
+    return PiecewiseMoistureStressModel{FT}(; θ_high, θ_low, c)
+end
+
+"""
+    TuzetMoistureStressModel{FT}(toml_dict; sc::FT = toml_dict["moisture_stress_sc"], pc::FT = toml_dict["moisture_stress_pc"]) where{FT}
+
+A constructor for TuzetMoistureStressModel which uses the toml_dict
+values, allowing optional overrides by keyword argument.
+"""
+function TuzetMoistureStressModel{FT}(
+    toml_dict;
+    sc::FT = toml_dict["moisture_stress_sc"],
+    pc::FT = toml_dict["moisture_stress_pc"],
+) where {FT}
+    return TuzetMoistureStressModel{FT}(; sc, pc)
+end
 
 ## Autotrophic respiration models
 """
@@ -110,21 +166,15 @@ The `photosynthesis_parameters` argument is a NamedTuple that contains
 - `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
 By default, these parameters are set by the `clm_photosynthesis_parameters` function,
 which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.
-
-The following additional default parameters are used:
-- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
-- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
 function FarquharModel{FT}(
     domain;
     photosynthesis_parameters = clm_photosynthesis_parameters(
         domain.space.surface,
     ),
-    sc::FT = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc::FT = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
-    parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
+    parameters = FarquharParameters(FT, is_c3; Vcmax25)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
 
@@ -143,8 +193,6 @@ end
         ϕa1_c4 = FT(0.022*0.087),
         ϕa2_c4 = FT(-0.00034*0.087),
         α = FT(0.933),
-        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
@@ -161,8 +209,6 @@ The following default parameters are used:
 - ϕa1_c4 = 0.022*0.087 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - ϕa2_c4 = -0.00034*0.087 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
-- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure in the moisture stress factor [Tuzet et al. (2003)]
-- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor [Tuzet et al. (2003)]
 """
 function PModel{FT}(
     domain;
@@ -179,8 +225,6 @@ function PModel{FT}(
     ϕa1_c4 = FT(0.022 * 0.087),
     ϕa2_c4 = FT(-0.00034 * 0.087),
     α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar,
@@ -195,8 +239,6 @@ function PModel{FT}(
         ϕa1_c4,
         ϕa2_c4,
         α,
-        sc,
-        pc,
     )
 
     return PModel{FT}(is_c3, parameters)
@@ -215,7 +257,7 @@ end
         h_leaf::FT = FT(1),
         SAI::FT = FT(0),
         RAI::FT = FT(1),
-        ai_parameterization = PrescribedSiteAreaIndex{FT}(forcing.LAI, SAI, RAI),
+        ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI),
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
@@ -274,17 +316,31 @@ function PlantHydraulicsModel{FT}(
     rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
-    # TODO: move hydraulics paramters to ClimaParams.jl so we can call `get_default_parameter`.
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
     @assert h_stem >= 0 "Stem height must be non-negative"
     @assert h_leaf >= 0 "Leaf height must be non-negative"
 
-    zmax = FT(0)
-    compartment_midpoints =
-        n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+    # Construct compartment surfaces and midpoints from heights and number of compartments
+    zmin = FT(0)
     compartment_surfaces =
-        n_stem > 0 ? [zmax, h_stem, h_stem + h_leaf] : [zmax, h_leaf]
+        FT.(
+            vcat(
+                [zmin], # surface at ground level
+                [h_stem * i for i in 1:n_stem], # stem compartments
+                [h_stem * n_stem + h_leaf * j for j in 1:n_leaf], # leaf compartments
+            )
+        )
+    compartment_midpoints =
+        FT.(
+            vcat(
+                [h_stem * (i - 1) + h_stem / 2 for i in 1:n_stem], # stem compartments
+                [
+                    h_stem * n_stem + h_leaf * (j - 1) + h_leaf / 2 for
+                    j in 1:n_leaf
+                ], # leaf compartments
+            )
+        )
 
     parameters = PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization,
@@ -440,7 +496,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -448,11 +504,15 @@ an extended surface (plane/spherical surface) for regional or global simulations
 - subcomponent model type for radiative transfer. This is of type
 `AbstractRadiationModel`.
 - subcomponent model type for photosynthesis. This is of type
-`AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
-is supported.
+`AbstractPhotosynthesisModel` and supports `FarquharModel`, and `PModel`.
 - subcomponent model type for stomatal conductance. This is of type
- `AbstractStomatalConductanceModel` and currently only the `MedlynModel`
-is supported
+ `AbstractStomatalConductanceModel` and supports `MedlynConductanceModel` and
+ `PModelConductance`. Note if `PModel` is used for photosynthesis, then you
+ must also use `PModelConductance` for stomatal conductance, since these two models
+ are derived from the same set of conditions.
+- subcomponent model type for soil moisture stress. This is of type
+ `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel` (default)
+ `PiecewiseMoistureStressModel`, and `NoMoistureStressModel` (stress factor = 1).
 - subcomponent model type for plant hydraulics. This is of type
  `AbstractPlantHydraulicsModel` and currently only a version which
 prognostically solves Richards equation in the plant is available.
@@ -482,7 +542,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -492,6 +552,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
     photosynthesis::PM
     "Stomatal conductance model, a canopy component model"
     conductance::SM
+    "Soil moisture stress parameterization, a canopy component model"
+    soil_moisture_stress::SMSM
     "Plant hydraulics model, a canopy component model"
     hydraulics::PHM
     "Energy balance model, a canopy component model"
@@ -512,6 +574,7 @@ end
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
+        soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
@@ -537,6 +600,7 @@ function CanopyModel{FT}(;
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
     hydraulics::AbstractPlantHydraulicsModel{FT},
+    soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
     boundary_conditions::B,
@@ -565,6 +629,7 @@ function CanopyModel{FT}(;
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -592,6 +657,7 @@ end
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
+        soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
         hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
@@ -631,6 +697,7 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -648,6 +715,7 @@ function CanopyModel{FT}(
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -678,6 +746,7 @@ function CanopyModel{FT}(
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -708,6 +777,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :soil_moisture_stress,
 )
 
 """
@@ -923,6 +993,9 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # update the cache for hydraulics; what this update depends
         # on the type of canopy.hydraulics
         PlantHydraulics.update_hydraulics!(p, Y, canopy.hydraulics, canopy)
+
+        # Update soil moisture stress, used in photosynthesis and conductance
+        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)

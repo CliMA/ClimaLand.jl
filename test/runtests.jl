@@ -102,6 +102,9 @@ end
 @safetestset "Canopy module tests" begin
     include("standalone/Vegetation/canopy_model.jl")
 end
+@safetestset "Canopy module tests" begin
+    include("standalone/Vegetation/test_soil_moisture_stress.jl")
+end
 @safetestset "Canopy PlantHydraulics tests" begin
     include("standalone/Vegetation/plant_hydraulics_test.jl")
 end

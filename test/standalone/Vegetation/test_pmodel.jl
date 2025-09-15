@@ -1,8 +1,8 @@
 """
 # P-Model Regression Tests
 
-This module tests the ClimaLand P-Model implementation against reference outputs 
-from the R-based P-Model package. The P-Model predicts photosynthetic carbon 
+This module tests the ClimaLand P-Model implementation against reference outputs
+from the R-based P-Model package. The P-Model predicts photosynthetic carbon
 assimilation and related variables based on environmental conditions.
 
 ## Test Structure
@@ -48,7 +48,7 @@ using Dates
 """
     percent_difference(a, b)
 
-Calculate the percentage difference between `a` and `b` (reference). 
+Calculate the percentage difference between `a` and `b` (reference).
 """
 function percent_difference(a, b)
     return abs(a - b) / abs(b) * 100
@@ -92,8 +92,6 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa1_c4,
         ϕa2_c4,
         α = FT(0),
-        sc = FT(0),
-        pc = FT(0),
     )
 end
 
@@ -204,10 +202,10 @@ end
 
                     if haskey(outputs, key_symbol)
                         r_out = ref_outputs_typed[key]
-                        # convert gpp to kg/m^2/s   
+                        # convert gpp to kg/m^2/s
                         r_out = key == "gpp" ? r_out / FT(1000.0) : r_out
 
-                        # convert gs to mol/m^2/s 
+                        # convert gs to mol/m^2/s
                         r_out = key == "gs" ? r_out * P_air : r_out
 
                         j_out = getproperty(outputs, key_symbol)
@@ -283,8 +281,6 @@ end
             ϕa1_c4 = FT(0.022 * 0.087),
             ϕa2_c4 = FT(-0.00034 * 0.087),
             α = FT(0),
-            sc = FT(2e-6),
-            pc = FT(-2e6),
         )
         is_c3 = FT(1)
         constants = PModelConstants{FT}()
@@ -321,7 +317,7 @@ end
                 ca,
                 βm,
                 APAR,
-                FT(1.0), # force update 
+                FT(1.0), # force update
             )
             @test isapprox(
                 outputs_from_EMA.ξ_opt,

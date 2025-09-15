@@ -181,7 +181,7 @@ function default_diagnostics(
         diagnostics = get_short_diagnostics(model)
     else
         @assert typeof(output_vars) <: Vector{String}
-        @assert all([var ∈ possible_diags for var in output_vars])
+        @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
 
@@ -250,7 +250,7 @@ function default_diagnostics(
         diagnostics = possible_diags
     else
         @assert typeof(output_vars) <: Vector{String}
-        @assert all([var ∈ possible_diags for var in output_vars])
+        @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
 

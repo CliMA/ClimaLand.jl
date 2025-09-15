@@ -139,7 +139,7 @@ for FT in (Float32, Float64)
                     dY.soil.∫F_vol_liq_water_dt .- (
                         ClimaCore.Fields.zeros(domain.space.surface) .+
                         FT(((cmax - cmin) * -1e-5))
-                    )
+                    ),
                 ),
             ) < sqrt(eps(FT))
             imp_tendency! = make_imp_tendency(soil)
@@ -234,7 +234,7 @@ for FT in (Float32, Float64)
                     dY.soil.∫F_vol_liq_water_dt .- (
                         ClimaCore.Fields.zeros(domain.space.surface) .+
                         FT(((cmax - cmin) * -1e-5))
-                    )
+                    ),
                 ),
             ) < sqrt(eps(FT)) * abs(FT(((cmax - cmin) * -1e-5)))
             imp_tendency! = make_imp_tendency(soil)

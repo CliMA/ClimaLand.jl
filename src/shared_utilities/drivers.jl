@@ -297,7 +297,7 @@ function default_zenith_angle(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
                 insol_params,
-            )
+            ),
         )
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]

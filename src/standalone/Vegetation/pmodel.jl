@@ -40,10 +40,6 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
         Setting this to 0 represents no incorporation of past values. Since we update the EMA equation
         once per day, α = 1 - 1 day/τ where τ is the acclimation timescale in days."""
     α::FT
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
-    pc::FT
 end
 
 """
@@ -618,13 +614,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
@@ -667,8 +657,6 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ϕa1_c4 = parameters.ϕa1_c4,
         ϕa2_c4 = parameters.ϕa2_c4,
         α = FT(0),  # this allows us to use the initial values directly
-        sc = parameters.sc,
-        pc = parameters.pc,
     )
 
     local_noon_mask = FT(1)  # Force update for initialization
@@ -710,18 +698,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
 
     # drivers
     FT = eltype(parameters)
-    # TODO: replace this with modular soil moisture stress parameterization
-    ψ = p.canopy.hydraulics.ψ
-    n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
-    grav = LP.grav(earth_param_set)
-    ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
@@ -784,9 +761,8 @@ Args
 - `start_date`: datetime object for the start of the simulation (UTC).
 - `dt`: timestep
 - `canopy`: the canopy object containing the P-model parameters and constants.
-- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on
-    a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then
-    the longitude at each point can be automatically extracted from the field axes (THIS STILL NEEDS TO BE TESTED)
+- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
+    that it will be inferred from the canopy domain).
 """
 function make_PModel_callback(
     ::Type{FT},
