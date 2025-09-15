@@ -11,7 +11,7 @@ toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 domain =
     ClimaLand.Domains.global_domain(FT; nelements = (5, 15), apply_mask = false)
-(atmos, radiation) = prescribed_analytic_forcing(FT)
+(atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
 forcing = (; atmos, radiation)
 Δt = FT(180.0)
 land_model = ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt)
