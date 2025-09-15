@@ -26,7 +26,7 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+    SITE_NAME = "sap"#@error("Please provide a site name as command line argument")
 else
     SITE_NAME = ARGS[1]
 end
@@ -53,16 +53,15 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-density = NeuralSnow.NeuralDepthModel(FT)
-#density = Snow.MinimumDensityModel(ρ)
+#density = NeuralSnow.NeuralDepthModel(FT)
+density = Snow.MinimumDensityModel(ρ)
 α_snow = Snow.ConstantAlbedoModel(α)
 
 model = ClimaLand.Snow.SnowModel(
     FT,
     domain,
     forcing,
-    toml_dict,
-    Δt;
+    toml_dict;
     density,
     α_snow,
 )
@@ -72,7 +71,7 @@ Y, p, coords = ClimaLand.initialize(model)
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
-Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
+#Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
 
@@ -121,6 +120,7 @@ sol = SciMLBase.solve(
 );
 
 # Plotting
+
 q_l = [parent(sv.saveval[k].snow.q_l)[1] for k in 1:length(sol.t)];
 T = [parent(sv.saveval[k].snow.T)[1] for k in 1:length(sol.t)];
 evaporation = [
@@ -130,7 +130,7 @@ evaporation = [
 R_n = [parent(sv.saveval[k].snow.R_n)[1] for k in 1:length(sol.t)];
 water_runoff =
     [parent(sv.saveval[k].snow.water_runoff)[1] for k in 1:length(sol.t)];
-phase_change_flux =
+phase_change =
     [parent(sv.saveval[k].snow.phase_change_flux)[1] for k in 1:length(sol.t)];
 rain = [parent(sv.saveval[k].drivers.P_liq)[1] for k in 1:length(sv.t)];
 snow = [parent(sv.saveval[k].drivers.P_snow)[1] for k in 1:length(sv.t)];
@@ -141,6 +141,19 @@ z = [parent(sv.saveval[k].snow.z_snow)[1] for k in 1:length(sol.t)];
 S = [parent(sol.u[k].snow.S)[1] for k in 1:length(sol.t)];
 S_l = [parent(sol.u[k].snow.S_l)[1] for k in 1:length(sol.t)];
 U = [parent(sol.u[k].snow.U)[1] for k in 1:length(sol.t)];
+
+LHF = [
+    parent(sv.saveval[k].snow.turbulent_fluxes.lhf)[1] for
+    k in 1:length(sol.t)
+];
+SHF = [
+    parent(sv.saveval[k].snow.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+];
+energy_runoff =
+    [parent(sv.saveval[k].snow.energy_runoff)[1] for k in 1:length(sol.t)];
+energy_flux =
+    [parent(sv.saveval[k].snow.total_energy_flux)[1] for k in 1:length(sol.t)];
 t = sol.t;
 
 start_day = 1
@@ -170,6 +183,16 @@ mean_obs_df = combine(
     renamecols = false,
 )
 daily = t ./ 24 ./ 3600
+fig = CairoMakie.Figure(size = (1600, 400), fontsize = 26)
+ax2 = CairoMakie.Axis(
+    fig[1, 1],
+    ylabel = "Snow Cover Fraction",
+    xlabel = "Time of year (days)",
+)
+CairoMakie.lines!(ax2, daily, log10.(scf), label = "")
+xlims!(ax2, 0, ndays)
+
+CairoMakie.save(joinpath(savedir, "snow_cover_fraction_$(SITE_NAME).png"), fig)
 
 fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
 # set limits
@@ -278,7 +301,7 @@ CairoMakie.lines!(ax1, daily, cumsum(snow) .* Δt, label = "Snow", color = :red)
 CairoMakie.lines!(
     ax1,
     daily,
-    cumsum(rain) .* Δt,
+    cumsum(rain .* scf) .* Δt,
     label = "Rain",
     color = :green,
 )
@@ -299,7 +322,7 @@ CairoMakie.lines!(
 CairoMakie.lines!(
     ax1,
     daily,
-    cumsum(phase_change_flux .* scf) .* Δt,
+    cumsum(phase_change) .* Δt,
     label = "Phase Change",
     color = :orange,
 )
@@ -307,13 +330,56 @@ CairoMakie.axislegend(ax1, position = :lb)
 
 CairoMakie.save(joinpath(savedir, "water_fluxes_$(SITE_NAME).png"), fig)
 
+
+
+fig = CairoMakie.Figure(size = (1000, 1000), fontsize = 26)
+# set limits
+ax1 = CairoMakie.Axis(
+    fig[1, 1],
+    ylabel = "Cumulative height (m)",
+    xlabel = "Time(days)",
+)
+xlims!(ax1, 0, ndays)
+CairoMakie.lines!(ax1, daily, cumsum(R_n .* scf) .* Δt, label = "radiation", color = :red)
+CairoMakie.lines!(
+    ax1,
+    daily,
+    cumsum(SHF .* scf) .* Δt,
+    label = "SHF",
+    color = :green,
+)
+CairoMakie.lines!(
+    ax1,
+    daily,
+    cumsum(LHF .* scf) .* Δt,
+    label = "LHF",
+    color = :purple,
+)
+CairoMakie.lines!(
+    ax1,
+    daily,
+    cumsum(energy_runoff .* scf) .* Δt,
+    label = "Runoff",
+    color = :blue,
+)
+CairoMakie.lines!(
+    ax1,
+    daily,
+    cumsum(energy_flux .* scf) .* Δt,
+    label = "total",
+    color = :orange,
+)
+CairoMakie.axislegend(ax1, position = :lb)
+
+CairoMakie.save(joinpath(savedir, "energy_fluxes_$(SITE_NAME).png"), fig)
+
 # Assess conservation
 fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
 ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 ΔE_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_energy_flux)[end] for
+            parent(sv.saveval[k].snow.total_energy_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])
@@ -321,7 +387,7 @@ E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
 ΔW_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_water_flux)[end] for
+            parent(sv.saveval[k].snow.total_water_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])

@@ -90,8 +90,7 @@ snow = ClimaLand.Snow.SnowModel(
     FT,
     ClimaLand.Domains.obtain_surface_domain(domain),
     forcing,
-    toml_dict,
-    Δt;
+    toml_dict;
     prognostic_land_components,
 )
 land_model = ClimaLand.SoilSnowModel{FT}(; snow, soil)
@@ -99,8 +98,6 @@ land_model = ClimaLand.SoilSnowModel{FT}(; snow, soil)
 Y, p, coords = ClimaLand.initialize(land_model)
 p_soil_alone = deepcopy(p)
 for lsm_aux_var in (
-    :excess_water_flux,
-    :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -175,14 +172,10 @@ init_snow!(Y, 1.0f0)
 set_initial_cache!(p, Y, t)
 # Make sure the boundary conditions for soil are correct since that is what the LandHydrology methods
 # affect
+@test all(parent(p.soil.top_bc.water) .≈ parent(p.snow.water_runoff))
 @test all(
-    parent(p.soil.top_bc.water) .≈
-    parent(p.excess_water_flux .+ p.snow.water_runoff),
-)
-@test all(
-    parent(p.soil.top_bc.heat) .≈ parent(
-        p.excess_heat_flux .+ p.snow.snow_cover_fraction .* p.ground_heat_flux,
-    ),
+    parent(p.soil.top_bc.heat) .≈
+    parent(p.snow.snow_cover_fraction .* p.ground_heat_flux),
 )
 dY_soil_snow = deepcopy(Y) .* 0
 ClimaLand.source!(dY_soil_snow, src, Y, p, soil)

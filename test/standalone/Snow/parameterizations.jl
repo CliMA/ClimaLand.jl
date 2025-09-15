@@ -47,7 +47,6 @@ for FT in (Float32, Float64)
         ΔS = FT(0.1)
         Δt = Float64(180.0)
         parameters = SnowParameters{FT}(
-            Δt,
             density = densitymodel,
             α_snow = α_snow,
             earth_param_set = param_set,
@@ -90,7 +89,7 @@ for FT in (Float32, Float64)
 
         SWE = cat(FT.(rand(10)), FT(0), dims = 1)
         z = SWE * _ρ_l ./ ρ_snow
-        @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
+        @test runoff_timescale.(z, Ksat) ≈ max.(FT(3600), z ./ Ksat)
         ρ_calc = snow_bulk_density.(SWE, z, parameters)
         @test all(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
@@ -102,7 +101,7 @@ for FT in (Float32, Float64)
 
         U = energy_from_T_and_swe.(FT(1), FT.([272, 274]), parameters)
         T = snow_bulk_temperature.(U, FT(1), FT.([0.0, 1.0]), parameters)
-        @test all(T .≈ FT.([272, 274]))
+        @test all(T .≈ FT.([272, _T_ref]))
     end
     @testset "Alternative parameterizations, FT = $FT" begin
         param_set = LP.LandParameters(FT)

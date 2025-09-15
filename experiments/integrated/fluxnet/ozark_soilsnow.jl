@@ -153,8 +153,7 @@ snow_model = Snow.SnowModel(
     FT,
     ClimaLand.Domains.obtain_surface_domain(domain),
     forcing,
-    toml_dict,
-    dt;
+    toml_dict;
     prognostic_land_components,
     α_snow,
     density,
