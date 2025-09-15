@@ -236,7 +236,7 @@ land_components(land::AbstractLandModel) = propertynames(land)
         p,
         t,
         sfc_cache,
-)
+    )
 
 A function which computes the total energy per unit area and updates
 `surface_field` in place, for the land model `land`, by calling
@@ -269,7 +269,7 @@ end
         p,
         t,
         sfc_cache,
-)
+    )
 
 A function which computes the total liquid water volume
 per unit area and updates
@@ -362,21 +362,21 @@ end
 
 
 """
-   lsm_aux_vars(m::AbstractLandModel)
+    lsm_aux_vars(m::AbstractLandModel)
 
 Returns the additional aux variable symbols for the model in the form of a tuple.
 """
 lsm_aux_vars(m::AbstractLandModel) = ()
 
 """
-   lsm_aux_types(m::AbstractLandModel)
+    lsm_aux_types(m::AbstractLandModel)
 
 Returns the shared additional aux variable types for the model in the form of a tuple.
 """
 lsm_aux_types(m::AbstractLandModel) = ()
 
 """
-   lsm_aux_domain_names(m::AbstractLandModel)
+    lsm_aux_domain_names(m::AbstractLandModel)
 
 Returns the additional domain symbols in the form of a tuple e.g. :surface or :subsurface.
 

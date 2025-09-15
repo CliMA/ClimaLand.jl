@@ -7,13 +7,10 @@ CurrentModule = ClimaLand.Canopy
 ## Models and Parameters
 
 ```@docs
-ClimaLand.Canopy.TuzetMoistureStressParameters
 ClimaLand.Canopy.TuzetMoistureStressModel
-ClimaLand.Canopy.TuzetMoistureStressModel{FT}()
 ClimaLand.Canopy.TuzetMoistureStressModel{FT}(toml_dict::CP.ParamDict)
 ClimaLand.Canopy.PiecewiseMoistureStressModel
-ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}()
-Climaland.Canopy.PiecewiseMoistureStressModel{FT}(toml_dict::CP.ParamDict)
+ClimaLand.Canopy.PiecewiseMoistureStressModel(domain, toml_dict::CP.ParamDict)
 ClimaLand.Canopy.NoMoistureStressModel
 ```
 

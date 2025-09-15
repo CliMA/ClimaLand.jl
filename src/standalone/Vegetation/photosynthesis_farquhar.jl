@@ -73,7 +73,7 @@ end
 Base.eltype(::FarquharParameters{FT}) where {FT} = FT
 
 """
-   FarquharModel{FT, FP <: FarquharParameters{FT}}
+    FarquharModel{FT, FP <: FarquharParameters{FT}}
 
 A photosynthesis model taking leaf-level Vcmax25 and multiple other
 constants and predicting dark respiration at the leaf level, net

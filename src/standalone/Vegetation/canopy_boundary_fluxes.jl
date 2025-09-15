@@ -27,7 +27,7 @@ abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
     } <: AbstractCanopyBC
 
 A struct used to specify the canopy fluxes, referred
-to as ``boundary conditions", at the surface and
+to as "boundary conditions", at the surface and
 bottom of the canopy, for water and energy.
 
 These fluxes include turbulent surface fluxes
