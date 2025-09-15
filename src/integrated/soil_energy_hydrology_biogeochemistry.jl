@@ -9,6 +9,10 @@ export LandSoilBiogeochemistry, PrognosticMet
 
 A concrete type of land model used for simulating systems with a
 soil energy, hydrology, and biogeochemistry component.
+
+ClimaLand v1: SoilCO2 is still under testing, but errors in soilco2
+do not propagate into the other components.
+
 $(DocStringExtensions.FIELDS)"""
 struct LandSoilBiogeochemistry{
     FT,

@@ -56,6 +56,8 @@ In our code base, a "model" define a set of prognostic variables which must be t
 
 - `SnowModel`: runnable in standalone mode, or as part of an integrated model
 
+- `SoilCO2Model`: runnable in standalone mode, or as part of an integrated model. Please note that this model is in beta version.
+
 <strong> Combined Models: </strong>
 
 - `SoilCanopyModel`: an integrated model made of individual component models `EnergyHydrology` + `CanopyModel`

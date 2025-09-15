@@ -19,6 +19,10 @@ export LandModel
 
 A concrete type of land model used for simulating systems with
 soil, canopy, snow, soilco2.
+
+ClimaLand v1: SoilCO2 is still under testing, but errors in soilco2
+do not propagate into the other components.
+
 $(DocStringExtensions.FIELDS)
 """
 struct LandModel{
