@@ -11,6 +11,7 @@ import ..AbstractModel, ..AbstractLandModel
 using ..Bucket: BucketModel
 import ..SoilCanopyModel
 import ..LandModel
+import ..SoilSnowModel
 import ..Soil: EnergyHydrology, Runoff
 import ..Soil.Biogeochemistry: SoilCO2Model
 import ..Snow: SnowModel
