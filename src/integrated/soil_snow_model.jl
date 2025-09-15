@@ -81,7 +81,6 @@ correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedT
 of the form (;atmos, radiation), with `atmos` an `AbstractAtmosphericDriver` and `radiation`
 an `AbstractRadiativeDriver`. The domain must be a ClimaLand domain with a vertical extent.
 Finally, since the snow model requires the timestep, that is a required argument as well.
-
 """
 function SoilSnowModel{FT}(
     forcing,
@@ -110,8 +109,6 @@ function SoilSnowModel{FT}(
 ) where {FT}
     return SoilSnowModel{FT}(; snow, soil)
 end
-
-
 
 """
     lsm_aux_vars(m::SoilSnowModel)
