@@ -15,7 +15,11 @@ export SoilCanopyModel
     end
 
 A concrete type of land model used for simulating systems with a
-canopy and a soil component.
+canopy, a soil, and a soilco2 component.
+
+ClimaLand v1: SoilCO2 is still under testing, but errors in soilco2
+do not propagate into the other components.
+
 $(DocStringExtensions.FIELDS)
 """
 struct SoilCanopyModel{

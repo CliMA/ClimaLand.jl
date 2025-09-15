@@ -115,6 +115,11 @@ abstract type AbstractSoilBiogeochemistryModel{FT} <:
 
 A model for simulating the production and transport of CO₂ in the soil with dynamic
 source and diffusion terms.
+
+ClimaLand v1: SoilCO2 is still under testing; in particular, in global runs,
+an instability appears in some columns, and the prognostic equation does not
+enforce the positivity of CO2.
+
 $(DocStringExtensions.FIELDS)
 """
 struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
