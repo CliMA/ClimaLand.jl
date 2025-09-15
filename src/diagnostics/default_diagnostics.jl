@@ -246,8 +246,10 @@ function default_diagnostics(
     define_diagnostics!(land_model)
 
     possible_diags = get_possible_diagnostics(land_model)
-    if output_vars in (:long, :short)
+    if output_vars == :long
         diagnostics = possible_diags
+    elseif output_vars == :short
+        diagnostics = get_short_diagnostics(land_model)
     else
         @assert typeof(output_vars) <: Vector{String}
         @assert all([var in possible_diags for var in output_vars])
@@ -320,7 +322,18 @@ See the file `src/diagnostics/land_compute_methods.jl` to see which model
 variable(s) each diagnostic comes from.
 """
 function get_possible_diagnostics(model::EnergyHydrology)
-    diagnostics = ["swc", "si", "sie", "tsoil", "et", "shc", "stc", "swp"]
+    diagnostics = [
+        "swc",
+        "si",
+        "sie",
+        "tsoil",
+        "et",
+        "shc",
+        "stc",
+        "swp",
+        "infil",
+        "precip",
+    ]
 
     # Add diagnostics based on the top boundary condition type and runoff model
     add_diagnostics!(diagnostics, model, model.boundary_conditions.top)
