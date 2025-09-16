@@ -84,7 +84,7 @@ params = ClimaLand.Soil.RichardsParameters(;
 # Set Boundary conditions:
 # At the top, we set moisture to equivalent of 5cm hydraulic head
 # The bottom is free drainage
-top_bc = ClimaLand.Soil.MoistureStateBC((p, t) -> 0.46705)
+top_bc = ClimaLand.Soil.MoistureStateBC((p, t) -> 0.46705, K_approx_with_center = false)
 bottom_bc = ClimaLand.Soil.FreeDrainage()
 boundary_fluxes = (; top = top_bc, bottom = bottom_bc)
 soil = Soil.RichardsModel{FT}(;

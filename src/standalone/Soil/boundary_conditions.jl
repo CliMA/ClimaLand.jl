@@ -30,10 +30,29 @@ abstract type AbstractWaterBC <: ClimaLand.AbstractBC end
    MoistureStateBC <: AbstractWaterBC
 
 A simple concrete type of boundary condition, which enforces a
-state boundary condition ϑ_l = f(p,t) at either the top or bottom of the domain.
+state boundary condition ϑ\_l = f(p,t) at either the top or bottom of the domain.
+
+At the top surface only, we support different models for the hydraulic
+conductivity that results from this boundary condition. The generated 
+flux is:
+- K\_eff (h(f(p,t) - h\_N)/(Δz\_N/2), where:
+- h(f(p,t)) is the hydraulic head at the surface
+- h\_N is the hydraulic head of the top layer
+- Δz\_N is the width of the first layer
+- K\_eff is the effective conductivity. This is approximated either as
+
+(1) K\_eff = K_N (i.e., at the center of the top layer) or as
+(2) K\_eff = [K(f(p,t)) + K\_N]/2, the arithmetic mean.
+
+The field `K_approx_with_center`, when true, approx indicates the first option,
+and false indicates the second option. We  use a value of `true` by default.
 """
 struct MoistureStateBC{F <: Function} <: AbstractWaterBC
     bc::F
+    K_approx_with_center::Bool
+    function MoistureStateBC{F}(bc::F, K_approx_with_center = true) where {F}
+        return new{FT}(bc, K_approx_with_center)
+    end
 end
 
 """
@@ -247,18 +266,18 @@ function boundary_flux!(
 
     # Lastly, we need an effective conductivity to compute the flux that results from
     # the gradient in pressure.
-    # We use the arithmetic mean between K_c (at the first cell center) and K_bc evaluated at the boundary
-    # condition, below.
-
-    K_eff = p.soil.K_eff
-    K_sat_bc = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
-    @. K_eff = hydraulic_conductivity(
-        hcm_bc,
-        K_sat_bc,
-        max((θ_bc - θ_r_bc) / (ν_bc - θ_r_bc), 1),
-    ) # This does not take into account ice or temperature
-    K_center = ClimaLand.Domains.top_center_to_surface(p.soil.K)
-    @. K_eff = (K_eff + K_center) / 2
+    if rre_bc.K_approx_from_center
+        K_eff = ClimaLand.Domains.top_center_to_surface(p.soil.K)
+    else
+        K_c = ClimaLand.Domains.top_center_to_surface(p.soil.K)
+        K_sat_bc = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
+        K_bc = @. lazy(hydraulic_conductivity(
+            hcm_bc,
+            K_sat_bc,
+            max((θ_bc - θ_r_bc) / (ν_bc - θ_r_bc), 1)))
+        )
+        K_eff = @. lazy((K_bc+ K_c)/2)
+    end
     # Pass in (ψ_bc .+ Δz) as to account for contribution of gravity (∂(ψ+z)/∂z
     @. bc_field = ClimaLand.diffusive_flux(
         K_eff,
@@ -376,7 +395,7 @@ where `N` indicates the top layer cell index and
 """
 function ClimaLand.set_dfluxBCdY!(
     model::RichardsModel,
-    ::MoistureStateBC,
+    rre_bc::MoistureStateBC,
     boundary::ClimaLand.TopBoundary,
     Δz,
     Y,
@@ -384,15 +403,25 @@ function ClimaLand.set_dfluxBCdY!(
     t,
 )
     (; ν, hydrology_cm, S_s, θ_r) = model.parameters
-
     # Copy center variables to top face space, except hydraulic conductivity
-    K_eff = p.soil.K_eff
     hydrology_cmN = Domains.top_center_to_surface(hydrology_cm)
     ϑ_lN = Domains.top_center_to_surface(Y.soil.ϑ_l)
     νN = Domains.top_center_to_surface(ν)
     θ_rN = Domains.top_center_to_surface(θ_r)
     S_sN = Domains.top_center_to_surface(S_s)
-
+    θ_bc = FT.(rre_bc.bc(p, t))
+    if rre_bc.K_approx_from_center
+        K_eff = ClimaLand.Domains.top_center_to_surface(p.soil.K)
+    else
+        K_N = ClimaLand.Domains.top_center_to_surface(p.soil.K)
+        K_sat_N = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
+        K_bc = @. lazy(hydraulic_conductivity(
+            hydrology_cmN,
+            K_sat_N,
+            max((θ_bc - θ_r_N) / (ν_N - θ_r_N), 1)))
+        )
+        K_eff = @. lazy((K_N+ K_bc)/2)
+    end
 
     # Get the local geometry of the face space, then extract the top level
     levels = ClimaCore.Spaces.nlevels(Domains.obtain_face_space(axes(p.soil.K)))
@@ -860,7 +889,7 @@ top boundary.
 These variables are updated in place in `boundary_flux!`.
 """
 boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:top_bc, :K_eff, :top_bc_wvec, :dfluxBCdY)
+    (:top_bc, :top_bc_wvec, :dfluxBCdY)
 
 """
     boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
@@ -869,7 +898,7 @@ An extension of the `boundary_var_domain_names` method for MoistureStateBC at th
 top boundary.
 """
 boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:surface, :surface, :surface, :surface)
+    (:surface,, :surface, :surface)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::MoistureStateBC,
@@ -884,7 +913,6 @@ boundary_var_types(
     bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
-    FT,
     FT,
     ClimaCore.Geometry.WVector{FT},
     ClimaCore.Geometry.Covariant3Vector{FT},
