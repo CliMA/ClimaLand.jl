@@ -345,14 +345,6 @@ type = "float"
 description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
 tag = "PModelConstants"
 
-# P model conductance parameters
-
-["Drel"]
-value = 1.6
-type = "float"
-description = "Relative diffusivity of H2O to CO2 (Bonan Table A.3)"
-tag = "PModelConductanceParameters"
-
 # Bucket model parameters
 
 ["land_bucket_capacity"]

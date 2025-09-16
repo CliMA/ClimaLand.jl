@@ -463,9 +463,11 @@ end
 
 """
     function FarquharParameters(
-        toml_dict::CP.ParamDict,
-        is_c3::Union{AbstractFloat, ClimaCore.Fields.Field} = toml_dict["is_c3"];
-        Vcmax25 = toml_dict["Vcmax25"],
+        toml_dict::CP.ParamDict;
+        is_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
+        Vcmax25,
+        sc = toml_dict["low_water_pressure_sensitivity"],
+        pc = toml_dict["moisture_stress_ref_water_pressure"],
     )
 
 Constructor for the `FarquharParameters` struct.

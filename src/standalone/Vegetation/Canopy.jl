@@ -496,7 +496,7 @@ The following default parameter is used:
 """
 function PModelConductance{FT}(
     toml_dict::CP.ParamDict;
-    Drel = toml_dict["Drel"],
+    Drel = toml_dict["relative_diffusivity_of_water_vapor"],
 ) where {FT <: AbstractFloat}
     cond_params = PModelConductanceParameters(Drel = Drel)
     return PModelConductance{FT}(cond_params)

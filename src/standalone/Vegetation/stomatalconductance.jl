@@ -79,8 +79,8 @@ end
 
 """
     function MedlynConductanceParameters(
-        toml_dict;
-        g1 = toml_dict["g1"],
+        toml_dict::CP.ParamDict;
+        g1,
         g0 = toml_dict["min_stomatal_conductance"],
     )
 

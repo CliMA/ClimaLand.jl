@@ -34,8 +34,6 @@ end
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float32
-toml_dict = LP.create_toml_dict(FT)
-param_set = LP.LandParameters(toml_dict)
 context = ClimaComms.context()
 ClimaComms.init(context)
 
@@ -43,6 +41,7 @@ ClimaComms.init(context)
 include(
     joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl"),
 )
+
 savedir = generate_output_path("experiments/standalone/Snow/$(SITE_NAME)")
 t0 = FT(0.0)
 tf = FT(seconds[end])
