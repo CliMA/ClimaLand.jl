@@ -1,6 +1,6 @@
 using ClimaComms
 using ClimaCore
-using Interpolations
+import Interpolations
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
