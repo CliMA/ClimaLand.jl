@@ -394,7 +394,7 @@ function compute_precip!(
     Y,
     p,
     t,
-    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+    land_model::Union{EnergyHydrology, CanopyModel, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
     if isnothing(out)

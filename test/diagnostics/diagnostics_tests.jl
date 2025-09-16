@@ -306,6 +306,39 @@ end
     )
 end
 
+@testset "CanopyModel invalid windspeed diagnostic (coupled)" begin
+    # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    surface_space = domain.space.surface
+    atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
+    atmos = CoupledAtmosphere{FT}(surface_space, atmos_h)
+    radiation = CoupledRadiativeFluxes{FT}()
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    LAI = TimeVaryingInput((t) -> FT(1.0))
+    model = ClimaLand.SoilCanopyModel{FT}(
+        (; atmos, radiation, ground),
+        LAI,
+        toml_dict,
+        domain,
+    )
+
+    output_writer = ClimaDiagnostics.Writers.DictWriter()
+    output_vars = ["ws"]
+    reduction_period = :every_dt
+    reduction_type = :instantaneous
+
+    # This will fail because wind speed is not an available diagnostic in this setup
+    @test_throws AssertionError diagnostics =
+        ClimaLand.Diagnostics.default_diagnostics(
+            model,
+            start_date;
+            output_writer,
+            output_vars,
+            reduction_period,
+            reduction_type,
+            dt,
+        )
+end
+
 @testset "Invalid diagnostic variable" begin
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     LAI = TimeVaryingInput((t) -> FT(1.0))
