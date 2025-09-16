@@ -15,7 +15,13 @@ for FT in (Float32, Float64)
         earth_param_set = LP.LandParameters(toml_dict)
         # Test with defaults
         ARparams = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(toml_dict)
+        RTparams = BeerLambertParameters(
+            toml_dict;
+            G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
         RT = BeerLambertModel{FT}(RTparams)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesisparams =
@@ -155,15 +161,8 @@ for FT in (Float32, Float64)
                 Γstar,
             )
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
-        β = compute_tuzet_moisture_stress(
-            p_l,
-            pc,
-            sc,
-        )
-        @test β ==
-              (1 + exp(sc * pc)) / (
-            1 + exp(sc * (p_l - pc))
-        )
+        β = compute_tuzet_moisture_stress(p_l, pc, sc)
+        @test β == (1 + exp(sc * pc)) / (1 + exp(sc * (p_l - pc)))
         #    C4 tests
 
         is_c3 = 0.0

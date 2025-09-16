@@ -59,6 +59,7 @@ import ClimaParams
                 α_PAR_leaf,
                 α_NIR_leaf,
                 G_Function,
+                Ω = 1,
             )
             photosynthesis_params =
                 FarquharParameters(toml_dict; is_c3, Vcmax25)
@@ -595,6 +596,7 @@ end
                 α_PAR_leaf,
                 α_NIR_leaf,
                 G_Function,
+                Ω = 1,
             )
             photosynthesis_params =
                 FarquharParameters(toml_dict; is_c3, Vcmax25)
@@ -840,7 +842,16 @@ end
         g1 = FT(790)
         Vcmax25 = FT(9e-5)
         is_c3 = FT(1)
-        RTparams = BeerLambertParameters(toml_dict)
+        RTparams = BeerLambertParameters(
+            toml_dict,
+            G_Function = ConstantGFunction(
+                ClimaParams.float_type(toml_dict)(0.5),
+            ),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
+
         photosynthesis_params = FarquharParameters(toml_dict; is_c3, Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
@@ -1159,16 +1170,18 @@ end
             χl,
         ) in zipped_params
             toml_dict = LP.create_toml_dict(FT)
-            BeerLambertparams = BeerLambertParameters(toml_dict)
+
             # TwoStreamModel parameters
             G_Function = CLMGFunction.(χl)
-            λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
             BeerLambertparams = BeerLambertParameters(
                 toml_dict;
                 α_PAR_leaf,
                 α_NIR_leaf,
-                λ_γ_PAR,
+                G_Function = ConstantGFunction(
+                    ClimaParams.float_type(toml_dict)(0.5),
+                ),
+                Ω = 1,
             )
             TwoStreamparams = TwoStreamParameters(
                 toml_dict;

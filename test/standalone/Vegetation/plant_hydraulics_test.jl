@@ -114,7 +114,15 @@ for FT in (Float32, Float64)
         ]
 
         AR_params = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(toml_dict)
+        RTparams = BeerLambertParameters(
+            toml_dict;
+            G_Function = ConstantGFunction(
+                ClimaParams.float_type(toml_dict)(0.5),
+            ),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params =
             FarquharParameters(toml_dict; Vcmax25 = FT(5e-5), is_c3)
@@ -387,7 +395,15 @@ for FT in (Float32, Float64)
 
         toml_dict = LP.create_toml_dict(FT)
         AR_params = AutotrophicRespirationParameters(toml_dict)
-        RTparams = BeerLambertParameters(toml_dict)
+        RTparams = BeerLambertParameters(
+            toml_dict;
+            G_Function = ConstantGFunction(
+                ClimaParams.float_type(toml_dict)(0.5),
+            ),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params =
             FarquharParameters(toml_dict; Vcmax25 = FT(5e-5), is_c3)

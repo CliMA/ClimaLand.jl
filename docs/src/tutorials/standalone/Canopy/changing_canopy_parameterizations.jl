@@ -75,13 +75,16 @@ energy = Canopy.PrescribedCanopyTempModel{FT}();
 # parameters from a map of CLM parameters by default.
 radiative_transfer = Canopy.BeerLambertModel{FT}(domain, toml_dict);
 
-# Alternatively, we could use the same constructor but provide custom values for a subset of the parameters, and use the global maps for the remainder.
+# Alternatively, we could use the same constructor but provide custom values for
+# each of the parameters.
 # For example, we might want to use the global maps for albedo, but
 # explore how the results change when we assume a spherical
 # distribution of leaves (G = 0.5) and no clumping (Ω = 1).
 G_Function = Canopy.ConstantGFunction(FT(0.5)); # leaf angle distribution value 0.5
 Ω = 1; # clumping index
-radiation_parameters = (; G_Function, Ω);
+α_PAR_leaf = 0.1;
+α_NIR_leaf = 0.4;
+radiation_parameters = (; G_Function, Ω, α_PAR_leaf, α_NIR_leaf);
 radiative_transfer =
     Canopy.BeerLambertModel{FT}(domain, toml_dict; radiation_parameters);
 
@@ -89,8 +92,13 @@ radiative_transfer =
 # global maps, and therefore do not need the domain.
 # In a case like this, we may want to use a different `BeerLambertModel` constructor,
 # which takes the parameters object directly:
-radiative_transfer_parameters =
-    Canopy.BeerLambertParameters(toml_dict; G_Function, Ω);
+radiative_transfer_parameters = Canopy.BeerLambertParameters(
+    toml_dict;
+    G_Function,
+    Ω,
+    α_PAR_leaf,
+    α_NIR_leaf,
+);
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 # Note these parameters must all be scalars (or a single instance of a G_Function) or fields of floats and a field of a G_Function.
 

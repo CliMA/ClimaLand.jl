@@ -12,15 +12,15 @@ ClimaLand.Canopy.TwoStreamModel{FT}(
     domain,
     toml_dict::CP.ParamDict
 ) where {FT <: AbstractFloat}
-ClimaLand.Canopy.TwoStreamParameters
 ClimaLand.Canopy.BeerLambertModel
 ClimaLand.Canopy.BeerLambertModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.BeerLambertParameters
-ClimaLand.Canopy.BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}
-ClimaLand.Canopy.TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat}
+ClimaLand.Canopy.BeerLambertParameters(toml_dict::CP.ParamDict)
+ClimaLand.Canopy.TwoStreamParameters
+ClimaLand.Canopy.TwoStreamParameters(toml_dict::CP.ParamDict)
 ```
 
 ## Radiative Transfer Parameterizations

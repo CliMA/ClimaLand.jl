@@ -234,8 +234,17 @@ soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
 # Canopy model setup
 # Radiative transfer model
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(Canopy.TwoStreamParameters(toml_dict))
+G_Function = ConstantGFunction(ClimaParams.float_type(toml_dict)(0.5))
+α_PAR_leaf = 0.3
+τ_PAR_leaf = 0.2
+α_NIR_leaf = 0.4
+τ_NIR_leaf = 0.25
+Ω = 1
+radiation_parameters =
+    (; G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, Ω)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    Canopy.TwoStreamParameters(toml_dict; radiation_parameters...),
+)
 
 # Photosynthesis model
 Vcmax25 = FT(9e-5)

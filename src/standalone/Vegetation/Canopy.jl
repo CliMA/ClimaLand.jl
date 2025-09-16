@@ -446,8 +446,15 @@ function BeerLambertModel{FT}(
     }(
         radiation_parameters,
     )
-    parameters =
-        BeerLambertParameters(toml_dict; radiation_parameters..., ϵ_canopy)
+    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5))
+    Ω = 1
+    parameters = BeerLambertParameters(
+        toml_dict;
+        ϵ_canopy,
+        G_Function,
+        Ω,
+        radiation_parameters...,
+    )
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 
