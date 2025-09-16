@@ -313,6 +313,47 @@ The fallback method does nothing.
 """
 add_diagnostics!(_, _::AbstractModel, _) = nothing
 
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.AtmosDrivenFluxBC,
+)
+    append!(diagnostics, ["soilrn", "soillhf", "soilshf", "salb"])
+    return nothing
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
+)
+    append!(diagnostics, ["sr"])
+    return nothing
+end
+function add_diagnostics!(
+    diagnostics,
+    model::EnergyHydrology,
+    subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
+)
+    append!(diagnostics, ["sr", "ssr"])
+    return nothing
+end
+function add_diagnostics!(
+    diagnostics,
+    model::Union{SoilCanopyModel, LandModel},
+    subcomponent::ClimaLand.PrescribedRadiativeFluxes,
+)
+    append!(diagnostics, ["rn"])
+    return nothing
+end
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::ClimaLand.PrescribedAtmosphere,
+)
+    append!(diagnostics, ["ws"])
+    return nothing
+end
+
 ## Possible diagnostics for standalone models
 """
     get_possible_diagnostics(model)
@@ -340,33 +381,12 @@ function get_possible_diagnostics(model::EnergyHydrology)
     add_diagnostics!(diagnostics, model, model.boundary_conditions.top.runoff)
     return unique!(diagnostics)
 end
-function add_diagnostics!(
-    diagnostics,
-    model::EnergyHydrology,
-    subcomponent::ClimaLand.AtmosDrivenFluxBC,
-)
-    append!(diagnostics, ["soilrn", "soillhf", "soilshf", "salb"])
-end
-function add_diagnostics!(
-    diagnostics,
-    model::EnergyHydrology,
-    subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
-)
-    append!(diagnostics, ["sr"])
-end
-function add_diagnostics!(
-    diagnostics,
-    model::EnergyHydrology,
-    subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
-)
-    append!(diagnostics, ["sr", "ssr"])
-end
 
 function get_possible_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "scd", "scms", "soc"]
 end
 function get_possible_diagnostics(model::CanopyModel)
-    return [
+    diagnostics = [
         "sif",
         "ra",
         "gs",
@@ -405,8 +425,11 @@ function get_possible_diagnostics(model::CanopyModel)
         "lwd",
         "swd",
         "qsfc",
-        "ws",
     ]
+
+    # Add conditional diagnostics based on atmosphere type
+    add_diagnostics!(diagnostics, model, model.boundary_conditions.atmos)
+    return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
     return ["swe", "snd", "snowc"]
@@ -460,17 +483,35 @@ function get_component_diagnostics(
     return diagnostics
 end
 function get_possible_diagnostics(model::SoilCanopyModel)
-    component_diags = get_component_diagnostics(model, get_possible_diagnostics)
-    additional_diagnostics = ["swa", "swu", "lwu", "rn", "infil"]
+    component_diagnostics =
+        get_component_diagnostics(model, get_possible_diagnostics)
 
-    return unique!(append!(component_diags, additional_diagnostics))
+    # Add conditional diagnostics based on radiative forcing type
+    add_diagnostics!(
+        component_diagnostics,
+        model,
+        model.canopy.boundary_conditions.radiation,
+    )
+
+    additional_diagnostics = ["swa", "swu", "lwu", "infil"]
+
+    return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 function get_possible_diagnostics(model::LandModel)
-    component_diags = get_component_diagnostics(model, get_possible_diagnostics)
-    additional_diagnostics =
-        ["swa", "swu", "lwu", "rn", "infil", "iwc", "tair", "precip"]
+    component_diagnostics =
+        get_component_diagnostics(model, get_possible_diagnostics)
 
-    return unique!(append!(component_diags, additional_diagnostics))
+    # Add conditional diagnostics based on radiative forcing type
+    add_diagnostics!(
+        component_diagnostics,
+        model,
+        model.canopy.boundary_conditions.radiation,
+    )
+
+    additional_diagnostics =
+        ["swa", "swu", "lwu", "infil", "iwc", "tair", "precip"]
+
+    return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 
 """
