@@ -440,21 +440,14 @@ function BeerLambertModel{FT}(
     # Filter out radiation parameters that are not needed for Beer-Lambert model
     radiation_parameters = NamedTuple{
         filter(
-            k -> k in (:α_PAR_leaf, :α_NIR_leaf),
+            k -> k in (:α_PAR_leaf, :α_NIR_leaf, :G_Function, :Ω),
             keys(radiation_parameters),
         ),
     }(
         radiation_parameters,
     )
-    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5))
-    Ω = 1
-    parameters = BeerLambertParameters(
-        toml_dict;
-        ϵ_canopy,
-        G_Function,
-        Ω,
-        radiation_parameters...,
-    )
+    parameters =
+        BeerLambertParameters(toml_dict; ϵ_canopy, radiation_parameters...)
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 

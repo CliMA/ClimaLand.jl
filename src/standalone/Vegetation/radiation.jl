@@ -59,6 +59,7 @@ Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
     G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
+    FF <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::F
@@ -67,7 +68,7 @@ Base.@kwdef struct BeerLambertParameters{
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
-    Ω::FT
+    Ω::FF
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
     "Leaf angle distribution function"
@@ -341,7 +342,7 @@ end
     )
 
 TOML dict based constructor supplying default values for the
-BeerLambertParameters struct. Additional parameter values can be directly set
+`BeerLambertParameters` struct. Additional parameter values can be directly set
 via kwargs.
 """
 function BeerLambertParameters(
@@ -357,8 +358,14 @@ function BeerLambertParameters(
     # automatic conversion not possible to Union types
     α_PAR_leaf = FT.(α_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
+    Ω = FT.(Ω)
     λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
-    return BeerLambertParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    return BeerLambertParameters{
+        FT,
+        typeof(G_Function),
+        typeof(α_PAR_leaf),
+        typeof(Ω),
+    }(;
         G_Function,
         α_PAR_leaf,
         α_NIR_leaf,
