@@ -5,7 +5,7 @@
 # are also implementing a method to write the simulation data to
 # file so that you can use your plotting methods of choice.
 
-# First, take a look at the fluxnet simulation tutorials for [SoilCanopyModel](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.md) or [LandModel](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.md).
+# First, take a look at the fluxnet simulation tutorials for [SoilCanopyModel](soil_canopy_fluxnet_tutorial.md) or [LandModel](snowy_land_fluxnet_tutorial.md).
 # To use the default plotting tools (`LandSimVis`),
 # you need to start by importing the packages required:
 

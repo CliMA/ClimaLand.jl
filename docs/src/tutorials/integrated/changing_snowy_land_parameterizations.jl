@@ -1,10 +1,10 @@
 # # Changing LandModel Parameterizations
-# In the [Canopy, soil, and snow](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.jl)
+# In the [Canopy, soil, and snow](snowy_land_fluxnet_tutorial.md)
 # tutorial, we ran the integrated `LandModel`
 # at a Fluxnet site using all of the default parameterizations and parameters.
 
-# In two other tutorials ([Changing soil parameterizations](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl)
-# and [Changing canopy parameterizations](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl))
+# In two other tutorials [Changing soil parameterizations](../standalone/Soil/changing_soil_parameterizations.md)
+# and [Changing canopy parameterizations](../standalone/Canopy/changing_canopy_parameterizations.md)
 # we explored how to change the parameterizations of the standalone soil and canopy models, respectively.
 
 # This tutorial will combine these two streams of work to set up a `LandModel`

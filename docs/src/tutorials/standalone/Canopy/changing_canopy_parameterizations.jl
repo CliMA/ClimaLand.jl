@@ -1,5 +1,5 @@
 # # Changing Canopy Parameterizations
-# In [Default Canopy](docs/src/tutorials/standalone/Canopy/default_canopy.jl), we ran a simple canopy model simulation
+# In [Default Canopy](default_canopy.md), we ran a simple canopy model simulation
 # using all of the default parameterizations and parameters.
 # ClimaLand provides multiple options for many parameterizations;
 # in this tutorial, we will demonstrate how to change a canopy model parameterization.

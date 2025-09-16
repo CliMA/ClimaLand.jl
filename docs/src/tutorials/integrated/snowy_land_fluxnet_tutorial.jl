@@ -1,7 +1,7 @@
 # # Fluxnet simulations with the full land model: snow, soil, canopy
 
 # In the
-# [SoilCanopyModel tutorial](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl),
+# [SoilCanopyModel tutorial](soil_canopy_fluxnet_tutorial.md),
 # we demonstrated how to run the an integrated model with a soil and
 # canopy component at the US-MOz fluxnet site.
 # Here we add in a snow component, and run at the Niwot Ridge site instead.

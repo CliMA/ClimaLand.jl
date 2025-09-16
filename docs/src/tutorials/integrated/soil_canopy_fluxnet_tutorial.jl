@@ -1,7 +1,7 @@
 # # Fluxnet simulations with an integrated soil and canopy model
 
 # In the
-# [standalone canopy tutorial](docs/src/tutorials/standalone/Canopy/canopy_tutorial.jl),
+# [standalone canopy tutorial](../standalone/Canopy/canopy_tutorial.md),
 # we demonstrated how to run the canopy model in
 # standalone mode using a prescribed soil moisture
 # and ground temperature. ClimaLand can also
@@ -21,8 +21,8 @@
 # The focus of this tutorial is to learn the steps towards setting up and
 # running an integrated simulation, and less on the parameterization
 # choices. As such, the default parameters are implicitly set.
-# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl)
-# or the [soil parameterizations tutorial](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl).
+# To experiment with modularity in the parameters and parameterizations, please see the [canopy parameterizations tutorial](../standalone/Canopy/changing_canopy_parameterizations.md)
+# or the [soil parameterizations tutorial](../standalone/Soil/changing_soil_parameterizations.md).
 
 # # Preliminary Setup
 using Dates
