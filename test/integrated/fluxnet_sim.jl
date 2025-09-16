@@ -310,8 +310,8 @@ end
     (; dz_tuple, nelements, zmin, zmax) =
         FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
-    @test dz_tuple == nothing
-    @test nelements == 14
+    @test dz_tuple == FT.((0.05, 0.02))
+    @test nelements == 24
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
 
@@ -375,12 +375,12 @@ end
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
 
     # selected parameters from each "model group" for testing
-    @test soil_ν == FT(0.45)
+    @test soil_ν == FT(0.5)
     @test soil_ϵ == FT(0.98)
-    @test Ω == FT(1.0)
+    @test Ω == FT(0.75)
     @test ac_canopy == FT(745)
     @test g0 == FT(5e-4)
-    @test Vcmax25 == FT(2 * 4.225e-5)
+    @test Vcmax25 == FT(2.5e-5)
     @test SAI == FT(0)
     @test h_stem == FT(0)
     @test z0_m == FT(0.13) * h_canopy
