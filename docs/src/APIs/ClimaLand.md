@@ -35,7 +35,12 @@ ClimaLand.SoilSnowModel
 ClimaLand.SoilSnowModel{FT}(
     forcing,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
+    Δt;
 ) where {FT}
 ClimaLand.land_components
 ClimaLand.lsm_aux_vars
