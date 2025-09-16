@@ -46,10 +46,6 @@ Base.@kwdef struct FarquharParameters{
     fC3::FT
     "Constant factor appearing the dark respiration term for C4, equal to 0.025."
     fC4::FT
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
-    pc::FT
     "Q10 temperature parameter for Vcmax and Rd for C4 photosynthesis; unitless"
     Q10::FT
     "Parameter appearing in temperature dependence of C4 Vcmax; K^{-1}"
@@ -320,9 +316,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     GPP = p.canopy.photosynthesis.GPP
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
-    ψ = p.canopy.hydraulics.ψ
     c_co2_air = p.drivers.c_co2
-    cosθs = p.drivers.cosθs
     P_air = p.drivers.P
     T_air = p.drivers.T
     q_air = p.drivers.q
@@ -330,16 +324,10 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     lightspeed = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
     R = LP.gas_constant(earth_param_set)
     thermo_params = earth_param_set.thermo_params
-    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    (; sc, pc) = canopy.photosynthesis.parameters
+    (; λ_γ_PAR) = canopy.radiative_transfer.parameters
     (; g1,) = canopy.conductance.parameters
-    n_stem = canopy.hydraulics.n_stem
-    n_leaf = canopy.hydraulics.n_leaf
-    i_end = n_stem + n_leaf
     par_d = p.canopy.radiative_transfer.par_d
     area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
@@ -466,8 +454,6 @@ end
         toml_dict::CP.ParamDict;
         is_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
         Vcmax25,
-        sc = toml_dict["low_water_pressure_sensitivity"],
-        pc = toml_dict["moisture_stress_ref_water_pressure"],
     )
 
 Constructor for the `FarquharParameters` struct.
@@ -481,8 +467,6 @@ function FarquharParameters(
     toml_dict::CP.ParamDict;
     is_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
     Vcmax25,
-    sc = toml_dict["low_water_pressure_sensitivity"],
-    pc = toml_dict["moisture_stress_ref_water_pressure"],
 )
     name_map = (;
         :Jmax_activation_energy => :ΔHJmax,
@@ -523,8 +507,6 @@ function FarquharParameters(
     return FarquharParameters{FT, MECH, VC}(;
         is_c3,
         Vcmax25,
-        sc,
-        pc,
         parameters...,
         C4_parameters...,
     )

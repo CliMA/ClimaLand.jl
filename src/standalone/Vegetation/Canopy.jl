@@ -154,8 +154,6 @@ end
         photosynthesis_parameters = clm_photosynthesis_parameters(
             domain.space.surface,
         ),
-        sc::FT = toml_dict["low_water_pressure_sensitivity"],
-        pc::FT = toml_dict["moisture_stress_ref_water_pressure"],
     ) where {
         FT <: AbstractFloat,
         MECH <: Union{FT, ClimaCore.Fields.Field},
@@ -176,11 +174,9 @@ function FarquharModel{FT}(
     photosynthesis_parameters = clm_photosynthesis_parameters(
         domain.space.surface,
     ),
-    sc::FT = toml_dict["low_water_pressure_sensitivity"],
-    pc::FT = toml_dict["moisture_stress_ref_water_pressure"],
 ) where {FT <: AbstractFloat}
     (; is_c3, Vcmax25) = photosynthesis_parameters
-    parameters = FarquharParameters(toml_dict; is_c3, Vcmax25, sc, pc)
+    parameters = FarquharParameters(toml_dict; is_c3, Vcmax25)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
 

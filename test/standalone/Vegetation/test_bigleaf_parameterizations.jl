@@ -31,6 +31,8 @@ for FT in (Float32, Float64)
         N_a = FT(LP.avogadro_constant(earth_param_set))
         λ = FT(5e-7) # m (500 nm)
         energy_per_photon = h * c / λ
+        sc = toml_dict["low_water_pressure_sensitivity"]
+        pc = toml_dict["moisture_stress_ref_water_pressure"]
 
         # Drivers
         T = FT(290) # K
@@ -155,12 +157,12 @@ for FT in (Float32, Float64)
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
         β = compute_tuzet_moisture_stress(
             p_l,
-            photosynthesisparams.pc,
-            photosynthesisparams.sc,
+            pc,
+            sc,
         )
         @test β ==
-              (1 + exp(photosynthesisparams.sc * photosynthesisparams.pc)) / (
-            1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc))
+              (1 + exp(sc * pc)) / (
+            1 + exp(sc * (p_l - pc))
         )
         #    C4 tests
 
