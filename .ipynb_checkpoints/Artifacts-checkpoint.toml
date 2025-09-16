@@ -1,0 +1,190 @@
+[landsea_mask_30arcseconds]
+git-tree-sha1 = "517c925535981f9d17ac9e7a65e2c35c3ce9597d"
+
+    [[landsea_mask_30arcseconds.download]]
+    sha256 = "11eaf6b7606056d198f3735f7b76ead76269cced186de78075f415101cf39088"
+    url = "https://caltech.box.com/shared/static/z013ay1k6oqofnw69bv5held9x374sux.gz"
+
+[landsea_mask_60arcseconds]
+git-tree-sha1 = "10ed7ec61def091c44545825cfb4d9599216c3c8"
+
+    [[landsea_mask_60arcseconds.download]]
+    sha256 = "eb88455a39a00bfadb77effbc31a4df561158c0ca1578476edb683d45e3c49da"
+    url = "https://caltech.box.com/shared/static/vivf36pih7e0ttahqarc2nd5jxb4q8jr.gz"
+
+[landsea_mask_1deg]
+git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
+
+    [[landsea_mask_1deg.download]]
+    sha256 = "3722b553c2fdf28a6574aea2e0b167d16ab050f34e5969ada45625b3a3ecb6da"
+    url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
+
+[soil_ic_2008_50m]
+git-tree-sha1 = "7b0f0572f4620a8ba2a7ae816a547d2dcfb9eb9b"
+
+    [[soil_ic_2008_50m.download]]
+    sha256 = "b0080d605585072b88871bc8987f615c9dfc35e64ad16e00a52087d879fc5c3a"
+    url = "https://caltech.box.com/shared/static/atiztw8uu2i78g2vd02n8onb68cer9tn.gz"
+
+[soilgrids]
+git-tree-sha1 = "f919da748cc973519fb136f4225cf343f5c3e41f"
+[soilgrids_lowres]
+git-tree-sha1 = "6ce1717bb8b7aa767380f1053b9d8d3a4e4edaa6"
+
+    [[soilgrids_lowres.download]]
+    sha256 = "27d49fce7f4a5e2b81bbd29e8a7caf08f568a2df53e3af817126363decfd5a7c"
+    url = "https://caltech.box.com/shared/static/99aw2gce2k65bdu0h8jkfxq4vin08gi2.gz"
+
+[sw_albedo]
+git-tree-sha1 = "136f1db3ed969614fb589c5250545a3ed1e8aaab"
+
+    [[sw_albedo.download]]
+    sha256 = "777371543cc3285c0779e7ecd925fe782b5b45e0ed27f82260827ac8ebe6a700"
+    url = "https://caltech.box.com/shared/static/of1admpndmikoumtgk5j3yvt92v71awk.gz"
+
+["clm_data_0.9x1.25"]
+git-tree-sha1 = "283c62220fca8c4afe36a62348d3e9a159af2ee9"
+
+    [["clm_data_0.9x1.25".download]]
+    sha256 = "88d5899a729de800017a74bd8a7278582c2c55c0d8730a529bae384425d70e4e"
+    url = "https://caltech.box.com/shared/static/mxs3l1c1dppjwy81assk8w8ofn9d70pu.gz"
+["clm_data_0.125x0.125"]
+git-tree-sha1 = "6284ddefbc7937d9c1fb68fa731ff3f00b68e917"
+
+    [["clm_data_0.125x0.125".download]]
+    sha256 = "8d2a61baad53346515f4a66c4342f8aafce37ca9520020c17f99cc4f4aa98b15"
+    url = "https://caltech.box.com/shared/static/uteaw1l6fg7wmwhb3ey1c0jq4r8vg0ts.gz"
+[era5_land_forcing_data2008]
+git-tree-sha1 = "93d2e93f491e77cb8fba2a1b8b3946f38bde469e"
+[era5_land_forcing_data2008_lowres]
+git-tree-sha1 = "fd826542e6ab1758c8d5a2cc6dbf1f67b47aadee"
+
+    [[era5_land_forcing_data2008_lowres.download]]
+    sha256 = "c5ea5acfcab2e69c26d6ef8ba20e9e6dc018e5baa9c48d0df69cf0a5f9bf3399"
+    url = "https://caltech.box.com/shared/static/6zk5fa3ka5ib62jsrs6tx35sqwe8xv2k.gz"
+[era5_land_forcing_data2008_lai]
+git-tree-sha1 = "df5ec5af1ea0793c0e7d49e60db5a938098e174f"
+
+    [[era5_land_forcing_data2008_lai.download]]
+    sha256 = "a83bf28a7a864db285e41289031a9761c2a426373a6efecd04b866a0b5374cef"
+    url = "https://caltech.box.com/shared/static/m82r23e67x04a3hb6p79dfltlumvg9z0.gz"
+
+[modis_lai]
+git-tree-sha1 = "81d4bc1b22e94d66eec3d80a2d21b5dd5303bf8f"
+
+    [[modis_lai.download]]
+    sha256 = "4a244428fe480aa05ff863af69299d2ed8ca66ed324b9e1bffcb440792fb4cce"
+    url = "https://caltech.box.com/shared/static/99ktg026kciezykyegsawd1gjwj1du74.gz"
+
+[land_albedo]
+git-tree-sha1 = "3f07b70ab43a05123e93753a45e094dcf7a66b5b"
+
+[snowmip]
+git-tree-sha1 = "230f00823299e7e33d276d9b57cba985fc04eaae"
+
+    [[snowmip.download]]
+    sha256 = "598b525c7421fabf06de4c8d4d7e05d50b7655ad2387d98c4335e90fd5633d61"
+    url = "https://caltech.box.com/shared/static/0vqhet1hsj36sgmy0ajrcrb24cihcfd7.gz"
+
+[soil_params_Gupta2020_2022]
+git-tree-sha1 = "9370b7272968bfb92b48f2d4f495c278fa9f741d"
+
+[soil_params_Gupta2020_2022_lowres]
+git-tree-sha1 = "e6d18714edfdcbd0244203146521d32df338385a"
+
+    [[soil_params_Gupta2020_2022_lowres.download]]
+    sha256 = "3e8ca24c57589eb3ccf20e52e74dd56bb46f9122048c0ee468889b1c631bb2a2"
+    url = "https://caltech.box.com/shared/static/cg8ib5f6ps7wc1nn1p6wk2dnhmvwwr2p.gz"
+    
+[modis_clumping_index]
+git-tree-sha1 = "b849eb95c09190095e7bf021494ddeda8858af01"
+
+    [[modis_clumping_index.download]]
+    sha256 = "e4c766a93a673e5dc22540687ef5616416d65bb13a0f4a67789b95d49ccbb158"
+    url = "https://caltech.box.com/shared/static/ec2y3k5kqpl9wjvtsx3584wgkp5q8dyw.gz"
+
+[bonan_richards_eqn]
+git-tree-sha1 = "043f9354b961fd3ef6ac4cf71d0c99930e177a92"
+    [[bonan_richards_eqn.download]]
+    sha256 = "50f1739dfd8193742488f249bd1ba8a157dfc7c1d8a27392ba7edbe9b4c0db03"
+    url = "https://caltech.box.com/shared/static/4jcz9c1lp6rt750q28kx3qvihi8393tv.gz"
+
+[fluxnet_sites]
+git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
+
+    [[fluxnet_sites.download]]
+    sha256 = "f05b4c01b57afe9c0f59095b39cea1c0cf46b20deecd5c7afb44f474d9cd9966"
+    url = "https://caltech.box.com/shared/static/otrr2y0rgjct7hqhmq214nb8qjsvqj5p.gz"
+
+[topmodel]
+git-tree-sha1 = "10855ff977cc948a92c7a83915895d27650649a1"
+
+    [[topmodel.download]]
+    sha256 = "03de8f42fedf3836c6792571f04b55fbaca321919ecd761b846286dc56bfa2e8"
+    url = "https://caltech.box.com/shared/static/bfjxp72vre6b5ncm7jqf9w8hyj4ab4yr.gz"
+
+[lehmann2008_evaporation]
+git-tree-sha1 = "49386718eda19d2fa00ae6981d83948c6664057a"
+
+    [[lehmann2008_evaporation.download]]
+    sha256 = "e9603add174709a8eb7f70487bdc0f519843c03d83cb40cf07acd428f0d9d881"
+    url = "https://caltech.box.com/shared/static/khhop0nvuumrtzdakemaab8hsq8emh8e.gz"
+
+[ilamb_data]
+git-tree-sha1 = "839224a62b59d73073bdb9a5c55d3dc75e30fe33"
+
+    [[ilamb_data.download]]
+    sha256 = "64a9a344ebfbb0113014178a1f93a655c401431565907c07fd33aff8860b62d6"
+    url = "https://caltech.box.com/shared/static/eii2bfwfp47axfeuysgxlgzbczz27u5g.gz"
+
+[era5_lai_covers]
+git-tree-sha1 = "1e77fc84a027da43f1bf6ebe0a53849595a2be22"
+
+    [[era5_lai_covers.download]]
+    sha256 = "0331e3a2fc2cb53b0f1d9c5a84f49989da0b506258edc229da161e9ca4a61457"
+    url = "https://caltech.box.com/shared/static/uzuzk5wh8r9q477jbrusfg1sr0ytzem9.gz"
+
+[earth_orography_30arcseconds]
+git-tree-sha1 = "03dd08fcbf363ed055a176dd7adefb60ff1c3493"
+
+[earth_orography_60arcseconds]
+git-tree-sha1 = "fe19d8dbe7a18ff39588e1f718014b0479d9c0f7"
+lazy = true
+
+    [[earth_orography_60arcseconds.download]]
+    sha256 = "eca66c0701d1c2b9e271742314915ffbf4a0fae92709df611c323f38e019966e"
+    url = "https://caltech.box.com/shared/static/4asrxcgl6xsgenfcug9p0wkkyhtqilgk.gz"
+
+[bedrock_depth_30arcseconds]
+git-tree-sha1 = "cf5d2f9c2e04f930cd30c6ea1a063078113e2a22"
+
+[bedrock_depth_60arcseconds]
+git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
+
+    [[bedrock_depth_60arcseconds.download]]
+    sha256 = "6eb359e900141de837c41c0082257f7cf082e06e1371d45b07b1078f07e96c53"
+    url = "https://caltech.box.com/shared/static/k1zq0w1psqu8dk0s9jotrfuu6hm8kxfp.gz"
+
+[forty_yrs_era5_land_forcing_data]
+git-tree-sha1 = "f269a0b057b9f438b4caafdef17da73746310787"
+
+[era5_monthly_averages_surface_single_level_1979_2024]
+git-tree-sha1 = "6cddb07eeee2dd46dc5a19e9b2f706302ddba2c9"
+
+    [[era5_monthly_averages_surface_single_level_1979_2024.download]]
+    sha256 = "46b422722d98c89c6bc0b8641bff259db1caee253f45389ddf9eb9c2d31ed605"
+    url = "https://caltech.box.com/shared/static/jbgtyt6oq9lxvk8il5zzck6k581q7f3k.gz"
+
+[huang_van_genuchten_data]
+git-tree-sha1 = "39a344685d74346f89c4858c183565554494fc01"
+
+    [[huang_van_genuchten_data.download]]
+    sha256 = "1a31d971065bec12df089d95a6f385b44bf12fd136428fa7cb1456da87bd4fef"
+    url = "https://caltech.box.com/shared/static/fjq0f57qurctx9w5fc6vj8ml66wi8r73.gz"
+
+[mizoguchi_soil_freezing_data]
+git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
+
+    [[mizoguchi_soil_freezing_data.download]]
+    sha256 = "0027cc080ba45ba33dc790b176ec2854353ce7dce4eae4bef72963b0dd944e0b"
+    url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"

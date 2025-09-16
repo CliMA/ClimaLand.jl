@@ -58,7 +58,7 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
     earth_param_set = canopy.parameters.earth_param_set
     thermo_params = earth_param_set.thermo_params
     (; g1, g0, Drel) = canopy.conductance.parameters
-    area_index = p.canopy.biomass.area_index
+    area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
     An_leaf = get_An_leaf(p, canopy.photosynthesis)
     R = LP.gas_constant(earth_param_set)
@@ -78,27 +78,37 @@ end
 # For interfacing with ClimaParams
 
 """
-    function MedlynConductanceParameters(
-        toml_dict::CP.ParamDict;
-        g1,
-        g0 = toml_dict["min_stomatal_conductance"],
+    function MedlynConductanceParameters(::Type{FT};
+        g1 = 790,
+        kwargs...
+    )
+    function MedlynConductanceParameters(toml_dict;
+        g1 = 790,
+        kwargs...
     )
 
-TOML dict based constructor supplying default values for the
-`MedlynConductanceParameters` struct.
+Floating-point and toml dict based constructor supplying default values
+for the MedlynConductanceParameters struct.
+Additional parameter values can be directly set via kwargs.
 """
+MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    MedlynConductanceParameters(CP.create_toml_dict(FT); kwargs...)
+
 function MedlynConductanceParameters(
     toml_dict::CP.ParamDict;
-    g1,
-    g0 = toml_dict["min_stomatal_conductance"],
+    g1 = 790,
+    kwargs...,
 )
-    name_map = (; :relative_diffusivity_of_water_vapor => :Drel,)
+    name_map = (;
+        :relative_diffusivity_of_water_vapor => :Drel,
+        :min_stomatal_conductance => :g0,
+    )
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     g1 = FT.(g1)
     G1 = typeof(g1)
-    return MedlynConductanceParameters{FT, G1}(; g0, g1, parameters...)
+    return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
 end
 
 
@@ -146,7 +156,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     T_air = p.drivers.T
     earth_param_set = canopy.parameters.earth_param_set
     (; Drel) = canopy.conductance.parameters
-    area_index = p.canopy.biomass.area_index
+    area_index = p.canopy.hydraulics.area_index
     LAI = area_index.leaf
     ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
     An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
