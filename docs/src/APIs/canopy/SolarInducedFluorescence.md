@@ -9,6 +9,7 @@ CurrentModule = ClimaLand.Canopy
 ```@docs
 ClimaLand.Canopy.Lee2015SIFModel
 ClimaLand.Canopy.SIFParameters
+ClimaLand.Canopy.Lee2015SIFModel{FT}(toml_dict::CP.ParamDict) where {FT}
 ```
 
 ## Methods
