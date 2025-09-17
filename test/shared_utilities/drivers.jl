@@ -13,21 +13,10 @@ using Dates
 FT = Float32
 @testset "Default model, FT = $FT" begin
     toml_dict = LP.create_toml_dict(FT)
-    earth_param_set = LP.LandParameters(toml_dict)
-    pa = ClimaLand.PrescribedAtmosphere(
-        nothing,
-        nothing,
-        nothing,
-        nothing,
-        nothing,
-        nothing,
-        nothing,
-        FT(1),
-        earth_param_set,
-    )
-    pr = ClimaLand.PrescribedRadiativeFluxes(FT, nothing, nothing, nothing)
+    (pa, pr) = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
     liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
+
     domain = ClimaLand.Domains.Plane(;
         xlim = FT.((1.0, 2.0)),
         ylim = FT.((1.0, 2.0)),
