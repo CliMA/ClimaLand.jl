@@ -117,13 +117,13 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAtmosphere{
     FT,
-    LP <: Union{Nothing, AbstractTimeVaryingInput},
-    SP <: Union{Nothing, AbstractTimeVaryingInput},
-    TA <: Union{Nothing, AbstractTimeVaryingInput},
-    UA <: Union{Nothing, AbstractTimeVaryingInput},
-    QA <: Union{Nothing, AbstractTimeVaryingInput},
-    RA <: Union{Nothing, AbstractTimeVaryingInput},
-    CA <: Union{Nothing, AbstractTimeVaryingInput},
+    LP <: AbstractTimeVaryingInput,
+    SP <: AbstractTimeVaryingInput,
+    TA <: AbstractTimeVaryingInput,
+    UA <: AbstractTimeVaryingInput,
+    QA <: AbstractTimeVaryingInput,
+    RA <: AbstractTimeVaryingInput,
+    CA <: AbstractTimeVaryingInput,
     DT,
     TP,
 } <: AbstractAtmosphericDrivers{FT}
@@ -675,11 +675,11 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedRadiativeFluxes{
     FT,
-    SW <: Union{Nothing, AbstractTimeVaryingInput},
+    SW <: AbstractTimeVaryingInput,
     FD <: Union{Nothing, AbstractTimeVaryingInput},
-    LW <: Union{Nothing, AbstractTimeVaryingInput},
+    LW <: AbstractTimeVaryingInput,
     DT,
-    T,
+    T <: Union{Nothing, Function},
     TP,
 } <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
