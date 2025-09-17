@@ -82,7 +82,7 @@ function FluxnetSimulations.get_parameters(
     ),
     Ω = FT(0.69),
     χl = FT(0.1),
-    G_Function = CLMGFunction(χl),
+    G_Function = ConstantGFunction(FT(0.5)),
     α_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),

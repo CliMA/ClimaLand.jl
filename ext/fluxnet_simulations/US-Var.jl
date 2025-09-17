@@ -17,8 +17,8 @@ Domain depth source: Xu and Baldocchi, 2003.
 function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_Var};
-    dz_tuple = nothing,
-    nelements = 14,
+    dz_tuple = FT.((0.05, 0.02)),
+    nelements = 24,
     zmin = FT(-0.5),
     zmax = FT(0),
 )
@@ -71,7 +71,7 @@ Hydraulics parameters:
 function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_Var};
-    soil_ν = FT(0.45),
+    soil_ν = FT(0.5),
     soil_K_sat = FT(0.45 / 3600 / 100),
     soil_S_s = FT(1e-3),
     soil_hydrology_cm = vanGenuchten{FT}(; α = FT(2.0), n = FT(2.0)),
@@ -92,18 +92,18 @@ function FluxnetSimulations.get_parameters(
     α_PAR_leaf = FT(0.11),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
-    α_NIR_leaf = FT(0.35),
+    α_NIR_leaf = FT(0.45),
     τ_NIR_leaf = FT(0.34),
     ϵ_canopy = FT(0.97),
     g1 = FT(166),
     Drel = FT(1.6),
     g0 = FT(1e-4),
-    Vcmax25 = FT(2 * 4.225e-5),
+    Vcmax25 = FT(2.5e-5),
     ac_canopy = FT(745),
     pc = FT(-3e5),
-    sc = FT(1e-3),
+    sc = FT(4e-6),
     SAI = FT(0),
-    f_root_to_shoot = FT(1.0),
+    f_root_to_shoot = FT(3.5),
     K_sat_plant = 2e-8,
     ψ63 = FT(-2.7 / 0.0098),
     Weibull_param = FT(4),
