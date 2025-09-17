@@ -446,7 +446,15 @@ function FluxnetSimulations.get_comparison_data(
         "SW_OUT",
         "LW_OUT",
         "SWC_F_MDS_1",
+        "SWC_F_MDS_2",
+        "SWC_F_MDS_3",
+        "SWC_F_MDS_4",
+        "SWC_F_MDS_5",
         "TS_F_MDS_1",
+        "TS_F_MDS_2",
+        "TS_F_MDS_3",
+        "TS_F_MDS_4",
+        "TS_F_MDS_5",
         "P_F",
     )
     column_name_map = Dict(
@@ -518,11 +526,77 @@ function FluxnetSimulations.get_comparison_data(
         preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
         val,
     )
+
+    swc2 = FluxnetSimulations.get_comparison_data(
+        data,
+        "SWC_F_MDS_2",
+        column_name_map,
+        "swc2";
+        preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
+        val,
+    )
+    swc3 = FluxnetSimulations.get_comparison_data(
+        data,
+        "SWC_F_MDS_3",
+        column_name_map,
+        "swc3";
+        preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
+        val,
+    )
+    swc4 = FluxnetSimulations.get_comparison_data(
+        data,
+        "SWC_F_MDS_4",
+        column_name_map,
+        "swc4";
+        preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
+        val,
+    )
+    swc5 = FluxnetSimulations.get_comparison_data(
+        data,
+        "SWC_F_MDS_5",
+        column_name_map,
+        "swc5";
+        preprocess_func = (x) -> x / 100, # converts a percent to an absolute number
+        val,
+    )
     tsoil = FluxnetSimulations.get_comparison_data(
         data,
         "TS_F_MDS_1",
         column_name_map,
         "tsoil";
+        preprocess_func = (x) -> x + 273.15, # converts degrees C to K
+        val,
+    )
+
+    tsoil2 = FluxnetSimulations.get_comparison_data(
+        data,
+        "TS_F_MDS_2",
+        column_name_map,
+        "tsoil2";
+        preprocess_func = (x) -> x + 273.15, # converts degrees C to K
+        val,
+    )
+    tsoil3 = FluxnetSimulations.get_comparison_data(
+        data,
+        "TS_F_MDS_3",
+        column_name_map,
+        "tsoil3";
+        preprocess_func = (x) -> x + 273.15, # converts degrees C to K
+        val,
+    )
+    tsoil4 = FluxnetSimulations.get_comparison_data(
+        data,
+        "TS_F_MDS_4",
+        column_name_map,
+        "tsoil4";
+        preprocess_func = (x) -> x + 273.15, # converts degrees C to K
+        val,
+    )
+    tsoil5 = FluxnetSimulations.get_comparison_data(
+        data,
+        "TS_F_MDS_5",
+        column_name_map,
+        "tsoil5";
         preprocess_func = (x) -> x + 273.15, # converts degrees C to K
         val,
     )
@@ -542,7 +616,15 @@ function FluxnetSimulations.get_comparison_data(
         swu,
         lwu,
         swc,
+        swc2,
+        swc3,
+        swc4,
+        swc5,
         tsoil,
+        tsoil2,
+        tsoil3,
+        tsoil4,
+        tsoil5,
         precip,
     )
 end
