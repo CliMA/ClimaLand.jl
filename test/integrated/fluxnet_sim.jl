@@ -5,11 +5,25 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
+using ClimaLand.Domains
 
 const FT = Float64
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
+
+"""
+    create_site_column(FT, lat, long)
+
+Creates and returns a Column domain for user-given latitude and longitude coordinates.
+"""
+function create_site_column(FT, lat, long, dz_tuple, nelements, zmin, zmax)
+
+    zlim = (zmin, zmax)
+    longlat = (long, lat)
+
+    return Domains.Column(; zlim, nelements, longlat, dz_tuple)
+end
 
 @testset "US-Ha1 domain info + parameters" begin
     site_ID = FluxnetSimulations.replace_hyphen("US-Ha1")
@@ -384,4 +398,81 @@ end
     @test SAI == FT(0)
     @test h_stem == FT(0)
     @test z0_m == FT(0.13) * h_canopy
+end
+
+@testset "generic site domain info + parameters" begin
+    site_ID = "AU-Emr"
+
+    (; time_offset, lat, long, atmos_h) =
+        FluxnetSimulations.get_location(site_ID)
+
+    @test lat == FT(-23.8587)
+    @test long == FT(148.4746)
+    @test time_offset == -10
+    @test atmos_h == FT(6.7)
+
+    # domain information
+    (; dz_tuple, nelements, zmin, zmax) = FluxnetSimulations.get_domain_info(FT)
+
+    @test dz_tuple == (FT(1.5), FT(0.1))
+    @test nelements == 20
+    @test zmin == FT(-10)
+    @test zmax == FT(0)
+
+    domain = create_site_column(FT, lat, long, dz_tuple, nelements, zmin, zmax)
+
+    (;
+        soil_ν,
+        soil_K_sat,
+        soil_S_s,
+        soil_hydrology_cm,
+        θ_r,
+        ν_ss_quartz,
+        ν_ss_om,
+        ν_ss_gravel,
+        z_0m_soil,
+        z_0b_soil,
+        soil_ϵ,
+        soil_albedo,
+        Ω,
+        χl,
+        G_Function,
+        α_PAR_leaf,
+        λ_γ_PAR,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        ϵ_canopy,
+        ac_canopy,
+        g1,
+        Drel,
+        g0,
+        Vcmax25,
+        SAI,
+        f_root_to_shoot,
+        K_sat_plant,
+        ψ63,
+        Weibull_param,
+        a,
+        conductivity_model,
+        retention_model,
+        plant_ν,
+        plant_S_s,
+        rooting_depth,
+        n_stem,
+        n_leaf,
+        h_leaf,
+        h_stem,
+        h_canopy,
+        z0_m,
+        z0_b,
+    ) = FluxnetSimulations.get_parameters(FT, site_ID, domain; θ_r = FT(0.067))
+
+    @test θ_r == FT(0.067)
+    @test Ω == 0.75
+    @test g0 == FT(100.0)
+    @test χl == FT(-0.3)
+    @test h_leaf == FT(0.5)
+    @test Vcmax25 == FT(2.4e-5)
+
 end
