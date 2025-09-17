@@ -1,5 +1,6 @@
 module PlantHydraulics
 using ClimaLand
+using ClimaLand.Soil
 using ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, AbstractTimeVaryingInput
@@ -11,6 +12,7 @@ using ClimaCore
 import ClimaLand.Parameters as LP
 import ClimaParams as CP
 using DocStringExtensions
+using LazyBroadcast: lazy
 
 import ClimaLand:
     make_update_aux,
@@ -692,7 +694,8 @@ K_eff = K_soil K_stem /(K_stem + K_soil)
 Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
 and K_stem = K_plant(ψ_stem). In `PrognosticSoil` mode, we compute the flux using
 K_soil = K_soil(ψ_soil) and K_stem = K_plant(ψ_stem). The latter is a better model, but
-our `PrescribedSoil` struct does not store K_soil, only ψ_soil.
+our `PrescribedSoil` struct does not store K_soil, only θ_soil.
+θ_soil is converted to ψ_soil using the retention curve supplied by hydrology_cm.
 
 The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
@@ -711,7 +714,19 @@ function root_water_flux_per_ground_area!(
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
-    ψ_soil = p.drivers.ψ
+
+    # compute the soil water potential from soil water content from retention curve
+    soil_saturation = @. lazy(
+        max(
+            min(
+                Soil.effective_saturation(ground.ν, p.drivers.θ, ground.θ_r),
+                1,
+            ),
+            eps(FT),
+        ),
+    )
+    ψ_soil = @. lazy(matric_potential(ground.hydrology_cm, soil_saturation))
+
     above_ground_area_index =
         harmonic_mean.(
             getproperty(area_index, model.compartment_labels[1]),
