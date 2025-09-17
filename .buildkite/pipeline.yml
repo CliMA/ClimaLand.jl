@@ -9,6 +9,7 @@ env:
   SLURM_KILL_BAD_EXIT: 1
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
   JULIA_CUDA_MEMORY_POOL: "cuda"
+  JULIA_MAX_NUM_PRECOMPILE_FILES: 100
 
 
 steps:
@@ -25,11 +26,11 @@ steps:
 
       - echo "--- Instantiate experiments"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
       - echo "--- Instantiate test"
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=test -e 'using Pkg; Pkg.status()'"
+      - "julia --project=test -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
     agents:
       slurm_gpus: 1
@@ -38,6 +39,7 @@ steps:
       slurm_ntasks_per_node: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
+      JULIA_MAX_NUM_PRECOMPILE_FILES: 50
 
   - wait
 
