@@ -61,10 +61,8 @@ using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float64;
-earth_param_set = LP.LandParameters(FT);
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict);
 
 # Site-specific information
 time_offset = -6 # difference from UTC in hours
@@ -101,7 +99,7 @@ LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Overwrite energy parameter for stability
-energy = BigLeafEnergyModel{FT}(; ac_canopy = FT(1e3))
+energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e3))
 
 # Construct canopy model
 canopy = ClimaLand.Canopy.CanopyModel{FT}(

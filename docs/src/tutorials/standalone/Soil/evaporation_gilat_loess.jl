@@ -33,7 +33,8 @@ import ClimaLand.Simulations: LandSimulation, solve!
 import SurfaceFluxes.Parameters as SFP
 
 FT = Float64;
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
 # Parameters
@@ -52,7 +53,7 @@ z_0m = FT(1e-3)
 z_0b = FT(1e-4)
 d_ds = FT(0.01)# 10mm
 params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,
@@ -64,7 +65,6 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
     emissivity,
     z_0m,
     z_0b,
-    earth_param_set,
     d_ds,
 );
 

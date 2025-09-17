@@ -41,28 +41,7 @@ ClimaLand.Soil.EnergyHydrology{FT}(;
 ClimaLand.Soil.EnergyHydrology{FT}(
     domain,
     forcing,
-    toml_dict::CP.ParamDict;
-    prognostic_land_components = (:soil,),
-    albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
-        clm_soil_albedo_parameters(domain.space.surface)...,
-    ),
-    runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
-        toml_dict,
-        f_max = topmodel_fmax(domain.space.surface, FT),
-    ),
-    retention_parameters = soil_vangenuchten_parameters(
-        domain.space.subsurface,
-        FT,
-    ),
-    composition_parameters = soil_composition_parameters(
-        domain.space.subsurface,
-        FT,
-    ),
-    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
-    z_0m = LP.get_default_parameter(FT, :soil_momentum_roughness_length),
-    z_0b = LP.get_default_parameter(FT, :soil_scalar_roughness_length),
-    emissivity = LP.get_default_parameter(FT, :emissivity_bare_soil),
-    additional_sources = (),
+    toml_dict::CP.ParamDict
 ) where {FT <: AbstractFloat}
 ```
 

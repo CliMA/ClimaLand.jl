@@ -244,7 +244,7 @@ function WuWuSnowCoverFractionModel(
     β_min = toml_dict["beta_min"],
     z0 = toml_dict["z0"],
 )
-    return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0 = z0)
+    return WuWuSnowCoverFractionModel(γ, β0, β_min, horz_degree_res; z0)
 end
 
 """
@@ -294,42 +294,87 @@ Base.@kwdef struct SnowParameters{
     earth_param_set::PSE
 end
 
+## For interfacing with ClimaParams
 """
-   SnowParameters{FT}(Δt;
-                      density = MinimumDensityModel(200),
-                      z_0m = FT(0.0024),
-                      z_0b = FT(0.00024),
-                      α_snow = ConstantAlbedoModel(FT(0.8)),
-                      ϵ_snow = FT(0.99),
-                      θ_r = FT(0.08),
-                      Ksat = FT(1e-3),
-                      κ_ice = FT(2.21),
-                      ΔS = FT(0.1),
-                      scf = WuWuSnowCoverFractionModel(FT(0.106),FT(1.81), FT(0.08), FT(1.77), FT(1.0), FT(1),),
-                      earth_param_set::PSE) where {FT, PSE}
+    function SnowParameters(
+        toml_dict::CP.ParamDict,
+        Δt;
+        ρ_snow = toml_dict["snow_density"],
+        α_snow_param = toml_dict["snow_albedo"],
+        density::DM = MinimumDensityModel(ρ_snow),
+        α_snow::AM = ConstantAlbedoModel(α_snow_param),
+        scf ::SCFM = WuWuSnowCoverFractionModel(
+            toml_dict,
+            CP.float_type(toml_dict)(1.0),
+        ),
+        z_0m = toml_dict["snow_momentum_roughness_length"],
+        z_0b = toml_dict["snow_scalar_roughness_length"],
+        κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
+        ϵ_snow = toml_dict["snow_emissivity"],
+        θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+        Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+        ΔS = toml_dict["delta_S"],
+    ) where {DM, AM, SCFM}
 
-An outer constructor for `SnowParameters` which supplies defaults for
-all arguments but `earth_param_set`.
+TOML dictionary constructor for the `SnowParameters`` struct.
+```julia
+Δt = 450.0
+# TOML Dictionary:
+import ClimaParams as CP
+toml_dict = CP.create_toml_dict(Float32);
+ClimaLand.Canopy.SnowParameters(toml_dict, Δt; ϵ_snow = Float32(0.99), Ksat = Float32(1e-4))
+```
 """
+function SnowParameters(
+    toml_dict::CP.ParamDict,
+    Δt;
+    ρ_snow = toml_dict["snow_density"],
+    α_snow_param = toml_dict["snow_albedo"],
+    density::DM = MinimumDensityModel(ρ_snow),
+    α_snow::AM = ConstantAlbedoModel(α_snow_param),
+    scf::SCFM = WuWuSnowCoverFractionModel(
+        toml_dict,
+        CP.float_type(toml_dict)(1.0),
+    ),
+    z_0m = toml_dict["snow_momentum_roughness_length"],
+    z_0b = toml_dict["snow_scalar_roughness_length"],
+    κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
+    ϵ_snow = toml_dict["snow_emissivity"],
+    θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+    Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+    ΔS = toml_dict["delta_S"],
+) where {DM, AM, SCFM}
+    Δt = float(Δt)
+    FT = CP.float_type(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
+    return SnowParameters{FT, DM, AM, SCFM, typeof(earth_param_set)}(;
+        Δt,
+        earth_param_set,
+        z_0m,
+        z_0b,
+        κ_ice,
+        ϵ_snow,
+        θ_r,
+        Ksat,
+        ΔS,
+        density,
+        α_snow,
+        scf,
+    )
+end
+
 function SnowParameters{FT}(
     Δt;
-    density::DM = MinimumDensityModel(FT(200)),
-    z_0m = FT(0.0024),
-    z_0b = FT(0.00024),
-    α_snow::AM = ConstantAlbedoModel(FT(0.8)),
-    ϵ_snow = FT(0.99),
-    θ_r = FT(0.08),
-    Ksat = FT(1e-3),
-    κ_ice = FT(2.21),
+    density::DM,
+    z_0m,
+    z_0b,
+    α_snow::AM,
+    ϵ_snow,
+    θ_r,
+    Ksat,
+    κ_ice,
     ΔS = FT(0.1),
-    scf::SCFM = WuWuSnowCoverFractionModel(
-        FT(0.106),
-        FT(1.81),
-        FT(0.08),
-        FT(1.77),
-        FT(1),
-        FT(1),
-    ),
+    scf::SCFM,
     earth_param_set::PSE,
 ) where {
     FT <: AbstractFloat,
@@ -351,66 +396,6 @@ function SnowParameters{FT}(
         ΔS,
         scf,
         earth_param_set,
-    )
-end
-
-## For interfacing with ClimaParams
-"""
-    function SnowParameters(
-        FT,
-        Δt;
-        kwargs...  # For individual parameter overrides
-    )
-
-    function SnowParameters(
-        toml_dict::CP.ParamDict,
-        Δt;
-        kwargs...  # For individual parameter overrides
-    )
-
-Constructors for the SnowParameters struct. Two variants:
-1. Pass in the float-type and retrieve parameter values from the default TOML dict.
-2. Pass in a TOML dictionary to retrieve parameter values. Possible calls:
-```julia
-Δt = 450.0
-ClimaLand.Canopy.SnowParameters(Float64, Δt) # use the default values for all parameters
-# Kwarg overrides
-ClimaLand.Canopy.SnowParameters(Float64, Δt; ϵ_snow = 0.99)
-# TOML Dictionary:
-import ClimaParams as CP
-toml_dict = CP.create_toml_dict(Float32);
-ClimaLand.Canopy.SnowParameters(toml_dict, Δt; ϵ_snow = Float32(0.99), Ksat = Float32(1e-4))
-```
-"""
-SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
-    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
-
-function SnowParameters(toml_dict::CP.ParamDict, Δt; kwargs...)
-    name_map = (;
-        :snow_momentum_roughness_length => :z_0m,
-        :snow_scalar_roughness_length => :z_0b,
-        :thermal_conductivity_of_water_ice => :κ_ice,
-        :snow_emissivity => :ϵ_snow,
-        :holding_capacity_of_water_in_snow => :θ_r,
-        :wet_snow_hydraulic_conductivity => :Ksat,
-    )
-
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
-    name_map2 = (; :snow_density => :ρ_snow, :snow_albedo => :α_snow)
-    parameters2 = CP.get_parameter_values(toml_dict, name_map2, "Land")
-
-    density = MinimumDensityModel(parameters2.ρ_snow)
-    α_snow = ConstantAlbedoModel(parameters2.α_snow)
-    FT = CP.float_type(toml_dict)
-    earth_param_set = LP.LandParameters(toml_dict)
-    PSE = typeof(earth_param_set)
-    return SnowParameters{FT}(
-        Δt;
-        earth_param_set,
-        parameters...,
-        density,
-        α_snow,
-        kwargs...,
     )
 end
 
@@ -493,15 +478,14 @@ function SnowModel(
     ϵ_snow = toml_dict["snow_emissivity"],
     α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
     density = MinimumDensityModel(toml_dict["snow_density"]),
-    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1.0)),
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],
 )
-    earth_param_set = LP.LandParameters(toml_dict)
-    parameters = SnowParameters{FT}(
+    parameters = SnowParameters(
+        toml_dict,
         Δt;
-        earth_param_set,
         scf,
         α_snow,
         ϵ_snow,

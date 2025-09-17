@@ -8,8 +8,9 @@ import Random
 Random.seed!(1234)
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
     @testset "Snow Parameterizations, FT = $FT" begin
-        param_set = LP.LandParameters(FT)
+        param_set = LP.LandParameters(toml_dict)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -39,18 +40,18 @@ for FT in (Float32, Float64)
             FT(1),
         )
         # These values should match ClimaParams
-        ϵ_snow = FT(0.99)
-        z_0b = FT(0.00024)
+        ϵ_snow = FT(0.97)
+        z_0b = FT(8e-2)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
         ΔS = FT(0.1)
         Δt = Float64(180.0)
-        parameters = SnowParameters{FT}(
+        parameters = SnowParameters(
+            toml_dict,
             Δt,
             density = densitymodel,
             α_snow = α_snow,
-            earth_param_set = param_set,
         )
         @test parameters.density.ρ_min == ρ_min
         @test typeof(parameters.density.ρ_min) == FT
@@ -105,7 +106,7 @@ for FT in (Float32, Float64)
         @test all(T .≈ FT.([272, 274]))
     end
     @testset "Alternative parameterizations, FT = $FT" begin
-        param_set = LP.LandParameters(FT)
+        param_set = LP.LandParameters(toml_dict)
         m = Snow.WuWuSnowCoverFractionModel(
             FT(0.08),
             FT(1.77),

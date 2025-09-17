@@ -36,10 +36,8 @@ device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 FT = Float64
-earth_param_set = LP.LandParameters(FT)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the domain
@@ -86,7 +84,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
 
 # Now we set up the canopy model, which mostly use defaults for:
 ground = ClimaLand.PrognosticGroundConditions{FT}()
@@ -98,8 +96,8 @@ LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Construct the P model manually since it is not a default
-photosynthesis = PModel{FT}(canopy_domain)
-conductance = PModelConductance{FT}()
+photosynthesis = PModel{FT}(canopy_domain, toml_dict)
+conductance = PModelConductance{FT}(toml_dict)
 
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,

@@ -116,10 +116,8 @@ ClimaComms.init(context)
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 const FT = Float64
-earth_param_set = LP.LandParameters(FT)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set the model domain
@@ -232,20 +230,31 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
 # Canopy model setup
 # Radiative transfer model
-radiative_transfer = Canopy.TwoStreamModel{FT}(Canopy.TwoStreamParameters(FT))
+G_Function = ConstantGFunction(ClimaParams.float_type(toml_dict)(0.5))
+α_PAR_leaf = 0.3
+τ_PAR_leaf = 0.2
+α_NIR_leaf = 0.4
+τ_NIR_leaf = 0.25
+Ω = 1
+radiation_parameters =
+    (; G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, Ω)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    Canopy.TwoStreamParameters(toml_dict; radiation_parameters...),
+)
 
 # Photosynthesis model
 Vcmax25 = FT(9e-5)
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
+photosynthesis =
+    FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
 # Conductance model
 g1 = FT(141)
-conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Hydraulics model
 LAI = TimeVaryingInput((t) -> 2.0)

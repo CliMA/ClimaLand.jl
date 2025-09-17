@@ -178,7 +178,8 @@ for (name, infile_path, varname) in name_ds_var_list
 end
 
 @testset "Test PrescribedBaregroundAlbedo - albedo from map, FT = $FT" begin
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     varname = "sw_alb"
     path = ClimaLand.Artifacts.bareground_albedo_dataset_path()
     α_snow = FT(0.8)
@@ -234,7 +235,7 @@ end
             )
             τc = FT(1.0)
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
 
             model = BucketModel(
                 parameters = bucket_parameters,
@@ -271,7 +272,8 @@ end
 
 for (name, infile_path, varname) in name_ds_var_list
     @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         σS_c = FT(0.2)
         W_f = FT(0.15)
@@ -336,7 +338,7 @@ for (name, infile_path, varname) in name_ds_var_list
                 )
                 τc = FT(1.0)
                 bucket_parameters = BucketModelParameters(
-                    FT;
+                    toml_dict;
                     albedo = albedo_model,
                     z_0m,
                     z_0b,

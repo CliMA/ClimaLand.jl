@@ -96,6 +96,7 @@ function LandSoilBiogeochemistry{FT}(
             PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
+        toml_dict,
     ),
 ) where {FT}
     return LandSoilBiogeochemistry{FT}(soil, soilco2)

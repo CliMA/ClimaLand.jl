@@ -145,21 +145,26 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
 # Canopy model
 # Set up radiative transfer
 radiation_parameters =
     (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf)
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(canopy_domain; radiation_parameters, ϵ_canopy)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    canopy_domain,
+    toml_dict;
+    radiation_parameters,
+    ϵ_canopy,
+)
 
 # Set up conductance
-conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
+photosynthesis =
+    FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
@@ -191,7 +196,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 )
 
 # Set up energy model
-energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)

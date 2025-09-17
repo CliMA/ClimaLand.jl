@@ -18,13 +18,10 @@ using ClimaCore
 
 for FT in (Float32, Float64)
     @testset "Default LandModel constructor, FT=$FT" begin
-        default_params_filepath =
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-        toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+        toml_dict = LP.create_toml_dict(FT)
         domain = Domains.global_domain(FT)
-        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
-        earth_param_set = LP.LandParameters(FT)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
         # Soil model
@@ -46,7 +43,11 @@ for FT in (Float32, Float64)
             soil_organic_carbon,
             atmos,
         )
-        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, soilco2_drivers)
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            soilco2_drivers,
+            toml_dict,
+        )
 
         # Canopy model
         surface_domain = Domains.obtain_surface_domain(domain)
@@ -182,9 +183,7 @@ context = ClimaComms.context()
 nelements = (101, 15)
 Δt = 450.0
 FT = Float64
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 
 domain = ClimaLand.Domains.global_domain(

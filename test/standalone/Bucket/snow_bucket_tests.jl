@@ -27,7 +27,8 @@ import ClimaLand.Parameters as LP
 import ClimaParams
 
 for FT in (Float32, Float64)
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     α_bareground_func = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
     σS_c = FT(0.2)
@@ -94,7 +95,8 @@ for FT in (Float32, Float64)
             α_bareground_func,
             surface_space,
         )
-        bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+        bucket_parameters =
+            BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
         model = BucketModel(
             parameters = bucket_parameters,
             domain = d,
@@ -213,7 +215,7 @@ for FT in (Float32, Float64)
                 surface_space,
             )
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domains[i],
@@ -327,7 +329,7 @@ for FT in (Float32, Float64)
                 surface_space,
             )
             bucket_parameters =
-                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+                BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domains[i],
@@ -440,7 +442,8 @@ for FT in (Float32, Float64)
             α_bareground_func,
             surface_space,
         )
-        bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+        bucket_parameters =
+            BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
         model = BucketModel(
             parameters = bucket_parameters,
             domain = bucket_domains[i],

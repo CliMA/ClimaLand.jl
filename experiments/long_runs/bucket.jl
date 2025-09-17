@@ -94,11 +94,8 @@ domain =
     ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
 
 # Parameters
-params = LP.LandParameters(FT)
-
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+params = LP.LandParameters(toml_dict)
 
 # Model
 model = setup_model(FT, start_date, domain, params, Δt, toml_dict)

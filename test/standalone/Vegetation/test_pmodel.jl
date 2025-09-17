@@ -160,6 +160,7 @@ end
         ref_outputs = csv_to_dict(outputs_data, outputs_header, output_row_idx)
 
         for FT in (Float32, Float64)
+            toml_dict = LP.create_toml_dict(FT)
             # Convert ref_outputs to the correct FT
             ref_outputs_typed =
                 Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
@@ -170,7 +171,7 @@ end
 
                 # prepare constants, parameters, and drivers for the current FT
                 is_c3 = FT(1)
-                constants = PModelConstants{FT}()
+                constants = PModelConstants(toml_dict)
                 parameters = PModelParameters(inputs, FT)
 
                 T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
@@ -240,22 +241,20 @@ end
     canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 
     # Dummy atmospheric and radiation forcing
-    atmos, radiation = prescribed_analytic_forcing(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
     ground = PrescribedGroundConditions{FT}()
     forcing = (; atmos = atmos, radiation = radiation, ground = ground)
     LAI = TimeVaryingInput(t -> FT(0.0))
-    toml_dict = ClimaLand.Parameters.create_toml_dict(
-        FT,
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-    )
+    toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
     canopy = CanopyModel{FT}(
         canopy_domain,
         forcing,
         LAI,
         toml_dict;
-        photosynthesis = PModel{FT}(canopy_domain),
-        conductance = PModelConductance{FT}(),
+        photosynthesis = PModel{FT}(canopy_domain, toml_dict),
+        conductance = PModelConductance{FT}(toml_dict),
     )
     pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
     @test typeof(get_model_callbacks(canopy; start_date, Δt = dt)[1]) ==
@@ -268,6 +267,7 @@ end
     atol = 1e-6
 
     for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
         parameters = ClimaLand.Canopy.PModelParameters(
             cstar = FT(0.41),
             β = FT(146),
@@ -283,7 +283,7 @@ end
             α = FT(0),
         )
         is_c3 = FT(1)
-        constants = PModelConstants{FT}()
+        constants = PModelConstants(toml_dict)
 
         T_canopy = FT(281.25)
         APAR = FT(0.0013948839623481035)

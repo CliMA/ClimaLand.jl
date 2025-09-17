@@ -65,7 +65,8 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
-earth_param_set = LP.LandParameters(FT);
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -95,7 +96,7 @@ z_0b = FT(1e-3);
 τc = FT(3600);
 Δt = 3600.0;
 
-bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
+bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);
 stop_date = start_date + Second(7 * 86400);
 

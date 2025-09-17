@@ -21,6 +21,7 @@ import ClimaParams
 
 @testset "Canopy software pipes" begin
     for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
@@ -51,19 +52,24 @@ import ClimaParams
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
-
-            AR_params = AutotrophicRespirationParameters(FT)
+            AR_params = AutotrophicRespirationParameters(toml_dict)
             G_Function = ConstantGFunction.(ld)
-            RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
-            stomatal_g_params = MedlynConductanceParameters(FT; g1)
+            RTparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                G_Function,
+                Ω = 1,
+            )
+            photosynthesis_params =
+                FarquharParameters(toml_dict; is_c3, Vcmax25)
+            stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
             photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
             rt_model = BeerLambertModel{FT}(RTparams)
 
-            earth_param_set = LP.LandParameters(FT)
+            earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(8.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
@@ -583,18 +589,24 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
-
+            toml_dict = LP.create_toml_dict(FT)
             G_Function = ConstantGFunction.(ld)
-            RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
-            stomatal_g_params = MedlynConductanceParameters(FT; g1)
+            RTparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                G_Function,
+                Ω = 1,
+            )
+            photosynthesis_params =
+                FarquharParameters(toml_dict; is_c3, Vcmax25)
+            stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
             photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
             rt_model = BeerLambertModel{FT}(RTparams)
             energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
-            earth_param_set = LP.LandParameters(FT)
+            earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(8.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
@@ -721,7 +733,7 @@ end
                 compartment_surfaces = compartment_faces,
                 compartment_midpoints = compartment_centers,
             )
-            autotrophic_parameters = AutotrophicRespirationParameters(FT)
+            autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
             autotrophic_respiration_model =
                 AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
@@ -824,20 +836,30 @@ end
 
 @testset "Jacobian for Temperature" begin
     for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
         domain = Point(; z_sfc = FT(0.0))
 
         g1 = FT(790)
         Vcmax25 = FT(9e-5)
         is_c3 = FT(1)
-        RTparams = BeerLambertParameters(FT)
-        photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
-        stomatal_g_params = MedlynConductanceParameters(FT; g1)
+        RTparams = BeerLambertParameters(
+            toml_dict,
+            G_Function = ConstantGFunction(
+                ClimaParams.float_type(toml_dict)(0.5),
+            ),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
+
+        photosynthesis_params = FarquharParameters(toml_dict; is_c3, Vcmax25)
+        stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
         energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
@@ -964,7 +986,7 @@ end
             compartment_surfaces = compartment_faces,
             compartment_midpoints = compartment_centers,
         )
-        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
@@ -1147,16 +1169,22 @@ end
             τ_NIR_leaf,
             χl,
         ) in zipped_params
+            toml_dict = LP.create_toml_dict(FT)
 
-            BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             G_Function = CLMGFunction.(χl)
-            λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
-            BeerLambertparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, λ_γ_PAR)
+            BeerLambertparams = BeerLambertParameters(
+                toml_dict;
+                α_PAR_leaf,
+                α_NIR_leaf,
+                G_Function = ConstantGFunction(
+                    ClimaParams.float_type(toml_dict)(0.5),
+                ),
+                Ω = 1,
+            )
             TwoStreamparams = TwoStreamParameters(
-                FT;
+                toml_dict;
                 Ω,
                 α_PAR_leaf,
                 τ_PAR_leaf,
@@ -1164,8 +1192,9 @@ end
                 τ_NIR_leaf,
                 G_Function,
             )
-            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
-            stomatal_g_params = MedlynConductanceParameters(FT; g1)
+            photosynthesis_params =
+                FarquharParameters(toml_dict; is_c3, Vcmax25)
+            stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
             photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
@@ -1174,7 +1203,7 @@ end
                 TwoStreamModel{FT}(TwoStreamparams),
             )
             energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
-            earth_param_set = LP.LandParameters(FT)
+            earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(0.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
@@ -1300,7 +1329,7 @@ end
                 compartment_surfaces = compartment_faces,
                 compartment_midpoints = compartment_centers,
             )
-            autotrophic_parameters = AutotrophicRespirationParameters(FT)
+            autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
             autotrophic_respiration_model =
                 AutotrophicRespirationModel{FT}(autotrophic_parameters)
             for rt_model in rt_models
@@ -1368,6 +1397,7 @@ end
 
 @testset "CanopyModel using convenience constructors" begin
     for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
@@ -1377,30 +1407,27 @@ end
         LAI = TimeVaryingInput(t -> FT(8))
 
         # Set up component models
-        autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}()
+        autotrophic_respiration =
+            Canopy.AutotrophicRespirationModel{FT}(toml_dict)
         radiative_transfer_models = (
-            Canopy.TwoStreamModel{FT}(domain),
-            Canopy.BeerLambertModel{FT}(domain),
+            Canopy.TwoStreamModel{FT}(domain, toml_dict),
+            Canopy.BeerLambertModel{FT}(domain, toml_dict),
         )
-        photosynthesis = Canopy.FarquharModel{FT}(domain)
-        conductance = Canopy.MedlynConductanceModel{FT}(domain)
-        toml_dict = LP.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
+        photosynthesis = Canopy.FarquharModel{FT}(domain, toml_dict)
+        conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict)
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI, toml_dict)
         soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
 
-        energy = Canopy.BigLeafEnergyModel{FT}()
+        energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}()
 
         # Use simple analytic forcing for atmosphere and radiation
-        atmos, radiation = prescribed_analytic_forcing(FT)
+        atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         soil_driver = PrescribedGroundConditions{FT}()
         boundary_conditions =
             Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
 
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         parameters = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
             FT(2.0), # z_0m
             FT(0.1), # z_0b
@@ -1504,15 +1531,14 @@ end
             nelements = 10,
         )
 
+        toml_dict = LP.create_toml_dict(FT)
+
         # Create a simple functions for LAI and forcings
         LAI = TimeVaryingInput(t -> FT(8))
-        atmos, radiation = prescribed_analytic_forcing(FT)
+        atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
-        toml_dict = ClimaLand.Parameters.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
+        toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
         canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict)
 

@@ -80,7 +80,8 @@ diffuse_fraction = TimeVaryingInput(seconds, diffuse_fraction);
 # Finally, for many models we also need to specify the function
 # for computing the zenith angle as a function of simulation time.
 # To do so, we use the `Insolation` package as follows:
-earth_param_set = LP.LandParameters(Float64);
+toml_dict = LP.create_toml_dict(Float64);
+earth_param_set = LP.LandParameters(toml_dict);
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
 zenith_angle =
     (t, s) -> default_zenith_angle(
