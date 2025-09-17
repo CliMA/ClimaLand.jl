@@ -26,12 +26,11 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 
 # Site-specific quantities
 # Error if no site argument is provided
-#if length(ARGS) < 1
-#    @error("Please provide a site name as command line argument")
-#else
-#    SITE_NAME = ARGS[1]
-#end
-SITE_NAME = "cdp"
+if length(ARGS) < 1
+    @error("Please provide a site name as command line argument")
+else
+    SITE_NAME = ARGS[1]
+end
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float32
