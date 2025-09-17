@@ -429,19 +429,10 @@ CairoMakie.save(joinpath(savedir, "data_comparison_$(SITE_NAME).png"), fig)
 # Compute errors
 mae(x, obs) = mean(abs.(x .- obs));
 data_times = seconds[mass_data_avail] ./ 24 ./ 3600
-interpolated_swe = [
-    linear_interpolation(daily, S, t)
-    for t in data_times
-]
-interpolated_z = [
-    linear_interpolation(daily, z, t)
-    for t in data_times
-]
+interpolated_swe = [linear_interpolation(daily, S, t) for t in data_times]
+interpolated_z = [linear_interpolation(daily, z, t) for t in data_times]
 
-interpolated_T = [
-    linear_interpolation(daily, T, t)
-    for t in data_times
-]
+interpolated_T = [linear_interpolation(daily, T, t) for t in data_times]
 
 @show mae(interpolated_swe[.~isnan.(SWE)], SWE[.~isnan.(SWE)])
 @show mae(interpolated_z[.~isnan.(depths)], depths[.~isnan.(depths)])
