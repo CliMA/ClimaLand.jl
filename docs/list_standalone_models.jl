@@ -7,7 +7,6 @@ standalone_models = [
         "Photosynthesis" => [
             "Farquhar model" => "standalone/pages/vegetation/photosynthesis/farquhar_model.md",
             "P-model" => "standalone/pages/vegetation/photosynthesis/pmodel.md",
-            "Optimality model" => "standalone/pages/vegetation/photosynthesis/optimality_model.md",
         ]
         "Stomatal conductance" => [
             "Medlyn model" => "standalone/pages/vegetation/stomatal_conductance/medlyn_model.md",
@@ -15,6 +14,23 @@ standalone_models = [
         ]
         "Plant hydraulics" => [
             "Van Genuchten model" => "standalone/pages/vegetation/plant_hydraulics/van_genuchten_model.md",
+        ]
+        "Solar Induced Fluorescence" => [
+            "Lee model" => "standalone/pages/vegetation/solar_induced_fluorescence/lee_model.md",
+        ]
+        "Canopy structure" => [
+            "Prescribed structure" => "standalone/pages/vegetation/canopy_structure/prescribed_structure.md",
+        ]
+        "Canopy energy" => [
+            "Physics" => "standalone/pages/vegetation/canopy_energy/canopy_energy.md",
+        ]
+        "Soil moisture stress" => [
+            "Piecewise model" => "standalone/pages/vegetation/soil_moisture_stress/piecewise_model.md",
+            "Tuzet model" => "standalone/pages/vegetation/soil_moisture_stress/tuzet_model.md",
+            "No moisture stress" => "standalone/pages/vegetation/soil_moisture_stress/no_moisture_stress.md",
+        ]
+        "Autotrophic respiration" => [
+            "JULES model" => "standalone/pages/vegetation/autotrophic_respiration/jules_model.md",
         ]
     ]
     "Soil" => [
