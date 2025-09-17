@@ -202,6 +202,28 @@ end
     @test all(rh .- soln .≈ 0)
 end
 
+@testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin
+    domain = ClimaLand.Domains.global_domain(FT)
+    coords = ClimaLand.Domains.coordinates(domain)
+
+    atmos = ClimaLand.CoupledAtmosphere{FT}()
+    radiation = ClimaLand.CoupledRadiativeFluxes{FT}()
+    p = (; drivers = ClimaLand.initialize_drivers((atmos, radiation), coords))
+
+    @test keys(p.drivers) == (
+        :P_liq,
+        :P_snow,
+        :c_co2,
+        :T,
+        :P,
+        :q,
+        :SW_d,
+        :LW_d,
+        :cosθs,
+        :frac_diff,
+    )
+end
+
 @testset "CoupledRadiativeFluxes" begin
     start_date = DateTime(Date(2020, 6, 15), Time(12, 0, 0))
     domain = ClimaLand.Domains.HybridBox(;
@@ -292,8 +314,5 @@ end
         # no change
         @test p_soil_driver.drivers.ψ == (zero_instance .- 1)
         @test p_soil_driver.drivers.T_ground == (zero_instance .- 1)
-
-
-
     end
 end
