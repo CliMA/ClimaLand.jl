@@ -67,10 +67,8 @@ rng = Random.MersenneTwister(rng_seed)
 const FT = Float32
 
 # Initialize land parameters and site configuration.
-earth_param_set = LP.LandParameters(FT)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
@@ -136,14 +134,19 @@ function model(Vcmax25)
     photosyn_defaults =
         Canopy.clm_photosynthesis_parameters(canopy_domain.space.surface)
     photosynthesis = Canopy.FarquharModel{FT}(
-        canopy_domain;
+        canopy_domain,
+        toml_dict;
         photosynthesis_parameters = (;
             is_c3 = photosyn_defaults.is_c3,
             Vcmax25,
         ),
     )
 
-    conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1 = FT(141))
+    conductance = Canopy.MedlynConductanceModel{FT}(
+        canopy_domain,
+        toml_dict;
+        g1 = FT(141),
+    )
 
     #md # Create canopy model
     canopy = ClimaLand.Canopy.CanopyModel{FT}(

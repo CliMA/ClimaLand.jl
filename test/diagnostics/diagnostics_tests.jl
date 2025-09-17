@@ -7,6 +7,7 @@ import ClimaLand.Parameters as LP
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams
+import ClimaLand.Parameters as LP
 import SciMLBase
 import ClimaTimeSteppers
 import ClimaDiagnostics
@@ -54,7 +55,9 @@ using Statistics
         nelements = (1, 10),
     )
 
-    bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    bucket_atmos, bucket_rad =
+        ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
     τc = FT(1.0)
     α_bareground_func = (coordinate_point) -> 0.2
     α_snow = FT(0.8)
@@ -65,8 +68,21 @@ using Statistics
         α_bareground_func,
         bucket_domain.space.surface,
     )
-    bucket_parameters =
-        ClimaLand.Bucket.BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
+    bucket_parameters = ClimaLand.Bucket.BucketModelParameters(
+        toml_dict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+    )
+    toml_dict = LP.create_toml_dict(FT)
+    bucket_parameters = ClimaLand.Bucket.BucketModelParameters(
+        toml_dict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+    )
 
     model = ClimaLand.Bucket.BucketModel(
         parameters = bucket_parameters,
@@ -138,7 +154,7 @@ end
 FT = Float32
 default_params_filepath =
     joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath);
+toml_dict = LP.create_toml_dict(FT);
 earth_param_set = LP.LandParameters(toml_dict);
 
 zmax = FT(0)

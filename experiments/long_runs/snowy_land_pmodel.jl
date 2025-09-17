@@ -119,8 +119,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     canopy_forcing = (; atmos, radiation, ground)
 
     # Construct the P model manually since it is not a default
-    photosynthesis = PModel{FT}(domain)
-    conductance = PModelConductance{FT}()
+    photosynthesis = PModel{FT}(domain, toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
@@ -173,9 +173,7 @@ domain = ClimaLand.Domains.global_domain(
     nelements,
     mask_threshold = FT(0.99),
 )
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

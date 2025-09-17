@@ -23,10 +23,8 @@ using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
-earth_param_set = LP.LandParameters(FT)
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 climaland_dir = pkgdir(ClimaLand)
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
@@ -154,7 +152,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
 
 # Now we set up the canopy model, one component at a time.
 # Set up radiative transfer
@@ -166,15 +164,20 @@ radiation_parameters = (;
     α_NIR_leaf,
     τ_NIR_leaf,
 )
-radiative_transfer =
-    Canopy.TwoStreamModel{FT}(surface_domain; radiation_parameters, ϵ_canopy)
+radiative_transfer = Canopy.TwoStreamModel{FT}(
+    surface_domain,
+    toml_dict;
+    radiation_parameters,
+    ϵ_canopy,
+)
 
 # Set up conductance
-conductance = Canopy.MedlynConductanceModel{FT}(surface_domain; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis = FarquharModel{FT}(surface_domain; photosynthesis_parameters)
+photosynthesis =
+    FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
@@ -202,7 +205,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 )
 
 # Set up the energy model
-energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)

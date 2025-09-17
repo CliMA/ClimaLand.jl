@@ -13,9 +13,7 @@ import Insolation
 using Dates
 
 for FT in (Float32, Float64)
-    default_params_filepath =
-        joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-    toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+    toml_dict = LP.create_toml_dict(FT)
     soil_moisture_stress_models = (
         TuzetMoistureStressModel{FT}(; sc = FT(0.01), pc = FT(-0.5e6)),
         NoMoistureStressModel{FT}(),
@@ -25,10 +23,11 @@ for FT in (Float32, Float64)
     lat = FT(38.7441)
     long = FT(-92.2000)
     domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
-    earth_param_set = LP.LandParameters(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     # dummy forcing
-    atmos, radiation = prescribed_analytic_forcing(FT; h_atmos = FT(1))
+    atmos, radiation =
+        prescribed_analytic_forcing(FT; toml_dict, h_atmos = FT(1))
     ground = PrescribedGroundConditions{FT}()
     LAI = TimeVaryingInput(t -> FT(1))
     forcing = (; atmos, radiation, ground)

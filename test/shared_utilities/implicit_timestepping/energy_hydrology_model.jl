@@ -12,6 +12,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
     @testset "Full Soil Jacobian entries, Flux BC, FT = $FT" begin
 
         ν = FT(0.495)
@@ -25,7 +26,7 @@ for FT in (Float32, Float64)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
         params = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,

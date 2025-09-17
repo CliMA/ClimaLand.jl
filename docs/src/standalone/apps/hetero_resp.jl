@@ -15,8 +15,8 @@ function ParamViz.parameterisation(
     D_liq,
     D_oa,
 ) # constants
-
-    params = SoilCO2ModelParameters(FT; ν)
+    toml_dict = LP.create_toml_dict(FT)
+    params = SoilCO2ModelParameters(toml_dict; ν)
     # θ has to be lower than porosity
     if θ > ν
         θ = ν

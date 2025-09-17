@@ -81,7 +81,8 @@ regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
-earth_param_set = LP.LandParameters(FT);
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -135,7 +136,7 @@ subsurface_space = bucket_domain.space.subsurface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
-bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
+bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 
 # Forcing data
 era5_ncdata_path =

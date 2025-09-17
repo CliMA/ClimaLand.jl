@@ -155,36 +155,26 @@ Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is 
 ## For interfacing with ClimaParams
 
 """
-    AutotrophicRespirationParameters(FT; kwargs...)
-    AutotrophicRespirationParameters(toml_dict; kwargs...)
+    AutotrophicRespirationParameters(toml_dict::CP.ParamDict; kwargs...)
 
-Constructors for the AutotrophicRespirationParameters struct. Two variants:
-1. Pass in the float-type and retrieve parameter values from the default TOML dict.
-2. Pass in a TOML dictionary to retrieve parameter values.
-With either constructor, you can manually override any parameter via kwargs:
+Constructor for the `AutotrophicRespirationParameters` struct by passing a TOML
+dictionary.
+You can manually override any parameter via keyword arguments:
 ```julia
-AutotrophicRespirationParameters(FT; ne = 99999)
 AutotrophicRespirationParameters(toml_dict; ne = 99999)
 ```
 """
-AutotrophicRespirationParameters(
-    ::Type{FT};
-    kwargs...,
-) where {FT <: AbstractFloat} =
-    AutotrophicRespirationParameters(CP.create_toml_dict(FT); kwargs...)
-
-function AutotrophicRespirationParameters(toml_dict::CP.ParamDict; kwargs...)
-    name_map = (;
-        :N_factor_Vcmax25 => :ne,
-        :live_stem_wood_coeff => :ηsl,
-        :specific_leaf_density => :σl,
-        :root_leaf_nitrogen_ratio => :μr,
-        :relative_contribution_factor => :Rel,
-        :stem_leaf_nitrogen_ratio => :μs,
-    )
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+function AutotrophicRespirationParameters(
+    toml_dict::CP.ParamDict;
+    ne = toml_dict["N_factor_Vcmax25"],
+    ηsl = toml_dict["live_stem_wood_coeff"],
+    σl = toml_dict["specific_leaf_density"],
+    μr = toml_dict["root_leaf_nitrogen_ratio"],
+    Rel = toml_dict["relative_contribution_factor"],
+    μs = toml_dict["stem_leaf_nitrogen_ratio"],
+)
     FT = CP.float_type(toml_dict)
-    AutotrophicRespirationParameters{FT}(; parameters..., kwargs...)
+    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs)
 end
 
 

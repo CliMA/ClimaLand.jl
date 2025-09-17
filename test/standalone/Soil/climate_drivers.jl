@@ -13,7 +13,8 @@ using Dates
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         soil_domains = [
             ClimaLand.Domains.Column(;
@@ -97,7 +98,7 @@ for FT in (Float32, Float64)
                 PAR_albedo_wet,
             )
             params = ClimaLand.Soil.EnergyHydrologyParameters(
-                FT;
+                toml_dict;
                 ν,
                 ν_ss_om,
                 ν_ss_quartz,

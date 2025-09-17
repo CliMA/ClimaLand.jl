@@ -11,14 +11,22 @@ import ClimaLand.Parameters as LP
 for FT in (Float32, Float64)
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Test with defaults
-        ARparams = AutotrophicRespirationParameters(FT)
-        RTparams = BeerLambertParameters(FT)
+        ARparams = AutotrophicRespirationParameters(toml_dict)
+        RTparams = BeerLambertParameters(
+            toml_dict;
+            G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
+            α_PAR_leaf = 0.1,
+            α_NIR_leaf = 0.4,
+            Ω = 1,
+        )
         RT = BeerLambertModel{FT}(RTparams)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesisparams = FarquharParameters(FT, is_c3)
-        stomatal_g_params = MedlynConductanceParameters(FT)
+        photosynthesisparams =
+            FarquharParameters(toml_dict; is_c3, Vcmax25 = FT(5e-5))
+        stomatal_g_params = MedlynConductanceParameters(toml_dict; g1 = 790)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
         RAI = FT(1.0)
@@ -29,6 +37,8 @@ for FT in (Float32, Float64)
         N_a = FT(LP.avogadro_constant(earth_param_set))
         λ = FT(5e-7) # m (500 nm)
         energy_per_photon = h * c / λ
+        sc = toml_dict["low_water_pressure_sensitivity"]
+        pc = toml_dict["moisture_stress_ref_water_pressure"]
 
         # Drivers
         T = FT(290) # K
@@ -151,15 +161,8 @@ for FT in (Float32, Float64)
                 Γstar,
             )
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
-        β = compute_tuzet_moisture_stress(
-            p_l,
-            photosynthesisparams.pc,
-            photosynthesisparams.sc,
-        )
-        @test β ==
-              (1 + exp(photosynthesisparams.sc * photosynthesisparams.pc)) / (
-            1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc))
-        )
+        β = compute_tuzet_moisture_stress(p_l, pc, sc)
+        @test β == (1 + exp(sc * pc)) / (1 + exp(sc * (p_l - pc)))
         #    C4 tests
 
         is_c3 = 0.0

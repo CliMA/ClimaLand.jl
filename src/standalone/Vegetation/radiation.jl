@@ -59,6 +59,7 @@ Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
     G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
+    FF <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::F
@@ -67,7 +68,7 @@ Base.@kwdef struct BeerLambertParameters{
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
-    Ω::FT
+    Ω::FF
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
     "Leaf angle distribution function"
@@ -283,51 +284,34 @@ end
 ## For interfacing with ClimaParams
 
 """
-    function TwoStreamParameters(FT::AbstractFloat;
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
-        τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
-        τ_NIR_leaf = 0.25,
-        Ω = 1,
+    function TwoStreamParameters(
+        toml_dict::CP.ParamDict;
+        G_Function,
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        Ω,
         n_layers = UInt64(20),
-        kwargs...
-    )
-    function TwoStreamParameters(toml_dict;
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
-        τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
-        τ_NIR_leaf = 0.25,
-        Ω = 1,
-        n_layers = UInt64(20),
-        kwargs...
+        ϵ_canopy = toml_dict["canopy_emissivity"],
     )
 
-Floating-point and toml dict based constructor supplying default values
-for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
+TOML dict based constructor supplying default values for the
+`TwoStreamParameters` struct.
 """
-TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
-
 function TwoStreamParameters(
     toml_dict::CP.ParamDict;
-    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.3,
-    τ_PAR_leaf::F = 0.2,
-    α_NIR_leaf::F = 0.4,
-    τ_NIR_leaf::F = 0.25,
-    Ω = 1,
+    G_Function,
+    α_PAR_leaf,
+    τ_PAR_leaf,
+    α_NIR_leaf,
+    τ_NIR_leaf,
+    Ω,
     n_layers = UInt64(20),
-    kwargs...,
-) where {F}
-    name_map = (;
-        :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :canopy_emissivity => :ϵ_canopy,
-    )
-
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    ϵ_canopy = toml_dict["canopy_emissivity"],
+)
     FT = CP.float_type(toml_dict)
+    λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
     α_PAR_leaf = FT.(α_PAR_leaf)
@@ -342,59 +326,52 @@ function TwoStreamParameters(
         τ_NIR_leaf,
         Ω,
         n_layers,
-        parameters...,
-        kwargs...,
+        ϵ_canopy,
+        λ_γ_PAR,
     )
 end
 
 """
-    function BeerLambertParameters(::Type{FT};
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
-        Ω = 1,
-        kwargs...
-    )
-    function BeerLambertParameters(toml_dict;
-        ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
-        Ω = 1,
-        kwargs...
+    function BeerLambertParameters(
+        toml_dict::CP.ParamDict;
+        G_Function,
+        α_PAR_leaf,
+        α_NIR_leaf,
+        Ω,
+        ϵ_canopy = toml_dict["canopy_emissivity"],
     )
 
-Floating-point and toml dict based constructor supplying default values
-for the BeerLambertParameters struct. Additional parameter values can be directly set via kwargs.
+TOML dict based constructor supplying default values for the
+`BeerLambertParameters` struct. Additional parameter values can be directly set
+via kwargs.
 """
-BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    BeerLambertParameters(CP.create_toml_dict(FT); kwargs...)
-
 function BeerLambertParameters(
     toml_dict::CP.ParamDict;
-    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.1,
-    α_NIR_leaf::F = 0.4,
-    Ω = 1,
-    kwargs...,
-) where {F}
-    name_map = (;
-        :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :canopy_emissivity => :ϵ_canopy,
-    )
-
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    G_Function,
+    α_PAR_leaf,
+    α_NIR_leaf,
+    Ω,
+    ϵ_canopy = toml_dict["canopy_emissivity"],
+)
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
     α_PAR_leaf = FT.(α_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
-    return BeerLambertParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    Ω = FT.(Ω)
+    λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
+    return BeerLambertParameters{
+        FT,
+        typeof(G_Function),
+        typeof(α_PAR_leaf),
+        typeof(Ω),
+    }(;
         G_Function,
         α_PAR_leaf,
         α_NIR_leaf,
         Ω,
-        parameters...,
-        kwargs...,
+        ϵ_canopy,
+        λ_γ_PAR,
     )
 end
 

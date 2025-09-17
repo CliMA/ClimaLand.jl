@@ -11,7 +11,8 @@ import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 
 FT = Float32;
-earth_param_set = LP.LandParameters(FT)
+toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(toml_dict)
 
 vg_n = FT(2.9)
 vg_α = FT(6)
@@ -25,7 +26,7 @@ S_s = FT(1e-3)
 ν_ss_gravel = FT(0.0)
 
 params = ClimaLand.Soil.EnergyHydrologyParameters(
-    FT;
+    toml_dict;
     ν,
     ν_ss_om,
     ν_ss_quartz,
@@ -34,7 +35,6 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
     K_sat,
     S_s,
     θ_r,
-    earth_param_set,
 );
 
 surface_water_flux = WaterFluxBC((p, t) -> -K_sat / 10)

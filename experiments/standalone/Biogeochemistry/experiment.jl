@@ -20,7 +20,8 @@ tf = Float64(10000)
 dt = Float64(10)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
 
     # Make soil model
     ν = FT(0.556)
@@ -33,7 +34,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     soil_parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -96,7 +97,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Make biogeochemistry model
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
     C = FT(100)
 
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
@@ -109,7 +110,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
     soilco2 = SoilCO2Model{FT}(
         domain,
-        drivers;
+        drivers,
+        toml_dict;
         boundary_conditions = co2_boundary_conditions,
         parameters = co2_parameters,
     )

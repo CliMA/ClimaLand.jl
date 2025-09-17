@@ -14,10 +14,7 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil respiration test set, FT = $FT" begin
-        toml_dict = ClimaLand.Parameters.create_toml_dict(
-            FT,
-            joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml"),
-        )
+        toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
         zmax = FT(0)
         zmin = FT(-1)
@@ -28,7 +25,7 @@ for FT in (Float32, Float64)
             longlat = FT.((-118.0, 45.0)),
         )
 
-        (atmos, radiation) = prescribed_analytic_forcing(FT)
+        (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
         model = LandSoilBiogeochemistry{FT}(forcing, toml_dict, domain)
         @test ClimaComms.context(model) == ClimaComms.context()
@@ -107,7 +104,7 @@ for FT in (Float32, Float64)
         )
     end
     @testset "PrognosticMet, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
         zmax = FT(0)
         zmin = FT(-1)
         nelems = 10
@@ -134,7 +131,7 @@ for FT in (Float32, Float64)
 
 
         soil_ps_col = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -161,7 +158,7 @@ for FT in (Float32, Float64)
         θ_r_field = θ_r .+ zero_field
 
         soil_ps_box = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν = ν_field,
             ν_ss_om = ν_ss_om_field,
             ν_ss_quartz = ν_ss_quartz_field,

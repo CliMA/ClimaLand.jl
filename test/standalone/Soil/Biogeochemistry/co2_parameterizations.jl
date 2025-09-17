@@ -9,7 +9,8 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil CO2 production and transport, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
+        toml_dict = LP.create_toml_dict(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
         # Parameters should be supplied in m/kg/s (Pa... etc)
         ν = FT(0.556)
         # Prognostic variables
@@ -22,7 +23,7 @@ for FT in (Float32, Float64)
         T_ref = FT(LP.T_0(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
 
-        parameters = SoilCO2ModelParameters(FT)
+        parameters = SoilCO2ModelParameters(toml_dict)
 
         # Test that parameterizations functions are working properly
         θ_a = volumetric_air_content(θ_w, ν)

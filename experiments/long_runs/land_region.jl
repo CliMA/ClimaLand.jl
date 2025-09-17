@@ -151,9 +151,7 @@ domain = ClimaLand.Domains.HybridBox(;
     longlat = (center_long, center_lat),
     dz_tuple = FT.((10.0, 0.05)),
 )
-default_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "default_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, context, start_date, Δt, domain, toml_dict)
 
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)

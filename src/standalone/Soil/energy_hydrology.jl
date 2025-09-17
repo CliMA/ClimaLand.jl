@@ -78,19 +78,6 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
 """
     EnergyHydrologyParameters(
-        ::Type{FT};
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
-        kwargs...,)
-
-    EnergyHydrologyParameters(
         toml_dict;
         ν,
         ν_ss_om,
@@ -117,34 +104,6 @@ dry/wet albedos will override the general albedos.
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
 function EnergyHydrologyParameters(
-    ::Type{FT};
-    ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm,
-    K_sat,
-    S_s,
-    θ_r,
-    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
-    kwargs...,
-) where {FT <: AbstractFloat}
-    return EnergyHydrologyParameters(
-        CP.create_toml_dict(FT);
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        albedo,
-        kwargs...,
-    )
-end
-
-function EnergyHydrologyParameters(
     toml_dict::CP.ParamDict;
     ν::F,
     ν_ss_om::F,
@@ -154,8 +113,12 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
-    kwargs...,
+    albedo = Soil.ConstantTwoBandSoilAlbedo{CP.float_type(toml_dict)}(),
+    emissivity = toml_dict["emissivity_bare_soil"],
+    z_0m = toml_dict["soil_momentum_roughness_length"],
+    z_0b = toml_dict["soil_scalar_roughness_length"],
+    Ω = toml_dict["ice_impedance_omega"],
+    d_ds = toml_dict["maximum_dry_soil_layer_depth"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -205,13 +168,8 @@ function EnergyHydrologyParameters(
     name_map = (;
         :kersten_number_alpha => :α,
         :kersten_number_beta => :β,
-        :ice_impedance_omega => :Ω,
         :temperature_factor_soil_hydraulic_conductivity => :γ,
         :temperature_reference_soil_hydraulic_conductivity => :γT_ref,
-        :maximum_dry_soil_layer_depth => :d_ds,
-        :soil_momentum_roughness_length => :z_0m,
-        :soil_scalar_roughness_length => :z_0b,
-        :emissivity_bare_soil => :emissivity,
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
@@ -231,8 +189,12 @@ function EnergyHydrologyParameters(
         κ_sat_unfrozen,
         ρc_ds,
         earth_param_set,
+        emissivity,
+        z_0m,
+        z_0b,
+        Ω,
+        d_ds,
         parameters...,
-        kwargs...,
     )
 end
 

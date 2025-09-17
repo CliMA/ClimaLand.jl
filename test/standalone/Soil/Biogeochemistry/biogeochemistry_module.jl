@@ -11,6 +11,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
     @testset "Soil co2 biogeochemistry sources, FT = $FT" begin
         # Prognostic variables
         P_sfc = (t) -> 101e3
@@ -21,7 +22,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
         D_ref = FT(0.0)
-        parameters = SoilCO2ModelParameters(FT; D_ref)
+        parameters = SoilCO2ModelParameters(toml_dict; D_ref)
 
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -42,7 +43,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
@@ -66,7 +67,8 @@ for FT in (Float32, Float64)
 
         model = SoilCO2Model{FT}(
             soil_domain,
-            soil_drivers;
+            soil_drivers,
+            toml_dict;
             parameters,
             boundary_conditions,
             sources,
@@ -98,7 +100,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput((t) -> 5),
         )
 
-        parameters = SoilCO2ModelParameters(FT)
+        parameters = SoilCO2ModelParameters(toml_dict)
         C = FT(4)
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -119,7 +121,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
-        earth_param_set = LP.LandParameters(FT)
+        earth_param_set = LP.LandParameters(toml_dict)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
@@ -146,7 +148,8 @@ for FT in (Float32, Float64)
 
         model = SoilCO2Model{FT}(
             soil_domain,
-            soil_drivers;
+            soil_drivers,
+            toml_dict;
             parameters,
             boundary_conditions,
             sources,

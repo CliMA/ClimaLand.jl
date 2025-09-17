@@ -11,6 +11,7 @@ import ClimaLand.Parameters as LP
 import ClimaParams
 
 for FT in (Float32, Float64)
+    toml_dict = LP.create_toml_dict(FT)
     @testset "WVector usage in gradient, FT = $FT" begin
         # In our tendency, we want to set a boundary condition on flux, which is a gradient
         # of a scalar. This should be a covariant vector. In the case of no topography,
@@ -132,7 +133,6 @@ for FT in (Float32, Float64)
     end
 
     @testset "Test heat state to flux BC calculations, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
@@ -145,7 +145,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.0)
 
         parameters = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -194,7 +194,6 @@ for FT in (Float32, Float64)
     end
 
     @testset "Test water+energy free drainage BC, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
@@ -207,7 +206,7 @@ for FT in (Float32, Float64)
         ν_ss_gravel = FT(0.0)
 
         parameters = Soil.EnergyHydrologyParameters(
-            FT;
+            toml_dict;
             ν,
             ν_ss_om,
             ν_ss_quartz,
@@ -276,7 +275,7 @@ end
     # AtmosDrivenFluxBC method tested in `test/standalone/Soil/climate_drivers.jl`
     # Currently no other methods exist besides the default, which we test here
     FT = Float32
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -291,7 +290,7 @@ end
     ρp = FT(2.66 / 1e3 * 1e6)
     ρc_ds = @. FT(2e6 * (1.0 - ν))
     parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
@@ -321,7 +320,7 @@ end
     )
 
     parameters = Soil.EnergyHydrologyParameters(
-        FT;
+        toml_dict;
         ν,
         ν_ss_om,
         ν_ss_quartz,
