@@ -19,6 +19,7 @@ using Thermodynamics
 using Statistics
 using Insolation
 using DelimitedFiles
+using ClimaUtilities.Utils: linear_interpolation
 
 using CSV, HTTP, Flux, BSON, StatsBase
 NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
@@ -30,7 +31,6 @@ if length(ARGS) < 1
 else
     SITE_NAME = ARGS[1]
 end
-
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float32
@@ -424,3 +424,15 @@ CairoMakie.scatter!(
 xlims!(ax3, 0, ndays)
 CairoMakie.axislegend(ax1, position = :rt, framevisible = false)
 CairoMakie.save(joinpath(savedir, "data_comparison_$(SITE_NAME).png"), fig)
+
+# Compute errors
+mae(x, obs) = mean(abs.(x .- obs));
+data_times = seconds[mass_data_avail] ./ 24 ./ 3600
+interpolated_swe = [linear_interpolation(daily, S, t) for t in data_times]
+interpolated_z = [linear_interpolation(daily, z, t) for t in data_times]
+
+interpolated_T = [linear_interpolation(daily, T, t) for t in data_times]
+
+@show mae(interpolated_swe[.~isnan.(SWE)], SWE[.~isnan.(SWE)])
+@show mae(interpolated_z[.~isnan.(depths)], depths[.~isnan.(depths)])
+@show mae(interpolated_T[.~isnan.(T_snow)], T_snow[.~isnan.(T_snow)] .+ 273.15)
