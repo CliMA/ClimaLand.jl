@@ -21,7 +21,9 @@ function soil_canopy_integrator(;
     info &&
         @info "Running with $(n_horizontal_elements) horizontal elements ($(round(effective_resolution, sigdigits = 2)) degrees, $num_columns columns)"
 
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    prognostic_land_components = (:canopy, :soil, :soilco2)
     radius = FT(6378.1e3)
     depth = FT(3.5)
     domain = ClimaLand.Domains.SphericalShell(;
@@ -35,338 +37,103 @@ function soil_canopy_integrator(;
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
+    stop_date = start_date + Second(tf - t0)
     time_interpolation_method = LinearInterpolation(Throw())
     # Forcing data
-    era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+    era5_ncdata_path =
+        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,
-        FT,
-    )
-
-    spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        f_max,
-    ) = spatially_varying_soil_params
-    soil_params = Soil.EnergyHydrologyParameters(
         FT;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
-    )
-
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = f_max,
-        R_sb = R_sb,
-    )
-
-    # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
-
-    # Energy Balance model
-    ac_canopy = FT(2.5e3)
-    # Plant Hydraulics and general plant parameters
-    SAI = FT(0.0) # m2/m2
-    f_root_to_shoot = FT(3.5)
-    RAI = FT(1.0)
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
-    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-    Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
-    plant_ν = FT(1.44e-4)
-    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    n_stem = 0
-    n_leaf = 1
-    h_stem = FT(0.0)
-    h_leaf = FT(1.0)
-    zmax = FT(0.0)
-    h_canopy = h_stem + h_leaf
-    compartment_midpoints =
-        n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
-    compartment_surfaces =
-        n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
-
-    z0_m = FT(0.13) * h_canopy
-    z0_b = FT(0.1) * z0_m
-
-
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-
-    soil_args = (domain = domain, parameters = soil_params)
-    soil_model_type = Soil.EnergyHydrology{FT}
-
-    # Soil microbes model
-    soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    # soil microbes args
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-    soilco2_args = (;
-        boundary_conditions = soilco2_boundary_conditions,
-        sources = soilco2_sources,
-        domain = domain,
-        parameters = soilco2_ps,
-    )
-
-    # Now we set up the canopy model, which we set up by component:
-    # Component Types
-    canopy_component_types = (;
-        autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
-        radiative_transfer = Canopy.TwoStreamModel{FT},
-        photosynthesis = Canopy.FarquharModel{FT},
-        conductance = Canopy.MedlynConductanceModel{FT},
-        hydraulics = Canopy.PlantHydraulicsModel{FT},
-        energy = Canopy.BigLeafEnergyModel{FT},
-    )
-    # Individual Component arguments
-    # Set up autotrophic respiration
-    autotrophic_respiration_args =
-        (; parameters = Canopy.AutotrophicRespirationParameters(FT))
-    # Set up radiative transfer
-    radiative_transfer_args = (;
-        parameters = Canopy.TwoStreamParameters(
-            FT;
-            Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
-            G_Function,
-        )
-    )
-    # Set up conductance
-    conductance_args =
-        (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
-    # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
-    # Set up plant hydraulics
-    modis_lai_artifact_path =
-        ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
-    modis_lai_ncdata_path =
-        joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
-    LAIfunction = ClimaLand.prescribed_lai_modis(
-        modis_lai_ncdata_path,
-        surface_space,
-        start_date;
         time_interpolation_method = time_interpolation_method,
     )
-    ai_parameterization =
-        Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
-    plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
-        ai_parameterization = ai_parameterization,
-        ν = plant_ν,
-        S_s = plant_S_s,
-        rooting_depth = rooting_depth,
-        conductivity_model = conductivity_model,
-        retention_model = retention_model,
-    )
-    plant_hydraulics_args = (
-        parameters = plant_hydraulics_ps,
-        n_stem = n_stem,
-        n_leaf = n_leaf,
-        compartment_midpoints = compartment_midpoints,
-        compartment_surfaces = compartment_surfaces,
+    soil_forcing = (; atmos, radiation)
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        soil_forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
     )
 
-    energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
+    # Soil microbes model
+    soil_organic_carbon =
+        ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+    co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+    drivers = Soil.Biogeochemistry.SoilDrivers(
+        co2_prognostic_soil,
+        soil_organic_carbon,
+        atmos,
+    )
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
 
-    # Canopy component args
-    canopy_component_args = (;
-        autotrophic_respiration = autotrophic_respiration_args,
-        radiative_transfer = radiative_transfer_args,
-        photosynthesis = photosynthesis_args,
-        conductance = conductance_args,
-        hydraulics = plant_hydraulics_args,
-        energy = energy_args,
+    # Now we set up the canopy model, which mostly use defaults for:
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    canopy_domain = ClimaLand.obtain_surface_domain(domain)
+    canopy_forcing = (; atmos, radiation, ground)
+
+    # Set up plant hydraulics
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
     )
 
-    # Other info needed
-    shared_params = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        z0_m,
-        z0_b,
-        earth_param_set,
+    canopy = Canopy.CanopyModel{FT}(
+        canopy_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        prognostic_land_components,
     )
 
-    canopy_model_args = (;
-        parameters = shared_params,
-        domain = ClimaLand.obtain_surface_domain(domain),
-    )
+    # Combine the soil and canopy models into a single prognostic land model
+    land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
-    # Integrated plant hydraulics and soil model
-    land_input = (
-        atmos = atmos,
-        radiation = radiation,
-        runoff = runoff_model,
-        soil_organic_carbon = Csom,
-    )
-    land = SoilCanopyModel{FT}(;
-        soilco2_type = soilco2_type,
-        soilco2_args = soilco2_args,
-        land_args = land_input,
-        soil_model_type = soil_model_type,
-        soil_args = soil_args,
-        canopy_component_types = canopy_component_types,
-        canopy_component_args = canopy_component_args,
-        canopy_model_args = canopy_model_args,
-    )
 
-    Y, p, cds = initialize(land)
-
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-    set_initial_cache! = make_set_initial_cache(land)
-    exp_tendency! = make_exp_tendency(land)
-    imp_tendency! = ClimaLand.make_imp_tendency(land)
-    jacobian! = ClimaLand.make_jacobian(land)
-    set_initial_cache!(p, Y, t0)
-
-    # set up jacobian info
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
-    )
-    callbacks = tuple()
-
-    if info
-        walltime_info = WallTimeInfo()
-        every10steps(u, t, integrator) = mod(integrator.step, 10) == 0
-        report = let wt = walltime_info
-            (integrator) -> report_walltime(wt, integrator)
-        end
-        report_cb = SciMLBase.DiscreteCallback(every10steps, report)
-        callbacks = (callbacks..., report_cb)
+    function set_ic!(Y, p, t, land)
+        plant_ν = FT(1.44e-4)
+        soil_params = land.soil.parameters
+        θ_r = soil_params.θ_r
+        ν = soil_params.ν
+        init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+        Y.soil.ϑ_l .= init_soil.(ν, θ_r)
+        Y.soil.θ_i .= FT(0.0)
+        T = FT(276.85)
+        ρc_s =
+            Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                soil_params.ρc_ds,
+                soil_params.earth_param_set,
+            )
+        Y.soil.ρe_int .=
+            Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                T,
+                soil_params.earth_param_set,
+            )
+        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
+        atmos = land.canopy.boundary_conditions.atmos
+        evaluate!(Y.canopy.energy.T, atmos.T, t0)
     end
 
-    if diagnostics
-        outdir = mktempdir(pwd())
-        info && @info "Output directory: $outdir"
-        nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-            subsurface_space,
-            outdir;
-            start_date,
-        )
 
-        diags = ClimaLand.default_diagnostics(
-            land,
-            start_date;
-            output_writer = nc_writer,
-            output_vars = :short,
-            average_period = :monthly,
-        )
-
-        diagnostic_handler =
-            ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = dt)
-
-        diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-        callbacks = (callbacks..., diag_cb)
-    end
-
-    if update_drivers
-        info && @info "Updating drivers every 3 hours"
-        updateat = Array(t0:(3600 * 3):tf)
-        drivers = ClimaLand.get_drivers(land)
-        updatefunc = ClimaLand.make_update_drivers(drivers)
-        driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-        callbacks = (callbacks..., driver_cb)
-    end
-
-    ode_algo = CTS.IMEXAlgorithm(
-        stepper,
-        CTS.NewtonsMethod(
-            max_iters = 3,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-        ),
+    sim = ClimaLand.Simulations.LandSimulation(
+        start_date,
+        stop_date,
+        dt,
+        land;
+        diagnostics = (),
+        updateat = update_drivers ? Second(dt) : Second(2 * (tf - t0)), # we still want to update drivers on init
+        user_callbacks = (),
+        set_ic!,
     )
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    callback = SciMLBase.CallbackSet(callbacks...)
-
-    integrator = SciMLBase.init(prob, ode_algo; dt, callback)
-    return integrator
+    return sim
 end

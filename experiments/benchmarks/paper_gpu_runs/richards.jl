@@ -21,7 +21,8 @@ function richards_integrator(;
     info &&
         @info "Running with $(n_horizontal_elements) horizontal elements ($(round(effective_resolution, sigdigits = 2)) degrees, $num_columns columns)"
 
-    earth_param_set = LP.LandParameters(FT)
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
     radius = FT(6378.1e3)
     depth = FT(3.5)
     domain = ClimaLand.Domains.SphericalShell(;
@@ -35,166 +36,79 @@ function richards_integrator(;
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
-    spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (; ν, hydrology_cm, K_sat, S_s, θ_r, f_max) = spatially_varying_soil_params
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = f_max,
-        R_sb = R_sb,
-    )
-    soil_params = ClimaLand.Soil.RichardsParameters(;
-        hydrology_cm = hydrology_cm,
-        ν = ν,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-    )
+    stop_date = start_date + Second(tf - t0)
 
-    era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path =
+        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)
     # 2. Convert mass flux to equivalent liquid water flux
     # Precipitation:
     precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc"),
+        era5_ncdata_path,
         "mtpr",
         surface_space;
         start_date,
         regridder_type = :InterpolationsRegridder,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
+        file_reader_kwargs = (; preprocess_func = (data) -> FT(-data / 1000)),
     )
-    atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
-    bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
-    bc = (;
-        top = ClimaLand.Soil.RichardsAtmosDrivenFluxBC(atmos, runoff_model),
-        bottom = bottom_bc,
+    forcing = (;
+        atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip),
     )
-    model = ClimaLand.Soil.RichardsModel{FT}(;
-        parameters = soil_params,
-        domain = domain,
-        boundary_conditions = bc,
-        sources = (),
-        lateral_flow = false,
-    )
+    model = ClimaLand.Soil.RichardsModel{FT}(domain, forcing)
+    function set_ic!(Y, p, t, model)
+        domain = ClimaLand.get_domain(model)
+        z = domain.fields.z
+        lat = ClimaCore.Fields.coordinate_field(domain.space.subsurface).lat
+        function hydrostatic_profile(
+            lat::FT,
+            z::FT,
+            ν::FT,
+            θ_r::FT,
+            α::FT,
+            n::FT,
+            S_s::FT,
+            fmax,
+        ) where {FT}
+            m = 1 - 1 / n
+            zmin = FT(-50.0)
+            zmax = FT(0.0)
 
-    Y, p, cds = initialize(model)
-    z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
-    lat = ClimaCore.Fields.coordinate_field(domain.space.subsurface).lat
-    function hydrostatic_profile(
-        lat::FT,
-        z::FT,
-        ν::FT,
-        θ_r::FT,
-        α::FT,
-        n::FT,
-        S_s::FT,
-        fmax,
-    ) where {FT}
-        m = 1 - 1 / n
-        zmin = FT(-50.0)
-        zmax = FT(0.0)
-
-        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
-        if z > z_∇
-            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-            ϑ_l = S * (ν - θ_r) + θ_r
-        else
-            ϑ_l = -S_s * (z - z_∇) + ν
+            z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
+            if z > z_∇
+                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                ϑ_l = S * (ν - θ_r) + θ_r
+            else
+                ϑ_l = -S_s * (z - z_∇) + ν
+            end
+            return FT(ϑ_l)
         end
-        return FT(ϑ_l)
-    end
 
-    # Set initial state values
-    vg_α = hydrology_cm.α
-    vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+        # Set initial state values
+        hydrology_cm = model.parameters.hydrology_cm
+        ν = model.parameters.ν
+        θ_r = model.parameters.S_s
+        S_s = model.parameters.θ_r
+        # Set initial state values
+        vg_α = hydrology_cm.α
+        vg_n = hydrology_cm.n
+        vg_α = hydrology_cm.α
+        vg_n = hydrology_cm.n
+        f_max = ClimaLand.Soil.topmodel_fmax(domain.space.surface, FT)
+        Y.soil.ϑ_l .=
+            hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+    end
     # Create model update functions
-    set_initial_cache! = make_set_initial_cache(model)
-    exp_tendency! = make_exp_tendency(model)
-    imp_tendency! = make_imp_tendency(model)
-    jacobian! = make_jacobian(model)
-
-    set_initial_cache!(p, Y, t0)
-
-    # set up jacobian info
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
+    sim = ClimaLand.Simulations.LandSimulation(
+        start_date,
+        stop_date,
+        dt,
+        model;
+        diagnostics = (),
+        updateat = update_drivers ? Second(dt) : Second(2 * (tf - t0)), # we still want to update drivers on init
+        user_callbacks = (),
+        set_ic!,
     )
-
-    callbacks = tuple()
-
-    if info
-        walltime_info = WallTimeInfo()
-        every10steps(u, t, integrator) = mod(integrator.step, 10) == 0
-        report = let wt = walltime_info
-            (integrator) -> report_walltime(wt, integrator)
-        end
-        report_cb = SciMLBase.DiscreteCallback(every10steps, report)
-        callbacks = (callbacks..., report_cb)
-    end
-
-    if diagnostics
-        outdir = mktempdir(pwd())
-        info && @info "Output directory: $outdir"
-        nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-            subsurface_space,
-            outdir;
-            start_date,
-        )
-
-        diags = ClimaLand.default_diagnostics(
-            land,
-            start_date;
-            output_writer = nc_writer,
-            output_vars = :short,
-            average_period = :monthly,
-        )
-
-        diagnostic_handler =
-            ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = dt)
-
-        diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-        callbacks = (callbacks..., diag_cb)
-    end
-
-    if update_drivers
-        info && @info "Updating drivers every 3 hours"
-        updateat = Array(t0:(3600 * 3):tf)
-        drivers = ClimaLand.get_drivers(model)
-        updatefunc = ClimaLand.make_update_drivers(drivers)
-        driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-        callbacks = (callbacks..., driver_cb)
-    end
-
-    ode_algo = CTS.IMEXAlgorithm(
-        stepper,
-        CTS.NewtonsMethod(
-            max_iters = 3,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-        ),
-    )
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    callback = SciMLBase.CallbackSet(callbacks...)
-
-    integrator = SciMLBase.init(prob, ode_algo; dt, callback)
-    return integrator
+    return sim
 end
