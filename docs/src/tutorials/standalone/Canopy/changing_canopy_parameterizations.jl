@@ -47,8 +47,7 @@ dt = 1000.0;
 # We also set up a constant leaf area index (LAI); for an example reading LAI from
 # MODIS data, please see the [canopy_tutorial.jl tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/standalone/Canopy/canopy_tutorial/).
 # This differs from the soil example because we have the extra inputs of the ground conditions and LAI.
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
+era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path();
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

@@ -81,7 +81,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     start_date = DateTime(2008)
     era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)

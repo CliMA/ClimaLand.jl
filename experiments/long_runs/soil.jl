@@ -70,7 +70,7 @@ if LONGER_RUN
         ClimaLand.Artifacts.find_era5_year_paths(start_date, stop_date; context)
 else
     era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
 end
 forcing = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,

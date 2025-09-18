@@ -1494,11 +1494,11 @@ A helper function which constructs the `PrescribedAtmosphere` and
 `PrescribedRadiativeFluxes` from a file path pointing to the ERA5 data in a netcdf file, the
 `surface_space`, the `start_date`, and the `earth_param_set`.
 
-The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
+The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required,
+but with different time intervals in the different files, or else it is a single file with all the variables.
 
 The ClimaLand default is to use nearest neighbor interpolation, but
-linear interpolation is supported
-by passing `interpolation_method = Interpolations.Linear()`.
+linear interpolation is supported by passing `interpolation_method = Interpolations.Linear()`.
 
 !!! warning "Clipped values"
     High wind speed anomalies (10-100x increase and decrease over a period of a
@@ -1512,6 +1512,8 @@ function prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
+    stop_date,
+    use_lowres_forcing,
     earth_param_set,
     FT;
     gustiness = 1,
@@ -1519,7 +1521,9 @@ function prescribed_forcing_era5(
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
-    interpolation_method = Interpolations.Constant(),
+    lowres_forcing = false,
+    interpolation_method = lowres_forcing ? Interpolations.Constant() :
+                           Interpolations.Linear(),
 )
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])

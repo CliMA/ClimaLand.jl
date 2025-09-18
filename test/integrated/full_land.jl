@@ -194,10 +194,8 @@ domain = ClimaLand.Domains.global_domain(
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
 stop_date = start_date + Second(Δt)
-era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-    context,
-    lowres = true,
-)
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
 forcing = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,

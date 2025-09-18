@@ -56,7 +56,7 @@ stop_date = start_date + Dates.Second(3600)
 
 # Forcing data
 era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+    ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

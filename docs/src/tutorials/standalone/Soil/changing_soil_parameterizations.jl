@@ -43,8 +43,7 @@ start_date = DateTime(2008);
 
 # The soil model takes in 2 forcing objects, atmosphere and radiation,
 # which we read in from ERA5 data.
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
+era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path();
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

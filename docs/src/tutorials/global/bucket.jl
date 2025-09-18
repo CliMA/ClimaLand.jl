@@ -68,10 +68,8 @@ bucket_parameters = BucketModelParameters(
 
 # Low-resolution forcing data from ERA5 is used here,
 # but high-resolution should be used for production runs.
-era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-    context,
-    lowres = true,
-)
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,
