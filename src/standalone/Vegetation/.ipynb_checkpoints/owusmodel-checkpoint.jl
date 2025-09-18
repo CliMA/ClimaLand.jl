@@ -6,6 +6,18 @@ export OWUSStomatalModel,
        build_owus_from_traits,
        build_owus_from_ClimaLand
 
+# From Bassiouni et al. 2023
+
+# OWUS frames the problem in terms of dimensionless Π-groups (ratios of soil, xylem, guard cell, and atmospheric conductances/pressures). These ratios determine whether water use is “supply-limited” or “demand-limited.”
+# shows that the optimal strategy in this trait-space is equivalent to a piecewise β(s): flat at high moisture (fww), declining to shutoff at s_w. So the “optimal control” solution reduces to something that looks like an empirical stress function, but whose shape is diagnosed from traits.
+# optimality-based closure, but operationalized as a trait-linked stress function instead of a per-timestep optimization. Parameters can be tied directly to measurable hydraulic traits
+
+# EKI tuning candiates: 
+    # ψ_g50 (stomatal closure threshold-- new parameter to CliMA), ψ_x50 (embolism risk threshold) (hard to measure, critical to drought response)
+    # kx_max (capacity) (varies widely among species)
+    # RAI (root area index), Zr (root depth) (root distribution uncertain)
+    # Ksat (supply limit) (huge variability even within soil types)
+
 """
     OWUSStomatalModel{FT}
 
@@ -77,7 +89,7 @@ function stomatal_conductance!(
 end
 
 # ============================================
-# Diagnostics: traits → (fww, s*, s_w) (paper)
+# Diagnostics: traits → (fww, s*, s_w)
 # ============================================
 
 """
@@ -184,11 +196,17 @@ We expect (but do not require) the following (case-insensitive by symbol):
 """
 function build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, met_params=nothing, overrides=NamedTuple())
     # Pull raw values with generous field-name guesses
-    LAI = something(_getfirst(canopy_params, (:LAI, :lai)),  leaf_nothing_error("LAI"))
-    hc  = something(_getfirst(canopy_params, (:canopy_height, :h_c, :hc)), leaf_nothing_error("canopy height"))
-    kx  = something(_getfirst(canopy_params, (:kx_max, :kx_leaf_spec, :k_x_max, :kxl_spec)), leaf_nothing_error("kx_max"))
-    ψg50 = something(_getfirst(canopy_params, (:psi_g50, :ψg50, :psi_g_50, :psi_g50_MPa)), leaf_nothing_error("psi_g50"))
-    ψx50 = something(_getfirst(canopy_params, (:psi_x50, :ψx50, :psi_x_50, :psi_x50_MPa)), leaf_nothing_error("psi_x50"))
+    @inline function _get_required(x, names::NTuple{N,Symbol}, human::AbstractString) where {N}
+        val = _getfirst(x, names, nothing)
+        val === nothing && leaf_nothing_error(human)
+        return val
+    end
+
+    LAI  = _get_required(canopy_params, (:LAI, :lai), "LAI")
+    hc   = _get_required(canopy_params, (:canopy_height, :h_c, :hc), "canopy height")
+    kx   = _get_required(canopy_params, (:kx_max, :kx_leaf_spec, :k_x_max, :kxl_spec), "kx_max")
+    ψg50 = _get_required(canopy_params, (:psi_g50, :ψg50, :psi_g_50, :psi_g50_MPa), "psi_g50")
+    ψx50 = _get_required(canopy_params, (:psi_x50, :ψx50, :psi_x_50, :psi_x50_MPa), "psi_x50")
 
     RAI = something(_getfirst(root_params, (:RAI, :root_area_index)), 2.0)   # default modestly
     dr  = something(_getfirst(root_params, (:dr, :fine_root_diameter, :root_diameter)), 3e-4)  # m
@@ -248,5 +266,144 @@ end
 
 # Friendly error
 leaf_nothing_error(what) = throw(ArgumentError("build_owus_from_ClimaLand: could not infer $what; pass it via overrides=... or ensure it exists in your params."))
+
+# -------- Isohydry diagnostic (Ψ_leaf vs Ψ_soil slope) -----------------------
+
+export isohydry_index
+
+# Simple OLS fit: y = a + m x
+@inline function _ols_slope_intercept_R2(x::AbstractVector{T}, y::AbstractVector{T}) where {T<:Real}
+    n = length(x)
+    n == length(y) || throw(ArgumentError("x and y must have same length"))
+    n ≥ 2 || throw(ArgumentError("need ≥2 points to fit a slope"))
+
+    mx = sum(x) / n
+    my = sum(y) / n
+
+    sxx = zero(T); sxy = zero(T); syy = zero(T)
+    @inbounds for i in eachindex(x)
+        dx = x[i] - mx
+        dy = y[i] - my
+        sxx += dx*dx
+        sxy += dx*dy
+        syy += dy*dy
+    end
+
+    sxx == 0 && throw(ArgumentError("x has zero variance; slope undefined"))
+    m  = sxy / sxx
+    a  = my - m*mx
+    R2 = syy == 0 ? one(T) : (sxy*sxy)/(sxx*syy)  # coefficient of determination
+    return (slope = T(m), intercept = T(a), R2 = T(R2), n = n)
+end
+
+# Solve E = K(Ψl) * (Ψs - Ψl) for Ψl
+# Variant A: linear K (constant)
+@inline function _psi_leaf_linear(E_mol::T, ψs::T; K_lin::T) where {T<:Real}
+    # Ψl = Ψs - E/K
+    return ψs - E_mol / max(K_lin, eps(T))
+end
+
+# Variant B: Weibull/sigmoidal K(Ψl) = Kmax / (1 + exp(-a*(Ψl - P50)))
+# Solve F(Ψl) = K(Ψl)*(Ψs - Ψl) - E = 0 by bisection on [Ψ_lo, Ψ_hi]
+function _psi_leaf_weibull(E_mol::T, ψs::T; Kmax::T, P50::T, a::T, ψ_lo::T=-15.0, ψ_hi::T=0.0) where {T<:Real}
+    # Ensure bracket makes sense (Ψ_l expected ≤ Ψ_s; both typically ≤ 0)
+    lo = T(min(ψ_lo, ψs - T(1e-6)))
+    hi = T(min(ψ_hi, ψs - T(1e-9)))  # slightly below ψs to avoid zero drop singularities
+    K_of(ψ) = Kmax / (one(T) + exp(-a * (ψ - P50)))
+    F(ψ) = K_of(ψ) * (ψs - ψ) - E_mol
+
+    Flo = F(lo); Fhi = F(hi)
+    # If not bracketed, try to widen slightly; if still not, just return linear fallback
+    if Flo*Fhi > 0
+        return _psi_leaf_linear(E_mol, ψs; K_lin = Kmax)  # conservative fallback
+    end
+
+    # Bisection
+    max_iter = 60
+    for _ in 1:max_iter
+        mid = (lo + hi)/2
+        Fm  = F(mid)
+        if abs(Fm) < eps(T)*max(one(T), abs(E_mol))
+            return mid
+        end
+        if Flo*Fm <= 0
+            hi = mid; Fhi = Fm
+        else
+            lo = mid; Flo = Fm
+        end
+    end
+    return (lo + hi)/2
+end
+
+"""
+    isohydry_index(
+        model::OWUSStomatalModel{FT};
+        s::AbstractVector,         # soil saturation [0..1]
+        E0::AbstractVector,        # potential evaporation [m s^-1]
+        VPD::AbstractVector,       # Pa
+        P_air::AbstractVector,     # Pa
+        T_air::AbstractVector,     # K (not used in this diagnostic, kept for symmetry)
+        ψ_soil::AbstractVector,    # MPa (negative)
+        leaf_factor::Real = 1,
+        hydraulics::Symbol = :linear,   # :linear or :weibull
+        K_lin::Real = NaN,              # needed if hydraulics=:linear  (mol m^-2 s^-1 MPa^-1)
+        Kmax::Real = NaN, P50::Real = NaN, a::Real = NaN,  # needed if :weibull
+    ) -> (slope, intercept, R2, n)
+
+Compute the isohydry slope dΨ_leaf/dΨ_soil by:
+1. Using OWUS to compute transpiration E (molar) from s and E0, VPD, P_air.
+2. Inferring Ψ_leaf from a hydraulic closure (linear or Weibull).
+3. Fitting Ψ_leaf = intercept + slope * Ψ_soil (OLS).
+
+Returns: NamedTuple (slope, intercept, R2, n).
+"""
+function isohydry_index(
+    model::OWUSStomatalModel{FT};
+    s::AbstractVector,
+    E0::AbstractVector,
+    VPD::AbstractVector,
+    P_air::AbstractVector,
+    T_air::AbstractVector,
+    ψ_soil::AbstractVector,
+    leaf_factor::Real = 1,
+    hydraulics::Symbol = :linear,
+    K_lin::Real = NaN,
+    Kmax::Real = NaN, P50::Real = NaN, a::Real = NaN,
+) where {FT}
+
+    n = length(s)
+    @assert length(E0)==n && length(VPD)==n && length(P_air)==n && length(T_air)==n && length(ψ_soil)==n "all inputs must have same length"
+
+    ρw, Mw, _ = _consts(FT)
+
+    Ψl = Vector{FT}(undef, n)
+    Ψs = FT.(ψ_soil)
+
+    gref = Ref(FT(0))
+    @inbounds for i in 1:n
+        # 1) OWUS beta(s) -> transpiration & E (molar)
+        s_i    = FT(s[i]);  E0_i = FT(E0[i]);  VPD_i = FT(VPD[i])
+        P_i    = FT(P_air[i]);  T_i = FT(T_air[i])
+        stomatal_conductance!(gref, model; s=s_i, E0=E0_i, VPD=VPD_i, P_air=P_i, T_air=T_i, leaf_factor=leaf_factor)
+        gsw_i  = gref[]
+        E_mol  = gsw_i * (VPD_i / P_i)  # mol m^-2 s^-1
+
+        # 2) Hydraulics: infer Ψ_leaf
+        if hydraulics === :linear
+            isfinite(K_lin) || throw(ArgumentError("K_lin must be provided for hydraulics=:linear"))
+            Ψl[i] = _psi_leaf_linear(E_mol, Ψs[i]; K_lin=FT(K_lin))
+        elseif hydraulics === :weibull
+            (isfinite(Kmax) && isfinite(P50) && isfinite(a)) ||
+                throw(ArgumentError("Kmax, P50, a must be provided for hydraulics=:weibull"))
+            Ψl[i] = _psi_leaf_weibull(E_mol, Ψs[i]; Kmax=FT(Kmax), P50=FT(P50), a=FT(a))
+        else
+            throw(ArgumentError("hydraulics must be :linear or :weibull"))
+        end
+    end
+
+    # 3) Fit Ψ_leaf = intercept + slope * Ψ_soil
+    return _ols_slope_intercept_R2(Ψs, Ψl)
+end
+
 
 end # module
