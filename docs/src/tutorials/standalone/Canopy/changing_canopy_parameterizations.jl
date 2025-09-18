@@ -36,7 +36,7 @@ domain = Domains.Point(; z_sfc = FT(0.0), longlat);
 surface_space = domain.space.surface;
 
 # We choose the initial and final simulation times as DatesTimes, and a timestep in seconds.
-start_date = DateTime(2008);
+start_date = DateTime(2008) + Month(6);
 stop_date = start_date + Second(60 * 60 * 72);
 dt = 1000.0;
 
@@ -100,7 +100,7 @@ radiative_transfer_parameters = Canopy.BeerLambertParameters(
     α_NIR_leaf,
 );
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
-# Note these parameters must all be scalars (or a single instance of a G_Function) or fields of floats and a field of a G_Function.
+# Note these parameters must all be scalars (or a single instance of a G\_Function) or fields of floats and a field of a G\_Function.
 
 # All three of these methods will construct a `BeerLambertModel`;
 # the first will use the default parameters, while the second and third use the custom parameters.

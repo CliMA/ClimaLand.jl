@@ -39,7 +39,7 @@ domain = Domains.Point(; z_sfc = FT(0.0), longlat);
 surface_space = domain.space.surface;
 
 # We choose the initial and final simulation times as DatesTimes, and a timestep in seconds.
-start_date = DateTime(2008);
+start_date = DateTime(2008) + Month(6);
 stop_date = start_date + Second(60 * 60 * 72);
 dt = 1000.0;
 
