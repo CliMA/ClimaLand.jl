@@ -32,7 +32,7 @@ import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.OutputPathGenerator: generate_output_path
-import ClimaUtilities.TimeManager: ITime
+import ClimaUtilities.TimeManager: ITime, date
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -133,16 +133,15 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 bucket_parameters = BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc);
 
 # Forcing data
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
+    date(t0),
+    date(tf),
     surface_space,
-    start_date,
     toml_dict,
     FT;
-    time_interpolation_method = time_interpolation_method,
-    regridder_type = regridder_type,
+    time_interpolation_method,
+    regridder_type,
+    context,
 )
 
 model = BucketModel(

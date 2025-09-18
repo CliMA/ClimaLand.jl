@@ -65,24 +65,15 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data
-    if LONGER_RUN
-        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
-            start_date,
-            stop_date;
-            context,
-        )
-    else
-        era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
-    end
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
         start_date,
+        stop_date,
+        surface_space,
         toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = era5_time_interpolation_method,
+        context,
     )
     forcing = (; atmos, radiation)
 

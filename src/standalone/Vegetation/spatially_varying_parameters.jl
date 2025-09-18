@@ -14,12 +14,12 @@ import ClimaLand: use_lowres_clm, Artifacts
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
-        lowres=use_lowres_clm(surface_space),
+        interpolation_method = Interpolations.Linear(),
+        lowres = use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the canopy radiative transfer schemes,
- from NetCDF files based on CLM and MODIS data, and regrids them to the grid defined by the
+from NetCDF files based on CLM and MODIS data, and regrids them to the grid defined by the
 `surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
 Fields.
 
@@ -32,13 +32,17 @@ The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`regridder_kwargs`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data, and (3) changed the spatial interpolation method. 
+data, and (3) changed the spatial interpolation method.
+
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
 """
 function clm_canopy_radiation_parameters(
     surface_space;
@@ -48,7 +52,7 @@ function clm_canopy_radiation_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -121,8 +125,8 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
-        lowres=use_lowres_clm(surface_space),
+        interpolation_method = Interpolations.Linear(),
+        lowres = use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the canopy, from NetCDF files
@@ -138,13 +142,17 @@ The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`regridder_kwargs`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data, and (3) changed the spatial interpolation method. 
- The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method.
+
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
 """
 function clm_photosynthesis_parameters(
     surface_space;
@@ -154,7 +162,7 @@ function clm_photosynthesis_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -189,8 +197,8 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
-        lowres=use_lowres_clm(surface_space),
+        interpolation_method = Interpolations.Linear(),
+        lowres = use_lowres_clm(surface_space),
     )
 
 Reads spatially varying rooting depth for the canopy, from a NetCDF file
@@ -202,13 +210,17 @@ The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`regridder_kwargs`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data, and (3) changed the spatial interpolation method. 
- The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method.
+
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
 """
 function clm_rooting_depth(
     surface_space;
@@ -218,7 +230,7 @@ function clm_rooting_depth(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
@@ -243,8 +255,8 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Constant(),
-        lowres=use_lowres_clm(surface_space),
+        interpolation_method = Interpolations.Linear(),
+        lowres = use_lowres_clm(surface_space),
     )
 
 Reads spatially varying g1 for the canopy, from a NetCDF file
@@ -256,13 +268,17 @@ The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
-`regridder_kwargs` 
+`regridder_kwargs`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data, and (3) changed the spatial interpolation method. 
- The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+data, and (3) changed the spatial interpolation method.
+
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
 """
 function clm_medlyn_g1(
     surface_space;
@@ -272,7 +288,7 @@ function clm_medlyn_g1(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Constant(),
+    interpolation_method = Interpolations.Linear(),
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
