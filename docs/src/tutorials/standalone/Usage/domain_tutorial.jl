@@ -62,7 +62,9 @@ A variety of concrete domain types are supported:
 - 2D: [`Domains.Plane`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalSurface)
 - 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalShell).
 
-As discussed above, our modeling requires that variables of a model can be defined on different subsets of the domain. Because of that, we define the concept of a surface domain, and a subsurface domain. Not all domains have a surface and subsurface; some only have surface domains, as shown in the Table below.
+As discussed above, our modeling requires that variables of a model can be defined on different subsets of the domain.
+Because of that, we define the concept of a surface domain, and a subsurface domain[^2].
+Not all domains have a surface and subsurface; some only have surface domains, as shown in the Table below.
 
 
 |  Domain | Surface Domain | Subsurface Domain |
@@ -83,8 +85,8 @@ of x and y (surface only), and a Point domain only has a coordinate z_sfc (surfa
 and subsurface coordinates of z.
 
 It is important to note that the horizontal domain used for the surface and subsurface
-domains are identical in all simulations. This ensures that we can use the same indexing
-of surface and subsurface domains and variables. Otherwise we would need
+domains are identical in all simulations using a particular domain setup. This ensures that we can use
+the same indexing of surface and subsurface domains and variables. Otherwise we would need
 to develop additional infrastructure in order to, for example, select the correct subsurface
 column corresponding to a particular surface location.
 
@@ -112,7 +114,7 @@ function (which calls both
  and [`initialize_auxiliary`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
-is a float, the field will be a field of float values (a scalar field)[^4].
+is a float, the field will be a field of float values (a scalar field)[^3].
 
 How do domains tie into this? The field of a prognostic variable corresponds in a 1-1 fashion with the coordinate field of the subset of the domain associated with that variable via `prognostic_domain_name`.  For example, the bucket model has a vertically resolved temperature `T`, but the bucket water content
 `W` is not vertically resolved. If your domain is a Column, the subsurface coordinates may be [-4.5,-3.5,-2.5,-1.5, -0.5], and
@@ -143,5 +145,5 @@ we then use IMEX (mixed explicit/implicit) methods.
 
 [^2]: a suprasurface region may also be necessary - for example if the canopy airspace model involves PDEs.
 
-[^3]: We also will support having an array-like type of variable.
+[^3]: We also support having a tuple or array-like type of variable.
 =#
