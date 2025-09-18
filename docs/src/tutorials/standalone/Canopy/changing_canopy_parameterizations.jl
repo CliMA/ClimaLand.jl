@@ -46,14 +46,13 @@ dt = 900.0;
 # We also set up a constant leaf area index (LAI); for an example reading LAI from
 # MODIS data, please see the [canopy tutorial](@ref "Default Canopy Model Tutorial").
 # This differs from the soil example because we have the extra inputs of the ground conditions and LAI.
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    surface_space,
     start_date,
+    stop_date,
+    surface_space,
     toml_dict,
-    FT,
+    FT;
+    use_lowres_forcing = true,
 );
 ground = PrescribedGroundConditions{FT}();
 LAI = TimeVaryingInput((t) -> FT(1.0));

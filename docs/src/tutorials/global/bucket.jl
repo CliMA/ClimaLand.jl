@@ -67,19 +67,17 @@ bucket_parameters = BucketModelParameters(
 
 # Low-resolution forcing data from ERA5 is used here,
 # but high-resolution should be used for production runs.
-era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-    context,
-    lowres = true,
-)
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    domain.space.surface,
     start_date,
+    stop_date,
+    domain.space.surface,
     toml_dict,
     FT;
+    use_lowres_forcing = true,
     max_wind_speed = 25.0,
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    context,
 );
 
 # Make the model:

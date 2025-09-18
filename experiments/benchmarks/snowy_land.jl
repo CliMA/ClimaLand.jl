@@ -86,17 +86,14 @@ function setup_prob(
     surface_space = domain.space.surface
 
     # Forcing data
-    era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-        context,
-        lowres = true,
-    )
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
         start_date,
+        stop_date,
+        surface_space,
         toml_dict,
         FT;
         time_interpolation_method = time_interpolation_method,
+        context,
     )
     forcing = (; atmos, radiation)
 

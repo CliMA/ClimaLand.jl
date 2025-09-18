@@ -1480,27 +1480,35 @@ function make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
 end
 
 """
-     prescribed_forcing_era5(era5_ncdata_path,
-                             surface_space,
-                             start_date,
-                             toml_dict::CP.ParamDict,
-                             FT;
-                             gustiness=1,
-                             max_wind_speed = nothing,
-                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-                             regridder_type = :InterpolationsRegridder,
-                             interpolation_method = Interpolations.Constant(),)
+    prescribed_forcing_era5(start_date,
+                            stop_date,
+                            surface_space,
+                            toml_dict::CP.ParamDict,
+                            FT;
+                            use_lowres_forcing = false,
+                            gustiness=1,
+                            max_wind_speed = nothing,
+                            c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+                            time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                            regridder_type = :InterpolationsRegridder,
+                            context = nothing,
+                            )
 
 A helper function which constructs the `PrescribedAtmosphere` and
-`PrescribedRadiativeFluxes` from a file path pointing to the ERA5 data in a netcdf file, the
-`surface_space`, the `start_date`, and the `toml_dict`.
+`PrescribedRadiativeFluxes` from ERA5 data stored in NetCDF files.
 
-The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
+There are two versions of the ERA5 data available through ClimaLand:
+- a high resolution version (1° x 1°) available for the years 1979-2024
+- a low resolution version (8° x 8°) available only for the year 2008
 
-The ClimaLand default is to use nearest neighbor interpolation, but
-linear interpolation is supported
-by passing `interpolation_method = Interpolations.Linear()`.
+The high resolution version will be used if `use_lowres_forcing = false` (the default).
+This artifact is used for global runs on compute clusters, but is too large to be used for local testing.
+The low resolution version will be used if `use_lowres_forcing = true`.
+If the simulation dates are outside of 2008, the 2008 data will be reused for each year of simulation.
+This artifact is recommended for local testing or quick runs where accuracy is less critical.
+
+The ClimaLand default is to use nearest neighbor interpolation for low resolution forcing,
+and linear interpolation for high resolution forcing.
 
 !!! warning "Clipped values"
     High wind speed anomalies (10-100x increase and decrease over a period of a
@@ -1509,24 +1517,55 @@ by passing `interpolation_method = Interpolations.Linear()`.
     instability. The kwarg `max_wind_speed`, with a value give in m/s, is used to
     clip these if it is not `nothing`. See
     [here](https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds).
+
+!!! note "Full high resolution dataset available on clima cluster only"
+    The full 40 year dataset of high resolution ERA5 data is only available on the
+    clima cluster. The artifact exists on central but contains only the year 2008.
+    When running on central with the high resolution data, please ensure you
+    include `PeriodicCalendar` boundary conditions for the time interpolation method.
 """
 function prescribed_forcing_era5(
-    era5_ncdata_path,
-    surface_space,
     start_date,
+    stop_date,
+    surface_space,
     toml_dict::CP.ParamDict,
     FT;
+    use_lowres_forcing = false,
     gustiness = 1,
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
-    interpolation_method = Interpolations.Constant(),
+    context = nothing,
 )
-    earth_param_set = LP.LandParameters(toml_dict)
+    # Determine the ERA5 dataset and interpolation method based on the simulation years and resolution
+    if use_lowres_forcing
+        era5_ncdata_path =
+            ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(;
+                context,
+            )
+        interpolation_method = Interpolations.Constant()
+        # We can use the 2008 forcing outside of that year, but we need periodic boundaries for the time
+        if year(start_date) != 2008 ||
+           (year(stop_date) != 2008 && stop_date != DateTime(2009, 1, 1))
+            time_interpolation_method !=
+            LinearInterpolation(PeriodicCalendar()) &&
+                @warn "Using low resolution ERA5 forcing outside of 2008 requires periodic time interpolation. Overriding `time_interpolation_method`."
+            time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+        end
+    else
+        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
+            start_date,
+            stop_date;
+            context,
+        )
+        interpolation_method = Interpolations.Linear()
+    end
+
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
 
+    earth_param_set = LP.LandParameters(toml_dict)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
     precip = TimeVaryingInput(

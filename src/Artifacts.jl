@@ -34,7 +34,8 @@ end
     find_era5_year_paths(start_date, stop_date; context = nothing)
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
-`start_date` and ending on `stop_date`.
+`start_date` and ending on `stop_date`. These will be returned as a list of paths,
+one for each year of data needed. The artifact contains data from 1979 to 2024.
 
 We add 1 year to the final date to ensure that everything between
 start_date and stop_date is covered. (This is needed, e.g., if the last file
@@ -42,7 +43,7 @@ is up to Dec 15th but we want to simulate past that date.)
 """
 function find_era5_year_paths(start_date, stop_date; context = nothing)
     year0 = Dates.year(start_date)
-    yearf = Dates.year(stop_date) + 1
+    yearf = Dates.year(stop_date)
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
@@ -51,43 +52,24 @@ function find_era5_year_paths(start_date, stop_date; context = nothing)
     )
     for year in years
         isfile(year) || error(
-            "The file $year does not exist in the forty years of ERA5 forcing data artifact",
+            "The year $year does not exist in the ERA5 forcing data artifact; please use dates between 1979 and 2024.",
         )
     end
     return years
 end
 
 """
-    era5_land_forcing_data2008_path(; context, lowres=false)
+    era5_land_forcing_data2008_lowres_path(; context, lowres=false)
 
 Return the path to the file that contains the ERA5 forcing data for 2008.
-
-Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data and return the path to that file.
- If the high resolution data is not
-available locally, we also return the path to the low res data.
+Note that this uses a lower resolution of the ERA5 data, downsampled from
+1.0x1.0 degrees to 8.0x8.0 degrees.
 """
-function era5_land_forcing_data2008_path(; context = nothing, lowres = false)
-    lowres_path = joinpath(
+function era5_land_forcing_data2008_lowres_path(; context = nothing)
+    return joinpath(
         @clima_artifact("era5_land_forcing_data2008_lowres", context),
         "era5_2008_1.0x1.0_lowres.nc",
     )
-    if lowres
-        return lowres_path
-    else
-        try
-            hires_path = joinpath(
-                @clima_artifact("era5_land_forcing_data2008", context),
-                "era5_2008_1.0x1.0.nc",
-            )
-
-            return hires_path
-        catch
-            @warn(
-                "High resolution ERA5 forcing not available locally; using low resolution data instead."
-            )
-            return lowres_path
-        end
-    end
 end
 
 """

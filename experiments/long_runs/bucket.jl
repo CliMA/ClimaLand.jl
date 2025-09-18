@@ -48,22 +48,20 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, domain, Δt, toml_dict)
+function setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
     surface_space = domain.space.surface
-    subsurface_space = domain.space.subsurface
 
     # Forcing data
-    era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
         start_date,
+        stop_date,
+        surface_space,
         toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method,
         regridder_type,
+        context,
     )
 
     albedo = PrescribedBaregroundAlbedo(toml_dict, surface_space)
@@ -97,7 +95,7 @@ domain =
 toml_dict = LP.create_toml_dict(FT)
 
 # Model
-model = setup_model(FT, start_date, domain, Δt, toml_dict)
+model = setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
 
 # IC function
 function set_ic!(Y, p, t, bucket)
