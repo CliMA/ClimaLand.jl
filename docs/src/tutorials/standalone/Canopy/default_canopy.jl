@@ -31,17 +31,17 @@ toml_dict = LP.create_toml_dict(FT);
 earth_param_set = LP.LandParameters(toml_dict);
 
 # We will run this simulation on a point domain at a lat/lon location
-# near Pasadena, California.
+# near Yellowstone National Park.
 # This is different from the soil example, which ran on a column, because the
 # soil model has depth and the canopy model does not.
-longlat = FT.((-118.1, 34.1))
+longlat = FT.((-110.6, 44.6))
 domain = Domains.Point(; z_sfc = FT(0.0), longlat);
 surface_space = domain.space.surface;
 
 # We choose the initial and final simulation times as DatesTimes, and a timestep in seconds.
 start_date = DateTime(2008);
 stop_date = start_date + Second(60 * 60 * 72);
-dt = 1000.0;
+dt = 900.0;
 
 # Whereas the soil model takes in 2 forcing objects (atmosphere and radiation),
 # the canopy takes in 3 (atmosphere, radiation, and ground). Here we read in the
@@ -108,6 +108,7 @@ simulation = LandSimulation(
     dt,
     model;
     set_ic!,
+    updateat = Second(dt),
     user_callbacks = (),
     diagnostics,
 );
