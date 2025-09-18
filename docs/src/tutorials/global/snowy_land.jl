@@ -34,7 +34,7 @@ outdir =
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict);
 
-# Set timestep, start_date, stop_date:
+# Set timestep, start\_date, stop\_date:
 Δt = 450.0
 start_date = DateTime(2008)
 stop_date = DateTime(2009);
@@ -78,6 +78,7 @@ simulation = ClimaLand.Simulations.LandSimulation(
     Δt,
     model;
     outdir,
+    user_callbacks = (),
 );
 # Run the simulation and make plots:
 #
