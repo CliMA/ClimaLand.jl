@@ -113,8 +113,12 @@ canopy = Canopy.CanopyModel{FT}(
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
 # ClimaDiagnostics
-nc_writer =
-    ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir; start_date)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+    subsurface_space,
+    outdir;
+    start_date,
+    compression_level = 1,
+)
 
 diags = ClimaLand.default_diagnostics(
     land,

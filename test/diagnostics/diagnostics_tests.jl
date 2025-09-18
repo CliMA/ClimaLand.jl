@@ -117,6 +117,7 @@ using Statistics
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         bucket_domain.space.surface,
         tmpdir,
+        compression_level = 1,
     )
 
     start_date = DateTime(2005)

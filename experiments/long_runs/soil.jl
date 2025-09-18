@@ -89,6 +89,7 @@ diagnostics = ClimaLand.default_diagnostics(
         domain.space.subsurface,
         outdir;
         start_date,
+        compression_level = 1,
     ),
     conservation = true,
     conservation_period = Day(10),
