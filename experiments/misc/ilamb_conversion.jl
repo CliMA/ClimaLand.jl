@@ -1,3 +1,21 @@
+# The purpose of this script is to produce NetCDF files compatible with ILAMB from
+# the diagnostics produced by the land simulation.
+#
+# To run this script, you can run
+# ```
+# julia --project=.buildkite experiments/misc/ilamb_conversion.jl <output_dir> <save_dir>
+# ```
+# in the terminal.
+# Or, directly call `make_compatible_with_ILAMB(output_dir, save_dir)`
+# at the end of a simulation script after including this file.
+#
+# For more information about ILAMB, see the ILAMB and ILAMB-Data repo:
+# https://github.com/rubisco-sfa/ILAMB
+# https://github.com/rubisco-sfa/ILAMB-Data
+#
+# For more informaiton about the variable naming for ILAMB, see
+# https://clipc-services.ceda.ac.uk/dreq/index/var.html
+
 import ClimaAnalysis
 import NCDatasets
 import Dates
