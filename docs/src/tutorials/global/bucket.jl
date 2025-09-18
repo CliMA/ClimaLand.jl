@@ -116,6 +116,7 @@ simulation = LandSimulation(
     set_ic!,
     timestepper,
     outdir,
+    user_callbacks = (),
 );
 
 solve!(simulation);
@@ -140,6 +141,6 @@ LandSimVis.make_heatmaps(
     date = stop_date,
     plot_stem_name = "bucket_heatmap",
 )
-# ![](shf_bucket_heatmap.png)
-# ![](lhf_bucket_heatmap.png)
-# ![](wsoil_bucket_heatmap.png)
+# ![](shf_2009-01-01T00:00:00_bucket_heatmap.png)
+# ![](lhf_2009-01-01T00:00:00_bucket_heatmap.png)
+# ![](wsoil_2009-01-01T00:00:00_bucket_heatmap.png)
