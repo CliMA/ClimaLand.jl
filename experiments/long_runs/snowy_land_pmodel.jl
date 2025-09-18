@@ -65,27 +65,18 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         LinearInterpolation(PeriodicCalendar())
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
-    # Forcing data
-    if LONGER_RUN
-        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
-            start_date,
-            stop_date;
-            context,
-        )
-    else
-        era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(;
-                context,
-            )
-    end
+    # Forcing data - high resolution for longer runs, low resolution for shortruns
+    use_lowres_forcing = !LONGER_RUN
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
         start_date,
+        stop_date,
+        use_lowres_forcing,
+        surface_space,
         earth_param_set,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = era5_time_interpolation_method,
+        context,
     )
     forcing = (; atmos, radiation)
 

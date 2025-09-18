@@ -34,7 +34,8 @@ end
     find_era5_year_paths(start_date, stop_date; context = nothing)
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
-`start_date` and ending on `stop_date`.
+`start_date` and ending on `stop_date`. These will be returned as a list of paths,
+one for each year of data needed. The artifact contains data from 1979 to 2024.
 
 We add 1 year to the final date to ensure that everything between
 start_date and stop_date is covered. (This is needed, e.g., if the last file
@@ -51,7 +52,7 @@ function find_era5_year_paths(start_date, stop_date; context = nothing)
     )
     for year in years
         isfile(year) || error(
-            "The file $year does not exist in the forty years of ERA5 forcing data artifact",
+            "The year $year does not exist in the ERA5 forcing data artifact; please use dates between 1979 and 2024.",
         )
     end
     return years

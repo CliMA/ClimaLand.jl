@@ -194,14 +194,15 @@ domain = ClimaLand.Domains.global_domain(
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
 stop_date = start_date + Second(Δt)
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
+use_lowres_forcing = true
 forcing = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    domain.space.surface,
     start_date,
+    stop_date,
+    use_lowres_forcing,
+    domain.space.surface,
     earth_param_set,
     FT;
+    context,
 )
 LAI = ClimaLand.Canopy.prescribed_lai_modis(
     domain.space.surface,

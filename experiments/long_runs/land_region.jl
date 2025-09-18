@@ -50,23 +50,33 @@ diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, context, start_date, Δt, domain, toml_dict)
+function setup_model(
+    FT,
+    context,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    toml_dict,
+    context,
+)
     earth_param_set = LP.LandParameters(toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
     # Forcing data
-    era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
+    use_lowres_forcing = true
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        era5_ncdata_path,
-        surface_space,
         start_date,
+        stop_date,
+        use_lowres_forcing,
+        surface_space,
         earth_param_set,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
         interpolation_method = Interpolations.Linear(),
+        context,
     )
     forcing = (; atmos, radiation)
 
@@ -152,7 +162,16 @@ domain = ClimaLand.Domains.HybridBox(;
     dz_tuple = FT.((10.0, 0.05)),
 )
 toml_dict = LP.create_toml_dict(FT)
-model = setup_model(FT, context, start_date, Δt, domain, toml_dict)
+model = setup_model(
+    FT,
+    context,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    toml_dict,
+    context,
+)
 
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 ClimaLand.Simulations.solve!(simulation)
