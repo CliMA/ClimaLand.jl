@@ -18,7 +18,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (101, 15),
-    output_dir = "experiments/calibration/land_model",
+    output_dir = "/glade/derecho/scratch/kphan/p-model-cal",
     rng_seed = 42,
 )
 
@@ -28,7 +28,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # the PBSManager
     if ClimaCalibrate.get_backend() == ClimaCalibrate.DerechoBackend
         addprocs(
-            ClimaCalibrate.PBSManager(ensemble_size),
+            ClimaCalibrate.PBSManager(11),
             q = "main",
             A = "UCIT0011",
             l_select = "1:ngpus=1:ncpus=4",
