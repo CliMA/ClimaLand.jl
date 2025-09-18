@@ -8,21 +8,21 @@
 # Given a differential equation for a prognostic variable
 # Y
 
-# ```
+# ``
 # \frac{d Y }{dt} = g(Y, t) + h(Y, t),
-# ```
+# ``
 
 # an explicit (forward) Euler step would entail
 
-# ```
+# ``
 # Y(t+\Delta t) = Y(t) + [g(Y(t), t) + h(Y(t),t)] \times \Delta t,
-# ```
+# ``
 
 # while an implicit (backward) Euler step would entail
 
-# ```
+# ``
 # Y(t+\Delta t) = Y(t) + [g(Y(t+\Delta t), t) + h(Y(t+\Delta t),t)] \times \Delta t,
-# ```
+# ``
 
 # which reqires us to solve an implicit equation for  Y(t+ Δt). We
 # usually do so using Newton's method, which requires the derivative of
@@ -33,9 +33,9 @@
 # while others are more slowly varying or stable. In this case, a mixed
 # approach would be
 
-# ```
+# ``
 # Y(t+\Delta t) = Y(t) + [g(Y(t+\Delta t), t) + h(Y(t),t)] \times \Delta t,
-# ```
+# ``
 
 # assuming that `h` is the slow term, and `g` is the fast term. Note that
 # solving this implicit equation for `(Y(t+ Δt)` with Newton's method
