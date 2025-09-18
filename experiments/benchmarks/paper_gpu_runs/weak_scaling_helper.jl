@@ -32,11 +32,11 @@ import GeoMakie
 using Dates
 import NCDatasets
 
-import SciMLBase: solve!
+import ClimaLand.Simulations: solve!
 
 function timesolve(integrator)
     device = ClimaComms.device()
-    return ClimaComms.@elapsed device solve!(integrator)
+    return ClimaComms.@elapsed device ClimaLand.Simulations.solve!(integrator)
 end
 
 function printstats(
@@ -78,19 +78,19 @@ function run(
     num_steps = convert(Int, tf / dt)
 
     # Warmup
-    @time timesolve(func(; tf, dt, kwargs...))
-    @time timesolve(func(; tf, dt, kwargs...))
+    timesolve(func(; tf, dt, kwargs...))
+    timesolve(func(; tf, dt, kwargs...))
 
     # Run
-    # println("\\addplot[$(plot_attrs)]")
-    # println("coordinates {")
-    # for dlat_degrees in [8, 4, 2, 1, 0.5, 0.25, 0.125]
-    #     time = timesolve(func(; dlat_degrees, tf, dt, kwargs...));
-    #     _, _, num_columns = resolution(; dlat_degrees)
-    #     printstats(time, num_steps, dt; label = "Full model", num_columns)
-    # end
-    # println("};")
-    # println("\\addlegendentry{$label}")
+    println("\\addplot[$(plot_attrs)]")
+    println("coordinates {")
+    for dlat_degrees in [8, 4, 2, 1, 0.5, 0.25, 0.125]
+        time = timesolve(func(; dlat_degrees, tf, dt, kwargs...))
+        _, _, num_columns = resolution(; dlat_degrees)
+        printstats(time, num_steps, dt; label = "Full model", num_columns)
+    end
+    println("};")
+    println("\\addlegendentry{$label}")
 end
 
 include("snowy_land.jl")
@@ -100,4 +100,3 @@ include("soil_canopy.jl")
 include("canopy.jl")
 include("soil.jl")
 include("snow.jl")
-include("lighter_canopy.jl")

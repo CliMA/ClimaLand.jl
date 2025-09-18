@@ -331,7 +331,7 @@ function RichardsModel{FT}(
         domain.space.subsurface,
         FT,
     ),
-    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ FT(1e-3),
 ) where {FT}
     # TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention argument.
     top_bc = RichardsAtmosDrivenFluxBC(forcing.atmos, runoff)
