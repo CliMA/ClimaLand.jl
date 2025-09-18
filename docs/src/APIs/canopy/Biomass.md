@@ -15,7 +15,7 @@ ClimaLand.Canopy.PrescribedBiomassModel{FT}(
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"]
-    ) where {FT <: AbstractFloat}
+) where {FT <: AbstractFloat}
 ClimaLand.Canopy.PrescribedBiomassModel{FT}(; LAI, SAI::FT, RAI::FT, rooting_depth, height::FT) where {FT}
 ClimaLand.Canopy.PrescribedAreaIndices
 ClimaLand.Canopy.PrescribedAreaIndices{FT}(
@@ -23,9 +23,4 @@ ClimaLand.Canopy.PrescribedAreaIndices{FT}(
     SAI::FT,
     RAI::FT,
 ) where {FT <: AbstractFloat}
-```
-
-## Biomass update function
-```@docs
-ClimaLand.Canopy.update_biomass!
 ```

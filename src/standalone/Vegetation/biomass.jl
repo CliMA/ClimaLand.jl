@@ -137,6 +137,16 @@ struct PrescribedAreaIndices{
     RAI::FT
 end
 
+"""
+    PrescribedAreaIndices{FT}(
+        LAI::AbstractTimeVaryingInput,
+        SAI::FT,
+        RAI::FT,
+    ) where {FT <: AbstractFloat}
+
+An outer constructor for setting the PrescribedAreaIndices given
+LAI, SAI, and RAI.
+"""
 function PrescribedAreaIndices{FT}(
     LAI::AbstractTimeVaryingInput,
     SAI::FT,
@@ -247,7 +257,14 @@ function clip(x::FT, threshold::FT) where {FT}
 end
 
 """
-    update_biomass!(p,Y,t,component::PrescribedBiomassModel{FT}, canopy) where {FT}
+    update_biomass!(
+        p,
+        Y,
+        t,
+        component::PrescribedBiomassModel{FT},
+        canopy,
+    ) where {FT}
+
 Sets the area indices pertaining to their values at time t.
 
 Note that we clip all values of LAI below 0.05 to zero.
