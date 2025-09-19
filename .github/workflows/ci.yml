@@ -27,9 +27,17 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v2
+      - name: Cache Julia dependencies
+        uses: actions/cache@v4
         with:
-          cache-name: "julia-cache-${{ matrix.os }}-${{ matrix.version }}"
+          # Cache Julia's package depot (where packages, artifacts, etc. are stored)
+          path: ~/.julia/packages
+          # The cache key includes the OS, Julia version, and the project's dependencies
+          key: ${{ runner.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
+          # Fallback keys to use if the primary key isn't found
+          restore-keys: |
+            ${{ runner.os }}-julia-${{ matrix.version }}-
+            ${{ runner.os }}-julia-
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
