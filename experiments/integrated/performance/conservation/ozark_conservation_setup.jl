@@ -104,7 +104,7 @@ prognostic_land_components = (:canopy, :soil, :soilco2)
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 

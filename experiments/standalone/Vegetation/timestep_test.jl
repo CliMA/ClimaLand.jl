@@ -61,8 +61,7 @@ using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
 const FT = Float64;
-toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
+toml_dict = LP.create_toml_dict(FT);
 
 # Site-specific information
 time_offset = -6 # difference from UTC in hours
@@ -83,7 +82,7 @@ stop_date = start_date + Day(N_days) + Second(80)
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 ground = PrescribedGroundConditions{FT}(;

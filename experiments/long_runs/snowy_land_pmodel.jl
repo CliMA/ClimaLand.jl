@@ -59,7 +59,6 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-    earth_param_set = LP.LandParameters(toml_dict)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -80,7 +79,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         era5_ncdata_path,
         surface_space,
         start_date,
-        earth_param_set,
+        toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = era5_time_interpolation_method,
@@ -175,6 +174,7 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
+CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)

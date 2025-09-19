@@ -111,7 +111,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 

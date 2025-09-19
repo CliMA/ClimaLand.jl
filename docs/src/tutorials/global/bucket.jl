@@ -51,7 +51,6 @@ domain =
 
 # Parameters:
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, domain.space.surface)
 bucket_parameters = BucketModelParameters(
@@ -76,7 +75,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT;
     max_wind_speed = 25.0,
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),

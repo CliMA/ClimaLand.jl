@@ -60,13 +60,12 @@ of constructing one.
 ```julia
 import ClimaLand.Parameters as LP
 
-# Store parameters for running long runs
+# Store default parameters
 toml_dict = LP.create_toml_dict(FT)
 
-# Store parameters for running bucket model
-bucket_params_filepath =
-    joinpath(pkgdir(ClimaLand), "toml", "bucket_parameters.toml")
-toml_dict = LP.create_toml_dict(FT, bucket_params_filepath)
+# Use default parameters overwritten by the parameters in override_files
+LP.create_toml_dict(FT; override_files = ["override.toml"])
+
 ```
 
 # FAQ

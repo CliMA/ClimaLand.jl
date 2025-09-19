@@ -26,7 +26,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 # parameter set holding constants used across CliMA Models.
 const FT = Float32;
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
 
 # Pick a site ID; convert the dash to an underscore:
 site_ID = "US-NR1";
@@ -67,7 +66,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 );
 # The atmosphere object holds the air temperature, pressure, specific

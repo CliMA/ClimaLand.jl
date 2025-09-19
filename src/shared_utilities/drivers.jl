@@ -158,10 +158,11 @@ struct PrescribedAtmosphere{
         P,
         start_date,
         h::FT,
-        earth_param_set;
+        toml_dict::CP.ParamDict;
         gustiness = FT(1),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
         return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
@@ -700,12 +701,13 @@ struct PrescribedRadiativeFluxes{
         LW_d,
         start_date;
         θs = nothing,
-        earth_param_set = nothing,
+        toml_dict::Union{CP.ParamDict, Nothing} = nothing,
         frac_diff = nothing,
     )
-        if isnothing(earth_param_set)
+        if isnothing(toml_dict)
             thermo_params = nothing
         else
+            earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
         args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
@@ -1481,7 +1483,7 @@ end
      prescribed_forcing_era5(era5_ncdata_path,
                              surface_space,
                              start_date,
-                             earth_param_set,
+                             toml_dict::CP.ParamDict,
                              FT;
                              gustiness=1,
                              max_wind_speed = nothing,
@@ -1492,7 +1494,7 @@ end
 
 A helper function which constructs the `PrescribedAtmosphere` and
 `PrescribedRadiativeFluxes` from a file path pointing to the ERA5 data in a netcdf file, the
-`surface_space`, the `start_date`, and the `earth_param_set`.
+`surface_space`, the `start_date`, and the `toml_dict`.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
 
@@ -1512,7 +1514,7 @@ function prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     FT;
     gustiness = 1,
     max_wind_speed = nothing,
@@ -1521,6 +1523,7 @@ function prescribed_forcing_era5(
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
 
@@ -1606,7 +1609,7 @@ function prescribed_forcing_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )
@@ -1662,7 +1665,7 @@ function prescribed_forcing_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
@@ -1723,7 +1726,7 @@ function prescribed_analytic_forcing(
         TimeVaryingInput(P_atmos),
         start_date,
         h_atmos,
-        LP.LandParameters(toml_dict),
+        toml_dict,
     ),
     radiation = PrescribedRadiativeFluxes(
         FT,

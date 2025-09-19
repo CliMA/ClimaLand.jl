@@ -51,7 +51,6 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, context, start_date, Δt, domain, toml_dict)
-    earth_param_set = LP.LandParameters(toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
@@ -62,7 +61,7 @@ function setup_model(FT, context, start_date, Δt, domain, toml_dict)
         era5_ncdata_path,
         surface_space,
         start_date,
-        earth_param_set,
+        toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
@@ -149,6 +148,7 @@ toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, context, start_date, Δt, domain, toml_dict)
 
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)

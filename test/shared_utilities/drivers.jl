@@ -48,19 +48,8 @@ end
 
 @testset "Driver update functions" begin
     toml_dict = LP.create_toml_dict(FT)
-    earth_param_set = LP.LandParameters(toml_dict)
     f = TimeVaryingInput((t) -> 10.0)
-    pa = ClimaLand.PrescribedAtmosphere(
-        f,
-        f,
-        f,
-        f,
-        f,
-        f,
-        f,
-        FT(1),
-        earth_param_set,
-    )
+    pa = ClimaLand.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1), toml_dict)
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, f, f, f)
     domain = ClimaLand.Domains.HybridBox(;
         xlim = FT.((1.0, 2.0)),

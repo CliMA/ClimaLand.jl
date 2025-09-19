@@ -78,7 +78,7 @@ import ClimaParams
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
 
@@ -98,7 +98,7 @@ import ClimaParams
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
 
         # Set up canopy model with all the components
@@ -452,7 +452,7 @@ end
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
@@ -461,7 +461,7 @@ end
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
 
         # Plant Hydraulics
@@ -702,7 +702,7 @@ end
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
@@ -711,7 +711,7 @@ end
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)

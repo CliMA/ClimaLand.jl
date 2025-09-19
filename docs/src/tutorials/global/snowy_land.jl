@@ -32,7 +32,6 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir);
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
 
 # Set timestep, start\_date, stop\_date:
 Δt = 450.0
@@ -57,7 +56,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT;
     max_wind_speed = 25.0,
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),

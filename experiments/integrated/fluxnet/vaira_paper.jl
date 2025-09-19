@@ -24,7 +24,6 @@ import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 climaland_dir = pkgdir(ClimaLand)
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 site_ID = "US-Var"
@@ -108,7 +107,7 @@ stop_date = start_date + Year(1)
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 

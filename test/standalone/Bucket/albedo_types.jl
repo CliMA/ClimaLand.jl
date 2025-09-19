@@ -179,7 +179,6 @@ end
 
 @testset "Test PrescribedBaregroundAlbedo - albedo from map, FT = $FT" begin
     toml_dict = LP.create_toml_dict(FT)
-    earth_param_set = LP.LandParameters(toml_dict)
     varname = "sw_alb"
     path = ClimaLand.Artifacts.bareground_albedo_dataset_path()
     α_snow = FT(0.8)
@@ -231,7 +230,7 @@ end
                 TimeVaryingInput(P_atmos),
                 start_date,
                 h_atmos,
-                earth_param_set,
+                toml_dict,
             )
             τc = FT(1.0)
             bucket_parameters =
@@ -273,7 +272,6 @@ end
 for (name, infile_path, varname) in name_ds_var_list
     @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
         toml_dict = LP.create_toml_dict(FT)
-        earth_param_set = LP.LandParameters(toml_dict)
 
         σS_c = FT(0.2)
         W_f = FT(0.15)
@@ -334,7 +332,7 @@ for (name, infile_path, varname) in name_ds_var_list
                     TimeVaryingInput(P_atmos),
                     start_date,
                     h_atmos,
-                    earth_param_set,
+                    toml_dict,
                 )
                 τc = FT(1.0)
                 bucket_parameters = BucketModelParameters(
