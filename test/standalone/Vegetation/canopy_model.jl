@@ -538,6 +538,7 @@ end
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             biomass,
+            sif = Canopy.Lee2015SIFModel{FT}(toml_dict),
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,
@@ -783,7 +784,7 @@ end
         soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
-        sif = Canopy.Lee2015SIFModel{FT}()
+        sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
 
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)

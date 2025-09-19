@@ -223,6 +223,7 @@ for FT in (Float32, Float64)
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             biomass,
+            sif = Canopy.Lee2015SIFModel{FT}(toml_dict),
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,

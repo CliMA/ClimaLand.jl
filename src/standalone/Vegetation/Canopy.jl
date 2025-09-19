@@ -61,6 +61,28 @@ include("./spatially_varying_parameters.jl")
 ########################################################
 # Convenience constructors for Canopy model components
 ########################################################
+
+"""
+    Lee2015SIFModel{FT}(toml_dict::CP.ParamDict) where {FT}
+
+Constructs the `Lee2015SIFModel` from the `toml_dict` using the parameters
+in the `toml_dict`.
+"""
+function Lee2015SIFModel{FT}(toml_dict::CP.ParamDict) where {FT}
+    parameters = SIFParameters{FT}(;
+        kf = toml_dict["kf"],
+        kp = toml_dict["kp"],
+        kd_p1 = toml_dict["kd_p1"],
+        kd_p2 = toml_dict["kd_p2"],
+        min_kd = toml_dict["min_kd"],
+        kn_p1 = toml_dict["kn_p1"],
+        kn_p2 = toml_dict["kn_p2"],
+        kappa_p1 = toml_dict["kappa_p1"],
+        kappa_p2 = toml_dict["kappa_p2"],
+    )
+    return Lee2015SIFModel{FT, typeof(parameters)}(parameters)
+end
+
 ## Soil Moisture Stress
 """
     PiecewiseMoistureStressModel{FT}(
@@ -132,12 +154,10 @@ end
 
 ## Energy models
 """
-    BigLeafEnergyModel{FT}(; ac_canopy = FT(2.5e3)) where {FT <: AbstractFloat}
+    BigLeafEnergyModel{FT}(toml_dict::CP.ParamDict; ac_canopy = toml_dict["ac_canopy"]) where {FT <: AbstractFloat}
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
-
-The following default parameter is used:
-- ac_canopy = FT(2.5e3) (J m^-2 K^-1) - canopy specific heat per area
+- ac_canopy (J m^-2 K^-1) - canopy specific heat per area
 """
 function BigLeafEnergyModel{FT}(
     toml_dict::CP.ParamDict;
@@ -648,8 +668,8 @@ function CanopyModel{FT}(;
     conductance::AbstractStomatalConductanceModel{FT},
     hydraulics::AbstractPlantHydraulicsModel{FT},
     soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
+    sif::AbstractSIFModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
-    sif = Lee2015SIFModel{FT}(),
     biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
     parameters::SharedCanopyParameters{FT, PSE},
@@ -717,7 +737,7 @@ end
         hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-        sif = Lee2015SIFModel{FT}(),
+        sif = Lee2015SIFModel{FT}(toml_dict),
     ) where {FT, PSE}
 
 Creates a `CanopyModel` with the provided `domain`, `forcing`, and `parameters`.
@@ -759,7 +779,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    sif = Lee2015SIFModel{FT}(),
+    sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 
