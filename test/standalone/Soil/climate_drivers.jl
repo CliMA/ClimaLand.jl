@@ -72,7 +72,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set,
+            toml_dict,
         )
         @test atmos.gustiness == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)

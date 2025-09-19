@@ -208,7 +208,7 @@ function prescribed_perturbed_temperature_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )
@@ -398,7 +398,7 @@ function prescribed_perturbed_rh_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )

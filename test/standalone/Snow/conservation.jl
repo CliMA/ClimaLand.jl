@@ -28,8 +28,6 @@ for FT in (Float32, Float64)
 
     t0 = 0.0
 
-    earth_param_set = LP.LandParameters(toml_dict)
-
     start_date = DateTime(2005)
     Δt = FT(180.0)
     parameters = SnowParameters(toml_dict, Δt)
@@ -53,7 +51,7 @@ for FT in (Float32, Float64)
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set,
+        toml_dict,
     )
 
     @testset "Snow model total energy and water, FT = $FT" begin

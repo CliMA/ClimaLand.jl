@@ -106,7 +106,7 @@ atmos = PrescribedAtmosphere(
     P_atmos,
     start_date,
     h_atmos,
-    earth_param_set,
+    toml_dict,
 )
 forcing = (; atmos, radiation)
 # Snow data

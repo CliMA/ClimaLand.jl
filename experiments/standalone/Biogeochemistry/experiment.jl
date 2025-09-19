@@ -90,7 +90,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         TimeVaryingInput(atmos_p),
         UTC_DATETIME,
         atmos_h,
-        earth_param_set;
+        toml_dict;
         c_co2 = TimeVaryingInput(atmos_co2),
     )
 

@@ -158,10 +158,11 @@ struct PrescribedAtmosphere{
         P,
         start_date,
         h::FT,
-        earth_param_set;
+        toml_dict::CP.ParamDict;
         gustiness = FT(1),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
+        earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
         return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
@@ -1607,7 +1608,7 @@ function prescribed_forcing_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )
@@ -1724,7 +1725,7 @@ function prescribed_analytic_forcing(
         TimeVaryingInput(P_atmos),
         start_date,
         h_atmos,
-        LP.LandParameters(toml_dict),
+        toml_dict,
     ),
     radiation = PrescribedRadiativeFluxes(
         FT,

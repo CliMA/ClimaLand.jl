@@ -74,7 +74,7 @@ for FT in (Float32, Float64)
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set,
+        toml_dict,
     )
     # Ground forcing
     ground = PrescribedGroundConditions{FT}()

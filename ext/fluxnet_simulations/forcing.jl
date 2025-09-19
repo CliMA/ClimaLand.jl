@@ -1,4 +1,6 @@
 using NCDatasets
+import ClimaParams as CP
+
 
 """
      prescribed_forcing_fluxnet(site_ID,
@@ -44,12 +46,13 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     hour_offset_from_UTC,
     atmos_h,
     start_date, # in UTC
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     FT;
     split_precip = true,
     gustiness = 1,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
@@ -200,7 +203,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         atmos_P,
         start_date,
         atmos_h,
-        earth_param_set;
+        toml_dict;
         c_co2,
     )
 

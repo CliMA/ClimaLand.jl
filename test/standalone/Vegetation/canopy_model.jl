@@ -77,7 +77,7 @@ import ClimaParams
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
 
@@ -520,7 +520,7 @@ end
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
@@ -773,7 +773,7 @@ end
             TimeVaryingInput(P_atmos),
             start_date,
             h_atmos,
-            earth_param_set;
+            toml_dict;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
