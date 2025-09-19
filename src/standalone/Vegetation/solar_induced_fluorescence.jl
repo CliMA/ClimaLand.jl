@@ -62,7 +62,7 @@ Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948
 """
 function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     SIF = p.canopy.sif.SIF
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
 
     # Compute APAR
     f_abs_par = p.canopy.radiative_transfer.par.abs

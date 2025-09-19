@@ -63,8 +63,7 @@ struct SoilCanopyModel{
 
         @assert soil.parameters.earth_param_set ==
                 soilco2.parameters.earth_param_set
-        @assert soil.parameters.earth_param_set ==
-                canopy.parameters.earth_param_set
+        @assert soil.parameters.earth_param_set == canopy.earth_param_set
 
         # SoilCanopyModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model
@@ -311,7 +310,7 @@ function lsm_radiant_energy_fluxes!(
     t,
 ) where {FT}
     canopy = land.canopy
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
