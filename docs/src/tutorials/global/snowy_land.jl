@@ -49,19 +49,18 @@ domain = ClimaLand.Domains.global_domain(FT; context, nelements);
 
 # Low-resolution forcing data from ERA5 is used here,
 # but high-resolution should be used for production runs.
-era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-    context,
-    lowres = true,
-)
+use_lowres_forcing = true
 forcing = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    domain.space.surface,
     start_date,
+    stop_date,
+    use_lowres_forcing,
+    domain.space.surface,
     earth_param_set,
     FT;
     max_wind_speed = 25.0,
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
+    context,
 );
 
 # MODIS LAI is prescribed for the canopy model:

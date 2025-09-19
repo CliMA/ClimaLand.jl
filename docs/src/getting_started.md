@@ -57,12 +57,12 @@ dt = 1000.0;
 The soil model takes in 2 forcing objects, atmosphere and radiation,
 which we read in from ERA5 data.
 ```julia
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
+use_lowres_forcing = true;
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    surface_space,
     start_date,
+    stop_date
+    use_lowres_forcing,
+    surface_space,
     earth_param_set,
     FT,
 );

@@ -55,10 +55,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data
-    era5_ncdata_path = ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
-        context,
-        lowres = true,
-    )
+    era5_ncdata_path =
+        ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(; context)
     atmos, radiation = ClimaLand.prescribed_perturbed_temperature_era5(
         era5_ncdata_path,
         surface_space,
