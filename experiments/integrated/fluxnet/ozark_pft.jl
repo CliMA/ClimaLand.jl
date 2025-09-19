@@ -240,20 +240,19 @@ maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
-    LAI,
     toml_dict;
     n_stem,
     n_leaf,
     h_stem,
     h_leaf,
-    SAI,
-    RAI,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
     retention_model,
-    rooting_depth,
 )
+height = h_stem + h_leaf
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Set up energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
@@ -274,6 +273,7 @@ canopy = Canopy.CanopyModel{FT}(
     conductance,
     hydraulics,
     energy,
+    biomass,
 )
 
 # Integrated plant hydraulics and soil model

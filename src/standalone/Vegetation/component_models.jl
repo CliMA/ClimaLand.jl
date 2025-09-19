@@ -169,22 +169,6 @@ function make_compute_jacobian(component::AbstractCanopyComponent, canopy)
 end
 
 """
-     set_canopy_prescribed_field!(component::AbstractCanopyComponent,
-                                  p,
-                                  t,
-                                 ) end
-
-Updates the spatio-temporally varying prescribed fields of the `component`
-with their values at time `t`.
-
-These fields are stored in the aux-state, and currently are updated at the
-beginning of the `update_aux!` function. Any required
-order of operations must be enforced by the developer who writes the `update_aux!`
-function.
-"""
-function set_canopy_prescribed_field!(component::AbstractCanopyComponent, p, t) end
-
-"""
     get_model_callbacks(component::AbstractCanopyComponent, canopy; kwargs...)
 
 Creates an empty tuple as a default set of model callbacks for canopy component models.

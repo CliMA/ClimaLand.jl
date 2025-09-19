@@ -272,10 +272,7 @@ h_leaf = FT(9.5) # m
 h_canopy = h_stem + h_leaf
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
-    LAI,
     toml_dict;
-    SAI,
-    RAI,
     n_stem,
     n_leaf,
     h_stem,
@@ -283,8 +280,11 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
-    rooting_depth = FT(0.5),
 )
+rooting_depth = FT(0.5)
+height = h_stem + h_leaf
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Put all the components together to form the canopy model
 z_0m = FT(0.13) * h_canopy
@@ -304,6 +304,7 @@ canopy = Canopy.CanopyModel{FT}(
     photosynthesis,
     conductance,
     hydraulics,
+    biomass,
 )
 
 # Integrated plant and soil model

@@ -6,7 +6,7 @@ import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime
 import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
-using ..ClimaLand.Canopy: AbstractCanopyComponent, set_canopy_prescribed_field!
+using ..ClimaLand.Canopy: AbstractCanopyComponent
 using ClimaLand: PrescribedGroundConditions
 using ClimaCore
 import ClimaLand.Parameters as LP
@@ -39,9 +39,7 @@ export PlantHydraulicsModel,
     AbstractRetentionModel,
     LinearRetentionCurve,
     Weibull,
-    hydraulic_conductivity,
-    PrescribedSiteAreaIndex,
-    root_distribution
+    hydraulic_conductivity
 
 """
     AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
@@ -61,103 +59,12 @@ transpiration (Prescribed or Diagnostic)
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
-   PrescribedSiteAreaIndex{FT <:AbstractFloat, F <: Function}
-
-A struct containing the area indices of the plants at a specific site;
-LAI varies in time, while SAI and RAI are fixed. No spatial variation is
-modeled.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct PrescribedSiteAreaIndex{
-    FT <: AbstractFloat,
-    F <: AbstractTimeVaryingInput,
-}
-    "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
-    LAIfunction::F
-    "The constant stem area index (SAI; m2/m2)"
-    SAI::FT
-    "The constant root area index (RAI; m2/m2)"
-    RAI::FT
-end
-
-function PrescribedSiteAreaIndex{FT}(
-    LAIfunction::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
-) where {FT <: AbstractFloat}
-    PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
-end
-
-function PrescribedSiteAreaIndex(
-    LAIfunction::AbstractTimeVaryingInput,
-    toml_dict::CP.ParamDict;
-    SAI = toml_dict["SAI"],
-    RAI = toml_dict["RAI"],
-)
-    FT = CP.float_type(toml_dict)
-    return PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(
-        LAIfunction,
-        SAI,
-        RAI,
-    )
-end
-
-"""
-    lai_consistency_check(
-        n_stem::Int64,
-        n_leaf::Int64,
-        area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    ) where {FT}
-
-Carries out consistency checks using the area indices supplied and the number of
-stem elements being modeled.
-
-Note that it is possible to have a plant with no stem compartments
-but with leaf compartments, and that a plant must have leaf compartments
-(even if LAI = 0).
-
-Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
-be zero.
-"""
-function lai_consistency_check(
-    n_stem::Int64,
-    n_leaf::Int64,
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-) where {FT}
-    @assert n_leaf > 0
-    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
-        @assert area_index.root > eps(FT)
-    end
-    # If there SAI is zero, there should be no stem compartment
-    if area_index.stem < eps(FT)
-        @assert n_stem == FT(0)
-    else
-        # if SAI is > 0, n_stem should be > 0 for consistency
-        @assert n_stem > 0
-    end
-
-end
-
-
-"""
     PlantHydraulicsParameters
 
 A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsParameters{
-    FT <: AbstractFloat,
-    PSAI <: PrescribedSiteAreaIndex{FT},
-    CP,
-    RP,
-    RDTH <: Union{FT, ClimaCore.Fields.Field},
-}
-    "The area index model for LAI, SAI, RAI"
-    ai_parameterization::PSAI
+struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
     "porosity (m3/m3)"
     ν::FT
     "storativity (m3/m3)"
@@ -166,68 +73,53 @@ struct PlantHydraulicsParameters{
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
-    "Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies"
-    rooting_depth::RDTH
 end
 
 """
     PlantHydraulicsParameters(;
-        ai_parameterization::PrescribedSiteAreaIndex{FT},
         ν::FT,
         S_s::FT,
         conductivity_model,
         retention_model,
-        rooting_depth::Union{FT, ClimaCore.Fields.Field},
     )
 
 Constructor for PlantHydraulicsParameters.
 """
 function PlantHydraulicsParameters(;
-    ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν::FT,
     S_s::FT,
     conductivity_model,
     retention_model,
-    rooting_depth::Union{FT, ClimaCore.Fields.Field},
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
-        typeof(ai_parameterization),
         typeof(conductivity_model),
         typeof(retention_model),
-        typeof(rooting_depth),
     }(
-        ai_parameterization,
         ν,
         S_s,
         conductivity_model,
         retention_model,
-        rooting_depth,
     )
 end
 
 function PlantHydraulicsParameters(
     toml_dict::CP.ParamDict;
-    ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν = toml_dict["plant_nu"],
     S_s = toml_dict["plant_S_s"],
     conductivity_model,
     retention_model,
-    rooting_depth::Union{FT, ClimaCore.Fields.Field},
-) where {FT}
+)
+    FT = typeof(ν)
     return PlantHydraulicsParameters{
         FT,
-        typeof(ai_parameterization),
         typeof(conductivity_model),
         typeof(retention_model),
-        typeof(rooting_depth),
     }(
-        ai_parameterization,
         ν,
         S_s,
         conductivity_model,
         retention_model,
-        rooting_depth,
     )
 end
 
@@ -239,21 +131,9 @@ Defines, and constructs instances of, the PlantHydraulicsModel type, which is us
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. Note that the canopy height is specified as part of the
-PlantHydraulicsModel, along with the area indices of the leaves, roots, and
-stems.
+PlantHydraulicsModel and the biomass model, these must be consistent.
 
-This model can also be combined with the soil model using ClimaLand, in which
-case the prognostic soil water content is used to determine root extraction, and
-the transpiration is also computed diagnostically. In  global run with patches
-of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
-emission, zero transpiration and sensible heat flux from the canopy), by setting:
-- n_leaf = 1
-- n_stem = 0
-- LAI = SAI = RAI = 0.
-
-A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
-
-Finally, the model can be used in Canopy standalone mode by prescribing
+The model can be used in Canopy standalone mode by prescribing
 the soil matric potential at the root tips or flux in the roots. There is also the
 option (intendend only for debugging) to use a prescribed transpiration rate.
 
@@ -332,7 +212,7 @@ the water potential `ψ` (m), the volume flux\\*cross section `fa` (1/s),
 and the volume flux\\*root cross section in the roots `fa_roots` (1/s),
 where the cross section can be represented by an area index.
 """
-auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa, :fa_roots, :area_index)
+auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa, :fa_roots)
 
 """
     ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
@@ -352,43 +232,9 @@ ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     NTuple{model.n_stem + model.n_leaf, FT},
     NTuple{model.n_stem + model.n_leaf, FT},
     FT,
-    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 )
 ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
-    (:surface, :surface, :surface, :surface)
-
-function clip(x::FT, threshold::FT) where {FT}
-    x > threshold ? x : FT(0)
-end
-"""
-    set_canopy_prescribed_field!(component::PlantHydraulics{FT},
-                                 p,
-                                 t,
-                                 ) where {FT}
-
-
-Sets the canopy prescribed fields pertaining to the PlantHydraulics
-component (the area indices) with their values at time t.
-
-Note that we clip all values of LAI below 0.05 to zero.
-This is because we currently run into issues when LAI is
-of order eps(FT) in the SW radiation code.
-Please see Issue #644
-or PR #645 for details.
-For now, this clipping is similar to what CLM and NOAH MP do.
-"""
-function ClimaLand.Canopy.set_canopy_prescribed_field!(
-    component::PlantHydraulicsModel{FT},
-    p,
-    t,
-) where {FT}
-    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
-    p.canopy.hydraulics.area_index.leaf .=
-        clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
-    @. p.canopy.hydraulics.area_index.stem = SAI
-    @. p.canopy.hydraulics.area_index.root = RAI
-end
+    (:surface, :surface, :surface)
 
 """
     harmonic_mean(x::FT,y::FT) where {FT}
@@ -398,7 +244,6 @@ x and y are zero.
 
 """
 harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
-
 
 """
     water_flux(
@@ -430,23 +275,6 @@ function water_flux(z1::FT, z2::FT, ψ1::FT, ψ2::FT, K1::FT, K2::FT) where {FT}
     K_eff = harmonic_mean(K1, K2)
     flux = -K_eff * ((ψ2 - ψ1) / (z2 - z1) + 1)
     return flux # (m/s)
-end
-
-"""
-    root_distribution(z::FT, rooting_depth::FT)
-
-Computes value of rooting probability density function at `z`.
-
-The rooting probability density function is derived from the
-cumulative distribution function F(z) = 1 - β^(100z), which is described
-by Equation 2.23 of
-Bonan, "Climate Change and Terrestrial Ecosystem Modeling", 2019 Cambridge University Press.
-This probability distribution function is equivalent to the derivative of the
-cumulative distribution function with respect to z,
-where `rooting_depth` replaces (-1)/(100ln(β)) and z is expected to be negative.
-"""
-function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
-    return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
 end
 
 """
@@ -644,7 +472,7 @@ function make_compute_exp_tendency(
     canopy,
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.hydraulics.area_index
+        area_index = p.canopy.biomass.area_index
         n_stem = model.n_stem
         n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
@@ -679,6 +507,7 @@ end
         fa::ClimaCore.Fields.Field,
         ground::PrescribedGroundConditions,
         model::PlantHydraulicsModel{FT},
+        canopy,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -704,13 +533,14 @@ function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     ground::PrescribedGroundConditions,
     model::PlantHydraulicsModel{FT},
+    canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 ) where {FT}
-
-    (; conductivity_model, rooting_depth) = model.parameters
-    area_index = p.canopy.hydraulics.area_index
+    rooting_depth = canopy.biomass.rooting_depth
+    (; conductivity_model,) = model.parameters
+    area_index = p.canopy.biomass.area_index
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
@@ -835,7 +665,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     p,
     t,
 )
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     dz =
         model.compartment_surfaces[2:end] .-
         model.compartment_surfaces[1:(end - 1)]
@@ -864,12 +694,9 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
     fa = p.canopy.hydraulics.fa
-    area_index = p.canopy.hydraulics.area_index
-    LAI = area_index.leaf
-    SAI = area_index.stem
+    area_index = p.canopy.biomass.area_index
     n_stem = hydraulics.n_stem
     n_leaf = hydraulics.n_leaf
-    lai_consistency_check.(n_stem, n_leaf, area_index)
     (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
