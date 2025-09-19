@@ -44,7 +44,7 @@ NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 [compat]
 BSON = "0.3.9"
 CSV = "0.10.14"
-CairoMakie = "0.12"
+CairoMakie = "0.12.5, 0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.17"
 ClimaComms = "0.6.2"
 ClimaCore = "0.14.30"
