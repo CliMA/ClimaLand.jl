@@ -3,18 +3,20 @@
 
 Updates p.root_extraction and p.root_energy_extraction in place to account
 for the flux of water and energy between the soil and the canopy via
-root extraction.
+root extraction; these fields are always used by the soil model
+to compute its sources/sinks, and are optionally used by the canopy model
+as dictated by the choice of PlantHydraulics.
 """
 function update_root_extraction!(p, Y, t, land)
     update_root_extraction!(p, Y, t, land, land.canopy.hydraulics)
 end
 
 """
-    update_root_extraction!(p, Y, t, land)
+    update_root_extraction!(p, Y, t, land, hydraulics::Canopy.SteadyStateModel)
 
-Updates p.root_extraction and p.root_energy_extraction in place to account
-for the flux of water and energy between the soil and the canopy via
-root extraction.
+Updates p.root_extraction and p.root_energy_extraction in place 
+assuming that the total root extraction of water is equal to the transpiration,
+stored in `p.canopy.turbulent_fluxes.transpiration`.
 """
 function update_root_extraction!(
     p,
@@ -43,11 +45,11 @@ function update_root_extraction!(
 end
 
 """
-    update_root_extraction!(p, Y, t, land)
+    update_root_extraction!(p, Y, t, land, hydraulics::Canopy.PlantHydraulicsModel)
 
-Updates p.root_extraction and p.root_energy_extraction in place to account
-for the flux of water and energy between the soil and the canopy via
-root extraction.
+Updates p.root_extraction and p.root_energy_extraction in place,
+using the matric potential in each soil layer and the potential in the canopy
+in its first layer to compute a flux between each soil layer and the canopy.
 """
 function update_root_extraction!(
     p,
@@ -97,7 +99,8 @@ function update_root_extraction!(
 end
 
 """
-    PlantHydraulics.root_water_flux_per_ground_area!(p,
+    PlantHydraulics.root_water_flux_per_ground_area!(
+        p,
         s::PrognosticGroundConditions,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel,
         canopy,
@@ -106,11 +109,11 @@ end
     )
 
 An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function,
- which returns the
+ which updates the canopy water flux
+p.canopy.hydraulics.fa_roots with the value of the
 net flux of water between the
-roots and the soil, per unit ground area,
-when both soil and plant
-hydraulics are modeled prognostically. This is for use in an LSM.
+roots and the soil, per unit ground area, in the case when the soil
+and canopy water contents are modeled prognostically.
 
 It is computed by summing the flux of water per ground area between
 roots and soil at each soil layer.
@@ -127,6 +130,21 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
     ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
 end
 
+"""
+    PlantHydraulics.root_water_flux_per_ground_area!(
+        p,
+        s::PrognosticGroundConditions,
+        model::Canopy.PlantHydraulics.SteadyStateModel,
+        canopy,
+        Y::ClimaCore.Fields.FieldVector,
+        t,
+    )
+
+An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function, for use
+with a prognostic soil model and steady state plant hydraulics model. In the steady-state case,
+the canopy does not require an additional field for the root water flux, because it is
+equal to transpiration. This function then does nothing.
+"""
 function PlantHydraulics.root_water_flux_per_ground_area!(
     p,
     s::PrognosticGroundConditions,
@@ -137,7 +155,8 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
 ) end
 
 """
-    root_energy_flux_per_ground_area!(p,
+    root_energy_flux_per_ground_area!(
+        p,
         s::PrognosticGroundConditions,
         model::Canopy.AbstractCanopyEnergyModel,
         canopy,
@@ -146,10 +165,12 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
     )
 
 
-A method computing the energy flux associated with the root-soil
-water flux, which returns 0 in cases where we do not need to track
-this quantity: in this case, when the canopy energy is tracked,
-but we are using a `PrescribedSoil` model (non-prognostic soil model).
+An extension of the `PlantHydraulics.root_energy_flux_per_ground_area!` function,
+ which updates the canopy energy flux
+p.canopy.hydraulics.fa_energy_roots with the value of the
+net flux of energy between the
+roots and the soil, per unit ground area, in the case when the soil
+is modeled prognostically. This sets the flux as required by the canopy model.
 
 Note that this energy flux is not typically included in land surface
 models. We account for it when the soil model is prognostic because

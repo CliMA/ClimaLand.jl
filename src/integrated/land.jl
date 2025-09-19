@@ -98,8 +98,11 @@ struct LandModel{
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
         @assert Soil.PhaseChange{FT}() in soil.sources
-        @assert canopy.hydraulics.transpiration isa
-                Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
+        if canopy.hydraulics isa Canopy.PlantHydraulics.PlantHydraulicsModel
+            @assert canopy.hydraulics.transpiration isa
+                    Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
+        end
+
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa PrognosticMet
         comparison = PrognosticMet(soil.parameters)
@@ -718,5 +721,7 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
             n_leaf = hydraulics.n_leaf
             lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
         end
+    end
+
     return set_initial_cache!
 end

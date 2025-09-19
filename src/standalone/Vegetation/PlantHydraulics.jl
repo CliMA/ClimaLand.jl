@@ -45,11 +45,101 @@ export PlantHydraulicsModel,
 """
     AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
 
-An abstract type for plant hydraulics models.
+An abstract type for plant hydraulics models. These models are used for two purposes:
+- to track water movement within the canopy
+- to inform the root water flux between the soil and the canopy.
+
+We currently support two models:
+- PlantHydraulicsModel (prognostically tracks water, root water flux may not equal transpiration)
+- SteadyStateModel (assumes steady state and does not return the water content in the canopy; root water flux equals transpiration).
+
+Concrete types of AbstractPlantHydraulicsModel are required to define methods for:
+- `update_hydraulics!` (called in CanopyModel update_aux!, which can update cache variables as needed)
+- `root_water_flux_per_ground_area!`, for both a Prescribed and a Prognostic ground model.
 """
 abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLand.name(::AbstractPlantHydraulicsModel) = :hydraulics
+"""
+    SteadyStateModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
+
+Defines, and constructs instances of, the SteadyStateModel type, which is used
+for simulations where we do not track the canopy water content prognostically,
+and assume that the root flux exactly balances transpiration. In this case,
+`root_water_flux_per_ground_area!` and `update_hydraulics!` have no computations
+to do for the canopy model; note however that in integrated models, the soil model
+will set its root source term equal to transpiration.
+
+This model has no auxiliary variables.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT} end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::SteadyStateModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value of
+the steady state plant hydraulics water, set to zero. Since the water content is
+fixed in time (via the assumption of steady state), the value does not matter.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::SteadyStateModel,
+    Y,
+    p,
+    t,
+)
+    surface_field .= 0
+    return nothing
+end
+
+
+"""
+   update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
+
+As there are no cache variables for the SteadyStateModel, this does nothing.
+"""
+update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy) = nothing
+
+
+"""
+    root_water_flux_per_ground_area!(
+        p,
+        ground::PrescribedGroundConditions,
+        model::SteadyStateModel{FT},
+        canopy,
+        Y::ClimaCore.Fields.FieldVector,
+        t,
+    ) where {FT}
+
+Updates the cache variable corresponding to the root water flux
+per ground area in place; the steady state model does not need to compute
+this, because the canopy does not require it, and so this
+method does nothing.
+
+Note that in integrated models (PrognosticGroundConditions) 
+the root water flux (equal to transpiration by
+definition in steady state) is required by the soil model, and is computed, but
+not with this function.
+"""
+function root_water_flux_per_ground_area!(
+    p,
+    ground::PrescribedGroundConditions,
+    model::SteadyStateModel{FT},
+    canopy,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {FT}
+
+end
+
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
@@ -131,11 +221,21 @@ Defines, and constructs instances of, the PlantHydraulicsModel type, which is us
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. Note that the canopy height is specified as part of the
-PlantHydraulicsModel and the biomass model, these must be consistent.
+PlantHydraulicsModel via the vertical discretization of the canopy flowpath,
+but the heigh is ultimately controlled by the biomass model; these must be consistent.
 
-The model can be used in Canopy standalone mode by prescribing
-the soil matric potential at the root tips or flux in the roots.
+This model introduces the following prognostic variables:
+- ϑ_l: volumetric water content as a function of height.
 
+This model introduces the follow auxiliary variables in p.canopy.hydraulics.
+- fa: flux of water per unit area within the canopy and at the top of the canopy,
+      the value at the top of the canopy is equal to transpiration.
+- fa_roots: flux of water from the soil to the canopy
+- ψ: the matric potential corresponding to ϑ_l.
+
+`update_hydraulics!` updates `fa[1:end-1]` and `ψ` in place given Y.canopy.hydraulics.ϑ_l,
+while `root_water_flux_per_ground_area!` updates fa_roots in place in `update_boundary_fluxes!`.
+The transpiration `fa[end]` is also updated in place in `update_boundary_fluxes!`.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsModel{FT, PS, T, AA <: AbstractArray{FT}} <:
@@ -161,9 +261,9 @@ function PlantHydraulicsModel{FT}(;
     n_leaf::Int64,
     compartment_midpoints::Vector{FT},
     compartment_surfaces::Vector{FT},
-                                  parameters::PlantHydraulicsParameters{FT},
-                                  transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
-                                  ) where {FT}
+    parameters::PlantHydraulicsParameters{FT},
+    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
+) where {FT}
     args = (parameters, transpiration)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
@@ -501,7 +601,8 @@ function make_compute_exp_tendency(
 end
 
 """
-    root_water_flux_per_ground_area!(p,
+    root_water_flux_per_ground_area!(
+        p,
         ground::PrescribedGroundConditions,
         model::PlantHydraulicsModel{FT},
         canopy,
@@ -509,7 +610,8 @@ end
         t,
     ) where {FT}
 
-A method which computes the water flux between the soil and the stem, via the roots,
+A method which computes the water flux (as needed by the canopy model)
+ between the soil and the stem, via the roots,
 and multiplied by the RAI, in the case of a model running without a prognostic
 soil model:
 
@@ -733,74 +835,6 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
             ) * PlantHydraulics.harmonic_mean(areaip1, areai)
     end
     # We update the fa[n_stem+n_leaf] element once we have computed transpiration
-end
-
-"""
-    SteadyStateModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
-
-Defines, and constructs instances of, the SteadyStateModel type, which is used
-for simulations where we do not track the canopy water content prognostically,
-and assume that the root flux exactly balances transpiration.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct SteadyStateModel{FT} <: AbstractPlantHydraulicsModel{FT} end
-
-"""
-    ClimaLand.total_liq_water_vol_per_area!(
-        surface_field,
-        model::SteadyStateModel,
-        Y,
-        p,
-        t,
-)
-
-A function which updates `surface_field` in place with the value of
-the steady state plant hydraulics water, set to zero. Since the water content is
-fixed in time (via the assumption of steady state), the value does not matter.
-"""
-function ClimaLand.total_liq_water_vol_per_area!(
-    surface_field,
-    model::SteadyStateModel,
-    Y,
-    p,
-    t,
-)
-    surface_field .= 0
-    return nothing
-end
-
-
-"""
-   update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy)
-
-As there are no cache variables for the SteadyStateModel, this does nothing.
-"""
-update_hydraulics!(p, Y, hydraulics::SteadyStateModel, canopy) = nothing
-
-
-"""
-    root_water_flux_per_ground_area!(
-        fa::ClimaCore.Fields.Field,
-        ground::PrescribedGroundConditions,
-        model::SteadyStateModel{FT},
-        canopy,
-        Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
-        t,
-    ) where {FT}
-
-
-"""
-function root_water_flux_per_ground_area!(
-    p,
-    ground::PrescribedGroundConditions,
-    model::SteadyStateModel{FT},
-    canopy,
-    Y::ClimaCore.Fields.FieldVector,
-    t,
-) where {FT}
-
 end
 
 end # module
