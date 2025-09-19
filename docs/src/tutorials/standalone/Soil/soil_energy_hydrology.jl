@@ -1,6 +1,6 @@
 # # Coupled heat and water equations tending towards equilibrium
 
-# The [Richards equation tutorial](@ref Soil/richards_equation.md)
+# The [Richards equation tutorial](@ref "Hydrostatic Equilibrium test for Richards Equation")
 # demonstrates how to solve for water flow in soil, without considering
 # heat transfer, phase changes, or the effect of temperature and the effect of
 # ice on the hydraulic properties of the soil.

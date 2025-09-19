@@ -1,3 +1,5 @@
+# # Single column soil model
+
 # This shows how to run single column soil model, in standalone mode
 # with spatially varying properties. We are mimicking the experiment
 # carried out in [Huang2011](@citet),

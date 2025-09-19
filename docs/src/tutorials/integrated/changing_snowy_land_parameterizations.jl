@@ -1,5 +1,5 @@
 # # Changing LandModel Parameterizations
-# In the [Canopy, soil, and snow](@ref "Fluxnet simulations with the full land model: snow, soil, canopy")
+# In the [Canopy, soil, and snow](@ref "Fluxnet-simulations-with-the-full-land-model:-snow,-soil,-canopy")
 # tutorial, we ran the integrated `LandModel`
 # at a Fluxnet site using all of the default parameterizations and parameters.
 

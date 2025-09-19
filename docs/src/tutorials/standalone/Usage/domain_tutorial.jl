@@ -79,7 +79,7 @@ the NamedTuple of function spaces (domain.space) to create the coordinate field 
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has subsurface coordinates of latitude, longitude, and depth, while the surface coordinates
 are latitude and longitude. A Plane domain has coordinates
-of x and y (surface only), and a Point domain only has a coordinate z_sfc (surface only). Column domains have a surface coordinate of z_sfc,
+of x and y (surface only), and a Point domain only has a coordinate `z_sfc` (surface only). Column domains have a surface coordinate of `z_sfc`,
 and subsurface coordinates of z.
 
 It is important to note that the horizontal domain used for the surface and subsurface

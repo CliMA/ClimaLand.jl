@@ -1,5 +1,5 @@
 # # Default Canopy Model Tutorial
-# Now that we've run a simple default soil model simulation in [Getting Started](@ref getting_started.md),
+# Now that we've run a simple default soil model simulation in [Getting Started](@ref "Hydrostatic Equilibrium test for Richards Equation"),
 # let's try doing the same with the canopy model.
 
 # This tutorial sets up our CanopyModel on a column domain.

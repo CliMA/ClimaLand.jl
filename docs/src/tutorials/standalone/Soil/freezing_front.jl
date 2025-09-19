@@ -2,7 +2,7 @@
 
 # Before reading this tutorial,
 # we recommend that you look over the coupled energy
-# and water [tutorial](@ref Soil/soil_energy_hydrology.md).
+# and water [tutorial](@ref "Coupled heat and water equations tending towards equilibrium").
 # That tutorial showed how to solve the heat equation for soil volumetric
 # internal energy `ρe_int`, simultaneously
 # with Richards equation for volumetric liquid water fraction `ϑ_l`, assuming zero
