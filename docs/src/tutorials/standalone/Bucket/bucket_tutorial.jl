@@ -1,13 +1,13 @@
 # # Introduction to the Land Bucket Model
 
 # The land bucket model implemented in ClimaLand is based off of
-# the models of Manabe (1969)[1], Milly and Shmakin (2002)[2], and the SLIM
-# model (Laguë, Bonan, Swann 2019)[3], with small changes, as noted.
+# the models of [Manabe1969](@citet), [MillyShmakin2002](@citet), [LagueBonanSwann2019](@citet)
+# model, with small changes, as noted.
 
 # This tutorial explains in brief the core equations and the
 # necessary parameters of the bucket model, and shows how to set up a simulation in standalone
 # mode. More detail for coupled runs can be
-# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/stable/) and in the coupled simulation [tutorial](https://clima.github.io/ClimaLand.jl/stable/generated/coupled_bucket/).
+# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/) and in the coupled simulation [tutorial](@ref "Setting up a Coupled Simulation").
 
 # At each coordinate point on the surface, we solve ordinary differential
 # equations for the subsurface water storage
@@ -418,15 +418,3 @@ plot!(times ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
 plot!(times ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
 savefig("energy_f.png")
 # ![](energy_f.png)
-
-# # References
-# [1] Manabe, S. (1969) CLIMATE AND THE OCEAN CIRCULATION I: The
-# Atmospheric Circulation and the Hydrology of the Earth's Surface.
-# Monthly Weather Review, Volume 97: Issue 11, p 739-774.
-# [2] Milly, P. C. D. and Shmakin, A.B. (2002) Global Modeling of Land
-# Water and Energy Balances. Part I: The Land Dynamics (LaD) Model
-# Journal of Hydrometeorology, Volume 3: Issue 3, p 283-299.
-# [3] Laguë, M., Bonan, G., and Swann, A. (2019) Seperating the Impact
-# of Individual Land Surface Properties on the Terrestrial Surface
-# Energy Budget in both the Coupled and Uncoupled Land-Atmosphere System
-# Volume 32: Issue 18, p 5725-5744

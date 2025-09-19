@@ -54,13 +54,13 @@ underlying infrastructure in both cases.
 
 ## Domain types
 All ClimaLand domains are subtypes of abstract type
-[`ClimaLand.Domains.AbstractDomain`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.AbstractDomain).
+[`ClimaLand.Domains.AbstractDomain`](@ref ClimaLand.Domains.AbstractDomain).
 A variety of concrete domain types are supported:
 
-- 0D: [`Domains.Point`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Point)
-- 1D: [`Domains.Column`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Column)
-- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalSurface)
-- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.SphericalShell).
+- 0D: [`Domains.Point`](@ref ClimaLand.Domains.Point)
+- 1D: [`Domains.Column`](@ref ClimaLand.Domains.Column)
+- 2D: [`Domains.Plane`](@ref ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](@ref ClimaLand.Domains.SphericalSurface)
+- 3D: [`Domains.HybridBox`](@ref ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](@ref ClimaLand.Domains.SphericalShell).
 
 As discussed above, our modeling requires that variables of a model can be defined on different subsets of the domain.
 Because of that, we define the concept of a surface domain, and a subsurface domain[^2].
@@ -76,12 +76,12 @@ Not all domains have a surface and subsurface; some only have surface domains, a
 
 There is a single key method which take a ClimaLand domain as an argument.
 
-- [` coordinates(domain)`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.Domains.coordinates): under the hood, this function  uses
+- [` coordinates(domain)`](@ref ClimaLand.Domains.coordinates): under the hood, this function  uses
 the NamedTuple of function spaces (domain.space) to create the coordinate field for the surface and subsurface domains (as applicable), stored in a NamedTuple.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has subsurface coordinates of latitude, longitude, and depth, while the surface coordinates
 are latitude and longitude. A Plane domain has coordinates
-of x and y (surface only), and a Point domain only has a coordinate z_sfc (surface only). Column domains have a surface coordinate of z_sfc,
+of x and y (surface only), and a Point domain only has a coordinate `z_sfc` (surface only). Column domains have a surface coordinate of `z_sfc`,
 and subsurface coordinates of z.
 
 It is important to note that the horizontal domain used for the surface and subsurface
@@ -100,18 +100,18 @@ make sense to use. A single layer snow model does not require vertical resolutio
 that make sense to use are a Point, Plane, or SphericalSurface.
 
 When a developer first defines a model, they need to specify the symbols used for the prognostic variables,
-via [`prognostic_vars`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_vars),
+via [`prognostic_vars`](@ref ClimaLand.prognostic_vars),
 and
 the types of those variables,
- via [`prognostic_types`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_types).
+ via [`prognostic_types`](@ref ClimaLand.prognostic_types).
 
 They additionally need to define which subset of the domain the variables are defined on, using
-[`prognostic_domain_names`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.prognostic_domain_names).
+[`prognostic_domain_names`](@ref ClimaLand.prognostic_domain_names).
 
-The [`initialize`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize)
+The [`initialize`](@ref ClimaLand.initialize)
 function (which calls both
-[`initialize_prognostic`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize_prognostic)
- and [`initialize_auxiliary`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#ClimaLand.initialize_auxiliary))
+[`initialize_prognostic`](@ref ClimaLand.initialize_prognostic)
+ and [`initialize_auxiliary`](@ref ClimaLand.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
 is a float, the field will be a field of float values (a scalar field)[^3].

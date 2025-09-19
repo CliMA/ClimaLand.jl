@@ -2,12 +2,12 @@
 
 # This tutorial shows how to instantiate and run a simulation of the
 # canopy biophysics model in ClimaLand. A
-# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/canopy/Canopy/#Canopy-Model-Structs)
+# [`CanopyModel`](@ref "Canopy Model and Parameters")
 # including all component
 # models is initialized, then an example simulation is run. The initial conditions,
 # atmospheric and radiative flux conditions, and canopy properties are set up
 # to match those observed at the US-MOz flux tower, a flux tower located within
-# an oak-hickory forest in Ozark, Missouri, USA. See [Wang et al. 2021](https://doi.org/10.5194/gmd-14-6741-2021)
+# an oak-hickory forest in Ozark, Missouri, USA. See [Wang2021](@citet)
 # for details on the site and canopy parameters.
 
 # The canopy biophysics model in ClimaLand combines a photosynthesis model with a
@@ -89,7 +89,7 @@ long = FT(-92.2000) # degree
 
 # We want to simulate a vegetative canopy in standalone mode, without coupling
 # the canopy to atmospheric or soil physics models, so we choose a
-# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/stable/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# [`CanopyModel`](@ref "Canopy Model and Parameters").
 # Here we will use the default parameterizations and parameters for ease of setting up
 # the model, but these can be overridden by constructing and passing canopy
 # components to the `CanopyModel` constructor. This will be explored in a later tutorial.
@@ -98,7 +98,7 @@ long = FT(-92.2000) # degree
 # by some of the component models. Here we are performing a 1-dimensional
 # simulation in a `Point` domain and will use
 # single stem and leaf compartments, but for 2D simulations, the parameters of
-# the [`domain`](https://clima.github.io/ClimaLand.jl/stable/APIs/shared_utilities/#Domains)
+# the [`domain`](@ref "Domain Tutorial")
 # would change.
 domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
 

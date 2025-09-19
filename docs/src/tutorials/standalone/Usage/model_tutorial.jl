@@ -1,3 +1,5 @@
+# # Creating a model
+
 # The `AbstractModel` framework allows users to define land
 # component models (e.g. for snow, soil, vegetation, carbon...)
 # which can be run in standalone mode, or as part of a land
@@ -99,7 +101,7 @@
 
 # The purpose of our `AbstractModel` interface is that it allows you to run land
 # component models in
-# standalone mode and in an LSM mode without a change in interface. 
+# standalone mode and in an LSM mode without a change in interface.
 
 # As a simple demonstration of use, we'll build a model now which solves
 # Richards Equation assuming a prescribed flux at the surface,
@@ -116,7 +118,7 @@
 # are focused on land surface modeling in particular.
 # In this example, we will tag the tendency as
 # an explicitly time-stepped tendency. A follow-on tutorial will explain
-# how to define an implicit tendency and tendency Jacobian. 
+# how to define an implicit tendency and tendency Jacobian.
 
 # Let's first import some needed packages.
 import ClimaTimeSteppers as CTS
@@ -202,7 +204,7 @@ end;
 # for each variable in `` \vec{Y} ``. It is updated in place (so no extra allocations are needed). Note that
 # Y is not a simple array. It is a `ClimaCore` `FieldVector`, which allow us to impose some
 # organizational structure on the state while still behaving like arrays in some ways.
-# We use the symbol returned by `name(model)` to create the naming hierarchy in `Y`, `dY`, `p`. This 
+# We use the symbol returned by `name(model)` to create the naming hierarchy in `Y`, `dY`, `p`. This
 # is useful for multi-component models.
 
 # The arguments of `compute_exp_tendency!` are generic for any time-stepping algorithm.
@@ -240,7 +242,7 @@ ClimaLand.auxiliary_domain_names(::RichardsTutorialModel) =
 # We next need to define how we update the auxiliary variables. These are split between two
 # functions, `update_aux!`, and `update_boundary_fluxes!`. For standalone component models,
 # these could be combined into a single function, and indeed they could also be part of the tendency
-# function itself. 
+# function itself.
 function ClimaLand.make_update_aux(model::RichardsTutorialModel)
     function update_aux!(p, Y, t)
         p.soil.z .=

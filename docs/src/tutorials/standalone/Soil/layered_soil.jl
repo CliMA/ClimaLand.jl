@@ -1,7 +1,8 @@
+# # Single column soil model
+
 # This shows how to run single column soil model, in standalone mode
 # with spatially varying properties. We are mimicking the experiment
-# carried out in Huang et. al.
-# Can. J. Soil Sci. (2011) 91: 169183 doi:10.4141/CJSS09118,
+# carried out in [Huang2011](@citet),
 # which measured the infiltration of layered soil in Fort McMurray,
 # Alberta, Canada. We thank Mingbin Huang and S. Lee Barbour for
 # correspondence and support, including sharing of data, with us.
@@ -38,8 +39,7 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # Download the parameter data. This has been obtained from
 # Table 1b of
 # Infiltration and drainage processes in multi-layered coarse soils
-# Mingbin Huang et. al.
-# Can. J. Soil Sci. (2011) 91: 169183 doi:10.4141/CJSS09118
+# [Huang2011](@citet)
 data_file = ClimaLand.Artifacts.huang_et_al2011_soil_van_genuchten_data();
 parameter_data = readdlm(data_file, ',');
 # Our model treats z as increasing in the upwards direction.
