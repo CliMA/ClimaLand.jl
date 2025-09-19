@@ -221,7 +221,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         LW_d,
         start_date,
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
     )
     return (; atmos, radiation)
 end

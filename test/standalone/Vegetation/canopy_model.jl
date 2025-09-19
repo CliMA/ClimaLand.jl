@@ -97,7 +97,7 @@ import ClimaParams
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
 
         # Set up canopy model with all the components
@@ -529,7 +529,7 @@ end
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
 
         # Plant Hydraulics
@@ -782,7 +782,7 @@ end
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)

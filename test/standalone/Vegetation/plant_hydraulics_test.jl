@@ -198,7 +198,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
-            earth_param_set = earth_param_set,
+            toml_dict = toml_dict,
         )
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(5) # number of stem elements

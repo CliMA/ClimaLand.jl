@@ -701,12 +701,13 @@ struct PrescribedRadiativeFluxes{
         LW_d,
         start_date;
         θs = nothing,
-        earth_param_set = nothing,
+        toml_dict::Union{CP.ParamDict, Nothing} = nothing,
         frac_diff = nothing,
     )
-        if isnothing(earth_param_set)
+        if isnothing(toml_dict)
             thermo_params = nothing
         else
+            earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
         args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
@@ -1664,7 +1665,7 @@ function prescribed_forcing_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)

@@ -180,7 +180,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     LW_IN,
     start_date,
     θs = zenith_angle,
-    earth_param_set = earth_param_set,
+    toml_dict = toml_dict,
 );
 
 # Soil model setup

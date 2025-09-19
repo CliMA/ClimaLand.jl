@@ -56,7 +56,7 @@ for FT in (Float32, Float64)
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
     )
     # Atmos forcing
     precip = TimeVaryingInput((t) -> eltype(t)(0)) # no precipitation

@@ -266,7 +266,7 @@ function prescribed_perturbed_temperature_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
@@ -454,7 +454,7 @@ function prescribed_perturbed_rh_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
