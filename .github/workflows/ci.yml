@@ -33,11 +33,11 @@ jobs:
           # Cache Julia's package depot (where packages, artifacts, etc. are stored)
           path: ~/.julia/packages
           # The cache key includes the OS, Julia version, and the project's dependencies
-          key: ${{ runner.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
+          key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
           # Fallback keys to use if the primary key isn't found
           restore-keys: |
-            ${{ runner.os }}-julia-${{ matrix.version }}-
-            ${{ runner.os }}-julia-
+            ${{ matrix.os }}-julia-${{ matrix.version }}-
+            ${{ matrix.os }}-julia-
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
