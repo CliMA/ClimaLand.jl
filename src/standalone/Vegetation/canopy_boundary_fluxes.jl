@@ -12,6 +12,25 @@ import ClimaLand:
     turbulent_fluxes!,
     AbstractBC
 
+abstract type AbstractCanopyRoughness{FT <: AbstractFloat} <: end
+
+struct ConstantCanopyRoughness{FT} <: AbstractCanopyRoughness{FT}
+    "Scalar coefficient multiplying canopy height to obtain roughness length for momentum (unitless)"
+    z_0m_coeff::FT
+    "Scalar coefficient multiplying canopy height to obtain roughness length for scalars (unitless)"
+    z_0b_coeff::FT
+    "Scalar coefficient multiplying canopy height to obtain displacement height (unitless)"
+    d_coeff::FT
+end
+
+function ConstantCanopyRoughness{FT}(toml_dict) where {FT}
+    z_0m_coeff = toml_dict["canopy_z_0m_coeff"]
+    z_0b_coeff = toml_dict["canopy_z_0b_coeff"]
+    d_coeff = toml_dict["canopy_d_coeff"]
+    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, d_coeff)
+end
+
+    
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
 
@@ -23,6 +42,7 @@ abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
         G <: AbstractGroundConditions,
+        R <: AbstractCanopyRoughness
         C::Tuple
     } <: AbstractCanopyBC
 
@@ -39,6 +59,7 @@ struct AtmosDrivenCanopyBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     G <: AbstractGroundConditions,
+    R <: AbstractCanopyRoughness
     C <: Tuple,
 } <: AbstractCanopyBC
     "The atmospheric conditions driving the model"
@@ -47,6 +68,8 @@ struct AtmosDrivenCanopyBC{
     radiation::B
     "Ground conditions"
     ground::G
+    "Roughness parameterization"
+    roughness::R
     "Prognostic land components present"
     prognostic_land_components::C
 end
@@ -55,12 +78,13 @@ end
     AtmosDrivenCanopyBC(
         atmos,
         radiation,
-        ground;
+        ground,
+        roughness;
         prognostic_land_components = (:canopy,),
     )
 
 An outer constructor for `AtmosDrivenCanopyBC` which is
-intended for use as a default when running standlone canopy
+intended for use as a default when running canopy
 models.
 
 This is also checks the logic that:
@@ -70,7 +94,8 @@ This is also checks the logic that:
 function AtmosDrivenCanopyBC(
     atmos,
     radiation,
-    ground;
+    ground,
+    roughness;
     prognostic_land_components = (:canopy,),
 )
     if typeof(ground) <: PrescribedGroundConditions
@@ -79,7 +104,7 @@ function AtmosDrivenCanopyBC(
         @assert :soil ∈ prognostic_land_components
     end
 
-    args = (atmos, radiation, ground, prognostic_land_components)
+    args = (atmos, radiation, ground, roughness, prognostic_land_components)
     return AtmosDrivenCanopyBC(args...)
 end
 
@@ -101,7 +126,7 @@ model.
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
 function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return FT(0.67) * model.biomass.height
+    return model.boundary_conditions.roughness.d_coeff *  model.biomass.height
 end
 
 """
@@ -226,7 +251,7 @@ function canopy_boundary_fluxes!(
         bc.ground,
         canopy,
         bc.radiation,
-        canopy.parameters.earth_param_set,
+        canopy.earth_param_set,
         Y,
         t,
     )
@@ -278,9 +303,9 @@ function ClimaLand.turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            Ref(model.parameters.earth_param_set),
+            model.boundary_conditions.roughness.z_0m_coeff * model.hydraulics.compartment_surfaces[end],
+            model.boundary_conditions.roughness.z_0b_coeff * model.hydraulics.compartment_surfaces[end],
+            Ref(model.earth_param_set),
         )
     return nothing
 end
@@ -321,9 +346,9 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            Ref(model.parameters.earth_param_set),
+            model.boundary_conditions.roughness.z_0m_coeff * model.hydraulics.compartment_surfaces[end],
+            model.boundary_conditions.roughness.z_0b_coeff * model.hydraulics.compartment_surfaces[end],
+            Ref(model.earth_param_set),
         )
     return nothing
 end
@@ -414,7 +439,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     z_0b::FT,
     earth_param_set::EP;
 ) where {FT <: AbstractFloat, EP}
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_earth_param_set)
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
@@ -443,7 +468,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         beta = FT(1),
         gustiness = gustiness,
     )
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_earth_param_set)
     scheme = SurfaceFluxes.PointValueScheme()
     conditions =
         SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
