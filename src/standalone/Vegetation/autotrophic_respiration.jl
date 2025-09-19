@@ -84,7 +84,7 @@ function update_autotrophic_respiration!(
     LAI = area_index.leaf
     SAI = area_index.stem
     RAI = area_index.root
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_l = LP.ρ_cloud_liq(earth_param_set)
     (; G_Function, Ω) = canopy.radiative_transfer.parameters

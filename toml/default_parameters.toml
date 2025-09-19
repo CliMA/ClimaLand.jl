@@ -131,18 +131,6 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
-# Shared Canopy Parameters
-
-["canopy_momentum_roughness_length"]
-value = 0.1
-type = "float"
-description = "Roughness length for momentum (m)"
-
-["canopy_scalar_roughness_length"]
-value = 0.2
-type = "float"
-description = "Roughness length for scalars (m)"
-
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
@@ -405,3 +393,22 @@ tag = "BucketModelParameters"
 value = 0.8
 type = "float"
 tag = "PrescribedBaregroundAlbedo"
+
+# Canopy roughness
+["canopy_z_0m_coeff"]
+value = 0.13
+type = "float"
+description = "Scalar multipling canopy height to get z_0m"
+tag = "ConstantRoughnessModel"
+
+["canopy_z_0b_coeff"]
+value = 0.013
+type = "float"
+description = "Scalar multipling canopy height to get z_0b"
+tag = "ConstantRoughnessModel"
+
+["canopy_d_coeff"]
+value = 0.67
+type = "float"
+description = "Scalar multipling canopy height to get displacement height"
+tag = "ConstantRoughnessModel"
