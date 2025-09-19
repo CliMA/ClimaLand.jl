@@ -36,6 +36,7 @@ jobs:
             ~/.julia/compiled
             ~/.julia/artifacts
             ~/.julia/scratchspaces
+            ~/.julia/registries
           # The cache key includes the OS, Julia version, and the project's dependencies
           key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
           # Fallback keys to use if the primary key isn't found
