@@ -1001,7 +1001,7 @@ The other sub-components rely heavily on each other,
 so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
-function ClimaLand.make_update_aux(canopy::CanopyModel)
+function ClimaLand.make_update_aux(@nospecialize(canopy::CanopyModel))
     function update_aux!(p, Y, t)
 
         # Extend to other fields when necessary
@@ -1045,10 +1045,10 @@ end
 
 Creates and returns the compute_exp_tendency! for the `CanopyModel`.
 """
-function make_compute_exp_tendency(canopy::CanopyModel)
+function make_compute_exp_tendency(@nospecialize(canopy::CanopyModel))
     components = canopy_components(canopy)
     compute_exp_tendency_list = map(
-        x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
+        (@nospecialize x) -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
     function compute_exp_tendency!(dY, Y, p, t)
@@ -1065,10 +1065,10 @@ end
 
 Creates and returns the compute_imp_tendency! for the `CanopyModel`.
 """
-function make_compute_imp_tendency(canopy::CanopyModel)
+Base.@nospecializeinfer function make_compute_imp_tendency(@nospecialize(canopy::CanopyModel))
     components = canopy_components(canopy)
     compute_imp_tendency_list = map(
-        x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
+        (@nospecialize x) -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
     function compute_imp_tendency!(dY, Y, p, t)
@@ -1085,10 +1085,10 @@ end
 
 Creates and returns the compute_jacobian! for the `CanopyModel`.
 """
-function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
+Base.@nospecializeinfer function ClimaLand.make_compute_jacobian(@nospecialize(canopy::CanopyModel))
     components = canopy_components(canopy)
     update_jacobian_list = map(
-        x -> make_compute_jacobian(getproperty(canopy, x), canopy),
+        (@nospecialize x) -> make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
     function compute_jacobian!(W, Y, p, dtγ, t)
@@ -1171,7 +1171,7 @@ Set the initial cache `p` for the canopy model. Note that if the photosynthesis 
 is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
 sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
 """
-function ClimaLand.make_set_initial_cache(model::CanopyModel)
+Base.@nospecializeinfer function ClimaLand.make_set_initial_cache(@nospecialize(model::CanopyModel))
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
         update_cache!(p, Y0, t0)
