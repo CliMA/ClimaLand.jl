@@ -37,7 +37,6 @@ device_suffix =
 
 FT = Float64
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the domain
@@ -59,7 +58,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT;
     time_interpolation_method = time_interpolation_method,
 )

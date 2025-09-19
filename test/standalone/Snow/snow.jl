@@ -15,7 +15,6 @@ import ClimaLand.Parameters as LP
 @testset "Snow Model" begin
     FT = Float32
     toml_dict = LP.create_toml_dict(FT)
-    earth_param_set = LP.LandParameters(toml_dict)
 
     start_date = DateTime(2005)
     Δt = FT(180.0)
@@ -41,7 +40,7 @@ import ClimaLand.Parameters as LP
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set,
+        toml_dict,
     )
     model = ClimaLand.Snow.SnowModel(
         parameters = parameters,

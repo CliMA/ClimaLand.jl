@@ -68,7 +68,6 @@ const FT = Float32
 
 # Initialize land parameters and site configuration.
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
@@ -103,7 +102,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 );
 

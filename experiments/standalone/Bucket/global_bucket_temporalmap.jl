@@ -73,8 +73,7 @@ end
 FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
-toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
+toml_dict = LP.create_toml_dict(FT);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -136,7 +135,7 @@ function setup_prob(start_date, stop_date, Δt, outdir)
         TimeVaryingInput(P_atmos),
         start_date,
         h_atmos,
-        earth_param_set,
+        toml_dict,
     )
 
     # Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a

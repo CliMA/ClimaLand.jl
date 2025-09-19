@@ -159,7 +159,7 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_p,
     start_date,
     atmos_h,
-    earth_param_set,
+    toml_dict,
 );
 LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
 SW_IN = TimeVaryingInput((t) -> 500.0)
@@ -180,7 +180,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     LW_IN,
     start_date,
     θs = zenith_angle,
-    earth_param_set = earth_param_set,
+    toml_dict = toml_dict,
 );
 
 # Soil model setup

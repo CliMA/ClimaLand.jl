@@ -145,7 +145,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(P_atmos),
                 start_date,
                 h_atmos,
-                earth_param_set,
+                toml_dict,
             )
             τc = FT(100.0)
             bucket_parameters =

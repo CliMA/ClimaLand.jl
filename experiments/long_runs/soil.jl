@@ -63,7 +63,7 @@ stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
 nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements)
 toml_dict = LP.create_toml_dict(FT)
-params = LP.LandParameters(toml_dict)
+
 # Forcing data
 if LONGER_RUN
     era5_ncdata_path =
@@ -76,7 +76,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,
     start_date,
-    params,
+    toml_dict,
     FT;
     max_wind_speed = 25.0,
     time_interpolation_method,
@@ -101,6 +101,7 @@ simulation =
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
+CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
 short_names = ["swc", "sie", "si", "et"]
