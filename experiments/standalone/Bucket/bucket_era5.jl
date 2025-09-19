@@ -77,7 +77,6 @@ FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -140,7 +139,7 @@ bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT;
     time_interpolation_method = time_interpolation_method,
     regridder_type = regridder_type,

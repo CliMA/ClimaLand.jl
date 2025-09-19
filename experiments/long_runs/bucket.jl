@@ -48,7 +48,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, domain, earth_param_set, Δt, toml_dict)
+function setup_model(FT, start_date, domain, Δt, toml_dict)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -59,7 +59,7 @@ function setup_model(FT, start_date, domain, earth_param_set, Δt, toml_dict)
         era5_ncdata_path,
         surface_space,
         start_date,
-        earth_param_set,
+        toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method,
@@ -95,10 +95,9 @@ domain =
 
 # Parameters
 toml_dict = LP.create_toml_dict(FT)
-params = LP.LandParameters(toml_dict)
 
 # Model
-model = setup_model(FT, start_date, domain, params, Δt, toml_dict)
+model = setup_model(FT, start_date, domain, Δt, toml_dict)
 
 # IC function
 function set_ic!(Y, p, t, bucket)

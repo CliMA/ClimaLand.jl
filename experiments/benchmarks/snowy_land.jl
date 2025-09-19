@@ -81,7 +81,6 @@ function setup_prob(
     nelements = (101, 15),
 )
     toml_dict = LP.create_toml_dict(FT)
-    earth_param_set = LP.LandParameters(toml_dict)
     domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -95,7 +94,7 @@ function setup_prob(
         era5_ncdata_path,
         surface_space,
         start_date,
-        earth_param_set,
+        toml_dict,
         FT;
         time_interpolation_method = time_interpolation_method,
     )

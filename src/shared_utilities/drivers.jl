@@ -1481,7 +1481,7 @@ end
      prescribed_forcing_era5(era5_ncdata_path,
                              surface_space,
                              start_date,
-                             earth_param_set,
+                             toml_dict::CP.ParamDict,
                              FT;
                              gustiness=1,
                              max_wind_speed = nothing,
@@ -1492,7 +1492,7 @@ end
 
 A helper function which constructs the `PrescribedAtmosphere` and
 `PrescribedRadiativeFluxes` from a file path pointing to the ERA5 data in a netcdf file, the
-`surface_space`, the `start_date`, and the `earth_param_set`.
+`surface_space`, the `start_date`, and the `toml_dict`.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
 
@@ -1512,7 +1512,7 @@ function prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     FT;
     gustiness = 1,
     max_wind_speed = nothing,
@@ -1521,6 +1521,7 @@ function prescribed_forcing_era5(
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
 

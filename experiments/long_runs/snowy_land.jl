@@ -59,7 +59,6 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-    earth_param_set = LP.LandParameters(toml_dict)
     era5_time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -80,7 +79,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         era5_ncdata_path,
         surface_space,
         start_date,
-        earth_param_set,
+        toml_dict,
         FT;
         max_wind_speed = 25.0,
         time_interpolation_method = era5_time_interpolation_method,
