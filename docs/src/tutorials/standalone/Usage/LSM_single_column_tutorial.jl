@@ -1,5 +1,5 @@
 # The `AbstractModel`
-# [tutorial](@ref "Hydrostatic Equilibrium test for Richards Equation")
+# [tutorial](@ref "Creating a model")
 # describes how a user can run
 # simulations of a physical system governed by differential equations.
 # In this framework, the user must define a model type for their problem,

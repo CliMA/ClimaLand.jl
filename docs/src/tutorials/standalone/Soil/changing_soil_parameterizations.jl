@@ -1,5 +1,5 @@
 # # Changing Soil Parameterizations
-# In [Getting Started](@ref "Hydrostatic Equilibrium test for Richards Equation"), we ran a simple soil model simulation
+# In [Getting Started](@ref "Installation of Julia and ClimaLand"), we ran a simple soil model simulation
 # using all of the default parameterizations and parameters.
 # ClimaLand provides multiple options for many parameterizations;
 # in this tutorial, we will demonstrate how to create a soil model with a

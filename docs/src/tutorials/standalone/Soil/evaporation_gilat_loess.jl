@@ -1,4 +1,4 @@
-# # Evaporation Gilat Loess
+# # Evaporation from Gilat Loess soil
 
 # This sets up the simulation that mimicks the
 # lab experiment
