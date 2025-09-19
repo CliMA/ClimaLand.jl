@@ -38,7 +38,6 @@ import ClimaLand.LandSimVis as LandSimVis;
 
 const FT = Float32;
 toml_dict = LP.create_toml_dict(FT);
-earth_param_set = LP.LandParameters(toml_dict);
 
 # We will use prescribed atmospheric and radiative forcing from the
 # US-NR1 tower.  We also
@@ -73,7 +72,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 );
 # LAI for the site - this uses our interface for working with MODIS data.

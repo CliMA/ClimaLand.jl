@@ -30,7 +30,6 @@ using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 climaland_dir = pkgdir(ClimaLand)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
@@ -156,7 +155,7 @@ pft_pcts = [
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 

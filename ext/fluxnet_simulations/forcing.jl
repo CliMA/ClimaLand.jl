@@ -8,7 +8,7 @@ import ClimaParams as CP
                                 long,
                                 hour_offset_from_UTC,
                                 start_date,
-                                earth_param_set,
+                                toml_dict::CP.ParamDict,
                                 FT;
                                 gustiness=1,
                                 split_precip= true,
@@ -17,7 +17,7 @@ import ClimaParams as CP
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
 the hour offset of the site from UTC (local_time + offset = time in UTC),
-and the earth_param_set.
+and the `toml_dict`.
 
 This requires (1) reading in the data, (2) removing missing values,
  (3) converting units, (4) computing the specific humidity and percent of
