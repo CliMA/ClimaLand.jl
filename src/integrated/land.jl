@@ -77,7 +77,7 @@ struct LandModel{
         @assert soil.parameters.earth_param_set ==
                 soilco2.parameters.earth_param_set
         @assert soil.parameters.earth_param_set ==
-                canopy.parameters.earth_param_set
+                canopy.earth_param_set
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
 
@@ -421,7 +421,7 @@ function lsm_radiant_energy_fluxes!(
     canopy = land.canopy
     canopy_bc = canopy.boundary_conditions
     radiation = canopy_bc.radiation
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
