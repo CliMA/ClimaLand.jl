@@ -75,6 +75,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     plant_ν,
     plant_S_s,
     rooting_depth,
+    G_Function,
     n_stem,
     n_leaf,
     h_leaf,
@@ -160,7 +161,7 @@ soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
 # Set up radiative transfer
 radiation_parameters = (;
     Ω,
-    G_Function = CLMGFunction(χl),
+    G_Function = G_Function,
     α_PAR_leaf,
     τ_PAR_leaf,
     α_NIR_leaf,
@@ -180,7 +181,6 @@ conductance = Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
-
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
@@ -191,20 +191,20 @@ maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
-    LAI,
     toml_dict;
     n_stem,
     n_leaf,
     h_stem,
     h_leaf,
-    SAI,
-    RAI,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
     retention_model,
-    rooting_depth,
 )
+
+height = h_stem + h_leaf
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Set up the energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
@@ -226,6 +226,7 @@ canopy = Canopy.CanopyModel{FT}(
     conductance,
     hydraulics,
     energy,
+    biomass,
 )
 
 # Snow model

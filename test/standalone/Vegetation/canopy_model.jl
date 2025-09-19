@@ -48,13 +48,14 @@ import ClimaParams
         # Plant Hydraulics
         LAI_fun = t -> FT(8) # m2 [leaf] m-2 [ground]
         LAI = TimeVaryingInput(LAI_fun)
-        hydraulics = Canopy.PlantHydraulicsModel{FT}(
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)
+        biomass = Canopy.PrescribedBiomassModel{FT}(
             domain,
             LAI,
             toml_dict;
             rooting_depth = FT(0.5),
+            height = FT(1),
         )
-
         # Set up forcing
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -113,8 +114,9 @@ import ClimaParams
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
-            hydraulics = hydraulics,
+            hydraulics,
             energy = energy_model,
+            biomass,
         )
         @test ClimaComms.context(canopy) == ClimaComms.context()
         @test ClimaComms.device(canopy) == ClimaComms.device()
@@ -150,6 +152,7 @@ import ClimaParams
             :energy,
             :sif,
             :soil_moisture_stress,
+            :biomass,
             :turbulent_fluxes,
         )
         for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -321,73 +324,26 @@ end
 
 
 @testset "Component prescribed fields" begin
-    struct Default{FT} <: ClimaLand.Canopy.AbstractCanopyComponent{FT} end
     for FT in (Float32, Float64)
         # Plant Hydraulics
         LAI = FT(2)
         RAI = FT(1)
         SAI = FT(1)
-        lai_fun = t -> LAI * sin(t * 2π / 365)
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            TimeVaryingInput(lai_fun),
+        lai_fun = TimeVaryingInput(t -> LAI * sin(t * 2π / 365))
+        rooting_depth = FT(0.5)
+        biomass = Canopy.PrescribedBiomassModel{FT}(;
+            LAI = lai_fun,
             SAI,
             RAI,
+            rooting_depth,
+            height = FT(10),
         )
-        K_sat_plant = FT(1.8e-8) # m/s
-        ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
-        Weibull_param = FT(4) # unitless, Holtzman's original c param value
-        a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-        plant_ν = FT(0.7) # m3/m3
-        plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-        conductivity_model =
-            PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
-            ν = plant_ν,
-            S_s = plant_S_s,
-            rooting_depth = FT(0.5),
-            conductivity_model = conductivity_model,
-            retention_model = retention_model,
-        )
-        Δz = FT(1.0) # height of compartments
-        n_stem = Int64(0) # number of stem elements
-        n_leaf = Int64(1) # number of leaf elements
-        compartment_centers =
-            FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                    ),
-                ),
-            )
-        compartment_faces =
-            FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
-                    ),
-                ),
-            )
-
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = param_set,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_faces,
-            compartment_midpoints = compartment_centers,
-        )
-
         t0 = FT(100)
         domain = Point(; z_sfc = FT(0.0))
         p = ClimaCore.fill(
             (;
                 canopy = (;
-                    hydraulics = (;
+                    biomass = (;
                         area_index = (
                             leaf = FT(0.0),
                             root = FT(0.0),
@@ -399,43 +355,19 @@ end
             domain.space.surface,
         )
         # Test that they are set properly
-        set_canopy_prescribed_field!(plant_hydraulics, p, t0)
+        Canopy.update_biomass!(p, nothing, t0, biomass, nothing)
         @test all(
-            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
+            Array(parent(p.canopy.biomass.area_index.leaf)) .==
             FT(LAI * sin(t0 * 2π / 365)),
         )
-        @test all(
-            Array(parent(p.canopy.hydraulics.area_index.stem)) .== FT(1.0),
-        )
-        @test all(
-            Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
-        )
+        @test all(Array(parent(p.canopy.biomass.area_index.stem)) .== FT(1.0))
+        @test all(Array(parent(p.canopy.biomass.area_index.root)) .== FT(1.0))
 
         # Test that LAI is updated
-        set_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
+        Canopy.update_biomass!(p, nothing, FT(200), biomass, nothing)
         @test all(
-            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
-            ClimaLand.Canopy.PlantHydraulics.clip(
-                FT(LAI * sin(200 * 2π / 365)),
-                FT(0.05),
-            ),
-        )
-
-        set_canopy_prescribed_field!(Default{FT}(), p, t0)
-        set_canopy_prescribed_field!(Default{FT}(), p, t0)
-        # Test that they are unchanged
-        @test all(
-            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
-            ClimaLand.Canopy.PlantHydraulics.clip(
-                FT(LAI * sin(200 * 2π / 365)),
-                FT(0.05),
-            ),
-        )
-        @test all(
-            Array(parent(p.canopy.hydraulics.area_index.stem)) .== FT(1.0),
-        )
-        @test all(
-            Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
+            Array(parent(p.canopy.biomass.area_index.leaf)) .==
+            ClimaLand.Canopy.clip(FT(LAI * sin(200 * 2π / 365)), FT(0.05)),
         )
     end
 end
@@ -535,12 +467,7 @@ end
         # Plant Hydraulics
         RAI = FT(1)
         SAI = FT(0)
-        lai_fun = t -> LAI
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            TimeVaryingInput(lai_fun),
-            SAI,
-            RAI,
-        )
+        lai_fun = TimeVaryingInput(t -> LAI)
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -552,10 +479,8 @@ end
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
         rooting_depth = FT(0.5)
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
             ν = plant_ν,
             S_s = plant_S_s,
-            rooting_depth = rooting_depth,
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )
@@ -592,6 +517,13 @@ end
             compartment_midpoints = compartment_centers,
         )
         autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
+        biomass = Canopy.PrescribedBiomassModel{FT}(;
+            LAI = lai_fun,
+            SAI,
+            RAI,
+            rooting_depth,
+            height = compartment_faces[end] - compartment_faces[1],
+        )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
@@ -605,6 +537,7 @@ end
             energy = energy_model,
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
+            biomass,
             boundary_conditions = Canopy.AtmosDrivenCanopyBC(
                 atmos,
                 radiation,
@@ -739,6 +672,9 @@ end
         lat = FT(0.0) # degree
         long = FT(-180) # degree
         start_date = DateTime(2005)
+        LAI = TimeVaryingInput((t) -> 0.0)
+        shortwave_radiation(t) = 1000 # W/m2
+        longwave_radiation(t) = 200 # W/m2
         zenith_angle =
             (t, s) -> default_zenith_angle(
                 t,
@@ -747,14 +683,6 @@ end
                 latitude = lat,
                 longitude = long,
             )
-
-        shortwave_radiation(
-            t;
-            latitude = lat,
-            longitude = long,
-            insol_params = earth_param_set.insol_params,
-        ) = FT(1000)
-        longwave_radiation(t) = FT(200)
 
         u_atmos = t -> 10 #m.s-1
         liquid_precip = (t) -> 0 # m
@@ -787,19 +715,7 @@ end
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
 
-        # Plant Hydraulics
-        RAI = FT(0)
-        SAI = FT(0)
-        LAI = TimeVaryingInput(t -> FT(0))
-
-        hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(
-            domain,
-            LAI,
-            toml_dict;
-            SAI,
-            RAI,
-        )
-
+        hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(domain, toml_dict)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
             forcing,
@@ -863,10 +779,10 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain, toml_dict)
         conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict)
-        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI, toml_dict)
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)
         soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}(toml_dict)
-
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
+        biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}()
 
         # Use simple analytic forcing for atmosphere and radiation
@@ -892,6 +808,7 @@ end
                 hydraulics,
                 energy,
                 sif,
+                biomass,
                 boundary_conditions,
                 parameters,
                 domain,
@@ -907,6 +824,7 @@ end
 
             @test canopy.autotrophic_respiration == autotrophic_respiration
             @test canopy.radiative_transfer == radiative_transfer
+            @test canopy.biomass == biomass
             @test canopy.photosynthesis == photosynthesis
             @test canopy.conductance == conductance
             @test canopy.hydraulics == hydraulics
@@ -947,6 +865,7 @@ end
                 :energy,
                 :sif,
                 :soil_moisture_stress,
+                :biomass,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -1023,6 +942,7 @@ end
             :energy,
             :sif,
             :soil_moisture_stress,
+            :biomass,
             :turbulent_fluxes,
         )
         for component in ClimaLand.Canopy.canopy_components(canopy)

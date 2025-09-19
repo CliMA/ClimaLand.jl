@@ -65,13 +65,18 @@ end
 
 LAI = TimeVaryingInput(fakeLAIfunction)
 SAI = RAI = FT(0)
-hydraulics = PlantHydraulicsModel{FT}(land_domain, LAI, toml_dict; SAI, RAI);
+rooting_depth = FT(1)
+hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict);
+height = FT(1)
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
     LAI,
     toml_dict;
     hydraulics,
+    biomass,
 )
 
 function set_ic!(Y, p, t0, model)

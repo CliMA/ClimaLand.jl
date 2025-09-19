@@ -118,7 +118,7 @@ function make_compute_imp_tendency(
     canopy,
 ) where {FT}
     function compute_imp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.hydraulics.area_index
+        area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
         # Energy Equation:
         # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
@@ -149,6 +149,7 @@ end
         fa_energy::ClimaCore.Fields.Field,
         ground::PrescribedGroundConditions{FT},
         model::AbstractCanopyEnergyModel{FT},
+        canopy,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -172,6 +173,7 @@ function root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
     ground::PrescribedGroundConditions{FT},
     model::AbstractCanopyEnergyModel{FT},
+    canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
@@ -199,7 +201,7 @@ function ClimaLand.make_compute_jacobian(
         ∂LW_n∂Tc = p.canopy.energy.∂LW_n∂Tc
         ∂qc∂Tc = p.canopy.energy.∂qc∂Tc
         ϵ_c = p.canopy.radiative_transfer.ϵ
-        area_index = p.canopy.hydraulics.area_index
+        area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.parameters.earth_param_set
         _T_freeze = LP.T_freeze(earth_param_set)
@@ -272,7 +274,7 @@ function ClimaLand.total_energy_per_area!(
     p,
     t,
 )
-    area_index = p.canopy.hydraulics.area_index
+    area_index = p.canopy.biomass.area_index
     @. surface_field .=
         model.parameters.ac_canopy *
         (area_index.stem + area_index.leaf) *

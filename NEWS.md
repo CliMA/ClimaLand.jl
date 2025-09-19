@@ -5,6 +5,7 @@ main
 -------
 - `PrescribedAtmosphere` fields can't be `nothing` PR[#1438](https://github.com/CliMA/ClimaLand.jl/pull/1438)
 - ![][badge-🐛bugfix] Check for coupled forcing in available diagnostics PR[#1434](https://github.com/CliMA/ClimaLand.jl/pull/1434)
+- ![breaking change][badge-💥breaking] Move the area indices and rooting depth to the biomass component PR[#1388](https://github.com/CliMA/ClimaLand.jl/pull/1388)
 - Remove the unused integrated constructors based on args and types PR[#1408](https://github.com/CliMA/ClimaLand.jl/pull/1408)
 - Add moisture stress component to the canopy model PR[#1387](https://github.com/CliMA/ClimaLand.jl/pull/1387)
 - ![breaking change][badge-💥breaking] All callbacks are now constructed with `IntervalBasedCallback`,  which uses ClimaDiagnostics for scheduling. PR[#1380](https://github.com/CliMA/ClimaLand.jl/pull/1380)

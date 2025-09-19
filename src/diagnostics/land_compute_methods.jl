@@ -256,7 +256,7 @@ end
     SoilCanopyModel,
     LandModel,
     CanopyModel,
-} p.canopy.hydraulics.area_index.leaf
+} p.canopy.biomass.area_index.leaf
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
@@ -270,12 +270,12 @@ end
     SoilCanopyModel,
     LandModel,
     CanopyModel,
-} p.canopy.hydraulics.area_index.root
+} p.canopy.biomass.area_index.root
 @diagnostic_compute "stem_area_index" Union{
     SoilCanopyModel,
     LandModel,
     CanopyModel,
-} p.canopy.hydraulics.area_index.stem
+} p.canopy.biomass.area_index.stem
 
 # Canopy - Photosynthesis
 @diagnostic_compute "photosynthesis_gross_canopy" Union{
@@ -762,7 +762,7 @@ function compute_net_radiation!(
 end
 
 # variables stored in Y (prognostic or state variables)
-nan_if_no_canopy(T::FT, AI::FT) where {FT <: Real} = AI > 0 ? T : FT(NaN)
+nan_if_no_canopy(T::FT, PAI::FT) where {FT <: Real} = PAI > 0 ? T : FT(NaN)
 function compute_canopy_temperature!(
     out,
     Y,
@@ -770,24 +770,22 @@ function compute_canopy_temperature!(
     t,
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
-    AI = p.scratch1
-    @. AI =
-        p.canopy.hydraulics.area_index.leaf +
-        p.canopy.hydraulics.area_index.stem
+    PAI = p.scratch1
+    @. PAI = p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         out .=
             nan_if_no_canopy.(
                 canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                AI,
+                PAI,
             )
         return out
     else
         out .=
             nan_if_no_canopy.(
                 canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                AI,
+                PAI,
             )
     end
 end
@@ -798,23 +796,21 @@ function compute_canopy_temperature!(
     t,
     land_model::CanopyModel{FT},
 ) where {FT}
-    AI =
-        p.canopy.hydraulics.area_index.leaf .+
-        p.canopy.hydraulics.area_index.stem # Allocates
+    PAI = p.canopy.biomass.area_index.leaf .+ p.canopy.biomass.area_index.stem # Allocates
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         out .=
             nan_if_no_canopy.(
                 canopy_temperature(land_model.energy, land_model, Y, p),
-                AI,
+                PAI,
             )
         return out
     else
         out .=
             nan_if_no_canopy.(
                 canopy_temperature(land_model.energy, land_model, Y, p),
-                AI,
+                PAI,
             )
     end
 end

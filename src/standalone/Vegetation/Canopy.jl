@@ -38,7 +38,7 @@ import ClimaLand:
     Soil
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
-export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
+export SharedCanopyParameters, CanopyModel
 include("./component_models.jl")
 include("./biomass.jl")
 include("./PlantHydraulics.jl")
@@ -132,12 +132,12 @@ end
 
 ## Energy models
 """
-    BigLeafEnergyModel{FT}(; ac_canopy = FT(2e3)) where {FT <: AbstractFloat}
+    BigLeafEnergyModel{FT}(; ac_canopy = FT(2.5e3)) where {FT <: AbstractFloat}
 
 Creates a BigLeafEnergyModel using default parameters of type FT.
 
 The following default parameter is used:
-- ac_canopy = FT(2e3) (J m^-2 K^-1) - canopy specific heat per area
+- ac_canopy = FT(2.5e3) (J m^-2 K^-1) - canopy specific heat per area
 """
 function BigLeafEnergyModel{FT}(
     toml_dict::CP.ParamDict;
@@ -255,15 +255,11 @@ end
 """
     PlantHydraulicsModel{FT}(
         domain,
-        LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
         n_stem::Int = 0,
         n_leaf::Int = 1,
         h_stem::FT = FT(0),
         h_leaf::FT = FT(1),
-        SAI::FT = FT(0),
-        RAI::FT = FT(1),
-        ai_parameterization = PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI),
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
@@ -272,21 +268,16 @@ end
             c = FT(4),
         ),
         retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
-        rooting_depth = clm_rooting_depth(domain.space.surface),
         transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
-
-The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
 The following default parameters are used:
 - n_stem = 0 (unitless) - number of stem compartments
 - n_leaf = 1 (unitless) - number of leaf compartments
 - h_stem = 0 (m) - height of the stem compartment
 - h_leaf = 1 (m) - height of the leaf compartment
-- SAI = 0 (m2/m2) - stem area index
-- RAI = 1 (m2/m2) - root area index
 - ν = 1.44e-4 (m3/m3) - porosity
 - S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
 - K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
@@ -302,24 +293,15 @@ https://doi.org/10.1029/2023WR035481
 """
 function PlantHydraulicsModel{FT}(
     domain,
-    LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
     h_leaf::FT = FT(1),
-    SAI::FT = toml_dict["SAI"],
-    RAI::FT = toml_dict["RAI"],
-    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-        LAI,
-        SAI,
-        RAI,
-    ),
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
     retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
-    rooting_depth = clm_rooting_depth(domain.space.surface),
     transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
     @assert n_stem >= 0 "Stem number must be non-negative"
@@ -349,12 +331,10 @@ function PlantHydraulicsModel{FT}(
         )
 
     parameters = PlantHydraulics.PlantHydraulicsParameters(;
-        ai_parameterization,
         ν,
         S_s,
         conductivity_model,
         retention_model,
-        rooting_depth,
     )
     return PlantHydraulics.PlantHydraulicsModel{FT}(;
         n_stem,
@@ -363,6 +343,47 @@ function PlantHydraulicsModel{FT}(
         compartment_surfaces,
         parameters,
         transpiration,
+    )
+end
+
+"""
+    PrescribedBiomassModel{FT}(
+        domain,
+        LAI::AbstractTimeVaryingInput,
+        toml_dict::CP.ParamDict;
+        SAI::FT = toml_dict["SAI"],
+        RAI::FT = toml_dict["RAI"],
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"]
+    ) where {FT <: AbstractFloat}
+
+Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
+
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
+
+The following default parameters are used:
+- SAI = 0 (m2/m2) - stem area index
+- RAI = 1 (m2/m2) - root area index
+- height = 1m
+"""
+function PrescribedBiomassModel{FT}(
+    domain,
+    LAI::AbstractTimeVaryingInput,
+    toml_dict::CP.ParamDict;
+    SAI::FT = toml_dict["SAI"],
+    RAI::FT = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FT <: AbstractFloat}
+    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    return PrescribedBiomassModel{
+        FT,
+        typeof(plant_area_index),
+        typeof(rooting_depth),
+    }(
+        plant_area_index,
+        rooting_depth,
+        height,
     )
 end
 
@@ -565,7 +586,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -583,6 +604,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <:
     energy::EM
     "SIF model, a canopy component model"
     sif::SIFM
+    "Biomass parameterization, a canopy component model"
+    biomass::BM
     "Boundary Conditions"
     boundary_conditions::B
     "Shared canopy parameters between component models"
@@ -601,6 +624,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
+        biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
@@ -626,6 +650,7 @@ function CanopyModel{FT}(;
     soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
+    biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
@@ -647,6 +672,13 @@ function CanopyModel{FT}(;
         @assert typeof(photosynthesis) <: PModel{FT} "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
     end
 
+    if typeof(hydraulics) <: PlantHydraulicsModel{FT}
+        @assert biomass.height ==
+                hydraulics.compartment_surfaces[end] -
+                hydraulics.compartment_surfaces[1]
+    end
+
+
     args = (
         autotrophic_respiration,
         radiative_transfer,
@@ -656,6 +688,7 @@ function CanopyModel{FT}(;
         hydraulics,
         energy,
         sif,
+        biomass,
         boundary_conditions,
         parameters,
         domain,
@@ -681,8 +714,9 @@ end
         photosynthesis = FarquharModel{FT}(domain, toml_dict),
         conductance = MedlynConductanceModel{FT}(domain, toml_dict),
         soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-        hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
+        hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
         energy = BigLeafEnergyModel{FT}(toml_dict),
+        biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(),
     ) where {FT, PSE}
 
@@ -722,8 +756,9 @@ function CanopyModel{FT}(
     photosynthesis = FarquharModel{FT}(domain, toml_dict),
     conductance = MedlynConductanceModel{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
-    hydraulics = PlantHydraulicsModel{FT}(domain, LAI, toml_dict),
+    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
+    biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     sif = Lee2015SIFModel{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
@@ -742,6 +777,7 @@ function CanopyModel{FT}(
         soil_moisture_stress,
         hydraulics,
         energy,
+        biomass,
         sif,
     ]
         # For component models without parameters, skip the check
@@ -751,6 +787,8 @@ function CanopyModel{FT}(
                 axes(component.parameters) == domain.space.surface
     end
 
+    # Confirm that the LAI passed agrees with the LAI of the biomass model
+    @assert biomass.plant_area_index.LAI == LAI
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
@@ -773,6 +811,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         sif,
+        biomass,
         boundary_conditions,
         parameters,
         domain,
@@ -801,6 +840,7 @@ canopy_components(::CanopyModel) = (
     :energy,
     :sif,
     :soil_moisture_stress,
+    :biomass,
 )
 
 """
@@ -1004,11 +1044,8 @@ has a single update_aux! function, given here.
 function ClimaLand.make_update_aux(canopy::CanopyModel)
     function update_aux!(p, Y, t)
 
-        # Extend to other fields when necessary
-        # Update the prescribed fields to the current time `t`,
-        # prior to updating the rest of the auxiliary state to
-        # the current time, as they depend on prescribed fields.
-        set_canopy_prescribed_field!(canopy.hydraulics, p, t)
+        # This updates LAI; it must come first.
+        update_biomass!(p, Y, t, canopy.biomass, canopy)
 
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
@@ -1176,6 +1213,11 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
     function set_initial_cache!(p, Y0, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
+        # Make sure that the hydraulics scheme and the biomass scheme are compatible
+        hydraulics = model.hydraulics
+        n_stem = hydraulics.n_stem
+        n_leaf = hydraulics.n_leaf
+        lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
     end
     return set_initial_cache!
 end

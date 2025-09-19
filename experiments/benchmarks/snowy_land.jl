@@ -114,7 +114,7 @@ function setup_prob(
     energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
 
     # Roughness lengths
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain, LAI)
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain)
     h_canopy = hydraulics.compartment_surfaces[end]
     z_0m = FT(0.13) * h_canopy
     z_0b = FT(0.1) * z_0m

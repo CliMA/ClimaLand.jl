@@ -670,6 +670,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     parameters_init = PModelParameters(
         cstar = parameters.cstar,
         β = parameters.β,
+        temperature_dep_yield = parameters.temperature_dep_yield,
         ϕ0_c4 = parameters.ϕ0_c4,
         ϕ0_c3 = parameters.ϕ0_c3,
         ϕa0_c3 = parameters.ϕa0_c3,
@@ -970,22 +971,16 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 end
 
 get_Vcmax25_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.OptVars.Vcmax25_opt / max(
-        p.canopy.hydraulics.area_index.leaf,
-        sqrt(eps(eltype(m.constants))),
-    ),
+    p.canopy.photosynthesis.OptVars.Vcmax25_opt /
+    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 get_Rd_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.Rd / max(
-        p.canopy.hydraulics.area_index.leaf,
-        sqrt(eps(eltype(m.constants))),
-    ),
+    p.canopy.photosynthesis.Rd /
+    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 get_An_leaf(p, m::PModel) = @.lazy(
-    p.canopy.photosynthesis.An / max(
-        p.canopy.hydraulics.area_index.leaf,
-        sqrt(eps(eltype(m.constants))),
-    ),
+    p.canopy.photosynthesis.An /
+    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 
 get_GPP_canopy(p, m::PModel) = p.canopy.photosynthesis.GPP
