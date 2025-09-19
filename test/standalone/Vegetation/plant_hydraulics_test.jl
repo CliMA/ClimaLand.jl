@@ -87,10 +87,12 @@ for FT in (Float32, Float64)
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
-        shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+        sf = MoninObukhovCanopyFluxes{FT, FT}(
+            FT(0.01),
             z_0m,
             z_0b,
-            earth_param_set,
+            FT(0.67) * h_int,
+            toml_dict["leaf_Cd"],
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
@@ -214,8 +216,8 @@ for FT in (Float32, Float64)
         )
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
-            parameters = shared_params,
-            domain = domain,
+            earth_param_set,
+            domain,
             autotrophic_respiration = autotrophic_respiration_model,
             radiative_transfer = rt_model,
             photosynthesis = photosynthesis_model,
@@ -228,6 +230,7 @@ for FT in (Float32, Float64)
                 atmos,
                 radiation,
                 soil_driver,
+                sf,
             ),
         )
         # Set system to hydrostatic equilibrium

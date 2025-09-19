@@ -72,7 +72,7 @@ function update_soil_moisture_stress!(
     canopy,
 )
     # unpack constants
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     n_stem = canopy.hydraulics.n_stem

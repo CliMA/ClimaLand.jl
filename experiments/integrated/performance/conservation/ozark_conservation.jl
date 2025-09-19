@@ -87,8 +87,6 @@ for float_type in (Float32, Float64)
         h_leaf,
         h_stem,
         h_canopy,
-        z_0m,
-        z_0b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
     compartment_midpoints =
@@ -245,8 +243,6 @@ for float_type in (Float32, Float64)
         canopy_forcing,
         LAI,
         toml_dict;
-        z_0m,
-        z_0b,
         prognostic_land_components,
         radiative_transfer,
         photosynthesis,

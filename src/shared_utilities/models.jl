@@ -23,7 +23,8 @@ export AbstractModel,
     get_model_callbacks,
     name,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    get_earth_param_set
 
 import ClimaComms: context, device
 import .Domains: coordinates
@@ -61,6 +62,13 @@ Returns a symbol of the model component name, e.g. :soil or :vegetation.
 """
 name(model::AbstractModel) =
     error("`name` not implemented for $(Base.typename(typeof(model)).wrapper)")
+
+"""
+    get_earth_param_set(model::AbstractModel)
+
+A helper function which returns the earth_param_set of the model.
+"""
+get_earth_param_set(model::AbstractModel) = model.parameters.earth_param_set
 
 """
     prognostic_vars(m::AbstractModel)

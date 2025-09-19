@@ -816,8 +816,7 @@ end
                         T_sfc,
                         )
 
-A helper function which returns the surface air density; this assumes that
-the `model` has a property called `parameters` containing `earth_param_set`.
+A helper function which returns the surface air density.
 
 We additionally include the `atmos` type as an argument because
 the surface air density computation will change between a coupled simulation
@@ -834,8 +833,8 @@ function surface_air_density(
     t,
     T_sfc,
 )
-    thermo_params =
-        LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    eps = get_earth_param_set(model)
+    thermo_params = LP.thermodynamic_parameters(eps)
     return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
 end
 

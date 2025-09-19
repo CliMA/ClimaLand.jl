@@ -10,4 +10,5 @@ ClimaLand.AbstractExpModel
 ClimaLand.AbstractImExModel
 ClimaLand.name
 ClimaLand.initialize
+ClimaLand.get_earth_param_set
 ```
