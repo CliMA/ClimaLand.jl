@@ -30,7 +30,7 @@ jobs:
       - name: Cache Julia depot
         uses: actions/cache@v4
         with:
-          # Cache Julia's depot (packages, compiled code, artifacts, etc.)
+          # Cache Julia's depot
           path: |
             ~/.julia/packages
             ~/.julia/compiled
