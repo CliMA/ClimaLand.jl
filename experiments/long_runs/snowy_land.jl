@@ -174,6 +174,7 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
+CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)

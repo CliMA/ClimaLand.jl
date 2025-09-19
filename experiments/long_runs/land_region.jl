@@ -155,6 +155,7 @@ toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, context, start_date, Δt, domain, toml_dict)
 
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
