@@ -230,8 +230,11 @@ function make_set_initial_state_from_file(
             Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
         end
 
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-        T_bounds = extrema(Y.canopy.energy.T)
+        # If the canopy model has an energy model, we need to set the initial temperature
+        hasproperty(Y.canopy, :energy) &&
+            evaluate!(Y.canopy.energy.T, atmos.T, t0)
+
+        T_bounds = extrema(p.snow.T)
 
         set_soil_initial_conditions!(
             Y,
@@ -272,7 +275,9 @@ function make_set_initial_state_from_file(
         T_bounds = extrema(p.drivers.T)
 
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+        if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+            Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+        end
 
         # If the canopy model has an energy model, we need to set the initial temperature
         hasproperty(Y.canopy, :energy) &&

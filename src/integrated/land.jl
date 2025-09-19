@@ -350,9 +350,6 @@ function make_update_boundary_fluxes(
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
-        # update root extraction
-        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
-
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -393,6 +390,9 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
+
+        # update root extraction
+        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
     end
     return update_boundary_fluxes!
 end
