@@ -411,3 +411,58 @@ tag = "BucketModelParameters"
 value = 0.8
 type = "float"
 tag = "PrescribedBaregroundAlbedo"
+
+# Lee 2015 SIF model parameters
+["kf"]
+value = 0.05
+type = "float"
+description = "The rate coefficient for florescence, unitless"
+tag = "SIFParameters"
+
+["kd_p1"]
+value = 0.03
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["kd_p2"]
+value = 0.0273
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["min_kd"]
+value = 0.087
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["kn_p1"]
+value = 6.2473
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+tag = "SIFParameters"
+
+["kn_p2"]
+value = 0.5944
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+tag = "SIFParameters"
+
+["kp"]
+value = 4.0
+type = "float"
+description = "Rate coefficient for photochemical quenching"
+tag = "SIFParameters"
+
+["kappa_p1"]
+value = 0.045
+type = "float"
+description = "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+tag = "SIFParameters"
+
+["kappa_p2"]
+value = 7.85
+type = "float"
+description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+tag = "SIFParameters"

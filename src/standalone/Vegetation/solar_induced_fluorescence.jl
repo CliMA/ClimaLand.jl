@@ -11,23 +11,23 @@ $(DocStringExtensions.FIELDS)
 """
 @kwdef struct SIFParameters{FT <: AbstractFloat}
     "The rate coefficient for florescence, unitless"
-    kf::FT = FT(0.05)
+    kf::FT
     "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
-    kd_p1::FT = FT(0.03)
+    kd_p1::FT
     "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
-    kd_p2::FT = FT(0.0273)
+    kd_p2::FT
     "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
-    min_kd::FT = FT(0.087)
+    min_kd::FT
     "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
-    kn_p1::FT = FT(6.2473)
+    kn_p1::FT
     "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
-    kn_p2::FT = FT(0.5944)
+    kn_p2::FT
     "Rate coefficient for photochemical quenching"
-    kp::FT = FT(4.0)
+    kp::FT
     "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
-    kappa_p1::FT = FT(0.045)
+    kappa_p1::FT
     "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level).  Lee et al 2015."
-    kappa_p2::FT = FT(7.85)
+    kappa_p2::FT
 end
 
 Base.eltype(::SIFParameters{FT}) where {FT} = FT
@@ -41,10 +41,6 @@ Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948.
 """
 struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
     parameters::SP
-    function Lee2015SIFModel{FT}() where {FT}
-        parameters = SIFParameters{FT}()
-        new{FT, typeof(parameters)}(parameters)
-    end
 end
 
 ClimaLand.name(model::AbstractSIFModel) = :sif
