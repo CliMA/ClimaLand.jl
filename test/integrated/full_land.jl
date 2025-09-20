@@ -202,7 +202,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     domain.space.surface,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT;
 )
 LAI = ClimaLand.Canopy.prescribed_lai_modis(

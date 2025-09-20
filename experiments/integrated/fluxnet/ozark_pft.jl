@@ -30,7 +30,6 @@ using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict)
 climaland_dir = pkgdir(ClimaLand)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
@@ -86,8 +85,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-    z0_m,
-    z0_b,
+    z_0m,
+    z_0b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 compartment_midpoints =
@@ -156,7 +155,7 @@ pft_pcts = [
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 
@@ -265,8 +264,8 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m = z0_m,
-    z_0b = z0_b,
+    z_0m,
+    z_0b,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,

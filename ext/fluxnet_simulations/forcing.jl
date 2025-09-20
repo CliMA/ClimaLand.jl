@@ -1,4 +1,6 @@
 using NCDatasets
+import ClimaParams as CP
+
 
 """
      prescribed_forcing_fluxnet(site_ID,
@@ -6,7 +8,7 @@ using NCDatasets
                                 long,
                                 hour_offset_from_UTC,
                                 start_date,
-                                earth_param_set,
+                                toml_dict::CP.ParamDict,
                                 FT;
                                 gustiness=1,
                                 split_precip= true,
@@ -15,7 +17,7 @@ using NCDatasets
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
 the hour offset of the site from UTC (local_time + offset = time in UTC),
-and the earth_param_set.
+and the `toml_dict`.
 
 This requires (1) reading in the data, (2) removing missing values,
  (3) converting units, (4) computing the specific humidity and percent of
@@ -44,12 +46,13 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     hour_offset_from_UTC,
     atmos_h,
     start_date, # in UTC
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     FT;
     split_precip = true,
     gustiness = 1,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
@@ -200,7 +203,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         atmos_P,
         start_date,
         atmos_h,
-        earth_param_set;
+        toml_dict;
         c_co2,
     )
 
@@ -218,7 +221,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         LW_d,
         start_date,
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
     )
     return (; atmos, radiation)
 end

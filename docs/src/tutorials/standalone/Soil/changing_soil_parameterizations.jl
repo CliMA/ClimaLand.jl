@@ -28,7 +28,6 @@ using Dates
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models.
 FT = Float32
 toml_dict = LP.create_toml_dict(FT);
-earth_param_set = LP.LandParameters(toml_dict);
 
 # We will run this simulation on a column domain with 1 meter depth, at a lat/lon location near Pasadena, California.
 zmax = FT(0)
@@ -49,7 +48,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 );
 

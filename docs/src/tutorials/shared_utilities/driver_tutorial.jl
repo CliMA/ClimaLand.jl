@@ -149,7 +149,7 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 # - "strd", Downwelling longwave radiation J/m^2/hour (accumulated over an hour)
 
 # You also need the `surface_space` of your simulation (corresponding to the grid being used), the floating point
-# type of the simulation `FT`, the ClimaLand `earth_param_set`, and the `start_date`,
+# type of the simulation `FT`, the `toml_dict`, and the `start_date`,
 # which should be a date after the first date
 # in your ERA5 netcdf file and before the last date. Then you can access the atmospheric and radiative
 # drivers like:
@@ -158,6 +158,6 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 # atmos, radiation = ClimaLand.prescribed_forcing_era5(era5_ncdata_path,
 #                                                      surface_space,
 #                                                      start_date,
-#                                                      earth_param_set,
+#                                                      toml_dict,
 #                                                      FT)
 # ```

@@ -82,10 +82,10 @@ function perturbed_rh_specific_humidity_from_dewpoint(
 end
 
 """
-     prescribed_perturbed_temperature_era5(era5_ncdata_path,
+    prescribed_perturbed_temperature_era5(era5_ncdata_path,
                              surface_space,
                              start_date,
-                             earth_param_set,
+                             toml_dict::CP.ParamDict,
                              ΔT,
                              FT;
                              gustiness=1,
@@ -97,7 +97,7 @@ end
 
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
-and the earth_param_set, applying a change in the instantaneous temperature at each point
+and the `toml_dict`, applying a change in the instantaneous temperature at each point
 of ΔT, while keeping the relative humidity fixed. The LW_d shifts as LW_d -> LW_d + aΔT, with
 a= 2W/m^2/K a surface climate sensitivity parameter.
 
@@ -107,7 +107,7 @@ function prescribed_perturbed_temperature_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     ΔT,
     FT;
     gustiness = 1,
@@ -117,6 +117,7 @@ function prescribed_perturbed_temperature_era5(
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
@@ -208,7 +209,7 @@ function prescribed_perturbed_temperature_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )
@@ -266,7 +267,7 @@ function prescribed_perturbed_temperature_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)
@@ -277,7 +278,7 @@ end
      prescribed_perturbed_rh_era5(era5_ncdata_path,
                              surface_space,
                              start_date,
-                             earth_param_set,
+                             toml_dict::CP.ParamDict,
                              Δrh,
                              FT;
                              gustiness=1,
@@ -289,7 +290,7 @@ end
 
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
-and the earth_param_set, applying a change in the instantaneous change to relative
+and the `toml_dict`, applying a change in the instantaneous change to relative
 humidity at each point
 of Δrh. The perturbed rh is clipped to be within the range (0,1].
 
@@ -299,7 +300,7 @@ function prescribed_perturbed_rh_era5(
     era5_ncdata_path,
     surface_space,
     start_date,
-    earth_param_set,
+    toml_dict::CP.ParamDict,
     Δrh,
     FT;
     gustiness = 1,
@@ -309,6 +310,7 @@ function prescribed_perturbed_rh_era5(
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
 )
+    earth_param_set = LP.LandParameters(toml_dict)
     # Pass a list of files in all cases
     era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
@@ -398,7 +400,7 @@ function prescribed_perturbed_rh_era5(
         P_atmos,
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         gustiness = FT(gustiness),
         c_co2 = c_co2,
     )
@@ -454,7 +456,7 @@ function prescribed_perturbed_rh_era5(
         LW_d,
         start_date;
         θs = zenith_angle,
-        earth_param_set = earth_param_set,
+        toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
     return (; atmos, radiation)

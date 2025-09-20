@@ -20,8 +20,7 @@ using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float32;
-toml_dict = LP.create_toml_dict(FT)
-earth_param_set = LP.LandParameters(toml_dict);
+toml_dict = LP.create_toml_dict(FT);
 
 time_offset = -6
 lat = FT(38.7441) # degree
@@ -40,7 +39,7 @@ dt = 225.0;
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 ground = PrescribedGroundConditions{FT}(;

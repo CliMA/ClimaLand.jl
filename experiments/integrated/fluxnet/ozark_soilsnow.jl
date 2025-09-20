@@ -83,8 +83,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-    z0_m,
-    z0_b,
+    z_0m,
+    z_0b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 compartment_midpoints =
@@ -111,7 +111,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     time_offset,
     atmos_h,
     start_date,
-    earth_param_set,
+    toml_dict,
     FT,
 )
 

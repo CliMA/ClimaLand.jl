@@ -332,7 +332,6 @@ if !isnothing(DataToolsExt)
         #Model setup:
         FT = Float32
         toml_dict = LP.create_toml_dict(FT)
-        earth_param_set = LP.LandParameters(toml_dict)
         start_date = DateTime(2005)
         Δt = FT(180.0)
         domain = Point(; z_sfc = FT(0))
@@ -356,7 +355,7 @@ if !isnothing(DataToolsExt)
             P_atmos,
             start_date,
             h_atmos,
-            earth_param_set,
+            toml_dict,
         )
 
         #Test extension utilities
