@@ -115,8 +115,8 @@ function FluxnetSimulations.get_parameters(
     h_leaf = FT(12),
     h_stem = FT(14),
     h_canopy = h_leaf + h_stem,
-    z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m,
+    z_0m = FT(0.13) * h_canopy,
+    z_0b = FT(0.1) * z_0m,
 )
     return (;
         soil_ν,
@@ -161,8 +161,8 @@ function FluxnetSimulations.get_parameters(
         h_leaf,
         h_stem,
         h_canopy,
-        z0_m,
-        z0_b,
+        z_0m,
+        z_0b,
     )
 
 end
