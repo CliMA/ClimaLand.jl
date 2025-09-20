@@ -19,7 +19,23 @@ jobs:
       - uses: julia-actions/setup-julia@latest
         with:
           version: '1.11'
-      - uses: julia-actions/cache@v2
+      - name: Cache Julia depot
+        uses: actions/cache@v4
+        with:
+          # Cache Julia's depot
+          path: |
+            ~/.julia/packages
+            ~/.julia/compiled
+            ~/.julia/artifacts
+            ~/.julia/scratchspaces
+            ~/.julia/registries
+            ~/.julia/logs
+          # The cache key includes the OS, Julia version, and the project's dependencies
+          key: ubuntu-latest-julia-1.11-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
+          # Fallback keys to use if the primary key isn't found
+          restore-keys: |
+            ubuntu-latest-julia-1.11-
+            ubuntu-latest-julia-
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.precompile()'
       - name: Build and deploy
