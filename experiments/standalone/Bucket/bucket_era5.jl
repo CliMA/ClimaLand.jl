@@ -167,6 +167,7 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
     subsurface_space,
     output_dir;
     start_date,
+    compression_level = 1,
 )
 diags = ClimaLand.default_diagnostics(
     model,
