@@ -78,7 +78,7 @@ with the prognostic variables of the canopy component
 
 The input `state` is usually a ClimaCore Field object.
 """
-function initialize_prognostic(component::AbstractCanopyComponent, state)
+function initialize_prognostic(@nospecialize(component::AbstractCanopyComponent), state)
     ClimaLand.initialize_vars(
         prognostic_vars(component),
         prognostic_types(component),
@@ -101,9 +101,9 @@ with the auxiliary variables of the canopy component
 The input `state` is usually a ClimaCore Field object.
 """
 function initialize_auxiliary(
-    component::AbstractCanopyComponent{FT},
+   @nospecialize(component::AbstractCanopyComponent),
     state,
-) where {FT}
+)
     ClimaLand.initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),
@@ -124,7 +124,7 @@ The right hand side for the entire canopy model can make use of
 these functions for the individual components.
 """
 function ClimaLand.make_compute_exp_tendency(
-    component::AbstractCanopyComponent,
+    @nospecialize(component::AbstractCanopyComponent),
     canopy,
 )
     function compute_exp_tendency!(dY, Y, p, t)
@@ -148,7 +148,7 @@ The right hand side for the entire canopy model can make use of
 these functions for the individual components.
 """
 function ClimaLand.make_compute_imp_tendency(
-    component::AbstractCanopyComponent,
+    @nospecialize(component::AbstractCanopyComponent),
     canopy,
 )
     function compute_imp_tendency!(dY, Y, p, t)
@@ -163,7 +163,7 @@ function ClimaLand.make_compute_imp_tendency(
 end
 
 
-function make_compute_jacobian(component::AbstractCanopyComponent, canopy)
+function make_compute_jacobian(@nospecialize(component::AbstractCanopyComponent), canopy)
     function compute_jacobian!(W, Y, p, dtγ, t) end
     return compute_jacobian!
 end

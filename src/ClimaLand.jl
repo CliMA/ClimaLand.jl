@@ -95,9 +95,9 @@ end
 
 
 function initialize_prognostic(
-    model::AbstractLandModel{FT},
+    @nospecialize(model::AbstractLandModel),
     coords::NamedTuple,
-) where {FT}
+)
     components = land_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -108,9 +108,9 @@ function initialize_prognostic(
 end
 
 function initialize_auxiliary(
-    model::AbstractLandModel{FT},
+    @nospecialize(model::AbstractLandModel),
     coords::NamedTuple,
-) where {FT}
+)
     components = land_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -138,7 +138,7 @@ Additional auxiliary variables are specified by `lsm_aux_vars`, their types
 by `lsm_aux_types`, and their domain names by `lsm_aux_domain_names`.
 This function should be called during `initialize_auxiliary` step.
 """
-function initialize_lsm_aux(land::AbstractLandModel, land_coords)
+function initialize_lsm_aux(@nospecialize(land::AbstractLandModel), land_coords)
     vars = lsm_aux_vars(land)
     types = lsm_aux_types(land)
     domains = lsm_aux_domain_names(land)
@@ -152,7 +152,7 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords)
 end
 
 
-function make_imp_tendency(land::AbstractLandModel)
+Base.@nospecializeinfer function make_imp_tendency(@nospecialize(land::AbstractLandModel))
     components = land_components(land)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
@@ -168,7 +168,7 @@ function make_imp_tendency(land::AbstractLandModel)
     return imp_tendency!
 end
 
-function make_exp_tendency(land::AbstractLandModel)
+Base.@nospecializeinfer function make_exp_tendency(@nospecialize(land::AbstractLandModel))
     components = land_components(land)
     compute_exp_tendency_list =
         map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
@@ -184,10 +184,10 @@ function make_exp_tendency(land::AbstractLandModel)
     return exp_tendency!
 end
 
-function make_update_aux(land::AbstractLandModel)
+Base.@nospecializeinfer function make_update_aux(@nospecialize(land::AbstractLandModel))
     components = land_components(land)
     update_aux_function_list =
-        map(x -> make_update_aux(getproperty(land, x)), components)
+        map((@nospecialize x) -> make_update_aux(getproperty(land, x)), components)
     function update_aux!(p, Y, t)
         for f! in update_aux_function_list
             f!(p, Y, t)
@@ -196,7 +196,7 @@ function make_update_aux(land::AbstractLandModel)
     return update_aux!
 end
 
-function make_update_boundary_fluxes(land::AbstractLandModel)
+function make_update_boundary_fluxes(@nospecialize(land::AbstractLandModel))
     components = land_components(land)
     update_fluxes_function_list =
         map(x -> make_update_boundary_fluxes(getproperty(land, x)), components)
@@ -208,10 +208,10 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
     return update_boundary_fluxes!
 end
 
-function make_compute_jacobian(land::AbstractLandModel)
+Base.@nospecializeinfer function make_compute_jacobian(@nospecialize(land::AbstractLandModel))
     components = land_components(land)
     compute_jacobian_function_list =
-        map(x -> make_compute_jacobian(getproperty(land, x)), components)
+        map(( @nospecialize x) -> make_compute_jacobian(getproperty(land, x)), components)
     function compute_jacobian!(jacobian, Y, p, dtγ, t)
         for f! in compute_jacobian_function_list
             f!(jacobian, Y, p, dtγ, t)
@@ -327,7 +327,7 @@ function prognostic_domain_names(land::AbstractLandModel)
 end
 
 
-function auxiliary_vars(land::AbstractLandModel)
+function auxiliary_vars(@nospecialize land::AbstractLandModel)
     components = land_components(land)
     auxiliary_list = map(components) do model
         auxiliary_vars(getproperty(land, model))
@@ -338,7 +338,7 @@ function auxiliary_vars(land::AbstractLandModel)
     ))
 end
 
-function auxiliary_types(land::AbstractLandModel)
+function auxiliary_types(@nospecialize land::AbstractLandModel)
     components = land_components(land)
     auxiliary_list = map(components) do model
         auxiliary_types(getproperty(land, model))

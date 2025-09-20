@@ -547,10 +547,8 @@ end
         )
 
         Y, p, coords = ClimaLand.initialize(canopy)
-
         Y.canopy.hydraulics .= plant_ν
         Y.canopy.energy.T = FT(289)
-
         set_initial_cache! = make_set_initial_cache(canopy)
         t0 = FT(0.0)
         imp_tendency! = ClimaLand.make_imp_tendency(canopy)
