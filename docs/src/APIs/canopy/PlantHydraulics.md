@@ -6,11 +6,12 @@ CurrentModule = ClimaLand.PlantHydraulics
 ## Models and Parameters
 
 ```@docs
+ClimaLand.PlantHydraulics.SteadyStateModel
 ClimaLand.PlantHydraulics.PlantHydraulicsModel
 ClimaLand.PlantHydraulics.PlantHydraulicsParameters
 ```
 
-## Plant Hydraulics Parameterizations
+## Prognostic Plant Hydraulics Parameterizations
 
 ```@docs
 ClimaLand.PlantHydraulics.Weibull
@@ -26,9 +27,10 @@ ClimaLand.Canopy.PlantHydraulicsModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
 ) where {FT <: AbstractFloat}
+ClimaLand.Canopy.SteadyStateModel{FT}()
 ```
 
-## Plant Hydraulics Diagnostic Variables
+## Prognostic Hlant Hydraulics Diagnostic Variables
 
 ```@docs
 ClimaLand.PlantHydraulics.water_flux
