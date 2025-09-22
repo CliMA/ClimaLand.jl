@@ -92,9 +92,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     )
 
     # Overwrite some defaults for the canopy model
-    # Energy model
-    energy_args = Canopy.BigLeafEnergyParameters(toml_dict)
-    energy = Canopy.BigLeafEnergyModel{FT}(energy_args)
 
     # Plant hydraulics
     conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
@@ -114,6 +111,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
+    photosynthesis = PModel{FT}(toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -122,6 +121,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
+	photosynthesis,
+	conductance,
         z_0m,
         z_0b,
     )
@@ -183,13 +184,15 @@ function ClimaCalibrate.forward_model(iteration, member)
         LP.create_toml_dict(FT, override_files = [calibrate_params_path])
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+    diagnostics = ClimaLand.default_diagnostics(model, start_date; output_vars = ["swu","lwu","shf", "lhf"]
 
-    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir,user_callbacks = (ClimaLand.ReportCallback(1000), diagnostics)
     @info "Run: Global Soil-Canopy-Snow Model"
     @info "Resolution: $nelements"
     @info "Timestep: $Δt s"
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
+    CP.log_parameter_information(toml_dict, joinpath(ensemble_member_path, "log_params_$member.toml"))
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end

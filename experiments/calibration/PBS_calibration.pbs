@@ -2,7 +2,7 @@
 #PBS -N derecho_calibration
 #PBS -o output.txt
 #PBS -e error.txt
-#PBS -l walltime=6:00:00
+#PBS -l walltime=12:00:00
 #PBS -l select=1:ncpus=1:ngpus=1
 
 ## Account number for CliMA
@@ -14,6 +14,7 @@
 
 export PBS_ACCOUNT="UCIT0011"
 export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+export LONGER_RUN=""
 module load climacommon
 
 export CLIMACOMMS_DEVICE="CUDA"
