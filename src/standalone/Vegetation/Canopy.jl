@@ -337,7 +337,7 @@ function PlantHydraulicsModel{FT}(
                 [zmin], # surface at ground level
                 [h_stem * i for i in 1:n_stem], # stem compartments
                 [h_stem * n_stem + h_leaf * j for j in 1:n_leaf], # leaf compartments
-            )
+            ),
         )
     compartment_midpoints =
         FT.(
@@ -347,7 +347,7 @@ function PlantHydraulicsModel{FT}(
                     h_stem * n_stem + h_leaf * (j - 1) + h_leaf / 2 for
                     j in 1:n_leaf
                 ], # leaf compartments
-            )
+            ),
         )
 
     parameters = PlantHydraulics.PlantHydraulicsParameters(;

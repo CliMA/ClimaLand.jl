@@ -1,6 +1,4 @@
-# ClimaLand model structure
-
-Here, we explain the internal organization of ClimaLand models.
+# ClimaLand fundamental concepts
 
 ## Standalone and integrated models
 A core concept of ClimaLand's design is the presence of _standalone_ and _integrated_ models.
