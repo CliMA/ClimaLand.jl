@@ -66,27 +66,28 @@ include("list_standalone_models.jl")
 include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
+    "Fundamental Concepts" => "fundamental_concepts.md",
     "Running your first simulation" => "getting_started.md",
+    "Available Models and Parameterizations" => "available_models.md",
+    "Parameters" => "parameters.md",
     "Tutorials" => tutorials,
+    "Writing and accessing outputs" => diagnostics,
     "Model Equations" => standalone_models,
+    "Calibration and benchmark" => [
+        "Calibrating model parameters" => "calibration.md",
+        "Model Benchmark" => "leaderboard/leaderboard.md",
+    ],
+    "Running on GPU or with MPI" => "architectures.md",
     "Additional resources" => [
-        "Model structure" => "model_structure.md",
         "Repository structure" => "repo_structure.md",
-        "Available Models and Parameterizations" => "available_models.md",
-        "Analyzing model output" => [
-            "Diagnostics" => diagnostics,
-            "Leaderboard" => "leaderboard/leaderboard.md",
-        ],
-        "Running on GPU or with MPI" => "architectures.md",
-        "Calibration" => "calibration.md",
         "Restarting a simulation" => "restarts.md",
         "Software utilities" => [
             "ITime type" => "itime.md",
             "Shared utilities" => "shared_utilities.md",
         ],
         "Physical units" => "physical_units.md",
-        "Julia background" => "julia.md",
     ],
+    "Julia background" => "julia.md",
     "APIs" => apis,
     "Contributor guide" => "contributing.md",
     "References" => "references.md",

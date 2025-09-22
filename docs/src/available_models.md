@@ -1,7 +1,7 @@
 # Available Models and Parameterizations
 
 ## Standalone and integrated models
-As described in the [ClimaLand model structure](@ref) page, ClimaLand contains a variety of standalone
+As described in the [ClimaLand fundamental concepts](@ref) page, ClimaLand contains a variety of standalone
 and integrated models. A complete list of available models is provided here.
 
 ### ClimaLand standalone models

@@ -32,5 +32,4 @@ apis = [
         "Simulations" => "APIs/Simulations.md",
         "Solver Functions" => "APIs/SolverFunctions.md",
     ],
-    "Parameters" => "APIs/parameters.md",
 ]
