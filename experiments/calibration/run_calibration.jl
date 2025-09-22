@@ -18,7 +18,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (101, 15),
-    output_dir = "experiments/calibration/land_model",
+    output_dir = "/glade/derecho/scratch/kdeck/p-model-cal",
     rng_seed = 42,
 )
 
@@ -28,7 +28,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # the PBSManager
     if ClimaCalibrate.get_backend() == ClimaCalibrate.DerechoBackend
         addprocs(
-            ClimaCalibrate.PBSManager(ensemble_size),
+            ClimaCalibrate.PBSManager(21),
             q = "main",
             A = "UCIT0011",
             l_select = "1:ngpus=1:ncpus=4",
@@ -59,16 +59,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
         EKP.constrained_gaussian("low_water_pressure_sensitivity", 5e-6, 4e-6, 0, Inf),
         EKP.constrained_gaussian("moisture_stress_ref_water_pressure", -2e6, 1e6, -Inf, 0),
         EKP.constrained_gaussian("a", 0.00196, 0.0007, 0, Inf),
-	EKP.constrained_gaussian("K_sat_plant", 7e-8, 3e-8, 0, 1e-6),
-	EKP.constrained_gaussian("psi_63", -408.16, -100.0, -1000.0, -50.0),
-	EKP.constrained_gaussian("Weibull_c", 4, 1, 0.2, 6),
+        EKP.constrained_gaussian("K_sat_plant", 7e-8, 3e-8, 0, 1e-6),
+        EKP.constrained_gaussian("psi_63", -408.16, 100.0, -1000.0, -50.0),
+        EKP.constrained_gaussian("Weibull_c", 4, 1, 0.2, 6),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
         EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
-	EKP.constrained_gaussian("pmodel_ϕ0_c3", 0.052, 0.02, 0, Inf),
+        EKP.constrained_gaussian("pmodel_ϕ0_c3", 0.052, 0.02, 0, Inf),
         EKP.constrained_gaussian("pmodel_ϕ0_c4", 0.057, 0.02, 0, Inf),
-#	EKP.constrained_gaussian("emissivity_bare_soil", 0.96, 0.03, 0.0, 1.0),
-#        EKP.constrained_gaussian("canopy_emissivity", 0.96, 0.03, 0.0, 1.0),
-#        EKP.constrained_gaussian("ac_canopy", 7.5e3, 5e3, 1e3, Inf)
+#       EKP.constrained_gaussian("emissivity_bare_soil", 0.96, 0.03, 0.0, 1.0),
+#       EKP.constrained_gaussian("canopy_emissivity", 0.96, 0.03, 0.0, 1.0),
+#       EKP.constrained_gaussian("ac_canopy", 7.5e3, 5e3, 1e3, Inf)
     ]
     prior = EKP.combine_distributions(priors)
 

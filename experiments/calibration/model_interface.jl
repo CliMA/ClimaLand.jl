@@ -98,7 +98,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         surface_domain,
-        LAI,
         toml_dict;
         conductivity_model,
         retention_model,
@@ -111,7 +110,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    photosynthesis = PModel{FT}(toml_dict)
+    photosynthesis = PModel{FT}(domain, toml_dict)
     conductance = PModelConductance{FT}(toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
@@ -121,8 +120,8 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         energy,
         hydraulics,
-	photosynthesis,
-	conductance,
+        photosynthesis,
+        conductance,
         z_0m,
         z_0b,
     )
@@ -184,9 +183,9 @@ function ClimaCalibrate.forward_model(iteration, member)
         LP.create_toml_dict(FT, override_files = [calibrate_params_path])
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-    diagnostics = ClimaLand.default_diagnostics(model, start_date; output_vars = ["swu","lwu","shf", "lhf"]
+    diagnostics = ClimaLand.default_diagnostics(model, start_date; output_vars = ["swu","lwu","shf", "lhf"])
 
-    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir,user_callbacks = (ClimaLand.ReportCallback(1000), diagnostics)
+    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir,user_callbacks = (ClimaLand.ReportCallback(1000),), diagnostics)
     @info "Run: Global Soil-Canopy-Snow Model"
     @info "Resolution: $nelements"
     @info "Timestep: $Δt s"
