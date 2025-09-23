@@ -110,7 +110,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    photosynthesis = PModel{FT}(domain, toml_dict)
+    photosynthesis = PModel{FT}(domain, toml_dict;temperature_dep_yield = false)
     conductance = PModelConductance{FT}(toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,

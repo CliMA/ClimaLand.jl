@@ -58,7 +58,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         EKP.constrained_gaussian("low_water_pressure_sensitivity", 5e-6, 4e-6, 0, Inf),
         EKP.constrained_gaussian("moisture_stress_ref_water_pressure", -2e6, 1e6, -Inf, 0),
         EKP.constrained_gaussian("a", 0.00196, 0.0007, 0, Inf),
-        EKP.constrained_gaussian("K_sat_plant", 7e-8, 3e-8, 0, 1e-6),
+        EKP.constrained_gaussian("K_sat_plant", 7e-8, 3e-8, 0, 1.1e-7),
         EKP.constrained_gaussian("psi_63", -408.16, 100.0, -1000.0, -50.0),
         EKP.constrained_gaussian("Weibull_c", 4, 1, 0.2, 6),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
