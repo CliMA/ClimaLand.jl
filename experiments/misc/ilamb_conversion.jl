@@ -37,7 +37,10 @@ struct ILAMBMapping
     conversion_factor::Float64
 
     """Units of variable after applying conversion factor"""
-    units::String
+    ilamb_units::String
+
+    """Units of variable before conversion"""
+    clima_units::String
 end
 
 # Map between short name in NetCDF files produced to ClimaDiagnostics to
@@ -47,45 +50,99 @@ const ILAMB_VARIABLES = Dict(
         "gpp",
         "Gross Primary Production",
         0.01201,
-        "kg m-2 s-1",
+        "kg m-2 s-1", # kg C
+        "mol CO2 m^-2 s^-1",
     ),
-    "et" =>
-        ILAMBMapping("evspsbl", "Evapotranspiration", 1.0, "kg m-2 s-1"),
-    "lhf" => ILAMBMapping("hfls", "Latent Heat Flux", 1.0, "W m-2"),
-    "shf" => ILAMBMapping("hfss", "Sensible Heat Flux", 1.0, "W m-2"),
-    "lwu" =>
-        ILAMBMapping("rlus", "Upward Longwave Radiation", 1.0, "W m-2"),
-    "lwd" =>
-        ILAMBMapping("rlds", "Downward Longwave Radiation", 1.0, "W m-2"),
-    "swd" =>
-        ILAMBMapping("rsds", "Downward Shortwave Radiation", 1.0, "W m-2"),
-    "swu" =>
-        ILAMBMapping("rsus", "Upward Shortwave Radiation", 1.0, "W m-2"),
-    "lai" => ILAMBMapping("lai", "Leaf Area Index", 1.0, "1"),
+    "et" => ILAMBMapping(
+        "evspsbl",
+        "Evapotranspiration",
+        1.0,
+        "kg m-2 s-1",
+        "kg m^-2 s^-1",
+    ),
+    "lhf" =>
+        ILAMBMapping("hfls", "Latent Heat Flux", 1.0, "W m-2", "W m^-2"),
+    "shf" =>
+        ILAMBMapping("hfss", "Sensible Heat Flux", 1.0, "W m-2", "W m^-2"),
+    "lwu" => ILAMBMapping(
+        "rlus",
+        "Upward Longwave Radiation",
+        1.0,
+        "W m-2",
+        "W m^-2",
+    ),
+    "lwd" => ILAMBMapping(
+        "rlds",
+        "Downward Longwave Radiation",
+        1.0,
+        "W m-2",
+        "W m^-2",
+    ),
+    "swd" => ILAMBMapping(
+        "rsds",
+        "Downward Shortwave Radiation",
+        1.0,
+        "W m-2",
+        "W m^-2",
+    ),
+    "swu" => ILAMBMapping(
+        "rsus",
+        "Upward Shortwave Radiation",
+        1.0,
+        "W m-2",
+        "W m^-2",
+    ),
+    "lai" => ILAMBMapping("lai", "Leaf Area Index", 1.0, "1", "m^2 m^-2"),
     # Assuming the native range is 0–100 %
-    "snowc" => ILAMBMapping("scf", "Snow Cover Fraction", 1.0, "1"),
+    "snowc" => ILAMBMapping("scf", "Snow Cover Fraction", 1.0, "1", ""),
     "sr" => ILAMBMapping(
         "mrro",
         "Surface Runoff",
         1000.0 / 2.63e6, # 1 month ≈ 2,629,440 seconds = 2.63 × 10e6 seconds
         "kg m-2 s-1",
+        "m s^-1",
     ),
-    "ssr" =>
-        ILAMBMapping("mrros", "Subsurface Runoff", 1000.0, "kg m-2 s-1"),
-    "swe" => ILAMBMapping("swe", "Snow Water Equivalent", 1000.0, "kg m-2"),
-    "iwc" =>
-        ILAMBMapping("mrsos", "Soil Moisture (top layer)", 1.0, "kg m-2"),
-    "msf" => ILAMBMapping("msf", "Moisture Stress Factor", 1.0, "1"),
-    "trans" => ILAMBMapping("tran", "Transpiration", 1000.0, "kg m-2 s-1"),
+    "ssr" => ILAMBMapping(
+        "mrros",
+        "Subsurface Runoff",
+        1000.0,
+        "kg m-2 s-1",
+        "m s^-1",
+    ),
+    "swe" =>
+        ILAMBMapping("swe", "Snow Water Equivalent", 1000.0, "kg m-2", "m"),
+    "iwc" => ILAMBMapping(
+        "mrsos",
+        "Soil Moisture (top layer)",
+        1.0,
+        "kg m-2",
+        "kg/m^2",
+    ),
+    "msf" => ILAMBMapping("msf", "Moisture Stress Factor", 1.0, "1", ""),
+    "trans" => ILAMBMapping(
+        "tran",
+        "Transpiration",
+        1000.0,
+        "kg m-2 s-1",
+        "m s^-1",
+    ),
     "swc" => ILAMBMapping(
         "swc",
         "Soil Water Content (top 10cm)",
         1000.0,
         "kg m-2",
+        "m^3 m^-3",
     ),
-    "tsoil" => ILAMBMapping("tsl", "Soil Temperature (top 10cm)", 1.0, "K"),
-    "precip" => ILAMBMapping("pr", "Precipitation", -1.0, "kg m-2 s-1"),
-    "tair" => ILAMBMapping("tas", "Air Temperature", 1.0, "K"),
+    "tsoil" =>
+        ILAMBMapping("tsl", "Soil Temperature (top 10cm)", 1.0, "K", "K"),
+    "precip" => ILAMBMapping(
+        "pr",
+        "Precipitation",
+        -1.0,
+        "kg m-2 s-1",
+        "kg m^-2 s^-1",
+    ),
+    "tair" => ILAMBMapping("tas", "Air Temperature", 1.0, "K", "K"),
 )
 
 """
@@ -207,7 +264,8 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     # Use Float32 instead of Float64 to save space
     FT = Float32
     ilamb_mapping = ILAMB_VARIABLES[clima_short_name]
-    (; short_name, long_name, conversion_factor, units) = ilamb_mapping
+    (; short_name, long_name, conversion_factor, ilamb_units, clima_units) =
+        ilamb_mapping
     var_attribs = Dict(
         "_FillValue" => FT(1.0e20),
         "standard_name" => short_name,
@@ -219,6 +277,7 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     data = get_data(
         clima_ds,
         clima_short_name,
+        clima_units,
         conversion_factor,
         expected_dims,
         FT,
@@ -234,7 +293,13 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
 end
 
 """
-    get_data(clima_ds, clima_short_name, conversion_factor, expected_dims)
+    get_data(
+        clima_ds,
+        clima_short_name,
+        clima_units,
+        conversion_factor,
+        expected_dims
+    )
 
 Get the data from `clima_ds`, an open NetCDF file, with the name
 `clima_short_name`.
@@ -245,6 +310,7 @@ Additional preprocessing includes converting to units that ILAMB expects with
 function get_data(
     clima_ds,
     clima_short_name,
+    clima_units,
     conversion_factor,
     expected_dims,
     FT,
@@ -271,6 +337,9 @@ function get_data(
         NCDatasets.dimnames(clima_ds[clima_short_name]),
     )
     perm = indexin(expected_dims, collect(dimnames))
+    clima_ds[clima_short_name].attrib["units"] != clima_units && error(
+        "Units in the simulation-output NetCDF do not match the expected CliMA units for $clima_short_name. Update the conversion factor and units in the mapping and run this script again",
+    )
     data .*= conversion_factor
     data = permutedims(data, perm)
     return FT.(data)
