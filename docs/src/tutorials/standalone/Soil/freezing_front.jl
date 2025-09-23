@@ -2,7 +2,7 @@
 
 # Before reading this tutorial,
 # we recommend that you look over the coupled energy
-# and water [tutorial](@ref Soil/soil_energy_hydrology.md).
+# and water [tutorial](@ref "Coupled heat and water equations tending towards equilibrium").
 # That tutorial showed how to solve the heat equation for soil volumetric
 # internal energy `ρe_int`, simultaneously
 # with Richards equation for volumetric liquid water fraction `ϑ_l`, assuming zero
@@ -69,7 +69,7 @@
 
 # `` ϑ_l(t = 0, z) = 0.33 ``.
 
-# The problem setup and soil properties are chosen to match the lab experiment of Mizoguchi (1990), as detailed in Hansson (2004) and Dall'Amico (2011). Like Hansson et al., we allow for a small amount of energy leakage at the bottom of the domain to account for imperfect insulation.
+# The problem setup and soil properties are chosen to match the lab experiment of [Mizoguchi1990](@citet), as detailed in [Hansson2004](@citet) and [DallAmico2011](@citet). Like Hansson et al., we allow for a small amount of energy leakage at the bottom of the domain to account for imperfect insulation.
 
 # # Import necessary modules
 import SciMLBase
@@ -215,8 +215,8 @@ simulation = LandSimulation(
 sol = solve!(simulation);
 
 # # Comparison to data
-# This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained
-# by Mizoguchi (1990). No error bars were reported, and we haven't quantified the error in our
+# This data was obtained by us from the figures of [Hansson2004](@citet), but was originally obtained
+# by [Mizoguchi1990](@citet). No error bars were reported, and we haven't quantified the error in our
 # estimation of the data from images.
 dataset_path = ClimaLand.Artifacts.mizoguchi1990_soil_freezing_data();
 ds = readdlm(dataset_path, ',')
@@ -335,12 +335,12 @@ mae(sim_50h_interp, vwc[mask_50h])
 # where we have assumed that assumed `T` is near the freezing point, and then
 # performed a Taylor explansion of the logarithm,
 # and we are ignoring the freezing point depression, which is small (less than one degree) for
-# non-clay soils. What we have sketched is further explained in Dall'Amico et al. (2011) and Kurylyk and Watanabe (2013).
+# non-clay soils. What we have sketched is further explained in [DallAmico2011](@citet) and [KurylykWatanabe2013](@citet).
 
 # What this implies is that above the freezing point, the pressure is equal to ``p_{l,0}``,
 # which is independent of temperature. Once the temperature drops below the freezing point,
 # the pressure drops. Since prior to freezing, the pressure ``p_{l,0}`` is equal to
-# `ρ_l g ψ(θ_l)`, water undergoing freezing alone (without flowing) should satisfy (Dall'Amico et al. (2011)):
+# `ρ_l g ψ(θ_l)`, water undergoing freezing alone (without flowing) should satisfy [DallAmico2011](@citet):
 
 # ``
 # p_{l,0} = ρ_l g ψ(θ_l+ρ_iθ_i/ρ_l)
@@ -362,10 +362,10 @@ mae(sim_50h_interp, vwc[mask_50h])
 # which brings the `θ_l` to a value which satisfies `p_l = ρ_l g ψ(θ_l)`.
 # This is why, in our simulation, we see the liquid
 # water fraction approaches a constant around 0.075 in the frozen region, rather than the residual fraction
-# of 0.019, or 0. This behavior is observed, for example, in the experiments of Watanabe et al. (2011).
+# of 0.019, or 0. This behavior is observed, for example, in the experiments of [Watanabe2011](@citet).
 
 # Although this approach may indicate that we should replace the pressure head appearing in the
-# diffusive water flux term in Richards equation (Dall'Amico et al. (2011)), we do not do so at present. As such, we may not be modeling
+# diffusive water flux term in Richards equation [DallAmico2011](@citet)), we do not do so at present. As such, we may not be modeling
 # the flow of water around the freezing front properly. However, we still observe cryosuction, which
 # is the flow of water towards the freezing front, from the unfrozen side. As the water freezes, the liquid
 # water content drops,
@@ -374,19 +374,11 @@ mae(sim_50h_interp, vwc[mask_50h])
 # simulation
 # than it was at `t=0` (when it was 0.33).
 
-# This model differs from others (e.g. Painter and Karra (2014), Hansson et al. (2004), Dall'Amico et al. (2011))  in that it requires us to set a timescale for the phase change, `τ`. We currently use the thermal time
+# This model differs from others (e.g. [PainterKarra2014](@citet), [Hansson2004](@citet), [DallAmico2011](@citet))  in that it requires us to set a timescale for the phase change, `τ`. We currently use the thermal time
 
 # ``
 # τ_{LTE}= c̃ Δz²/κ,
 # ``
 
 # which seems to work adequately for modeling freezing front propagation and
-# cryosuction, via comparisons with Mizoguchi (1990).
-
-# # References
-# - Mizoguchi, M., 1990. Water, heat and salt transport in freezing soil. Ph.D. thesis. (In Japanese.) University of Tokyo.
-# - Hansson et al., Vadose Zone Journal 3:693–704 (2004).
-# - M. Dall’Amico et al., The Cryosphere, 5, 469–484 (2011).
-# - Kurylyk and Watanabe, Advances in Water Resources, Volume 60, (2013)
-# - Watanabe et al. 2011, Annals of Glaciology , Volume 52 , Issue 58
-# - Painter and Karra, Vadose Zone Journal (2014) 13 (4)
+# cryosuction, via comparisons with [Mizoguchi1990](@citet).

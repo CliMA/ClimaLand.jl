@@ -1,6 +1,6 @@
 # # Coupled heat and water equations tending towards equilibrium
 
-# The [Richards equation tutorial](@ref Soil/richards_equation.md)
+# The [Richards equation tutorial](@ref "Hydrostatic Equilibrium test for Richards Equation")
 # demonstrates how to solve for water flow in soil, without considering
 # heat transfer, phase changes, or the effect of temperature and the effect of
 # ice on the hydraulic properties of the soil.
@@ -110,7 +110,7 @@ toml_dict = LP.create_toml_dict(FT);
 ν_ss_gravel = FT(0.0);
 # Other parameters include the hydraulic conductivity at saturation, the specific
 # storage, and the van Genuchten parameters for sand.
-# We recommend Chapter 8 of Bonan (2019) for finding parameters
+# We recommend Chapter 8 of [Bonan2019](@citet) for finding parameters
 # for other soil types.
 Ksat = FT(4.42 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
@@ -317,7 +317,3 @@ savefig("eq_temperature_plot.png");
 # One could also solve the equation for `ϑ_l` specified by
 # ``∂ h/∂ z = 0`` to determine the functional form of the
 # equilibrium profile of the liquid water.
-
-# # References
-# - Bonan, G.  Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
-# - Balland and Arp, J. Environ. Eng. Sci. 4: 549–558 (2005)

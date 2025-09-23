@@ -23,4 +23,5 @@ ClimaLand.surface_resistance
 ClimaLand.surface_specific_humidity
 ClimaLand.default_zenith_angle
 ClimaLand.prescribed_forcing_era5
+ClimaLand.net_radiation!
 ```

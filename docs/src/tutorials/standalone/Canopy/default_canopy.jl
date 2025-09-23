@@ -1,5 +1,5 @@
 # # Default Canopy Model Tutorial
-# Now that we've run a simple default soil model simulation in [Getting Started](@ref getting_started.md),
+# Now that we've run a simple default soil model simulation in [Getting Started](@ref "Installation of Julia and ClimaLand"),
 # let's try doing the same with the canopy model.
 
 # This tutorial sets up our CanopyModel on a column domain.
@@ -9,7 +9,7 @@
 # and we'll highlight the changes between them.
 
 # Note: we use SI units unless otherwise specified.
-# See our [Physical Units](https://clima.github.io/ClimaLand.jl/stable/physical_units/) documentation for more information.
+# See our [Physical Units](@ref "Physical units") documentation for more information.
 
 # First import the Julia packages we'll need.
 import ClimaParams as CP
@@ -124,6 +124,5 @@ LandSimVis.make_diurnal_timeseries(
 # ![](ct_default_canopy.png)
 # ![](trans_default_canopy.png)
 
-# Atmospheric forcing data citation:
-# Hersbach, Hans, et al. "The ERA5 global reanalysis."
-# Quarterly journal of the royal meteorological society 146.730 (2020): 1999-2049.
+# Atmospheric forcing data:
+# [Hersbach2020](@citet)

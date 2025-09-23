@@ -1,10 +1,10 @@
 # # Changing LandModel Parameterizations
-# In the [Canopy, soil, and snow](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.jl)
+# In the [Canopy, soil, and snow](@ref soilcanopy_fluxnet)
 # tutorial, we ran the integrated `LandModel`
 # at a Fluxnet site using all of the default parameterizations and parameters.
 
-# In two other tutorials ([Changing soil parameterizations](docs/src/tutorials/standalone/Soil/changing_soil_parameterizations.jl)
-# and [Changing canopy parameterizations](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl))
+# In two other tutorials ([Changing soil parameterizations](@ref "Changing Soil Parameterizations")
+# and [Changing canopy parameterizations](@ref "Changing Canopy Parameterizations"))
 # we explored how to change the parameterizations of the standalone soil and canopy models, respectively.
 
 # This tutorial will combine these two streams of work to set up a `LandModel`
@@ -17,14 +17,7 @@
 
 # # Fluxnet simulations with the full land model: snow, soil, canopy
 
-# As in the previous LandModel tutorial, we'll run at the Niwot Ridge site.
-# The forcing data was obtained from
-# AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871141
-
-# Citation: Peter D. Blanken, Russel K. Monson, Sean P. Burns,
-# David R. Bowling, Andrew A. Turnipseed (2022),
-# AmeriFlux FLUXNET-1F US-NR1 Niwot Ridge Forest (LTER NWT1),
-# Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1871141
+# As in the previous LandModel tutorial, we'll run at the Niwot Ridge site using data from [Blanken2022](@citet).
 
 # # Preliminary Setup
 using Dates
@@ -125,7 +118,7 @@ snow = Snow.SnowModel(
 );
 
 # Next, let's set up the canopy model using the `BeerLambertModel` radiative transfer parameterization
-# with custom parameters. We already did this in the [Changing canopy parameterizations](docs/src/tutorials/standalone/Canopy/changing_canopy_parameterizations.jl)
+# with custom parameters. We already did this in the [Changing canopy parameterizations](@ref "Changing Canopy Parameterizations")
 # tutorial, so it should be familiar. In that example we showed three different ways to construct the `BeerLambertModel`.
 # Here, we will use the third method, which takes the parameters object directly.
 G_Function = Canopy.ConstantGFunction(FT(0.5)); # leaf angle distribution value 0.5
@@ -142,7 +135,7 @@ radiative_transfer_parameters = Canopy.BeerLambertParameters(
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 
 # Now we can create the `CanopyModel` model with the specified radiative transfer
-# parameterizations passed as [keyword arguments](https://docs.julialang.org/en/v1/manual/functions/#Keyword-Arguments).
+# parameterizations passed as [keyword arguments](@extref Julia Keyword-Arguments).
 (; atmos, radiation) = forcing;
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,

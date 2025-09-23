@@ -1,7 +1,9 @@
+# # Evaporation from Gilat Loess soil
+
 # This sets up the simulation that mimicks the
 # lab experiment
-# presented in Gardener 1970b and modeled
-# also by Lehmann and Or, 2024.
+# presented in [Gardner1970](@citet) and modeled
+# also by [LehmannOr2024](@citet).
 
 # For further details on how to setup a simulation, please
 # see our other Soil tutorials. This one is very terse

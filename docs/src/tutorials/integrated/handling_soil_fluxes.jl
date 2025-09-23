@@ -1,7 +1,7 @@
 # # Background
 # When solving the partial differential equations describing the storage of water, ice, and energy in soil,
 # boundary conditions must be set for the soil liquid water and energy.
-# The tutorial on [boundary conditions for the soil model](@ref Soil/boundary_conditions.md) describes
+# The tutorial on [boundary conditions for the soil model](@ref "Boundary conditions for the soil model") describes
 # the various boundary condition options we currently support. Many of these are suitable for use when
 # replicating laboratory experiments or other standalone soil settings - for example, a particular experiment
 # may fix the temperature or water content at the top of a soil column. However, when we wish to model the
@@ -10,7 +10,7 @@
 # this option is called the `AtmosDrivenFluxBC`. This boundary condition type includes the atmospheric and radiative
 # forcings, the runoff parameterization, and finally, a Tuple which indicates which components of the land are present.
 # The last argument is what we will describe here. For more information on how to supply the prescribed forcing
-# data, please see the tutorial linked [here](@ref shared_utilities/driver_tutorial.jl).
+# data, please see the tutorial linked [here](@ref "Using atmospheric and radiative drivers").
 
 # # Adjusting the boundary conditions for the soil model when run as part of an integrated land model
 
@@ -34,7 +34,7 @@
 # `top_soil_boundary_condition = ClimaLand.Soil.AtmosDrivenFluxBC(atmos_forcing, radiative_forcing, runoff_parameterization, prognostic_land_components)`
 
 # Note that the land components are *always* in alphabetical order, and the symbols associated with each
-# land model component are *always* the same as the name of that component, i.e., 
+# land model component are *always* the same as the name of that component, i.e.,
 
 # `ClimaLand.name(snow_model) = :snow`
 

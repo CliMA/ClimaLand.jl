@@ -2,8 +2,8 @@
 
 # In this tutorial, we will demonstrate how we read in forcing data at a Fluxnet site
 # using our ClimaLand infrastructure. To see an example running a simulation at a
-# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](docs/src/tutorials/integrated/soil_canopy_fluxnet_tutorial.jl) 
-# or [LandModel](docs/src/tutorials/integrated/snowy_land_fluxnet_tutorial.jl)
+# Fluxnet site, please see the corresponding tutorials for the [SoilCanopyModel](@ref "Fluxnet simulations with an integrated soil and canopy model")
+# or [LandModel](@ref "Fluxnet simulations with the full land model: snow, soil, canopy")
 # To access the forcing data (LAI from MODIS, SW\_d, LW\_d, T\_air, q\_air,
 # P\_air, and precipitation from fluxtower data), you first need the
 # the fluxtower site ID.
@@ -43,7 +43,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 
 # ClimaLand also needs to know the height at which the atmospheric data
-# was recorded. 
+# was recorded.
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # It is also useful to know the bounds of the data,
@@ -154,22 +154,10 @@ comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset);
 # The data we use to force the simulations and to compare the results against
 # were obtained from Ameriflux:
 
-# US-Moz: https://doi.org/10.17190/AMF/1854370
-# Citation: Jeffrey Wood, Lianhong Gu (2025), AmeriFlux FLUXNET-1F US-MOz Missouri Ozark
-# Site, Ver. 5-7, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1854370
+# US-Moz: [WoodGu2025](@citet)
 
-# US-NR1: https://doi.org/10.17190/AMF/1871141
-# Citation: Peter D. Blanken, Russel K. Monson, Sean P. Burns,
-# David R. Bowling, Andrew A. Turnipseed (2022),
-# AmeriFlux FLUXNET-1F US-NR1 Niwot Ridge Forest (LTER NWT1),
-# Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1871141
+# US-NR1: [Blanken2022](@citet)
 
-# US-Var: https://doi.org/10.17190/AMF/1993904
-# Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023),
-# AmeriFlux FLUXNET-1F US-Var Vaira Ranch- Ione, Ver. 3-5, AmeriFlux AMP, (Dataset).
-# https://doi.org/10.17190/AMF/1993904
+# US-Var: [MaEtAl2023](@citet)
 
-# US-Ha1: https://doi.org/10.17190/AMF/1871137
-# Citation: J. William Munger (2022), AmeriFlux FLUXNET-1F US-Ha1
-# Harvard Forest EMS Tower (HFR1), Ver. 3-5, AmeriFlux AMP, (Dataset).
-# https://doi.org/10.17190/AMF/1871137
+# US-Ha1: [Munger2022](@citet)
