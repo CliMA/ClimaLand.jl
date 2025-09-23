@@ -118,7 +118,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        energy,
         hydraulics,
         photosynthesis,
         conductance,
@@ -183,9 +182,14 @@ function ClimaCalibrate.forward_model(iteration, member)
         LP.create_toml_dict(FT, override_files = [calibrate_params_path])
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-    diagnostics = ClimaLand.default_diagnostics(model, start_date; output_vars = ["swu","lwu","shf", "lhf"])
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        outdir;
+        start_date,
+     )
+    diagnostics = ClimaLand.default_diagnostics(model, start_date; output_vars = ["swu","lwu","shf", "lhf"], output_writer)
 
-    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir,user_callbacks = (ClimaLand.ReportCallback(1000),), diagnostics)
+    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir,user_callbacks = (), diagnostics)
     @info "Run: Global Soil-Canopy-Snow Model"
     @info "Resolution: $nelements"
     @info "Timestep: $Δt s"

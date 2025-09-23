@@ -54,7 +54,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @everywhere include(
         joinpath(experiment_dir, "calibration", "model_interface.jl"),
     )
-
     priors = [
         EKP.constrained_gaussian("low_water_pressure_sensitivity", 5e-6, 4e-6, 0, Inf),
         EKP.constrained_gaussian("moisture_stress_ref_water_pressure", -2e6, 1e6, -Inf, 0),
@@ -112,6 +111,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         ekp,
         CALIBRATE_CONFIG.n_iterations,
         prior,
-        CALIBRATE_CONFIG.output_dir,
+        CALIBRATE_CONFIG.output_dir
     )
 end
