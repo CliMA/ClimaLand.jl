@@ -20,6 +20,7 @@ module load climacommon
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+# the generate_observations.jl script must be run first, and not on GPU
 #julia --project=.buildkite/ experiments/calibration/generate_observations.jl
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl
 
