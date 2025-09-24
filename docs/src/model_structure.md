@@ -6,7 +6,12 @@ Here, we explain the internal organization of ClimaLand models.
 A core concept of ClimaLand's design is the presence of _standalone_ and _integrated_ models.
 In ClimaLand's framework, the land system is divided into individual components: soil, vegetation (or canopy), and snow. Each of these components can be run individually (_standalone_) or combined together (_integrated_).
 
-As an example, the soil model `EnergyHydrology` and the canopy model `CanopyModel` can each be set up and run on their own in standalone mode. Or, a user can set up the integrated `SoilCanopyModel`, which internally constructs each of these models and runs them in tandem, computing relevant interaction terms at each timestep.
+As an example, the soil model `EnergyHydrology` and the canopy model `CanopyModel`
+can each be set up and run on their own in standalone mode. Or, a user can set up
+the integrated `SoilCanopyModel`, which internally constructs each of these models
+and runs them in tandem, computing relevant interaction terms at each timestep.
+For a complete list of standalone and integrated models implemented in ClimaLand,
+please see the page [Available Models and Parameterizations](@ref).
 
 ## Model variables
 

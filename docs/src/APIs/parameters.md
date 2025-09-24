@@ -1,5 +1,21 @@
 # Parameters
 
+## Default parameters
+ClimaLand provides a file `toml/default_parameters.toml` containing default parameters.
+For each parameter, this file includes its name, type, default value, units,
+and model or parameterization it is used for.
+
+ClimaLand interacts with TOML parameter files via ClimaParams and ClimaLand.Parameters.
+To use the default parameter file, we create a parameter dictionary as follows:
+```julia
+import ClimaLand.Parameters as LP
+
+# Store default parameters
+toml_dict = LP.create_toml_dict(FT)
+```
+The dictionary `toml_dict` can then be passed to parameterization and model
+constructors, and the parameters values defined there will be used.
+
 ## How can I check that a parameter is actually being used?
 
 `ClimaParams` provides the function [`ClimaParams.log_parameter_information`](https://clima.github.io/ClimaParams.jl/dev/API/#ClimaParams.log_parameter_information)
