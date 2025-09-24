@@ -6,7 +6,7 @@
 # detail, use the getters/setters.
 
 const ALL_DIAGNOSTICS = Dict{String, DiagnosticVariable}()
-
+@nospecialize
 """
 
     add_diagnostic_variable!(; short_name,
@@ -66,6 +66,30 @@ function add_diagnostic_variable!(;
         compute!,
     )
 end
+
+function conditional_add_diagnostic_variable!(
+    possible_diags;
+    short_name,
+    long_name,
+    standard_name = "",
+    units,
+    comments = "",
+    compute!,
+)
+    if short_name in possible_diags
+        ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
+            short_name,
+            long_name,
+            standard_name,
+            units,
+            comments,
+            compute!,
+        )
+    end
+    return
+end
+
+@specialize
 
 """
 

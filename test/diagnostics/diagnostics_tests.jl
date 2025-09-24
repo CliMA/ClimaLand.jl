@@ -110,7 +110,7 @@ using Statistics
 
     # ClimaDiagnostics
 
-    ClimaLand.Diagnostics.define_diagnostics!(model)
+    ClimaLand.Diagnostics.define_diagnostics!(model, ["rn", "lhf"])
     diags = ["rn", "lhf"]
 
     tmpdir = mktempdir(".")
@@ -273,8 +273,21 @@ end
 
         Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(297.5)
+        p.canopy.biomass.area_index.leaf .= FT(0.3)
+        p.canopy.biomass.area_index.stem .= FT(0)
+        p.canopy.biomass.area_index.root .= FT(0.3)
+        return
     end
 
+    ClimaLand.make_imp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_exp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_update_aux(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_update_boundary_fluxes(::ClimaLand.LandModel) =
+        Returns(nothing)
+    ClimaLand.make_compute_jacobian(::ClimaLand.LandModel) = Returns(nothing)
+    Y, _, _ = initialize(model)
+    ClimaLand.FieldMatrixWithSolver(::typeof(Y)) =
+        ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "ct", "sco2"]
     reduction_period = :every_dt
@@ -298,6 +311,7 @@ end
         set_ic!,
         diagnostics,
         user_callbacks = (),
+        updateat = nothing,
     )
 
     # Test that the diagnostics were correctly created and computed once at initialization
