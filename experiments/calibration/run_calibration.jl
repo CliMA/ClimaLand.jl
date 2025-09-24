@@ -55,8 +55,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
         joinpath(experiment_dir, "calibration", "model_interface.jl"),
     )
     priors = [
-        EKP.constrained_gaussian("low_water_pressure_sensitivity", 5e-6, 4e-6, 0, Inf),
-        EKP.constrained_gaussian("moisture_stress_ref_water_pressure", -2e6, 1e6, -Inf, 0),
+        EKP.constrained_gaussian("moisture_stress_sc", 5e-6, 4e-6, 0, Inf),
+        EKP.constrained_gaussian("moisture_stress_pc", -2e6, 1e6, -Inf, 0),
         EKP.constrained_gaussian("a", 0.00196, 0.0007, 0, Inf),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
         EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
