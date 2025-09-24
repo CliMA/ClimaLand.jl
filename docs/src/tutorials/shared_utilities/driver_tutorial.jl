@@ -136,9 +136,36 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 
 # # Using ERA5 data
 # If you wish to force your ClimaLand simulation with ERA5 reanalysis data, there is a helper function
-# which can make this easier than specifying each atmospheric variable as individual `TimeVaryingInput`
+# makes this easier than specifying each atmospheric variable as individual `TimeVaryingInput`
 # objects, and then making the `PrescribedAtmosphere` struct.
-# You first need a local path to the netcdf file with the ERA5 data. This file must have the following variables:
+# ClimaLand provides two ERA5 NetCDF datasets:
+# - A high-resolution dataset with data on a 1 degree x 1 degree grid, available from 1979 to 2024.
+#  This dataset is about 8.5 GB per year of data.
+# - A low-resolution dataset with data on a 8 degree x 8 degree grid, available for the year 2008.
+#  This dataset is about 350 MB in size.
+# The low-resolution dataset is best for local simulations and for use in examples
+# in the documentation, but for production runs on compute clusters we recommend using the
+# high-resolution data.
+
+# To use the ERA5 data, you need to provide the `start_date` and `stop_date` of your simulation,
+# which should be within the range of dates covered by the dataset you are using (unless you are using
+# the low-resolution dataset for 2008, which will be reused for each year of simulation).
+# You'll also provide a flag `use_lowres_forcing` which is true if you want to use the low-resolution
+# dataset, and false otherwise.
+# Finally, you need the `surface_space` of your simulation (corresponding to the grid being used),
+# the parameter `toml_dict`, and the floating point type of the simulation `FT`.
+# Then you can access the atmospheric and radiative drivers like this:
+
+# ```julia
+# atmos, radiation = ClimaLand.prescribed_forcing_era5(start_date,
+#                                                      stop_date,
+#                                                      surface_space,
+#                                                      earth_param_set,
+#                                                      FT;
+#                                                      use_lowres_forcing = true)
+# ```
+
+# Each forcing dataset contains the following variables:
 # - "tp" Total precipitation as a mass/m^2/hour (accumulated over an hour)
 # - "sf" Snow precipitation as a mass/m^2/hour (accumulated over an hour)
 # - "u10n", "v10n", Neutral wind speed components in the horizontal, at 10m, in m/s
@@ -147,17 +174,3 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 # - "sp", Surface pressure in Pa
 # - "ssrd", Downwelling shortwave radiation in J/m^2/hour (accumulated over an hour)
 # - "strd", Downwelling longwave radiation J/m^2/hour (accumulated over an hour)
-
-# You also need the `surface_space` of your simulation (corresponding to the grid being used), the floating point
-# type of the simulation `FT`, the `toml_dict`, and the `start_date`,
-# which should be a date after the first date
-# in your ERA5 netcdf file and before the last date. Then you can access the atmospheric and radiative
-# drivers like:
-
-# ```julia
-# atmos, radiation = ClimaLand.prescribed_forcing_era5(era5_ncdata_path,
-#                                                      surface_space,
-#                                                      start_date,
-#                                                      toml_dict,
-#                                                      FT)
-# ```

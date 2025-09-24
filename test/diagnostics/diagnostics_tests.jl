@@ -165,14 +165,13 @@ start_date = DateTime(2008);
 stop_date = start_date + Second(60 * 60 * 72);
 dt = 1000.0;
 
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    surface_space,
     start_date,
+    stop_date,
+    surface_space,
     toml_dict,
-    FT,
+    FT;
+    use_lowres_forcing = true,
 );
 
 @testset "EnergyHydrology diagnostics" begin

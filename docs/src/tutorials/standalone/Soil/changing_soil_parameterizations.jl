@@ -35,20 +35,20 @@ longlat = FT.((-118.1, 34.1));
 domain = Domains.Column(; zlim = (zmin, zmax), nelements = 10, longlat);
 surface_space = domain.space.surface;
 
-# We choose the start_date, which is required to setup the forcing,
+# We choose the start and stop dates, which are required to setup the forcing,
 # which in turn is required by the model.
 start_date = DateTime(2008);
+stop_date = start_date + Second(60 * 60 * 72);
 
 # The soil model takes in 2 forcing objects, atmosphere and radiation,
 # which we read in from ERA5 data.
-era5_ncdata_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; lowres = true);
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    surface_space,
     start_date,
+    stop_date,
+    surface_space,
     toml_dict,
-    FT,
+    FT;
+    use_lowres_forcing = true,
 );
 
 # Now, we can create the EnergyHydrology model.

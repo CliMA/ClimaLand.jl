@@ -65,21 +65,15 @@ domain = ClimaLand.Domains.global_domain(FT; context, nelements)
 toml_dict = LP.create_toml_dict(FT)
 
 # Forcing data
-if LONGER_RUN
-    era5_ncdata_path =
-        ClimaLand.Artifacts.find_era5_year_paths(start_date, stop_date; context)
-else
-    era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
-end
 forcing = ClimaLand.prescribed_forcing_era5(
-    era5_ncdata_path,
-    domain.space.surface,
     start_date,
+    stop_date,
+    domain.space.surface,
     toml_dict,
     FT;
     max_wind_speed = 25.0,
     time_interpolation_method,
+    context,
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
 diagnostics = ClimaLand.default_diagnostics(

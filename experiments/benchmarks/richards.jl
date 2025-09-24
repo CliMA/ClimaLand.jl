@@ -77,11 +77,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     dz_tuple = (10.0, 0.1)
     domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
     surface_space = domain.space.surface
-    subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
+    stop_date = start_date + Second(tf)
     era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+        ClimaLand.Artifacts.find_era5_year_paths(start_date, stop_date; context)
+    interpolation_method = Interpolations.Linear()
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)
@@ -93,6 +94,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         surface_space;
         start_date,
         regridder_type,
+        regridder_kwargs = (; interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
     )
     forcing = (;
