@@ -119,6 +119,14 @@ simulation = Simulations.LandSimulation(
 );
 solve!(simulation);
 
+# We can optionally save the simulation parameters to a file for later reference.
+# Here we specify the filepath where we want to save the parameters, and then
+# ClimaParams handles the saving.
+# Note that any parameters overwritten via keyword arguments when constructing
+# models will not be reflected in this file (in this example there are none).
+parameter_log_file = "snowy_land_fluxnet_parameters.toml"
+CP.log_parameter_information(toml_dict, parameter_log_file)
+
 # # Plotting results
 LandSimVis.make_diurnal_timeseries(
     simulation;

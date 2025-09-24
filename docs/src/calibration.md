@@ -424,3 +424,11 @@ and `extend`.
     the simulation extend past `2008-9-1` with `extend`. For calibrating with
     monthly averages, `extend` should be `Dates.Month(1)` and for calibrating
     with seasonal averages, `extend` should be `Dates.Month(3)`.
+
+## Which parameters can I calibrate?
+ClimaLand.jl provides a full list of spatially-constant parameters that may be
+calibrated in `toml/default_parameters.toml`. For each parameter, this file
+includes the parameter name, type, default value, units, and model or
+parameterization it is used for.
+Please see that file to see which parameters could be calibrated
+for your model of interest.
