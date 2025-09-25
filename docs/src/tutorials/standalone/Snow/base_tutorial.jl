@@ -5,7 +5,7 @@
 # structurally-enforced constraints. The following steps through a
 # basic use-case of the system on an already-cleaned dataset, though
 # exploration of optional keyword arguments in the developed code and
-# additional tools for scraping data (explained in the [data tutorial](../data_tutorial/))
+# additional tools for scraping data (explained in the [data tutorial](data_tutorial.md))
 # provide for a richer set of functionality.
 
 # The updates of the neural snow model follow the equation
@@ -93,7 +93,7 @@ p_idx = 7;
 # to scrape SNOTEL data directly. We also set the
 # unit timestep seen in this data (daily, so 1 day) to be used for
 # setting the network's constraints as well as generating timeseries during usage.
-# To see the code that generated this data file, check out the [data tutorial](../data_tutorial/).
+# To see the code that generated this data file, check out the [data tutorial](data_tutorial.md).
 # We also specify the maximum gap size in the data (in units of Δt) that the network can traverse
 # before requiring a reset, via `hole_thresh`.
 training_data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
