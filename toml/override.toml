@@ -1,0 +1,27 @@
+["pmodel_β"]
+value = 61.29615306417728
+type = "float"
+
+[moisture_stress_pc]
+value = -7.094576350242221e7
+type = "float"
+
+["pmodel_ϕ0_c3"]
+value = 0.10075389387317808
+type = "float"
+
+[moisture_stress_sc]
+value = 3.97084257070759e-9
+type = "float"
+
+["pmodel_ϕ0_c4"]
+value = 0.03244733103323619
+type = "float"
+
+[a]
+value = 0.0097590649246887
+type = "float"
+
+[pmodel_cstar]
+value = 0.4571696519356825
+type = "float"
