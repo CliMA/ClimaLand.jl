@@ -116,7 +116,7 @@ makedocs(
     pages = pages,
     checkdocs = :exports,
     doctest = true,
-    warnonly = [:missing_docs, :footnote, :cross_references],
+    warnonly = [:missing_docs],
     clean = true,
     modules = [ClimaLand];
     plugins = [bib, links],
