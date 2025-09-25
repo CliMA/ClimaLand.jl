@@ -104,7 +104,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     canopy_forcing = (; atmos, radiation, ground)
 
     # Construct the P model manually since it is not a default
-    photosynthesis = PModel{FT}(domain, toml_dict; temperature_dep_yield = false))
+    photosynthesis = PModel{FT}(domain, toml_dict; temperature_dep_yield = false)
     conductance = PModelConductance{FT}(toml_dict)
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
