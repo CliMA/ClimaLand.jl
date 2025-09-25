@@ -10,8 +10,10 @@
 # Set environment variables for CliMA
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
+export LONGER_RUN=""
 
 # Build and run the Julia code
+# On GCP, you need to comment out the line below
 module load climacommon
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl
