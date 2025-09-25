@@ -37,7 +37,6 @@ using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64;
-time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 ClimaComms.init(context)
@@ -59,7 +58,6 @@ function setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
         toml_dict,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method,
         regridder_type,
         context,
     )

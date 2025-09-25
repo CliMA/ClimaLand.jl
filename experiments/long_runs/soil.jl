@@ -52,8 +52,6 @@ root_path = "soil_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
-time_interpolation_method =
-    LONGER_RUN ? LinearInterpolation() : LinearInterpolation(PeriodicCalendar())
 
 # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
 # If LONGER run, run for 20 years, with the correct forcing each year.
@@ -72,7 +70,6 @@ forcing = ClimaLand.prescribed_forcing_era5(
     toml_dict,
     FT;
     max_wind_speed = 25.0,
-    time_interpolation_method,
     context,
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
