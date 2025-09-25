@@ -4,7 +4,7 @@
 # for scraping SNOTEL site data in order to generate datasets for use
 # in training artificial intelligence models for seasonal snow forecasting.
 # The code below contains a basic version of the code used to produce
-# `training_data.csv`, which is used in the [base tutorial](../base_tutorial/) for snow forecasting,
+# `training_data.csv`, which is used in the [base tutorial](base_tutorial.md) for snow forecasting,
 # as well as the [Charbonneau2024](@citet). However, exploration of the optional arguments
 # or requesting of alternative [SNOTEL data codes](https://www.nrcs.usda.gov/wps/portal/wcc/home/dataAccessHelp/webService/webServiceReference#elementCodes) offers
 # additional utility in creating alternative data sets for further investigation.
@@ -86,7 +86,7 @@ scales = Dict{Symbol, Real}(
 # are commented out for the sake of speed and readability in generating
 # the tutorial, or due to special handling required, but can be uncommented
 # to yield the full dataset (if special cases are handled) found in
-# `training_data.csv` used in the [base tutorial](../base_tutorial/). Stations were
+# `training_data.csv` used in the [base tutorial](base_tutorial.md). Stations were
 # selected based upon their availability of the features utilized in
 # creating the model used in the [Charbonneau2024](@citet):
 
