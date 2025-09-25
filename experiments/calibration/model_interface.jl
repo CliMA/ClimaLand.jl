@@ -165,6 +165,10 @@ function ClimaCalibrate.forward_model(iteration, member)
     @info "Timestep: $Δt s"
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
+    CP.log_parameter_information(
+        toml_dict,
+        joinpath(ensemble_member_path, "log_params_$member.toml"),
+    )
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end
