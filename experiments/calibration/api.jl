@@ -50,6 +50,9 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
     "An integer value for ensuring calibrations are the same between multiple
     calibrations with the same settings"
     rng_seed::Int64
+
+    "File path to JLD2 file that stores a vector of EKP.Observation"
+    obs_vec_filepath::String
 end
 
 """
@@ -112,6 +115,7 @@ function CalibrateConfig(;
     nelements = (101, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
+    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
     isempty(sample_date_ranges) &&
@@ -145,6 +149,9 @@ function CalibrateConfig(;
         "Number of samples is not divisible by the minibatch size; the last $remaining samples may be missing when running the calibration"
     )
 
+    endswith(obs_vec_filepath, ".jld2") ||
+        error("The file $(basename(obs_vec_filepath)) is not a JLD2 file")
+
     return CalibrateConfig(
         short_names,
         minibatch_size,
@@ -155,6 +162,7 @@ function CalibrateConfig(;
         nelements,
         output_dir,
         rng_seed,
+        obs_vec_filepath,
     )
 
 end
