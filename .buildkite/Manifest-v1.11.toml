@@ -424,7 +424,9 @@ weakdeps = ["SparseArrays"]
 
 [[deps.ClimaAnalysis]]
 deps = ["Artifacts", "Dates", "Interpolations", "NCDatasets", "NaNStatistics", "OrderedCollections", "Reexport", "Statistics", "Unitful"]
-git-tree-sha1 = "6becd117214e883e0069455303c43060a4d5eed1"
+git-tree-sha1 = "fc2afc87ff64ed708f11345c211f7ff29b074bef"
+repo-rev = "climaland-v1-paper-plots"
+repo-url = "https://github.com/CliMA/ClimaAnalysis.jl.git"
 uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
 version = "0.5.20"
 weakdeps = ["GeoMakie", "Makie"]
