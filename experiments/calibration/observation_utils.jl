@@ -15,8 +15,16 @@ globe.
 function get_lat_lon_from_resolution(nelements)
     # Values of radius and depth (set to 0.1) do not matter; we just need
     # information from the domain in the latitude/longitude directions.
-    domain =
-        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements)
+    # We do not want to load the CUDA backend or construct this on GPU which is
+    # wasteful, so we construct this on CPU instead
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
+        nelements,
+        context = ClimaComms.SingletonCommsContext{ClimaComms.CPUSingleThreaded}(
+            ClimaComms.CPUSingleThreaded(),
+        ),
+    )
     # If the default number of diagnostic latitude and longitude points is not
     # used when running the simulations, this will need to be changed.
     num_long, num_lat, _ =
@@ -48,8 +56,16 @@ Make an ocean mask.
 function make_ocean_mask(nelements)
     lats, longs = get_lat_lon_from_resolution(nelements)
 
-    domain =
-        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements)
+    # We do not want to load the CUDA backend or construct this on GPU which is
+    # wasteful, so we construct this on CPU instead
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
+        nelements,
+        context = ClimaComms.SingletonCommsContext{ClimaComms.CPUSingleThreaded}(
+            ClimaComms.CPUSingleThreaded(),
+        ),
+    )
 
     # We need the mask in order to determine which points were treated as land
     # by the simulation. We set the threshold of fractional area of land to be
