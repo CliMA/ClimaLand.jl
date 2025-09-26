@@ -24,16 +24,6 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    @everywhere import ClimaLand
-    @everywhere experiment_dir = joinpath(pkgdir(ClimaLand), "experiments")
-    @everywhere include(
-        joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"),
-    )
-    @everywhere CALIBRATE_CONFIG = $CALIBRATE_CONFIG
-    @everywhere include(
-        joinpath(experiment_dir, "calibration", "model_interface.jl"),
-    )
-
     # true solution is at 0.96
     priors =
         [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
@@ -91,6 +81,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
         @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
         addprocs(ClimaCalibrate.SlurmManager())
     end
+
+    include(
+        joinpath(
+            pkgdir(ClimaLand),
+            "experiments/calibration/observation_map.jl",
+        ),
+    )
+
+    @everywhere import ClimaLand
+    @everywhere experiment_dir = joinpath(pkgdir(ClimaLand), "experiments")
+    @everywhere include(
+        joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"),
+    )
+    @everywhere CALIBRATE_CONFIG = $CALIBRATE_CONFIG
+    @everywhere include(
+        joinpath(experiment_dir, "calibration", "model_interface.jl"),
+    )
 
     eki = ClimaCalibrate.calibrate(
         ClimaCalibrate.WorkerBackend,
