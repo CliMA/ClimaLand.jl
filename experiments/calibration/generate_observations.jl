@@ -161,6 +161,7 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    (; obs_vec_filepath) = CALIBRATE_CONFIG
     covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
         scalar = 25.0,
         use_latitude_weights = true,
@@ -171,14 +172,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     short_names = CALIBRATE_CONFIG.short_names
     @info "The number of samples is $(length(sample_date_ranges))"
 
+    isfile(obs_vec_filepath) &&
+        @warn "Overwriting the file $obs_vec_filepath to generate the vector of observations"
+
     observation_vector = make_era5_observation_vector(
         covar_estimator,
         short_names,
         sample_date_ranges,
         nelements,
     )
-    JLD2.save_object(
-        "experiments/calibration/land_observation_vector.jld2",
-        observation_vector,
-    )
+    JLD2.save_object(obs_vec_filepath, observation_vector)
 end

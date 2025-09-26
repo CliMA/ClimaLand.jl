@@ -20,6 +20,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     nelements = (101, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
+    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
 )
 
 
@@ -29,8 +30,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
     prior = EKP.combine_distributions(priors)
 
-    observation_vector =
-        JLD2.load_object("experiments/calibration/land_observation_vector.jld2")
+    observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
 
     sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
     minibatch_size = CALIBRATE_CONFIG.minibatch_size
