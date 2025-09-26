@@ -3,7 +3,7 @@
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
 #SBATCH --time=12:00:00
-#SBATCH --ntasks=7
+#SBATCH --ntasks=3
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus-per-task=1
 
