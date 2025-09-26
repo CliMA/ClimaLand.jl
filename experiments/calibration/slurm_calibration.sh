@@ -10,7 +10,6 @@
 # Set environment variables for CliMA
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
-export LONGER_RUN=""
 
 # Build and run the Julia code
 # On GCP, you need to comment out the line below
