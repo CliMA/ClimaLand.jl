@@ -33,6 +33,14 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir);
 toml_dict = LP.create_toml_dict(FT)
 
+# We can optionally save the simulation parameters to a file for later reference.
+# Here we specify the filepath where we want to save the parameters, and then
+# ClimaParams handles the saving.
+# Note that any parameters overwritten via keyword arguments when constructing
+# models will not be reflected in this file.
+parameter_log_file = joinpath(root_path, "parameters.toml")
+CP.log_parameter_information(toml_dict, parameter_log_file)
+
 # Set timestep, start\_date, stop\_date:
 Δt = 450.0
 start_date = DateTime(2008)

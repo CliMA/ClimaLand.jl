@@ -72,6 +72,7 @@ pages = Any[
     "Additional resources" => [
         "Model structure" => "model_structure.md",
         "Repository structure" => "repo_structure.md",
+        "Available Models and Parameterizations" => "available_models.md",
         "Analyzing model output" => [
             "Diagnostics" => diagnostics,
             "Leaderboard" => "leaderboard/leaderboard.md",
