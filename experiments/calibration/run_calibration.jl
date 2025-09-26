@@ -24,17 +24,6 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # Note: Using this script on Derecho requires changes to addprocs to use
-    # the PBSManager
-    addprocs(ClimaCalibrate.SlurmManager())
-
-    include(
-        joinpath(
-            pkgdir(ClimaLand),
-            "experiments/calibration/observation_map.jl",
-        ),
-    )
-
     @everywhere import ClimaLand
     @everywhere experiment_dir = joinpath(pkgdir(ClimaLand), "experiments")
     @everywhere include(
@@ -84,6 +73,24 @@ if abspath(PROGRAM_FILE) == @__FILE__
         rng = rng,
         scheduler = EKP.DataMisfitController(terminate_at = 100),
     )
+
+    # Note: Using this script on Derecho requires changes to addprocs to use
+    # the PBSManager
+    curr_backend = ClimaCalibrate.get_backend()
+    N_ens = EKP.get_N_ens(ekp)
+    if curr_backend == ClimaCalibrate.DerechoBackend
+        addprocs(
+            ClimaCalibrate.PBSManager(N_ens),
+            q = "main",
+            A = "UCIT0011",
+            l_select = "1:ngpus=1:ncpus=4",
+            l_walltime = "11:30:00",
+        )
+    elseif (curr_backend == ClimaCalibrate.CaltechHPCBackend) ||
+           (curr_backend == ClimaCalibrate.GCPBackend)
+        @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
+        addprocs(ClimaCalibrate.SlurmManager())
+    end
 
     eki = ClimaCalibrate.calibrate(
         ClimaCalibrate.WorkerBackend,
