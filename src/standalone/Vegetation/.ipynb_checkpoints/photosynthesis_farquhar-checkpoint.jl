@@ -344,7 +344,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     P_air = p.drivers.P
     T_air = p.drivers.T
     q_air = p.drivers.q
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     lightspeed = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
@@ -500,14 +500,14 @@ get_An_leaf(p, m::FarquharModel) = p.canopy.photosynthesis.An
 function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
     Jmax = compute_Jmax_leaf(Y, p, canopy, m) # lazy
     J = compute_J_leaf(Y, p, canopy, m) # lazy
-    FT = eltype(canopy.earth_param_set)
+    FT = eltype(canopy.parameters.earth_param_set)
     return @. lazy(J / max(Jmax, sqrt(eps(FT))))
 end
 
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     (; Vcmax25, ΔHJmax, To) = m.parameters
-    R = LP.gas_constant(canopy.earth_param_set)
+    R = LP.gas_constant(canopy.parameters.earth_param_set)
     return @. lazy(
         max_electron_transport_farquhar(Vcmax25, ΔHJmax, T_canopy, To, R),
     )
@@ -516,7 +516,7 @@ end
 function compute_J_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
 
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters

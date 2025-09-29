@@ -1,25 +1,22 @@
-module OWUSStomata
+module uSPACStomata
 
-export OWUSStomatalModel,
+export uSPACStomatalModel,
        stomatal_conductance!,
-       owus_shape_from_climaland,
-       build_owus_from_traits,
-       build_owus_from_ClimaLand
+       uspac_shape_from_climaland,
+       build_uspac_from_traits,
+       build_uspac_from_ClimaLand,
+        uspac_shape_from_Pi, 
+        build_uspac_from_Pi,
+        build_uspac_from_Pi_from_state
 
 # From Bassiouni et al. 2023
 
-# OWUS frames the problem in terms of dimensionless Π-groups (ratios of soil, xylem, guard cell, and atmospheric conductances/pressures). These ratios determine whether water use is “supply-limited” or “demand-limited.”
+# uSPAC frames the problem in terms of dimensionless Π-groups (ratios of soil, xylem, guard cell, and atmospheric conductances/pressures). These ratios determine whether water use is “supply-limited” or “demand-limited.”
 # shows that the optimal strategy in this trait-space is equivalent to a piecewise β(s): flat at high moisture (fww), declining to shutoff at s_w. So the “optimal control” solution reduces to something that looks like an empirical stress function, but whose shape is diagnosed from traits.
-# optimality-based closure, but operationalized as a trait-linked stress function instead of a per-timestep optimization. Parameters can be tied directly to measurable hydraulic traits
-
-# EKI tuning candiates: 
-    # ψ_g50 (stomatal closure threshold-- new parameter to CliMA), ψ_x50 (embolism risk threshold) (hard to measure, critical to drought response)
-    # kx_max (capacity) (varies widely among species)
-    # RAI (root area index), Zr (root depth) (root distribution uncertain)
-    # Ksat (supply limit) (huge variability even within soil types)
+# "optimality-based closure" is actually operationalized as a trait-linked stress function instead of a per-timestep optimization. Parameters can be tied directly to measurable hydraulic traits
 
 """
-    OWUSStomatalModel{FT}
+    uSPACStomatalModel{FT}
 
 Stomatal model following Bassiouni et al. (2023), parameterized by
 the piece-wise linear β(s) ≈ fww for s ≥ s*, linear decline to 0 at s_w.
@@ -32,16 +29,16 @@ Fields
 - s_w::FT   : soil saturation where transpiration ceases (s_w)
 - gsw_max::FT (optional): cap on stomatal conductance (mol m⁻² s⁻¹); use Inf if unused
 """
-struct OWUSStomatalModel{FT}
+struct uSPACStomatalModel{FT}
     fww::FT
     s_star::FT
     s_w::FT
     gsw_max::FT
 end
 
-OWUSStomatalModel(; fww::Real=0.6, s_star::Real=0.35, s_w::Real=0.10, gsw_max::Real=Inf) = begin
+uSPACStomatalModel(; fww::Real=0.6, s_star::Real=0.35, s_w::Real=0.10, gsw_max::Real=Inf) = begin
     FT = promote_type(typeof(fww), typeof(s_star), typeof(s_w), typeof(gsw_max), Float64)
-    OWUSStomatalModel{FT}(FT(fww), FT(s_star), FT(s_w), FT(gsw_max))
+    uSPACStomatalModel{FT}(FT(fww), FT(s_star), FT(s_w), FT(gsw_max))
 end
 
 # Physical constants (typed helpers)
@@ -52,7 +49,7 @@ const _R64  = 8.314462618        # J mol^-1 K^-1
 @inline _consts(::Type{FT}) where {FT} = (FT(_ρw64), FT(_Mw64), FT(_R64))
 
 # β(s) from paper (Eq. 3): 0, linear, plateau at fww
-@inline function _beta_piecewise(s::FT, m::OWUSStomatalModel{FT}) where {FT}
+@inline function _beta_piecewise(s::FT, m::uSPACStomatalModel{FT}) where {FT}
     fww, sstar, sw = m.fww, m.s_star, m.s_w
     if s <= sw
         return zero(FT)
@@ -72,7 +69,7 @@ T = β(s)*E0, via E_mol = (ρw*T)/Mw and E_mol = g_sw * (VPD/P_air).
 """
 function stomatal_conductance!(
     gsw_out::Base.RefValue{FT},
-    model::OWUSStomatalModel{FT};
+    model::uSPACStomatalModel{FT};
     s::Real, E0::Real, VPD::Real, P_air::Real, T_air::Real, leaf_factor::Real=1
 ) where {FT}
 
@@ -89,11 +86,98 @@ function stomatal_conductance!(
 end
 
 # ============================================
+# Π-space interface: calibrate on ΠR, ΠF, ΠT, ΠS
+# ============================================
+
+"""
+    uspac_shape_from_Pi(; ΠR, ΠF, ΠT, ΠS, b=4.38, β_star_frac=0.95, β_w_frac=0.05)
+
+Compute (fww, s_star, s_w) directly from Π-groups and soil exponent `b`.
+
+Inputs (dimensionless):
+- ΠR = |ψ_g50| / |ψ_x50|
+- ΠF = E0 / (K_P,max * |ψ_g50|)
+- ΠT = (K_SR,max * |ψ_s_sat|) / E0
+- ΠS = |ψ_g50| / |ψ_s_sat|
+
+Other:
+- `b`        : Campbell/Clapp–Hornberger soil exponent (default 4.38)
+- `β_star_frac`: fraction of fww at which `s_star` is defined (default 0.95)
+- `β_w_frac`   : fraction of fww at which `s_w`   is defined (default 0.05)
+
+Returns: NamedTuple `(fww, s_star, s_w)` in promoted float type.
+"""
+function uspac_shape_from_Pi(; ΠR::Real, ΠF::Real, ΠT::Real, ΠS::Real,
+                              b::Real=4.38, β_star_frac::Real=0.95, β_w_frac::Real=0.05)
+
+    FT = float(promote_type(typeof(ΠR), typeof(ΠF), typeof(ΠT), typeof(ΠS),
+                            typeof(b), typeof(β_star_frac), typeof(β_w_frac)))
+
+    ΠR, ΠF, ΠT, ΠS = FT(ΠR), FT(ΠF), FT(ΠT), FT(ΠS)
+    b = FT(b); β_star_frac = FT(β_star_frac); β_w_frac = FT(β_w_frac)
+
+    # fww (closed form)
+    halfΠF = ΠF / 2
+    rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR
+    rad = max(rad, eps(FT))
+    fww = one(FT) - (one(FT) / (2 * ΠR)) * (one(FT) + halfΠF - sqrt(rad))
+
+    # s(β) helper (Eq. 5)
+    @inline function s_of_beta(β_in)
+        β = clamp(FT(β_in), zero(FT), one(FT))
+        denom = one(FT) - (one(FT) - β) * ΠR
+        denom = ifelse(abs(denom) < sqrt(eps(FT)), sign(denom) * sqrt(eps(FT)), denom)
+        termA = (4 * β * ΠS * ΠS) / max(ΠT, eps(FT))
+        termB = (2 * (one(FT) - β) - β * ΠF) / denom
+        inner = sqrt(max(one(FT) + termA * termB, eps(FT))) - one(FT)
+        base  = (ΠT / (2 * β * ΠS)) * inner
+        s = (max(base, eps(FT)))^(-one(FT)/b)
+        return clamp(s, zero(FT), one(FT))
+    end
+
+    s_star = s_of_beta(β_star_frac * fww)
+    s_w    = s_of_beta(β_w_frac   * fww)
+
+    return (fww=FT(fww), s_star=FT(s_star), s_w=FT(s_w))
+end
+
+"""
+    build_uspac_from_Pi(; ΠR, ΠF, ΠT, ΠS, b=4.38, β_star_frac=0.95, β_w_frac=0.05, gsw_max=Inf)
+        -> uSPACConductanceParameters-compatible (fww,s*,s_w) pack or your model object
+
+Convenience builder for the direct-Π calibration path.
+Use this ONLY when your optimizer proposes Π’s directly.
+"""
+function build_uspac_from_Pi(; ΠR::Real, ΠF::Real, ΠT::Real, ΠS::Real,
+                              b::Real=4.38, β_star_frac::Real=0.95, β_w_frac::Real=0.05,
+                              gsw_max::Real=Inf)
+    pars = uspac_shape_from_Pi(; ΠR=ΠR, ΠF=ΠF, ΠT=ΠT, ΠS=ΠS,
+                                b=b, β_star_frac=β_star_frac, β_w_frac=β_w_frac)
+    # If you want a full model object here, adapt to your type; otherwise just return the trio:
+    return (fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=gsw_max)
+end
+
+# builder that only sets Γ’s:
+build_uspac_from_Pi_from_state(; p, canopy, ΓR, ΓF, ΓT, ΓS,
+    b=4.38, β_star_frac=0.95, β_w_frac=0.05, gsw_max=Inf) =
+    uSPACConductancePi{eltype(p.drivers.P)}(
+        uSPACPiParameters{eltype(p.drivers.P)}(;
+            ΓR=ΓR, ΓF=ΓF, ΓT=ΓT, ΓS=ΓS,
+            b=eltype(p.drivers.P)(b),
+            β_star_frac=eltype(p.drivers.P)(β_star_frac),
+            β_w_frac=eltype(p.drivers.P)(β_w_frac),
+            gsw_max=eltype(p.drivers.P)(gsw_max),
+        )
+    )
+# update_canopy_conductance!(p, Y, model, canopy) auto-fetches aridity & sand.
+
+
+# ============================================
 # Diagnostics: traits → (fww, s*, s_w)
 # ============================================
 
 """
-    owus_shape_from_climaland(; E0, kx_max, LAI, hc, Td,
+    uspac_shape_from_climaland(; E0, kx_max, LAI, hc, Td,
                                ks_sat, RAI, dr, Zr,
                                psi_g50, psi_x50, psi_s_sat, b,
                                rho_w=1000.0, g=9.81)
@@ -108,7 +192,7 @@ Units expected:
 - RAI [m^2 m^-2], dr [m], Zr [m]
 - psi_* [MPa] (negative), b [–]
 """
-function owus_shape_from_climaland(; E0, kx_max, LAI, hc, Td,
+function uspac_shape_from_climaland(; E0, kx_max, LAI, hc, Td,
     ks_sat, RAI, dr, Zr, psi_g50, psi_x50, psi_s_sat, b,
     rho_w=1000.0, g=9.81)
 
@@ -150,21 +234,19 @@ end
 # ==============================
 
 """
-    build_owus_from_traits(; kwargs...) -> OWUSStomatalModel
+    build_uspac_from_traits(; kwargs...) -> uSPACStomatalModel
 
-Thin wrapper around `owus_shape_from_climaland` returning OWUSStomatalModel.
+Thin wrapper around `uspac_shape_from_climaland` returning uSPACStomatalModel.
 """
-function build_owus_from_traits(; kwargs...)
-    pars = owus_shape_from_climaland(; kwargs...)
-    return OWUSStomatalModel(fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=Inf)
+function build_uspac_from_traits(; kwargs...)
+    pars = uspac_shape_from_climaland(; kwargs...)
+    return uSPACStomatalModel(fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=Inf)
 end
 
 # ------------------------------
-# ClimaLand struct auto-plumbing
+# ClimaLand struct
 # ------------------------------
-# We avoid hard dependencies on specific ClimaLand types by soft-getting
-# common field names with graceful fallbacks. Adjust the symbol lists
-# below to match your branch if needed.
+# avoid hard dependencies on specific ClimaLand types by soft-getting common field names
 
 # Get first present field among a list of candidate names; return `default` if none.
 @inline function _getfirst(x, names::NTuple{N,Symbol}, default=nothing) where {N}
@@ -182,10 +264,10 @@ end
 @inline _mday_to_ms(x) = x / 86400.0
 
 """
-    build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, met_params=nothing, overrides=NamedTuple())
+    build_uspac_from_ClimaLand(; canopy_params, soil_params, root_params, met_params=nothing, overrides=NamedTuple())
 
-Derive OWUS parameters from typical ClimaLand parameter structs and return
-`OWUSStomatalModel`. You can override/force any quantity by passing it
+Derive uSPAC parameters from typical ClimaLand parameter structs and return
+`uSPACStomatalModel`. You can override/force any quantity by passing it
 in `overrides` (e.g., `overrides=(E0=2.5, psi_s_sat=-0.003)`).
 
 We expect (but do not require) the following (case-insensitive by symbol):
@@ -194,7 +276,7 @@ We expect (but do not require) the following (case-insensitive by symbol):
 - root_params: RAI, dr/fine_root_diameter, Zr/rooting_depth
 - met_params: E0 (m s^-1 or m day^-1); otherwise we try canopy_params.E0 or compute from PET if provided
 """
-function build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, met_params=nothing, overrides=NamedTuple())
+function build_uspac_from_ClimaLand(; canopy_params, soil_params, root_params, met_params=nothing, overrides=NamedTuple())
     # Pull raw values with generous field-name guesses
     @inline function _get_required(x, names::NTuple{N,Symbol}, human::AbstractString) where {N}
         val = _getfirst(x, names, nothing)
@@ -202,13 +284,13 @@ function build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, me
         return val
     end
 
-    LAI  = _get_required(canopy_params, (:LAI, :lai), "LAI")
+    LAI  = _get_required(canopy_params, (:LAI, :lai), "LAI") #exists
     hc   = _get_required(canopy_params, (:canopy_height, :h_c, :hc), "canopy height")
     kx   = _get_required(canopy_params, (:kx_max, :kx_leaf_spec, :k_x_max, :kxl_spec), "kx_max")
     ψg50 = _get_required(canopy_params, (:psi_g50, :ψg50, :psi_g_50, :psi_g50_MPa), "psi_g50")
     ψx50 = _get_required(canopy_params, (:psi_x50, :ψx50, :psi_x_50, :psi_x50_MPa), "psi_x50")
 
-    RAI = something(_getfirst(root_params, (:RAI, :root_area_index)), 2.0)   # default modestly
+    RAI = something(_getfirst(root_params, (:RAI, :root_area_index)), 2.0)   # default modestly # exists
     dr  = something(_getfirst(root_params, (:dr, :fine_root_diameter, :root_diameter)), 3e-4)  # m
     Zr  = something(_getfirst(root_params, (:Zr, :rooting_depth, :root_depth)), 1.0)           # m
 
@@ -257,15 +339,15 @@ function build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, me
     dr      = get(overrides, :dr, dr)
     Zr      = get(overrides, :Zr, Zr)
 
-    pars = owus_shape_from_climaland(; E0=E0_mday, kx_max=kx, LAI=LAI, hc=hc, Td=86400.0,
+    pars = uspac_shape_from_climaland(; E0=E0_mday, kx_max=kx, LAI=LAI, hc=hc, Td=86400.0,
         ks_sat=ks_sat_mday, RAI=RAI, dr=dr, Zr=Zr,
         psi_g50=ψg50, psi_x50=ψx50, psi_s_sat=ψs_sat, b=b)
 
-    return OWUSStomatalModel(fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=Inf)
+    return uSPACStomatalModel(fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=Inf)
 end
 
 # Friendly error
-leaf_nothing_error(what) = throw(ArgumentError("build_owus_from_ClimaLand: could not infer $what; pass it via overrides=... or ensure it exists in your params."))
+leaf_nothing_error(what) = throw(ArgumentError("build_uspac_from_ClimaLand: could not infer $what; pass it via overrides=... or ensure it exists in your params."))
 
 # -------- Isohydry diagnostic (Ψ_leaf vs Ψ_soil slope) -----------------------
 
@@ -337,7 +419,7 @@ end
 
 """
     isohydry_index(
-        model::OWUSStomatalModel{FT};
+        model::uSPACStomatalModel{FT};
         s::AbstractVector,         # soil saturation [0..1]
         E0::AbstractVector,        # potential evaporation [m s^-1]
         VPD::AbstractVector,       # Pa
@@ -351,14 +433,14 @@ end
     ) -> (slope, intercept, R2, n)
 
 Compute the isohydry slope dΨ_leaf/dΨ_soil by:
-1. Using OWUS to compute transpiration E (molar) from s and E0, VPD, P_air.
+1. Using uSPAC to compute transpiration E (molar) from s and E0, VPD, P_air.
 2. Inferring Ψ_leaf from a hydraulic closure (linear or Weibull).
 3. Fitting Ψ_leaf = intercept + slope * Ψ_soil (OLS).
 
 Returns: NamedTuple (slope, intercept, R2, n).
 """
 function isohydry_index(
-    model::OWUSStomatalModel{FT};
+    model::uSPACStomatalModel{FT};
     s::AbstractVector,
     E0::AbstractVector,
     VPD::AbstractVector,
@@ -381,7 +463,7 @@ function isohydry_index(
 
     gref = Ref(FT(0))
     @inbounds for i in 1:n
-        # 1) OWUS beta(s) -> transpiration & E (molar)
+        # 1) uSPAC beta(s) -> transpiration & E (molar)
         s_i    = FT(s[i]);  E0_i = FT(E0[i]);  VPD_i = FT(VPD[i])
         P_i    = FT(P_air[i]);  T_i = FT(T_air[i])
         stomatal_conductance!(gref, model; s=s_i, E0=E0_i, VPD=VPD_i, P_air=P_i, T_air=T_i, leaf_factor=leaf_factor)
