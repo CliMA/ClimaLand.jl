@@ -112,7 +112,7 @@ function initialize_auxiliary(
         name(component),
     )
 end
-
+@nospecialize
 """
      ClimaLand.make_compute_exp_tendency(component::AbstractCanopyComponent, canopy)
 
@@ -180,3 +180,4 @@ function get_model_callbacks(
 )
     return ()
 end
+@specialize

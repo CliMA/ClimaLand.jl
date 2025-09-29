@@ -55,6 +55,7 @@ as a `make_imp_tendency` default.
 """
 abstract type AbstractExpModel{FT} <: AbstractModel{FT} end
 
+@nospecialize
 """
     name(model::AbstractModel)
 
@@ -524,3 +525,4 @@ prior to the diagnostic callbacks (optional).
 function get_model_callbacks(model::ClimaLand.AbstractModel; kwargs...)
     return ()
 end
+@specialize
