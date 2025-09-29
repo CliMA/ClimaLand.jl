@@ -4,6 +4,7 @@ authors = ["Clima Land Team"]
 version = "1.0.1"
 
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 ClimaDiagnostics = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
@@ -12,6 +13,7 @@ ClimaTimeSteppers = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
 ClimaUtilities = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+EnsembleKalmanProcesses = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
 Insolation = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
