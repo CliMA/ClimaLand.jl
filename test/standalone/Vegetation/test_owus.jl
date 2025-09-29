@@ -197,3 +197,63 @@ end
 end
 
 
+###############################
+# scripts/calibrate_hier_eki.jl
+###############################
+using ClimaLand
+using LinearAlgebra
+using Random
+
+
+# -------------------------------------------
+# Load data (drivers, obs LE, site covariates)
+# -------------------------------------------
+# TODO: Replace with your real data loading
+S = 40 # number of sites
+driver_data = ... # Vector of site driver structs (each holds VPD, SWC, Rn, T, etc.)
+obs_LE = ... # Vector of observed LE stacked across sites & times
+site_covars = ... # (p+1) x S matrix, standardized covariates (col = site)
+
+
+# -------------------------------------------
+# Define hierarchy parameterization for EKI
+# -------------------------------------------
+K = 3 # traits (fww, s*, s_w)
+p1 = size(site_covars,1) # intercept+covariates
+
+
+# Flattened parameter vector: θ = vec(Γ) ⧺ vec(U)
+function pack_params(Γ, U)
+return vcat(vec(Γ), vec(U))
+end
+
+
+function unpack_params(θ, K, p1, S)
+i1 = K*p1
+Γ = reshape(θ[1:i1], K, p1)
+U = reshape(θ[i1+1:end], K, S)
+return Γ, U
+end
+
+
+# -------------------------------------------
+# Forward model for EKI
+# -------------------------------------------
+function forward_LE(θ, cfg)
+Γ, U = unpack_params(θ, cfg.K, cfg.p1, cfg.S)
+# Precompute traits per site
+traits = Vector{NTuple{3,Float64}}(undef, cfg.S)
+for s in 1:cfg.S
+η = Γ * cfg.w[:,s] + U[:,s]
+α,a,b = η
+fww = 1/(1+exp(-α))
+sw = 1/(1+exp(-a))
+sb = 1/(1+exp(-b))
+sstar = sw + (1-sw)*sb
+traits[s] = (fww,sstar,sw)
+end
+# Loop over obs rows
+yhat = similar(cfg.obs_LE)
+# U_est are site deviations; report if needed
+
+
