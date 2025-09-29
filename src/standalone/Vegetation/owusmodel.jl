@@ -202,13 +202,13 @@ function build_owus_from_ClimaLand(; canopy_params, soil_params, root_params, me
         return val
     end
 
-    LAI  = _get_required(canopy_params, (:LAI, :lai), "LAI")
+    LAI  = _get_required(canopy_params, (:LAI, :lai), "LAI") #exists
     hc   = _get_required(canopy_params, (:canopy_height, :h_c, :hc), "canopy height")
     kx   = _get_required(canopy_params, (:kx_max, :kx_leaf_spec, :k_x_max, :kxl_spec), "kx_max")
     ψg50 = _get_required(canopy_params, (:psi_g50, :ψg50, :psi_g_50, :psi_g50_MPa), "psi_g50")
     ψx50 = _get_required(canopy_params, (:psi_x50, :ψx50, :psi_x_50, :psi_x50_MPa), "psi_x50")
 
-    RAI = something(_getfirst(root_params, (:RAI, :root_area_index)), 2.0)   # default modestly
+    RAI = something(_getfirst(root_params, (:RAI, :root_area_index)), 2.0)   # default modestly # exists
     dr  = something(_getfirst(root_params, (:dr, :fine_root_diameter, :root_diameter)), 3e-4)  # m
     Zr  = something(_getfirst(root_params, (:Zr, :rooting_depth, :root_depth)), 1.0)           # m
 

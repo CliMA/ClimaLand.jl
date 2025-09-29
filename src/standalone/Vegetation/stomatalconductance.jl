@@ -1,10 +1,11 @@
 export MedlynConductanceParameters,
     MedlynConductanceModel, PModelConductanceParameters, PModelConductance, OWUSConductanceParameters, OWUSConductanceModel
+export OWUSCWDStaticParameters, OWUSConductanceCWDStatic
 
 abstract type AbstractStomatalConductanceModel{FT} <:
               AbstractCanopyComponent{FT} end
 
-"""
+"""x
     MedlynConductanceParameters{FT <: AbstractFloat}
 
 The required parameters for the Medlyn stomatal conductance model.
@@ -165,10 +166,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
         ) # avoids division by zero, since conductance is zero when An is zero 
 end
 
-#################### OWUS conductance ####################
-Base.@kwdef struct OWUSConductanceParameters{
-    FT <: AbstractFloat,
-}
+#################### OWUS conductance (existing static back-compat) ####################
+Base.@kwdef struct OWUSConductanceParameters{FT <: AbstractFloat}
     "Well-watered transpiration fraction (unitless), plateau of β(s)"
     fww::FT
     "Soil saturation threshold where down-regulation begins (unitless)"
@@ -191,13 +190,6 @@ function OWUSConductanceModel{FT}(
     return OWUSConductanceModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
-"""
-    OWUSConductanceModel{FT}(
-        ; canopy_params, soil_params, root_params, met_params=nothing, gsw_max = FT(Inf)
-    )
-
-Diagnose (fww, s*, s_w) from ClimaLand-style parameter structs and build a model.
-"""
 function OWUSConductanceModel{FT}(;
     canopy_params, soil_params, root_params, met_params=nothing, gsw_max = FT(Inf)
 ) where {FT <: AbstractFloat}
@@ -217,125 +209,166 @@ function OWUSConductanceModel{FT}(;
     return OWUSConductanceModel{FT}(pars)
 end
 
-
 ClimaLand.auxiliary_vars(::OWUSConductanceModel) = (:r_stomata_canopy,)
 ClimaLand.auxiliary_types(::OWUSConductanceModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::OWUSConductanceModel) = (:surface,)
 
-
-# --- soft getters: try multiple places, fall back gracefully ---
-
+# --- soft getters ---
 @inline _has(x, f::Symbol) = Base.hasproperty(x, f)
 @inline _get(x, f::Symbol, dflt=nothing) = _has(x, f) ? getproperty(x,f) : dflt
 
 # Soil saturation s \in [0,1].
-# Tries: p.soil.θ with soil params (ν, θ_r); else piecewise-stress cache; else 1.0
 function _get_saturation(p, canopy)::Float64
-    # try full soil state
     soil = _get(p, :soil)
     if soil !== nothing
-        θ = _get(soil, :θ)
-        params = _get(soil, :parameters)
+        θ = _get(soil, :θ); params = _get(soil, :parameters)
         if θ !== nothing && params !== nothing
-            ν   = _get(params, :ν)
-            θ_r = _get(params, :θ_r)
+            ν   = _get(params, :ν); θ_r = _get(params, :θ_r)
             if ν !== nothing && θ_r !== nothing
                 return clamp((mean(ClimaCore.Fields.field_values(θ)) - θ_r) / max(ν - θ_r, eps()), 0.0, 1.0)
             end
         end
     end
-    # try canopy stress model cache (θ_low/θ_high)
     sms = _get(p.canopy, :soil_moisture_stress, nothing)
     if sms !== nothing
-        θ    = _get(sms, :θ)
-        θ_hi = _get(sms, :θ_high)
-        θ_lo = _get(sms, :θ_low)
+        θ    = _get(sms, :θ); θ_hi = _get(sms, :θ_high); θ_lo = _get(sms, :θ_low)
         if θ !== nothing && θ_hi !== nothing && θ_lo !== nothing
             θ̄ = mean(ClimaCore.Fields.field_values(θ))
             return clamp((θ̄ - θ_lo) / max(θ_hi - θ_lo, eps()), 0.0, 1.0)
         end
     end
-    return 1.0 # well-watered fallback
+    return 1.0
 end
 
-# Potential evaporation E0 (m s^-1): try energy cache, drivers, or a mild default
+# Potential evaporation E0 (m s^-1)
 function _get_E0_mps(p, canopy)::Float64
-    # energy component might expose PET/E0
-    energy = canopy.energy
     if _has(p.canopy, :energy)
-        E0f = _get(p.canopy.energy, :E0, nothing) # already m s^-1?
+        E0f = _get(p.canopy.energy, :E0, nothing)
         E0d = _get(p.canopy.energy, :E0_mps, nothing)
-        if E0f !== nothing
-            return Float64(E0f)
-        elseif E0d !== nothing
-            return Float64(E0d)
-        end
+        if E0f !== nothing; return Float64(E0f) end
+        if E0d !== nothing; return Float64(E0d) end
     end
-    # drivers sometimes carry it
     E0d = _get(p.drivers, :E0, nothing)
-    if E0d !== nothing
-        return Float64(E0d)
-    end
-    # gentle default ~2.5 mm/day
+    if E0d !== nothing; return Float64(E0d) end
     return 2.5e-3 / 86400.0
 end
 
-# VPD from (T, P, q); fall back to cached VPD if present
+# VPD (Pa)
 @inline function _svp_pa(Tk::Float64)
-    # Tetens (Pa)
     Tc = Tk - 273.15
     return 610.94 * exp((17.625 * Tc) / (Tc + 243.04))
 end
 function _get_VPD_pa(p)::Float64
     VPD = _get(p.drivers, :VPD, nothing)
-    if VPD !== nothing
-        return Float64(VPD)
-    end
+    if VPD !== nothing; return Float64(VPD) end
     T = Float64(_get(p.drivers, :T, 298.15))
     P = Float64(_get(p.drivers, :P, 101325.0))
-    q = Float64(_get(p.drivers, :q, 0.010))  # kg/kg
+    q = Float64(_get(p.drivers, :q, 0.010))
     ε = 0.622
-    e = (q * P) / (ε + (1 - ε) * q)         # vapor pressure, Pa
+    e = (q * P) / (ε + (1 - ε) * q)
     es = _svp_pa(T)
     return max(es - e, 0.0)
 end
 
-
 """
     update_canopy_conductance!(p, Y, model::OWUSConductanceModel, canopy)
 
-OWUS (Bassiouni–Manzoni–Vico 2023) conductance at canopy scale.
-- Diagnose β(s) from params (fww, s*, s_w) and soil saturation `s` from caches.
-- Target T = β(s) * E0; invert Fick's law with current VPD,P to get g_sw (mol m^-2 s^-1).
-- Convert to m s^-1 and aggregate leaves in parallel using LAI, then write r_stomata_canopy.
+Static OWUS (back-compat, no time variability in parameters).
 """
 function update_canopy_conductance!(p, Y, model::OWUSConductanceModel, canopy)
     FT = eltype(model.parameters)
     earth_param_set = canopy.parameters.earth_param_set
     R = LP.gas_constant(earth_param_set)
 
-    # Drivers and canopy scalars
-    P_air = Float64(p.drivers.P)     # Pa
-    T_air = Float64(p.drivers.T)     # K
-    area_index = p.canopy.hydraulics.area_index
-    LAI = Float64(area_index.leaf)
+    P_air = Float64(p.drivers.P)
+    T_air = Float64(p.drivers.T)
+    LAI   = Float64(p.canopy.hydraulics.area_index.leaf)
 
-    # Hydromet diagnostics
-    s   = _get_saturation(p, canopy)         # 0..1
-    E0  = _get_E0_mps(p, canopy)             # m s^-1
-    VPD = _get_VPD_pa(p)                     # Pa
+    s   = _get_saturation(p, canopy)
+    E0  = _get_E0_mps(p, canopy)
+    VPD = _get_VPD_pa(p)
 
-    # Use the already-included OWUSStomata module for the leaf-level g_sw
     pars = model.parameters
-    owus = OWUSStomata.OWUSStomatalModel(; fww=pars.fww, s_star=pars.s_star, s_w=pars.s_w, gsw_max=pars.gsw_max)
+    owus = OWUSStomata.OWUSStomatalModel(;
+        fww     = pars.fww,
+        s_star  = pars.s_star,
+        s_w     = pars.s_w,
+        gsw_max = pars.gsw_max,
+    )
     gsw_ref = Ref{Float64}(0.0)
     OWUSStomata.stomatal_conductance!(gsw_ref, owus;
         s = s, E0 = E0, VPD = VPD, P_air = P_air, T_air = T_air, leaf_factor = 1.0)
 
-    # convert leaf-level g_sw [mol m^-2 s^-1] -> [m s^-1] using ideal gas, then scale to canopy
     g_leaf_mps = gsw_ref[] * (Float64(R) * T_air / P_air)
-    FTg = FT( g_leaf_mps * max(LAI, sqrt(eps(Float64))) ) # leaves in parallel
-    # write canopy resistance
+    FTg = FT( g_leaf_mps * max(LAI, sqrt(eps(Float64))) )
+    @. p.canopy.conductance.r_stomata_canopy = 1 / (FTg + eps(FT))
+    return nothing
+end
+
+
+# ===================== CWD-controlled OWUS =====================
+
+# Maps w = [1, log1p(CWD_mm)] -> (α, a, b) via Γ (rows α,a,b), then
+#   fww = σ(α), s_w = σ(a), s* = s_w + (1 - s_w) σ(b)
+Base.@kwdef struct OWUSCWDStaticParameters{FT <: AbstractFloat}
+    Γ::NTuple{6,FT}       # row-major [α0, αCWD, a0, aCWD, b0, bCWD]
+    cwd_mm::FT            # site/pixel covariate (mm)
+    gsw_max::FT = FT(Inf)
+end
+Base.eltype(::OWUSCWDStaticParameters{FT}) where {FT} = FT
+
+struct OWUSConductanceCWDStatic{FT,
+                                P<:OWUSCWDStaticParameters{FT}} <:
+       AbstractStomatalConductanceModel{FT}
+    parameters::P
+end
+OWUSConductanceCWDStatic{FT}(p::OWUSCWDStaticParameters{FT}) where {FT<:AbstractFloat} =
+    OWUSConductanceCWDStatic{FT,typeof(p)}(p)
+
+ClimaLand.auxiliary_vars(::OWUSConductanceCWDStatic) = (:r_stomata_canopy,)
+ClimaLand.auxiliary_types(::OWUSConductanceCWDStatic{FT}) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::OWUSConductanceCWDStatic) = (:surface,)
+
+@inline _σ(x) = inv(one(x) + exp(-x))
+@inline _affine2(γ0::T, γ1::T, CWD::T) where {T} = γ0 + γ1 * log1p(CWD)
+
+function update_canopy_conductance!(p, Y, model::OWUSConductanceCWDStatic, canopy)
+    FT = eltype(model.parameters)
+    pars = model.parameters
+    earth_param_set = canopy.parameters.earth_param_set
+    R = LP.gas_constant(earth_param_set)
+
+    P_air = Float64(p.drivers.P)
+    T_air = Float64(p.drivers.T)
+    s     = _get_saturation(p, canopy)
+    E0    = _get_E0_mps(p, canopy)
+    VPD   = _get_VPD_pa(p)
+    LAI   = Float64(p.canopy.hydraulics.area_index.leaf)
+
+    γα0, γαC, γa0, γaC, γb0, γbC = pars.Γ
+    CWD = FT(pars.cwd_mm)
+
+    α = _affine2(γα0, γαC, CWD)
+    a = _affine2(γa0,  γaC,  CWD)
+    b = _affine2(γb0,  γbC,  CWD)
+
+    sw    = _σ(a)
+    sb    = _σ(b)
+    sstar = sw + (one(FT) - sw) * sb
+    fww   = _σ(α)
+
+    owus = OWUSStomata.OWUSStomatalModel(;
+        fww     = fww,
+        s_star  = sstar,
+        s_w     = sw,
+        gsw_max = pars.gsw_max,
+    )
+    gsw_ref = Ref{Float64}(0.0)
+    OWUSStomata.stomatal_conductance!(gsw_ref, owus;
+        s = s, E0 = E0, VPD = VPD, P_air = P_air, T_air = T_air, leaf_factor = 1.0)
+
+    g_leaf_mps = gsw_ref[] * (Float64(R) * T_air / P_air)
+    FTg = FT( g_leaf_mps * max(LAI, sqrt(eps(Float64))) )
     @. p.canopy.conductance.r_stomata_canopy = 1 / (FTg + eps(FT))
     return nothing
 end
