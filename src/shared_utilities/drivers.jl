@@ -1502,7 +1502,8 @@ There are two versions of the ERA5 data available through ClimaLand:
 - a low resolution version (8° x 8°) available only for the year 2008
 
 The high resolution version will be used if `use_lowres_forcing = false` (the default).
-This artifact is used for global runs on compute clusters, but is too large to be used for local testing.
+This artifact is used for global runs on compute clusters, but is too large to be used for local testing,
+and requires you to have acquired the data in advance.
 The low resolution version will be used if `use_lowres_forcing = true`.
 If the simulation dates are outside of 2008, the 2008 data will be reused for each year of simulation.
 This artifact is recommended for local testing or quick runs where accuracy is less critical.
@@ -1532,9 +1533,7 @@ and linear spatial interpolation for high resolution forcing.
 
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
-    clima cluster. The artifact exists on central but contains only the year 2008.
-    When running on central with the high resolution data, please ensure you
-    include `PeriodicCalendar` boundary conditions for the time interpolation method.
+    clima cluster. 
 """
 function prescribed_forcing_era5(
     start_date,
