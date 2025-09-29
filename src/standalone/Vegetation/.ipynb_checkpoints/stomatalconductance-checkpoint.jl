@@ -55,7 +55,7 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
     P_air = p.drivers.P
     T_air = p.drivers.T
     q_air = p.drivers.q
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     thermo_params = earth_param_set.thermo_params
     (; g1, g0, Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
@@ -144,7 +144,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     T_air = p.drivers.T
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     (; Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
