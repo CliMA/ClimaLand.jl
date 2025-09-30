@@ -13,7 +13,7 @@ standalone_models = [
             "P-model" => "standalone/pages/vegetation/photosynthesis/pmodel.md",
         ]
         "Plant hydraulics" => [
-            "Van Genuchten model" => "standalone/pages/vegetation/plant_hydraulics/van_genuchten_model.md",
+            "Prognostic model" => "standalone/pages/vegetation/plant_hydraulics/prognostic.md",
         ]
         "Solar Induced Fluorescence" => [
             "Lee model" => "standalone/pages/vegetation/solar_induced_fluorescence/lee_model.md",
