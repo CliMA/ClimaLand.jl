@@ -22,7 +22,8 @@ function get_sim_var_dict(simdir)
     sim_var_dict = Dict{String, Any}()
 
     # Get LHF by converting from ET
-    earth_param_set = LP.LandParameters(Float64)
+    toml_dict = LP.create_toml_dict(Float64);
+    earth_param_set = LP.LandParameters(toml_dict)
     # _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
     sim_var_dict["lhf"] =
         () -> begin
@@ -132,22 +133,26 @@ Retrieve the following variables from ERA5 observational data:
 - lwn (computed as lwd - lwu)
 - swn (computed as swd - swu)
 
-TODO new version of this function uses a different artifact - era5_monthly_averages_single_level_path
-but we want to use this one because it includes lwd and swd
+Note: `get_obs_var_dict` in ext/land_sim_vis/leaderboard/data_sources.jl uses
+the artifact `era5_monthly_averages_single_level_path`, which does not include lwd and swd.
+
+This function does the same, but also gets lwd and swd from `era5_land_forcing_data2008_folder_path`.
 """
-function get_obs_var_dict()
+function get_obs_var_dict(; is_local = true)
     # contains monthly mslhf, msshf, msuwlwrf, msuwswrf
     era5_data_path = joinpath(
-        ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
-        "era5_monthly_surface_fluxes_200801-200812.nc",
+        ClimaLand.Artifacts.era5_monthly_averages_single_level_path(),
+        "era5_monthly_averages_surface_single_level_197901-202410.nc",
     )
     # contains hourly msdwlwrf, msdwswrf
-    era5_land_forcing_data_path = joinpath(
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(
-            lowres = false,
-        ),
-        "era5_2008_1.0x1.0.nc",
-    )
+    if is_local
+        era5_land_forcing_data_path = ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path()
+    else
+        era5_land_forcing_data_path = ClimaLand.Artifacts.find_era5_year_paths(
+            DateTime(2008, 1, 1), # start_date
+            DateTime(2009, 1, 1), # stop_date
+        )
+    end
 
     # Dict for loading in observational data
     obs_var_dict = Dict{String, Any}()

@@ -424,9 +424,11 @@ weakdeps = ["SparseArrays"]
 
 [[deps.ClimaAnalysis]]
 deps = ["Artifacts", "Dates", "Interpolations", "NCDatasets", "NaNStatistics", "OrderedCollections", "Reexport", "Statistics", "Unitful"]
-git-tree-sha1 = "2488781691ad571f17dc40b02e5380296a80cd2e"
+git-tree-sha1 = "c2be451f8202af5c4738b4ebf6c753690c389e02"
+repo-rev = "js/land_global_plots-sept2025"
+repo-url = "https://github.com/CliMA/ClimaAnalysis.jl.git"
 uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
-version = "0.5.19"
+version = "0.5.20"
 weakdeps = ["GeoMakie", "Makie"]
 
     [deps.ClimaAnalysis.extensions]
