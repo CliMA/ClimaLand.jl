@@ -5,8 +5,6 @@
 #   θ = [γ_f0, γ_fCWD,  γ_a0, γ_aCWD,  γ_b0, γ_bCWD]
 # Forward model:
 #   Build LandModel with OWUSConductanceCWDStatic(Γ, CWD), run, get diurnal LE (24)
-# Observations:
-#   Tower LE diurnal (24). Replace loader if you have a direct accessor.
 # =============================================================================
 
 using ClimaLand
@@ -17,6 +15,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaLand.Parameters as LP
 import ClimaLand.LandSimVis as LandSimVis
 import ClimaDiagnostics
+import ClimaUtilities.TimeManager as TM
 import ClimaUtilities.TimeManager: date
 import EnsembleKalmanProcesses as EKP
 import EnsembleKalmanProcesses.ParameterDistributions as PD
@@ -26,12 +25,11 @@ using Statistics
 using Logging
 import Random
 using Dates
-#using ClimaAnalysis, GeoMakie, Printf, StatsBase
 
 # ---------------- Helpers ----------------
 
 # This function runs the model and computes diurnal average of latent heat flux
-function G(θ)
+function G(θ::AbstractVector)
     simulation = model(θ)
     lhf = get_lhf(simulation)
     observation =
@@ -145,7 +143,8 @@ function model(θ::AbstractVector)
     # --- construct OWUS conductance from a parameters struct ---
 
     Γ_tuple = (FT(α0), FT(α1), FT(a0), FT(a1), FT(b0), FT(b1))  # NTuple{6,FT}
-    
+
+    CWD_MM = 600 # temp
     owus_pars = Canopy.OWUSCWDStaticParameters{FT}(;
         Γ      = Γ_tuple,          # 3×2 matrix (rows: α,a,b; cols: intercept, log1p(CWD))
         cwd_mm = FT(CWD_MM),    # scalar site covariate (mm)
@@ -161,18 +160,18 @@ function model(θ::AbstractVector)
     canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     canopy_forcing = (; forcing.atmos, forcing.radiation, ground);
 
-    #md # Set up photosynthesis parameters using the Farquhar model
-    Vcmax25 = FT(Vcmax25)
-    photosyn_defaults = Canopy.clm_photosynthesis_parameters(
-        canopy_domain.space.surface,
+    # Photosynthesis
+    space = canopy_domain.space.surface
+    defaults = ClimaLand.Canopy.clm_photosynthesis_parameters(space)   # gives NamedTuple with is_c3, Vcmax25, etc.
+    
+    # Build a typed parameter struct using your earth_param_set (ParamDict)
+    farq_params = FarquharParameters(
+        toml_dict;            # ::ClimaParams.AbstractTOMLDict
+        is_c3 = defaults.is_c3,             # positional is_c3
+        Vcmax25 = defaults.Vcmax25,  # kw; everything else comes from earth_param_set
     )
-    photosynthesis = Canopy.FarquharModel{FT}(
-        canopy_domain;
-        photosynthesis_parameters = (;
-            is_c3 = photosyn_defaults.is_c3,
-            Vcmax25,
-        ),
-    )
+
+    photosynthesis = FarquharModel{FT}(farq_params) # Now construct the model from the parameters struct
 
     #conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain; g1 = FT(141))
     conductance = Canopy.OWUSConductanceCWDStatic{FT}(owus_pars)
@@ -206,26 +205,26 @@ function model(θ::AbstractVector)
     output_vars = ["lhf"]
     diagnostics = ClimaLand.default_diagnostics(
         land_model,
-        START_DATE;
+        start_date;
         output_writer = ClimaDiagnostics.Writers.DictWriter(),
         output_vars,
-        average_period = :halfhourly,
+        reduction_period = :halfhourly,
     )
 
     #md # Create and run the simulation
     simulation = Simulations.LandSimulation(
-        start_date,
-        stop_date,
-        Δt,
-        land_model;
-        set_ic
+        start_date = start_date,
+        stop_date = stop_date,
+        timestepper = Second(Δt),
+        model = land_model;
+        set_ic = set_ic!,
         updateat = Second(Δt),
         user_callbacks = (),
-        diagnostics,
+        diagnostics = diagnostics,
     )
     solve!(simulation)
     return simulation
-end
+end;
 
 # ---------------- Experiment Setup ----------------
 
@@ -264,11 +263,11 @@ ensemble_kalman_process = EKP.EnsembleKalmanProcess(
 Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
     for i in 1:N_iterations
         println("Iteration $i")
-        θs = EKP.get_ϕ_final(prior, ensemble_kalman_process)
-        G_ens = hcat([G(θs[:, j]...) for j in 1:ensemble_size]...)
+        θs = EKP.get_ϕ_final(prior, ensemble_kalman_process)  # size: N_par × N_ens
+        @views G_ens = hcat(map(G, eachcol(θs))...)           # size: N_obs × N_ens
         EKP.update_ensemble!(ensemble_kalman_process, G_ens)
     end
-end;
+end
 
 
 # ---------------- Results Analysis and Visualization ----------------
@@ -280,7 +279,7 @@ end;
 rmse = sqrt(mean((ŷ .- observations).^2))
 
 println("\n=== RESULT: OWUS (CWD-only, static) EKP vs tower LE ===")
-println("Site=$(SITE)  Period=$(START_DATE)→$(STOP_DATE)")
+println("Site=$(site_ID)  Period=$(start_date)→$(stop_date)")
 @printf "Γ̂ (α0=%.3f, αC=%.3f,  a0=%.3f, aC=%.3f,  b0=%.3f, bC=%.3f)\n" Γ̂.γα0,Γ̂.γαC,Γ̂.γa0,Γ̂.γaC,Γ̂.γb0,Γ̂.γbC
 @printf "RMSE(diurnal LE) = %.2f W m^-2\n" rmse
 
