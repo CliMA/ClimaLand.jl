@@ -403,8 +403,8 @@ function compute_full_pmodel_outputs(
     Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
     # check for negative arg before taking sqrt
-    arg = (mj / mprime)^2 - 1
-    Jmax = 4 * ϕ0 * APAR * βm / (sqrt(max(arg, 0)) + eps(FT))
+    arg = (mj / (βm * mprime))^2 - 1
+    Jmax = 4 * ϕ0 * APAR  / (sqrt(max(arg, 0)) + eps(FT)) 
     Jmax25 =
         Jmax / inst_temp_scaling(
             T_canopy,
@@ -567,7 +567,7 @@ function update_optimal_EMA(
 
         Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
         Vcmax25 = Vcmax/ arrhenius_function(T_canopy, To, R, ΔHav)
-        Jmax = 4 * ϕ0 * APAR_canopy_moles * βm / sqrt((mj / mprime)^2 - 1) # only changes behavior when βm < 1
+        Jmax = 4 * ϕ0 * APAR_canopy_moles / sqrt((mj / (βm * mprime)^2 - 1)
         Jmax25 = Jmax/ arrhenius_function(T_canopy, To, R, ΔHaj)
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
