@@ -73,16 +73,11 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     )
 
     # Overwrite some defaults for the canopy model
-    # Energy model
-    energy_args = Canopy.BigLeafEnergyParameters(toml_dict)
-    energy = Canopy.BigLeafEnergyModel{FT}(energy_args)
-
     # Plant hydraulics
     conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         surface_domain,
-        LAI,
         toml_dict;
         conductivity_model,
         retention_model,
@@ -101,7 +96,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        energy,
         hydraulics,
         z_0m,
         z_0b,
@@ -144,12 +138,19 @@ function ClimaCalibrate.forward_model(iteration, member)
     # Determine start date and end date from the sample date ranges
     start_date = first(sample_date_ranges[minimum(minibatch)]) - spinup
     stop_date = last(sample_date_ranges[maximum(minibatch)]) + extend
+    Δt = 450.0
+
+    # Convert to ITimes
+    t0 = ITime(0, Dates.Second(1), start_date)
+    tf = ITime(
+        Dates.value(convert(Dates.Second, stop_date - start_date)),
+        epoch = start_date,
+    )
+    Δt = ITime(Δt, epoch = start_date)
 
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
     outdir =
         ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
-
-    Δt = 450.0
 
     domain = ClimaLand.Domains.global_domain(
         FT;
@@ -165,12 +166,41 @@ function ClimaCalibrate.forward_model(iteration, member)
 
     model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
-    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+    # Set up diagnostics
+    domain = ClimaLand.get_domain(model)
+    diagnostic_domain =
+        haskey(domain.space, :subsurface) ? domain.space.subsurface :
+        domain.space.surface
+    output_writer =
+        ClimaDiagnostics.NetCDFWriter(diagnostic_domain, outdir; start_date)
+
+    diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+        model,
+        start_date;
+        output_writer,
+        output_vars = ["lhf", "shf", "lwu", "swu"],
+        reduction_period = :monthly,
+        reduction_type = :average,
+    )
+
+    simulation = LandSimulation(
+        t0,
+        tf,
+        Δt,
+        model;
+        outdir,
+        user_callbacks = (ClimaLand.ReportCallback(div((tf - t0), 10), t0),),
+        diagnostics = diagnostics,
+    )
     @info "Run: Global Soil-Canopy-Snow Model"
     @info "Resolution: $nelements"
     @info "Timestep: $Δt s"
     @info "Start Date: $start_date"
     @info "Stop Date: $stop_date"
+    CP.log_parameter_information(
+        toml_dict,
+        joinpath(ensemble_member_path, "log_params_$member.toml"),
+    )
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end

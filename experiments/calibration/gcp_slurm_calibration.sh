@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH --partition=a3
 #SBATCH --job-name=slurm_calibration
 #SBATCH --output=output.txt
 #SBATCH --error=error.txt
@@ -12,7 +13,6 @@ export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 
 # Build and run the Julia code
-module load climacommon
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/generate_observations.jl
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl
