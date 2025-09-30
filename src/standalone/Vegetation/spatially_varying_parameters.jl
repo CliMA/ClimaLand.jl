@@ -4,7 +4,7 @@ import Interpolations
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
-import ClimaLand: use_lowres_clm, Artifacts
+import ClimaLand: Artifacts
 """
     clm_canopy_radiation_parameters(
         surface_space;
@@ -15,7 +15,7 @@ import ClimaLand: use_lowres_clm, Artifacts
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = use_lowres_clm(surface_space),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the canopy radiative transfer schemes,
@@ -53,7 +53,7 @@ function clm_canopy_radiation_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = use_lowres_clm(surface_space),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -126,7 +126,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = use_lowres_clm(surface_space),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the canopy, from NetCDF files
@@ -163,7 +163,7 @@ function clm_photosynthesis_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = use_lowres_clm(surface_space),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -198,7 +198,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = use_lowres_clm(surface_space),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
     )
 
 Reads spatially varying rooting depth for the canopy, from a NetCDF file
@@ -231,7 +231,7 @@ function clm_rooting_depth(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = use_lowres_clm(surface_space),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -256,7 +256,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = use_lowres_clm(surface_space),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
     )
 
 Reads spatially varying g1 for the canopy, from a NetCDF file
@@ -289,7 +289,7 @@ function clm_medlyn_g1(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = use_lowres_clm(surface_space),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)

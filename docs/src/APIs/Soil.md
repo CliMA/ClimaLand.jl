@@ -105,11 +105,13 @@ ClimaLand.Soil.thermal_time
 ## Soil Runoff Types and Methods
 
 ```@docs
+ClimaLand.Soil.Runoff.AbstractRunoffModel
 ClimaLand.Soil.NoRunoff
 ClimaLand.Soil.SurfaceRunoff
 ClimaLand.Soil.TOPMODELRunoff
 ClimaLand.Soil.TOPMODELSubsurfaceRunoff
 ClimaLand.Soil.subsurface_runoff_source
+ClimaLand.Soil.update_infiltration_water_flux!
 ```
 
 ## Soil Albedo Types and Methods

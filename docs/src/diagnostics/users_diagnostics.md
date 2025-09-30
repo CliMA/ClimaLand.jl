@@ -192,3 +192,10 @@ viz.plot!(fig, var) # creates an axis inside fig, and plot your var in it.
 
 CairoMakie.save(fig) # saves the figure in current working directory
 ```
+
+# API
+
+```@docs
+ClimaLand.Diagnostics.default_diagnostics
+ClimaLand.Diagnostics.close_output_writers
+```

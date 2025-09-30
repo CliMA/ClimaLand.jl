@@ -25,15 +25,12 @@ export AbstractAtmosphericDrivers,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
-    compute_ρ_sfc,
     set_atmos_ts!,
     turbulent_fluxes!,
     net_radiation!,
     turbulent_fluxes_at_a_point,
     vapor_pressure_deficit,
     displacement_height,
-    relative_humidity,
-    specific_humidity_from_dewpoint,
     make_update_drivers,
     prescribed_forcing_era5,
     prescribed_perturbed_temperature_era5,
@@ -1508,7 +1505,7 @@ The low resolution version will be used if `use_lowres_forcing = true`.
 If the simulation dates are outside of 2008, the 2008 data will be reused for each year of simulation.
 This artifact is recommended for local testing or quick runs where accuracy is less critical.
 
-The method for temporal interpolation is controlled via the `time_interpolation_method` kwarg. 
+The method for temporal interpolation is controlled via the `time_interpolation_method` kwarg.
 We suggest `LinearInterpolation(PeriodicCalendar())`, which implies linear interpolation in time;
 the inner argument implies how extrapolation outside the bounds of the data is handled. For example,
 the ERA5 forcing data we use is hourly, which implies Dec 31 of the last year of the data, at midnight,
@@ -1533,7 +1530,7 @@ and linear spatial interpolation for high resolution forcing.
 
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
-    clima cluster. 
+    clima cluster.
 """
 function prescribed_forcing_era5(
     start_date,

@@ -92,10 +92,11 @@ for FT in (Float32, Float64)
         SWE = cat(FT.(rand(10)), FT(0), dims = 1)
         z = SWE * _ρ_l ./ ρ_snow
         @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
-        ρ_calc = snow_bulk_density.(SWE, z, parameters)
+        ρ_calc = Snow.snow_bulk_density.(SWE, z, parameters)
         @test all(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
-        @test snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) == _ρ_l
+        @test Snow.snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) ==
+              _ρ_l
 
         U = energy_from_q_l_and_swe(FT(1), FT(0.5), parameters)
         T = snow_bulk_temperature(U, FT(1), FT(0.5), parameters)

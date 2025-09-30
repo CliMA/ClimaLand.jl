@@ -37,7 +37,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
     Y, p, coords = initialize(soil) # Y is the state vector, initially all zero
     # test 2d
     Y .= 2.0 # set to something nonzero using FieldVector broadcasting, which operates on masked areas too.
-    sfc_field = ClimaLand.top_center_to_surface(Y.soil.ϑ_l)
+    sfc_field = ClimaLand.Domains.top_center_to_surface(Y.soil.ϑ_l)
     sfc_field .= 1.0 # Field broadcasting respects masks
     @test extrema(sfc_field) == (1.0, 2.0)
 

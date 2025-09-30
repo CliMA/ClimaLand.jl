@@ -9,7 +9,6 @@ export snow_surface_temperature,
     energy_from_q_l_and_swe,
     energy_from_T_and_swe,
     update_snow_cover_fraction!,
-    snow_bulk_density,
     phase_change_flux,
     update_snow_albedo!,
     energy_flux_falling_snow,
@@ -19,7 +18,7 @@ export snow_surface_temperature,
     update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t, earth_param_set)
 
 Updates the snow albedo `α` in place with the current albedo,
-according to the ConstantAlbedoModel. 
+according to the ConstantAlbedoModel.
 """
 function update_snow_albedo!(
     α,
@@ -195,7 +194,7 @@ function snow_surface_specific_humidity(
     parameters,
 ) where {FT}
     thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
-    ρ_sfc = compute_ρ_sfc(thermo_params, atmos_ts, T_sfc)
+    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, atmos_ts, T_sfc)
     qsat_over_ice = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T_sfc,
@@ -316,6 +315,7 @@ end
 
 """
     snow_bulk_density(SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
+
 Returns the snow density given the current model state when depth and SWE are available.
 """
 function snow_bulk_density(
@@ -483,11 +483,11 @@ end
     energy_flux_falling_snow(atmos, p, parameters)
 
 Returns the energy flux of falling snow for a PrescribedAtmosphere,
-approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq. 
+approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq.
 This is a negative internal energy, due the to negative contribution of
 the latent heat of melting to the energy of the snow,
  and it neglects the sensible heat portion of the snow. The energy
- is per unit volume of liquid water, and P_snow is expressed as 
+ is per unit volume of liquid water, and P_snow is expressed as
 the volume flux of liquid water resulting from the snow.
 
 This method can be extended to coupled simulations, where atmos is of type
@@ -505,7 +505,7 @@ end
     energy_flux_falling_rain(atmos, p, parameters)
 
 Returns the energy flux of falling rain for a PrescribedAtmosphere,
-approximated as ρ_l e_l(T_atmos) * P_liq. The energy is per unit volume of liquid water, 
+approximated as ρ_l e_l(T_atmos) * P_liq. The energy is per unit volume of liquid water,
 and P_liq is expressed as the volume flux of liquid water resulting from the rain.
 
 This method can be extended to coupled simulations, where atmos is of type

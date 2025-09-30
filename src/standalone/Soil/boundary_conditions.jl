@@ -16,10 +16,7 @@ export TemperatureStateBC,
     AtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
     WaterHeatBC,
-    sublimation_source,
-    compute_liquid_influx,
-    compute_infiltration_energy_flux
-
+    sublimation_source
 
 # New BC type for Richards Equation (AbstractWaterBC)
 """
