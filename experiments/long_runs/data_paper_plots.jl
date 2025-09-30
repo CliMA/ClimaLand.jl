@@ -1,4 +1,22 @@
+"""
+    get_sim_var_dict()
 
+Retrieve the following variables from the simulation output directory:
+- lhf
+- shf
+- lwu
+- swu
+- lwd
+- swd
+- lwn (computed as lwd - lwu)
+- swn (computed as swd - swu)
+
+TODO new version of this function takes in diagnostics_folder_path and then constructs a SimDir
+but that function gets extra vars and doesn't get swd, lwd (and therefore swn, lwn)
+
+
+TODO new version calls shift_to_start_of_previous_month for each var - do we need that here?
+"""
 function get_sim_var_dict(simdir)
     # Dict for loading in simulation data
     sim_var_dict = Dict{String, Any}()
@@ -69,7 +87,7 @@ function get_sim_var_dict(simdir)
     sim_var_dict["swd"] =
         () -> begin
             sim_var_swd = get(simdir, short_name = "swd") # units (W/m²)
-            sim_var_swd.attributes["long_name"] = "Upward shortwave radiation"
+            sim_var_swd.attributes["long_name"] = "Downward shortwave radiation"
             sim_var_swd.attributes["units"] = "W m⁻²"
             return sim_var_swd
         end
@@ -101,6 +119,22 @@ function get_sim_var_dict(simdir)
     return sim_var_dict
 end
 
+"""
+    get_obs_var_dict()
+
+Retrieve the following variables from ERA5 observational data:
+- lhf
+- shf
+- lwu
+- swu
+- lwd
+- swd
+- lwn (computed as lwd - lwu)
+- swn (computed as swd - swu)
+
+TODO new version of this function uses a different artifact - era5_monthly_averages_single_level_path
+but we want to use this one because it includes lwd and swd
+"""
 function get_obs_var_dict()
     # contains monthly mslhf, msshf, msuwlwrf, msuwswrf
     era5_data_path = joinpath(
