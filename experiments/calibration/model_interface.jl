@@ -44,12 +44,6 @@ import JLD2
 import EnsembleKalmanProcesses as EKP
 
 const FT = Float64;
-# If you want to do a very long run locally, you can enter `export
-# LONGER_RUN=""` in the terminal and run this script. If you want to do a very
-# long run on Buildkite manually, then make a new build and pass `LONGER_RUN=""`
-# as an environment variable. In both cases, the value of `LONGER_RUN` does not
-# matter.
-const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -57,9 +51,6 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "snowy_land_longrun_$(device_suffix)"
 
 function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-    era5_time_interpolation_method =
-        LONGER_RUN ? LinearInterpolation() :
-        LinearInterpolation(PeriodicCalendar())
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - always use high resolution for calibration runs
@@ -70,7 +61,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         toml_dict,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method = era5_time_interpolation_method,
         context,
     )
     forcing = (; atmos, radiation)

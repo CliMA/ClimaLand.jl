@@ -3,9 +3,8 @@
 # The code sets up and runs the bucket for 7 days using albedo read in from
 # a file containing static data over the globe or on a region, and ERA5 atmospheric and
 # radiative forcings.
-# Moving forward, this driver will serve as our more complex global bucket run,
-# eventually running for a longer time period (1+ year) and using temporally
-# varying atmospheric and radiative forcing data.
+# Since this is run on Caltech's central cluster, we use the low-resolution
+# forcing.
 # This driver is used to verify that this more complex version of the model can
 # run on both CPU and GPU, with only minor computational differences between the results.
 
@@ -142,6 +141,7 @@ bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
     time_interpolation_method,
     regridder_type,
     context,
+    use_lowres_forcing = true,
 )
 
 model = BucketModel(

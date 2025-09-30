@@ -174,3 +174,18 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 # - "sp", Surface pressure in Pa
 # - "ssrd", Downwelling shortwave radiation in J/m^2/hour (accumulated over an hour)
 # - "strd", Downwelling longwave radiation J/m^2/hour (accumulated over an hour)
+
+# Please note that the default era5 forcing uses linear interpolation in space and time.
+# If your simulation encompasses a time that is beyond the extrema of the data,
+# the corresponding day/time from the last year of data will be repeated.
+# This corresponds to a value of `time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+# `time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))))`.
+# To repeat the first year of data instead, you can specify to repeat the start date's year, i.e.:
+# `time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(start_date))))`.
+# Or, to repeat the entire time series of data you can call `PeriodicCalendar` without any arguments:
+# `time_interpolation_method = LinearInterpolation(PeriodicCalendar())`.
+# This behavior can be changed by passing in a time_interpolation_method. Another
+# option that be be useful is `time_interpolation_method = LinearInterpolation(Flat())`,
+# which uses the last (first) value of the data repeatedly when outside the bounds
+# of the data. For more details, please see the documentation string for
+# ` ClimaLand.prescribed_forcing_era5` or ClimaUtilities.

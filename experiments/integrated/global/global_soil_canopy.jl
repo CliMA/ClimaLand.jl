@@ -51,7 +51,8 @@ start_date = DateTime(2008);
 dt = 450.0
 stop_date = start_date + Dates.Second(3600)
 
-# Forcing data
+# Forcing data - this is run on Caltech central,
+# which only has low resolution forcing data
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     start_date,
     stop_date,
@@ -60,6 +61,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     FT;
     time_interpolation_method,
     context,
+    use_lowres_forcing = true,
 )
 
 soil_forcing = (; atmos, radiation)
