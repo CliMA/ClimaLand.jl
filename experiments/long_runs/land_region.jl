@@ -63,8 +63,6 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
         toml_dict,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-        interpolation_method = Interpolations.Linear(),
         context,
     )
     forcing = (; atmos, radiation)

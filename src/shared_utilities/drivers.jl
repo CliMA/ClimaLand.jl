@@ -1489,7 +1489,7 @@ end
                             gustiness=1,
                             max_wind_speed = nothing,
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                            time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                            time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))),
                             regridder_type = :InterpolationsRegridder,
                             context = nothing,
                             )
@@ -1502,13 +1502,26 @@ There are two versions of the ERA5 data available through ClimaLand:
 - a low resolution version (8° x 8°) available only for the year 2008
 
 The high resolution version will be used if `use_lowres_forcing = false` (the default).
-This artifact is used for global runs on compute clusters, but is too large to be used for local testing.
+This artifact is used for global runs on compute clusters, but is too large to be used for local testing,
+and requires you to have acquired the data in advance.
 The low resolution version will be used if `use_lowres_forcing = true`.
 If the simulation dates are outside of 2008, the 2008 data will be reused for each year of simulation.
 This artifact is recommended for local testing or quick runs where accuracy is less critical.
 
-The ClimaLand default is to use nearest neighbor interpolation for low resolution forcing,
-and linear interpolation for high resolution forcing.
+The method for temporal interpolation is controlled via the `time_interpolation_method` kwarg. 
+We suggest `LinearInterpolation(PeriodicCalendar())`, which implies linear interpolation in time;
+the inner argument implies how extrapolation outside the bounds of the data is handled. For example,
+the ERA5 forcing data we use is hourly, which implies Dec 31 of the last year of the data, at midnight,
+is not in the data. With the PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))
+option, the interpolated value at Dec 31 at midnight of the previous year will
+be used. For the low-resolution forcing data, which only exists for 2008, multi-year runs will repeat
+the forcing. If this behavior is not what you want, you can change the extrapolation argument to
+error `LinearInterpolation(Throw())` or extrapolate by using the last value ``LinearInterpolation(Flat())`.
+More information is available in the ClimaUtilities documentation:
+https://clima.github.io/ClimaUtilities.jl/dev/inputs/#Extrapolation-boundary-conditions.
+
+The ClimaLand default is to use nearest neighbor spatial interpolation for low resolution forcing,
+and linear spatial interpolation for high resolution forcing.
 
 !!! warning "Clipped values"
     High wind speed anomalies (10-100x increase and decrease over a period of a
@@ -1520,9 +1533,7 @@ and linear interpolation for high resolution forcing.
 
 !!! note "Full high resolution dataset available on clima cluster only"
     The full 40 year dataset of high resolution ERA5 data is only available on the
-    clima cluster. The artifact exists on central but contains only the year 2008.
-    When running on central with the high resolution data, please ensure you
-    include `PeriodicCalendar` boundary conditions for the time interpolation method.
+    clima cluster. 
 """
 function prescribed_forcing_era5(
     start_date,
@@ -1534,7 +1545,9 @@ function prescribed_forcing_era5(
     gustiness = 1,
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    time_interpolation_method = LinearInterpolation(
+        PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))),
+    ),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
 )
