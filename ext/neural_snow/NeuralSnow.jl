@@ -21,7 +21,7 @@ export NeuralDepthModel, ModelTools
 
 """
     NeuralDepthModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
-Establishes the density parameterization where snow density is calculated from a prognostic snow depth variable, 
+Establishes the density parameterization where snow density is calculated from a prognostic snow depth variable,
 along with the prognostic SWE variable, using a neural network for the rate of change of snow depth, `dz/dt`.
 The input to the network are temporally averaged, which we achieve using an exponentially moving average,
 with a rate of `\alpha`.
@@ -35,7 +35,7 @@ end
 
 """
     get_znetwork()
-Return the snow-depth neural network from Charbonneau et al (2025; https://arxiv.org/abs/2412.06819), 
+Return the snow-depth neural network from Charbonneau et al (2025; https://arxiv.org/abs/2412.06819),
 and set the network's scaling such that snowpack depth remains nonnegative for a default timestep of 86400 seconds (1 day).
 Note that because we are loading a pre-trained model, the number of features input, the size of the output, etc, are hard coded in the function below.
 """
@@ -134,6 +134,7 @@ end
 
 """
     eval_nn(density::NeuralDepthModel, z::FT, swe::FT, P::FT, T::FT, R::FT, qrel::FT, u::FT)::FT where {FT}
+
 Helper function for evaluating the neural network in a pointwise manner over a `ClimaCore.Field`
 and returning the output in a broadcastable way.
 """
@@ -147,7 +148,7 @@ function eval_nn(
     qrel::FT,
     u::FT,
 )::FT where {FT}
-    #model() of a Vector{FT} returns a 1-element Matrix, return the internal value: 
+    #model() of a Vector{FT} returns a 1-element Matrix, return the internal value:
     return density.z_model([z, swe, qrel, R, u, T, P])[1]
 end
 

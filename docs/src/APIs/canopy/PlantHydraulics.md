@@ -6,6 +6,7 @@ CurrentModule = ClimaLand.PlantHydraulics
 ## Models and Parameters
 
 ```@docs
+ClimaLand.PlantHydraulics.AbstractPlantHydraulicsModel
 ClimaLand.PlantHydraulics.PlantHydraulicsModel
 ClimaLand.PlantHydraulics.PlantHydraulicsParameters
 ```
@@ -13,10 +14,13 @@ ClimaLand.PlantHydraulics.PlantHydraulicsParameters
 ## Plant Hydraulics Parameterizations
 
 ```@docs
+ClimaLand.PlantHydraulics.AbstractConductivityModel
 ClimaLand.PlantHydraulics.Weibull
+ClimaLand.PlantHydraulics.AbstractRetentionModel
 ClimaLand.PlantHydraulics.LinearRetentionCurve
 ClimaLand.PlantHydraulics.AbstractTranspiration
 ClimaLand.PlantHydraulics.DiagnosticTranspiration
+ClimaLand.PlantHydraulics.PrescribedTranspiration
 ```
 
 ## Constructor Methods

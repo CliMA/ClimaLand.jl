@@ -38,6 +38,7 @@ ClimaLand.SoilSnowModel{FT}(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
     Δt;
 ) where {FT}
+ClimaLand.LandHydrology
 ClimaLand.land_components
 ClimaLand.lsm_aux_vars
 ClimaLand.lsm_aux_types

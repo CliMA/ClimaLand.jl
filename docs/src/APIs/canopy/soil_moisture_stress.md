@@ -19,4 +19,6 @@ ClimaLand.Canopy.NoMoistureStressModel
 ```@docs
 ClimaLand.Canopy.update_soil_moisture_stress!
 ClimaLand.Canopy.update_piecewise_soil_moisture_stress!
+ClimaLand.Canopy.compute_tuzet_moisture_stress
+ClimaLand.Canopy.compute_piecewise_moisture_stress
 ```

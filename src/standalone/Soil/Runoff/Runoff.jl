@@ -14,11 +14,7 @@ export TOPMODELRunoff,
     AbstractRunoffModel,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
-    topmodel_ss_flux,
-    update_infiltration_water_flux!,
-    is_saturated,
-    get_surface_runoff,
-    get_subsurface_runoff
+    update_infiltration_water_flux!
 
 """
     AbstractRunoffModel

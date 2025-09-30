@@ -330,7 +330,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         Y.soil.ϑ_l .= land.soil.parameters.ν .+ FT(1e-3)
         fill!(parent(p.soil.is_saturated), FT(0.5)) # integrand
         @test extrema(p.soil.h∇) == (0.0, 0.0) # integral (0,0)
-        @. p.soil.is_saturated = ClimaLand.Soil.is_saturated(
+        @. p.soil.is_saturated = ClimaLand.Soil.Runoff.is_saturated(
             Y.soil.ϑ_l + Y.soil.θ_i,
             land.soil.parameters.ν,
         )

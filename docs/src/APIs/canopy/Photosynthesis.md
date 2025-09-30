@@ -61,3 +61,9 @@ ClimaLand.Canopy.quadratic_soil_moisture_stress
 ClimaLand.Canopy.compute_APAR_canopy_moles
 ClimaLand.Canopy.compute_APAR_leaf_moles
 ```
+
+## Shared Methods
+
+```@docs
+ClimaLand.Canopy.gross_photosynthesis
+```
