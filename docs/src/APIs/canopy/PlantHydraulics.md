@@ -13,6 +13,7 @@ ClimaLand.PlantHydraulics.PlantHydraulicsParameters
 ## Plant Hydraulics Parameterizations
 
 ```@docs
+ClimaLand.PlantHydraulics.AbstractRetentionModel
 ClimaLand.PlantHydraulics.Weibull
 ClimaLand.PlantHydraulics.LinearRetentionCurve
 ClimaLand.PlantHydraulics.AbstractTranspiration

@@ -23,4 +23,5 @@ ClimaLand.Canopy.PrescribedAreaIndices{FT}(
     SAI::FT,
     RAI::FT,
 ) where {FT <: AbstractFloat}
+ClimaLand.Canopy.prescribed_lai_modis
 ```

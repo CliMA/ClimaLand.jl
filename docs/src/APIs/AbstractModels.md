@@ -15,6 +15,7 @@ ClimaLand.make_compute_imp_tendency
 ClimaLand.make_update_aux
 ClimaLand.make_update_boundary_fluxes
 ClimaLand.make_set_initial_cache
+ClimaLand.make_update_cache
 ClimaLand.make_update_drivers
 ClimaLand.prognostic_vars
 ClimaLand.prognostic_types
@@ -37,6 +38,7 @@ ClimaLand.diffusive_flux
 ClimaLand.boundary_vars
 ClimaLand.boundary_var_domain_names
 ClimaLand.boundary_var_types
+ClimaLand.FieldMatrixWithSolver
 ClimaLand.make_jacobian
 ClimaLand.make_compute_jacobian
 ClimaLand.set_dfluxBCdY!
@@ -44,4 +46,3 @@ ClimaLand.get_drivers
 ClimaLand.total_energy_per_area!
 ClimaLand.total_liq_water_vol_per_area!
 ```
-

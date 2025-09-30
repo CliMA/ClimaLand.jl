@@ -12,7 +12,7 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 import ClimaUtilities.TimeManager: ITime, date
 
-export FTfromY, call_count_nans_state
+export FTfromY
 
 """
     check_land_equality(field1, field2)
