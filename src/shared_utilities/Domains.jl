@@ -1384,6 +1384,5 @@ export coordinates,
     linear_interpolation_to_surface!,
     get_Δz,
     average_horizontal_resolution_degrees,
-    use_lowres_clm,
     global_domain
 end

@@ -28,7 +28,6 @@ using ClimaLand:
     AbstractRadiativeDrivers,
     turbulent_fluxes!,
     net_radiation!,
-    compute_ρ_sfc,
     AbstractExpModel,
     heaviside,
     PrescribedAtmosphere,
@@ -57,8 +56,7 @@ export BucketModelParameters,
     BucketModel,
     PrescribedBaregroundAlbedo,
     PrescribedSurfaceAlbedo,
-    surface_albedo,
-    partition_snow_surface_fluxes
+    surface_albedo
 
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
