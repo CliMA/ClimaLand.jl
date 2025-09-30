@@ -68,6 +68,10 @@ Base.@kwdef struct PModelConstants{FT}
     ΔHΓstar::FT
     """Γstar at 25 °C (Pa)"""
     Γstar25::FT
+    """Effective energy of activation for Vcmax - arrhenius only (J mol^-1)"""
+    ΔHav::FT
+    """Effective energy of activation for Jmax - arrhenius only(J mol^-1)"""
+    ΔHaj::FT
     """Effective energy of activation for Vcmax (J mol^-1)"""
     Ha_Vcmax::FT
     """Effective energy of deactivation for Vcmax (J mol^-1)"""
@@ -143,6 +147,8 @@ function PModelConstants(
     ΔHkc = toml_dict["pmodel_ΔHkc"],
     ΔHko = toml_dict["pmodel_ΔHko"],
     ΔHΓstar = toml_dict["pmodel_ΔHΓstar"],
+    ΔHav = toml_dict["pmodel_ΔHav"],
+    ΔHaj = toml_dict["pmodel_ΔHaj"],
     Γstar25 = toml_dict["pmodel_Γstar25"],
     Ha_Vcmax = toml_dict["pmodel_Ha_Vcmax"],
     Hd_Vcmax = toml_dict["pmodel_Hd_Vcmax"],
@@ -169,6 +175,8 @@ function PModelConstants(
         FT(1.6),
         ΔHΓstar,
         Γstar25,
+        ΔHav,
+        ΔHaj,
         Ha_Vcmax,
         Hd_Vcmax,
         aS_Vcmax,
@@ -395,8 +403,8 @@ function compute_full_pmodel_outputs(
     Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
     # check for negative arg before taking sqrt
-    arg = (mj / (βm * mprime))^2 - 1
-    Jmax = 4 * ϕ0 * APAR / (sqrt(max(arg, 0)) + eps(FT))
+    arg = (mj / mprime)^2 - 1
+    Jmax = 4 * ϕ0 * APAR * βm / (sqrt(max(arg, 0)) + eps(FT))
     Jmax25 =
         Jmax / inst_temp_scaling(
             T_canopy,
@@ -518,7 +526,9 @@ function update_optimal_EMA(
             ΔHko,
             Drel,
             ΔHΓstar,
-            Γstar25,
+         Γstar25,
+         ΔHav,
+         ΔHaj,
             Ha_Vcmax,
             Hd_Vcmax,
             aS_Vcmax,
@@ -556,30 +566,9 @@ function update_optimal_EMA(
         mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
         Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
-        Vcmax25 =
-            Vcmax / inst_temp_scaling(
-                T_canopy,
-                T_canopy,
-                To,
-                Ha_Vcmax,
-                Hd_Vcmax,
-                aS_Vcmax,
-                bS_Vcmax,
-                R,
-            )
-
-        Jmax = 4 * ϕ0 * APAR_canopy_moles / sqrt((mj / (βm * mprime))^2 - 1)
-        Jmax25 =
-            Jmax / inst_temp_scaling(
-                T_canopy,
-                T_canopy,
-                To,
-                Ha_Jmax,
-                Hd_Jmax,
-                aS_Jmax,
-                bS_Jmax,
-                R,
-            )
+        Vcmax25 = Vcmax/ arrhenius_function(T_canopy, To, R, ΔHav)
+        Jmax = 4 * ϕ0 * APAR_canopy_moles * βm / sqrt((mj / mprime)^2 - 1) # only changes behavior when βm < 1
+        Jmax25 = Jmax/ arrhenius_function(T_canopy, To, R, ΔHaj)
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
             Vcmax25_opt = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
@@ -910,17 +899,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
     # compute instantaneous max photosynthetic rates and assimilation rates
     Jmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Jmax,
-            constants.Hd_Jmax,
-            constants.aS_Jmax,
-            constants.bS_Jmax,
-            constants.R,
-        ),
-    )
+        p.canopy.photosynthesis.OptVars.Jmax25_opt * arrhenius_function(T_canopy, constants.To, constants.R, constants.ΔHaj))
 
     J = @. lazy(
         electron_transport_pmodel(
@@ -931,18 +910,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
 
     Vcmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Vcmax,
-            constants.Hd_Vcmax,
-            constants.aS_Vcmax,
-            constants.bS_Vcmax,
-            constants.R,
-        ),
-    )
-
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt * arrhenius_function(T_canopy, constants.To, constants.R, constants.ΔHav))
     # rubisco limited assimilation rate
     Ac = @. lazy(Vcmax * compute_mc(model.is_c3, Γstar, ca_pp, ci, VPD, Kmm)) # c3 or c4 is reflected in the value of mc
 

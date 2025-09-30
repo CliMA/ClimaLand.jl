@@ -279,6 +279,18 @@ type = "float"
 description = "Photorespiratory compensation point at 25°C (Pa)."
 tag = "PModelConstants"
 
+["pmodel_ΔHav"]
+value = 65330
+type = "float"
+description = "Effective energy of activation for Vcmax (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_ΔHaj"]
+value = 43990
+type = "float"
+description = "Effective energy of activation for Jmax (J mol^-1)."
+tag = "PModelConstants"
+
 ["pmodel_Ha_Vcmax"]
 value = 71513
 type = "float"
