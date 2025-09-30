@@ -12,7 +12,7 @@ where $h = \psi+z$ is the head (in meters), and $K$ is the conductivity (units o
 height $z_2$ and indexed with 1 at height $z_1<z_2$, using finite difference as
 ```math
 \begin{equation}
-q = \approx -\frac{k_1(\psi_1) k_2(\psi_2)}{k_1(\psi_1)+k_2(\psi_2)} * \bigg[\frac{\psi_2 - \psi_1}{z_2 - z_1} +1\bigg].
+q \approx -\frac{K_1(\psi_1) K_2(\psi_2)}{K_1(\psi_1)+K_2(\psi_2)} \times \bigg[\frac{\psi_2 - \psi_1}{z_2 - z_1} +1\bigg].
 \end{equation}
 ```
 The change of water volume (m$^3),  V$, in the compartments is then
@@ -66,7 +66,7 @@ where $z_{min}$ is the minimum soil layer of the simulation.
 The sink term of the soil is in terms of a volumetric fraction change, i.e. we need a volume of water per volume of soil per second. We can obtain this with
 ```math
 \begin{equation}
-    S(z) = -(RAI) dq_{roots}(z)/dz = (RAI) P(z) q(z).
+    S(z) = -(RAI) \frac{dq_{roots}(z)}{dz} = (RAI) P(z) q(z).
 \end{equation}
 ```
 
@@ -92,6 +92,6 @@ The model needs the following parameters:
 | :---         |     :---:      |    :---:      |     :---:   |
 | Linear retention curve slope | a | 1/m | 0.002 |
 | Saturated conductivity | $K_{\rm sat}$ | m/s  | 1e-7 |
-| Potential at 1/e loss in conductivity | $\p_{63}$ | m | -400 |
+| Potential at 1/e loss in conductivity | $\psi_{63}$ | m | -400 |
 | Weibull exponential parameter | $c$ | - | 4 |
 | Porosity | $\nu$ | - | 1e-4 |
