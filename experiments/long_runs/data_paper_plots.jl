@@ -138,7 +138,7 @@ the artifact `era5_monthly_averages_single_level_path`, which does not include l
 
 This function does the same, but also gets lwd and swd from `era5_land_forcing_data2008_folder_path`.
 """
-function get_obs_var_dict(; is_local = true)
+function get_obs_var_dict(; is_local = false)
     # contains monthly mslhf, msshf, msuwlwrf, msuwswrf
     era5_data_path = joinpath(
         ClimaLand.Artifacts.era5_monthly_averages_single_level_path(),
@@ -148,9 +148,10 @@ function get_obs_var_dict(; is_local = true)
     if is_local
         era5_land_forcing_data_path = ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path()
     else
+        # TODO don't hard code these
         era5_land_forcing_data_path = ClimaLand.Artifacts.find_era5_year_paths(
-            DateTime(2008, 1, 1), # start_date
-            DateTime(2009, 1, 1), # stop_date
+            DateTime("2008-03-01"), # start_date
+            DateTime("2010-03-01") # stop_date
         )
     end
 

@@ -18,13 +18,9 @@ using Statistics
 
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
-# outdir = "snowy_land_longrun_gpu/output_active" # on local
-# Set outdir to wherever diagnostics are saved
-# outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
-# outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
-# outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
-# outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
-outdir = "snowy_land_longrun_gpu-4251"
+
+outdir = "snowy_land_longrun_gpu-4251" # local
+outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/4251/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active" # on clima
 root_path = outdir
 
 short_names = ["lhf", "shf", "lwn", "swn"]#, "lwu", "swu"]
