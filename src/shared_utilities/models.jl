@@ -63,7 +63,7 @@ name(model::AbstractModel) =
     error("`name` not implemented for $(Base.typename(typeof(model)).wrapper)")
 
 """
-   prognostic_vars(m::AbstractModel)
+    prognostic_vars(m::AbstractModel)
 
 Returns the prognostic variable symbols for the model in the form of a tuple.
 
@@ -87,7 +87,7 @@ all models.
 prognostic_domain_names(m::AbstractModel) = ()
 
 """
-   prognostic_types(m::AbstractModel{FT}) where {FT}
+    prognostic_types(m::AbstractModel{FT}) where {FT}
 
 Returns the prognostic variable types for the model in the form of a tuple.
 
@@ -108,7 +108,7 @@ all models.
 prognostic_types(m::AbstractModel) = ()
 
 """
-   auxiliary_vars(m::AbstractModel)
+    auxiliary_vars(m::AbstractModel)
 
 Returns the auxiliary variable symbols for the model in the form of a tuple.
 """
@@ -287,7 +287,7 @@ end
 """
     make_set_initial_cache(model::AbstractModel)
 
-Returns the set_initial_cache! function, which updates the auxiliary
+Returns the `set_initial_cache!` function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In principle, this function is not needed, because in the very first evaluation

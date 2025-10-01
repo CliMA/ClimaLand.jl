@@ -73,3 +73,9 @@ function update_albedo!(
     p.soil.NIR_albedo .= p.soil.PAR_albedo
 end
 ```
+
+```@docs
+ClimaLand.Soil.CLMTwoBandSoilAlbedo
+ClimaLand.Soil.ConstantTwoBandSoilAlbedo
+ClimaLand.Soil.update_albedo!
+```
