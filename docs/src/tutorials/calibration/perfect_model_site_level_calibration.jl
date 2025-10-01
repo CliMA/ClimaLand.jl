@@ -318,8 +318,8 @@ EKP.Visualize.plot_error_over_iters(
     fig[1, dim_size + 1],
     ensemble_kalman_process,
 )
-CairoMakie.save("constrained_params_and_error.png", fig)
-fig
+CairoMakie.save("perfect_model_constrained_params_and_error.png", fig);
+# ![](perfect_model_constrained_params_and_error.png)
 
 # Compare the model output between the first and last iterations to assess
 # improvement:
@@ -367,5 +367,5 @@ axislegend(
 )
 
 CairoMakie.resize_to_layout!(fig)
-CairoMakie.save("G_first_and_last.png", fig)
-fig
+CairoMakie.save("perfect_model_G_first_and_last.png", fig);
+# ![](perfect_model_G_first_and_last.png)

@@ -198,4 +198,6 @@ CairoMakie.save(fig) # saves the figure in current working directory
 ```@docs
 ClimaLand.Diagnostics.default_diagnostics
 ClimaLand.Diagnostics.close_output_writers
+ClimaLand.total_energy_per_area!
+ClimaLand.total_liq_water_vol_per_area!
 ```
