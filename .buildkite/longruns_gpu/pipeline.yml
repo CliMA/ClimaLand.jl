@@ -38,8 +38,7 @@ steps:
   - wait
 
   - group: "Global Land Models"
-    if: |
-    build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null
+    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null
     steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
