@@ -454,9 +454,8 @@ function compute_10cm_water_mass!(
     depth = FT(-0.1)
     earth_param_set = soil.parameters.earth_param_set
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
-    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     # Convert from volumetric water content to water mass per unit volume using density
-    @. Hθ = (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
+    @. Hθ = (Y.soil.ϑ_l * _ρ_liq) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
 
     # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
