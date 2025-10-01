@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 1.0
+value = 0.51
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -177,13 +177,13 @@ tag = "WuWuSnowCoverFractionModel"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.41
+value = 0.28
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β"]
-value = 146
+value = 145
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration (Stocker 2020)"
 tag = "PModelParameters"
