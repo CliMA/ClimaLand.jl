@@ -4,9 +4,10 @@
 
 apis = [
     "Soil" => [
-        "Soil Energy and Hydrology" => "APIs/Soil.md",
-        "Soil Biogeochemistry" => "APIs/SoilBiogeochemistry.md",
-        "Soil Albedo" => "APIs/SoilAlbedo.md",
+        "Soil Energy and Hydrology" => "APIs/soil/Soil.md",
+        "Soil Sources and Boundary Conditions" => "APIs/soil/SoilSourcesandBCs.md",
+        "Soil Biogeochemistry" => "APIs/soil/SoilBiogeochemistry.md",
+        "Soil Albedo" => "APIs/soil/SoilAlbedo.md",
     ],
     "Canopy" => [
         "Canopy Models" => "APIs/canopy/Canopy.md",
@@ -24,10 +25,12 @@ apis = [
     "Integrated Models" => "APIs/ClimaLand.md",
     "Shared Utilities" => [
         "Abstract Models and Functions" => "APIs/AbstractModels.md",
-        "Simulations" => "APIs/Simulations.md",
+        "Auxiliary Variables Cache" => "APIs/AuxiliaryVariablesCache.md",
+        "Callbacks" => "APIs/Callbacks.md",
         "Domains" => "APIs/Domains.md",
         "Drivers" => "APIs/Drivers.md",
-        "Callbacks" => "APIs/Callbacks.md",
+        "Simulations" => "APIs/Simulations.md",
+        "Solver Functions" => "APIs/SolverFunctions.md",
     ],
     "Parameters" => "APIs/parameters.md",
 ]

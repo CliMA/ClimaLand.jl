@@ -8,7 +8,7 @@ export make_jacobian,
     make_compute_jacobian, set_dfluxBCdY!, FieldMatrixWithSolver
 
 """
-   make_jacobian(model::AbstractModel)
+    make_jacobian(model::AbstractModel)
 
 Creates and returns a function which updates the auxiliary
 variables `p` in place and then updates the entries of the

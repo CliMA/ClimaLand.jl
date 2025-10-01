@@ -47,7 +47,7 @@ import ClimaParams as CP
 import ClimaTimeSteppers as CTS
 using StaticArrays
 using ClimaLand
-using ClimaLand.Domains: Point
+import ClimaLand.Domains
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -100,7 +100,7 @@ long = FT(-92.2000) # degree
 # single stem and leaf compartments, but for 2D simulations, the parameters of
 # the [`domain`](@ref "Domain Tutorial")
 # would change.
-domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
+domain = ClimaLand.Domains.Point(; z_sfc = FT(0.0), longlat = (long, lat));
 
 # We will be using prescribed atmospheric and radiative drivers from the
 # US-MOz tower, which we read in here. We are using prescribed
@@ -184,7 +184,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 rooting_depth = FT(1)
 height = FT(18)
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height);
 
 # Construct the conductance model.
 conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict; g1 = FT(141));
@@ -192,7 +192,7 @@ conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict; g1 = FT(141))
 # Construct the photosynthesis model.
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
 photosynthesis =
-    Canopy.FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters)
+    Canopy.FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters);
 
 
 # Set up the canopy model using defaults for all parameterizations and parameters,

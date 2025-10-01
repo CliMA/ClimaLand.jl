@@ -197,9 +197,9 @@ function update_albedo!(
 end
 
 """
-update_albedo!(bc::AbstractEnergyHydrologyBC, _...)
+    update_albedo!(bc::AbstractEnergyHydrologyBC, _...)
 
-    Does nothing for boundary conditions where albedo is not used.
+Does nothing for boundary conditions where albedo is not used.
 """
 function update_albedo!(bc::AbstractEnergyHydrologyBC, _...) end
 
