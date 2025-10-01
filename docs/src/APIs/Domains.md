@@ -12,11 +12,12 @@ ClimaLand.Domains.HybridBox
 ClimaLand.Domains.Column
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
+ClimaLand.Domains.global_domain
 ClimaLand.Domains.coordinates
 ClimaLand.Domains.obtain_surface_space
 ClimaLand.Domains.obtain_surface_domain
-ClimaLand.Domains.top_center_to_surface
 ClimaLand.Domains.top_face_to_surface
 ClimaLand.Domains.linear_interpolation_to_surface!
 ClimaLand.Domains.get_Δz
+ClimaLand.Domains.average_horizontal_resolution_degrees
 ```

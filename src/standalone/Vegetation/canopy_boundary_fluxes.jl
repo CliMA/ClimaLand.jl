@@ -424,7 +424,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     end
     state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
 
-    ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
+    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T_sfc,

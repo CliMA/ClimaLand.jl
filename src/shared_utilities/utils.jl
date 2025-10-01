@@ -12,7 +12,7 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 import ClimaUtilities.TimeManager: ITime, date
 
-export FTfromY, call_count_nans_state
+export FTfromY
 
 """
     check_land_equality(field1, field2)
@@ -41,7 +41,7 @@ function check_land_equality(
 end
 
 """
-    check_land_equality(f1::Union{FT, Vector{FT}}, f2::Union{FT, Vector{FT}}) 
+    check_land_equality(f1::Union{FT, Vector{FT}}, f2::Union{FT, Vector{FT}})
         where {FT <: AbstractFloat}
 
 Check that two floats or vectors of floats are equal.
@@ -600,7 +600,7 @@ function call_count_nans_state(
     verbose = false,
 )
     return count_nans_state(
-        ClimaLand.top_center_to_surface(state);
+        ClimaLand.Domains.top_center_to_surface(state);
         mask = mask,
         verbose = verbose,
     )

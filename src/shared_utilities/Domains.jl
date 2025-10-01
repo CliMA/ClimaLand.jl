@@ -1377,13 +1377,8 @@ export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
     obtain_surface_space,
-    top_center_to_surface,
-    bottom_center_to_surface,
-    top_face_to_surface,
     obtain_surface_domain,
-    linear_interpolation_to_surface!,
     get_Δz,
     average_horizontal_resolution_degrees,
-    use_lowres_clm,
     global_domain
 end

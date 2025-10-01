@@ -5,7 +5,7 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 using ClimaLand
-import ClimaLand: use_lowres_clm, Artifacts
+import ClimaLand: Artifacts
 
 masked_to_value(field, mask, value) = mask == 1.0 ? field : eltype(field)(value)
 
@@ -19,7 +19,7 @@ masked_to_value(field, mask, value) = mask == 1.0 ? field : eltype(field)(value)
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Constant(),
-        lowres=use_lowres_clm(surface_space),
+        lowres=ClimaLand.Domains.use_lowres_clm(surface_space),
     )
 
 Reads spatially varying albedo parameters for the soil model, from NetCDF files
@@ -48,7 +48,7 @@ function clm_soil_albedo_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Constant(),
-    lowres = use_lowres_clm(surface_space),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
