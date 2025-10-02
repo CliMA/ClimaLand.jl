@@ -33,7 +33,7 @@ tag = "TOPMODELRunoff"
 # Big leaf energy parameters
 
 ["ac_canopy"]
-value = 2.5e4
+value = 2.5e3
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"
