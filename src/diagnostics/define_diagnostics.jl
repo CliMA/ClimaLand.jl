@@ -869,10 +869,10 @@ function define_diagnostics!(land_model)
 
     add_diagnostic_variable!(
         short_name = "iwc",
-        long_name = "Integrated Soil Water Mass in first 10cm",
+        long_name = "Integrated Soil Liquid Water Mass in first 10cm",
         standard_name = "soil_10cm_water_mass",
         units = "kg/m^2",
-        comments = "The integrated water mass to a depth of 10cm",
+        comments = "The integrated liquid water mass to a depth of 10cm",
         compute! = (out, Y, p, t) ->
             compute_10cm_water_mass!(out, Y, p, t, land_model),
     )
