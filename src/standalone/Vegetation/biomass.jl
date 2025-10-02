@@ -65,8 +65,7 @@ end
                           start_date
                           stop_date,
                           earth_param_set;
-                          time_interpolation_method =
-                                        LinearInterpolation(PeriodicCalendar()))
+                          time_interpolation_method = LinearInterpolation(),
                           regridder_type = :InterpolationsRegridder,
                           interpolation_method = Interpolations.Constant(),
                           context = ClimaComms.context(surface_space))
