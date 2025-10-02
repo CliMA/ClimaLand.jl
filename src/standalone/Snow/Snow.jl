@@ -92,6 +92,32 @@ albedo of the snow at a point).
 stored
 """
 abstract type AbstractAlbedoModel{FT <: AbstractFloat} end
+albedo_prog_vars(::AbstractAlbedoModel) = ()
+albedo_prog_types(::AbstractAlbedoModel{FT}) where {FT} = ()
+albedo_prog_names(::AbstractAlbedoModel) = ()
+
+"""
+    SimplePrognostic{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
+
+"""
+struct SimplePrognostic{FT} <: AbstractAlbedoModel{FT}
+    "Maximum albedo of snow (unitless)"
+    α_max::FT
+    "Minimum albedo of snow (unitless)"
+    α_min::FT
+    "Critical precipication rate (m/s) of SWE to reset albedo to the maximum"
+    P_snow_crit::FT
+    "Aging timescale (seconds)"
+    τ_age::FT
+end
+
+function SimplePrognostic(toml_dict)
+    return SimplePrognostic(toml_dict["α_snow_max"], toml_dict["α_snow_min"], toml_dict["P_snow_crit"], toml_dict["τ_age"])
+end
+
+albedo_prog_names(::SimplePrognostic) = (:surface,)
+albedo_prog_types(::SimplePrognostic{FT}) where {FT} = (FT,)
+albedo_prog_vars(::SimplePrognostic) = (:α,)
 
 """
     ConstantAlbedoModel{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
@@ -514,7 +540,7 @@ water volume per ground area) and
 the energy per unit ground area U [J/m^2] prognostically.
 """
 prognostic_vars(m::SnowModel) =
-    (:S, :S_l, :U, density_prog_vars(m.parameters.density)...)
+    (:S, :S_l, :U, density_prog_vars(m.parameters.density)..., albedo_prog_vars(m.parameters.α_snow)...)
 
 """
     density_prog_vars(::AbstractDensityModel)
@@ -532,7 +558,7 @@ both snow water equivalent and energy per unit area
 are scalars.
 """
 prognostic_types(m::SnowModel{FT}) where {FT} =
-    (FT, FT, FT, density_prog_types(m.parameters.density)...)
+    (FT, FT, FT, density_prog_types(m.parameters.density)...,albedo_prog_types(m.parameters.α_snow)...)
 
 """
     density_prog_vars(::AbstractDensityModel)
@@ -551,7 +577,7 @@ are modeling only as a function of (x,y), and not as a function
 of depth. Therefore their domain name is ":surface".
 """
 prognostic_domain_names(m::SnowModel) =
-    (:surface, :surface, :surface, density_prog_names(m.parameters.density)...)
+    (:surface, :surface, :surface, density_prog_names(m.parameters.density)...,albedo_prog_names(m.parameters.α_snow)...)
 
 """
     density_prog_vars(::AbstractDensityModel)
@@ -560,6 +586,7 @@ A default method for specifying variable domain names of the prognostic variable
 by the density model choice, similar to `prognostic_domain_names()`.
 """
 density_prog_names(::AbstractDensityModel) = ()
+
 
 """
     auxiliary_vars(::SnowModel)
@@ -760,6 +787,7 @@ function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
         @. dY.snow.S_l = -p.snow.liquid_water_flux
         @. dY.snow.U = -p.snow.applied_energy_flux
         update_density_prog!(model.parameters.density, model, dY, Y, p)
+        update_albedo_prog!(model.parameters.α_snow, model, dY, Y, p)
     end
     return compute_exp_tendency!
 end

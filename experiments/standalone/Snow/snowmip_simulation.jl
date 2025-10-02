@@ -52,7 +52,11 @@ domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
 density = NeuralSnow.NeuralDepthModel(FT)
 #density = Snow.MinimumDensityModel(ρ)
-α_snow = Snow.ConstantAlbedoModel(α)
+α_max = FT(0.85)
+α_min = FT(0.5)
+P_snow_crit = FT(-3e-6)
+τ_age = FT(15*86400)
+α_snow = Snow.SimplePrognostic(α_max, α_min, P_snow_crit, τ_age)
 
 model = ClimaLand.Snow.SnowModel(
     FT,
@@ -72,7 +76,7 @@ Y.snow.S_l .= 0 # this is a guess
 Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
-
+Y.snow.α .= α
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)
 exp_tendency! = ClimaLand.make_exp_tendency(model)
@@ -443,3 +447,8 @@ interpolated_T = [linear_interpolation(daily, T, t) for t in data_times]
 @show mae(interpolated_swe[.~isnan.(SWE)], SWE[.~isnan.(SWE)])
 @show mae(interpolated_z[.~isnan.(depths)], depths[.~isnan.(depths)])
 @show mae(interpolated_T[.~isnan.(T_snow)], T_snow[.~isnan.(T_snow)] .+ 273.15)
+fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
+ax = Axis(fig[1,1])
+lines!(daily, [parent(sol.u[k].snow.α)[1] for k in 1:length(sol.t)])
+scatter!(seconds[mass_data_avail][.!(typeof.(albedo[mass_data_avail]) .<: Missing)] ./24 ./3600, FT.(albedo[mass_data_avail][.!(typeof.(albedo[mass_data_avail]) .<: Missing)]))
+CairoMakie.save(joinpath(savedir, "albedo_$(SITE_NAME).png"), fig)

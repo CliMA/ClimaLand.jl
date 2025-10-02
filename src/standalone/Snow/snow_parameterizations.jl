@@ -556,3 +556,59 @@ function update_density_prog!(
 )
     return nothing
 end
+
+"""
+    update_albedo_prog!(density::AbstractAlbedoModel, model::SnowModel, Y, p)
+
+Updates all prognostic variables associated with density/depth given the current model state.
+This is the default method for the constant minimum density model,
+ which has no prognostic variables.
+"""
+function update_albedo_prog!(
+    density::AbstractAlbedoModel,
+    model::SnowModel,
+    dY,
+    Y,
+    p,
+)
+    return nothing
+end
+
+"""
+    update_albedo_prog!(density::AbstractAlbedoModel, model::SnowModel, Y, p)
+
+Updates all prognostic variables associated with density/depth given the current model state.
+This is the default method for the constant minimum density model,
+ which has no prognostic variables.
+"""
+function update_albedo_prog!(
+    albedo::SimplePrognostic,
+    model::SnowModel,
+    dY,
+    Y,
+    p,
+)
+    (; α_max, α_min, τ_age, P_snow_crit) = albedo
+    @. dY.snow.α = alpha_tendency(Y.snow.α, α_max, α_min, P_snow_crit, p.drivers.P_snow, τ_age)
+end
+
+function alpha_tendency(α::FT, α_max::FT, α_min::FT, P_crit::FT, P_actual::FT, τ::FT) where {FT}
+   # α = min(α, α_max)
+   # α = max(α, α_min)
+    if P_actual < 0 # snowing
+        return max(P_actual/P_crit, 1)*(α_max - α)/FT(3600)
+    else
+        return (α_min - α)/τ
+    end
+end
+
+function update_snow_albedo!(
+    α,
+    m::SimplePrognostic,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    @. α = max(min(Y.snow.α, m.α_max), m.α_min)
+end

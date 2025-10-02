@@ -134,3 +134,5 @@ SWE = depths .* ρ_snow ./ 1000.0
     albedo[mass_data_avail][.!(typeof.(albedo[mass_data_avail]) .<: Missing)],
 )
 ρ = median(ρ_snow[.~isnan.(ρ_snow)])
+
+
