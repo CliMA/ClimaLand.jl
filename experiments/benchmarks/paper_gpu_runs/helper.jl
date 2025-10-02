@@ -27,8 +27,6 @@ using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 
 using Statistics
-using CairoMakie
-import GeoMakie
 using Dates
 import NCDatasets
 
@@ -54,7 +52,7 @@ function printstats(
     if human_readable
         @info label num_columns time time_per_step sypd
     else
-        println("(", num_columns, ",", time_per_step, ")")
+        println("(", num_columns, ",", time_per_step, ",", ClimaComms.nprocs(ClimaComms.context())")")
         # println("'$label' ", num_columns, " ", time, " ", time_per_step, " ", sypd)
     end
 end
@@ -71,7 +69,7 @@ function run(
     func;
     label = "",
     plot_attrs = "",
-    tf = 86400.0,
+    tf = 4500.0,
     dt = 450.0,
     kwargs...,
 )
@@ -82,22 +80,27 @@ function run(
     timesolve(func(; tf, dt, kwargs...))
 
     # Run
-    println("\\addplot[$(plot_attrs)]")
-    println("coordinates {")
-    for dlat_degrees in [8, 4, 2, 1, 0.5, 0.25, 0.125]
+    # println("\\addplot[$(plot_attrs)]")
+    # println("coordinates {")
+    np = ClimaComms.nprocs(ClimaComms.context())
+    res_array = [0.25, 0.125]
+    np > 1 && push!(res_array, res_array[end]/2)
+    np > 2 && push!(res_array, res_array[end]/2)
+    end
+    for dlat_degrees in res_array
         time = timesolve(func(; dlat_degrees, tf, dt, kwargs...))
         _, _, num_columns = resolution(; dlat_degrees)
         printstats(time, num_steps, dt; label = "Full model", num_columns)
     end
-    println("};")
-    println("\\addlegendentry{$label}")
+    # println("};")
+    # println("\\addlegendentry{$label}")
 end
 
 include("snowy_land.jl")
-include("bucket.jl")
-include("richards.jl")
-include("soil_canopy.jl")
-include("canopy.jl")
-include("soil.jl")
-include("snow.jl")
+# include("bucket.jl")
+# include("richards.jl")
+# include("soil_canopy.jl")
+# include("canopy.jl")
+# include("soil.jl")
+# include("snow.jl")
 # include("lighter_canopy.jl")

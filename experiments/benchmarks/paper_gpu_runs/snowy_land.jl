@@ -150,7 +150,6 @@ function snowy_land_integrator(;
         land;
         diagnostics = (),
         updateat = update_drivers ? Second(dt) : Second(2 * (tf - t0)), # we still want to update drivers on init
-        user_callbacks = (),
         set_ic!,
     )
     return sim
