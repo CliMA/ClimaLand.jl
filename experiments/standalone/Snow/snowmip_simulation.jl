@@ -27,7 +27,7 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+    SITE_NAME = @error("Please provide a site name as command line argument")
 else
     SITE_NAME = ARGS[1]
 end
@@ -54,9 +54,10 @@ density = NeuralSnow.NeuralDepthModel(FT)
 #density = Snow.MinimumDensityModel(ρ)
 α_max = FT(0.85)
 α_min = FT(0.5)
-P_snow_crit = FT(-3e-6)
+ΔS_α = FT(3e-6 * 3600)
 τ_age = FT(15*86400)
-α_snow = Snow.SimplePrognostic(α_max, α_min, P_snow_crit, τ_age)
+τ_melt = FT(4*86400)
+α_snow = Snow.SimplePrognostic(α_max, α_min, ΔS_α, τ_age, τ_melt)
 
 model = ClimaLand.Snow.SnowModel(
     FT,

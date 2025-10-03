@@ -588,17 +588,18 @@ function update_albedo_prog!(
     Y,
     p,
 )
-    (; α_max, α_min, τ_age, P_snow_crit) = albedo
-    @. dY.snow.α = alpha_tendency(Y.snow.α, α_max, α_min, P_snow_crit, p.drivers.P_snow, τ_age)
+    (; α_max, α_min, τ_age, ΔS_α, τ_melt) = albedo
+    @. dY.snow.α = alpha_tendency(Y.snow.α, α_max, α_min, ΔS_α, p.drivers.P_snow, p.snow.phase_change_flux, τ_age, τ_melt)
 end
 
-function alpha_tendency(α::FT, α_max::FT, α_min::FT, P_crit::FT, P_actual::FT, τ::FT) where {FT}
-   # α = min(α, α_max)
-   # α = max(α, α_min)
+function alpha_tendency(α::FT, α_max::FT, α_min::FT, ΔS_α::FT, P_actual::FT, phase_change_flux::FT, τ_age::FT, τ_melt::FT) where {FT}
     if P_actual < 0 # snowing
-        return max(P_actual/P_crit, 1)*(α_max - α)/FT(3600)
+        p = min(abs(P_actual)/ΔS_α, FT(1/3600))
+        return p*(α_max - α)
+    elseif abs(phase_change_flux) > eps(FT)
+        return (α_min - α)/τ_melt
     else
-        return (α_min - α)/τ
+        return (α_min - α)/τ_age
     end
 end
 

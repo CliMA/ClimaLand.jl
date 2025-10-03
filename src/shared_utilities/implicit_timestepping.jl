@@ -110,6 +110,7 @@ function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
         @name(snow.U),
         @name(snow.Z),
         @name(snow.P_avg),
+        @name(snow.α),
         @name(snow.T_avg),
         @name(snow.R_avg),
         @name(snow.Qrel_avg),

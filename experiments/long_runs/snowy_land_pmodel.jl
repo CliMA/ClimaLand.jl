@@ -70,6 +70,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true
     )
     forcing = (; atmos, radiation)
 
@@ -118,7 +119,13 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
+    α_max = FT(0.85)
+    α_min = FT(0.5)
+    ΔS_α = FT(3e-6 * 3600)
+    τ_age = FT(15*86400)
+    τ_melt = FT(4*86400)
+    α_snow = Snow.SimplePrognostic(α_max, α_min, ΔS_α, τ_age, τ_melt)
+#    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
@@ -143,10 +150,10 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-01-01")
+stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2008-12-01")
 Δt = 450.0
-nelements = (101, 15)
+nelements = (30, 15)
 domain = ClimaLand.Domains.global_domain(
     FT;
     context,
@@ -156,6 +163,7 @@ domain = ClimaLand.Domains.global_domain(
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+simulation._integrator.u.snow.α .= FT(0.8)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"

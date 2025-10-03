@@ -105,14 +105,16 @@ struct SimplePrognostic{FT} <: AbstractAlbedoModel{FT}
     α_max::FT
     "Minimum albedo of snow (unitless)"
     α_min::FT
-    "Critical precipication rate (m/s) of SWE to reset albedo to the maximum"
-    P_snow_crit::FT
+    "Critical SWE (m) to reset albedo to the maximum"
+    ΔS_α::FT
     "Aging timescale (seconds)"
     τ_age::FT
+    "Timescale for albedo change when melting (seconds)"
+    τ_melt::FT
 end
 
 function SimplePrognostic(toml_dict)
-    return SimplePrognostic(toml_dict["α_snow_max"], toml_dict["α_snow_min"], toml_dict["P_snow_crit"], toml_dict["τ_age"])
+    return SimplePrognostic(toml_dict["α_snow_max"], toml_dict["α_snow_min"], toml_dict["ΔS_α"], toml_dict["τ_age"], toml_dict["τ_melt"])
 end
 
 albedo_prog_names(::SimplePrognostic) = (:surface,)
