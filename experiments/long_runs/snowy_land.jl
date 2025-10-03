@@ -140,11 +140,15 @@ start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 nelements = (101, 15)
+depth = FT(10)
+dz_tuple = FT.((1, 0.05))
 domain = ClimaLand.Domains.global_domain(
     FT;
     context,
     nelements,
     mask_threshold = FT(0.99),
+    depth,
+    dz_tuple
 )
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
@@ -154,6 +158,22 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"
+Y = simulation._integrator.u
+soil = model.soil
+@. Y.soil.ϑ_l = (soil.parameters.ν-soil.parameters.θ_r)/2 + soil.parameters.θ_r
+@. Y.soil.θ_i = 0
+ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+Y.soil.ρe_int .=ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            simulation._integrator.p.soil.T,
+            soil.parameters.earth_param_set,
+        )
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
