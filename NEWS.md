@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Update default pmodel parameters PR[#1482](https://github.com/CliMA/ClimaLand.jl/pull/1482)
 - Use linear interpolation with a periodic calendar in time by default for ERA5 forcing PR[#1468](https://github.com/CliMA/ClimaLand.jl/pull/1468)
 - `PrescribedAtmosphere` fields can't be `nothing` PR[#1438](https://github.com/CliMA/ClimaLand.jl/pull/1438)
 - ![][badge-🐛bugfix] Check for coupled forcing in available diagnostics PR[#1434](https://github.com/CliMA/ClimaLand.jl/pull/1434)
