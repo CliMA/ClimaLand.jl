@@ -1247,8 +1247,8 @@ end
     apply_mask = true,
     mask_threshold = 0.5,
     nelements = (101, 15),
-    dz_tuple = (10.0, 0.05),
-    depth = 50.0,
+    dz_tuple = (1.0, 0.05),
+    depth = 10.0,
     npolynomial = 0,
     context = ClimaComms.context(),
     filepath = landseamask_file_path(;context),
@@ -1262,8 +1262,8 @@ end
 )
 
 Helper function to create a SphericalShell domain with (101,15) elements, a
-depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
-10m at the bottom of the domain, with npolynomial = 0 and GL quadrature.
+depth of 10m, vertical layering ranging from 0.05m in depth at the surface to
+1m at the bottom of the domain, with npolynomial = 0 and GL quadrature.
 
 `npolynomial` determines the order of polynomial base to use for the spatial
 discretization, which is correlated to the spatial resolution of the domain.
@@ -1287,8 +1287,8 @@ function global_domain(
     apply_mask = true,
     mask_threshold = 0.5,
     nelements = (101, 15),
-    dz_tuple = (10.0, 0.05),
-    depth = 50.0,
+    dz_tuple = (1.0, 0.05),
+    depth = 10.0,
     npolynomial = 0,
     context = ClimaComms.context(),
     filepath = landseamask_file_path(; context),

@@ -21,6 +21,19 @@ function soil_ic_2008_50m_path(; context = nothing)
 end
 
 """
+    soil_ic_10m_path(; context)
+
+Return the path to the file that contains the spun-up soil and snow initial
+conditions after 20 years of forcing with ERA5.
+
+The soil domain has a depth of 10m.
+"""
+function soil_ic_10m_path(; context = nothing)
+    dir = @clima_artifact("soil_ic_10m", context)
+    return joinpath(dir, "soil_ic_10m.nc")
+end
+
+"""
     era5_land_forcing_data_forty_years_folder_path(; context = nothing)
 
 Return the path to the directory that contains the forty years of ERA5 forcing
@@ -453,8 +466,7 @@ function ceres_albedo_dataset_path(; context = nothing)
     )
 end
 
-neural_snow_znetwork_link() =
-    "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
+neural_snow_znetwork_link() = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
 
 """
     ilamb_dataset_path(filename; context = nothing)
