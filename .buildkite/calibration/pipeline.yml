@@ -1,0 +1,54 @@
+agents:
+  queue: clima
+  slurm_mem: 8G
+  modules: climacommon
+
+steps:
+  - label: "init :GPU:"
+    command:
+      - echo "--- Instantiate"
+
+      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+      - julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+      - julia --project=.buildkite -e 'using Pkg; Pkg.precompile()'
+      - julia --project=.buildkite -e 'using CUDA; CUDA.precompile_runtime()'
+      - julia --project=.buildkite -e 'using Pkg; Pkg.status()'
+
+    agents:
+      slurm_gpus: 1
+      slurm_cpus_per_task: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+      JULIA_MAX_NUM_PRECOMPILE_FILES: 50
+
+  - wait
+
+  - label: "Generate observations"
+    command:
+      - julia --color=yes --project=.buildkite/ experiments/calibration/generate_observations.jl
+    env:
+      # Generating observations doesn't require a CUDA, but these environment
+      # variables may be loaded in the slurm script
+      CLIMACOMMS_DEVICE: "CUDA"
+      CLIMACOMMS_CONTEXT: "SINGLETON"
+
+  - wait
+
+  - label: "Calibration"
+    command:
+      - julia --color=yes --project=.buildkite/ experiments/calibration/run_calibration.jl
+    agents:
+      slurm_time: 2:00:00
+      slurm_gpus: 1
+    env:
+      CLIMACOMMS_DEVICE: "CUDA"
+      CLIMACOMMS_CONTEXT: "SINGLETON"
+    artifact_paths: "experiments/calibration/land_model/**/*.png"
+
+  - wait
+
+  - label: "Test calibration results"
+    command:
+      - julia --color=yes --project=.buildkite/ experiments/calibration/test/test_calibration.jl
