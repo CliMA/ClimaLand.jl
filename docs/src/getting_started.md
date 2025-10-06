@@ -11,7 +11,25 @@ using Pkg
 Pkg.add(ClimaLand)
 ```
 
-## Running a simple soil model
+## Steps to run a model
+
+To run a model, you will always need to do these steps:
+- Import dependencies. You need some libraries to run the model.
+- Choose floating point precision: Float32 or Float64.
+- Import [parameters via .toml files](@ref parameters_page). You need some constants and parameters values to run the model.
+- Define your domain. This specifies where you are solving the equations: globally (on the sphere),
+in a region (in a box), or at a site (in a column). See the [tutorial to ClimaLand domains!](@ref "Domain Tutorial")
+- Set your simulation period: start date, end date, timestep.
+- Set the forcings (for example, air temperature, precipitations).
+- Set the initial conditions. Differential equations required initial conditions to solve.
+For some simulations (e.g., global land simualtions), we provide default initial condition ("ic") functions,
+but in many cases you need to create your own `set_ic!` function.
+- Set how output is saved. For some simulations (e.g., global land simulations), we use the default diagnostic output,
+corresponding to monthly averages of specific variables saved to netcdf files.
+For your use case, you may wish to change these defaults.
+See [writing and accessing outputs](@ref "Using ClimaLand Diagnostics to save simulation output").
+
+## Example: running a simple soil model
 
 Now that we have Julia installed, let's set up and run a simple ClimaLand simulation!
 You can follow along by copying the following code segments into your REPL.

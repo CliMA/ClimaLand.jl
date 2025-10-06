@@ -1,4 +1,4 @@
-# Parameters
+# [Parameters](@id parameters_page)
 
 ## Default parameters
 ClimaLand provides a file `toml/default_parameters.toml` containing default parameters.
