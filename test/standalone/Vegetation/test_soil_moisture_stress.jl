@@ -92,7 +92,7 @@ for FT in (Float32, Float64)
         )
         @test θ_r == sms.θ_low
         @test ν == sms.θ_high
-        βm_expected = FT(0.5)
+        βm_expected = FT(0.5)^sms.c
         βm_computed = compute_piecewise_moisture_stress(
             sms.θ_high,
             sms.θ_low,
