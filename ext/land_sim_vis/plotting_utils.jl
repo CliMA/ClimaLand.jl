@@ -351,6 +351,7 @@ function LandSimVis.make_diurnal_timeseries(
     diagnostics,
     start_date;
     plot_stem_name = "diurnal_timeseries",
+    diagnostics2 = nothing,
     comparison_data = nothing,
     spinup_date = start_date,
 )
@@ -385,6 +386,26 @@ function LandSimVis.make_diurnal_timeseries(
             label = "Model",
             color = "blue",
         )
+        # Plot diagnostics from the second model, if provided
+        if !(isnothing(diagnostics2))
+            model_time, model_output2 =
+                ClimaLand.Diagnostics.diagnostic_as_vectors(
+                    diagnostics2[1].output_writer,
+                    dn,
+                )
+            hour_of_day, model_diurnal_cycle2 = compute_diurnal_cycle(
+                model_dates[spinup_idx:end],
+                model_output2[spinup_idx:end],
+            )
+            CairoMakie.lines!(
+                ax,
+                hour_of_day,
+                model_diurnal_cycle2,
+                label = "Model 2",
+                color = "red",
+            )
+        end
+
         if ~(comparison_data isa Nothing) &&
            (Symbol(sn) ∈ propertynames(comparison_data))
             data = getproperty(comparison_data, Symbol(sn))
