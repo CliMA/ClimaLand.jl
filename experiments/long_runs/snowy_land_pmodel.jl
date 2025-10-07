@@ -102,7 +102,9 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     # Construct the P model manually since it is not a default
     photosynthesis = PModel{FT}(domain, toml_dict)
     conductance = PModelConductance{FT}(toml_dict)
-
+    # Use the soil moisture stress function based on soil moisture only
+    soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -112,6 +114,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         hydraulics,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         z_0m,
         z_0b,
     )

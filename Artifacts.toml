@@ -1,3 +1,10 @@
+[soil_ic_10m]
+git-tree-sha1 = "ce8b3b879dfb2e3ea89447d8fc62d8268dffa295"
+
+    [[soil_ic_10m.download]]
+    sha256 = "7ad4d61dac7d66378638c31d6026bd3205ab87bb343f4cba73a71d66ba9439e2"
+    url = "https://caltech.box.com/shared/static/vh9hht0jbl227w82vxhihsfkscx4iq0i.gz"
+    
 [landsea_mask_30arcseconds]
 git-tree-sha1 = "517c925535981f9d17ac9e7a65e2c35c3ce9597d"
 

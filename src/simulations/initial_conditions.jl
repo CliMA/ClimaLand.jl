@@ -1,7 +1,7 @@
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
-
+using ClimaCore
 export make_set_initial_state_from_file
 
 regridder_type = :InterpolationsRegridder
@@ -225,10 +225,7 @@ function make_set_initial_state_from_file(
             ic_path,
             land.snow.parameters,
         )
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-        T_bounds = extrema(Y.canopy.energy.T)
+        T_bounds = extrema(p.snow.T)
 
         set_soil_initial_conditions!(
             Y,
@@ -239,6 +236,14 @@ function make_set_initial_state_from_file(
             land.soil,
             T_bounds,
         )
+	@. p.soil.ψ =
+            ClimaLand.Soil.pressure_head(land.soil.parameters.hydrology_cm, land.soil.parameters.θ_r, Y.soil.ϑ_l, land.soil.parameters.ν - Y.soil.θ_i, land.soil.parameters.S_s)
+        ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l.:1))
+	ClimaCore.Operators.column_integral_definite!(ψ_roots,p.soil.ψ)
+	ψ_roots .= ψ_roots ./ land.soil.domain.fields.depth
+        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.canopy.hydraulics.ϑ_l.:1 .= ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(land.canopy.hydraulics.parameters.retention_model, ψ_roots, land.canopy.hydraulics.parameters.ν, land.canopy.hydraulics.parameters.S_s) .* land.canopy.hydraulics.parameters.ν
+        evaluate!(Y.canopy.energy.T, atmos.T, t0)
     end
     return set_ic!
 end
