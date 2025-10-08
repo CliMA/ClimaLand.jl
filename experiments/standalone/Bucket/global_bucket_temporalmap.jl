@@ -178,6 +178,7 @@ function setup_prob(start_date, stop_date, Δt, outdir)
         subsurface_space,
         output_dir;
         start_date,
+        compression_level = 1,
     )
     diags = ClimaLand.default_diagnostics(
         model,
