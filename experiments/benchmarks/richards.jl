@@ -34,6 +34,7 @@ import NCDatasets
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+using Interpolations
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaTimeSteppers as CTS
 import ClimaCore
