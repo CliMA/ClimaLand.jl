@@ -177,13 +177,13 @@ cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 
 # Please note that the default era5 forcing uses linear interpolation in space and time.
 # If your simulation encompasses a time that is beyond the extrema of the data,
-# the corresponding day/time from the last year of data will be repeated.
-# This corresponds to a value of `time_interpolation_method = LinearInterpolation(PeriodicCalendar())
-# `time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))))`.
-# To repeat the first year of data instead, you can specify to repeat the start date's year, i.e.:
-# `time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(start_date))))`.
-# Or, to repeat the entire time series of data you can call `PeriodicCalendar` without any arguments:
-# `time_interpolation_method = LinearInterpolation(PeriodicCalendar())`.
+# the data will be reused starting from the start date of the simulation.
+# This corresponds to a value of `time_interpolation_method = LinearInterpolation(PeriodicCalendar())`.
+# To repeat a single year of data instead, you can use:
+# `time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(repeat_year)))`.
+# Note that this second option repeats the single year over the entire
+# duration of the simulation, as opposed to only when outside of the
+# date range of the data.
 # This behavior can be changed by passing in a time_interpolation_method. Another
 # option that be be useful is `time_interpolation_method = LinearInterpolation(Flat())`,
 # which uses the last (first) value of the data repeatedly when outside the bounds

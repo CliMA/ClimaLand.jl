@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- ![][badge-🐛bugfix] Fix periodic calendar to use all of the data rather than repeat the last year [#1489](https://github.com/CliMA/ClimaLand.jl/pull/1489)
 - Update default snow albedo parameters PR[#1484](https://github.com/CliMA/ClimaLand.jl/pull/1484)
 - Update default pmodel parameters PR[#1482](https://github.com/CliMA/ClimaLand.jl/pull/1482)
 - Use linear interpolation with a periodic calendar in time by default for ERA5 forcing PR[#1468](https://github.com/CliMA/ClimaLand.jl/pull/1468)
