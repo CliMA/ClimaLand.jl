@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Update packages PR[#1488](https://github.com/CliMA/ClimaLand.jl/pull/1488)
 - Update default snow albedo parameters PR[#1484](https://github.com/CliMA/ClimaLand.jl/pull/1484)
 - Update default pmodel parameters PR[#1482](https://github.com/CliMA/ClimaLand.jl/pull/1482)
 - Use linear interpolation with a periodic calendar in time by default for ERA5 forcing PR[#1468](https://github.com/CliMA/ClimaLand.jl/pull/1468)
