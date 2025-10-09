@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Release v1 PR[#1488](https://github.com/CliMA/ClimaLand.jl/pull/1488)
 - Update benchmark scripts as they were out of date [#1490](https://github.com/CliMA/ClimaLand.jl/pull/1490)
 - ![][badge-🐛bugfix] Fix periodic calendar to use all of the data rather than repeat the last year [#1489](https://github.com/CliMA/ClimaLand.jl/pull/1489)
 - Update default snow albedo parameters PR[#1484](https://github.com/CliMA/ClimaLand.jl/pull/1484)
