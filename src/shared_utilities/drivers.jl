@@ -1486,7 +1486,7 @@ end
                             gustiness=1,
                             max_wind_speed = nothing,
                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-                            time_interpolation_method = LinearInterpolation(PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))),
+                            time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                             regridder_type = :InterpolationsRegridder,
                             context = nothing,
                             )
@@ -1509,8 +1509,8 @@ The method for temporal interpolation is controlled via the `time_interpolation_
 We suggest `LinearInterpolation(PeriodicCalendar())`, which implies linear interpolation in time;
 the inner argument implies how extrapolation outside the bounds of the data is handled. For example,
 the ERA5 forcing data we use is hourly, which implies Dec 31 of the last year of the data, at midnight,
-is not in the data. With the PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date)))
-option, the interpolated value at Dec 31 at midnight of the previous year will
+is not in the data. With the PeriodicCalendar()
+option, the interpolated value in the data at Jan 1 at timestamp 00 of the first year of the simulation will
 be used. For the low-resolution forcing data, which only exists for 2008, multi-year runs will repeat
 the forcing. If this behavior is not what you want, you can change the extrapolation argument to
 error `LinearInterpolation(Throw())` or extrapolate by using the last value ``LinearInterpolation(Flat())`.
@@ -1542,9 +1542,7 @@ function prescribed_forcing_era5(
     gustiness = 1,
     max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(
-        PeriodicCalendar(Dates.Year(1), DateTime(Dates.year(stop_date))),
-    ),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
 )
