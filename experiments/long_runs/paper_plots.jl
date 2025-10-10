@@ -20,8 +20,7 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
 
 outdir = "snowy_land_longrun_gpu-4251" # local
-outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/4251/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active" # on clima
-root_path = outdir
+outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/4276/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active" # on clima
 
 short_names = ["lhf", "shf", "lwn", "swn"]#, "lwu", "swu"]
 title_stubs = Dict(
@@ -34,12 +33,12 @@ title_stubs = Dict(
 )
 # Define levels for contour colorbars
 levels_dict = Dict(
-    "lhf_bias" => collect(-50:10:30),
-    "shf_bias" => collect(-30:10:50),
+    "lhf_bias" => collect(-30:5:10),
+    "shf_bias" => collect(-10:5:30),
     "lwu_bias" => collect(-40:5:20),
     "swu_bias" => collect(-20:5:40),
-    "lwn_bias" => collect(-40:5:40),
-    "swn_bias" => collect(-40:5:40),
+    "lwn_bias" => collect(-20:5:20),
+    "swn_bias" => collect(-20:5:20),
 )
 
 include("data_paper_plots.jl")
@@ -89,36 +88,55 @@ function make_paper_figures(
         sim_var_times = ClimaAnalysis.times(sim_var)
 
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+        obs_var_times = ClimaAnalysis.times(obs_var)
 
-        sim_var_global_average = zeros(12)
-        obs_var_global_average = zeros(12)
-        for i in 1:12
-            sim_slice_args =
-                ClimaAnalysis.has_altitude(sim_var) ?
-                Dict(:z => 1, :time => sim_var_times[i]) :
-                Dict(:time => sim_var_times[i]) # if has altitude, take first layer
-            obs_slice_args =
-                ClimaAnalysis.has_altitude(sim_var) ?
-                Dict(:z => 1, :time => sim_var_times[i]) :
-                Dict(:time => sim_var_times[i]) # if has altitude, take first layer
+        # sim_var_global_average = zeros(12)
+        # obs_var_global_average = zeros(12)
+        # for i in 1:12
+        #     sim_slice_args =
+        #         ClimaAnalysis.has_altitude(sim_var) ?
+        #         Dict(:z => 1, :time => sim_var_times[i]) :
+        #         Dict(:time => sim_var_times[i]) # if has altitude, take first layer
+        #     obs_slice_args =
+        #         ClimaAnalysis.has_altitude(sim_var) ?
+        #         Dict(:z => 1, :time => sim_var_times[i]) :
+        #         Dict(:time => sim_var_times[i]) # if has altitude, take first layer
 
-            sim_var_sliced = ClimaAnalysis.slice(sim_var; sim_slice_args...)
-            sim_var_masked = ClimaAnalysis.apply_oceanmask(sim_var_sliced)
-            sim_var_global_average[i] = compute_global_average(sim_var_masked)
+        #     sim_var_sliced = ClimaAnalysis.slice(sim_var; sim_slice_args...)
+        #     sim_var_masked = ClimaAnalysis.apply_oceanmask(sim_var_sliced)
+        #     sim_var_global_average[i] = compute_global_average(sim_var_masked)
 
-            obs_var_sliced = ClimaAnalysis.slice(obs_var; obs_slice_args...)
-            obs_var_masked = ClimaAnalysis.apply_oceanmask(obs_var_sliced)
-            obs_var_global_average[i] = compute_global_average(obs_var_masked)
-        end
+        #     obs_var_sliced = ClimaAnalysis.slice(obs_var; obs_slice_args...)
+        #     obs_var_masked = ClimaAnalysis.apply_oceanmask(obs_var_sliced)
+        #     obs_var_global_average[i] = compute_global_average(obs_var_masked)
+        # end
 
-        i = 1 # use first year of simulation
+        comparison_start_date = DateTime("2009-01-01")
+        start_ind_sim = findfirst(
+            ==(comparison_start_date),
+            DateTime(sim_var.attributes["start_date"]) .+
+            Second.(sim_var_times),
+        )
+        start_ind_obs = findfirst(
+            ==(comparison_start_date),
+            DateTime(obs_var.attributes["start_date"]) .+
+            Second.(obs_var_times),
+        )
+        @assert sim_var.attributes["start_date"] ==
+                obs_var.attributes["start_date"] &&
+                sim_var_times[start_ind_sim] == obs_var_times[start_ind_obs] # make sure time axes are aligned
+
+        # i = 1 # use first year of simulation
         kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
+        sim_left = sim_var_times[start_ind_sim - 1]
         sim_var_window = ClimaAnalysis.window(
             sim_var_sliced,
             "time",
-            left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
-            right = i * 366 * 86400, # 1 year right of year i, in seconds
+            left = DateTime(2009, 1, 1),
+            right = DateTime(2010, 1, 1),
+            # left = (start_ind_sim - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
+            # right = start_ind_sim * 366 * 86400, # 1 year right of year i, in seconds
         )
         units_label = "(" * sim_var.attributes["units"] * ")"
 
@@ -127,9 +145,22 @@ function make_paper_figures(
         obs_var_window = ClimaAnalysis.window(
             obs_var_sliced,
             "time",
-            left = 0, # observation data starts at 2008
-            right = 366 * 86400, # 1 year of observation data, in seconds
+            left = DateTime(2009, 1, 1),
+            right = DateTime(2010, 1, 1),
+            # left = (start_ind_obs - 1) * 366 * 86400 + 30 * 86400,
+            # right = start_ind_obs * 366 * 86400, # 1 year of observation data, in seconds
         )
+
+        start_date = DateTime(sim_var.attributes["start_date"])
+        @assert start_date + Second(ClimaAnalysis.times(sim_var_window)[1]) ==
+                DateTime(2009, 1, 1)
+        @assert start_date + Second(ClimaAnalysis.times(obs_var_window)[1]) ==
+                DateTime(2009, 1, 1)
+        @assert start_date + Second(ClimaAnalysis.times(sim_var_window)[end]) ==
+                DateTime(2010, 1, 1)
+        @assert start_date + Second(ClimaAnalysis.times(obs_var_window)[end]) ==
+                DateTime(2010, 1, 1)
+
 
         ## GLOBAL HEATMAP
         # sim_var_annual_average below contains annually-averaged data in the provided window
@@ -150,10 +181,10 @@ function make_paper_figures(
 
         combined_data =
             vcat(vec(sim_var_no_nans), vec(obs_var_annual_average.data))
-        min = Int(round(quantile(combined_data, 0.05); digits = -1))
-        max = Int(round(quantile(combined_data, 0.95); digits = -1))
+        min = Int(round(quantile(combined_data, 0.02); digits = -1))
+        max = Int(round(quantile(combined_data, 0.98); digits = -1))
         diff = max - min
-        step_size = diff < 150 ? 10 : 40
+        step_size = diff < 150 ? 10 : 20
 
         # Increase max to be a multiple of step_size
         max =
@@ -238,9 +269,9 @@ function make_paper_figures(
                         rasterize = true,
                         # colorrange = clims,
                         colormap = colormap,
-                        levels = levels,
-                        extendhigh = :auto,
-                        extendlow = :auto,
+                        # levels = levels, TODO add these back
+                        # extendhigh = :auto,
+                        # extendlow = :auto,
                     ),
                     :axis => ClimaAnalysis.Utils.kwargs(
                         title = sim_title,
@@ -336,9 +367,9 @@ function make_paper_figures(
                         rasterize = true,
                         # colorrange = clims,
                         colormap = colormap,
-                        levels = levels,
-                        extendhigh = :auto,
-                        extendlow = :auto,
+                        # levels = levels, TODO add these back
+                        # extendhigh = :auto,
+                        # extendlow = :auto,
                     ),
                     :axis => ClimaAnalysis.Utils.kwargs(
                         title = obs_title,
@@ -506,7 +537,8 @@ function make_paper_figures(
     end
     save_name = joinpath(root_path, "combined_figures.png")
     save_name =
-        plot_bias ? joinpath(root_path, "combined_figures_net-rad_bias.png") :
+        plot_bias ?
+        joinpath(root_path, "combined_figures_bias_2009.png") :
         save_name
     save_name =
         plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.png") :
