@@ -1,0 +1,9 @@
+set_gpu_rank: host deg0059 / global rank 2 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0059 / global rank 3 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0059 / global rank 1 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: using cray-mpich MPI library with 4 accelerators per node on 1 hosts...
+set_gpu_rank: setting MPICH_GPU_SUPPORT_ENABLED=1, MPICH_OFI_NIC_POLICY=GPU
+set_gpu_rank: host deg0059 / global rank 0 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+(0.5 , 4 , 0.014412601)
+(0.25 , 4 , 0.054200597)
+(0.125 , 4 , 0.20701422)

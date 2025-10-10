@@ -1,6 +1,9 @@
 import SciMLBase
+using CUDA
+CUDA.precompile_runtime()
 import ClimaComms
 ClimaComms.@import_required_backends
+CUDA.precompile_runtime()
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
@@ -41,20 +44,12 @@ function printstats(
     time,
     num_steps,
     dt;
-    label = "simulation",
-    num_columns,
-    human_readable = false,
+    effective_resolution,
 )
     time_per_step = time / num_steps
-    steps_in_one_year = 365.25 * 86400 / dt
-    steps_completed_in_one_day = 86400 / time_per_step
-    sypd = steps_completed_in_one_day / steps_in_one_year
-    if human_readable
-        @info label num_columns time time_per_step sypd
-    else
-        println("(", num_columns, ",", time_per_step, ",", ClimaComms.nprocs(ClimaComms.context())")")
-        # println("'$label' ", num_columns, " ", time, " ", time_per_step, " ", sypd)
-    end
+    np = ClimaComms.nprocs(ClimaComms.context())
+    println("($effective_resolution , $np , $time_per_step)")
+
 end
 
 function resolution(; dlat_degrees = 1.0)
@@ -69,38 +64,31 @@ function run(
     func;
     label = "",
     plot_attrs = "",
-    tf = 4500.0,
     dt = 450.0,
+    tf = dt * 500,
     kwargs...,
 )
-    num_steps = convert(Int, tf / dt)
+    # subtract one from total steps because we step once before starting timing
+    num_steps = convert(Int, tf / dt) - 1
 
-    # Warmup
-    timesolve(func(; tf, dt, kwargs...))
-    timesolve(func(; tf, dt, kwargs...))
-
-    # Run
-    # println("\\addplot[$(plot_attrs)]")
-    # println("coordinates {")
     np = ClimaComms.nprocs(ClimaComms.context())
-    res_array = [0.25, 0.125]
+    res_array = [0.5, 0.25]
     np > 1 && push!(res_array, res_array[end]/2)
-    np > 2 && push!(res_array, res_array[end]/2)
-    end
+    np >= 4 && push!(res_array, res_array[end]/2)
+    np >= 8 && push!(res_array, res_array[end]/2)
+    np >= 32 && push!(res_array, res_array[end]/2)
     for dlat_degrees in res_array
-        time = timesolve(func(; dlat_degrees, tf, dt, kwargs...))
-        _, _, num_columns = resolution(; dlat_degrees)
-        printstats(time, num_steps, dt; label = "Full model", num_columns)
+        # solve once to ensure compilation
+        timesolve(func(; dlat_degrees, tf = tf/10, dt, kwargs...))
+        @info "\n \n \n \n \n starting timing for $dlat_degrees resolution, $np gpus"
+        integrator = func(; dlat_degrees, tf, dt, kwargs...)
+        # step once to ensure compilation of anonymous functions
+        ClimaLand.Simulations.step!(integrator)
+        time = timesolve(integrator)
+        _, effective_resolution, num_columns = resolution(; dlat_degrees)
+        ClimaComms.iamroot(ClimaComms.context()) && printstats(time, num_steps, dt; effective_resolution)
+        @info "\n \n \n \n \n done timing for $dlat_degrees resolution, $np gpus"
     end
-    # println("};")
-    # println("\\addlegendentry{$label}")
 end
 
 include("snowy_land.jl")
-# include("bucket.jl")
-# include("richards.jl")
-# include("soil_canopy.jl")
-# include("canopy.jl")
-# include("soil.jl")
-# include("snow.jl")
-# include("lighter_canopy.jl")

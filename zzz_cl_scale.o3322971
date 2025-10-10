@@ -1,0 +1,22 @@
+set_gpu_rank: host deg0072 / global rank 3 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0072 / global rank 1 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0072 / global rank 2 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: using cray-mpich MPI library with 4 accelerators per node on 4 hosts...
+set_gpu_rank: setting MPICH_GPU_SUPPORT_ENABLED=1, MPICH_OFI_NIC_POLICY=GPU
+set_gpu_rank: host deg0072 / global rank 0 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0076 / global rank 11 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0076 / global rank 8 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0076 / global rank 10 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0076 / global rank 9 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0074 / global rank 6 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0074 / global rank 7 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0074 / global rank 5 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0074 / global rank 4 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0078 / global rank 12 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0078 / global rank 15 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0078 / global rank 13 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0078 / global rank 14 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+(0.5 , 16 , 0.014408262)
+(0.25 , 16 , 0.01394734)
+(0.125 , 16 , 0.054796375)
+(0.0625 , 16 , 0.20736244)

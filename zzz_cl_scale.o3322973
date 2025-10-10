@@ -1,0 +1,39 @@
+set_gpu_rank: host deg0060 / global rank 2 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0060 / global rank 1 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0060 / global rank 3 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: using cray-mpich MPI library with 4 accelerators per node on 8 hosts...
+set_gpu_rank: setting MPICH_GPU_SUPPORT_ENABLED=1, MPICH_OFI_NIC_POLICY=GPU
+set_gpu_rank: host deg0060 / global rank 0 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0069 / global rank 13 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0069 / global rank 12 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0069 / global rank 14 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0069 / global rank 15 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0064 / global rank 7 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0064 / global rank 5 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0064 / global rank 4 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0064 / global rank 6 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0080 / global rank 20 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0080 / global rank 23 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0080 / global rank 21 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0080 / global rank 22 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0079 / global rank 19 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0079 / global rank 16 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0079 / global rank 17 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0079 / global rank 18 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0081 / global rank 24 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0081 / global rank 25 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0081 / global rank 26 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0081 / global rank 27 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0082 / global rank 28 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0082 / global rank 31 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0082 / global rank 30 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+set_gpu_rank: host deg0082 / global rank 29 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0067 / global rank 8 / local rank 0 / CUDA_VISIBLE_DEVICES 0
+set_gpu_rank: host deg0067 / global rank 11 / local rank 3 / CUDA_VISIBLE_DEVICES 3
+set_gpu_rank: host deg0067 / global rank 9 / local rank 1 / CUDA_VISIBLE_DEVICES 1
+set_gpu_rank: host deg0067 / global rank 10 / local rank 2 / CUDA_VISIBLE_DEVICES 2
+(0.5 , 32 , 0.014181272)
+(0.25 , 32 , 0.013861533)
+(0.125 , 32 , 0.027848858)
+(0.0625 , 32 , 0.10324048)
+(0.03125 , 32 , 0.41020823)
