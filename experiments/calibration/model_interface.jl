@@ -90,6 +90,9 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
+    photosynthesis = PModel{FT}(domain, toml_dict;temperature_dep_yield = true)
+    conductance = PModelConductance{FT}(toml_dict)
+    soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -97,6 +100,9 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         hydraulics,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
         z_0m,
         z_0b,
     )
