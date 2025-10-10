@@ -104,13 +104,16 @@ function setup_prob(
         stop_date,
     )
 
-    # Overwrite some defaults for the canopy model
-    # Energy model
-    ac_canopy = FT(2.5e3)
-    energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
-
+    # Plant hydraulics
+    conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
+    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(
+        surface_domain,
+        toml_dict;
+        conductivity_model,
+        retention_model,
+    )
     # Roughness lengths
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(surface_domain)
     h_canopy = hydraulics.compartment_surfaces[end]
     z_0m = FT(0.13) * h_canopy
     z_0b = FT(0.1) * z_0m
@@ -124,19 +127,18 @@ function setup_prob(
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        energy,
         hydraulics,
         z_0m,
         z_0b,
     )
 
     # Construct land model with all default components
-    land = LandModel{FT}(forcing, LAI, earth_param_set, domain, Δt; canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; canopy)
 
     Y, p, cds = initialize(land)
 
     # Set initial conditions
-    (; θ_r, ν, ρc_ds) = land.soil.parameters
+    (; θ_r, ν, ρc_ds, earth_param_set) = land.soil.parameters
     @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
     Y.soil.θ_i .= 0
     T = FT(276.85)
