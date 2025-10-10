@@ -125,22 +125,12 @@ steps:
   - group: "Longer runs of Global Land Models"
     if: build.env("LONGER_RUN") != null
     steps:
-      - label: "Snowy Land, 19 years"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
-        artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          LONGER_RUN: ""
 
-      - label: "Soil, 20 years"
+      - label: "Snowy Land Pmodel, 19 years"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
+        artifact_paths:
+          - "snowy_land_pmodel_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
