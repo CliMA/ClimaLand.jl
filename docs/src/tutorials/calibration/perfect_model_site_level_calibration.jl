@@ -147,6 +147,10 @@ function model(Vcmax25)
         g1 = FT(141),
     )
 
+    #md # Set up optimal LAI model
+    lai_model =
+        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
     #md # Create canopy model
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         canopy_domain,
@@ -156,6 +160,7 @@ function model(Vcmax25)
         photosynthesis,
         prognostic_land_components,
         conductance,
+        lai_model,
     )
 
     #md # Create integrated land model

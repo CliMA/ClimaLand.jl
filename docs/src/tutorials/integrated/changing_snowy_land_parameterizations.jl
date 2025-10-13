@@ -134,6 +134,10 @@ radiative_transfer_parameters = Canopy.BeerLambertParameters(
 );
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 
+# Set up optimal LAI model
+lai_model =
+    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict));
+
 # Now we can create the `CanopyModel` model with the specified radiative transfer
 # parameterizations passed as [keyword arguments](@extref Julia Keyword-Arguments).
 (; atmos, radiation) = forcing;
@@ -144,6 +148,7 @@ canopy = Canopy.CanopyModel{FT}(
     toml_dict;
     prognostic_land_components,
     radiative_transfer,
+    lai_model,
 );
 
 # Now we can construct the integrated `LandModel`. Since we want to use the

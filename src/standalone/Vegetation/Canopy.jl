@@ -60,6 +60,7 @@ include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./photosynthesis_farquhar.jl")
 include("./pmodel.jl")
+include("./optimal_lai.jl")
 include("./radiation.jl")
 include("./solar_induced_fluorescence.jl")
 include("./pfts.jl")
@@ -112,8 +113,8 @@ and wilting point (θ_low) from the soil parameters.
 The low and high thresholds for the piecewise soil moisture stress function are given by
 the residual soil water content and the soil porosity, respectively.
 
-The soil parameters should be a named tuple with keys of `ν` and `θ_r` 
-(additional keys may be present but they will not be used). These may 
+The soil parameters should be a named tuple with keys of `ν` and `θ_r`
+(additional keys may be present but they will not be used). These may
 be ClimaCore fields or floats, but must be consistently one or the other.
 
 Note that unlike other Canopy components, this model is defined on the subsurface domain.
@@ -550,6 +551,20 @@ function PModelConductance{FT}(
     return PModelConductance{FT}(cond_params)
 end
 
+## LAI models
+"""
+    OptimalLAIModel{FT}(toml_dict::CP.ParamDict,
+                       ) where {FT <: AbstractFloat}
+
+Create an `OptimalLAIModel` using `toml_dict` of type `FT`.
+"""
+function OptimalLAIModel{FT}(
+    toml_dict::CP.ParamDict,
+) where {FT <: AbstractFloat}
+    parameters = OptimalLAIParameters{FT}(toml_dict)
+    return OptimalLAIModel{FT, typeof(parameters)}(parameters)
+end
+
 
 ########################################################
 # End component model convenience constructors
@@ -602,7 +617,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, LAI, BM, B, PSE, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -620,6 +635,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
     energy::EM
     "SIF model, a canopy component model"
     sif::SIFM
+    "LAI model, a canopy component model"
+    lai_model::LAI
     "Biomass parameterization, a canopy component model"
     biomass::BM
     "Boundary Conditions"
@@ -640,6 +657,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
+        lai_model::AbstractLAIModel{FT},
         biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
         earth_param_set::PSE,
@@ -665,6 +683,7 @@ function CanopyModel{FT}(;
     hydraulics::AbstractPlantHydraulicsModel{FT},
     soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     sif::AbstractSIFModel{FT},
+    lai_model::AbstractLAIModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
@@ -700,6 +719,7 @@ function CanopyModel{FT}(;
         hydraulics,
         energy,
         sif,
+        lai_model,
         biomass,
         boundary_conditions,
         earth_param_set,
@@ -773,6 +793,7 @@ function CanopyModel{FT}(
         toml_dict["canopy_height"],
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
+    lai_model = OptimalLAIModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 
@@ -787,6 +808,7 @@ function CanopyModel{FT}(
         energy,
         biomass,
         sif,
+        lai_model,
     ]
         # For component models without parameters, skip the check
         !hasproperty(component, :parameters) && continue
@@ -815,6 +837,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         sif,
+        lai_model,
         biomass,
         boundary_conditions,
         earth_param_set,
@@ -843,6 +866,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :lai_model,
     :soil_moisture_stress,
     :biomass,
 )
@@ -1241,7 +1265,8 @@ end
 
 Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
 is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
-sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
+sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt. Similarly, if the LAI model
+is the OptimalLAIModel, then `set_historical_cache!` will initialize the LAI values.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     drivers = get_drivers(model)
@@ -1251,6 +1276,7 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
+        set_historical_cache!(p, Y0, model.lai_model, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = model.hydraulics
         n_stem = hydraulics.n_stem
@@ -1268,6 +1294,16 @@ values, so this function sets the historical cache values for the photosynthesis
 However, for other photosynthesis models this is not needed, so do nothing by default.
 """
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return nothing
+end
+
+"""
+    set_historical_cache!(p, Y0, m::AbstractLAIModel, canopy)
+
+For some LAI models (namely the OptimalLAIModel), we need to initialize LAI values
+before the simulation. However, for other LAI models this is not needed, so do nothing by default.
+"""
+function set_historical_cache!(p, Y0, m::AbstractLAIModel, canopy)
     return nothing
 end
 

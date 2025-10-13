@@ -256,6 +256,11 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
+@diagnostic_compute "leaf_area_index_pred" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.LAI
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{

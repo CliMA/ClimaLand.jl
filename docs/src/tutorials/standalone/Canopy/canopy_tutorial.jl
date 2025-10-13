@@ -194,6 +194,9 @@ photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
 photosynthesis =
     Canopy.FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters);
 
+# Set up optimal LAI model
+lai_model =
+    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict));
 
 # Set up the canopy model using defaults for all parameterizations and parameters,
 # except for the hydraulics model defined above.
@@ -206,6 +209,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     radiative_transfer,
     conductance,
     photosynthesis,
+    lai_model,
     biomass,
 );
 

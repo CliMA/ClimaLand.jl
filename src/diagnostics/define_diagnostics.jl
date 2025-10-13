@@ -298,6 +298,16 @@ function define_diagnostics!(land_model)
             compute_leaf_area_index!(out, Y, p, t, land_model),
     )
 
+    add_diagnostic_variable!(
+        short_name = "lai_pred",
+        long_name = "Leaf area Index",
+        standard_name = "leaf_area_index",
+        units = "m^2 m^-2",
+        comments = "The area index of leaves, expressed in surface area of leaves per surface area of ground.",
+        compute! = (out, Y, p, t) ->
+            compute_leaf_area_index_pred!(out, Y, p, t, land_model),
+    )
+
     # Moisture stress factor
     add_diagnostic_variable!(
         short_name = "msf",
