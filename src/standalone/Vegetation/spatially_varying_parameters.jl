@@ -177,10 +177,11 @@ function clm_photosynthesis_parameters(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
-    # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
+    # photosynthesis mechanism: continuous C3 proportion (0-1) for blending C3/C4 pathways
+    # 1.0 = pure C3, 0.0 = pure C4, intermediate values = mixed vegetation
     is_c3 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "c3_dominant",
+        "c3_proportion",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
@@ -354,3 +355,118 @@ function clm_canopy_height(
         return min.(canopy_height, max_height)
     end
 end
+
+"""
+    optimal_lai_initial_conditions(
+        surface_space,
+        data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+    )
+
+Reads spatially varying initial conditions for the optimal LAI model from a NetCDF file,
+and regrids them to the grid defined by the `surface_space` of the Clima simulation.
+Returns a NamedTuple of ClimaCore Fields suitable for passing to `OptimalLAIModel`.
+
+This function returns fields for:
+- `GSL`: Growing season length (days)
+- `A0_annual`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
+- `precip_annual`: Mean annual precipitation (mm yr⁻¹)
+- `vpd_gs`: Average VPD during growing season (Pa)
+- `lai_init`: Initial LAI from MODIS (m² m⁻²)
+- `f0`: Spatially varying fraction of precipitation for transpiration (dimensionless)
+
+The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
+`lai_init`, and `f0` on a (lon, lat) grid.
+
+# Arguments
+- `surface_space`: The ClimaCore surface space to regrid to
+- `data_path`: Path to the NetCDF file containing the data
+
+# Keyword Arguments
+- `regridder_type`: Type of regridder to use (default: `:InterpolationsRegridder`)
+- `extrapolation_bc`: Boundary conditions for extrapolation (default: Periodic in lon, Flat in lat)
+- `interpolation_method`: Interpolation method (default: `Interpolations.Linear()`)
+
+# Example
+```julia
+ic_data = optimal_lai_initial_conditions(
+    surface_space,
+    "path/to/initial_conditions.nc",
+)
+lai_model = OptimalLAIModel{FT}(parameters, ic_data)
+```
+
+# Notes
+- The file is expected to have lon and lat coordinates
+- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init, f0) are required
+- lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
+- f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
+"""
+function optimal_lai_initial_conditions(
+    surface_space,
+    data_path::AbstractString = Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(surface_space),
+    );
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+)
+    GSL = SpaceVaryingInput(
+        data_path,
+        "gsl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    A0_annual = SpaceVaryingInput(
+        data_path,
+        "a0_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    precip_annual = SpaceVaryingInput(
+        data_path,
+        "precip_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    vpd_gs = SpaceVaryingInput(
+        data_path,
+        "vpd_gs",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    lai_init = SpaceVaryingInput(
+        data_path,
+        "lai_init",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    f0 = SpaceVaryingInput(
+        data_path,
+        "f0",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (; GSL = GSL, A0_annual = A0_annual, precip_annual = precip_annual, vpd_gs = vpd_gs, lai_init = lai_init, f0 = f0)
+end
+

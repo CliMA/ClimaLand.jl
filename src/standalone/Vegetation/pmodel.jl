@@ -4,7 +4,9 @@ export PModelParameters,
     compute_full_pmodel_outputs,
     set_historical_cache!,
     update_optimal_EMA,
-    make_PModel_callback
+    make_PModel_callback,
+    compute_A0_potential,
+    compute_A0_daily
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -972,15 +974,15 @@ end
 
 get_Vcmax25_leaf(p, m::PModel) = @. lazy(
     p.canopy.photosynthesis.OptVars.Vcmax25_opt /
-    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
+    max(p.canopy.lai_model.LAI, sqrt(eps(eltype(m.constants)))),
 )
 get_Rd_leaf(p, m::PModel) = @. lazy(
     p.canopy.photosynthesis.Rd /
-    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
+    max(p.canopy.lai_model.LAI, sqrt(eps(eltype(m.constants)))),
 )
 get_An_leaf(p, m::PModel) = @.lazy(
     p.canopy.photosynthesis.An /
-    max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
+    max(p.canopy.lai_model.LAI, sqrt(eps(eltype(m.constants)))),
 )
 
 get_GPP_canopy(p, m::PModel) = p.canopy.photosynthesis.GPP
@@ -1077,23 +1079,24 @@ end
 Computes the intrinsic quantum yield of photosystem II.
 """
 function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
-    if is_c3 > 0.5
-        parameters.temperature_dep_yield ?
+    # Compute C3 quantum yield
+    ϕ0_c3 = parameters.temperature_dep_yield ?
         quadratic_intrinsic_quantum_yield(
             T,
             parameters.ϕa0_c3,
             parameters.ϕa1_c3,
             parameters.ϕa2_c3,
         ) : parameters.ϕ0_c3
-    else
-        parameters.temperature_dep_yield ?
+    # Compute C4 quantum yield
+    ϕ0_c4 = parameters.temperature_dep_yield ?
         quadratic_intrinsic_quantum_yield(
             T,
             parameters.ϕa0_c4,
             parameters.ϕa1_c4,
             parameters.ϕa2_c4,
         ) : parameters.ϕ0_c4
-    end
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return ϕ0_c3 * is_c3 + ϕ0_c4 * (FT(1) - is_c3)
 end
 
 """
@@ -1357,6 +1360,158 @@ end
 
 
 """
+    compute_A0_potential(
+        is_c3::FT,
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+        PPFD::FT,
+    ) where {FT}
+
+Compute instantaneous potential GPP (A₀) using the P-model with fAPAR = 1 and β = 1.
+
+This represents the GPP that would be achieved if the canopy absorbed all incoming
+photosynthetically active radiation (PAR) and there was no soil moisture stress.
+Used by the optimal LAI model to compute daily and annual potential GPP.
+
+# Arguments
+- `is_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `parameters`: PModelParameters object
+- `constants`: PModelConstants object
+- `T_canopy::FT`: Canopy temperature (K)
+- `P_air::FT`: Atmospheric pressure (Pa)
+- `VPD::FT`: Vapor pressure deficit (Pa), should be > 0
+- `ca::FT`: Ambient CO₂ concentration (mol/mol)
+- `PPFD::FT`: Photosynthetic photon flux density (mol photons m⁻² s⁻¹).
+           This is the total incoming PAR, NOT absorbed PAR.
+
+# Returns
+- `A0::FT`: Instantaneous potential GPP (kg C m⁻² s⁻¹)
+
+# Notes
+The potential GPP is computed as: A₀ = PPFD × LUE_potential
+where LUE_potential is the light use efficiency with β = 1 (no soil moisture stress).
+"""
+function compute_A0_potential(
+    is_c3::FT,
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    PPFD::FT,
+) where {FT}
+    (; cstar, β) = parameters
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
+        constants
+
+    # Convert ca from mol/mol to partial pressure (Pa)
+    ca_pp = ca * P_air
+
+    # Compute P-model intermediate values
+    ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
+    Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
+    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+
+    # Compute optimal ξ and intercellular CO₂
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+
+    # Compute mj and m' (with Jmax limitation)
+    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
+    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+
+    # Compute LUE with β = 1 (no soil moisture stress)
+    LUE_potential = compute_LUE(ϕ0, FT(1), mprime, Mc)
+
+    # Potential GPP = PPFD × LUE (fAPAR = 1 is implicit in using full PPFD)
+    return PPFD * LUE_potential
+end
+
+"""
+    compute_A0_daily(
+        is_c3::FT,
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+        PPFD::FT,
+        βm::FT,
+    ) where {FT}
+
+Compute instantaneous daily potential GPP (A₀) using the P-model with fAPAR = 1 and actual β.
+
+This represents the GPP that would be achieved if the canopy absorbed all incoming
+photosynthetically active radiation (PAR), but accounting for actual soil moisture stress.
+Used by the optimal LAI model to compute daily potential GPP for determining steady-state LAI.
+
+# Arguments
+- `is_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `parameters`: PModelParameters object
+- `constants`: PModelConstants object
+- `T_canopy::FT`: Canopy temperature (K)
+- `P_air::FT`: Atmospheric pressure (Pa)
+- `VPD::FT`: Vapor pressure deficit (Pa), should be > 0
+- `ca::FT`: Ambient CO₂ concentration (mol/mol)
+- `PPFD::FT`: Photosynthetic photon flux density (mol photons m⁻² s⁻¹).
+           This is the total incoming PAR, NOT absorbed PAR.
+- `βm::FT`: Soil moisture stress factor (dimensionless, 0-1), from soil moisture stress model
+
+# Returns
+- `A0::FT`: Instantaneous daily potential GPP (kg C m⁻² s⁻¹)
+
+# Notes
+The daily potential GPP is computed as: A₀ = PPFD × LUE
+where LUE includes the actual soil moisture stress factor (βm).
+This differs from `compute_A0_potential` which uses β = 1.
+"""
+function compute_A0_daily(
+    is_c3::FT,
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    PPFD::FT,
+    βm::FT,
+) where {FT}
+    (; cstar, β) = parameters
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
+        constants
+
+    # Convert ca from mol/mol to partial pressure (Pa)
+    ca_pp = ca * P_air
+
+    # Compute P-model intermediate values
+    ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
+    Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
+    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+
+    # Compute optimal ξ and intercellular CO₂
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+
+    # Compute mj and m' (with Jmax limitation)
+    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
+    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+
+    # Compute LUE with actual βm (soil moisture stress)
+    LUE_daily = compute_LUE(ϕ0, βm, mprime, Mc)
+
+    # Daily potential GPP = PPFD × LUE (fAPAR = 1 is implicit in using full PPFD)
+    return PPFD * LUE_daily
+end
+
+"""
     vcmax_pmodel(
         ϕ0::FT,
         APAR::FT,
@@ -1478,9 +1633,13 @@ end
 
 Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants)
 and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj.
+Blends C3 and C4 values based on continuous c3_proportion (is_c3).
 """
 function compute_mj(is_c3::AbstractFloat, args...)
-    return is_c3 > 0.5 ? c3_compute_mj(args...) : c4_compute_mj(args...)
+    mj_c3 = c3_compute_mj(args...)
+    mj_c4 = c4_compute_mj(args...)
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return mj_c3 * is_c3 + mj_c4 * (1 - is_c3)
 end
 
 
@@ -1498,10 +1657,14 @@ end
         is_c3::FT, T::FT, parameters) where {FT}
 
 Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
-and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
+and `mc = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
+Blends C3 and C4 values based on continuous c3_proportion (is_c3).
 """
 function compute_mc(is_c3::AbstractFloat, args...)
-    return is_c3 > 0.5 ? c3_compute_mc(args...) : c4_compute_mc(args...)
+    mc_c3 = c3_compute_mc(args...)
+    mc_c4 = c4_compute_mc(args...)
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return mc_c3 * is_c3 + mc_c4 * (1 - is_c3)
 end
 
 function c3_compute_mc(

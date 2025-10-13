@@ -183,6 +183,9 @@ photosynthesis =
 surface_space = land_domain.space.surface;
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
@@ -217,6 +220,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    lai_model,
     hydraulics,
     energy,
     biomass,

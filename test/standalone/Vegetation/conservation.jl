@@ -98,6 +98,13 @@ for FT in (Float32, Float64)
         height = h_canopy,
     )
     @testset "Canopy model total energy and water, FT = $FT" begin
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         for domain in domains
             hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(
                 domain,
@@ -114,6 +121,7 @@ for FT in (Float32, Float64)
                 toml_dict;
                 hydraulics,
                 biomass,
+                lai_model,
             )
 
 

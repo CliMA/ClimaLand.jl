@@ -168,6 +168,9 @@ function model(Vcmax25, g1)
     conductance =
         Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
 
+    #md # Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
+
     #md # Create canopy model
     canopy = Canopy.CanopyModel{FT}(
         surface_domain,
@@ -177,6 +180,7 @@ function model(Vcmax25, g1)
         photosynthesis,
         conductance,
         prognostic_land_components,
+        lai_model,
     )
 
     #md # Create integrated land model

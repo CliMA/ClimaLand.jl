@@ -23,6 +23,7 @@ v1.2.1
 
 v1.2.0
 -------
+- Add optimal LAI model that predicts seasonal to decadal leaf area index dynamics based on optimality principles balancing energy and water constraints PR[1501](https://github.com/CliMA/ClimaLand.jl/pull/1501)
 - Make soil organic carbon and soil O2 prognostic; remove prescribed Soil Organic Carbon driver [#1545](https://github.com/CliMA/ClimaLand.jl/pull/1545)
 
 v1.1.1

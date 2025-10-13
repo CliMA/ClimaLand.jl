@@ -155,11 +155,11 @@ radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
     α_PAR_leaf,
-    τ_PAR_leaf,
+    #τ_PAR_leaf,
     α_NIR_leaf,
-    τ_NIR_leaf,
+    #τ_NIR_leaf,
 )
-radiative_transfer = Canopy.TwoStreamModel{FT}(
+radiative_transfer = Canopy.BeerLambertModel{FT}(
     surface_domain,
     toml_dict;
     radiation_parameters,
@@ -185,6 +185,9 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
 surface_space = land_domain.space.surface;
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
@@ -220,6 +223,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    lai_model,
     soil_moisture_stress,
     hydraulics,
     energy,
@@ -258,6 +262,10 @@ output_vars = [
     "so2",
     "soc",
     "scms",
+    "lai",
+    "lai_pred",
+    "a0_daily",
+    "a0_annual",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -280,6 +288,20 @@ simulation = LandSimulation(
 
 @time solve!(simulation)
 
+#=
+using Logging
+
+io = open("logfile.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
+=#
+
+#=
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
     pkgdir(ClimaLand),
@@ -304,3 +326,116 @@ LandSimVis.make_timeseries(
     spinup_date = start_date + Day(20),
     comparison_data,
 )
+=#
+
+# Need to solve!
+# can also look at simulation._integrator.p
+
+short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_names = [d.output_short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_units = [d.variable.units for d in simulation.diagnostics]
+i = 14
+dn = diag_names[i]
+unit = diag_units[i]
+sn = short_names[i]
+model_time, LAI_opt = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation.diagnostics[1].output_writer,
+    dn,
+)
+LAI_opt
+
+
+i = 13
+dn = diag_names[i]
+unit = diag_units[i]
+sn = short_names[i]
+model_time, LAI_obs = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation.diagnostics[1].output_writer,
+    dn,
+)
+LAI_obs
+
+save_Δt = model_time[2] - model_time[1] # in seconds since the start_date. if model_time is an Itime, the epoch should be start_date
+import ClimaUtilities.TimeManager: ITime, date
+function time_to_date(t::ITime, start_date)
+    start_date != t.epoch &&
+        @warn("$(start_date) is different from the simulation time epoch.")
+    return isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+end
+model_dates = time_to_date.(model_time, start_date)
+
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+p = lines!(ax, model_dates, LAI_obs, label = "LAI obs")
+p2 = lines!(ax, model_dates, LAI_opt, label = "LAI opt")
+#ax.ylabel = "LAI m2 m-2"
+axislegend()
+save("LAI_test.png", fig)
+
+#### new fig
+
+using CairoMakie
+  import ClimaUtilities.TimeManager: ITime, date
+
+  # Helper: convert ITime to DateTime
+  function time_to_date(t::ITime, start_date)
+      start_date != t.epoch &&
+          @warn("$(start_date) is different from the simulation time epoch.")
+      isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+  end
+
+  # Helper: fetch diagnostic by short_name
+  function diag_by_short_name(diags, short_name)
+      idx = findfirst(d -> d.variable.short_name == short_name, diags)
+      isnothing(idx) && error("No diagnostic named $short_name")
+      dn = diags[idx].output_short_name
+      model_time, vals = ClimaLand.Diagnostics.diagnostic_as_vectors(
+          diags[1].output_writer, dn)
+      return model_time, vals
+  end
+
+  # Pull diagnostics
+  model_time, LAI_opt = diag_by_short_name(simulation.diagnostics, "lai_pred")
+  _, LAI_obs = diag_by_short_name(simulation.diagnostics, "lai")
+  _, A0_daily = diag_by_short_name(simulation.diagnostics, "a0_daily")
+
+  # Convert times to dates
+  model_dates = time_to_date.(model_time, start_date)
+
+  # Plot
+  fig = Figure(size = (900, 600))
+
+  ax_l = Axis(fig[1, 1],
+      ylabel = "LAI (m² m⁻²)",
+      xlabel = "Date",
+  )
+  lines!(ax_l, model_dates, LAI_obs, label = "LAI obs")
+  lines!(ax_l, model_dates, LAI_opt, label = "LAI opt")
+
+  ax_r = Axis(fig[1, 1];
+      yaxisposition = :right,
+      ylabel = "A₀_daily (mol CO₂ m⁻² day⁻¹)",
+      xticksvisible = false,
+      xticklabelsvisible = false,
+      xgridvisible = false,
+      yticklabelcolor = :gray30,
+      rightspinecolor = :gray30,
+      ytickcolor = :gray30,
+  )
+  lines!(ax_r, model_dates, A0_daily, color = :gray30, label = "A₀_daily")
+
+  axislegend(ax_l, position = :lt)
+  axislegend(ax_r, position = :rt)
+
+  save("LAI_A0_dual.png", fig)
+  fig
+
+
+
+# Thoughts:
+# it makes no sense to have LAI < 0
+# maybe params (α, z, m) are not adequate with our units of A (GPP)
+# Solutions:
+# we could convert A internally
+# and force L to be 0 min

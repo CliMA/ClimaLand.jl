@@ -106,6 +106,9 @@ radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 # use the default parameters or provide custom ones.
 # The set of available constructors for all ClimaLand models can be found in the "APIs" section of the documentation.
 
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(domain, toml_dict);
+
 # Now we can create the `CanopyModel` model with the specified energy and radiative transfer
 # parameterizations passed as [keyword arguments](@extref Julia Keyword-Arguments).
 model = Canopy.CanopyModel{FT}(
@@ -115,6 +118,7 @@ model = Canopy.CanopyModel{FT}(
     toml_dict;
     energy,
     radiative_transfer,
+    lai_model,
 );
 
 # Define a function to set initial conditions for the prognostic variables.
