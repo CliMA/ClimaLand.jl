@@ -1518,3 +1518,44 @@ end
 function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
     return FT(1)
 end
+
+function compute_L_max(k,z,Ao)
+    return -1/k*log(z/k/Ao)
+end
+
+function dWodL(μ, k, L)
+    return 1/μ - k*exp(-k*L)
+end
+
+Wo(μ,k,L) = Lμ -1+exp(-k*L)
+    
+function compute_L_opt(μ, k,L)
+    dL = 1000; i = 0
+    while abs(dL) > 0.001
+        dL = -Wo(μ, k,L)/dWodL(μ,k,L)
+        L = L + dL; @show(dL)
+        i = i+1; i>100 ? @error("too many iterations") : nothing
+    end
+    return L
+end
+
+
+function compute_L(L::FT,
+                   Ao::FT,
+                   m::FT,
+                   k::FT,
+                   α::FT,
+                   z::FT,
+                   local_noon_mask::FT,
+                   ) where {FT}
+    if local_noon_mask == FT(1.0)
+        L_max = compute_L_max(k,z, Ao)
+        L_opt = compute_L_opt(m*A0, k, L)
+        L_ss = min(L_opt, L_max)
+        return α*L_ss + (1-α)*L
+    else
+        return L
+    end
+end
+    
+    
