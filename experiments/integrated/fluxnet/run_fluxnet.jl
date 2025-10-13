@@ -178,6 +178,10 @@ photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
 
+# Set up optimal LAI model
+lai_model =
+    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
@@ -217,6 +221,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    lai_model,
     hydraulics,
     energy,
     biomass,

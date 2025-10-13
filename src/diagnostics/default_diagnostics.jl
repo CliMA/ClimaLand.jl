@@ -484,6 +484,7 @@ function get_possible_diagnostics(model::CanopyModel)
         # "fa", # return a Tuple
         "far",
         "lai",
+        "lai_pred",
         "msf",
         "rai",
         "sai",
@@ -614,7 +615,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    return ["gpp", "ct", "lai", "trans", "er", "sif"]
+    return ["gpp", "ct", "lai", "lai_pred", "trans", "er", "sif"]
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)

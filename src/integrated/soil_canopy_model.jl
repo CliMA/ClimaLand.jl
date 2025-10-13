@@ -128,6 +128,9 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
+            lai_model = Canopy.OptimalLAIModel{FT}(
+                Canopy.OptimalLAIParameters{FT}(toml_dict),
+            ),
         ),
     ) where {FT}
 
@@ -169,6 +172,9 @@ function SoilCanopyModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :soil, :soilco2),
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        ),
     ),
 ) where {FT}
     return SoilCanopyModel{FT}(soilco2, soil, canopy)
