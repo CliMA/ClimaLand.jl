@@ -581,13 +581,15 @@ function update_optimal_EMA(
                 bS_Jmax,
                 R,
             )
-        # With α ~0.9, this weights the historical values more
-        # than the current values
-        # slowly varying
+        # This naming is wrong. The ξ just computed is the
+        # optimal value, and what we call optimal is really the
+        # acclimated value
+        # We weight the optimal value with 0.067 so the historical
+        # values count more.
         return (;
-            ξ_acc = α * OptVars.ξ_opt + (1 - α) * ξ,
-            Vcmax25_acc = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
-            Jmax25_acc = α * OptVars.Jmax25_opt + (1 - α) * Jmax25,
+            ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
+            Vcmax25_opt = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
+            Jmax25_opt = α * OptVars.Jmax25_opt + (1 - α) * Jmax25,
         )
     else
         return OptVars
@@ -701,7 +703,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         APAR_canopy_moles,
         local_noon_mask,
     )
-    update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
+    update_optimal_LAI(p, Y, t; canopy, local_noon_mask)
 end
 
 """
@@ -764,7 +766,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         APAR_canopy_moles,
         local_noon_mask,
     )
-    update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
+    update_optimal_LAI(p, Y, t; canopy, local_noon_mask)
 end
 
 """
@@ -1526,8 +1528,7 @@ function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
 end
 
 
-function update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
-    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
+function update_optimal_LAI(p, Y, t; canopy, local_noon_mask)
     L = p.canopy.photosynthesis.L
     A = p.canopy.photosynthesis.An
     cosθs = p.drivers.cosθs
@@ -1563,7 +1564,7 @@ function compute_L_opt(μ, k,L)
     return L
 end
 
-function compute_Ao(A::FT, k::FT, L::FT)
+function compute_Ao(A::FT, k::FT, L::FT) where {FT}
     Ao = A/(1-exp(-k*L))
     return Ao
 end
@@ -1580,6 +1581,9 @@ function compute_L(L::FT,
         L_max = compute_L_max(k,z, Ao)
         L_opt = compute_L_opt(m*A0, k, L)
         L_ss = min(L_opt, L_max)
+        # Again, we take the optimal/steady state
+        # and weight it with 0.067
+        # i.e.: weight history more with (1-α)*L
         return α*L_ss + (1-α)*L
     else
         return L
