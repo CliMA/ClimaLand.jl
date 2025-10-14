@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Update benchmark scripts as they were out of date [#1490](https://github.com/CliMA/ClimaLand.jl/pull/1490)
 - ![][badge-🐛bugfix] Fix periodic calendar to use all of the data rather than repeat the last year [#1489](https://github.com/CliMA/ClimaLand.jl/pull/1489)
 - Update default snow albedo parameters PR[#1484](https://github.com/CliMA/ClimaLand.jl/pull/1484)
 - Update default pmodel parameters PR[#1482](https://github.com/CliMA/ClimaLand.jl/pull/1482)
