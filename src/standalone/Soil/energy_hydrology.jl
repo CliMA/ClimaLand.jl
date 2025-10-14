@@ -262,7 +262,7 @@ function EnergyHydrology{FT}(;
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
-function make_update_implicit_boundary_fluxes(model::EnergyHydrology)
+function make_update_explicit_boundary_fluxes(model::EnergyHydrology)
     function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
