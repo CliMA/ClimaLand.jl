@@ -537,8 +537,8 @@ function canopy_sw_rt_beer_lambert(
     LAI::FT,
     α_soil::FT,
 ) where {FT}
-    LAI = max(LAI, FT(0.05))
     K = extinction_coeff(G_Function, cosθs)
+    LAI = max(LAI, FT(0.05))
     AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
     TR = exp(-K * LAI * Ω)
     RR = FT(1) - AR - TR * (1 - α_soil)
@@ -580,7 +580,6 @@ function canopy_sw_rt_two_stream(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-    LAI = max(LAI, FT(0.05))
     α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
     cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
     G = compute_G(G_Function, cosθs)

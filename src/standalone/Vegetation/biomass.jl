@@ -282,12 +282,13 @@ function update_biomass!(
     canopy,
 ) where {FT}
     (; LAI, SAI, RAI) = component.plant_area_index
-    update_lai!(p, LAI, t)
+    evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
+    p.canopy.biomass.area_index.leaf .=
+        clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
 end
-update_lai!(p, LAI::AbstractTimeVaryingInput, t) = evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
-update_lai!(p, LAI::OptimalityLAI, t) =  nothing # update via a callback instead
+
 """
     root_distribution(z::FT, rooting_depth::FT)
 
