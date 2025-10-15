@@ -538,6 +538,7 @@ function canopy_sw_rt_beer_lambert(
     α_soil::FT,
 ) where {FT}
     K = extinction_coeff(G_Function, cosθs)
+    LAI = max(LAI, FT(0.05))
     AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
     TR = exp(-K * LAI * Ω)
     RR = FT(1) - AR - TR * (1 - α_soil)
