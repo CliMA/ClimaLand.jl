@@ -1,7 +1,7 @@
 agents:
   queue: clima
   slurm_mem: 8G
-  modules: climacommon/2025_03_18
+  modules: climacommon/2025_05_15
 
 env:
   JULIA_CUDA_MEMORY_POOL: "cuda"
