@@ -431,31 +431,6 @@ function make_update_implicit_boundary_fluxes(
     update_snow_bf! = make_update_implicit_boundary_fluxes(land.snow)
 
     function update_boundary_fluxes!(p, Y, t)
-        # Compute the ground heat flux in place:
-        update_soil_snow_ground_heat_flux!(
-            p,
-            Y,
-            land.soil.parameters,
-            land.snow.parameters,
-            land.soil.domain,
-            FT,
-        )
-
-        # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
-            p,
-            land,
-            land.canopy.radiative_transfer,
-            Y,
-            t,
-        )
-
-        # Effective (radiative) land properties
-        set_eff_land_radiation_properties!(
-            p,
-            land.soil.parameters.earth_param_set,
-        )
-
         update_snow_bf!(p, Y, t)
         update_soil_bf!(p, Y, t)
         update_canopy_bf!(p, Y, t)
