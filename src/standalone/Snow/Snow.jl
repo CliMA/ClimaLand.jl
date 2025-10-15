@@ -18,7 +18,7 @@ import ClimaLand:
     AbstractBC,
     make_update_aux,
     make_compute_exp_tendency,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -714,8 +714,10 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     end
 end
 
-function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
-    function update_boundary_fluxes!(p, Y, t)
+function ClimaLand.make_update_explicit_boundary_fluxes(
+    model::SnowModel{FT},
+) where {FT}
+    function update_explicit_boundary_fluxes!(p, Y, t)
         # First compute the boundary fluxes
         snow_boundary_fluxes!(model.boundary_conditions, model, Y, p, t)
         # Next, clip them in case the snow will melt in this timestep

@@ -157,7 +157,7 @@ function make_imp_tendency(land::AbstractLandModel)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
-    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    update_boundary_fluxes! = make_update_implicit_boundary_fluxes(land)
     function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
@@ -173,7 +173,7 @@ function make_exp_tendency(land::AbstractLandModel)
     compute_exp_tendency_list =
         map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
-    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    update_boundary_fluxes! = make_update_explicit_boundary_fluxes(land)
     function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
@@ -196,16 +196,32 @@ function make_update_aux(land::AbstractLandModel)
     return update_aux!
 end
 
-function make_update_boundary_fluxes(land::AbstractLandModel)
+function make_update_explicit_boundary_fluxes(land::AbstractLandModel)
     components = land_components(land)
-    update_fluxes_function_list =
-        map(x -> make_update_boundary_fluxes(getproperty(land, x)), components)
-    function update_boundary_fluxes!(p, Y, t)
+    update_fluxes_function_list = map(
+        x -> make_update_explicit_boundary_fluxes(getproperty(land, x)),
+        components,
+    )
+    function update_explicit_boundary_fluxes!(p, Y, t)
         for f! in update_fluxes_function_list
             f!(p, Y, t)
         end
     end
-    return update_boundary_fluxes!
+    return update_explicit_boundary_fluxes!
+end
+
+function make_update_implicit_boundary_fluxes(land::AbstractLandModel)
+    components = land_components(land)
+    update_fluxes_function_list = map(
+        x -> make_update_implicit_boundary_fluxes(getproperty(land, x)),
+        components,
+    )
+    function update_implicit_boundary_fluxes!(p, Y, t)
+        for f! in update_fluxes_function_list
+            f!(p, Y, t)
+        end
+    end
+    return update_implicit_boundary_fluxes!
 end
 
 function make_compute_jacobian(land::AbstractLandModel)
