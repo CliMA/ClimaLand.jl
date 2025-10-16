@@ -22,7 +22,7 @@ function get_sim_var_dict(simdir)
     sim_var_dict = Dict{String, Any}()
 
     # Get LHF by converting from ET
-    toml_dict = LP.create_toml_dict(Float64);
+    toml_dict = LP.create_toml_dict(Float64)
     earth_param_set = LP.LandParameters(toml_dict)
     # _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
     sim_var_dict["lhf"] =
@@ -30,6 +30,8 @@ function get_sim_var_dict(simdir)
             sim_var_lhf = get(simdir, short_name = "lhf") # units (W/m²)
             sim_var_lhf.attributes["long_name"] = "Latent heat flux"
             sim_var_lhf.attributes["units"] = "W m⁻²"
+
+            sim_var_lhf = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_lhf)
 
             # sim_var_et = get(simdir, short_name = "et") # units (kg/m²s)
 
@@ -54,6 +56,8 @@ function get_sim_var_dict(simdir)
             sim_var_shf = get(simdir, short_name = "shf") # units (W/m²)
             sim_var_shf.attributes["long_name"] = "Sensible heat flux"
             sim_var_shf.attributes["units"] = "W m⁻²"
+
+            sim_var_shf = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_shf)
             return sim_var_shf
         end
 
@@ -63,6 +67,8 @@ function get_sim_var_dict(simdir)
             sim_var_lwu = get(simdir, short_name = "lwu") # units (W/m²)
             sim_var_lwu.attributes["long_name"] = "Upward longwave radiation"
             sim_var_lwu.attributes["units"] = "W m⁻²"
+
+            sim_var_lwu = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_lwu)
             return sim_var_lwu
         end
 
@@ -72,6 +78,8 @@ function get_sim_var_dict(simdir)
             sim_var_swu = get(simdir, short_name = "swu") # units (W/m²)
             sim_var_swu.attributes["long_name"] = "Upward shortwave radiation"
             sim_var_swu.attributes["units"] = "W m⁻²"
+
+            sim_var_swu = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_swu)
             return sim_var_swu
         end
 
@@ -81,6 +89,8 @@ function get_sim_var_dict(simdir)
             sim_var_lwd = get(simdir, short_name = "lwd") # units (W/m²)
             sim_var_lwd.attributes["long_name"] = "Downward longwave radiation"
             sim_var_lwd.attributes["units"] = "W m⁻²"
+
+            sim_var_lwd = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_lwd)
             return sim_var_lwd
         end
 
@@ -90,6 +100,8 @@ function get_sim_var_dict(simdir)
             sim_var_swd = get(simdir, short_name = "swd") # units (W/m²)
             sim_var_swd.attributes["long_name"] = "Downward shortwave radiation"
             sim_var_swd.attributes["units"] = "W m⁻²"
+
+            sim_var_swd = ClimaAnalysis.shift_to_start_of_previous_month(sim_var_swd)
             return sim_var_swd
         end
 
@@ -138,21 +150,21 @@ the artifact `era5_monthly_averages_single_level_path`, which does not include l
 
 This function does the same, but also gets lwd and swd from `era5_land_forcing_data2008_folder_path`.
 """
-function get_obs_var_dict(; is_local = false)
+function get_obs_var_dict(comparison_start_date, comparison_end_date; is_local = false)
     # contains monthly mslhf, msshf, msuwlwrf, msuwswrf
     era5_data_path = joinpath(
         ClimaLand.Artifacts.era5_monthly_averages_single_level_path(),
         "era5_monthly_averages_surface_single_level_197901-202410.nc",
-    )
+    ) #lwu
     # contains hourly msdwlwrf, msdwswrf
     if is_local
-        era5_land_forcing_data_path = ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path()
+        era5_land_forcing_data_path =
+            ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path()
     else
-        # TODO don't hard code these
         era5_land_forcing_data_path = ClimaLand.Artifacts.find_era5_year_paths(
-            DateTime("2008-03-01"), # start_date
-            DateTime("2010-03-01") # stop_date
-        )
+            comparison_start_date, # start_date
+            comparison_end_date, # stop_date
+        ) #lwd
     end
 
     # Dict for loading in observational data

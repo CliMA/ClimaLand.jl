@@ -12,15 +12,17 @@ using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 using CairoMakie
-import GeoMakie
+using GeoMakie
 using Dates
 using Statistics
 
-root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
+longrun_number = 4281
+
+root_path = joinpath(pwd(), "snowy_land_longrun_gpu-$longrun_number")
 !isdir(root_path) && mkdir(root_path)
 
-outdir = "snowy_land_longrun_gpu-4251" # local
-outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/4276/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active" # on clima
+outdir = "snowy_land_longrun_gpu-$longrun_number" # local
+outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/$longrun_number/climaland-long-runs/snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active" # on clima
 
 short_names = ["lhf", "shf", "lwn", "swn"]#, "lwu", "swu"]
 title_stubs = Dict(
@@ -65,10 +67,18 @@ function make_paper_figures(
     plot_bias = false,
     plot_seasonal = false,
 )
+    # We want to run comparison for years 2017-2020
+    # Simulation was run from 2000-03-01 to 2020-03-01.
+    # Output is saved to the first day of the next month, then shifted back to the previous month
+    #  so for the last output date (2020-03-01 shifted to 2020-03-01) the data is for February 2020.
+    #  so we compare to data from 2017-03-01 to 2020-02-01 (inclusive)
+    comparison_start_date = DateTime("2017-03-01")
+    comparison_end_date = DateTime("2020-02-01")
+
     # Set up for comparison to data (copied from leaderboard.jl)
     # use sim_var and obs_var together for the seasonal plot because they already have the same units :)
     sim_var_dict = get_sim_var_dict(ClimaAnalysis.SimDir(outdir))
-    obs_var_dict = get_obs_var_dict()
+    obs_var_dict = get_obs_var_dict(comparison_start_date, comparison_end_date)
 
     # create figure for all plots
     num_cols = plot_bias || plot_seasonal ? 3 : 2
@@ -111,30 +121,29 @@ function make_paper_figures(
         #     obs_var_global_average[i] = compute_global_average(obs_var_masked)
         # end
 
-        comparison_start_date = DateTime("2009-01-01")
-        start_ind_sim = findfirst(
-            ==(comparison_start_date),
-            DateTime(sim_var.attributes["start_date"]) .+
-            Second.(sim_var_times),
-        )
-        start_ind_obs = findfirst(
-            ==(comparison_start_date),
-            DateTime(obs_var.attributes["start_date"]) .+
-            Second.(obs_var_times),
-        )
-        @assert sim_var.attributes["start_date"] ==
-                obs_var.attributes["start_date"] &&
-                sim_var_times[start_ind_sim] == obs_var_times[start_ind_obs] # make sure time axes are aligned
+        # start_ind_sim = findfirst(
+        #     ==(comparison_start_date),
+        #     DateTime(sim_var.attributes["start_date"]) .+
+        #     Second.(sim_var_times),
+        # )
+        # start_ind_obs = findfirst(
+        #     ==(comparison_start_date),
+        #     DateTime(obs_var.attributes["start_date"]) .+
+        #     Second.(obs_var_times),
+        # )
+        # @assert sim_var.attributes["start_date"] ==
+        #         obs_var.attributes["start_date"] &&
+        #         sim_var_times[start_ind_sim] == obs_var_times[start_ind_obs] # make sure time axes are aligned
 
         # i = 1 # use first year of simulation
         kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
-        sim_left = sim_var_times[start_ind_sim - 1]
+        # sim_left = sim_var_times[start_ind_sim - 1]
         sim_var_window = ClimaAnalysis.window(
             sim_var_sliced,
             "time",
-            left = DateTime(2009, 1, 1),
-            right = DateTime(2010, 1, 1),
+            left = comparison_start_date,
+            right = comparison_end_date,
             # left = (start_ind_sim - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
             # right = start_ind_sim * 366 * 86400, # 1 year right of year i, in seconds
         )
@@ -145,22 +154,48 @@ function make_paper_figures(
         obs_var_window = ClimaAnalysis.window(
             obs_var_sliced,
             "time",
-            left = DateTime(2009, 1, 1),
-            right = DateTime(2010, 1, 1),
+            left = comparison_start_date,
+            right = comparison_end_date,
             # left = (start_ind_obs - 1) * 366 * 86400 + 30 * 86400,
             # right = start_ind_obs * 366 * 86400, # 1 year of observation data, in seconds
         )
 
         start_date = DateTime(sim_var.attributes["start_date"])
         @assert start_date + Second(ClimaAnalysis.times(sim_var_window)[1]) ==
-                DateTime(2009, 1, 1)
+                comparison_start_date
         @assert start_date + Second(ClimaAnalysis.times(obs_var_window)[1]) ==
-                DateTime(2009, 1, 1)
+                comparison_start_date
         @assert start_date + Second(ClimaAnalysis.times(sim_var_window)[end]) ==
-                DateTime(2010, 1, 1)
+                comparison_end_date
         @assert start_date + Second(ClimaAnalysis.times(obs_var_window)[end]) ==
-                DateTime(2010, 1, 1)
+                comparison_end_date
 
+        # Get RMSE and bias values between sim and obs
+        times = ClimaAnalysis.times(sim_var_window)
+        rmse_vec = [
+            ClimaAnalysis.global_rmse(
+                ClimaAnalysis.slice(sim_var_window, time = t),
+                ClimaAnalysis.slice(obs_var_window, time = t),
+                mask = ClimaAnalysis.apply_oceanmask,
+            ) for t in times
+        ]
+        # rmse = ClimaAnalysis.global_rmse(
+        #     sim_var_window,
+        #     obs_var_window,
+        #     mask = ClimaAnalysis.apply_oceanmask,
+        # )
+        rmse = mean(rmse_vec)
+        @show "$short_name RMSE: $rmse $units_label"
+
+        bias_vec = [
+            ClimaAnalysis.global_bias(
+                ClimaAnalysis.slice(sim_var_window, time = t),
+                ClimaAnalysis.slice(obs_var_window, time = t),
+                mask = ClimaAnalysis.apply_oceanmask,
+            ) for t in times
+        ]
+        bias = mean(bias_vec)
+        @show "$short_name Bias: $bias $units_label"
 
         ## GLOBAL HEATMAP
         # sim_var_annual_average below contains annually-averaged data in the provided window
@@ -538,7 +573,7 @@ function make_paper_figures(
     save_name = joinpath(root_path, "combined_figures.png")
     save_name =
         plot_bias ?
-        joinpath(root_path, "combined_figures_bias_2009.png") :
+        joinpath(root_path, "combined_figures_bias_2017-2020-shifted.png") :
         save_name
     save_name =
         plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.png") :
