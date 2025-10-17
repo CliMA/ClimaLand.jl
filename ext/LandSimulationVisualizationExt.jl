@@ -22,7 +22,7 @@ include("land_sim_vis/leaderboard/leaderboard.jl")
 
 
 Uses the diagnostic output of the `sim` to create leaderboard plots, comparing the output of the simulation to the ``observations"
-from ERA5 or ILAMB. 
+from ERA5 or ILAMB.
 """
 function LandSimVis.make_leaderboard_plots(
     sim::ClimaLand.Simulations.LandSimulation;
@@ -302,8 +302,8 @@ plots are saved in `savedir` with their short_name and the plot_stem_name
 combined to created the output file name: short_name_plot_stem_name.png,
 after spinup is removed.
 
-The comparison data can optionally be provided as a NamedTuple; the data must 
-be labeled with a key equal to the same name as in `short_names`, 
+The comparison data can optionally be provided as a NamedTuple; the data must
+be labeled with a key equal to the same name as in `short_names`,
 or no comparison will be plotted. The value at each key is the timeseries of
 the variable. The timestamp of each is passed as another key `UTC_datetime`,
 with values equal to the time at which the observations where made.
@@ -318,6 +318,7 @@ function LandSimVis.make_diurnal_timeseries(
     savedir = ".",
     short_names = nothing,
     plot_stem_name = "diurnal_timeseries",
+    diagnostics2 = nothing,
     comparison_data = nothing,
     spinup_date = sim.start_date,
 )
@@ -329,6 +330,7 @@ function LandSimVis.make_diurnal_timeseries(
         plot_stem_name,
         savedir,
         short_names,
+        diagnostics2,
         comparison_data,
         spinup_date,
     )
@@ -340,6 +342,7 @@ function LandSimVis.make_diurnal_timeseries(
     start_date;
     plot_stem_name = "diurnal_timeseries",
     savedir = ".",
+    diagnostics2 = nothing,
     short_names = nothing,
     comparison_data = nothing,
     spinup_date = start_date,
@@ -354,6 +357,7 @@ function LandSimVis.make_diurnal_timeseries(
     plot_stem_name = "diurnal_timeseries",
     savedir = ".",
     short_names = nothing,
+    diagnostics2 = nothing,
     comparison_data = nothing,
     spinup_date = start_date,
 )
@@ -365,11 +369,18 @@ function LandSimVis.make_diurnal_timeseries(
         short_names = avail_short_names
     end
     diag_ids = [findfirst(sn .== avail_short_names) for sn in short_names]
+
+    if !isnothing(diagnostics2)
+        diagnostics2_ids = diagnostics2[diag_ids]
+    else
+        diagnostics2_ids = nothing
+    end
     LandSimVis.make_diurnal_timeseries(
         savedir,
         diagnostics[diag_ids], # To be consistent with global/regional runs, this should be a directory with the saved diagnostics.
         start_date;
         plot_stem_name,
+        diagnostics2 = diagnostics2_ids,
         comparison_data,
         spinup_date,
     )
@@ -392,8 +403,8 @@ plots are saved in `savedir` with their short_name and the plot_stem_name
 combined to created the output file name: short_name_plot_stem_name.png,
 after spinup is removed.
 
-The comparison data can optionally be provided as a NamedTuple; the data must 
-be labeled with a key equal to the same name as in `short_names`, 
+The comparison data can optionally be provided as a NamedTuple; the data must
+be labeled with a key equal to the same name as in `short_names`,
 or no comparison will be plotted. The value at each key is the timeseries of
 the variable. The timestamp of each is passed as another key `UTC_datetime`,
 with values equal to the time at which the observations where made.
