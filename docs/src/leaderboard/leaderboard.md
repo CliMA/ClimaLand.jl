@@ -34,9 +34,6 @@ sim_var_dict["et"] =
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "et",
             )
-            # Shift to the first day and subtract one month as preprocessing
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             return sim_var
         end
 ```
