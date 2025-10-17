@@ -29,7 +29,7 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
       - echo "--- Instantiate test"
-      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
     agents:
