@@ -138,6 +138,6 @@ LandSimVis.make_heatmaps(
     date = stop_date,
     plot_stem_name = "bucket_heatmap",
 )
-# ![](shf_2009-01-01T00:00:00_bucket_heatmap.png)
-# ![](lhf_2009-01-01T00:00:00_bucket_heatmap.png)
-# ![](wsoil_2009-01-01T00:00:00_bucket_heatmap.png)
+# ![](shf_2008-12-01T00:00:00_bucket_heatmap.png)
+# ![](lhf_2008-12-01T00:00:00_bucket_heatmap.png)
+# ![](wsoil_2008-12-01T00:00:00_bucket_heatmap.png)
