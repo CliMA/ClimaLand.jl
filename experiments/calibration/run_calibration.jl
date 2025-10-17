@@ -21,6 +21,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    model_type = ClimaLand.LandModel,
 )
 
 
