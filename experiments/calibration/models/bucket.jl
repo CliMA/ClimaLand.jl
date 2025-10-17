@@ -106,11 +106,12 @@ function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
     output_writer =
         ClimaDiagnostics.NetCDFWriter(diagnostic_domain, outdir; start_date)
 
+    short_names = CALIBRATE_CONFIG.short_names
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date;
         output_writer,
-        output_vars = ["shf"],
+        output_vars = short_names,
         reduction_period = :monthly,
         reduction_type = :average,
     )
