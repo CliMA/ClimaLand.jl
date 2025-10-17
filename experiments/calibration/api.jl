@@ -17,7 +17,7 @@ A configuration struct for keeping track of multiple fields that are of interest
 to a user running calibration, or that are needed in multiple places (e.g., for
 ensemble members and generating observations).
 """
-struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
+struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, VAL}
     "The short names of the observations used for calibration. The short names
     should match the same names used for the diagnostics."
     short_names::Vector{String}
@@ -53,6 +53,9 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
 
     "File path to JLD2 file that stores a vector of EKP.Observation"
     obs_vec_filepath::String
+
+    """Value of a symbol for dispatching to the correct configuration of the land model"""
+    configuration::VAL
 end
 
 """
@@ -66,6 +69,7 @@ end
         nelements = (101, 15),
         output_dir = "experiments/calibration/land_model",
         rng_seed = 42,
+        configuration = "snowy_land",
     )
 
 Initializes a CalibrateConfig, which is of interest to a user running
@@ -116,6 +120,7 @@ function CalibrateConfig(;
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    configuration = "snowy_land",
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
     isempty(sample_date_ranges) &&
@@ -163,6 +168,7 @@ function CalibrateConfig(;
         output_dir,
         rng_seed,
         obs_vec_filepath,
+        Val(Symbol(configuration)),
     )
 
 end
