@@ -23,7 +23,7 @@ using Statistics
     # Define some diagnostics for a DummyModel
 
     @test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
+    empty!(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)
     struct DummyModel end
     struct DummyModel2 end
     ClimaLand.Diagnostics.@diagnostic_compute "sw_albedo" Union{
@@ -32,6 +32,7 @@ using Statistics
     } p.foo.bar
 
     ClimaLand.Diagnostics.add_diagnostic_variable!(
+        nothing;
         short_name = "alpha",
         long_name = "Albedo",
         standard_name = "albedo",
@@ -40,7 +41,7 @@ using Statistics
             compute_sw_albedo!(out, Y, p, t, land_model),
     )
 
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
+    @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
 
     # First, run a simulation for 1 hour
     seconds = 1.0
@@ -110,8 +111,8 @@ using Statistics
 
     # ClimaDiagnostics
 
-    ClimaLand.Diagnostics.define_diagnostics!(model)
     diags = ["rn", "lhf"]
+    ClimaLand.Diagnostics.define_diagnostics!(model; requested_diags = diags)
 
     tmpdir = mktempdir(".")
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
@@ -196,6 +197,13 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
                 model.parameters.earth_param_set,
             )
     end
+    # override the constructors to speed up tests. Diagnostics tests don't need a "real" step
+    # define inside testset so other tests are no affected
+    ClimaLand.make_imp_tendency(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_exp_tendency(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_update_aux(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_update_boundary_fluxes(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_compute_jacobian(::typeof(model)) = Returns(nothing)
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "sie", "swp"]
@@ -272,13 +280,24 @@ end
 
         Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(297.5)
+        p.canopy.biomass.area_index.leaf .= FT(0.3)
+        p.canopy.biomass.area_index.stem .= FT(0)
+        p.canopy.biomass.area_index.root .= FT(0.3)
+        return
     end
-
+    # override the constructors to speed up tests. Diagnostics tests don't step the sim
+    ClimaLand.make_imp_tendency(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_exp_tendency(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_update_aux(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_update_boundary_fluxes(::typeof(model)) = Returns(nothing)
+    ClimaLand.make_compute_jacobian(::typeof(model)) = Returns(nothing)
+    Y, _, _ = initialize(model)
+    ClimaLand.FieldMatrixWithSolver(::typeof(Y)) =
+        ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "ct", "sco2"]
     reduction_period = :every_dt
     reduction_type = :instantaneous
-
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date;
@@ -297,6 +316,7 @@ end
         set_ic!,
         diagnostics,
         user_callbacks = (),
+        updateat = nothing,
     )
 
     # Test that the diagnostics were correctly created and computed once at initialization
@@ -380,6 +400,15 @@ end
 end
 
 @testset "Test runoff diagnostics" begin
+    # override the constructors to speed up tests. Diagnostics tests don't step the sim
+    ClimaLand.make_imp_tendency(::Soil.EnergyHydrology{FT}) = Returns(nothing)
+    ClimaLand.make_exp_tendency(::Soil.EnergyHydrology{FT}) = Returns(nothing)
+    ClimaLand.make_update_aux(::Soil.EnergyHydrology{FT}) = Returns(nothing)
+    ClimaLand.make_update_boundary_fluxes(::Soil.EnergyHydrology{FT}) =
+        Returns(nothing)
+    ClimaLand.make_compute_jacobian(::Soil.EnergyHydrology{FT}) =
+        Returns(nothing)
+
     # TOPMODELRunoff by default
     model_topmodelrunoff =
         Soil.EnergyHydrology{FT}(domain, (; atmos, radiation), toml_dict)
