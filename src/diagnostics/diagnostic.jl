@@ -6,7 +6,7 @@
 # detail, use the getters/setters.
 
 const ALL_DIAGNOSTICS = Dict{String, DiagnosticVariable}()
-
+@nospecialize
 """
 
     add_diagnostic_variable!(; short_name,
