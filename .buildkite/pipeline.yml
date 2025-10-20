@@ -43,15 +43,15 @@ steps:
 
   - wait
 
-  # - group: "Experiments"
-  #   steps:
-  #     - label: "Snow/Soil Ozark"
-  #       command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_soilsnow.jl"
-  #       artifact_paths: "experiments/integrated/fluxnet/ozark_soilsnow/*.png"
+  - group: "Experiments"
+    steps:
+      - label: "Snow/Soil Ozark"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_soilsnow.jl"
+        artifact_paths: "experiments/integrated/fluxnet/ozark_soilsnow/*.png"
 
-  #     - label: "Snow Col de Porte"
-  #       command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
-  #       artifact_paths: "experiments/standalone/Snow/cdp/output_active/*png"
+      - label: "Snow Col de Porte"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
+        artifact_paths: "experiments/standalone/Snow/cdp/output_active/*png"
 
   #     - label: "Varying LAI, no stem compartment"
   #       command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai.jl"
@@ -151,13 +151,13 @@ steps:
   #       env:
   #         CLIMACOMMS_DEVICE: "CUDA"
 
-  # - group: "CPU: global bucket"
-  #   steps:
-  #     - label: "Global Bucket on CPU (functional albedo)"
-  #       key: "global_bucket_function_cpu"
-  #       command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
-  #       artifact_paths:
-  #         - "experiments/standalone/Bucket/artifacts_function_cpu/output_active/*.png"
+  - group: "CPU: global bucket"
+    steps:
+      - label: "Global Bucket on CPU (functional albedo)"
+        key: "global_bucket_function_cpu"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_function_cpu/output_active/*.png"
 
   #     - label: "Global Bucket on CPU (static map albedo)"
   #       key: "bucket_era5_cpu"
@@ -228,14 +228,14 @@ steps:
       #     - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
       #     - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
 
-  # - group: "CPU/GPU comparisons"
-  #   steps:
-  #     - label: "Compare GPU bucket with CPU bucket"
-  #       command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
-  #       depends_on:
-  #         - "global_bucket_function_cpu"
-  #         - "global_bucket_function_gpu"
-  #         - "bucket_era5_cpu"
-  #         - "bucket_era5_gpu"
-  #         - "global_bucket_temporalmap_cpu"
-  #         - "global_bucket_temporalmap_gpu"
+  - group: "CPU/GPU comparisons"
+    steps:
+      - label: "Compare GPU bucket with CPU bucket"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        depends_on:
+          - "global_bucket_function_cpu"
+          - "global_bucket_function_gpu"
+          - "bucket_era5_cpu"
+          - "bucket_era5_gpu"
+          - "global_bucket_temporalmap_cpu"
+          - "global_bucket_temporalmap_gpu"
