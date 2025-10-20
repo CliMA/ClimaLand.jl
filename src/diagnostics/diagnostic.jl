@@ -67,6 +67,30 @@ function add_diagnostic_variable!(;
     )
 end
 
+function conditional_add_diagnostic_variable!(
+    possible_diags;
+    short_name,
+    long_name,
+    standard_name = "",
+    units,
+    comments = "",
+    compute!,
+)
+    if short_name in possible_diags
+        ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
+            short_name,
+            long_name,
+            standard_name,
+            units,
+            comments,
+            compute!,
+        )
+    end
+    return
+end
+
+@specialize
+
 """
 
     get_diagnostic_variable!(short_name)
