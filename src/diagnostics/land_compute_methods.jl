@@ -34,21 +34,24 @@ macro diagnostic_compute(name, model, compute)
                 Y,
                 p,
                 t,
-                land_model::$model,
+                @nospecialize(land_model::$model),
             )
-                if isnothing(out)
-                    out = zeros(axes($compute)) # Allocates
-                    fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-                    out .= $compute # set the land values only since this type of broadcasting respects the mask
-                    return out
-                else
-                    out .= $compute
-                end
+                return copy_compute_to_out!(out, $compute)
             end
         end,
     )
 end
 
+function copy_compute_to_out!(out, compute)
+    if isnothing(out)
+        out = zeros(axes(compute)) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out .= compute # set the land values only since this type of broadcasting respects the mask
+        return out
+    else
+        out .= compute
+    end
+end
 ## Helper functions so that we can use the same methods for integrated
 ## and standalone models
 
