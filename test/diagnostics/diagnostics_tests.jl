@@ -16,15 +16,25 @@ import ClimaCore
 using Dates
 using Statistics
 
-# This test must go first because it checks the global `ALL_DIAGNOSTICS`
+@testset "define_diagnostics! tests" begin
+    @test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
+    empty!(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)
+    ClimaLand.Diagnostics.define_diagnostics!(nothing, Val(:all))
+    short_names =
+        [d.short_name for d in values(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)]
+    long_names =
+        [d.long_name for d in values(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)]
+    @test allunique(short_names)
+    @test allunique(long_names)
+end
+
 @testset "Diagnostics writing and reading" begin
     FT = Float32
     @test isdefined(ClimaLand.Diagnostics, :compute_sw_albedo!)
 
     # Define some diagnostics for a DummyModel
 
-    @test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
+    empty!(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)
     struct DummyModel end
     struct DummyModel2 end
     ClimaLand.Diagnostics.@diagnostic_compute "sw_albedo" Union{
@@ -32,7 +42,20 @@ using Statistics
         DummyModel2,
     } p.foo.bar
 
-    ClimaLand.Diagnostics.add_diagnostic_variable!(
+    # Test that the diagnostic is only added when the model is in the possible_diags list
+    ClimaLand.Diagnostics.conditional_add_diagnostic_variable!(
+        [];
+        short_name = "alpha",
+        long_name = "Albedo",
+        standard_name = "albedo",
+        units = "",
+        compute! = (out, Y, p, t) ->
+            compute_sw_albedo!(out, Y, p, t, land_model),
+    )
+    @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
+
+    ClimaLand.Diagnostics.conditional_add_diagnostic_variable!(
+        ["alpha"];
         short_name = "alpha",
         long_name = "Albedo",
         standard_name = "albedo",
@@ -41,7 +64,7 @@ using Statistics
             compute_sw_albedo!(out, Y, p, t, land_model),
     )
 
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
+    @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
 
     # First, run a simulation for 1 hour
     seconds = 1.0
@@ -111,7 +134,7 @@ using Statistics
 
     # ClimaDiagnostics
 
-    ClimaLand.Diagnostics.define_diagnostics!(model)
+    ClimaLand.Diagnostics.define_diagnostics!(model, ["rn", "lhf"])
     diags = ["rn", "lhf"]
 
     tmpdir = mktempdir(".")

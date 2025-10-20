@@ -69,6 +69,42 @@ end
 
 """
 
+    conditional_add_diagnostic_variable!(
+                               possible_diags;
+                               short_name,
+                               long_name,
+                               standard_name,
+                               units,
+                               description,
+                               compute!)
+
+
+Calls `add_diagnostic_variable!` if `short_name` is in `possible_diags`, otherwise does nothing.
+If `possible_diags` is `Val{:all}()`, then the diagnostic variable is added regardless of its short name.
+
+This is useful to avoid adding diagnostics that are not relevant for a particular model,
+which can reduce compilation and inference time.
+"""
+function conditional_add_diagnostic_variable!(
+    possible_diags::Union{AbstractArray, Tuple};
+    short_name,
+    kwargs...,
+)
+    if short_name in possible_diags
+        add_diagnostic_variable!(; short_name, kwargs...)
+    end
+    return
+end
+
+conditional_add_diagnostic_variable!(::Val{:all}; kwargs...) =
+    add_diagnostic_variable!(; kwargs...)
+conditional_add_diagnostic_variable!(possible_diags; kwargs...) = error(
+    "Invalid argument for possible_diags. It should be either `Val{:all}()` or a collection of short names of diagnostics to add.",
+)
+
+
+"""
+
     get_diagnostic_variable!(short_name)
 
 Return a `DiagnosticVariable` from its `short_name`, if it exists.

@@ -13,7 +13,7 @@ Internally, this is done by using the [`ClimaDiagnostics.jl`](https://github.com
  - `diagnostic.jl` defines `ALL_DIAGNOSTICS`, a Dict containing all diagnostics variables defined in `define_diagnostics.jl`, it also defines the function
  `add_diagnostic_variable!` which defines a method to add diagnostic variables to ALL\_DIAGNOSTICS, finally it contains a function `get_diagnostic_variable` which returns a
  `DiagnosticVariable` from its `short_name`, if it exists.
- - `define_diagnostics.jl`, mentioned above, contains a function `define_diagnostics!(land_model)` which contains all default diagnostic variables by calling.
+ - `define_diagnostics.jl`, mentioned above, contains a function `define_diagnostics!(land_model, possible_diags)` which contains all default diagnostic variables by calling.
  `add_diagnostic_variable!`, and dispatch off the type of land\_model to define how to compute a diagnostic (for example, surface temperature is computed in `p.bucket.T_sfc` in the bucket model).
  - `land_compute_methods.jl` defines how to compute diagnostics for various ClimaLand models.
 
@@ -82,7 +82,7 @@ The `@with_error` macro define helper functions returning error messages if a us
 
 # Define diagnostics
 
-Once the compute functions have been defined, they are added to `define_diagnostics!(land_model)`, which adds diagnostics variables to ALL\_DIAGNOSTICS dict,
+Once the compute functions have been defined, they are added to `define_diagnostics!(land_model, possible_diags)`, which adds diagnostics variables to ALL\_DIAGNOSTICS dict,
 defined in diagnostic.jl. In these functions, you also define a `short_name`, `long_name`, `standard_name`, `units` and `comment`. For example:
 
 ```Julia
