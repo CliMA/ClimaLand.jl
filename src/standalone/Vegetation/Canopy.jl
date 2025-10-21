@@ -400,6 +400,7 @@ function PrescribedBiomassModel{FT}(
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
+        typeof(height),
     }(
         plant_area_index,
         rooting_depth,
