@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.3"
 manifest_format = "2.0"
 project_hash = "0257c8e4fc6fd73b316df90fb308c7d86009613a"
 
@@ -791,9 +791,9 @@ version = "1.15.1"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "cee1700673af54db57bd1c7fb834ad4ff31309a0"
+git-tree-sha1 = "529bebbc74b36a4cfea09dd2aecb1288cd713a6d"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.7.8"
+version = "0.7.9"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -1498,9 +1498,9 @@ weakdeps = ["Unitful"]
 
 [[deps.IntervalArithmetic]]
 deps = ["CRlibm", "MacroTools", "OpenBLASConsistentFPCSR_jll", "Printf", "Random", "RoundingEmulator"]
-git-tree-sha1 = "815e74f416953c348c9da1d1bc977bbc97c84e18"
+git-tree-sha1 = "bf0210c01fb7d67c31fed97d7c1d1716b98ea689"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
-version = "1.0.0"
+version = "1.0.1"
 
     [deps.IntervalArithmetic.extensions]
     IntervalArithmeticArblibExt = "Arblib"
@@ -2263,7 +2263,7 @@ version = "3.2.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.5+0"
+version = "0.8.1+2"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
@@ -2345,9 +2345,9 @@ version = "0.4.4"
 
 [[deps.PROJ_jll]]
 deps = ["Artifacts", "JLLWrappers", "LibCURL_jll", "Libdl", "Libtiff_jll", "SQLite_jll"]
-git-tree-sha1 = "29d4224ba271e3b679cca03a8fd72e271525c113"
+git-tree-sha1 = "817778f5802156bff35b472c73b0c4e611bd23c3"
 uuid = "58948b4f-47e0-5654-a9ad-f609743f8632"
-version = "902.600.200+0"
+version = "902.700.0+0"
 
 [[deps.PackageExtensionCompat]]
 git-tree-sha1 = "fb28e33b8a95c4cee25ce296c817d89cc2e53518"
@@ -2720,9 +2720,9 @@ version = "2.101.0"
 
 [[deps.SciMLOperators]]
 deps = ["Accessors", "ArrayInterface", "DocStringExtensions", "LinearAlgebra", "MacroTools"]
-git-tree-sha1 = "1933747abf567c26a58d07a4bab1760372425cba"
+git-tree-sha1 = "c1053ba68ede9e4005fc925dd4e8723fcd96eef8"
 uuid = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
-version = "1.8.0"
+version = "1.9.0"
 weakdeps = ["SparseArrays", "StaticArraysCore"]
 
     [deps.SciMLOperators.extensions]

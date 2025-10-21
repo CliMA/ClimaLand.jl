@@ -11,14 +11,14 @@ import JLD2
 include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["lhf"],
+    short_names = ["lhf", "swu"],
     minibatch_size = 1,
     n_iterations = 9,
     sample_date_ranges = [("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9], # 2000 to 2020
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (101, 15),
-    output_dir = "/glade/derecho/scratch/kdeck/p-model-cal-ms-qy-fixed-repeat",
+    output_dir = "/glade/derecho/scratch/kdeck/p-model-cal-ms-swu-qy-fixed",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
 )
@@ -29,6 +29,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
         [EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
          EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
          EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
+	 EKP.constrained_gaussian("alpha_0", 0.6, 0.1, 0.1, 0.8),
+        EKP.constrained_gaussian("delta_alpha", 0.25, 0.05, 0.0, 0.4),
+        EKP.constrained_gaussian("k", 10.0, 2.0, 1.0, 20.0),
+        EKP.constrained_gaussian("beta", 0.4, 0.2, 0.05, 1.0)
          ]
     prior = EKP.combine_distributions(priors)
 
