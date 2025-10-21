@@ -72,33 +72,24 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         stop_date,
     )
 
-    # Overwrite some defaults for the canopy model
-    # Plant hydraulics
-    conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(
-        surface_domain,
-        toml_dict;
-        conductivity_model,
-        retention_model,
-    )
-
-    # Roughness lengths
-    h_canopy = hydraulics.compartment_surfaces[end]
-    z_0m = FT(0.13) * h_canopy
-    z_0b = FT(0.1) * z_0m
-
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
+        # Construct the P model manually since it is not a default
+    photosynthesis = PModel{FT}(domain, toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
+    # Use the soil moisture stress function based on soil moisture only
+    soil_moisture_stress =
+	ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
+	surface_domain,
         canopy_forcing,
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        hydraulics,
-        z_0m,
-        z_0b,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
     )
 
     # Snow model setup
