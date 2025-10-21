@@ -50,7 +50,7 @@ device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "snowy_land_longrun_$(device_suffix)"
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - always use high resolution for calibration runs

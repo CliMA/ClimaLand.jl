@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data

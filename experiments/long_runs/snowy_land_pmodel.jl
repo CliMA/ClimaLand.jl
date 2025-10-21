@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -70,6 +70,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true
     )
     forcing = (; atmos, radiation)
 
@@ -139,6 +140,7 @@ domain = ClimaLand.Domains.global_domain(
     mask_threshold = FT(0.99),
 )
 toml_dict = LP.create_toml_dict(FT)
+photosynthesis = PModel{FT}(domain, toml_dict)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
