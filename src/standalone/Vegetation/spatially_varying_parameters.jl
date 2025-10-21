@@ -355,7 +355,7 @@ function clm_canopy_height(
     
     canopy_height = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "canopy_height",
+        "z_top",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
