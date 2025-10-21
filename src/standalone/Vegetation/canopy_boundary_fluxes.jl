@@ -11,28 +11,6 @@ import ClimaLand:
     displacement_height,
     turbulent_fluxes!,
     AbstractBC
-
-abstract type AbstractCanopyRoughness{FT <: AbstractFloat} <: end
-
-struct ConstantCanopyRoughness{FT} <: AbstractCanopyRoughness{FT}
-    "Scalar coefficient multiplying canopy height to obtain roughness length for momentum (unitless)"
-    z_0m_coeff::FT
-    "Scalar coefficient multiplying canopy height to obtain roughness length for scalars (unitless)"
-    z_0b_coeff::FT
-    "Scalar coefficient multiplying canopy height to obtain displacement height (unitless)"
-    d_coeff::FT
-    ""
-    u0::FT
-end
-
-function ConstantCanopyRoughness{FT}(toml_dict) where {FT}
-    z_0m_coeff = toml_dict["canopy_z_0m_coeff"]
-    z_0b_coeff = toml_dict["canopy_z_0b_coeff"]
-    d_coeff = toml_dict["canopy_d_coeff"]
-    u0 = toml_dict["canopy_u0"]
-    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, u0)
-end
-
     
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
@@ -45,7 +23,7 @@ abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
         G <: AbstractGroundConditions,
-        R <: AbstractCanopyRoughness
+        R <: AbstractCanopyRoughness,
         C::Tuple
     } <: AbstractCanopyBC
 
@@ -62,7 +40,7 @@ struct AtmosDrivenCanopyBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     G <: AbstractGroundConditions,
-    R <: AbstractCanopyRoughness
+    R <: AbstractCanopyRoughness,
     C <: Tuple,
 } <: AbstractCanopyBC
     "The atmospheric conditions driving the model"
@@ -474,7 +452,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         beta = FT(1),
         gustiness = gustiness,
     )
-    surface_flux_params = LP.surface_fluxes_earth_param_set)
+    surface_flux_params = LP.surface_fluxes(earth_param_set)
     scheme = SurfaceFluxes.PointValueScheme()
     conditions =
         SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
