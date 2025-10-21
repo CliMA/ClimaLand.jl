@@ -317,7 +317,7 @@ function PlantHydraulicsModel{FT}(
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
-    h_leaf::FT = FT(1),
+    h_leaf::FT = toml_dict["canopy_height"],
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
