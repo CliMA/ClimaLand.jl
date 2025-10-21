@@ -305,3 +305,60 @@ function clm_medlyn_g1(
     )
     return g1
 end
+
+"""
+    clm_canopy_height(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    )
+
+Reads spatially varying canopy height from a NetCDF file based on CLM data,
+and regrids it to the grid defined by the `surface_space` of the Clima simulation.
+Returns a ClimaCore Field.
+
+The values correspond to the canopy height of the dominant PFT at each point,
+averaged over the year from CLM5's MONTHLY_HEIGHT_TOP variable. Heights are in meters.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`interpolation_method` affect the regridding by (1) changing how we interpolate 
+to ClimaCore points which are not in the data, (2) changing how we extrapolate 
+to points beyond the range of the data, and (3) changing the spatial interpolation method.
+
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+"""
+function clm_canopy_height(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
+    
+    canopy_height = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "canopy_height",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    return canopy_height
+end
