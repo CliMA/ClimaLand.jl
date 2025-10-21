@@ -330,7 +330,7 @@ function PlantHydraulicsModel{FT}(
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
-    h_leaf::FT = FT(1),
+    h_leaf::FT = toml_dict["canopy_height"],
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
@@ -411,6 +411,7 @@ function PrescribedBiomassModel{FT}(
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
+        typeof(height),
     }(
         plant_area_index,
         rooting_depth,
@@ -651,11 +652,19 @@ end
         energy = PrescribedCanopyTempModel{FT}(),
     ) where {FT, PSE}
 
-An outer constructor for the `CanopyModel`. The primary
-constraints this applies are (1) ensuring that the domain is 1d or 2d
-(a ``surface" domain of a column, box, or sphere) and (2) ensuring
-consistency between the PlantHydraulics model and the general canopy model,
-since these are built separately.
+An outer constructor for the `CanopyModel`, which makes certain
+consistency checks between parameterizations.
+
+Note that we do not currently enforce that the biomass `height` is the same
+as the height used in plant hydraulics. We have:
+
+biomass.height:
+     - Used for: Aerodynamic calculations (displacement height, roughness length), mass of plant
+       in energy equation
+     - Type: Can be spatially-varying (Field) or uniform (scalar)
+hydraulics height = hydraulics.compartment_surfaces[end] - hydraulics.compartment_surfaces[1]
+    - Compartment spacing affects vertical structure of plant water
+    - Type: Currently always a scalar
 """
 function CanopyModel{FT}(;
     autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
@@ -683,13 +692,6 @@ function CanopyModel{FT}(;
     if typeof(conductance) <: PModelConductance{FT}
         @assert typeof(photosynthesis) <: PModel{FT} "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
     end
-
-    if typeof(hydraulics) <: PlantHydraulicsModel{FT}
-        @assert biomass.height ==
-                hydraulics.compartment_surfaces[end] -
-                hydraulics.compartment_surfaces[1]
-    end
-
 
     args = (
         autotrophic_respiration,
@@ -770,7 +772,7 @@ function CanopyModel{FT}(
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
-        toml_dict["canopy_height"],
+        biomass.height,
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}

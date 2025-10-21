@@ -221,13 +221,14 @@ struct PrescribedBiomassModel{
     FT,
     PSAI <: PrescribedAreaIndices{FT},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
+    HTH <: Union{FT, ClimaCore.Fields.Field},
 } <: AbstractBiomassModel{FT}
     "The plant area index model for LAI, SAI, RAI"
     plant_area_index::PSAI
     "Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies"
     rooting_depth::RDTH
-    "Canopy height, currently treated as a scalar"
-    height::FT
+    "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
+    height::HTH
 end
 
 """
@@ -235,22 +236,26 @@ end
                                 SAI::FT,
                                 RAI::FT,
                                 rooting_depth,
-                                height::FT) where {FT}
+                                height) where {FT}
 
 An outer constructor to help set up the PrescribedBiomassModel from 
 LAI, SAI, and RAI directly, instead of requiring the user to make the
 area index object first; rooting_depth and height are also required.
+
+Height can be either:
+- A scalar FT value (uniform height across domain)
+- A ClimaCore.Fields.Field (spatially-varying height)
 """
 function PrescribedBiomassModel{FT}(;
     LAI::AbstractTimeVaryingInput,
     SAI::FT,
     RAI::FT,
     rooting_depth,
-    height::FT,
+    height,
 ) where {FT}
     plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
-    args = (plant_area_index, rooting_depth)
-    PrescribedBiomassModel{FT, typeof.(args)...}(args..., height)
+    args = (plant_area_index, rooting_depth, height)
+    PrescribedBiomassModel{FT, typeof.(args)...}(args...)
 end
 
 ClimaLand.auxiliary_vars(model::PrescribedBiomassModel) = (:area_index,)
