@@ -138,6 +138,11 @@ This inverts the Beer-Lambert integration: A = Ao * (1 - exp(-k*L))
 Following Zhou et al. (2025), this allows us to infer the light-saturated
 photosynthetic capacity from the observed canopy-level assimilation.
 
+Reference:
+Zhou, B., Cai, W., Zhu, Z., Wang, H., Harrison, S. P., & Prentice, C. (2025).
+A General Model for the Seasonal to Decadal Dynamics of Leaf Area.
+Global Change Biology, 31(1), e70125. https://doi.org/10.1111/gcb.70125
+
 Args:
 - `A`: Canopy-integrated assimilation rate (μmol CO2 m^-2 s^-1)
 - `k`: Extinction coefficient (unitless)
@@ -244,7 +249,6 @@ function compute_L_opt(μ, k, L)
     while abs(dL) > 0.001
         dL = -g(μ, k, L) / dgdL(μ, k, L)
         L = L + dL
-        @show (dL)
         i = i + 1
         i > 100 ? @error("too many iterations") : nothing
     end
@@ -301,8 +305,8 @@ function compute_L(
         L_opt = compute_L_opt(m * Ao, k, L)
         L_ss = min(L_opt, L_max)
         # Again, we take the optimal/steady state
-        # and weight it with 0.0667
-        # i.e.: weight history more with (1-α)*L
+        # and weight it with (1-α)*L_ss
+        # i.e.: weight history more with α*L
         return (1 - α) * L_ss + α * L
     else
         return L
