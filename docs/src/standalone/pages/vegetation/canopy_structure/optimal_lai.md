@@ -1,36 +1,36 @@
-# Optimal LAI Model Implementation
+# Optimal LAI Model
 
-## Overview
-
-This document describes the implementation of the prognostic leaf area index (LAI) model based on Zhou et al. (2025), "A General Model for the Seasonal to Decadal Dynamics of Leaf Area," published in Global Change Biology.
+The optimal LAI model dynamically predicts leaf area index (LAI) by balancing photosynthetic carbon assimilation against the cost of maintaining leaf area. This implementation is based on Zhou et al. (2025), "A General Model for the Seasonal to Decadal Dynamics of Leaf Area," published in *Global Change Biology*.
 
 ## Model Description
 
-The optimal LAI model dynamically predicts LAI by balancing photosynthetic carbon assimilation against the cost of maintaining leaf area. The model updates LAI at local noon using an exponential moving average (EMA) to account for acclimation timescales.
+The model updates LAI at local noon using an exponential moving average (EMA) to account for acclimation timescales. The core principle is that vegetation optimizes LAI to maximize net carbon gain, balancing the benefit of additional light capture against the metabolic cost of maintaining leaf tissue.
 
 ### Key Equations
 
 1. **Top-of-canopy assimilation rate** (inverting Beer-Lambert law):
+   ```math
+   A_o = \frac{A}{1 - \exp(-kL)}
    ```
-   Ao = A / (1 - exp(-k*L))
-   ```
-   where `A` is canopy-integrated assimilation, `k` is extinction coefficient, `L` is LAI.
+   where $A$ is canopy-integrated assimilation, $k$ is extinction coefficient, $L$ is LAI.
 
 2. **Maximum LAI constraint** (ensures bottom leaves are viable):
+   ```math
+   L_{\max} = -\frac{\log(z/(kA_o))}{k}
    ```
-   L_max = -log(z/(k*Ao)) / k
-   ```
-   where `z` is the minimum assimilation threshold.
+   where $z$ is the minimum assimilation threshold.
 
 3. **Optimal LAI** (balances benefit vs. cost):
-   Solves: `L/μ - 1 + exp(-k*L) = 0`
-   where `μ = m*Ao` combines maintenance cost `m` and assimilation capacity `Ao`.
+   
+   Solves: $\frac{L}{\mu} - 1 + \exp(-kL) = 0$
+   
+   where $\mu = mA_o$ combines maintenance cost $m$ and assimilation capacity $A_o$.
 
 4. **EMA update** (accounts for acclimation):
+   ```math
+   L_{\text{new}} = (1 - \alpha) \min(L_{\text{opt}}, L_{\max}) + \alpha L_{\text{current}}
    ```
-   L_new = (1 - α) * min(L_opt, L_max) + α * L_current
-   ```
-   where `α` is the memory parameter (higher = more weight on history).
+   where $\alpha$ is the memory parameter (higher = more weight on history).
 
 ## Parameters
 
@@ -46,17 +46,18 @@ Three parameters control the model behavior (defined in `toml/default_parameters
 
 ### Current Architecture
 
-The optimal LAI model is integrated into the P-model photosynthesis:
+The optimal LAI model is available as a standalone component:
 
-- **Location**: `src/standalone/Vegetation/pmodel.jl`
-- **Auxiliary Variable**: `L` (leaf area index) stored in `p.canopy.photosynthesis.L`
+- **Location**: `src/standalone/Vegetation/optimal_lai.jl`
+- **Structure**: `OptimalLAIModel{FT}` with `OptimalLAIParameters{FT}`
+- **Auxiliary Variable**: `L` (leaf area index)
 - **Update Frequency**: Daily at local noon
-- **Update Function**: `update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)`
-- **Callback**: Integrated into `make_PModel_callback`
+- **Update Function**: `update_optimal_LAI!(L, A, cosθs, canopy, local_noon_mask, parameters)`
+- **Callback**: Created via `make_OptimalLAI_callback`
 
 ### Core Functions
 
-All LAI computation functions are in `pmodel.jl`:
+All LAI computation functions are in `optimal_lai.jl`:
 
 ```julia
 compute_Ao(A, k, L)           # Top-of-canopy assimilation
@@ -67,16 +68,15 @@ compute_L_opt(μ, k, L)        # Optimal LAI via Newton-Raphson
 compute_L(L, Ao, m, k, α, z, mask)  # EMA update at local noon
 ```
 
-### OptimalLAIModel Structure
+### Integration with P-Model
 
-For future standalone use, `src/standalone/Vegetation/optimal_lai.jl` provides:
+When using `PModel` for photosynthesis, the optimal LAI functionality is integrated directly:
 
-```julia
-OptimalLAIParameters{FT}      # Parameter structure
-OptimalLAIModel{FT}            # Model structure (for future use)
-```
+- **Location**: `src/standalone/Vegetation/pmodel.jl`
+- **Auxiliary Variable**: `L` stored in `p.canopy.photosynthesis.L`
+- **Update**: Integrated into `call_update_optimal_EMA`
 
-This structure is currently not actively used but is available for future integration as a separate canopy component.
+This allows LAI to be updated alongside other optimal parameters (Vcmax, Jmax) during the P-model acclimation process.
 
 ## Usage
 
@@ -140,7 +140,7 @@ value = 0.8   # Lower α → faster acclimation (τ ≈ 5 days)
 
 ## Initialization
 
-LAI is initialized in `set_historical_cache!`:
+LAI is initialized in `set_historical_cache!` for the P-model integration:
 
 ```julia
 L = p.canopy.photosynthesis.L
@@ -149,16 +149,12 @@ L .= 1.0  # Initial LAI of 1.0 m²/m²
 
 The model then adjusts LAI based on environmental conditions over the first acclimation period (~15 days by default).
 
-## References
-
-Zhou, B., Cai, W., Zhu, Z., Wang, H., Harrison, S. P., & Prentice, C. (2025). A General Model for the Seasonal to Decadal Dynamics of Leaf Area. *Global Change Biology*, 31(1), e70125. https://doi.org/10.1111/gcb.70125
-
 ## Code Structure
 
 ```
 src/standalone/Vegetation/
-├── pmodel.jl              # Core LAI functions + PModel integration
-├── optimal_lai.jl         # OptimalLAIModel structure (future use)
+├── optimal_lai.jl         # OptimalLAIModel structure and functions
+├── pmodel.jl              # P-model integration with optimal LAI
 └── Canopy.jl              # Includes both files
 
 toml/
@@ -182,3 +178,7 @@ The `OptimalLAIModel` structure in `optimal_lai.jl` is designed to support:
 4. **Separate callbacks**: Independent LAI update timing from photosynthesis
 
 These extensions would require modifications to the `CanopyModel` structure but the core functionality is already implemented.
+
+## References
+
+Zhou, B., Cai, W., Zhu, Z., Wang, H., Harrison, S. P., & Prentice, C. (2025). A General Model for the Seasonal to Decadal Dynamics of Leaf Area. *Global Change Biology*, 31(1), e70125. https://doi.org/10.1111/gcb.70125
