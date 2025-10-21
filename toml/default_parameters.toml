@@ -351,6 +351,26 @@ type = "float"
 description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
 tag = "PModelConstants"
 
+# Optimal LAI model parameters (Zhou et al. 2025)
+
+["optimal_lai_m"]
+value = 0.3
+type = "float"
+description = "Maintenance cost parameter for optimal LAI model (unitless). Represents the marginal cost of maintaining additional leaf area."
+tag = "OptimalLAIParameters"
+
+["optimal_lai_z"]
+value = 12.227
+type = "float"
+description = "Minimum assimilation threshold for optimal LAI model (μmol CO2 m^-2 s^-1). Below this threshold, LAI is limited to prevent unrealistic growth in low-light conditions."
+tag = "OptimalLAIParameters"
+
+["optimal_lai_alpha"]
+value = 0.933
+type = "float"
+description = "Timescale parameter for EMA acclimation in optimal LAI model (unitless). α = 1 - 1 day/τ where τ is the acclimation timescale in days. Default 0.933 corresponds to ~15 day timescale."
+tag = "OptimalLAIParameters"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]
