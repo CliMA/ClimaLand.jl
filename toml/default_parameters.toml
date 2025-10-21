@@ -473,3 +473,9 @@ value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "ConstantRoughnessModel"
+
+["canopy_u0"]
+value = 0.0025
+type = "float"
+description = ""
+tag = "ConstantRoughnessModel"

@@ -730,7 +730,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_earth_param_set),
+                LP.thermodynamic_parameters(earth_param_set),
             ),
             sqrt(eps(FT)),
         ),

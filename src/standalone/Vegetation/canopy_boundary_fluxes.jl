@@ -21,13 +21,16 @@ struct ConstantCanopyRoughness{FT} <: AbstractCanopyRoughness{FT}
     z_0b_coeff::FT
     "Scalar coefficient multiplying canopy height to obtain displacement height (unitless)"
     d_coeff::FT
+    ""
+    u0::FT
 end
 
 function ConstantCanopyRoughness{FT}(toml_dict) where {FT}
     z_0m_coeff = toml_dict["canopy_z_0m_coeff"]
     z_0b_coeff = toml_dict["canopy_z_0b_coeff"]
     d_coeff = toml_dict["canopy_d_coeff"]
-    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, d_coeff)
+    u0 = toml_dict["canopy_u0"]
+    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, u0)
 end
 
     
@@ -303,8 +306,9 @@ function ClimaLand.turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.boundary_conditions.roughness.z_0m_coeff * model.hydraulics.compartment_surfaces[end],
-            model.boundary_conditions.roughness.z_0b_coeff * model.hydraulics.compartment_surfaces[end],
+            model.boundary_conditions.roughness.z_0m_coeff * model.biomass.height,
+            model.boundary_conditions.roughness.z_0b_coeff * model.biomass.height,
+             model.boundary_conditions.roughness.u0,
             Ref(model.earth_param_set),
         )
     return nothing
@@ -346,8 +350,8 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.boundary_conditions.roughness.z_0m_coeff * model.hydraulics.compartment_surfaces[end],
-            model.boundary_conditions.roughness.z_0b_coeff * model.hydraulics.compartment_surfaces[end],
+            model.boundary_conditions.roughness.z_0m_coeff * model.biomass.height,
+            model.boundary_conditions.roughness.z_0b_coeff * model.biomass.height,
             Ref(model.earth_param_set),
         )
     return nothing
@@ -414,6 +418,7 @@ end
         gustiness::FT,
         z_0m::FT,
         z_0b::FT,
+
         earth_param_set::EP;
     ) where {FT <: AbstractFloat, EP}
 
@@ -437,9 +442,10 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
+    u0::FT,
     earth_param_set::EP;
 ) where {FT <: AbstractFloat, EP}
-    thermo_params = LP.thermodynamic_earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
@@ -481,7 +487,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_leaf::FT = FT((u0*ustar)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
