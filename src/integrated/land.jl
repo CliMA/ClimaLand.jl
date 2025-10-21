@@ -76,8 +76,7 @@ struct LandModel{
 
         @assert soil.parameters.earth_param_set ==
                 soilco2.parameters.earth_param_set
-        @assert soil.parameters.earth_param_set ==
-                canopy.earth_param_set
+        @assert soil.parameters.earth_param_set == canopy.earth_param_set
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
 

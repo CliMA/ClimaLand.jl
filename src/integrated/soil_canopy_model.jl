@@ -63,8 +63,7 @@ struct SoilCanopyModel{
 
         @assert soil.parameters.earth_param_set ==
                 soilco2.parameters.earth_param_set
-        @assert soil.parameters.earth_param_set ==
-                canopy.earth_param_set
+        @assert soil.parameters.earth_param_set == canopy.earth_param_set
 
         # SoilCanopyModel-specific checks
         # Runoff and sublimation are also automatically included in the soil model

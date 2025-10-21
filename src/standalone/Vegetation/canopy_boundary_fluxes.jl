@@ -11,7 +11,7 @@ import ClimaLand:
     displacement_height,
     turbulent_fluxes!,
     AbstractBC
-    
+
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
 
@@ -107,7 +107,7 @@ model.
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
 function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return model.boundary_conditions.roughness.d_coeff *  model.biomass.height
+    return model.boundary_conditions.roughness.d_coeff * model.biomass.height
 end
 
 """
@@ -284,9 +284,11 @@ function ClimaLand.turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.boundary_conditions.roughness.z_0m_coeff * model.biomass.height,
-            model.boundary_conditions.roughness.z_0b_coeff * model.biomass.height,
-             model.boundary_conditions.roughness.u0,
+            model.boundary_conditions.roughness.z_0m_coeff *
+            model.biomass.height,
+            model.boundary_conditions.roughness.z_0b_coeff *
+            model.biomass.height,
+            model.boundary_conditions.roughness.u0,
             Ref(model.earth_param_set),
         )
     return nothing
@@ -328,8 +330,10 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             atmos.gustiness,
-            model.boundary_conditions.roughness.z_0m_coeff * model.biomass.height,
-            model.boundary_conditions.roughness.z_0b_coeff * model.biomass.height,
+            model.boundary_conditions.roughness.z_0m_coeff *
+            model.biomass.height,
+            model.boundary_conditions.roughness.z_0b_coeff *
+            model.biomass.height,
             Ref(model.earth_param_set),
         )
     return nothing
@@ -465,7 +469,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = FT((u0*ustar)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_leaf::FT = FT((u0 * ustar)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
