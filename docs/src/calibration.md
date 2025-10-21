@@ -285,6 +285,7 @@ CalibrateConfig(;
     nelements = (101, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
+    model_type = ClimaLand.LandModel,
 )
 ```
 
@@ -395,17 +396,20 @@ simulation data is done in `process_member_data` in
     Different data sources have different conventions for time. For example,
     data sources use January 1, January 15, and Feburary 1 for the monthly
     average of January. For the diagnostics saved from a CliMA simulation, the
-    current convention is to save the monthly average on the Feburary 1. You
-    must ensure that the time conventions are the same. For calibration, we
-    choose the start of the time reduction, so for this example, the time
-    associated with the monthly average of January is January 1. For seasonal
-    averages, the dates would be December 1, March 1, June 1, and September 1.
+    current convention is to save the monthly average on Feburary 1. You must
+    ensure that the time conventions are the same. For calibration, we choose
+    the start of the time reduction, so for this example, the time associated
+    with the monthly average of January is January 1. For seasonal averages, the
+    dates would be December 1, March 1, June 1, and September 1.
 
 ### Simulation settings
 
 In `CalibrateConfig`, you can modify the resolution of the model via
 `nelements`. To change the directory of where the calibration starts, you can
-change `output_dir`, whose default is `experiments/calibration/land_model`.
+change `output_dir`, whose default is `experiments/calibration/land_model`. You
+can change the model used via `configuration`, whose default is
+`ClimaLand.LandModel`. The only supported configurations are
+`ClimaLand.LandModel` and `ClimaLand.Bucket.BucketModel`.
 
 For adjusting the start and end dates of the simulation, you can change `spinup`
 and `extend`.
@@ -426,6 +430,7 @@ and `extend`.
     with seasonal averages, `extend` should be `Dates.Month(3)`.
 
 ## Which parameters can I calibrate?
+
 ClimaLand.jl provides a full list of spatially-constant parameters that may be
 calibrated in `toml/default_parameters.toml`. For each parameter, this file
 includes the parameter name, type, default value, units, and model or
