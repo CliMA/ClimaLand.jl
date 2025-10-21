@@ -452,7 +452,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         beta = FT(1),
         gustiness = gustiness,
     )
-    surface_flux_params = LP.surface_fluxes(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     scheme = SurfaceFluxes.PointValueScheme()
     conditions =
         SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
