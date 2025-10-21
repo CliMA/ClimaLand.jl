@@ -1532,31 +1532,63 @@ function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
 end
 
 
-"""
-    update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
-
-Updates the optimal LAI following Zhou et al. (2025). This is a convenience wrapper
-that uses hard-coded parameters. For more control, use OptimalLAIParameters directly.
-
-Note: The core LAI computation functions (compute_Ao, compute_L_max, g, dgdL,
-compute_L_opt, compute_L) are defined in optimal_lai.jl.
-
-This function will be deprecated in favor of OptimalLAIModel in future versions.
-"""
 function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
     radiation = canopy.radiative_transfer
-    k = @. lazy(
-        radiation.parameters.Ω *
-        extinction_coeff(radiation.parameters.G_Function, cosθs),
-    )
+    k = @. lazy(radiation.parameters.Ω * extinction_coeff(radiation.parameters.G_Function, cosθs))
     FT = eltype(cosθs)
-    # Default parameters from Zhou et al. (2025)
-    # α = 1 - 0.067 = 0.933 corresponds to ~15 day acclimation timescale
-    α = FT(1 - 0.067)
-    z = FT(12.227) # Minimum assimilation threshold (μmol CO2 m^-2 s^-1)
-    m = FT(0.3) # Maintenance cost parameter
-    Ao = @. lazy(compute_Ao(A, k, L)) # with current L, compute Ao from A
+    α = FT(1-0.067)
+    z = FT(12.227);
+    m = FT(0.3)
+    Ao = @.lazy(compute_Ao(A, k, L)); # with current L, compute Ao from A
     # Now update L
     @. L = compute_L(L, Ao, m, k, α, z, local_noon_mask)
+
+end
+
+function compute_L_max(k,z,Ao)
+    return -1/k*log(z/k/Ao)
+end
+
+function dgdL(μ, k, L)
+    return 1/μ - k*exp(-k*L)
+end
+
+g(μ,k,L) = L/μ -1+exp(-k*L)
+    
+function compute_L_opt(μ, k,L)
+    dL = 1000; i = 0
+    while abs(dL) > 0.001
+        dL = -g(μ, k,L)/dgdL(μ,k,L)
+        L = L + dL; @show(dL)
+        i = i+1; i>100 ? @error("too many iterations") : nothing
+    end
+    return L
+end
+
+function compute_Ao(A::FT, k::FT, L::FT) where {FT}
+    Ao = A/max(1-exp(-k*L), eps(FT))
+    return Ao
+end
+
+function compute_L(L::FT,
+                   Ao::FT,
+                   m::FT,
+                   k::FT,
+                   α::FT,
+                   z::FT,
+                   local_noon_mask::FT,
+                   ) where {FT}
+    if local_noon_mask == FT(1.0)
+        Ao = max(Ao, eps(FT))
+        L_max = compute_L_max(k,z, Ao)
+        L_opt = compute_L_opt(m*Ao, k, L)
+        L_ss = min(L_opt, L_max)
+        # Again, we take the optimal/steady state
+        # and weight it with 0.0667
+        # i.e.: weight history more with (1-α)*L
+        return (1-α)*L_ss + α*L
+    else
+        return L
+    end
 end
     
