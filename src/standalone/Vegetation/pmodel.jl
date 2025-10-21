@@ -1538,6 +1538,9 @@ end
 Updates the optimal LAI following Zhou et al. (2025). This is a convenience wrapper
 that uses hard-coded parameters. For more control, use OptimalLAIParameters directly.
 
+Note: The core LAI computation functions (compute_Ao, compute_L_max, g, dgdL,
+compute_L_opt, compute_L) are defined in optimal_lai.jl.
+
 This function will be deprecated in favor of OptimalLAIModel in future versions.
 """
 function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
@@ -1555,138 +1558,5 @@ function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
     Ao = @. lazy(compute_Ao(A, k, L)) # with current L, compute Ao from A
     # Now update L
     @. L = compute_L(L, Ao, m, k, α, z, local_noon_mask)
-end
-
-"""
-    compute_Ao(A::FT, k::FT, L::FT) where {FT}
-
-Computes the top-of-canopy assimilation rate (Ao) from the canopy-integrated
-assimilation rate (A), extinction coefficient (k), and LAI (L).
-
-This inverts the Beer-Lambert integration: A = Ao * (1 - exp(-k*L))
-
-Following Zhou et al. (2025), this allows us to infer the light-saturated
-photosynthetic capacity from the observed canopy-level assimilation.
-
-Reference:
-Zhou, B., Cai, W., Zhu, Z., Wang, H., Harrison, S. P., & Prentice, C. (2025).
-A General Model for the Seasonal to Decadal Dynamics of Leaf Area.
-Global Change Biology, 31(1), e70125. https://doi.org/10.1111/gcb.70125
-"""
-function compute_Ao(A::FT, k::FT, L::FT) where {FT}
-    Ao = A / max(1 - exp(-k * L), eps(FT))
-    return Ao
-end
-
-"""
-    compute_L_max(k, z, Ao)
-
-Computes the maximum LAI (L_max) constrained by the minimum assimilation threshold.
-This represents the LAI at which the bottom-of-canopy assimilation rate equals
-the minimum threshold z.
-
-From Zhou et al. (2025), this constraint prevents unrealistic LAI in low-light
-conditions where leaves at the bottom of the canopy would have negative carbon balance.
-
-Derived from the Beer-Lambert law: z = Ao * exp(-k * L_max)
-"""
-function compute_L_max(k, z, Ao)
-    return -1 / k * log(z / k / Ao)
-end
-
-"""
-    g(μ, k, L)
-
-The optimality condition function whose root gives the optimal LAI.
-This function represents the balance between the marginal benefit of increased LAI
-(increased light capture) and the marginal cost of maintaining additional leaf area.
-
-From Zhou et al. (2025), the optimal LAI satisfies g(μ, k, L) = 0, which corresponds to:
-L/μ = 1 - exp(-k*L)
-
-where μ = m * Ao is the scaled cost parameter. This condition states that at optimum,
-the marginal cost of an additional unit of LAI equals the marginal benefit from
-increased light capture.
-"""
-g(μ, k, L) = L / μ - 1 + exp(-k * L)
-
-"""
-    dgdL(μ, k, L)
-
-The derivative of the optimality condition function g with respect to L.
-Used in Newton-Raphson iteration to find the optimal LAI.
-
-∂g/∂L = 1/μ - k*exp(-k*L)
-"""
-function dgdL(μ, k, L)
-    return 1 / μ - k * exp(-k * L)
-end
-
-"""
-    compute_L_opt(μ, k, L)
-
-Computes the optimal LAI by solving the optimality condition g(μ, k, L) = 0
-using Newton-Raphson iteration.
-
-Following Zhou et al. (2025), the optimal LAI maximizes the net benefit:
-∫[0,L] Ao*exp(-k*l) dl - m*Ao*L
-which balances carbon assimilation against the cost of maintaining leaf area.
-"""
-function compute_L_opt(μ, k, L)
-    dL = 1000
-    i = 0
-    while abs(dL) > 0.001
-        dL = -g(μ, k, L) / dgdL(μ, k, L)
-        L = L + dL
-        i = i + 1
-        i > 100 ? @error("too many iterations") : nothing
-    end
-    return L
-end
-
-"""
-    compute_L(
-        L::FT,
-        Ao::FT,
-        m::FT,
-        k::FT,
-        α::FT,
-        z::FT,
-        local_noon_mask::FT,
-    ) where {FT}
-
-Computes the updated LAI using an exponential moving average (EMA) of the
-steady-state optimal LAI. This function is called at each timestep but only
-updates LAI at local noon (when local_noon_mask = 1).
-
-Following Zhou et al. (2025), the steady-state LAI is the minimum of:
-1. L_opt: The economically optimal LAI from the optimality condition
-2. L_max: The maximum LAI constrained by minimum assimilation threshold
-
-The EMA update accounts for the finite timescale of LAI acclimation:
-L_new = (1 - α) * L_ss + α * L_current
-where α is the memory parameter (higher α = more weight on history).
-"""
-function compute_L(
-    L::FT,
-    Ao::FT,
-    m::FT,
-    k::FT,
-    α::FT,
-    z::FT,
-    local_noon_mask::FT,
-) where {FT}
-    if local_noon_mask == FT(1.0)
-        Ao = max(Ao, eps(FT))
-        L_max = compute_L_max(k, z, Ao)
-        L_opt = compute_L_opt(m * Ao, k, L)
-        L_ss = min(L_opt, L_max)
-        # Again, we take the optimal/steady state
-        # and weight it with (1-α)*L_ss
-        # i.e.: weight history more with α*L
-        return (1 - α) * L_ss + α * L
-    else
-        return L
-    end
 end
     
