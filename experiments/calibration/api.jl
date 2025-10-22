@@ -127,6 +127,10 @@ function CalibrateConfig(;
     model_type = ClimaLand.LandModel,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
+
+    allunique(short_names) ||
+        error("The short names ($short_names) provided are not all unique")
+
     isempty(sample_date_ranges) &&
         error("Cannot run calibration with no date ranges for the samples")
 
