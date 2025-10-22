@@ -101,7 +101,7 @@ model.
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
 function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return FT(0.67) * model.biomass.height
+    return FT(0.67) .* model.biomass.height
 end
 
 """
