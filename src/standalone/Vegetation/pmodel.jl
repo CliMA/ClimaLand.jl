@@ -263,17 +263,16 @@ and dark respiration at the canopy level (`Rd`), and
     containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
     using an exponential moving average (EMA) at local noon.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars, :L)
+ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
     FT,
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
-    FT
 )
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface)
 
 
 """
@@ -581,11 +580,6 @@ function update_optimal_EMA(
                 bS_Jmax,
                 R,
             )
-        # This naming is wrong. The ξ just computed is the
-        # optimal value, and what we call optimal is really the
-        # acclimated value
-        # We weight the optimal value with 0.067 so the historical
-        # values count more.
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
             Vcmax25_opt = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
@@ -703,8 +697,6 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         APAR_canopy_moles,
         local_noon_mask,
     )
-    L = p.canopy.photosynthesis.L
-    L .= 1
 end
 
 """
@@ -767,10 +759,6 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         APAR_canopy_moles,
         local_noon_mask,
     )
-    L = p.canopy.photosynthesis.L
-    A = p.canopy.photosynthesis.An
-    cosθs = p.drivers.cosθs
-    update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
 end
 
 """
@@ -1530,65 +1518,3 @@ end
 function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
     return FT(1)
 end
-
-
-function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
-    radiation = canopy.radiative_transfer
-    k = @. lazy(radiation.parameters.Ω * extinction_coeff(radiation.parameters.G_Function, cosθs))
-    FT = eltype(cosθs)
-    α = FT(1-0.067)
-    z = FT(12.227);
-    m = FT(0.3)
-    Ao = @.lazy(compute_Ao(A, k, L)); # with current L, compute Ao from A
-    # Now update L
-    @. L = compute_L(L, Ao, m, k, α, z, local_noon_mask)
-
-end
-
-function compute_L_max(k,z,Ao)
-    return -1/k*log(z/k/Ao)
-end
-
-function dgdL(μ, k, L)
-    return 1/μ - k*exp(-k*L)
-end
-
-g(μ,k,L) = L/μ -1+exp(-k*L)
-    
-function compute_L_opt(μ, k,L)
-    dL = 1000; i = 0
-    while abs(dL) > 0.001
-        dL = -g(μ, k,L)/dgdL(μ,k,L)
-        L = L + dL; @show(dL)
-        i = i+1; i>100 ? @error("too many iterations") : nothing
-    end
-    return L
-end
-
-function compute_Ao(A::FT, k::FT, L::FT) where {FT}
-    Ao = A/max(1-exp(-k*L), eps(FT))
-    return Ao
-end
-
-function compute_L(L::FT,
-                   Ao::FT,
-                   m::FT,
-                   k::FT,
-                   α::FT,
-                   z::FT,
-                   local_noon_mask::FT,
-                   ) where {FT}
-    if local_noon_mask == FT(1.0)
-        Ao = max(Ao, eps(FT))
-        L_max = compute_L_max(k,z, Ao)
-        L_opt = compute_L_opt(m*Ao, k, L)
-        L_ss = min(L_opt, L_max)
-        # Again, we take the optimal/steady state
-        # and weight it with 0.0667
-        # i.e.: weight history more with (1-α)*L
-        return (1-α)*L_ss + α*L
-    else
-        return L
-    end
-end
-    
