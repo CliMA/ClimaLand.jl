@@ -1,0 +1,89 @@
+nohup: ignoring input
+
+[1300362] signal 15: Terminated
+in expression starting at /home/renatob/ClimaLand.jl/experiments/long_runs/compare_canopy_heights.jl:173
+_ZN4llvm10BasicBlock20renumberInstructionsEv at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZNK4llvm11Instruction11comesBeforeEPKS0_ at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZSt16__insertion_sortIPPN4llvm11InstructionEN9__gnu_cxx5__ops15_Iter_comp_iterIZNKS0_13slpvectorizer7BoUpSLP12getSpillCostEvEUlS2_S2_E_EEEvT_SB_T0_ at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZNK4llvm13slpvectorizer7BoUpSLP12getSpillCostEv at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm13slpvectorizer7BoUpSLP11getTreeCostENS_8ArrayRefIPNS_5ValueEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm17SLPVectorizerPass19vectorizeStoreChainENS_8ArrayRefIPNS_5ValueEEERNS_13slpvectorizer7BoUpSLPEjj at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm17SLPVectorizerPass15vectorizeStoresENS_8ArrayRefIPNS_9StoreInstEEERNS_13slpvectorizer7BoUpSLPE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm17SLPVectorizerPass20vectorizeStoreChainsERNS_13slpvectorizer7BoUpSLPE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm17SLPVectorizerPass7runImplERNS_8FunctionEPNS_15ScalarEvolutionEPNS_19TargetTransformInfoEPNS_17TargetLibraryInfoEPNS_9AAResultsEPNS_8LoopInfoEPNS_13DominatorTreeEPNS_15AssumptionCacheEPNS_12DemandedBitsEPNS_25OptimizationRemarkEmitterE.part.0 at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm17SLPVectorizerPass3runERNS_8FunctionERNS_15AnalysisManagerIS1_JEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/IR/PassManagerInternal.h:89
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/IR/PassManager.h:517 [inlined]
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/IR/PassManagerInternal.h:89
+_ZN4llvm27ModuleToFunctionPassAdaptor3runERNS_6ModuleERNS_15AnalysisManagerIS1_JEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/IR/PassManagerInternal.h:89
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/IR/PassManager.h:517 [inlined]
+run at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/pipeline.cpp:777
+operator() at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:1298
+withModuleDo<(anonymous namespace)::OptimizerT<N>::operator()(llvm::orc::ThreadSafeModule, llvm::orc::MaterializationResponsibility&) [with long unsigned int N = 4]::<lambda(llvm::Module&)> > at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/ExecutionEngine/Orc/ThreadSafeModule.h:136 [inlined]
+operator() at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:1259 [inlined]
+CallImpl<(anonymous namespace)::OptimizerT<4> > at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/usr/include/llvm/ADT/FunctionExtras.h:221
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16IRTransformLayer4emitESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EENS0_16ThreadSafeModuleE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc31BasicIRLayerMaterializationUnit11materializeESt10unique_ptrINS0_29MaterializationResponsibilityESt14default_deleteIS3_EE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc19MaterializationTask3runEv at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm6detail18UniqueFunctionBaseIvJSt10unique_ptrINS_3orc4TaskESt14default_deleteIS4_EEEE8CallImplIPFvS7_EEEvPvRS7_ at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession22dispatchOutstandingMUsEv at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession17OL_completeLookupESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EESt10shared_ptrINS0_23AsynchronousSymbolQueryEESt8functionIFvRKNS_8DenseMapIPNS0_8JITDylibENS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISF_vEEEENSG_ISD_vEENS_6detail12DenseMapPairISD_SI_EEEEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc25InProgressFullLookupState8completeESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession19OL_applyQueryPhase1ESt10unique_ptrINS0_21InProgressLookupStateESt14default_deleteIS3_EENS_5ErrorE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupENS0_10LookupKindERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS8_EENS0_15SymbolLookupSetENS0_11SymbolStateENS_15unique_functionIFvNS_8ExpectedINS_8DenseMapINS0_15SymbolStringPtrENS_18JITEvaluatedSymbolENS_12DenseMapInfoISI_vEENS_6detail12DenseMapPairISI_SJ_EEEEEEEEESt8functionIFvRKNSH_IS6_NS_8DenseSetISI_SL_EENSK_IS6_vEENSN_IS6_SV_EEEEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+_ZN4llvm3orc16ExecutionSession6lookupERKSt6vectorISt4pairIPNS0_8JITDylibENS0_19JITDylibLookupFlagsEESaIS7_EENS0_15SymbolLookupSetENS0_10LookupKindENS0_11SymbolStateESt8functionIFvRKNS_8DenseMapIS5_NS_8DenseSetINS0_15SymbolStringPtrENS_12DenseMapInfoISI_vEEEENSJ_IS5_vEENS_6detail12DenseMapPairIS5_SL_EEEEEE at /clima/software/julia/julia-1.11.5/bin/../lib/julia/libLLVM-16jl.so (unknown line)
+addModule at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:1875
+jl_add_to_ee at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:2306
+jl_add_to_ee at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:2285
+jl_add_to_ee at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:2285
+_jl_compile_codeinst at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:277
+jl_generate_fptr_impl at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jitlayers.cpp:536
+jl_compile_method_internal at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/gf.c:2536 [inlined]
+jl_compile_method_internal at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/gf.c:2423
+_jl_invoke at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/gf.c:2940 [inlined]
+ijl_apply_generic at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/gf.c:3125
+default_diagnostics at /home/renatob/ClimaLand.jl/src/diagnostics/default_diagnostics.jl:130
+default_diagnostics at /home/renatob/ClimaLand.jl/src/diagnostics/default_diagnostics.jl:107 [inlined]
+LandSimulation at /home/renatob/ClimaLand.jl/src/simulations/Simulations.jl:112
+unknown function (ip: 0x7fbfaf5ae7ca)
+#LandSimulation#10 at /home/renatob/ClimaLand.jl/src/simulations/Simulations.jl:300
+unknown function (ip: 0x7fbfaf5a8ecf)
+LandSimulation at /home/renatob/ClimaLand.jl/src/simulations/Simulations.jl:285
+unknown function (ip: 0x7fbfaf5a4a7f)
+jl_apply at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_call at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/interpreter.c:126
+eval_value at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/interpreter.c:223
+eval_stmt_value at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/interpreter.c:174 [inlined]
+eval_body at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/interpreter.c:666
+jl_interpret_toplevel_thunk at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/interpreter.c:824
+jl_toplevel_eval_flex at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/toplevel.c:943
+jl_toplevel_eval_flex at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/toplevel.c:886
+ijl_toplevel_eval_in at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/toplevel.c:994
+eval at ./boot.jl:430 [inlined]
+include_string at ./loading.jl:2734
+_include at ./loading.jl:2794
+include at ./Base.jl:557
+jfptr_include_46879.1 at /clima/software/julia/julia-1.11.5/lib/julia/sys.so (unknown line)
+exec_options at ./client.jl:323
+_start at ./client.jl:531
+jfptr__start_73430.1 at /clima/software/julia/julia-1.11.5/lib/julia/sys.so (unknown line)
+jl_apply at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+true_main at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jlapi.c:900
+jl_repl_entrypoint at /cache/build/tester-amdci5-12/julialang/julia-release-1-dot-11/src/jlapi.c:1059
+main at julia (unknown line)
+__libc_start_main at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x4010b8)
+unknown function (ip: (nil))
+Allocations: 219380191 (Pool: 219373935; Big: 6256); GC: 69
+[ Info: ==========================================
+[ Info: COMPARISON RUN: Default vs Spatially-Varying Canopy Height
+[ Info: Duration: 2008-03-01T00:00:00 to 2009-03-01T00:00:00
+[ Info: Resolution: (101, 15)
+[ Info: Timestep: 450.0 s
+[ Info: ==========================================
+┌ Info: 
+└ === RUN 1: Default Configuration (height = 1m) ===
+[ Info: Using default canopy height = 1m everywhere
