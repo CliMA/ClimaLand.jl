@@ -48,11 +48,21 @@ function set_fluxnet_ic!(
     model::ClimaLand.AbstractLandModel,
 )
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+
+    # Read the data and get the column name map
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    # Convert local datetime to time in UTC
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
-    Δ_date = UTC_datetime .- start_date
+
+    # Get the UTC datetimes of the data
+    varnames = ("TIMESTAMP_START",)
+    column_name_map =
+        get_column_name_map(varnames, columns; error_on_missing = true)
+    UTC_datetimes = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map;
+        timestamp_name = "TIMESTAMP_START",
+    )
+    Δ_date = UTC_datetimes .- start_date
     for component in ClimaLand.land_components(model)
         set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
     end

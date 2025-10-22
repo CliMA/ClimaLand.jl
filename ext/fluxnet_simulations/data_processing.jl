@@ -1,11 +1,24 @@
 """
     var_missing(x; val = -9999)
 
-A function that checks if the value of `x` is equal to 
--9999, which is the value that Fluxnet uses for missing 
+A function that checks if the value of `x` is equal to
+-9999, which is the value that Fluxnet uses for missing
 data. Returns true if x == -9999.
 """
 var_missing(x; val = -9999) = x == val
+
+"""
+    hour_offset_to_period(hour_offset_from_UTC)
+
+Convert a numerical hour offset (which may be fractional) to a
+Dates.Period that can be added to DateTime objects.
+Supports both integer and fractional time zones (e.g., 5.5 hours).
+"""
+function hour_offset_to_period(hour_offset_from_UTC)
+    hours = floor(Int, hour_offset_from_UTC)
+    minutes = round(Int, (hour_offset_from_UTC - hours) * 60)
+    return Dates.Hour(hours) + Dates.Minute(minutes)
+end
 
 """
    mask_data(t, v; val = -9999)
@@ -48,10 +61,11 @@ should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
 simulation corresponding to each row of data.
 
-If you need to preprocess the data (e.g., unit conversion), you must pass 
+If you need to preprocess the data (e.g., unit conversion), you must pass
 a pointwise function preprocess_func(var) as a keyword argument.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is
+marked by missing by a given value equal to `val`), because the
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -81,7 +95,7 @@ end
 
 Returns a TimeVaryingInput object which is computing using
 `preprocess_func` as a pointwise function of -in order - the columns in
-`data` specified by `varnames`. 
+`data` specified by `varnames`.
 
 For example, if you wish to compute specific humidity from temperature,
 pressure, and vpd, you would do:
@@ -98,7 +112,7 @@ should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
 simulation corresponding to each row of data.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -144,6 +158,104 @@ function get_data_at_start_date(
 end
 
 """
+    read_fluxnet_data(site_ID)
+
+Reads Fluxnet CSV data for the provided site, and returns a tuple `(data, columns)`
+where `data` is a `n_rows x n_cols` Matrix of the data, and `columns` is a
+`1 x n_cols` Matrix of column names.
+"""
+function read_fluxnet_data(site_ID)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+
+    return (data, columns)
+end
+
+"""
+    get_UTC_datetimes(hour_offset_from_UTC, data, column_name_map; timestamp_name = "TIMESTAMP")
+
+Converts local timestamps from FLUXNET data to UTC timestamps.
+
+Fluxnet as has three timestamps associated with it: TIMESTAMP, TIMESTAMP_START, and TIMESTAMP_END,
+with the first referring to an unspecified timestamp of the data, the second referring to the start
+of the averaging period, and the third the end.
+
+For forcing data, we want to get the timestamps at the start and end of each averaging period,
+then average them to get the timestamp at the midpoints. This can be done by calling this function
+twice, once with `timestamp_name = "TIMESTAMP_START"` and once with `"TIMESTAMP_END"`,
+then averaging the results.
+
+For comparison data, we want to get the timestamp at the end of the averaging period (described below).
+This can be done by calling this function with `timestamp_name = "TIMESTAMP_END"`.
+
+ClimaLand diagnostics are reduced over a time period (e.g. hourly, daily, monthly), and saved with the
+first date following that average period. For example, the hourly average from 11-noon is saved with a
+timestamp of noon. To make a true comparison to Fluxnet data, therefore, we must use halfhourly
+diagnostics in ClimaLand, and return the UTC time that corresponds to the end of the averaging period in Fluxnet.
+
+# Arguments
+- `hour_offset_from_UTC`: The hour offset from UTC for the local timezone
+        (may be fractional)
+- `data`: The data matrix containing timestamp information
+- `column_name_map`: Dictionary mapping variable names to column indices in the data
+- `timestamp_name`: The timestamp column name to use
+        (options: "TIMESTAMP_START" (default), "TIMESTAMP_END", "TIMESTAMP")
+
+# Returns
+- `UTC_datetimes`: Vector of UTC DateTime objects
+
+# Example
+```julia
+UTC_datetimes = get_UTC_datetimes(-5, data, column_name_map)  # EST to UTC
+```
+"""
+function get_UTC_datetimes(
+    hour_offset_from_UTC,
+    data,
+    column_name_map;
+    timestamp_name = "TIMESTAMP_START",
+)
+    @assert timestamp_name in ("TIMESTAMP", "TIMESTAMP_START", "TIMESTAMP_END") "Invalid timestamp column name $timestamp_name"
+
+    col = column_name_map[timestamp_name]
+    local_datetime = DateTime.(string.(Int.(data[:, col])), "yyyymmddHHMM")
+    UTC_datetimes =
+        local_datetime .- hour_offset_to_period(hour_offset_from_UTC)
+    return UTC_datetimes
+end
+
+"""
+    get_column_name_map(varnames, columns; error_on_missing = true)
+
+Returns a dictionary mapping variable names to column indices in the data.
+
+The option `error_on_missing` is used to control whether to error if any variables are missing.
+If `error_on_missing` is false, missing variable names will be mapped to `nothing`.
+
+# Arguments
+- `varnames`: Vector of variable names
+- `columns`: Vector of column names
+- `error_on_missing`: Whether to error if any variables are missing.
+    For forcing data, we need all variables to be present so we want to error if any are missing.
+    For comparison data, we don't need all variables to be present so we don't want to error.
+
+# Returns
+- `column_name_map`: Dictionary mapping variable names to column indices
+"""
+function get_column_name_map(varnames, columns; error_on_missing = true)
+    column_name_map = Dict(
+        varname => findfirst(columns[:] .== varname) for varname in varnames
+    )
+
+    # If any variables are missing, error if requested
+    if error_on_missing
+        missing_vars = varnames[findall(values(column_name_map) .== nothing)]
+        @assert isempty(missing_vars) "Data is missing required variables: $missing_vars"
+    end
+    return column_name_map
+end
+
+"""
     get_comparison_data(
         data::Matrix,
         varname::String,
@@ -153,12 +265,12 @@ end
         val = -9999,
     )
 
-Gets and returns a NamedTuple with the data identified 
-by `varname` in the `data` matrix by looking up the 
+Gets and returns a NamedTuple with the data identified
+by `varname` in the `data` matrix by looking up the
 column index of varname
 using the column_name_map, replacing missing data with the mean
 of the non-missing data, and preprocessing the data using the
-`preprocess_func`, which should be a pointwise function. The 
+`preprocess_func`, which should be a pointwise function. The
 key of the NamedTuple should be the shortname of the corresponding
 variable using the shortname of ClimaDiagnostics: `climaland_shortname`.
 
