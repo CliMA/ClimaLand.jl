@@ -403,13 +403,17 @@ function effective_canopy_height(
 ) where {FT}
     max_height = z_atm - buffer
     
-    # Count cells that will be capped
-    n_capped = count(canopy_height .>= max_height)
-    n_total = length(canopy_height)
+    # Compute statistics on CPU to avoid GPU Boolean Field issues
+    max_original = maximum(canopy_height)
     
-    if n_capped > 0
+    # Only warn if we actually have heights that need capping
+    if max_original >= max_height
+        # Count how many cells exceed the threshold by summing a float-converted mask
+        # This avoids creating Boolean Fields on GPU
+        n_capped_field = @. ifelse(canopy_height >= max_height, FT(1), FT(0))
+        n_capped = Int(sum(n_capped_field))
+        n_total = length(canopy_height)
         pct_capped = 100.0 * n_capped / n_total
-        max_original = maximum(canopy_height)
         @warn "Capping canopy heights: $n_capped/$n_total cells ($(round(pct_capped, digits=2))%) exceed max_height=$max_height m. Original max height: $(round(max_original, digits=2)) m. This is expected for tall forests when using atmospheric forcing at z_atm=$(z_atm) m."
     end
     

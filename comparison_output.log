@@ -1,0 +1,738 @@
+nohup: ignoring input
+Precompiling CUDA...
+    CUDA Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/CUDA/oWw5k_Z3CeL.ji.pidfile)
+  16823.8 ms  ✓ CUDA
+   4935.5 ms  ✓ Atomix → AtomixCUDAExt
+  2 dependencies successfully precompiled in 23 seconds. 99 already precompiled.
+Precompiling ClimaUtilities...
+    ClimaUtilities Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaUtilities/KYbOP_Z3CeL.ji.pidfile)
+  10017.4 ms  ✓ ClimaUtilities
+  1 dependency successfully precompiled in 10 seconds. 9 already precompiled.
+Precompiling ClimaDiagnostics...
+    Moshi Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/Moshi/AXKwX_Z3CeL.ji.pidfile)
+    ArrayLayouts Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ArrayLayouts/QloHc_Z3CeL.ji.pidfile)
+    HDF5 Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/HDF5/L7Dga_Z3CeL.ji.pidfile)
+    NetCDF_jll Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/NetCDF_jll/cIvCy_Z3CeL.ji.pidfile)
+    680.2 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsSparseArraysExt
+    644.2 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsForwardDiffExt
+    681.0 ms  ✓ RootSolvers
+    712.6 ms  ✓ TaylorSeries → TaylorSeriesRATExt
+    883.5 ms  ✓ ForwardDiff → ForwardDiffStaticArraysExt
+  10086.9 ms  ✓ Moshi
+  10035.3 ms  ✓ NetCDF_jll
+    NCDatasets Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/NCDatasets/lxvtD_Z3CeL.ji.pidfile)
+  12031.3 ms  ✓ ArrayLayouts
+    BandedMatrices Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/BandedMatrices/OxlqV_Z3CeL.ji.pidfile)
+   1043.2 ms  ✓ ArrayLayouts → ArrayLayoutsSparseArraysExt
+   1910.0 ms  ✓ BlockArrays
+  13947.6 ms  ✓ HDF5
+   1044.0 ms  ✓ BlockArrays → BlockArraysAdaptExt
+   6798.9 ms  ✓ SciMLBase
+  10045.3 ms  ✓ NCDatasets
+   1277.6 ms  ✓ ClimaUtilities → ClimaUtilitiesNCDatasetsExt
+  12953.5 ms  ✓ BandedMatrices
+   1231.1 ms  ✓ ArrayInterface → ArrayInterfaceBandedMatricesExt
+   1385.2 ms  ✓ BlockArrays → BlockArraysBandedMatricesExt
+   1437.3 ms  ✓ BandedMatrices → BandedMatricesSparseArraysExt
+    ClimaCore Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaCore/bbjsU_Z3CeL.ji.pidfile)
+  10146.8 ms  ✓ ClimaCore
+   3161.8 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreExt
+    ClimaDiagnostics Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaDiagnostics/fvFzz_Z3CeL.ji.pidfile)
+   3205.2 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreNCDatasetsExt
+  23141.5 ms  ✓ ClimaDiagnostics
+  23 dependencies successfully precompiled in 63 seconds. 157 already precompiled.
+Precompiling ArrayInterfaceCUDAExt...
+    ArrayInterfaceCUDAExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ArrayInterfaceCUDAExt/NVvya_Z3CeL.ji.pidfile)
+  10011.0 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  1 dependency successfully precompiled in 11 seconds. 105 already precompiled.
+Precompiling SpecialFunctionsExt...
+    TensorCore Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/TensorCore/wqzBb_Z3CeL.ji.pidfile)
+    SpecialFunctionsExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/SpecialFunctionsExt/9h4VD_Z3CeL.ji.pidfile)
+  10049.2 ms  ✓ TensorCore
+  10011.1 ms  ✓ CUDA → SpecialFunctionsExt
+   1681.3 ms  ✓ ColorVectorSpace
+    638.2 ms  ✓ ColorVectorSpace → SpecialFunctionsExt
+  4 dependencies successfully precompiled in 13 seconds. 108 already precompiled.
+Precompiling ClimaCoreCUDAExt...
+    ClimaCoreCUDAExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaCoreCUDAExt/Oyb2X_Z3CeL.ji.pidfile)
+  10028.0 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+  1 dependency successfully precompiled in 11 seconds. 193 already precompiled.
+Precompiling ClimaLand...
+    DiffEqBase Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/DiffEqBase/oaevG_Z3CeL.ji.pidfile)
+    ClimaUtilitiesClimaCoreInterpolationsExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaUtilitiesClimaCoreInterpolationsExt/i3Cha_Z3CeL.ji.pidfile)
+   6329.8 ms  ✓ Krylov
+   2990.1 ms  ✓ ClimaCore → KrylovExt
+  10058.7 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreInterpolationsExt
+  10064.9 ms  ✓ DiffEqBase
+    863.6 ms  ✓ DiffEqBase → DiffEqBaseChainRulesCoreExt
+    931.9 ms  ✓ DiffEqBase → DiffEqBaseSparseArraysExt
+   1399.3 ms  ✓ DiffEqBase → DiffEqBaseForwardDiffExt
+   3142.4 ms  ✓ ClimaTimeSteppers
+    ClimaLand Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ClimaLand/kHEOl_Z3CeL.ji.pidfile)
+  26729.6 ms  ✓ ClimaLand
+   4158.2 ms  ✓ ClimaLand → FluxnetSimulationsExt
+  10 dependencies successfully precompiled in 46 seconds. 247 already precompiled.
+Precompiling ChainRulesCoreExt...
+    ChainRulesCoreExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/ChainRulesCoreExt/S7fZn_Z3CeL.ji.pidfile)
+    900.4 ms  ✓ CUDA → ChainRulesCoreExt
+  1 dependency successfully precompiled in 2 seconds. 105 already precompiled.
+Precompiling LinearOperatorsCUDAExt...
+    LinearOperatorsCUDAExt Being precompiled by another process (pid: 1189711, pidfile: /home/renatob/.julia/compiled/v1.11/LinearOperatorsCUDAExt/6oIL2_Z3CeL.ji.pidfile)
+  14472.8 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  1 dependency successfully precompiled in 15 seconds. 104 already precompiled.
+[ Info: ==========================================
+[ Info: COMPARISON RUN: Default vs Spatially-Varying Canopy Height
+[ Info: Duration: 2008-03-01T00:00:00 to 2009-03-01T00:00:00
+[ Info: Resolution: (101, 15)
+[ Info: Timestep: 450.0 s
+[ Info: ==========================================
+┌ Info: 
+└ === RUN 1: Default Configuration (height = 1m) ===
+[ Info: Using default canopy height = 1m everywhere
+┌ Warning: Keys are present in parameter file but not used in the simulation. 
+│  Typically this is due to a mismatch in parameter name in toml and in source. Offending keys: Any["bucket_z_0m", "canopy_momentum_roughness_length", "moisture_stress_pc", "bucket_z_0b", "critical_snow_fraction", "bucket_beta_decay_exponent", "bucket_capacity_fraction", "alpha_snow", "moisture_stress_sc", "bucket_soil_conductivity", "critical_snow_water_equivalent", "canopy_scalar_roughness_length", "land_bucket_capacity", "bucket_soil_heat_capacity"]
+└ @ ClimaParams ~/.julia/packages/ClimaParams/c6eE0/src/ClimaParams.jl:358
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2494 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "5 weeks, 1 day"
+│   n_steps_completed = 7008
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "10.0%"
+│   estimated_sypd = "Inf"
+│   date_now = 2025-10-21T16:37:00.825
+└   estimated_finish_date = 2025-10-21T16:37:00.825
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2737 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "10 weeks, 3 days"
+│   n_steps_completed = 14016
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "20.0%"
+│   estimated_sypd = "Inf"
+│   date_now = 2025-10-21T16:41:10.223
+└   estimated_finish_date = 2025-10-21T16:41:10.223
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2851 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "15 weeks, 4 days"
+│   n_steps_completed = 21024
+│   wall_time_per_step = "24 milliseconds, 309 microseconds"
+│   wall_time_total = "28 minutes, 23 seconds"
+│   wall_time_remaining = "19 minutes, 52 seconds"
+│   wall_time_spent = "8 minutes, 31 seconds"
+│   percent_complete = "30.0%"
+│   estimated_sypd = "50.68"
+│   date_now = 2025-10-21T16:45:25.951
+└   estimated_finish_date = 2025-10-21T17:05:18.951
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2906 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "20 weeks, 6 days"
+│   n_steps_completed = 28032
+│   wall_time_per_step = "27 milliseconds, 322 microseconds"
+│   wall_time_total = "31 minutes, 54 seconds"
+│   wall_time_remaining = "19 minutes, 8 seconds"
+│   wall_time_spent = "12 minutes, 45 seconds"
+│   percent_complete = "40.0%"
+│   estimated_sypd = "45.091"
+│   date_now = 2025-10-21T16:49:40.594
+└   estimated_finish_date = 2025-10-21T17:08:49.594
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2953 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "26 weeks, 12 hours"
+│   n_steps_completed = 35040
+│   wall_time_per_step = "29 milliseconds, 18 microseconds"
+│   wall_time_total = "33 minutes, 53 seconds"
+│   wall_time_remaining = "16 minutes, 56 seconds"
+│   wall_time_spent = "16 minutes, 56 seconds"
+│   percent_complete = "50.0%"
+│   estimated_sypd = "42.457"
+│   date_now = 2025-10-21T16:53:51.474
+└   estimated_finish_date = 2025-10-21T17:10:48.474
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2964 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2970 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "31 weeks, 2 days"
+│   n_steps_completed = 42048
+│   wall_time_per_step = "30 milliseconds, 208 microseconds"
+│   wall_time_total = "35 minutes, 17 seconds"
+│   wall_time_remaining = "14 minutes, 6 seconds"
+│   wall_time_spent = "21 minutes, 10 seconds"
+│   percent_complete = "60.0%"
+│   estimated_sypd = "40.784"
+│   date_now = 2025-10-21T16:58:04.902
+└   estimated_finish_date = 2025-10-21T17:12:11.902
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 2988 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "36 weeks, 3 days"
+│   n_steps_completed = 49056
+│   wall_time_per_step = "31 milliseconds, 37 microseconds"
+│   wall_time_total = "36 minutes, 15 seconds"
+│   wall_time_remaining = "10 minutes, 52 seconds"
+│   wall_time_spent = "25 minutes, 22 seconds"
+│   percent_complete = "70.0%"
+│   estimated_sypd = "39.695"
+│   date_now = 2025-10-21T17:02:17.240
+└   estimated_finish_date = 2025-10-21T17:13:10.240
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 3026 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "41 weeks, 5 days"
+│   n_steps_completed = 56064
+│   wall_time_per_step = "31 milliseconds, 673 microseconds"
+│   wall_time_total = "36 minutes, 59 seconds"
+│   wall_time_remaining = "7 minutes, 23 seconds"
+│   wall_time_spent = "29 minutes, 35 seconds"
+│   percent_complete = "80.0%"
+│   estimated_sypd = "38.898"
+│   date_now = 2025-10-21T17:06:30.407
+└   estimated_finish_date = 2025-10-21T17:13:54.407
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 3071 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "46 weeks, 6 days"
+│   n_steps_completed = 63072
+│   wall_time_per_step = "32 milliseconds, 67 microseconds"
+│   wall_time_total = "37 minutes, 27 seconds"
+│   wall_time_remaining = "3 minutes, 44 seconds"
+│   wall_time_spent = "33 minutes, 42 seconds"
+│   percent_complete = "90.0%"
+│   estimated_sypd = "38.42"
+│   date_now = 2025-10-21T17:10:37.222
+└   estimated_finish_date = 2025-10-21T17:14:22.222
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 3100 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in C
+┌ Warning: 3117 NaNs found
+└ @ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+┌ Info: Progress
+│   simulation_time = "52 weeks, 1 day"
+│   n_steps_completed = 70080
+│   wall_time_per_step = "32 milliseconds, 346 microseconds"
+│   wall_time_total = "37 minutes, 46 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "37 minutes, 46 seconds"
+│   percent_complete = "100.0%"
+│   estimated_sypd = "38.089"
+│   date_now = 2025-10-21T17:14:41.495
+└   estimated_finish_date = 2025-10-21T17:14:41.495
+[ Info: Default run completed. Output saved to: comparison_default_height_gpu
+┌ Info: 
+└ === RUN 2: Spatially-Varying Canopy Height ===
+[ Info: Using spatially-varying canopy height from CLM data
+ERROR: LoadError: Struct type Bool cannot be represented using base type Float64
+Stacktrace:
+  [1] error(s::String)
+    @ Base ./error.jl:35
+  [2] macro expansion
+    @ ~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/struct.jl:34 [inlined]
+  [3] check_basetype(::Type{Float64}, ::Type{Bool})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/struct.jl:33
+  [4] (ClimaCore.DataLayouts.IJFH{Bool, 1})(array::CUDA.CuArray{Float64, 4, CUDA.DeviceMemory})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/DataLayouts.jl:528
+  [5] similar(bc::Base.Broadcast.Broadcasted{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}, Nothing, typeof(>=), Tuple{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Float64}}, ::Type{Bool}, ::NTuple{5, Int64})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/broadcast.jl:454
+  [6] similar(bc::Base.Broadcast.Broadcasted{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}, Nothing, typeof(>=), Tuple{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Float64}}, ::Type{Bool})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/broadcast.jl:452
+  [7] similar(bc::Base.Broadcast.Broadcasted{ClimaCore.Fields.FieldStyle{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, typeof(>=), Tuple{ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, Float64}}, ::Type{Bool})
+    @ ClimaCore.Fields ~/.julia/packages/ClimaCore/y7ZbY/src/Fields/broadcast.jl:220
+  [8] copy(bc::Base.Broadcast.Broadcasted{ClimaCore.Fields.FieldStyle{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, typeof(>=), Tuple{ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, Float64}})
+    @ ClimaCore.Fields ~/.julia/packages/ClimaCore/y7ZbY/src/Fields/broadcast.jl:118
+  [9] materialize
+    @ ./broadcast.jl:872 [inlined]
+ [10] effective_canopy_height(canopy_height::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, z_atm::Float64; buffer::Float64)
+    @ ClimaLand.Canopy ~/ClimaLand.jl/src/standalone/Vegetation/spatially_varying_parameters.jl:407
+ [11] setup_model(FT::Type{Float64}, start_date::DateTime, stop_date::DateTime, Δt::Float64, domain::ClimaLand.Domains.SphericalShell{Float64, @NamedTuple{surface::ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m2906 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "20 weeks, 6 days"
+[36m[1m│ [22m[39m  n_steps_completed = 28032
+[36m[1m│ [22m[39m  wall_time_per_step = "26 milliseconds, 226 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "30 minutes, 37 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "18 minutes, 22 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "12 minutes, 15 seconds"
+[36m[1m│ [22m[39m  percent_complete = "40.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "46.976"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T16:50:05.171
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:08:28.170
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m2953 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "26 weeks, 12 hours"
+[36m[1m│ [22m[39m  n_steps_completed = 35040
+[36m[1m│ [22m[39m  wall_time_per_step = "27 milliseconds, 991 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "32 minutes, 41 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "16 minutes, 20 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "16 minutes, 20 seconds"
+[36m[1m│ [22m[39m  percent_complete = "50.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "44.014"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T16:54:10.806
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:10:31.806
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m2964 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m2970 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "31 weeks, 2 days"
+[36m[1m│ [22m[39m  n_steps_completed = 42048
+[36m[1m│ [22m[39m  wall_time_per_step = "29 milliseconds, 270 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "34 minutes, 11 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "13 minutes, 40 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "20 minutes, 30 seconds"
+[36m[1m│ [22m[39m  percent_complete = "60.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "42.092"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T16:58:20.735
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:12:01.735
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m2988 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "36 weeks, 3 days"
+[36m[1m│ [22m[39m  n_steps_completed = 49056
+[36m[1m│ [22m[39m  wall_time_per_step = "30 milliseconds, 134 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "35 minutes, 11 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "10 minutes, 33 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "24 minutes, 38 seconds"
+[36m[1m│ [22m[39m  percent_complete = "70.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "40.884"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T17:02:28.276
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:13:02.276
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m3026 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "41 weeks, 5 days"
+[36m[1m│ [22m[39m  n_steps_completed = 56064
+[36m[1m│ [22m[39m  wall_time_per_step = "30 milliseconds, 820 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "35 minutes, 59 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "7 minutes, 11 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "28 minutes, 47 seconds"
+[36m[1m│ [22m[39m  percent_complete = "80.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "39.975"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T17:06:37.890
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:13:49.890
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m3071 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "46 weeks, 6 days"
+[36m[1m│ [22m[39m  n_steps_completed = 63072
+[36m[1m│ [22m[39m  wall_time_per_step = "31 milliseconds, 440 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "36 minutes, 43 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "3 minutes, 40 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "33 minutes, 3 seconds"
+[36m[1m│ [22m[39m  percent_complete = "90.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "39.186"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T17:10:53.004
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:14:34.004
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m3100 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soil
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in θ_i
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ρe_int
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_vol_liq_water_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ∫F_e_dt
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in snow
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in S_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in U
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in soilco2
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in C
+[33m[1m┌ [22m[39m[33m[1mWarning: [22m[39m3117 NaNs found
+[33m[1m└ [22m[39m[90m@ ClimaLand ~/ClimaLand.jl/src/shared_utilities/utils.jl:636[39m
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in canopy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in hydraulics
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in ϑ_l
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in energy
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mChecking NaNs in T
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39mProgress
+[36m[1m│ [22m[39m  simulation_time = "52 weeks, 1 day"
+[36m[1m│ [22m[39m  n_steps_completed = 70080
+[36m[1m│ [22m[39m  wall_time_per_step = "31 milliseconds, 791 microseconds"
+[36m[1m│ [22m[39m  wall_time_total = "37 minutes, 7 seconds"
+[36m[1m│ [22m[39m  wall_time_remaining = "0 seconds"
+[36m[1m│ [22m[39m  wall_time_spent = "37 minutes, 7 seconds"
+[36m[1m│ [22m[39m  percent_complete = "100.0%"
+[36m[1m│ [22m[39m  estimated_sypd = "38.753"
+[36m[1m│ [22m[39m  date_now = 2025-10-21T17:14:57.959
+[36m[1m└ [22m[39m  estimated_finish_date = 2025-10-21T17:14:57.959
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mDefault run completed. Output saved to: comparison_default_height_gpu
+[36m[1m┌ [22m[39m[36m[1mInfo: [22m[39m
+[36m[1m└ [22m[39m=== RUN 2: Spatially-Varying Canopy Height ===
+[36m[1m[ [22m[39m[36m[1mInfo: [22m[39mUsing spatially-varying canopy height from CLM data
+[91m[1mERROR: [22m[39mLoadError: Struct type Bool cannot be represented using base type Float64
+Stacktrace:
+  [1] [0m[1merror[22m[0m[1m([22m[90ms[39m::[0mString[0m[1m)[22m
+[90m    @[39m [90mBase[39m [90m./[39m[90m[4merror.jl:35[24m[39m
+  [2] [0m[1mmacro expansion[22m
+[90m    @[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/[39m[90m[4mstruct.jl:34[24m[39m[90m [inlined][39m
+  [3] [0m[1mcheck_basetype[22m[0m[1m([22m::[0mType[90m{Float64}[39m, ::[0mType[90m{Bool}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.DataLayouts[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/[39m[90m[4mstruct.jl:33[24m[39m
+  [4] ([0m[1mClimaCore.DataLayouts.IJFH{Bool, 1}[22m)[0m[1m([22m[90marray[39m::[0mCUDA.CuArray[90m{Float64, 4, CUDA.DeviceMemory}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.DataLayouts[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/[39m[90m[4mDataLayouts.jl:528[24m[39m
+  [5] [0m[1msimilar[22m[0m[1m([22m[90mbc[39m::[0mBase.Broadcast.Broadcasted[90m{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}, Nothing, typeof(>=), Tuple{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Float64}}[39m, ::[0mType[90m{Bool}[39m, ::[0mNTuple[90m{5, Int64}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.DataLayouts[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/[39m[90m[4mbroadcast.jl:454[24m[39m
+  [6] [0m[1msimilar[22m[0m[1m([22m[90mbc[39m::[0mBase.Broadcast.Broadcasted[90m{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}, Nothing, typeof(>=), Tuple{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Float64}}[39m, ::[0mType[90m{Bool}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.DataLayouts[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/DataLayouts/[39m[90m[4mbroadcast.jl:452[24m[39m
+  [7] [0m[1msimilar[22m[0m[1m([22m[90mbc[39m::[0mBase.Broadcast.Broadcasted[90m{ClimaCore.Fields.FieldStyle{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, typeof(>=), Tuple{ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, Float64}}[39m, ::[0mType[90m{Bool}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.Fields[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/Fields/[39m[90m[4mbroadcast.jl:220[24m[39m
+  [8] [0m[1mcopy[22m[0m[1m([22m[90mbc[39m::[0mBase.Broadcast.Broadcasted[90m{ClimaCore.Fields.FieldStyle{ClimaCore.DataLayouts.IJFHStyle{1, CUDA.CuArray{Float64, N, CUDA.DeviceMemory} where N}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, typeof(>=), Tuple{ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, Float64}}[39m[0m[1m)[22m
+[90m    @[39m [35mClimaCore.Fields[39m [90m~/.julia/packages/ClimaCore/y7ZbY/src/Fields/[39m[90m[4mbroadcast.jl:118[24m[39m
+  [9] [0m[1mmaterialize[22m
+[90m    @[39m [90m./[39m[90m[4mbroadcast.jl:872[24m[39m[90m [inlined][39m
+ [10] [0m[1meffective_canopy_height[22m[0m[1m([22m[90mcanopy_height[39m::[0mClimaCore.Fields.Field[90m{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}[39m, [90mz_atm[39m::[0mFloat64; [90mbuffer[39m::[0mFloat64[0m[1m)[22m
+[90m    @[39m [36mClimaLand.Canopy[39m [90m~/ClimaLand.jl/src/standalone/Vegetation/[39m[90m[4mspatially_varying_parameters.jl:407[24m[39m
+ [11] [0m[1msetup_model[22m[0m[1m([22m[90mFT[39m::[0mType[90m{Float64}[39m, [90mstart_date[39m::[0mDateTime, [90mstop_date[39m::[0mDateTime, [90mΔt[39m::[0mFloat64, [90mdomain[39m::[0mClimaLand.Domains.SphericalShell[90m{Float64, @NamedTuple{surface::ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, subsurface::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}, subsurface_face::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellFace}}, @NamedTuple{z::ClimaCore.Fields.Field{ClimaCore.DataLayouts.VIJFH{Float64, 15, 1, SubArray{Float64, 5, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}}, Δz_top::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.LevelGrid{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Utilities.PlusHalf{Int64}}}}, Δz_bottom::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.LevelGrid{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Utilities.PlusHalf{Int64}}}}, z_sfc::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, SubArray{Float64, 4, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, depth::Float64, Δz::ClimaCore.Fields.Field{ClimaCore.DataLayouts.VIJFH{Float64, 15, 1, SubArray{Float64, 5, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.EquiangularCubedSphere{ClimaCore.Domains.SphereDomain{Float64}, ClimaCore.Meshes.NormalizedBilinearMap}, CartesianIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{3, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.SphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.ShallowSphericalGlobalGeometry{Float64}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}}, Δz_min::Float64}}[39m, [90mtoml_dict[39m::[0mClimaParams.ParamDict[90m{Float64}[39m, [90muse_spatially_varying_height[39m::[0mBool[0m[1m)[22m
+[90m    @[39m [32mMain[39m [90m~/ClimaLand.jl/experiments/long_runs/[39m[90m[4mcompare_canopy_heights.jl:99[24m[39m
+ [12] top-level scope
+[90m    @[39m [90m~/ClimaLand.jl/experiments/long_runs/[39m[90m[4mcompare_canopy_heights.jl:186[24m[39m
+in expression starting at /home/renatob/ClimaLand.jl/experiments/long_runs/compare_canopy_heights.jl:186
+2770.814600 seconds (6.72 G allocations: 442.729 GiB, 1.61% gc time, 8.72% compilation time)

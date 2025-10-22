@@ -4,6 +4,14 @@
 # 1. Default configuration: canopy_height = 1m everywhere
 # 2. New configuration: spatially-varying canopy height from CLM data (capped at 8m)
 
+# Run on clima with:
+# srun --gpus=1 --mpi=none -t 03:00:00 --pty bash -l
+# module load climacommon
+# export CLIMACOMMS_DEVICE=CUDA
+# export CLIMACOMMS_CONTEXT=SINGLETON
+# cd /home/renatob/ClimaLand.jl
+# julia --color=yes --project=.buildkite experiments/long_runs/compare_canopy_heights.jl
+
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaUtilities.ClimaArtifacts
