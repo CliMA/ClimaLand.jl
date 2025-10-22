@@ -75,35 +75,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         stop_date,
     )
 
-    # Overwrite some defaults for the canopy model
-
-    # Plant hydraulics
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(
-        surface_domain,
-        toml_dict;
-        retention_model,
-    )
-
-    # Roughness lengths
-    h_canopy = hydraulics.compartment_surfaces[end]
-    z_0m = FT(0.13) * h_canopy
-    z_0b = FT(0.1) * z_0m
-
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    canopy_forcing = (; atmos, radiation, ground)
-
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        canopy_forcing,
-        LAI,
-        toml_dict;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        hydraulics,
-        z_0m,
-        z_0b,
-    )
-
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
@@ -122,7 +93,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     )
 
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow)
     return land
 end
 # Note that since the Northern hemisphere's winter season is defined as DJF,

@@ -70,7 +70,6 @@ function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) 
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true
     )
     forcing = (; atmos, radiation)
 

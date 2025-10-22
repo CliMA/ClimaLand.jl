@@ -72,26 +72,6 @@ function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) 
         stop_date,
     )
 
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    canopy_forcing = (; atmos, radiation, ground)
-    # Construct the P model manually since it is not a default
-    photosynthesis = PModel{FT}(domain, toml_dict)
-    conductance = PModelConductance{FT}(toml_dict)
-    # Use the soil moisture stress function based on soil moisture only
-    soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        canopy_forcing,
-        LAI,
-        toml_dict;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        photosynthesis,
-        conductance,
-        soil_moisture_stress,
-    )
-
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
@@ -110,7 +90,7 @@ function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) 
     )
 
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow)
     return land
 end
 
