@@ -12,7 +12,6 @@ import ClimaParams as CP
                                 FT;
                                 gustiness=1,
                                 split_precip= true,
-                                c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
@@ -38,6 +37,7 @@ and that these names are:
 "WS_F" (wind speed in m/s)
 "LW_IN_F" (downwelling LW radiation in W/m^2)
 "SW_IN_F" (downwelling SW radiation in W/m^2)
+"CO2_F_MDS" (CO2 concentration in μmol/mol)
 """
 function FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -50,7 +50,6 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     FT;
     split_precip = true,
     gustiness = 1,
-    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -135,6 +134,13 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         "SW_IN_F",
         column_name_map,
         seconds_since_start_date,
+    )
+    c_co2 = time_varying_input_from_data(
+        data,
+        "CO2_F_MDS",
+        column_name_map,
+        seconds_since_start_date;
+        preprocess_func = (x) -> x * 1e-6, # convert from μmol/mol to mol/mol
     )
 
     # Specific humidity is computed from P, VPD, and T using `compute_q`
