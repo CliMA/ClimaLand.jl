@@ -694,9 +694,15 @@ function CanopyModel{FT}(;
     end
 
     if typeof(hydraulics) <: PlantHydraulicsModel{FT}
-        @assert biomass.height ==
-                hydraulics.compartment_surfaces[end] -
-                hydraulics.compartment_surfaces[1]
+        hydraulics_height = hydraulics.compartment_surfaces[end] -
+                            hydraulics.compartment_surfaces[1]
+        # For scalar height: direct comparison
+        # For Field height: check all values match (with tolerance for floating point)
+        if biomass.height isa ClimaCore.Fields.Field
+            @assert all(isapprox.(biomass.height, hydraulics_height, rtol=1e-10)) "Biomass height Field must match hydraulics height"
+        else
+            @assert biomass.height ≈ hydraulics_height "Biomass height must match hydraulics height"
+        end
     end
 
 
