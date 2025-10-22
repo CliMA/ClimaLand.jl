@@ -352,7 +352,7 @@ function clm_canopy_height(
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
-    
+
     canopy_height = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "z_top",
@@ -402,10 +402,10 @@ function effective_canopy_height(
     buffer::FT = FT(2.0),
 ) where {FT}
     max_height = z_atm - buffer
-    
+
     # Compute statistics on CPU to avoid GPU Boolean Field issues
     max_original = maximum(canopy_height)
-    
+
     # Only warn if we actually have heights that need capping
     if max_original >= max_height
         # Count how many cells exceed the threshold by summing a float-converted mask
@@ -416,7 +416,7 @@ function effective_canopy_height(
         pct_capped = 100.0 * n_capped_sum / n_total
         @warn "Capping canopy heights: $(round(n_capped_sum))/$n_total cells ($(round(pct_capped, digits=2))%) exceed max_height=$max_height m. Original max height: $(round(max_original, digits=2)) m. This is expected for tall forests when using atmospheric forcing at z_atm=$(z_atm) m."
     end
-    
+
     # Apply cap: min(height, max_height) at each point
     return min.(canopy_height, max_height)
 end

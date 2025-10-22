@@ -97,16 +97,16 @@ end
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
     )
-    
+
     # Check that field is on the correct space
     @test axes(canopy_height) == surface_space
-    
+
     # Check that heights are positive
     @test all(Array(parent(canopy_height)) .>= 0)
-    
+
     # Check that some heights are non-zero (there should be vegetation somewhere)
     @test any(Array(parent(canopy_height)) .> 0)
-    
+
     # Check that maximum height is reasonable (should be < 50m based on CLM data)
     @test maximum(Array(parent(canopy_height))) < 50.0
 end
@@ -124,32 +124,35 @@ end
         dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
-    
+
     # Create a test field with known values including some that exceed the cap
     coords = ClimaCore.Fields.coordinate_field(surface_space)
     test_heights = coords.lat .* 0 .+ FT(5.0)  # Initialize to 5m
-    
+
     # Set some points to high values that should be capped
     parent(test_heights)[1:10] .= FT(15.0)
-    
+
     # Test with default buffer (2m)
     z_atm = FT(10.0)
-    capped_heights = ClimaLand.Canopy.effective_canopy_height(test_heights, z_atm)
-    
+    capped_heights =
+        ClimaLand.Canopy.effective_canopy_height(test_heights, z_atm)
+
     # Check that all heights are below the cap
     max_allowed = z_atm - FT(2.0)  # default buffer
     @test all(Array(parent(capped_heights)) .<= max_allowed)
-    
+
     # Check that uncapped values are preserved
     @test parent(capped_heights)[end] == FT(5.0)
-    
+
     # Check that capped values are set to max_allowed
     @test parent(capped_heights)[1] == max_allowed
-    
+
     # Test with custom buffer
     custom_buffer = FT(3.0)
     capped_heights_custom = ClimaLand.Canopy.effective_canopy_height(
-        test_heights, z_atm; buffer=custom_buffer
+        test_heights,
+        z_atm;
+        buffer = custom_buffer,
     )
     max_allowed_custom = z_atm - custom_buffer
     @test all(Array(parent(capped_heights_custom)) .<= max_allowed_custom)
