@@ -142,10 +142,10 @@ end
     @test all(Array(parent(capped_heights)) .<= max_allowed)
 
     # Check that uncapped values are preserved
-    @test parent(capped_heights)[end] == FT(5.0)
+    @test Array(parent(capped_heights))[end] == FT(5.0)
 
     # Check that capped values are set to max_allowed
-    @test parent(capped_heights)[1] == max_allowed
+    @test Array(parent(capped_heights))[1] == max_allowed
 
     # Test with custom buffer
     custom_buffer = FT(3.0)
@@ -156,5 +156,5 @@ end
     )
     max_allowed_custom = z_atm - custom_buffer
     @test all(Array(parent(capped_heights_custom)) .<= max_allowed_custom)
-    @test parent(capped_heights_custom)[1] == max_allowed_custom
+    @test Array(parent(capped_heights_custom))[1] == max_allowed_custom
 end
