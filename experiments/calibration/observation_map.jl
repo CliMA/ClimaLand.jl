@@ -1,6 +1,8 @@
 import ClimaAnalysis
 import Dates
 import ClimaCalibrate
+import ClimaCalibrate.EnsembleBuilder
+import ClimaCalibrate.Checker
 
 include(
     joinpath(pkgdir(ClimaLand), "experiments/calibration/observation_utils.jl"),
@@ -23,49 +25,55 @@ ensemble member that has been matched to the corresponding observational data.
 function ClimaCalibrate.observation_map(iteration)
     output_dir = CALIBRATE_CONFIG.output_dir
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, iteration))
-    current_minibatch = EKP.get_current_minibatch(ekp)
-    obs = EKP.get_obs(ekp)
-    single_obs_len = sum(length(obs))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    obs_series = EKP.get_observation_series(ekp)
     # Determine which observation is used by the short names
+    # This assumes that observations do not differ in the variables that are
+    # being calibrated
+    obs_series = EKP.get_observation_series(ekp)
     short_names = ClimaCalibrate.ObservationRecipe.short_names(
         first(obs_series.observations),
     )
 
-    G_ensemble = Array{Float64}(undef, single_obs_len, ensemble_size)
+    g_ens_builder = EnsembleBuilder.GEnsembleBuilder(ekp)
     for m in 1:ensemble_size
         member_path =
             ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, m)
         simdir_path = joinpath(member_path, "global_diagnostics/output_active")
         @info "Processing member $m: $simdir_path"
         try
-            G_ensemble[:, m] .=
-                process_member_data(simdir_path, short_names, current_minibatch)
-
+            process_member_data!(g_ens_builder, m, simdir_path, short_names)
         catch e
             @error "Error processing member $m, filling observation map entry with NaNs" exception =
                 e
-            G_ensemble[:, m] .= NaN
+            EnsembleBuilder.fill_g_ens_col!(g_ens_builder, m, NaN)
         end
     end
 
-    return G_ensemble
+    if EnsembleBuilder.is_complete(g_ens_builder)
+        return EnsembleBuilder.get_g_ensemble(g_ens_builder)
+    else
+        @error "G ensemble matrix is not completed. You may find it useful to call `EnsembleBuilder.missing_short_names(g_ens_builder, 1) or display g_ens_builder in the REPL"
+    end
 end
 
 """
-    process_member_data(diagnostics_folder_path, short_names, current_minibatch)
+    process_member_data!(
+        g_ens_builder,
+        col_idx,
+        diagnostics_folder_path,
+        short_names,
+    )
 
-Process the data of a single ensemble member and return a single column of the
-G ensemble matrix.
+Fill out the `col_idx`th of the G ensemble matrix using variables with the names
+`short_names` from the NetCDF files in `diagnostics_folder_path`.
 """
-function process_member_data(
+function process_member_data!(
+    g_ens_builder,
+    col_idx,
     diagnostics_folder_path,
     short_names,
-    current_minibatch,
 )
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
     nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
     era5_obs_vars = ext.get_era5_obs_var_dict()
@@ -79,18 +87,6 @@ function process_member_data(
     vars = map(short_names) do short_name
         var = sim_var_dict[short_name]()
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
-
-        ocean_mask = make_ocean_mask(nelements)
-        var = ocean_mask(var)
-
-        # Replace all NaNs on land with the mean value
-        # This is needed to stop small NaN values from stopping the calibration
-        nanmean_land_val = mean(!isnan, var.data)
-        var = ClimaAnalysis.replace(
-            val -> isnan(val) ? nanmean_land_val : val,
-            var,
-        )
-        var = ocean_mask(var)
 
         # To prevent double counting along the longitudes since -180 and 180
         # degrees are the same point
@@ -112,26 +108,32 @@ function process_member_data(
             by = ClimaAnalysis.Index(),
         )
     end
-    # Flatten and concatenate the data for each minibatch
-    # Note that we implicitly remove spinup when windowing is done
-    @info "Current minibatch is $current_minibatch"
-    flattened_data = map(current_minibatch) do idx
-        start_date, stop_date = sample_date_ranges[idx]
-        flat_data = map(vars) do var
-            var = ClimaAnalysis.window(
-                var,
-                "time",
-                left = start_date,
-                right = stop_date,
-                by = ClimaAnalysis.MatchValue(),
-            )
-            ClimaAnalysis.flatten(var).data
-        end
-        flat_data
+
+    # This check should be used, because fill_g_ens_col! is not aware of the
+    # meaning of the time dimension (e.g. seasonal averages vs monthly
+    # averages). For example, without this check, if the simulation data contain
+    # monthly averages and metadata track seasonal averages, then no error is
+    # thrown, because all dates in metadata are in all the dates in var.
+    seq_indices_checker = Checker.SequentialIndicesChecker()
+    checkers = (seq_indices_checker,)
+
+    # fill_g_ens_col! will remove the spinup and is mask-aware.
+    # g_ens_builder contain the metadata from the observations, so
+    # fill_g_ens_col! will only choose values over temporal and spatial
+    # coordinates that exist in the observational data
+    for var in vars
+        use_var = EnsembleBuilder.fill_g_ens_col!(
+            g_ens_builder,
+            col_idx,
+            var;
+            checkers,
+            verbose = true,
+        )
+        use_var || error(
+            "OutputVar with short name ($(ClimaAnalysis.short_name(var))) was passed, but not used",
+        )
     end
-    member = vcat(vcat(flattened_data...)...)
-    @info "Size of member is $(length(member))"
-    return member
+    return nothing
 end
 
 """
