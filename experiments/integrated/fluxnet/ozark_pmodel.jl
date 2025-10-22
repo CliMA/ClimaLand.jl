@@ -274,9 +274,10 @@ simulation = LandSimulation(
     updateat = Second(dt), # How often we want to update the drivers
     diagnostics = diags,
 )
-#=
+
 @time solve!(simulation)
 
+#=
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
     pkgdir(ClimaLand),
@@ -302,3 +303,123 @@ LandSimVis.make_timeseries(
     comparison_data,
 )
 =#
+
+# Need to solve!
+# can also look at simulation._integrator.p
+
+short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_names = [d.output_short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_units = [d.variable.units for d in simulation.diagnostics]
+i = 10
+    dn = diag_names[i]
+    unit = diag_units[i]
+    sn = short_names[i]
+    model_time, LAI_opt = ClimaLand.Diagnostics.diagnostic_as_vectors(
+                                                                           simulation.diagnostics[1].output_writer,
+                                                                           dn,
+                                                                          )
+LAI_opt
+
+
+i = 9
+    dn = diag_names[i]
+    unit = diag_units[i]
+    sn = short_names[i]
+    model_time, LAI_obs = ClimaLand.Diagnostics.diagnostic_as_vectors(
+                                                                           simulation.diagnostics[1].output_writer,
+                                                                           dn,
+                                                                          )
+LAI_obs
+
+        save_Δt = model_time[2] - model_time[1] # in seconds since the start_date. if model_time is an Itime, the epoch should be start_date
+        import ClimaUtilities.TimeManager: ITime, date
+        function time_to_date(t::ITime, start_date)
+    start_date != t.epoch &&
+        @warn("$(start_date) is different from the simulation time epoch.")
+    return isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+end
+        model_dates = time_to_date.(model_time, start_date)
+
+
+        fig = Figure()
+        ax = Axis(fig[1,1])
+        p = lines!(ax, model_dates, LAI_obs, label = "LAI obs")
+        p2 = lines!(ax, model_dates, LAI_opt, label = "LAI opt")
+        ax.ylabel= "LAI m2 m-2"
+        axislegend()
+        save("test.png", fig)
+
+
+# Thoughts:
+# it makes no sense to have LAI < 0
+# maybe params (α, z, m) are not adequate with our units of A (GPP)
+# Solutions:
+# we could convert A internally
+# and force L to be 0 min
+
+
+
+function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
+    radiation = canopy.radiative_transfer
+    k = @. lazy(radiation.parameters.Ω * extinction_coeff(radiation.parameters.G_Function, cosθs))
+    FT = eltype(cosθs)
+    α = FT(1-0.067)
+    z = FT(12.227);
+    m = FT(0.3)
+    Ao = @.lazy(compute_Ao(A, k, L)); # with current L, compute Ao from A
+    # Now update L
+    @. L = compute_L(L, Ao, m, k, α, z, local_noon_mask)
+
+end
+
+# with k = 0.5, z = 12.227 and Ao = 10 g C m-2 d-1
+# this returns -1.8
+# which is weird (shouldn't be negative)
+function compute_L_max(k,z,Ao)
+    return -1/k*log(z/k/Ao)
+end
+
+# μ = m*Ao
+function dgdL(μ, k, L)
+    return 1/μ - k*exp(-k*L)
+end
+
+g(μ,k,L) = L/μ -1+exp(-k*L)
+
+function compute_L_opt(μ, k,L)
+    dL = 1000; i = 0
+    while abs(dL) > 0.001
+        dL = -g(μ, k,L)/dgdL(μ,k,L)
+        L = L + dL; @show(dL)
+        i = i+1; i>100 ? @error("too many iterations") : nothing
+    end
+    return L
+end
+
+function compute_Ao(A::FT, k::FT, L::FT) where {FT}
+    Ao = A/max(1-exp(-k*L), eps(FT))
+    return Ao
+end
+
+function compute_L(L::FT,
+                   Ao::FT,
+                   m::FT,
+                   k::FT,
+                   α::FT,
+                   z::FT,
+                   local_noon_mask::FT,
+                   ) where {FT}
+    if local_noon_mask == FT(1.0)
+        Ao = max(Ao, eps(FT))
+        L_max = compute_L_max(k,z, Ao)
+        L_opt = compute_L_opt(m*Ao, k, L)
+        L_ss = min(L_opt, L_max)
+        # Again, we take the optimal/steady state
+        # and weight it with 0.0667
+        # i.e.: weight history more with (1-α)*L
+        return (1-α)*L_ss + α*L
+    else
+        return L
+    end
+end
+
