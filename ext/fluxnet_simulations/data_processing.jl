@@ -1,11 +1,24 @@
 """
     var_missing(x; val = -9999)
 
-A function that checks if the value of `x` is equal to 
--9999, which is the value that Fluxnet uses for missing 
+A function that checks if the value of `x` is equal to
+-9999, which is the value that Fluxnet uses for missing
 data. Returns true if x == -9999.
 """
 var_missing(x; val = -9999) = x == val
+
+"""
+    FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+
+Convert a hour offset (which may be fractional) to a Dates.Period
+that can be added to DateTime objects.
+Supports both integer and half-hour time zones (e.g., 5.5 hours).
+"""
+function FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+    hours = floor(Int, hour_offset_from_UTC)
+    minutes = round(Int, (hour_offset_from_UTC - hours) * 60)
+    return Dates.Hour(hours) + Dates.Minute(minutes)
+end
 
 """
    mask_data(t, v; val = -9999)
@@ -48,10 +61,11 @@ should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
 simulation corresponding to each row of data.
 
-If you need to preprocess the data (e.g., unit conversion), you must pass 
+If you need to preprocess the data (e.g., unit conversion), you must pass
 a pointwise function preprocess_func(var) as a keyword argument.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is
+marked by missing by a given value equal to `val`), because the
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -81,7 +95,7 @@ end
 
 Returns a TimeVaryingInput object which is computing using
 `preprocess_func` as a pointwise function of -in order - the columns in
-`data` specified by `varnames`. 
+`data` specified by `varnames`.
 
 For example, if you wish to compute specific humidity from temperature,
 pressure, and vpd, you would do:
@@ -98,7 +112,7 @@ should map between varname and column id, and the `time_in_seconds`
 should be the timestamp in seconds relative to the start_date of the
 simulation corresponding to each row of data.
 
-Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the 
+Note that this function handles missing data by removing it (assuming it is marked by missing by a given value equal to `val`), because the
 TimeVaryingInput object is an interpolating object (in time).
 """
 function time_varying_input_from_data(
@@ -144,6 +158,33 @@ function get_data_at_start_date(
 end
 
 """
+    read_fluxnet_data(site_ID; hour_offset_from_UTC = nothing)
+
+Reads Fluxnet CSV data and processes timestamps, converting local time to UTC.
+Returns (data, columns, local_datetime, UTC_datetime).
+
+If `hour_offset_from_UTC` is nothing, the UTC datetime is not returned.
+"""
+function read_fluxnet_data(site_ID; hour_offset_from_UTC = nothing)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+
+    # Convert timestamps
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+
+    # Convert to UTC if hour offset is given
+    if isnothing(hour_offset_from_UTC)
+        UTC_datetime = nothing
+    else
+        UTC_datetime =
+            local_datetime .+
+            FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+    end
+
+    return (data, columns, local_datetime, UTC_datetime)
+end
+
+"""
     get_comparison_data(
         data::Matrix,
         varname::String,
@@ -153,12 +194,12 @@ end
         val = -9999,
     )
 
-Gets and returns a NamedTuple with the data identified 
-by `varname` in the `data` matrix by looking up the 
+Gets and returns a NamedTuple with the data identified
+by `varname` in the `data` matrix by looking up the
 column index of varname
 using the column_name_map, replacing missing data with the mean
 of the non-missing data, and preprocessing the data using the
-`preprocess_func`, which should be a pointwise function. The 
+`preprocess_func`, which should be a pointwise function. The
 key of the NamedTuple should be the shortname of the corresponding
 variable using the shortname of ClimaDiagnostics: `climaland_shortname`.
 

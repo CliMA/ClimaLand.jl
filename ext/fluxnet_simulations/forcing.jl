@@ -54,8 +54,9 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Read data and process timestamps
+    (data, columns, local_datetime, UTC_datetime) =
+        read_fluxnet_data(site_ID; hour_offset_from_UTC)
 
     # Determine which column index corresponds to which varname
     varnames = (
@@ -275,9 +276,8 @@ A helper function to get the difference in time between observations;
 this is used in making some plots.
 """
 function FluxnetSimulations.get_data_dt(site_ID)
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    (data, columns, local_datetime) = read_fluxnet_data(site_ID)
+
     # Convert to seconds
     Δts = [
         Second(Δdate).value for
@@ -312,8 +312,8 @@ function FluxnetSimulations.get_data_dates(
     duration::Union{Nothing, Period} = nothing,
     start_offset::Period = Second(0),
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    (data, columns, local_datetime, UTC_datetime) =
+        read_fluxnet_data(site_ID; hour_offset_from_UTC)
     # Determine which column index corresponds to which varname
     varnames = ("TIMESTAMP_START", "TIMESTAMP_END")
     column_name_map = Dict(
@@ -442,8 +442,9 @@ function FluxnetSimulations.get_comparison_data(
     val = -9999,
     timestamp_end = true,
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Read data and process timestamps
+    (data, columns, local_datetime, UTC_datetime) =
+        read_fluxnet_data(site_ID; hour_offset_from_UTC)
 
     # Determine which column index corresponds to which varname
     varnames = (
