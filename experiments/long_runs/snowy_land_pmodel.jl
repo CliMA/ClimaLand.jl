@@ -33,7 +33,8 @@ using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
-using ClimaLand.Canopy: clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
+using ClimaLand.Canopy:
+    clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -111,10 +112,16 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     raw_canopy_height = clm_canopy_height(surface_space)
     # Cap height to stay below atmospheric reference height (ERA5 at 10m)
     # Use 8m max to leave 2m buffer for atmospheric coupling
-    canopy_height = effective_canopy_height(raw_canopy_height, FT(10.0); buffer=FT(2.0))
-    
+    canopy_height =
+        effective_canopy_height(raw_canopy_height, FT(10.0); buffer = FT(2.0))
+
     # Create biomass model with spatially-varying height
-    biomass = PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict; height=canopy_height)
+    biomass = PrescribedBiomassModel{FT}(
+        surface_domain,
+        LAI,
+        toml_dict;
+        height = canopy_height,
+    )
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,

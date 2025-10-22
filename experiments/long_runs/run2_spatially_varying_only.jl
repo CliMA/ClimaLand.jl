@@ -18,7 +18,8 @@ using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
-using ClimaLand.Canopy: clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
+using ClimaLand.Canopy:
+    clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -35,7 +36,7 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 function setup_model_varying(FT, start_date, stop_date, Δt, domain, toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
-    
+
     # Forcing data
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -82,14 +83,20 @@ function setup_model_varying(FT, start_date, stop_date, Δt, domain, toml_dict)
     # Use spatially-varying canopy height from CLM data
     @info "Reading CLM canopy height data..."
     raw_canopy_height = clm_canopy_height(surface_space)
-    
+
     # Cap height to stay below atmospheric reference height (ERA5 at 10m)
     @info "Applying height capping (z_atm=10m, buffer=2m)..."
-    canopy_height = effective_canopy_height(raw_canopy_height, FT(10.0); buffer=FT(2.0))
-    
+    canopy_height =
+        effective_canopy_height(raw_canopy_height, FT(10.0); buffer = FT(2.0))
+
     # Create biomass model with spatially-varying height
     @info "Creating biomass model with spatially-varying height field..."
-    biomass = PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict; height=canopy_height)
+    biomass = PrescribedBiomassModel{FT}(
+        surface_domain,
+        LAI,
+        toml_dict;
+        height = canopy_height,
+    )
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
@@ -151,13 +158,25 @@ toml_dict = LP.create_toml_dict(FT)
 # Run 2: Spatially-varying height
 root_path_varying = "comparison_varying_height_$(device_suffix)"
 diagnostics_outdir_varying = joinpath(root_path_varying, "global_diagnostics")
-outdir_varying = ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir_varying)
+outdir_varying = ClimaUtilities.OutputPathGenerator.generate_output_path(
+    diagnostics_outdir_varying,
+)
 
 @info "Setting up model with spatially-varying canopy height..."
-model_varying = setup_model_varying(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation_varying = LandSimulation(start_date, stop_date, Δt, model_varying; outdir = outdir_varying)
+model_varying =
+    setup_model_varying(FT, start_date, stop_date, Δt, domain, toml_dict)
+simulation_varying = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model_varying;
+    outdir = outdir_varying,
+)
 
-CP.log_parameter_information(toml_dict, joinpath(root_path_varying, "parameters.toml"))
+CP.log_parameter_information(
+    toml_dict,
+    joinpath(root_path_varying, "parameters.toml"),
+)
 
 @info "Starting simulation..."
 @time ClimaLand.Simulations.solve!(simulation_varying)

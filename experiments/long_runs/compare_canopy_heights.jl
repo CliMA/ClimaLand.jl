@@ -29,7 +29,8 @@ using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
-using ClimaLand.Canopy: clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
+using ClimaLand.Canopy:
+    clm_canopy_height, effective_canopy_height, PrescribedBiomassModel
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -43,10 +44,18 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, use_spatially_varying_height::Bool)
+function setup_model(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    toml_dict,
+    use_spatially_varying_height::Bool,
+)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
-    
+
     # Forcing data
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
@@ -96,10 +105,19 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, use_spat
         # Read spatially-varying canopy height from CLM data
         raw_canopy_height = clm_canopy_height(surface_space)
         # Cap height to stay below atmospheric reference height (ERA5 at 10m)
-        canopy_height = effective_canopy_height(raw_canopy_height, FT(10.0); buffer=FT(2.0))
-        
+        canopy_height = effective_canopy_height(
+            raw_canopy_height,
+            FT(10.0);
+            buffer = FT(2.0),
+        )
+
         # Create biomass model with spatially-varying height
-        biomass = PrescribedBiomassModel{FT}(surface_domain, LAI, toml_dict; height=canopy_height)
+        biomass = PrescribedBiomassModel{FT}(
+            surface_domain,
+            LAI,
+            toml_dict;
+            height = canopy_height,
+        )
     else
         @info "Using default canopy height = 1m everywhere"
         # Use default biomass model (height = 1m from toml_dict)
@@ -167,12 +185,24 @@ toml_dict = LP.create_toml_dict(FT)
 @info "\n=== RUN 1: Default Configuration (height = 1m) ==="
 root_path_default = "comparison_default_height_$(device_suffix)"
 diagnostics_outdir_default = joinpath(root_path_default, "global_diagnostics")
-outdir_default = ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir_default)
+outdir_default = ClimaUtilities.OutputPathGenerator.generate_output_path(
+    diagnostics_outdir_default,
+)
 
-model_default = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, false)
-simulation_default = LandSimulation(start_date, stop_date, Δt, model_default; outdir = outdir_default)
+model_default =
+    setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, false)
+simulation_default = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model_default;
+    outdir = outdir_default,
+)
 
-CP.log_parameter_information(toml_dict, joinpath(root_path_default, "parameters.toml"))
+CP.log_parameter_information(
+    toml_dict,
+    joinpath(root_path_default, "parameters.toml"),
+)
 @time ClimaLand.Simulations.solve!(simulation_default)
 
 @info "Default run completed. Output saved to: $root_path_default"
@@ -181,12 +211,24 @@ CP.log_parameter_information(toml_dict, joinpath(root_path_default, "parameters.
 @info "\n=== RUN 2: Spatially-Varying Canopy Height ==="
 root_path_varying = "comparison_varying_height_$(device_suffix)"
 diagnostics_outdir_varying = joinpath(root_path_varying, "global_diagnostics")
-outdir_varying = ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir_varying)
+outdir_varying = ClimaUtilities.OutputPathGenerator.generate_output_path(
+    diagnostics_outdir_varying,
+)
 
-model_varying = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, true)
-simulation_varying = LandSimulation(start_date, stop_date, Δt, model_varying; outdir = outdir_varying)
+model_varying =
+    setup_model(FT, start_date, stop_date, Δt, domain, toml_dict, true)
+simulation_varying = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model_varying;
+    outdir = outdir_varying,
+)
 
-CP.log_parameter_information(toml_dict, joinpath(root_path_varying, "parameters.toml"))
+CP.log_parameter_information(
+    toml_dict,
+    joinpath(root_path_varying, "parameters.toml"),
+)
 @time ClimaLand.Simulations.solve!(simulation_varying)
 
 @info "Spatially-varying height run completed. Output saved to: $root_path_varying"
