@@ -203,7 +203,7 @@ function ClimaLand.make_compute_jacobian(
         ϵ_c = p.canopy.radiative_transfer.ϵ
         area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
-        earth_param_set = canopy.parameters.earth_param_set
+        earth_param_set = canopy.earth_param_set
         _T_freeze = LP.T_freeze(earth_param_set)
         _σ = LP.Stefan(earth_param_set)
         @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1

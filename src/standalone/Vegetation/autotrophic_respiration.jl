@@ -77,14 +77,14 @@ function update_autotrophic_respiration!(
     hydraulics = canopy.hydraulics
     n_stem = hydraulics.n_stem
     n_leaf = hydraulics.n_leaf
-    h_canopy = hydraulics.compartment_surfaces[end]
+    h_canopy = canopy.biomass.height
     i_end = n_stem + n_leaf
     ψ = p.canopy.hydraulics.ψ
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
     RAI = area_index.root
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_l = LP.ρ_cloud_liq(earth_param_set)
     (; G_Function, Ω) = canopy.radiative_transfer.parameters

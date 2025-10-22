@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+function setup_model(::Type{FT}, start_date, stop_date, Δt, domain, toml_dict) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -80,22 +80,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         stop_date,
     )
 
-    # Overwrite some defaults for the canopy model
-    # Plant hydraulics
-    conductivity_model = Canopy.PlantHydraulics.Weibull(toml_dict)
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve(toml_dict)
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(
-        surface_domain,
-        toml_dict;
-        conductivity_model,
-        retention_model,
-    )
-
-    # Roughness lengths
-    h_canopy = hydraulics.compartment_surfaces[end]
-    z_0m = FT(0.13) * h_canopy
-    z_0b = FT(0.1) * z_0m
-
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
@@ -112,12 +96,9 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-        hydraulics,
         photosynthesis,
         conductance,
         soil_moisture_stress,
-        z_0m,
-        z_0b,
     )
 
     # Snow model setup
@@ -158,6 +139,7 @@ domain = ClimaLand.Domains.global_domain(
     mask_threshold = FT(0.99),
 )
 toml_dict = LP.create_toml_dict(FT)
+photosynthesis = PModel{FT}(domain, toml_dict)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

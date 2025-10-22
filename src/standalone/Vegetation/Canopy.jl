@@ -317,7 +317,7 @@ function PlantHydraulicsModel{FT}(
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
-    h_leaf::FT = FT(1),
+    h_leaf::FT = toml_dict["canopy_height"]/n_leaf,
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
@@ -539,25 +539,30 @@ function PModelConductance{FT}(
     return PModelConductance{FT}(cond_params)
 end
 
+abstract type AbstractCanopyRoughness{FT <: AbstractFloat} end
+
+struct ConstantCanopyRoughness{FT} <: AbstractCanopyRoughness{FT}
+    "Scalar coefficient multiplying canopy height to obtain roughness length for momentum (unitless)"
+    z_0m_coeff::FT
+    "Scalar coefficient multiplying canopy height to obtain roughness length for scalars (unitless)"
+    z_0b_coeff::FT
+    "Scalar coefficient multiplying canopy height to obtain displacement height (unitless)"
+    d_coeff::FT
+    ""
+    u0::FT
+end
+
+function ConstantCanopyRoughness{FT}(toml_dict) where {FT}
+    z_0m_coeff = toml_dict["canopy_z_0m_coeff"]
+    z_0b_coeff = toml_dict["canopy_z_0b_coeff"]
+    d_coeff = toml_dict["canopy_d_coeff"]
+    u0 = toml_dict["canopy_u0"]
+    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, d_coeff, u0)
+end
 
 ########################################################
 # End component model convenience constructors
 ########################################################
-
-"""
-    SharedCanopyParameters{FT <: AbstractFloat, PSE}
-
-A place to store shared parameters that are required by multiple canopy components.
-$(DocStringExtensions.FIELDS)
-"""
-struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
-    "Roughness length for momentum (m)"
-    z_0m::FT
-    "Roughness length for scalars (m)"
-    z_0b::FT
-    "Earth param set"
-    earth_param_set::PSE
-end
 
 """
      CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <: ClimaLand.AbstractImExModel{FT}
@@ -606,7 +611,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -628,8 +633,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
     biomass::BM
     "Boundary Conditions"
     boundary_conditions::B
-    "Shared canopy parameters between component models"
-    parameters::PS
+    "Shared parameters between component models"
+    earth_param_set::PSE
     "Canopy model domain"
     domain::D
 end
@@ -646,7 +651,7 @@ end
         sif::AbstractSIFModel{FT},
         biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
-        parameters::SharedCanopyParameters{FT, PSE},
+        earth_param_set::PSE,
         domain::Union{
             ClimaLand.Domains.Point,
             ClimaLand.Domains.Plane,
@@ -672,7 +677,7 @@ function CanopyModel{FT}(;
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
-    parameters::SharedCanopyParameters{FT, PSE},
+    earth_param_set::PSE,
     domain::Union{
         ClimaLand.Domains.Point,
         ClimaLand.Domains.Plane,
@@ -726,8 +731,7 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        z_0m = toml_dict["canopy_momentum_roughness_length"],
-        z_0b = toml_dict["canopy_scalar_roughness_length"],
+        roughness = ConstantCanopyRoughness{FT}(toml_dict),
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -768,8 +772,7 @@ function CanopyModel{FT}(
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
-    z_0m = toml_dict["canopy_momentum_roughness_length"],
-    z_0b = toml_dict["canopy_scalar_roughness_length"],
+    roughness = ConstantCanopyRoughness{FT}(toml_dict),
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -813,15 +816,11 @@ function CanopyModel{FT}(
         atmos,
         radiation,
         ground,
+        roughness,
         prognostic_land_components,
     )
 
     earth_param_set = LP.LandParameters(toml_dict)
-    parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        z_0m,
-        z_0b,
-        earth_param_set,
-    )
     args = (
         autotrophic_respiration,
         radiative_transfer,
@@ -833,7 +832,7 @@ function CanopyModel{FT}(
         sif,
         biomass,
         boundary_conditions,
-        parameters,
+        earth_param_set,
         domain,
     )
     return CanopyModel{FT, typeof.(args)...}(args...)
