@@ -151,7 +151,8 @@ for FT in (Float32, Float64)
                 :bidiag_matrix_scratch,
                 :full_bidiag_matrix_scratch,
                 :turbulent_fluxes,
-                :R_n,
+                :SW_n,
+                :LW_n,
                 :top_bc,
                 :top_bc_wvec,
                 :sfc_scratch,
@@ -227,16 +228,26 @@ for FT in (Float32, Float64)
                 p,
                 t,
             )
-            R_n_copy = copy(p.soil.R_n)
-            ClimaLand.net_radiation!(
-                R_n_copy,
+            LW_n_copy = copy(p.soil.LW_n)
+            SW_n_copy = copy(p.soil.SW_n)
+            ClimaLand.net_lw_radiation!(
+                LW_n_copy,
                 model.boundary_conditions.top.radiation,
                 model,
                 Y,
                 p,
                 t,
             )
-            @test R_n_copy == p.soil.R_n
+            ClimaLand.net_sw_radiation!(
+                SW_n_copy,
+                model.boundary_conditions.top.radiation,
+                model,
+                Y,
+                p,
+                t,
+            )
+            @test LW_n_copy == p.soil.LW_n
+            @test SW_n_copy == p.soil.SW_n
             @test conditions == p.soil.turbulent_fluxes
 
             ClimaLand.Soil.soil_boundary_fluxes!(
@@ -253,7 +264,8 @@ for FT in (Float32, Float64)
 
             expected_water_flux = @. FT(precip(t)) .+ conditions.vapor_flux_liq
             @test computed_water_flux == expected_water_flux
-            expected_energy_flux = @. R_n_copy +
+            expected_energy_flux = @. LW_n_copy +
+               SW_n_copy +
                conditions.lhf +
                conditions.shf +
                FT(precip(t)) * Soil.volumetric_internal_energy_liq(

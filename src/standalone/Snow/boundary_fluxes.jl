@@ -50,7 +50,7 @@ Updates in place various volumetric water flux (m/s) and energy
 flux (W/m^2) terms for the snow model:
 
 - `p.snow.turbulent fluxes` (latent, sensible, and evaporative fluxes)
-- `p.snow.R_n` (radiative fluxes)
+- `p.snow.LW_n, p.snow.SW_n` (radiative fluxes)
 - `p.snow.total_water_flux`
 - `p.snow.total_energy_flux`
 
@@ -103,12 +103,11 @@ function snow_boundary_fluxes!(
     t,
 ) where {FT}
     bc = model.boundary_conditions
-
-    SW_net = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d) #match sign convention in ./shared_utilities/drivers.jl
+    net_sw_radiation!(p.snow.SW_n, bc.radiation, model, Y, p, t)
     update_surf_temp!(
         model,
         model.parameters.surf_temp,
-        SW_net,
+        p.snow.SW_n,
         p.drivers.LW_d,
         Y,
         p,
@@ -116,8 +115,7 @@ function snow_boundary_fluxes!(
     )
     _σ = LP.Stefan(model.parameters.earth_param_set)
     ϵ_snow = model.parameters.ϵ_snow
-    LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
-    p.snow.R_n .= SW_net .+ LW_net
+    net_lw_radiation!(p.snow.LW_n, bc.radiation, model, Y, p, t)
 
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     P_snow = p.drivers.P_snow
@@ -145,7 +143,8 @@ function snow_boundary_fluxes!(
         (
             get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n .- p.snow.energy_runoff .+ e_flux_falling_rain
+            p.snow.LW_n .+ p.snow.SW_n .- p.snow.energy_runoff .+
+            e_flux_falling_rain
         ) .* p.snow.snow_cover_fraction
     return nothing
 

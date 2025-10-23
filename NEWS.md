@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- Finish computing/label fluxes clearly as expicit or implicit, split radiation in sw and lw pieces PR[#1692](https://github.com/CliMA/ClimaLand.jl/pull/1692)
 - Remove `convert_cb` function PR[#1730](https://github.com/CliMA/ClimaLand.jl/pull/1730)
 - ![breaking change][badge-💥breaking] Rewrite DAMM soil respiration in centered-Arrhenius form: `soilCO2_pre_exponential_factor` is replaced by `soilCO2_reference_rate` and `soilCO2_reference_temperature`, with retuned `Ea_sx` and `kM_sx` defaults PR[#1714](https://github.com/CliMA/ClimaLand.jl/pull/1714)
 - ![][badge-🔥behavioralΔ] Diffuse soil CO2/O2 using an effective porosity that includes Henry's-law dissolved gas; initialize prognostic SOC from SoilGrids and hold it constant; pass soil ice into the biogeochemistry PR[#1714](https://github.com/CliMA/ClimaLand.jl/pull/1714)

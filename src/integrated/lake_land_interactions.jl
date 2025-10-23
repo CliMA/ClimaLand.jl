@@ -173,29 +173,40 @@ function update_soil_heat_flux_with_lake_sediment_flux!(
 end
 
 """
-    update_lake_radiative_fluxes!(lake::SlabLakeModel, p, LW_u_lake, LW_d_canopy, _σ)
+    update_lake_sw_fluxes!(lake::SlabLakeModel, p)
 """
-function update_lake_radiative_fluxes!(
+function update_lake_sw_fluxes!(
+    lake::SlabLakeModel,
+    p,
+)
+    α_lake = p.lake.albedo
+    SW_net_lake = p.lake.SW_n
+    par_d = p.canopy.radiative_transfer.par_d
+    nir_d = p.canopy.radiative_transfer.nir_d
+    f_trans_par = p.canopy.radiative_transfer.par.trans
+    f_trans_nir = p.canopy.radiative_transfer.nir.trans
+    @. SW_net_lake = -(
+        f_trans_nir * nir_d * (1 - α_lake) + f_trans_par * par_d * (1 - α_lake)
+    )
+    return nothing
+end
+
+"""
+    update_lake_lw_fluxes!(lake::SlabLakeModel, p, LW_u_lake, LW_d_canopy, _σ)
+"""
+function update_lake_lw_fluxes!(
     lake::SlabLakeModel,
     p,
     LW_u_lake,
     LW_d_canopy,
     _σ,
 )
-    α_lake = p.lake.albedo
-    R_net_lake = p.lake.R_n
-    par_d = p.canopy.radiative_transfer.par_d
-    nir_d = p.canopy.radiative_transfer.nir_d
-    f_trans_par = p.canopy.radiative_transfer.par.trans
-    f_trans_nir = p.canopy.radiative_transfer.nir.trans
-    @. R_net_lake = -(
-        f_trans_nir * nir_d * (1 - α_lake) + f_trans_par * par_d * (1 - α_lake)
-    )
 
+    LW_net_lake = p.lake.LW_n
     ϵ_lake = lake.parameters.emissivity
     T_lake = p.lake.T
     @. LW_u_lake = ϵ_lake * _σ * T_lake^4 + (1 - ϵ_lake) * LW_d_canopy
-    @. R_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
+    @. lW_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
     return nothing
 end
 
