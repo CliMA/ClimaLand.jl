@@ -106,7 +106,10 @@ function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
     output_writer =
         ClimaDiagnostics.NetCDFWriter(diagnostic_domain, outdir; start_date)
 
+    # Need to include "lhf", "shf", "lwu", "swu" because plotting the
+    # leaderboard requires these diagnostics
     short_names = CALIBRATE_CONFIG.short_names
+    short_names = unique!([short_names; ["lhf", "shf", "lwu", "swu"]])
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date;
