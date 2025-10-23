@@ -1532,6 +1532,36 @@ function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
 end
 
 
+"""
+    update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
+
+Updates the Leaf Area Index (LAI) using an optimal theory-based prognostic model
+following Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics 
+of Leaf Area" (Global Change Biology).
+
+The model finds the optimal LAI that maximizes carbon gain minus respiration costs,
+subject to light availability constraints. Updates are performed at local noon using
+an exponential moving average to smooth temporal dynamics.
+
+# Arguments
+- `L`: Current leaf area index (unitless, m² leaf / m² ground). Example: 4.0
+- `A`: Actual photosynthetic assimilation rate (μmol CO₂ m⁻² s⁻¹). Example: 20.0
+- `cosθs`: Cosine of solar zenith angle (unitless). Example: 0.87 (30° zenith angle)
+- `canopy`: Canopy model structure containing radiative transfer parameters
+- `local_noon_mask`: Binary mask indicating local noon (1.0 at noon, 0.0 otherwise, unitless)
+
+# Returns
+- Updated leaf area index `L` (unitless, m² leaf / m² ground). Example: 4.2
+
+# Model Parameters (hardcoded)
+- `α = 0.933`: Memory coefficient for exponential moving average (unitless). Example: 0.933
+- `z = 12.227`: Light compensation point parameter (μmol CO₂ m⁻² s⁻¹). Example: 12.227
+- `m = 0.3`: Respiration to assimilation cost ratio (unitless). Example: 0.3
+
+# Notes
+The extinction coefficient `k` is computed from canopy clumping (Ω) and the 
+G-function, representing light attenuation through the canopy (unitless). Example: 0.5
+"""
 function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
     radiation = canopy.radiative_transfer
     k = @. lazy(radiation.parameters.Ω * extinction_coeff(radiation.parameters.G_Function, cosθs))
@@ -1545,16 +1575,101 @@ function update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
 
 end
 
+"""
+    compute_L_max(k, z, Ao)
+
+Computes the maximum leaf area index (LAI) constrained by light availability,
+following Zhou et al. (2025). This represents the LAI at which the light level
+at the bottom of the canopy reaches the light compensation point.
+
+# Arguments
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `z`: Light compensation point, assimilation rate at light compensation (μmol CO₂ m⁻² s⁻¹). Example: 12.227
+- `Ao`: Potential (top-of-canopy) assimilation rate (μmol CO₂ m⁻² s⁻¹). Example: 25.0
+
+# Returns
+- Maximum LAI `L_max` (unitless, m² leaf / m² ground). Example: 5.5
+
+# Physics
+The equation L_max = -(1/k) * ln(z / (k * Ao)) derives from Beer's law for 
+light attenuation through the canopy, solving for the LAI where light-limited
+photosynthesis equals the compensation point.
+"""
 function compute_L_max(k,z,Ao)
     return -1/k*log(z/k/Ao)
 end
 
+"""
+    dgdL(μ, k, L)
+
+Computes the derivative of the optimization function g with respect to LAI,
+used in Newton-Raphson optimization to find optimal LAI following Zhou et al. (2025).
+
+# Arguments
+- `μ`: Cost-weighted assimilation rate, μ = m * Ao (μmol CO₂ m⁻² s⁻¹). Example: 7.5
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `L`: Leaf area index (unitless, m² leaf / m² ground). Example: 4.0
+
+# Returns
+- Derivative dg/dL (m⁻² ground / m² leaf). Example: 0.067
+
+# Notes
+This represents the derivative of the carbon balance equation with respect to LAI,
+balancing marginal carbon gain against marginal respiration costs.
+"""
 function dgdL(μ, k, L)
     return 1/μ - k*exp(-k*L)
 end
 
+"""
+    g(μ, k, L)
+
+Optimization function for finding optimal LAI following Zhou et al. (2025).
+This function represents the carbon balance: integrated assimilation minus
+respiration costs. The optimal LAI occurs when g = 0.
+
+# Arguments
+- `μ`: Cost-weighted assimilation rate, μ = m * Ao (μmol CO₂ m⁻² s⁻¹). Example: 7.5
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `L`: Leaf area index (unitless, m² leaf / m² ground). Example: 4.0
+
+# Returns
+- Carbon balance g(L) (unitless). Example: 0.05 (near optimum)
+
+# Physics
+The equation g = L/μ - 1 + exp(-k*L) balances:
+- L/μ: Respiration cost per unit LAI (normalized by assimilation)
+- 1 - exp(-k*L): Light-limited carbon gain (from Beer's law integration)
+
+At optimal LAI, g = 0, meaning marginal carbon gain equals marginal costs.
+"""
 g(μ,k,L) = L/μ -1+exp(-k*L)
     
+"""
+    compute_L_opt(μ, k, L)
+
+Computes the optimal LAI using Newton-Raphson iteration to solve g(L) = 0,
+following Zhou et al. (2025). The optimal LAI maximizes net carbon gain
+(photosynthesis minus respiration costs).
+
+# Arguments
+- `μ`: Cost-weighted assimilation rate, μ = m * Ao (μmol CO₂ m⁻² s⁻¹). Example: 7.5
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `L`: Initial guess for LAI (unitless, m² leaf / m² ground). Example: 3.5
+
+# Returns
+- Optimal LAI `L_opt` (unitless, m² leaf / m² ground). Example: 4.2
+
+# Algorithm
+Uses Newton-Raphson method: L_{n+1} = L_n - g(L_n) / g'(L_n)
+- Convergence tolerance: |dL| < 0.001
+- Maximum iterations: 100
+- Prints iteration progress with @show(dL)
+
+# Notes
+The function will error if convergence is not achieved within 100 iterations,
+which may indicate problematic parameter values.
+"""    
 function compute_L_opt(μ, k,L)
     dL = 1000; i = 0
     while abs(dL) > 0.001
@@ -1565,11 +1680,70 @@ function compute_L_opt(μ, k,L)
     return L
 end
 
+"""
+    compute_Ao(A::FT, k::FT, L::FT) where {FT}
+
+Computes the potential (top-of-canopy) photosynthetic assimilation rate from
+the actual canopy-integrated assimilation, following Zhou et al. (2025).
+
+# Arguments
+- `A`: Actual canopy-integrated assimilation rate (μmol CO₂ m⁻² ground s⁻¹). Example: 20.0
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `L`: Leaf area index (unitless, m² leaf / m² ground). Example: 4.0
+
+# Returns
+- Potential assimilation rate `Ao` (μmol CO₂ m⁻² leaf s⁻¹). Example: 25.0
+
+# Physics
+The relationship A = Ao * (1 - exp(-k*L)) comes from integrating Beer's law
+for light attenuation through the canopy. This function inverts it to recover
+Ao from measured A. The max() with eps(FT) prevents division by zero when LAI is small.
+
+# Notes
+The denominator (1 - exp(-k*L)) represents the fraction of light absorbed by
+the canopy. As L → 0, this approaches k*L (small LAI limit).
+"""
 function compute_Ao(A::FT, k::FT, L::FT) where {FT}
     Ao = A/max(1-exp(-k*L), eps(FT))
     return Ao
 end
 
+"""
+    compute_L(L::FT, Ao::FT, m::FT, k::FT, α::FT, z::FT, local_noon_mask::FT) where {FT}
+
+Updates LAI using an exponential moving average (EMA) of the optimal steady-state LAI,
+following Zhou et al. (2025). Updates occur only at local noon.
+
+# Arguments
+- `L`: Current leaf area index (unitless, m² leaf / m² ground). Example: 4.0
+- `Ao`: Potential assimilation rate (μmol CO₂ m⁻² leaf s⁻¹). Example: 25.0
+- `m`: Respiration to assimilation cost ratio (unitless). Example: 0.3
+- `k`: Light extinction coefficient (unitless). Example: 0.5
+- `α`: Memory coefficient (1 - daily update fraction) (unitless). Example: 0.933
+- `z`: Light compensation point parameter (μmol CO₂ m⁻² s⁻¹). Example: 12.227
+- `local_noon_mask`: Binary mask (1.0 at local noon, 0.0 otherwise, unitless). Example: 1.0
+
+# Returns
+- Updated LAI (unitless, m² leaf / m² ground). Example: 4.05
+
+# Algorithm
+1. Compute L_max from light availability constraint
+2. Compute L_opt from carbon balance optimization
+3. Take L_ss = min(L_opt, L_max) as steady-state LAI
+4. Apply EMA: L_new = (1-α) * L_ss + α * L_old
+   - α = 0.933 gives ~15-day memory timescale
+   - Daily update fraction = 1 - α = 0.067
+
+# Notes
+The EMA smooths rapid fluctuations and accounts for phenological lags.
+Only updates at local noon (when local_noon_mask = 1.0), otherwise returns L unchanged.
+
+# Example
+For typical midlatitude forest:
+- Input: L=4.0, Ao=25.0, m=0.3, k=0.5, α=0.933, z=12.227, mask=1.0
+- Intermediate: μ=7.5, L_opt≈4.2, L_max≈5.5, L_ss=4.2
+- Output: L_new = 0.067*4.2 + 0.933*4.0 ≈ 4.01
+"""
 function compute_L(L::FT,
                    Ao::FT,
                    m::FT,
