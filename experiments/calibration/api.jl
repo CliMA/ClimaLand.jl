@@ -1,4 +1,5 @@
 import Dates
+import ClimaLand
 
 """
     struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
@@ -17,7 +18,7 @@ A configuration struct for keeping track of multiple fields that are of interest
 to a user running calibration, or that are needed in multiple places (e.g., for
 ensemble members and generating observations).
 """
-struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
+struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
     "The short names of the observations used for calibration. The short names
     should match the same names used for the diagnostics."
     short_names::Vector{String}
@@ -53,6 +54,9 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period}
 
     "File path to JLD2 file that stores a vector of EKP.Observation"
     obs_vec_filepath::String
+
+    """Type of model to use"""
+    model_type::MODEL
 end
 
 """
@@ -66,6 +70,7 @@ end
         nelements = (101, 15),
         output_dir = "experiments/calibration/land_model",
         rng_seed = 42,
+        model_type = ClimaLand.LandModel,
     )
 
 Initializes a CalibrateConfig, which is of interest to a user running
@@ -104,6 +109,9 @@ Keyword arguments
 
 - `rng_seed`: An integer to ensure that calibration runs with the same settings
   are the same.
+
+- `model_type`: A type indicating which model to use. The only supported
+  models are "ClimaLand.LandModel" and "ClimaLand.Bucket.BucketModel".
 """
 function CalibrateConfig(;
     short_names,
@@ -116,6 +124,7 @@ function CalibrateConfig(;
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    model_type = ClimaLand.LandModel,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
     isempty(sample_date_ranges) &&
@@ -163,6 +172,7 @@ function CalibrateConfig(;
         output_dir,
         rng_seed,
         obs_vec_filepath,
+        model_type,
     )
 
 end
