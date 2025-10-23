@@ -275,10 +275,10 @@ and return the UTC time that corresponds to the end of the averaging period in F
 """
 function read_fluxnet_data(
     site_ID;
+    hour_offset_from_UTC,
     construct_prescribed_ground = false,
     varnames = get_required_varnames(construct_prescribed_ground),
     is_comparison_data = false,
-    hour_offset_from_UTC = nothing,
 )
     # Read the data from the CSV file for this site
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)

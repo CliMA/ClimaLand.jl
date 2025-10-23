@@ -287,13 +287,14 @@ function FluxnetSimulations.get_maxLAI_at_site(
 end
 
 """
-    get_data_dt(site_ID)
+    get_data_dt(site_ID, time_offset)
 
 A helper function to get the difference in time between observations;
 this is used in making some plots.
 """
-function FluxnetSimulations.get_data_dt(site_ID)
-    (_, _, UTC_datetime) = read_fluxnet_data(site_ID)
+function FluxnetSimulations.get_data_dt(site_ID, time_offset)
+    (_, _, UTC_datetime) =
+        read_fluxnet_data(site_ID; hour_offset_from_UTC = time_offset)
 
     # Convert to seconds
     Δts = [

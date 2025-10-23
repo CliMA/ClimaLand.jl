@@ -223,7 +223,7 @@ diagnostics = ClimaLand.default_diagnostics(
 
 # This gets the dt period of the forcing data, in seconds
 # Then, setting updateat specifies that the forcing should be updated at this period
-data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
+data_dt = Second(FluxnetSimulations.get_data_dt(site_ID, time_offset))
 updateat = Array(start_date:data_dt:stop_date);
 
 # Now we can construct the simulation object and solve it.
