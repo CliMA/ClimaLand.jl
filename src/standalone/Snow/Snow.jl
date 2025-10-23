@@ -632,7 +632,7 @@ include
 - the snow depth (`z_snow`, m),
 - the bulk snow density (`ρ_snow`, kg/m^3)
 - the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
-- the net radiation (`R_n, J/m^2/s)`,
+- the net LW and SW radiation (`LW_n, SW_n, J/m^2/s)`,
 - the energy flux in liquid water runoff (`energy_runoff`, J/m^2/s),
 - the water volume in runoff (`water_runoff`, m/s),
 and the total energy and water fluxes applied to the snowpack.
@@ -651,7 +651,8 @@ auxiliary_vars(snow::SnowModel) = (
     :z_snow,
     :α_snow,
     :ρ_snow,
-    :R_n,
+    :LW_n,
+    :SW_n,
     :phase_change_flux,
     :energy_runoff,
     :water_runoff,
@@ -684,6 +685,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     surf_temp_auxiliary_types(snow.parameters.surf_temp)...,
     boundary_var_types(
         snow,
@@ -693,6 +695,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,

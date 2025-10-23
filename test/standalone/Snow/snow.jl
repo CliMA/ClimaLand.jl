@@ -63,7 +63,8 @@ import ClimaLand.Parameters as LP
         :z_snow,
         :α_snow,
         :ρ_snow,
-        :R_n,
+        :LW_n,
+        :SW_n,
         :phase_change_flux,
         :energy_runoff,
         :water_runoff,
@@ -99,19 +100,34 @@ import ClimaLand.Parameters as LP
         1,
     )
     @test all(parent(p.snow.α_snow) .== α_snow.α)
-    @test p.snow.R_n == @. (
-        -(1 - α_snow.α) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4)
+    @test all(abs.(parent(p.snow.SW_n .+ (1 .- α_snow.α) .* 20.0f0)) .< eps(FT))
+    @test all(
+        abs.(
+            parent(
+                p.snow.LW_n .+ ϵ_snow .* (20.0f0 .- _σ .* p.snow.T_sfc .^ 4),
+            )
+        ) .< eps(FT),
     )
-    R_n_copy = copy(p.snow.R_n)
-    ClimaLand.net_radiation!(
-        R_n_copy,
+    LW_n_copy = copy(p.snow.LW_n)
+    ClimaLand.net_lw_radiation!(
+        LW_n_copy,
         model.boundary_conditions.radiation,
         model,
         Y,
         p,
         t0,
     )
-    @test p.snow.R_n == R_n_copy
+    @test p.snow.LW_n == LW_n_copy
+    SW_n_copy = copy(p.snow.SW_n)
+    ClimaLand.net_sw_radiation!(
+        SW_n_copy,
+        model.boundary_conditions.radiation,
+        model,
+        Y,
+        p,
+        t0,
+    )
+    @test p.snow.SW_n == SW_n_copy
     @test p.snow.q_l == liquid_mass_fraction.(Y.snow.S, Y.snow.S_l)
     @test p.snow.T ==
           snow_bulk_temperature.(
@@ -284,7 +300,7 @@ import ClimaLand.Parameters as LP
         -1 .*
         Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .-
         p.snow.turbulent_fluxes.shf .- p.snow.turbulent_fluxes.lhf .-
-        p.snow.R_n .+ p.snow.energy_runoff
+        p.snow.LW_n .- p.snow.SW_n .+ p.snow.energy_runoff
     @test all(parent(dY.snow.U) .≈ parent(test_dY_U))
     @test isnothing(
         Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
@@ -317,7 +333,8 @@ import ClimaLand.Parameters as LP
         :z_snow,
         :α_snow,
         :ρ_snow,
-        :R_n,
+        :LW_n,
+        :SW_n,
         :phase_change_flux,
         :energy_runoff,
         :water_runoff,
