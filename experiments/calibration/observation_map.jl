@@ -154,6 +154,10 @@ function ClimaCalibrate.analyze_iteration(
     plot_output_path = ClimaCalibrate.path_to_iteration(output_dir, iteration)
     plot_constrained_params_and_errors(plot_output_path, ekp, prior)
 
+    # Leaderboard plots can only be plotted when the model is LandModel
+    model_type = CALIBRATE_CONFIG.model_type
+    model_type == ClimaLand.LandModel || return nothing
+
     # Plot ERA5 bias plots for only the first ensemble member
     # This can take a while to plot, so we plot only one of the members.
     # We choose the first ensemble member because the parameters for the first
