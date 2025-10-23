@@ -1,5 +1,5 @@
 """
-    FluxnetSimulations.make_set_fluxnet_initial_conditions(
+    make_set_fluxnet_initial_conditions(
         site_ID,
         start_date,
         hour_offset_from_UTC,
@@ -24,6 +24,37 @@ function FluxnetSimulations.make_set_fluxnet_initial_conditions(
     return set_ic!
 end
 
+"""
+    make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        hour_offset_from_UTC,
+        model::ClimaLand.Canopy.CanopyModel,
+    )
+
+Creates and returns a function `set_ic!(Y,p,t,model)` which
+updates `Y` in place with an estimated set of initial conditions
+based on the fluxnet observations at `site_ID` at the `start_date` in UTC.
+
+This method is for a standalone canopy model.
+"""
+function FluxnetSimulations.make_set_fluxnet_initial_conditions(
+    site_ID,
+    start_date,
+    hour_offset_from_UTC,
+    model::ClimaLand.Canopy.CanopyModel,
+)
+    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Convert local datetime to time in UTC
+    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    UTC_datetime = local_datetime .- hour_offset_to_period(hour_offset_from_UTC)
+    Δ_date = UTC_datetime .- start_date
+
+    set_ic!(Y, p, t, model) = set_fluxnet_ic!(Y, data, columns, Δ_date, model)
+
+    return set_ic!
+end
 
 """
      set_fluxnet_ic!(
@@ -51,7 +82,7 @@ function set_fluxnet_ic!(
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     # Convert local datetime to time in UTC
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
+    UTC_datetime = local_datetime .- hour_offset_to_period(hour_offset_from_UTC)
     Δ_date = UTC_datetime .- start_date
     for component in ClimaLand.land_components(model)
         set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
@@ -59,7 +90,14 @@ function set_fluxnet_ic!(
 end
 
 """
-     set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.EnergyHydrology)
+    set_fluxnet_ic!(
+        Y,
+        data,
+        columns,
+        Δ_date,
+        model::ClimaLand.Soil.EnergyHydrology;
+        val = -9999,
+    )
 
 Sets the values of Y.soil in place with:
 - \vartheta_l: observed value of SWC at the surface at the observation date closest to the start date, unless this is larger than 90% of porosity.
@@ -149,14 +187,24 @@ function set_fluxnet_ic!(
 end
 
 """
-    set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Canopy.CanopyModel)
+    set_fluxnet_ic!(
+        Y,
+        data,
+        columns,
+        Δ_date,
+        model::ClimaLand.Canopy.CanopyModel;
+        val = -9999,
+    )
 
 Sets Y.canopy.energy.T to the air temperature at the observation date closest to the start
 date of the model; sets the potential in the stem and leaf to -0.1 and -0.2 MPa, respectively,
 and the computes the resulting water content Y.canopy.hydraulics.ϑ_l using the retention curve
 of the plant.
 
-If ony a leaf compartment is used, only the leaf ψ is used.
+If the canopy energy model is a PrescribedCanopyTempModel, then the atmosphere air temperature
+is used to set the canopy temperature.
+
+If only a leaf compartment is used, only the leaf ψ is used.
 """
 function set_fluxnet_ic!(
     Y,
@@ -166,17 +214,20 @@ function set_fluxnet_ic!(
     model::ClimaLand.Canopy.CanopyModel;
     val = -9999,
 )
-    # Determine which column index corresponds to air temperature
-    idx = findfirst(columns[:] .== "TA_F")
-    T_air_0 = get_data_at_start_date(
-        data[:, idx],
-        Δ_date;
-        preprocess_func = x -> x + 273.15,
-        val,
-    )
+    if !(model.energy isa Canopy.PrescribedCanopyTempModel)
+        # Determine which column index corresponds to air temperature
+        idx = findfirst(columns[:] .== "TA_F")
+        T_air_0 = get_data_at_start_date(
+            data[:, idx],
+            Δ_date;
+            preprocess_func = x -> x + 273.15,
+            val,
+        )
 
-    Y.canopy.energy.T .= T_air_0
-    FT = eltype(Y.canopy.energy.T)
+        Y.canopy.energy.T .= T_air_0
+    end
+
+    FT = eltype(Y)
     ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
     ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics

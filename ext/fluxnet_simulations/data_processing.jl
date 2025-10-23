@@ -8,13 +8,13 @@ data. Returns true if x == -9999.
 var_missing(x; val = -9999) = x == val
 
 """
-    FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+    hour_offset_to_period(hour_offset_from_UTC)
 
 Convert a hour offset (which may be fractional) to a Dates.Period
 that can be added to DateTime objects.
 Supports both integer and half-hour time zones (e.g., 5.5 hours).
 """
-function FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+function hour_offset_to_period(hour_offset_from_UTC)
     hours = floor(Int, hour_offset_from_UTC)
     minutes = round(Int, (hour_offset_from_UTC - hours) * 60)
     return Dates.Hour(hours) + Dates.Minute(minutes)
@@ -158,30 +158,170 @@ function get_data_at_start_date(
 end
 
 """
-    read_fluxnet_data(site_ID; hour_offset_from_UTC = nothing)
+    get_required_varnames(construct_prescribed_ground::Bool)
+
+Returns the tuple of required variable names for Fluxnet data processing.
+If `construct_prescribed_ground` is true, includes soil moisture and temperature variables.
+"""
+function get_required_varnames(construct_prescribed_ground::Bool)
+    varnames = (
+        "TIMESTAMP_START",
+        "TIMESTAMP_END",
+        "TA_F",
+        "VPD_F",
+        "PA_F",
+        "P_F",
+        "WS_F",
+        "LW_IN_F",
+        "SW_IN_F",
+        "CO2_F_MDS",
+    )
+    construct_prescribed_ground &&
+        (varnames = (varnames..., "SWC_F_MDS_1", "TS_F_MDS_1"))
+    return varnames
+end
+
+"""
+    create_column_name_map(columns, varnames; is_comparison_data)
+
+Creates a dictionary mapping variable names to their column indices in the data.
+The input `columns` is expected to be a vector of column names from the data,
+and `varnames` is a tuple of variable names to look for.
+
+If `is_comparison_data` is false (i.e. we're processing forcing data) and any
+input varname is missing in the columns, an error is logged.
+
+Returns a Dict{String, Union{Int, Nothing}} where each key is a varname
+and the value is the corresponding column index.
+"""
+function create_column_name_map(columns, varnames; is_comparison_data)
+    column_name_map = Dict(
+        varname => findfirst(columns[:] .== varname) for varname in varnames
+    )
+
+    # Check for missing columns, if requested
+    if !is_comparison_data
+        nothing_id = findall(collect(values(column_name_map)) .== nothing)
+        if !isempty(nothing_id)
+            missing_vars = [varnames[i] for i in nothing_id]
+            @error("$(missing_vars) is missing in the data, but required.")
+        end
+    end
+
+    return column_name_map
+end
+
+"""
+    find_rows_with_all_variables_available(data, column_name_map, varnames; val = -9999)
+
+Return a boolean vector marking rows where all required variables are available as `true`.
+For each name in `varnames`, the column index is looked up in `column_name_map`,
+and a row is `true` only if none of those columns equals `val` in that row.
+
+Arguments
+- data: matrix with observations in rows and variables in columns.
+- column_name_map: Dict mapping variable names (String) to column indices (Int).
+- varnames: tuple of variable names to check.
+- val: sentinel used to indicate missing data (default -9999).
+
+Returns
+- Vector{Bool} of length size(data, 1), with `true` indicating rows where all
+    required variables are available.
+"""
+function find_rows_with_all_variables_available(
+    data,
+    column_name_map,
+    varnames;
+    val = -9999,
+)
+    # Get the column indices for the input variables
+    cols = getindex.(Ref(column_name_map), varnames)
+
+    # Row is valid (true) only if all columns are not equal to val
+    valid_rows = trues(size(data, 1))
+    @inbounds for col_idx in cols
+        valid_rows .&= (data[:, col_idx] .!= val)
+    end
+    return valid_rows
+end
+
+"""
+    read_fluxnet_data(
+        site_ID;
+        construct_prescribed_ground = false,
+        varnames = get_required_varnames(construct_prescribed_ground),
+        is_comparison_data = false,
+        hour_offset_from_UTC = nothing,
+    )
 
 Reads Fluxnet CSV data and processes timestamps, converting local time to UTC.
-Returns (data, columns, local_datetime, UTC_datetime).
+Returns (data, column_name_map, UTC_datetime).
 
 If `hour_offset_from_UTC` is nothing, the UTC datetime is not returned.
+
+Fluxnet as has two timestamps associated with it: TIMESTAMP_START and TIMESTAMP_END,
+with the first referring to the start of the averaging period, and the second the end.
+
+The flag `is_comparison_data` controls which timestamp is used to construct the local and UTC
+datetimes, and whether all variables are required to be present in the data.
+
+For forcing data, we want to use a timestamp corresponding to the middle of the period
+`[TIMESTAMP_START, TIMESTAMP_END]`, since the data is provided as an average over that period.
+For comparison data, we want to use the `TIMESTAMP_END` value to compare to ClimaLand
+diagnostics, which are saved at the end of the averaging period.
+For example, the hourly average from 10:00-11:00 is saved with a timestamp of 11:00.
+To make a true comparison to Fluxnet data, therefore, we must use halfhourly diagnostics in ClimaLand,
+and return the UTC time that corresponds to the end of the averaging period in Fluxnet.
 """
-function read_fluxnet_data(site_ID; hour_offset_from_UTC = nothing)
+function read_fluxnet_data(
+    site_ID;
+    construct_prescribed_ground = false,
+    varnames = get_required_varnames(construct_prescribed_ground),
+    is_comparison_data = false,
+    hour_offset_from_UTC = nothing,
+)
+    # Read the data from the CSV file for this site
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
 
-    # Convert timestamps
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    # Get map from variable name to column index
+    column_name_map =
+        create_column_name_map(columns, varnames; is_comparison_data)
+
+    # Find rows with all required variables available
+    valid_rows =
+        find_rows_with_all_variables_available(data, column_name_map, varnames)
+
+    # Get local datetime at the end or middle of the averaging period
+    local_datetime_end =
+        DateTime.(
+            string.(Int.(data[valid_rows, column_name_map["TIMESTAMP_END"]])),
+            "yyyymmddHHMM",
+        )
+    if is_comparison_data
+        local_datetime = local_datetime_end
+    else
+        local_datetime_start =
+            DateTime.(
+                string.(
+                    Int.(data[valid_rows, column_name_map["TIMESTAMP_START"]])
+                ),
+                "yyyymmddHHMM",
+            )
+        local_datetime =
+            local_datetime_start .+
+            (local_datetime_end .- local_datetime_start) ./ 2
+    end
 
     # Convert to UTC if hour offset is given
     if isnothing(hour_offset_from_UTC)
         UTC_datetime = nothing
     else
         UTC_datetime =
-            local_datetime .+
-            FluxnetSimulations.hour_offset_to_period(hour_offset_from_UTC)
+            local_datetime .+ hour_offset_to_period(hour_offset_from_UTC)
     end
 
-    return (data, columns, local_datetime, UTC_datetime)
+    return (data, column_name_map, UTC_datetime)
 end
 
 """

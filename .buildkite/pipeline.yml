@@ -61,13 +61,17 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai_with_stem.jl"
         artifact_paths: "experiments/standalone/Vegetation/varying_lai_with_stem/output_active/varying_lai_with_stem*png"
 
-      - label: "zero LAI, zero SAI"
+      - label: "Zero LAI, zero SAI"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/no_vegetation.jl"
         artifact_paths: "experiments/standalone/Vegetation/no_vegetation/output_active/no_veg*png"
 
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/cpu/output_active/comparison*png"
+
+      - label: "Standalone canopy at Vaira Ranch"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/fluxnet_canopy.jl"
+        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/vaira_paper.jl"
