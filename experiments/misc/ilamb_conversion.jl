@@ -113,7 +113,7 @@ const ILAMB_VARIABLES = Dict(
         ILAMBMapping("swe", "Snow Water Equivalent", 1000.0, "kg m-2", "m"),
     "iwc" => ILAMBMapping(
         "mrsos",
-        "Soil Moisture (top layer)",
+        "Soil Moisture (integrated over top 10cm)",
         1.0,
         "kg m-2",
         "kg/m^2",
@@ -126,18 +126,9 @@ const ILAMB_VARIABLES = Dict(
         "kg m-2 s-1",
         "m s^-1",
     ),
-    "swc" => ILAMBMapping(
-        "swc",
-        "Soil Water Content (top 10cm)",
-        1000.0,
-        "kg m-2",
-        "m^3 m^-3",
-    ),
-    "tsoil" =>
-        ILAMBMapping("tsl", "Soil Temperature (top 10cm)", 1.0, "K", "K"),
     "precip" => ILAMBMapping(
         "pr",
-        "Precipitation",
+        "Precipitation (includes snow)", # check if this meant to include both snow and rain
         -1.0,
         "kg m-2 s-1",
         "kg m^-2 s^-1",
