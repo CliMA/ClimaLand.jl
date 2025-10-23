@@ -343,6 +343,8 @@ lsm_aux_vars(m::LandModel) = (
     :ϵ_sfc,
     :α_sfc,
     :α_ground,
+    :total_water,
+    :total_energy,
 )
 
 """
@@ -370,6 +372,8 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+    FT,
+    FT,
 )
 
 """
@@ -397,7 +401,164 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
 )
+
+function initialize_prognostic(
+    model::LandModel{FT},
+    coords::NamedTuple,
+) where {FT}
+    components = land_components(model)
+    Y_state_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        getproperty(initialize_prognostic(submodel, coords), component)
+    end
+    conservation_vars = (:∫F_vol_liq_water_dt, :∫F_e_dt)
+    conservation_types = (FT, FT)
+    conservation_domain_names = (:surface, :surface)
+    conservation_state_list = initialize_vars(
+        conservation_vars,
+        conservation_types,
+        conservation_domain_names,
+        coords,
+        :conservation_check,
+    )
+    Y = ClimaCore.Fields.FieldVector(;
+        NamedTuple{(components..., conservation_vars...)}((
+            Y_state_list...,
+            conservation_state_list.conservation_check...,
+        ))...,
+    )
+    return Y
+end
+
+function make_update_aux(land::LandModel)
+    components = land_components(land)
+    update_aux_function_list =
+        map(x -> make_update_aux(getproperty(land, x)), components)
+    function update_aux!(p, Y, t)
+        for f! in update_aux_function_list
+            f!(p, Y, t)
+        end
+        sfc_cache = p.scratch1 .* 0
+        ClimaLand.total_liq_water_vol_per_area!(
+            p.total_water,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+        ClimaLand.total_energy_per_area!(
+            p.total_energy,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+    end
+    return update_aux!
+end
+function make_exp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
+    update_exp_c! = make_update_cache(land)
+    function exp_tendency!(dY, Y, p, t)
+        update_exp_c!(p, Y, t)
+        for f! in compute_exp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        top_water_flux = @. lazy(
+            p.drivers.P_snow +
+            p.drivers.P_liq +
+            p.soil.R_s +
+            (p.snow.turbulent_fluxes.vapor_flux) * p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.vapor_flux,
+        )
+        bottom_water_flux = p.soil.bottom_bc.water
+        subsurface_runoff = :R_ss ∈ propertynames(p.soil) ? p.soil.R_ss : FT(0)
+        @. dY.∫F_vol_liq_water_dt =
+            -(top_water_flux - bottom_water_flux + subsurface_runoff)
+        atmos = land.snow.boundary_conditions.atmos
+        e_flux_falling_snow = Snow.energy_flux_falling_snow(
+            atmos,
+            p,
+            land.snow.parameters.earth_param_set,
+        )
+        e_flux_falling_rain = Snow.energy_flux_falling_rain(
+            atmos,
+            p,
+            land.snow.parameters.earth_param_set,
+        )
+        bc = land.soil.boundary_conditions.top
+        liquid_influx = Soil.compute_liquid_influx(
+            p,
+            land.soil,
+            Val(bc.prognostic_land_components),
+        )
+        infiltration_fraction = @. lazy(
+            Soil.compute_infiltration_fraction(
+                p.soil.infiltration,
+                liquid_influx,
+            ),
+        )
+        runoff_energy_flux = @. lazy(
+            -1 *
+            (1 - infiltration_fraction) *
+            (
+                e_flux_falling_rain * (1 - p.snow.snow_cover_fraction) +
+                p.snow.energy_runoff * p.snow.snow_cover_fraction
+            ),
+        )
+        top_heat_flux = @. lazy(
+            e_flux_falling_snow +
+            e_flux_falling_rain +
+            runoff_energy_flux +
+            (
+                p.snow.turbulent_fluxes.lhf +
+                p.snow.turbulent_fluxes.shf +
+                p.snow.R_n
+            ) * p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.lhf +
+                p.soil.turbulent_fluxes.shf +
+                p.soil.R_n
+            ),
+        )
+        bottom_heat_flux = p.soil.bottom_bc.heat
+        @. dY.∫F_e_dt = -(top_heat_flux - bottom_heat_flux)
+
+    end
+    return exp_tendency!
+end
+
+function make_imp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_imp_tendency_list =
+        map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
+    update_imp_c! = make_update_implicit_cache(land)
+
+    function imp_tendency!(dY, Y, p, t)
+        update_imp_c!(p, Y, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        imp_heat_flux = @. lazy(
+            p.canopy.turbulent_fluxes.shf +
+            p.canopy.turbulent_fluxes.lhf +
+            +p.canopy.radiative_transfer.LW_n,
+        )
+        @. dY.∫F_e_dt = -(imp_heat_flux - 0)
+    end
+    return imp_tendency!
+end
 
 """
     make_update_boundary_fluxes(
