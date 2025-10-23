@@ -161,7 +161,14 @@ domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date,
+    outdir;
+    conservation = true,
+    conservation_period = Day(10),
+)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
@@ -181,3 +188,4 @@ if LONGER_RUN
         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end
+LandSimVis.check_conservation(simulation; savedir = root_path)
