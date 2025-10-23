@@ -81,7 +81,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     # Read data and process timestamps
-    (data, column_name_map, UTC_datetime) = read_fluxnet_data(
+    (data, column_name_map, UTC_datetime_valid) = read_fluxnet_data(
         site_ID;
         is_comparison_data = false,
         construct_prescribed_ground,
@@ -91,7 +91,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     # The TimeVaryingInput interface for columns expects the time in seconds
     # from the start date of the simulation
     seconds_since_start_date =
-        [Second(UTC - start_date).value for UTC in UTC_datetime]
+        [Second(UTC - start_date).value for UTC in UTC_datetime_valid]
 
     # Create the TVI objects
     atmos_T = time_varying_input_from_data(
@@ -150,7 +150,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     # the time between observations in the data
     # Convert to a flux using data_dt. Also, change the sign, because in ClimaLand
     # precipitation is a downward flux (negative), and convert from accumulated mm to m/s
-    data_dt = Second(UTC_datetime[2] - UTC_datetime[1]).value # seconds
+    data_dt = Second(UTC_datetime_valid[2] - UTC_datetime_valid[1]).value # seconds
     if split_precip
         compute_rain(T, VPD, precip; thermo_params = thermo_params) =
             -1 * precip / 1000 / data_dt *
@@ -343,13 +343,13 @@ function FluxnetSimulations.get_data_dates(
     end
 
     # Read data and process timestamps
-    (_, _, UTC_datetime) = read_fluxnet_data(
+    (_, _, UTC_datetime_valid) = read_fluxnet_data(
         site_ID;
         construct_prescribed_ground,
-        is_comparison_data = false,
+        is_comparison_data = true, # we want to use the end of the averaging period
         hour_offset_from_UTC,
     )
-    earliest_date, latest_date = extrema(UTC_datetime)
+    earliest_date, latest_date = extrema(UTC_datetime_valid)
 
     # Apply the corrections for `start_offset` and `duration`
     duration_available_ms = latest_date - earliest_date

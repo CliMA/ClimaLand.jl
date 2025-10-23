@@ -273,6 +273,10 @@ diagnostics, which are saved at the end of the averaging period.
 For example, the hourly average from 10:00-11:00 is saved with a timestamp of 11:00.
 To make a true comparison to Fluxnet data, therefore, we must use halfhourly diagnostics in ClimaLand,
 and return the UTC time that corresponds to the end of the averaging period in Fluxnet.
+
+Additionally, if `is_comparison_data` is true, we return all data and corresponding
+timestamps, even if some data is missing. If it's false, we filter out data and timestamps
+that have some data missing.
 """
 function read_fluxnet_data(
     site_ID;
@@ -289,19 +293,28 @@ function read_fluxnet_data(
     column_name_map =
         create_column_name_map(columns, varnames; is_comparison_data)
 
-    # Find rows with all required variables available
-    valid_rows =
-        find_rows_with_all_variables_available(data, column_name_map, varnames)
-
     # Get local datetime at the end or middle of the averaging period
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[valid_rows, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
     if is_comparison_data
+        local_datetime_end =
+            DateTime.(
+                string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
+                "yyyymmddHHMM",
+            )
         local_datetime = local_datetime_end
     else
+        # Find rows with all required variables available
+        valid_rows = find_rows_with_all_variables_available(
+            data,
+            column_name_map,
+            varnames,
+        )
+        local_datetime_end =
+            DateTime.(
+                string.(
+                    Int.(data[valid_rows, column_name_map["TIMESTAMP_END"]])
+                ),
+                "yyyymmddHHMM",
+            )
         local_datetime_start =
             DateTime.(
                 string.(
@@ -335,22 +348,18 @@ end
         val = -9999,
     )
 
-Gets and returns a NamedTuple with the data identified
-by `varname` in the `data` matrix by looking up the
-column index of varname
-using the column_name_map, replacing missing data with the mean
-of the non-missing data, and preprocessing the data using the
-`preprocess_func`, which should be a pointwise function. The
-key of the NamedTuple should be the shortname of the corresponding
+Gets and returns a NamedTuple with the data identified by `varname` in the
+`data` matrix by looking up the column index of varname using the `column_name_map`,
+replacing missing data with the mean of the non-missing data, and preprocessing the
+data using the `preprocess_func`, which should be a pointwise function.
+The key of the NamedTuple should be the shortname of the corresponding
 variable using the shortname of ClimaDiagnostics: `climaland_shortname`.
 
-If the data column
-is missing completely, or if the column is present
-but the data is missing in each row, an empty NamedTuple
-is returned.
+If the data column is missing completely, or if the column is present
+but the data is missing in each row, an empty NamedTuple is returned.
 
 In the future, we can explore dropping the missing values to be
-consistent with what we do above, but this is consistent with the
+consistent with what we for forcing data, but this is consistent with the
 current Fluxnet runs.
 """
 function FluxnetSimulations.get_comparison_data(

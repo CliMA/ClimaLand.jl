@@ -164,12 +164,7 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 LAI =
     ClimaLand.prescribed_lai_modis(domain.space.surface, start_date, stop_date);
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(
-    start_date,
-    lat,
-    long;
-    ncd_path = modis_lai_ncdata_path[1],
-);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 height = h_stem + h_leaf
 biomass =
@@ -239,7 +234,7 @@ simulation = LandSimulation(
 
 @time solve!(simulation)
 
-ClimaLand.Diagnostics.close_output_writers(diagnostics)
+# Plot diagnostics with comparisonto data
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
     pkgdir(ClimaLand),
@@ -247,47 +242,20 @@ savedir = joinpath(
 )
 mkpath(savedir)
 
-# get the modeled GPP
-time_vector, gpp_model =
-    ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, "gpp_30m_average")
-time_vector = DateTime.(time_vector)
+LandSimVis.make_diurnal_timeseries(
+    simulation;
+    savedir,
+    short_names = ["gpp", "msf"],
+    spinup_date = start_date + Day(20),
+    plot_stem_name = "US_Var_canopy_diurnal_timeseries",
+    comparison_data,
+);
 
-_, msf_model =
-    ClimaLand.Diagnostics.diagnostic_as_vectors(dict_writer, "msf_30m_average")
-
-overlapping_times = in.(comparison_data.UTC_datetime, Ref(Set(time_vector)))
-gpp_obs = comparison_data.gpp[overlapping_times]
-
-# take the daily means
-gpp_model_daily = mean(reshape(gpp_model, 48, 365); dims = 1)[:]
-gpp_obs_daily = mean(reshape(gpp_obs, 48, 365); dims = 1)[:]
-msf_daily = mean(reshape(msf_model, 48, 365); dims = 1)[:]
-day_of_year = range(1, 365)
-
-# plot GPP comparison
-p1 = plot(
-    day_of_year,
-    gpp_model_daily;
-    title = "GPP",
-    label = "Modeled GPP",
-    xlabel = "Day of year",
-    ylabel = "GPP (mol/m²/s)",
-    framestyle = :box,
-    grid = :y,
-)
-plot!(p1, day_of_year, gpp_obs_daily, label = "Observed GPP")
-
-p2 = plot(
-    day_of_year,
-    msf_daily;
-    title = "Soil moisture stress",
-    label = "βm",
-    xlabel = "Day of year",
-    ylabel = "βm (unitless)",
-    legend = :topright,
-    framestyle = :box,
-    grid = :y,
-)
-
-plt = plot(p1, p2; layout = (2, 1), link = :x, size = (900, 550), dpi = 300)
-savefig(plt, joinpath(savedir, "gpp_comparison.png"))
+LandSimVis.make_timeseries(
+    simulation;
+    savedir,
+    short_names = ["gpp", "msf"],
+    spinup_date = start_date + Day(20),
+    plot_stem_name = "US_Var_canopy_timeseries",
+    comparison_data,
+);
