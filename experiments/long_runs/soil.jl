@@ -55,10 +55,10 @@ outdir =
 
 # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
 # If LONGER run, run for 20 years, with the correct forcing each year.
-start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
-stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
+start_date = LONGER_RUN ? DateTime(2000) : DateTime("2008-03-01")
+stop_date = LONGER_RUN ? DateTime(2020) : DateTime("20008-04-01")
 Δt = 450.0
-nelements = (101, 15)
+nelements = (20, 15)
 domain = ClimaLand.Domains.global_domain(FT; context, nelements)
 toml_dict = LP.create_toml_dict(FT)
 
@@ -71,6 +71,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     FT;
     max_wind_speed = 25.0,
     context,
+    use_lowres_forcing=true
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
 diagnostics = ClimaLand.default_diagnostics(
