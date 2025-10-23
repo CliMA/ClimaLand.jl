@@ -240,6 +240,7 @@ function find_rows_with_all_variables_available(
     # Row is valid (true) only if all columns are not equal to val
     valid_rows = trues(size(data, 1))
     @inbounds for col_idx in cols
+        isnothing(col_idx) && continue # comparison data may have missing columns
         valid_rows .&= (data[:, col_idx] .!= val)
     end
     return valid_rows

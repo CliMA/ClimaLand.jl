@@ -221,16 +221,15 @@ diagnostics = ClimaLand.default_diagnostics(
     reduction_period = :halfhourly,
 )
 
-# This gets the dt period of the forcing data, in seconds
-# Then, setting updateat specifies that the forcing should be updated at this period
-data_dt = Second(FluxnetSimulations.get_data_dt(site_ID, time_offset))
-updateat = Array(start_date:data_dt:stop_date);
+# This gets the dt of the forcing data in Seconds
+# And specifies that it should be updated at this frequency
+updateat = Second(FluxnetSimulations.get_data_dt(site_ID, time_offset))
 
 # Now we can construct the simulation object and solve it.
 simulation = LandSimulation(
     start_date,
     stop_date,
-    Δt,
+    dt,
     canopy;
     set_ic!,
     updateat,
