@@ -137,8 +137,8 @@ function make_update_implicit_boundary_fluxes(
             p.canopy.turbulent_fluxes.∂shf∂T,
             p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
         )
-        # Update the canopy radiation
-        canopy_radiant_energy_fluxes!(
+        # Update the canopy LW radiation
+        canopy_longwave_fluxes!(
             p,
             ground,
             canopy,
@@ -173,7 +173,7 @@ function make_compute_imp_tendency(
 
         @. dY.canopy.energy.T =
             -(
-                -p.canopy.radiative_transfer.LW_n -
+                p.canopy.radiative_transfer.LW_n +
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
@@ -242,10 +242,10 @@ function ClimaLand.make_compute_jacobian(
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.earth_param_set
         _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
+        @. ∂LW_n∂T = 2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
+                (-∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
     end
