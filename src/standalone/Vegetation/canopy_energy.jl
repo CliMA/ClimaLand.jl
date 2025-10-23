@@ -123,7 +123,6 @@ function make_update_implicit_boundary_fluxes(
         atmos = bc.atmos
         ground = bc.ground
         canopy_tf = p.canopy.turbulent_fluxes
-
         # Compute transpiration, SHF, LHF
         ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
         # Due to roundoff problem when multiplying and dividing by cp_d, set
@@ -170,7 +169,6 @@ function make_compute_imp_tendency(
         # d(energy.T) = - net_energy_flux / specific_heat_capacity
         # To prevent dividing by zero, change AI" to
         # "max(AI, eps(FT))"
-
         @. dY.canopy.energy.T =
             -(
                 p.canopy.radiative_transfer.LW_n +
@@ -242,10 +240,11 @@ function ClimaLand.make_compute_jacobian(
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.earth_param_set
         _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂T = 2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
+        T_c = canopy_temperature(model, canopy, Y, p)
+        @. ∂LW_n∂T = 2 * 4 * _σ * ϵ_c * T_c^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (-∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
+                ((-∂LW_n∂T - ∂shf∂T - ∂lhf∂T)) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
     end
@@ -277,9 +276,9 @@ function ClimaLand.total_energy_per_area!(
 )
     area_index = p.canopy.biomass.area_index
     @. surface_field .=
-        model.parameters.ac_canopy *
+        Y.canopy.energy.T *
         (area_index.stem + area_index.leaf) *
-        Y.canopy.energy.T
+        model.parameters.ac_canopy
     return nothing
 end
 

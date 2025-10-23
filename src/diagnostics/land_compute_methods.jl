@@ -73,7 +73,10 @@ get_z_coordinates(m::Union{SoilCO2Model, EnergyHydrology}) = m.domain.fields.z
 @diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
 @diagnostic_compute "water_volume_per_area_change" EnergyHydrology Y.soil.∫F_vol_liq_water_dt
 @diagnostic_compute "energy_per_area_change" EnergyHydrology Y.soil.∫F_e_dt
-
+@diagnostic_compute "water_volume_per_area" LandModel p.total_water
+@diagnostic_compute "energy_per_area" LandModel p.total_energy
+@diagnostic_compute "water_volume_per_area_change" LandModel Y.∫F_vol_liq_water_dt
+@diagnostic_compute "energy_per_area_change" LandModel Y.∫F_e_dt
 
 ### BucketModel ###
 
