@@ -56,6 +56,8 @@ include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
+include("./canopy_surface_fluxes.jl")
+
 
 
 ########################################################
@@ -539,26 +541,6 @@ function PModelConductance{FT}(
     return PModelConductance{FT}(cond_params)
 end
 
-abstract type AbstractCanopyRoughness{FT <: AbstractFloat} end
-
-struct ConstantCanopyRoughness{FT} <: AbstractCanopyRoughness{FT}
-    "Scalar coefficient multiplying canopy height to obtain roughness length for momentum (unitless)"
-    z_0m_coeff::FT
-    "Scalar coefficient multiplying canopy height to obtain roughness length for scalars (unitless)"
-    z_0b_coeff::FT
-    "Scalar coefficient multiplying canopy height to obtain displacement height (unitless)"
-    d_coeff::FT
-    ""
-    u0::FT
-end
-
-function ConstantCanopyRoughness{FT}(toml_dict) where {FT}
-    z_0m_coeff = toml_dict["canopy_z_0m_coeff"]
-    z_0b_coeff = toml_dict["canopy_z_0b_coeff"]
-    d_coeff = toml_dict["canopy_d_coeff"]
-    u0 = toml_dict["canopy_u0"]
-    return ConstantCanopyRoughness{FT}(z_0m_coeff, z_0b_coeff, d_coeff, u0)
-end
 
 ########################################################
 # End component model convenience constructors
@@ -731,7 +713,7 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        roughness = ConstantCanopyRoughness{FT}(toml_dict),
+        surface_flux_parameterization = MoninObukhovConstantRoughness{FT}(toml_dict),
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -772,7 +754,6 @@ function CanopyModel{FT}(
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
-    roughness = ConstantCanopyRoughness{FT}(toml_dict),
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -782,6 +763,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    surface_flux_parameterization = MoninObukhovConstantRoughness{FT}(toml_dict, biomass.height),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
@@ -816,7 +798,7 @@ function CanopyModel{FT}(
         atmos,
         radiation,
         ground,
-        roughness,
+        surface_flux_parameterization,
         prognostic_land_components,
     )
 

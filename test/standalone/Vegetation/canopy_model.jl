@@ -192,7 +192,8 @@ import ClimaParams
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
         turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
-        ClimaLand.turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0)
+        sf_parameterization = canopy.boundary_conditions.surface_flux_parameterization
+        ClimaLand.turbulent_fluxes!(turb_fluxes_copy, atmos, sf_parameterization, canopy, Y, p, t0)
 
         @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
         @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
@@ -267,7 +268,7 @@ import ClimaParams
 
         VPD = es .- ea
 
-        turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
+        turbulent_fluxes!(turb_fluxes_copy, atmos, sf_parameterization, canopy, Y, p, t0) #Per unit m^2 of leaf
         r_ae = Array(parent(turb_fluxes_copy.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
@@ -403,11 +404,6 @@ end
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
-        shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-            z_0m,
-            z_0b,
-            earth_param_set,
-        )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
         start_date = DateTime(2005)
