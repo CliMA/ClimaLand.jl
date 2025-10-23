@@ -201,7 +201,6 @@ end
     default_diagnostics(model::Union{
                             CanopyModel{FT},
                             SoilCanopyModel{FT},
-                            LandModel{FT},
                             BucketModel{FT},
                         },
                         start_date::DateTime,
@@ -229,13 +228,12 @@ Please see the docstring of `get_period` for the list of available periods,
 and the docstring of `get_reduction` for the list of available reduction types.
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
-Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
+Note that `EnergyHydrology` and `LandModel` have a specialized method that handles conservation diagnostics.
 """
 function default_diagnostics(
     model::Union{
         CanopyModel{FT},
         SoilCanopyModel{FT},
-        LandModel{FT},
         BucketModel{FT},
     },
     start_date::DateTime,
@@ -278,7 +276,7 @@ end
 
 """
     default_diagnostics(
-        land_model::EnergyHydrology{FT},
+        land_model::Union{EnergyHydrology{FT},LandModel{FT}},
         start_date::DateTime,
         outdir;
         output_writer = default_output_writer(get_domain(model), start_date, outdir),
@@ -290,7 +288,7 @@ end
         dt = nothing,
     ) where {FT}
 
-Define a method specific to the EnergyHydrology model so that we can
+Define a method specific to the EnergyHydrology and LandModel models so that we can
 handle conservation diagnostics specially.
 
 The input `output_vars` can have 3 values:
@@ -311,7 +309,7 @@ but rather included by providing `conservation = true`.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics.
 """
 function default_diagnostics(
-    land_model::EnergyHydrology{FT},
+    land_model::Union{EnergyHydrology{FT}, LandModel{FT}},
     start_date::DateTime,
     outdir;
     output_writer = default_output_writer(
