@@ -71,7 +71,7 @@ steps:
 
       - label: "Standalone canopy at Vaira Ranch"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/fluxnet_canopy.jl"
-        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
+        artifact_paths: "experiments/standalone/Vegetation/US-Var/out/*png"
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/vaira_paper.jl"
