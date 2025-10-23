@@ -1621,8 +1621,10 @@ function compute_L_max(
     return LAI_max
 end
 
+fAPAR_max_fun(k, LAI_max) = 1 - exp(-k * LAI_max)
+
 """
-    compute_m(GSL, LAI_max, fAPAR_max, Ao_sum, sigma)
+    compute_m(GSL, LAI_max, Ao_annual, sigma)
 
 Compute the parameter m, which represents the ratio of steady-state LAI to steady-state GPP.
 
@@ -1635,8 +1637,7 @@ the growing season).
 - `GSL::FT`: Growing season length (days). Defined as the length of continuous period
   above 0°C longer than 5 days.
 - `LAI_max::FT`: Seasonal maximum leaf area index (m² m⁻², dimensionless)
-- `fAPAR_max::FT`: Seasonal maximum fraction of absorbed PAR (dimensionless, 0-1)
-- `Ao_sum::FT`: Annual total potential GPP (mol m⁻² yr⁻¹). This is the integral of daily
+- `Ao_annual::FT`: Annual total potential GPP (mol m⁻² yr⁻¹). This is the integral of daily
   A₀ over the year.
 - `sigma::FT`: Dimensionless parameter representing departure from square-wave LAI dynamics.
   Globally fitted as σ = 0.771
@@ -1649,11 +1650,10 @@ the growing season).
 ```julia
 GSL = 180.0          # days (6-month growing season)
 LAI_max = 1.6        # m² m⁻²
-fAPAR_max = 0.558     # dimensionless
-Ao_sum = 100.0     # mol m⁻² yr⁻¹
+Ao_annual = 100.0     # mol m⁻² yr⁻¹
 sigma = 0.771        # dimensionless
 
-m = compute_m(GSL, LAI_max, fAPAR_max, Ao_sum, sigma)
+m = compute_m(GSL, LAI_max, Ao_annual, sigma)
 # Returns: ~4 (dimensionless, after unit conversion)
 ```
 
@@ -1663,12 +1663,13 @@ Zhou et al. (2025) Global Change Biology, Equation 20
 function compute_m(
     GSL::FT,        # days
     LAI_max::FT,    # m² m⁻² (dimensionless)
-    fAPAR_max::FT,  # dimensionless
-    Ao_sum::FT,     # mol m⁻² yr⁻¹
+    Ao_annual::FT,     # mol m⁻² yr⁻¹
     sigma::FT,      # dimensionless
+    k::FT,
 ) where {FT}
     # Equation 20: m = (σ × GSL × LAI_max) / (A₀_sum × fAPAR_max)
-    m = (sigma * GSL * LAI_max) / (Ao_sum * fAPAR_max)
+    fAPAR_max = fAPAR_max_fun(k, LAI_max)
+    m = (sigma * GSL * LAI_max) / (Ao_annual * fAPAR_max)
     return m
 end
 
@@ -1876,7 +1877,7 @@ The time scale τ ≈ 1/α days.
 # References
 Zhou et al. (2025) Global Change Biology, Equation 16
 """
-function update_LAI(
+function update_LAI!(
     LAI_prev::FT,   # m² m⁻² (dimensionless)
     L_steady::FT,   # m² m⁻² (dimensionless)
     alpha::FT,      # dimensionless (0-1)
@@ -1889,4 +1890,42 @@ function update_LAI(
 
     return LAI_new
 end
+
+function update_optimal_LAI!(
+        L; # m2 m-2
+        Ao_daily = 100.0, # this one should be computed from A?
+        k = 0.5,
+        Ao_annual = 100.0, # mol CO2 m-2 y-1, for an average forest
+        P_annual = 60000.0, # ~ 1000 mm precipitation per year,
+        D_growing = 1000.0, # mean VPD - also some average value,
+        z = 12.227, # mol m-2 yr-1, param in the paper,
+        ca = 40.0, # co2 concentration (400ppm),
+        chi = 0.7, # dimensionless,
+        f0 = 0.62, # dimensionless,
+        GSL = 180.0, # days, growing season length
+        sigma = 0.771, # dimensionless
+        alpha = 0.067, # dimensionless (15-day memory)
+    )
+    LAI_max = compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
+    m = compute_m(GSL, LAI_max, Ao_annual, sigma, k)
+    L_steady = compute_steady_state_LAI(Ao_daily, m, k, LAI_max)
+    L = update_LAI!(L, L_steady, alpha)
+end
+
+#= try:
+L = 2.0
+L = update_optimal_LAI!(L) # returns 2.055
+L = update_optimal_LAI!(L) # returns 2.106
+# etc.
+=#
+
+# TO DO:
+# add Ao_daily = f(A)
+# use local_noon_mask
+
+# NOTE: This model is a bit circular.
+# Your need Ao_annual to get LAI_max
+# But Ao_annual itself depends on LAI_max...
+
+
 
