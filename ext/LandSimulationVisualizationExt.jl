@@ -45,7 +45,7 @@ end
 A default method for `make_leaderboard_plots` notifying the user that these plots have not been enable for their domain/model combination.
 """
 function LandSimVis.make_leaderboard_plots(m, d, diag)
-    @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel, and the domain must be global."
+    @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel or BucketModel, and the domain must be global."
 end
 
 """
@@ -69,6 +69,33 @@ function LandSimVis.make_leaderboard_plots(
     diagnostics;
     savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
+)
+    # assert that data spans multiple years and is monthly output?
+    # check that the short_names include the appropriate variables for the data source?
+    diagdir = first(diagnostics).output_writer.output_dir
+    short_names = [d.variable.short_name for d in diagnostics]
+    diagnostics_folder_path = diagdir
+    leaderboard_base_path = savedir
+    for data_source in leaderboard_data_sources
+        compute_monthly_leaderboard(
+            leaderboard_base_path,
+            diagnostics_folder_path,
+            data_source,
+        )
+        compute_seasonal_leaderboard(
+            leaderboard_base_path,
+            diagnostics_folder_path,
+            data_source,
+        )
+    end
+end
+
+function LandSimVis.make_leaderboard_plots(
+    model::ClimaLand.Bucket.BucketModel,
+    domain::ClimaLand.Domains.SphericalShell,
+    diagnostics;
+    savedir = ".",
+    leaderboard_data_sources = ["ERA5"],
 )
     # assert that data spans multiple years and is monthly output?
     # check that the short_names include the appropriate variables for the data source?

@@ -556,6 +556,36 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
 @diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
 @diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
+function compute_sw_up!(out, Y, p, t, land_model::BucketModel)
+    α_sfc = ClimaLand.surface_albedo(land_model, Y, p)
+    SW_d = p.drivers.SW_d
+
+    if isnothing(out)
+        out = zeros(land_model.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = α_sfc * SW_d
+        return out
+    else
+        @. out = α_sfc * SW_d
+    end
+end
+
+function compute_lw_up!(out, Y, p, t, land_model::BucketModel)
+    LW_d = p.drivers.LW_d
+    earth_param_set = land_model.parameters.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    T_sfc = ClimaLand.surface_temperature(land_model, Y, p, t)
+    ϵ_sfc = ClimaLand.surface_emissivity(land_model, Y, p)
+    if isnothing(out)
+        out = zeros(land_model.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (1 - ϵ_sfc) * LW_d + ϵ_sfc * _σ * T_sfc^4
+        return out
+    else
+        @. out = (1 - ϵ_sfc) * LW_d + ϵ_sfc * _σ * T_sfc^4
+    end
+end
+
 function compute_surface_runoff!(
     out,
     Y,
