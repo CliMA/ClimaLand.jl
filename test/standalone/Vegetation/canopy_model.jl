@@ -203,7 +203,7 @@ import ClimaParams
         nir_d = p.canopy.radiative_transfer.nir_d
         par_d = p.canopy.radiative_transfer.par_d
         @test p.canopy.radiative_transfer.SW_n ==
-              @. f_abs_par * par_d + f_abs_nir * nir_d
+              @. -(f_abs_par * par_d + f_abs_nir * nir_d)
         ϵ_canopy = p.canopy.radiative_transfer.ϵ
         T_canopy = FT.(289)
         T_soil = FT(298) # we are using the default value
@@ -211,7 +211,7 @@ import ClimaParams
         LW_d = FT.(longwave_radiation(t0))
         LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
         LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
-        @test p.canopy.radiative_transfer.LW_n == @. (
+        @test p.canopy.radiative_transfer.LW_n == @. -(
             ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
             ϵ_canopy * LW_u_soil
         )
