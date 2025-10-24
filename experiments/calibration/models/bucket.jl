@@ -36,7 +36,12 @@ function setup_model(
         context,
     )
 
-    albedo = PrescribedBaregroundAlbedo(toml_dict, surface_space)
+    albedo = ClimaLand.Bucket.PrescribedSurfaceAlbedo{FT}(
+            start_date,
+            surface_space;
+            albedo_file_path = ClimaLand.Artifacts.ceres_albedo_dataset_path(),
+            varname = "sw_alb_clr",
+        )
     bucket_parameters =
         BucketModelParameters(toml_dict, albedo = albedo, τc = FT(float(Δt)))
     bucket = BucketModel(
