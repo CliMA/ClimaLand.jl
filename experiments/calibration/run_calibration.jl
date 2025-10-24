@@ -20,7 +20,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (101, 15),
-    output_dir = "/glade/derecho/scratch/kdeck/calibrate_all_v1",
+    output_dir = "/glade/derecho/scratch/kdeck/calibrate_all_v1_repeat_larger_prior",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
 )
@@ -28,14 +28,13 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 
 if abspath(PROGRAM_FILE) == @__FILE__
     priors = [
-        EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
-        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
-        EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
-        EKP.constrained_gaussian("canopy_u0", 0.0025, 0.002, 0.0, 0.025),
-        EKP.constrained_gaussian("canopy_height", 1.0, 0.5, 0.1, 8.0),
-        EKP.constrained_gaussian("emissivity_bare_soil", 0.96, 0.03, 0.0, 1.0),
-        EKP.constrained_gaussian("canopy_emissivity", 0.97, 0.02, 0.0, 1.0),
-        EKP.constrained_gaussian("ac_canopy", 2.5e3, 1e3, 1e3, 2.5e5),
+        EKP.constrained_gaussian("moisture_stress_c", 0.5, 0.25, 0, 2),
+        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.21, 0, Inf),
+        EKP.constrained_gaussian("pmodel_β", 146, 40, 0, Inf),
+        EKP.constrained_gaussian("canopy_u0", 5e-4, 3e-4, 5e-5, 2.5e-3),
+#        EKP.constrained_gaussian("emissivity_bare_soil", 0.96, 0.03, 0.01, 0.999),
+        EKP.constrained_gaussian("canopy_emissivity", 0.85, 0.12, 0.4, 0.999),
+        EKP.constrained_gaussian("ac_canopy", 3.5e4, 2e4, 2.5e3, 2.5e5),
     ]
     prior = EKP.combine_distributions(priors)
 
