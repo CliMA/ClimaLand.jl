@@ -770,7 +770,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     L = p.canopy.photosynthesis.L
     A = p.canopy.photosynthesis.An
     cosθs = p.drivers.cosθs
-    update_optimal_LAI(L, A, cosθs, canopy, local_noon_mask)
+    update_optimal_LAI!(local_noon_mask, A, L)
 end
 
 """
@@ -1878,22 +1878,35 @@ The time scale τ ≈ 1/α days.
 Zhou et al. (2025) Global Change Biology, Equation 16
 """
 function update_LAI!(
-    LAI_prev::FT,   # m² m⁻² (dimensionless)
-    L_steady::FT,   # m² m⁻² (dimensionless)
-    alpha::FT,      # dimensionless (0-1)
-) where {FT}
-    # Equation 16: LAI_sim = α × L_s[t] + (1-α) × LAI_sim[t-1]
-    LAI_new = alpha * L_steady + (1 - alpha) * LAI_prev
+        LAI_prev::FT,   # m² m⁻² (dimensionless)
+        L_steady::FT,   # m² m⁻² (dimensionless)
+        alpha::FT,      # dimensionless (0-1)
+        local_noon_mask::FT,
+    ) where {FT}
+    if local_noon_mask == FT(1.0)
+        # Equation 16: LAI_sim = α × L_s[t] + (1-α) × LAI_sim[t-1]
+        LAI_new = alpha * L_steady + (1 - alpha) * LAI_prev
 
-    # Ensure non-negative (important for numerical stability, especially at initialization)
-    LAI_new = max(zero(FT), LAI_new)
+        # Ensure non-negative (important for numerical stability, especially at initialization)
+        LAI_new = max(zero(FT), LAI_new)
+        return LAI_new
+    else
+        return LAI_prev
+    end
+end
 
-    return LAI_new
+function compute_Ao_daily(A, k, L)
+    Ao_daily_inst = A/max(1-exp(-k*L), eps(FT))
+    Ao_daily = Ao_daily_inst * 3600 * 8 # 3600 sec in an hour, 8 hour of sunlight
+    # Note: would be better to integrate daily A instead of assuming noon * 8 hours...
+    return Ao_daily
 end
 
 function update_optimal_LAI!(
+        local_noon_mask,
+        A,
         L; # m2 m-2
-        Ao_daily = 100.0, # this one should be computed from A?
+        # Ao_daily = 100.0, # this one should be computed from A?
         k = 0.5,
         Ao_annual = 100.0, # mol CO2 m-2 y-1, for an average forest
         P_annual = 60000.0, # ~ 1000 mm precipitation per year,
@@ -1906,26 +1919,10 @@ function update_optimal_LAI!(
         sigma = 0.771, # dimensionless
         alpha = 0.067, # dimensionless (15-day memory)
     )
+    Ao_daily = compute_Ao_daily(A, k, L)
     LAI_max = compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
     m = compute_m(GSL, LAI_max, Ao_annual, sigma, k)
     L_steady = compute_steady_state_LAI(Ao_daily, m, k, LAI_max)
-    L = update_LAI!(L, L_steady, alpha)
+    @. L = update_LAI!(L, L_steady, alpha, local_noon_mask)
 end
-
-#= try:
-L = 2.0
-L = update_optimal_LAI!(L) # returns 2.055
-L = update_optimal_LAI!(L) # returns 2.106
-# etc.
-=#
-
-# TO DO:
-# add Ao_daily = f(A)
-# use local_noon_mask
-
-# NOTE: This model is a bit circular.
-# Your need Ao_annual to get LAI_max
-# But Ao_annual itself depends on LAI_max...
-
-
 
