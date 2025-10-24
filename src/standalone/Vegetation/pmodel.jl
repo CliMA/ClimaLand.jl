@@ -770,7 +770,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     L = p.canopy.photosynthesis.L
     A = p.canopy.photosynthesis.An
     cosθs = p.drivers.cosθs
-    update_optimal_LAI!(local_noon_mask, A, L)
+    @. L = update_optimal_LAI(local_noon_mask, A, L)
 end
 
 """
@@ -1895,34 +1895,35 @@ function update_LAI!(
     end
 end
 
-function compute_Ao_daily(A, k, L)
+function compute_Ao_daily(A::FT, k::FT, L::FT) where {FT}
     Ao_daily_inst = A/max(1-exp(-k*L), eps(FT))
     Ao_daily = Ao_daily_inst * 3600 * 8 # 3600 sec in an hour, 8 hour of sunlight
     # Note: would be better to integrate daily A instead of assuming noon * 8 hours...
     return Ao_daily
 end
 
-function update_optimal_LAI!(
-        local_noon_mask,
-        A,
-        L; # m2 m-2
+function update_optimal_LAI(
+        local_noon_mask::FT,
+        A::FT,
+        L::FT; # m2 m-2
         # Ao_daily = 100.0, # this one should be computed from A?
-        k = 0.5,
-        Ao_annual = 100.0, # mol CO2 m-2 y-1, for an average forest
-        P_annual = 60000.0, # ~ 1000 mm precipitation per year,
-        D_growing = 1000.0, # mean VPD - also some average value,
-        z = 12.227, # mol m-2 yr-1, param in the paper,
-        ca = 40.0, # co2 concentration (400ppm),
-        chi = 0.7, # dimensionless,
-        f0 = 0.62, # dimensionless,
-        GSL = 180.0, # days, growing season length
-        sigma = 0.771, # dimensionless
-        alpha = 0.067, # dimensionless (15-day memory)
-    )
+        k = FT(0.5),
+        Ao_annual = FT(100.0), # mol CO2 m-2 y-1, for an average forest
+        P_annual = FT(60000.0), # ~ 1000 mm precipitation per year,
+        D_growing = FT(1000.0), # mean VPD - also some average value,
+        z = FT(12.227), # mol m-2 yr-1, param in the paper,
+        ca = FT(40.0), # co2 concentration (400ppm),
+        chi = FT(0.7), # dimensionless,
+        f0 = FT(0.62), # dimensionless,
+        GSL = FT(180.0), # days, growing season length
+        sigma = FT(0.771), # dimensionless
+        alpha = FT(0.067), # dimensionless (15-day memory)
+    ) where {FT}
     Ao_daily = compute_Ao_daily(A, k, L)
     LAI_max = compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
     m = compute_m(GSL, LAI_max, Ao_annual, sigma, k)
     L_steady = compute_steady_state_LAI(Ao_daily, m, k, LAI_max)
-    @. L = update_LAI!(L, L_steady, alpha, local_noon_mask)
+    L = update_LAI!(L, L_steady, alpha, local_noon_mask)
+    return L
 end
 
