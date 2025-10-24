@@ -9,7 +9,7 @@
 # module load climacommon
 # export CLIMACOMMS_DEVICE=CUDA
 # export CLIMACOMMS_CONTEXT=SINGLETON
-# cd /home/renatob/ClimaLand.jl
+# cd <path-to-ClimaLand.jl>
 # julia --color=yes --project=.buildkite experiments/long_runs/compare_canopy_heights.jl
 
 import ClimaComms
@@ -102,12 +102,10 @@ function setup_model(
     # Choose biomass model based on configuration
     if use_spatially_varying_height
         @info "Using spatially-varying canopy height from CLM data"
-        # Read spatially-varying canopy height from CLM data
-        raw_canopy_height = clm_canopy_height(surface_space)
-        # Cap height to stay below atmospheric reference height (ERA5 at 10m)
-        canopy_height = effective_canopy_height(
-            raw_canopy_height,
-            FT(10.0);
+        # Read spatially-varying canopy height from CLM data with automatic capping
+        canopy_height = clm_canopy_height(
+            surface_space;
+            z_atm = FT(10.0),
             buffer = FT(2.0),
         )
 

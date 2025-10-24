@@ -74,8 +74,7 @@ end
     LAI = TimeVaryingInput(LAI_fun)
 
     # Create a spatially-varying height field
-    coords = ClimaCore.Fields.coordinate_field(surface_space)
-    field_height = coords.lat .* 0 .+ FT(3.0)  # Constant field of 3m for testing
+    field_height = zeros(surface_space) .+ FT(3.0)  # Constant field of 3m for testing
 
     # Test with Field height
     biomass = Canopy.PrescribedBiomassModel{FT}(
@@ -117,16 +116,14 @@ end
     LAI_fun = (t) -> FT(5.0)
     LAI = TimeVaryingInput(LAI_fun)
 
-    # Read spatially-varying canopy height from CLM data
-    raw_height = Canopy.clm_canopy_height(
+    # Read spatially-varying canopy height from CLM data with automatic capping
+    z_atm = FT(10.0)
+    capped_height = Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
+        z_atm = z_atm,
     )
-
-    # Apply capping
-    z_atm = FT(10.0)
-    capped_height = Canopy.effective_canopy_height(raw_height, z_atm)
 
     # Create biomass model with spatially-varying capped height
     biomass = Canopy.PrescribedBiomassModel{FT}(
@@ -214,12 +211,12 @@ end
     LAI = TimeVaryingInput(LAI_fun)
 
     # Read and cap spatially-varying canopy height
-    raw_height = Canopy.clm_canopy_height(
+    capped_height = Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
+        z_atm = h_atmos,
     )
-    capped_height = Canopy.effective_canopy_height(raw_height, h_atmos)
 
     # Create biomass model with spatially-varying height
     biomass = Canopy.PrescribedBiomassModel{FT}(

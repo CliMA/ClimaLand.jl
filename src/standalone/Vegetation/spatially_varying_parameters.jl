@@ -317,6 +317,8 @@ end
         ),
         interpolation_method = Interpolations.Linear(),
         lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        z_atm = nothing,
+        buffer = nothing,
     )
 
 Reads spatially varying canopy height from a NetCDF file based on CLM data,
@@ -338,6 +340,21 @@ with the closest resolution to the surface_space is used.
 
 By default linear interpolation is used. This can be changed to nearest neighbor by passing
 `interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+
+# Height capping
+When `z_atm` is provided, canopy heights are automatically capped to `z_atm - buffer` 
+(default buffer: 2m) during data preprocessing. This ensures canopy heights remain below 
+the atmospheric reference height for proper flux calculations. If `z_atm` is not provided,
+no capping is applied.
+
+# Example
+```julia
+# Without capping
+height = clm_canopy_height(surface_space)
+
+# With capping for ERA5 forcing at 10m
+height = clm_canopy_height(surface_space; z_atm = FT(10.0), buffer = FT(2.0))
+```
 """
 function clm_canopy_height(
     surface_space;
@@ -349,9 +366,22 @@ function clm_canopy_height(
     ),
     interpolation_method = Interpolations.Linear(),
     lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    z_atm = nothing,
+    buffer = nothing,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
+
+    # Create preprocessing function for height capping if z_atm is provided
+    if z_atm !== nothing
+        FT = eltype(surface_space)
+        buff = buffer === nothing ? FT(2.0) : buffer
+        max_height = z_atm - buff
+        preprocess_func = (data) -> min.(data, max_height)
+        file_reader_kwargs = (; preprocess_func = preprocess_func,)
+    else
+        file_reader_kwargs = NamedTuple()
+    end
 
     canopy_height = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -359,64 +389,7 @@ function clm_canopy_height(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = file_reader_kwargs,
     )
     return canopy_height
-end
-
-"""
-    effective_canopy_height(
-        canopy_height::ClimaCore.Fields.Field,
-        z_atm::FT;
-        buffer::FT = FT(2.0)
-    ) where {FT}
-
-Caps canopy heights to ensure they remain below the atmospheric reference height.
-This is necessary when atmospheric forcing data (e.g., ERA5) is provided at a fixed
-reference height (typically 10m). The canopy height must be less than z_atm to ensure
-proper flux calculations and atmospheric coupling.
-
-# Arguments
-- `canopy_height`: Field of canopy heights read from CLM data (meters)
-- `z_atm`: Atmospheric reference height for forcing data (meters)
-- `buffer`: Minimum distance between canopy top and atmospheric reference (default: 2m)
-
-# Returns
-- Field of effective canopy heights, capped at `z_atm - buffer`
-
-# Example
-```julia
-raw_height = clm_canopy_height(surface_space)
-z_atm = FT(10.0)  # ERA5 forcing at 10m
-height = effective_canopy_height(raw_height, z_atm)
-```
-
-# Notes
-The function will log a warning message indicating how many grid cells had their
-canopy height capped and provide statistics about the original height distribution.
-This typically affects ~7% of global cells, primarily in regions with tall forests
-(e.g., tropical rainforests, temperate forests in Patagonia and New Zealand).
-"""
-function effective_canopy_height(
-    canopy_height::ClimaCore.Fields.Field,
-    z_atm::FT;
-    buffer::FT = FT(2.0),
-) where {FT}
-    max_height = z_atm - buffer
-
-    # Compute statistics on CPU to avoid GPU Boolean Field issues
-    max_original = maximum(canopy_height)
-
-    # Only warn if we actually have heights that need capping
-    if max_original >= max_height
-        # Count how many cells exceed the threshold by summing a float-converted mask
-        # This avoids creating Boolean Fields on GPU
-        n_capped_field = @. ifelse(canopy_height >= max_height, FT(1), FT(0))
-        n_capped_sum = sum(n_capped_field)
-        n_total = length(canopy_height)
-        pct_capped = 100.0 * n_capped_sum / n_total
-        @warn "Capping canopy heights: $(round(n_capped_sum))/$n_total cells ($(round(pct_capped, digits=2))%) exceed max_height=$max_height m. Original max height: $(round(max_original, digits=2)) m. This is expected for tall forests when using atmospheric forcing at z_atm=$(z_atm) m."
-    end
-
-    # Apply cap: min(height, max_height) at each point
-    return min.(canopy_height, max_height)
 end

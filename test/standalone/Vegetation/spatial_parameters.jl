@@ -126,8 +126,7 @@ end
     surface_space = domain.space.surface
 
     # Create a test field with known values including some that exceed the cap
-    coords = ClimaCore.Fields.coordinate_field(surface_space)
-    test_heights = coords.lat .* 0 .+ FT(5.0)  # Initialize to 5m
+    test_heights = zeros(surface_space) .+ FT(5.0)  # Initialize to 5m
 
     # Set some points to high values that should be capped
     parent(test_heights)[1:10] .= FT(15.0)
