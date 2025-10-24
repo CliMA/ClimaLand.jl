@@ -163,11 +163,11 @@ radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
     α_PAR_leaf,
-    τ_PAR_leaf,
+    #τ_PAR_leaf,
     α_NIR_leaf,
-    τ_NIR_leaf,
+    #τ_NIR_leaf,
 )
-radiative_transfer = Canopy.TwoStreamModel{FT}(
+radiative_transfer = Canopy.BeerLambertModel{FT}(
     surface_domain,
     toml_dict;
     radiation_parameters,
@@ -255,7 +255,7 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 # Callbacks
-output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil"]
+output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil", "lai", "lai_pred"]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
@@ -274,7 +274,7 @@ simulation = LandSimulation(
     updateat = Second(dt), # How often we want to update the drivers
     diagnostics = diags,
 )
-
+#=
 @time solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
@@ -301,3 +301,4 @@ LandSimVis.make_timeseries(
     spinup_date = start_date + Day(20),
     comparison_data,
 )
+=#
