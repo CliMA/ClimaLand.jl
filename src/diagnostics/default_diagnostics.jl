@@ -443,6 +443,8 @@ function get_possible_diagnostics(model::BucketModel)
         "lhf",
         "rae",
         "shf",
+        "swu",
+        "lwu",
         "vflux",
         "rhosfc",
         "tsoil",
