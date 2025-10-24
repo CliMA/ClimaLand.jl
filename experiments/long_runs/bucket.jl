@@ -129,11 +129,16 @@ simulation = LandSimulation(
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 solve!(simulation);
 
-short_names = ["tsfc", "lhf", "shf", "wsoil"]
+short_names = ["tsfc", "lhf", "shf", "wsoil", "swu", "lwu"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
 LandSimVis.make_heatmaps(
     simulation;
     savedir = root_path,
     short_names,
     date = stop_date,
+)
+LandSimVis.make_leaderboard_plots(
+    simulation;
+    savedir = root_path,
+    leaderboard_data_sources = ["ERA5"],
 )
