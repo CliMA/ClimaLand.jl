@@ -317,7 +317,7 @@ function PlantHydraulicsModel{FT}(
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
-    h_leaf::FT = FT(1),
+    h_leaf::FT = toml_dict["canopy_height"],
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
@@ -400,6 +400,7 @@ function PrescribedBiomassModel{FT}(
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
+        typeof(height),
     }(
         plant_area_index,
         rooting_depth,
@@ -692,10 +693,37 @@ function CanopyModel{FT}(;
         @assert typeof(photosynthesis) <: PModel{FT} "When using PModelConductance for stomatal conductance, you must also use PModel for photosynthesis"
     end
 
+    # Height consistency check between biomass and hydraulics:
+    #
+    # biomass.height:
+    #   - Used for: Aerodynamic calculations (displacement height, roughness length)
+    #   - Type: Can be spatially-varying (Field) or uniform (scalar)
+    #   - Source: CLM canopy height data or prescribed constant
+    #
+    # hydraulics_height:
+    #   - Used for: Vertical structure of plant water transport (defines compartment spacing)
+    #   - Type: Currently always a scalar
+    #   - Computed from: hydraulics.compartment_surfaces[end] - hydraulics.compartment_surfaces[1]
+    #
+    # Important: When biomass.height is a spatially-varying Field, the hydraulics height remains
+    # a uniform scalar value (typically 1m from toml_dict["canopy_height"]). This means:
+    # 1. Spatially-varying height affects ONLY aerodynamics (displacement_height, roughness_length)
+    # 2. Plant hydraulics compartment structure is uniform everywhere (1m tall everywhere)
+    # 3. This assertion enforces that biomass.height matches the uniform hydraulics height
+    #
+    # Future work: Extend PlantHydraulicsModel to support spatially-varying compartment heights.
     if typeof(hydraulics) <: PlantHydraulicsModel{FT}
-        @assert biomass.height ==
-                hydraulics.compartment_surfaces[end] -
-                hydraulics.compartment_surfaces[1]
+        hydraulics_height =
+            hydraulics.compartment_surfaces[end] -
+            hydraulics.compartment_surfaces[1]
+        # biomass.height can be scalar or Field, hydraulics_height is always scalar
+        if biomass.height isa ClimaCore.Fields.Field
+            @assert all(
+                isapprox.(biomass.height, hydraulics_height, rtol = 1e-10),
+            ) "Biomass height Field must match hydraulics height everywhere"
+        else
+            @assert biomass.height ≈ hydraulics_height "Biomass height must match hydraulics height"
+        end
     end
 
 

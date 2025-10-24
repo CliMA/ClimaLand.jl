@@ -305,3 +305,91 @@ function clm_medlyn_g1(
     )
     return g1
 end
+
+"""
+    clm_canopy_height(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        z_atm = nothing,
+        buffer = nothing,
+    )
+
+Reads spatially varying canopy height from a NetCDF file based on CLM data,
+and regrids it to the grid defined by the `surface_space` of the Clima simulation.
+Returns a ClimaCore Field.
+
+The values correspond to the canopy height of the dominant PFT at each point,
+averaged over the year from CLM5's MONTHLY_HEIGHT_TOP variable. Heights are in meters.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type`, `extrapolation_bc`, and
+`interpolation_method` affect the regridding by (1) changing how we interpolate 
+to ClimaCore points which are not in the data, (2) changing how we extrapolate 
+to points beyond the range of the data, and (3) changing the spatial interpolation method.
+
+The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
+
+By default linear interpolation is used. This can be changed to nearest neighbor by passing
+`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+
+# Height capping
+When `z_atm` is provided, canopy heights are automatically capped to `z_atm - buffer` 
+(default buffer: 2m) during data preprocessing. This ensures canopy heights remain below 
+the atmospheric reference height for proper flux calculations. If `z_atm` is not provided,
+no capping is applied.
+
+# Example
+```julia
+# Without capping
+height = clm_canopy_height(surface_space)
+
+# With capping for ERA5 forcing at 10m
+height = clm_canopy_height(surface_space; z_atm = FT(10.0), buffer = FT(2.0))
+```
+"""
+function clm_canopy_height(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    z_atm = nothing,
+    buffer = nothing,
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
+
+    # Create preprocessing function for height capping if z_atm is provided
+    if z_atm !== nothing
+        FT = eltype(surface_space)
+        buff = buffer === nothing ? FT(2.0) : buffer
+        max_height = z_atm - buff
+        preprocess_func = (data) -> min.(data, max_height)
+        file_reader_kwargs = (; preprocess_func = preprocess_func,)
+    else
+        file_reader_kwargs = NamedTuple()
+    end
+
+    canopy_height = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "z_top",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = file_reader_kwargs,
+    )
+    return canopy_height
+end
