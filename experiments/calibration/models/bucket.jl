@@ -34,7 +34,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
     )
 
     albedo = PrescribedBaregroundAlbedo(toml_dict, surface_space)
