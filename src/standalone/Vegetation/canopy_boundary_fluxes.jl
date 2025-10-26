@@ -469,7 +469,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = FT((u0 * ustar)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_leaf::FT = u0/max(ustar, gustiness)
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
