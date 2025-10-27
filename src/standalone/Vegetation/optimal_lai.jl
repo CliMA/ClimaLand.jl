@@ -1,7 +1,8 @@
 export AbstractLAIModel,
     OptimalLAIModel,
     OptimalLAIParameters,
-    update_LAI
+    update_LAI,
+    initialize_LAI!
 
 """
     AbstractLAIModel{FT <: AbstractFloat}
@@ -84,6 +85,15 @@ ClimaLand.auxiliary_types(model::OptimalLAIModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(::OptimalLAIModel) = (:surface,)
 
 ClimaLand.name(::AbstractLAIModel) = :lai_model
+
+"""
+    initialize_LAI!(p, model::OptimalLAIModel, initial_value::FT = FT(1.0)) where {FT}
+
+Initialize the LAI field to a given initial value. Default is 1.0 m² m⁻².
+"""
+function initialize_LAI!(p, model::OptimalLAIModel, initial_value = eltype(model)(1.0))
+    p.canopy.lai_model.LAI .= initial_value
+end
 
 """
     compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
