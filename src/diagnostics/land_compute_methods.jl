@@ -261,7 +261,7 @@ end
     SoilCanopyModel,
     LandModel,
     CanopyModel,
-} p.canopy.photosynthesis.L
+} p.canopy.lai_model.LAI
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
