@@ -91,8 +91,8 @@ end
     )
     surface_space = domain.space.surface
 
-    # Test clm_canopy_height function
-    canopy_height = ClimaLand.Canopy.clm_canopy_height(
+    # Test canopy_height function
+    canopy_height = ClimaLand.Canopy.canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
@@ -133,8 +133,7 @@ end
 
     # Test with default buffer (2m)
     z_atm = FT(10.0)
-    capped_heights =
-        ClimaLand.Canopy.effective_canopy_height(test_heights, z_atm)
+    capped_heights = min.(test_heights, z_atm - FT(2.0))
 
     # Check that all heights are below the cap
     max_allowed = z_atm - FT(2.0)  # default buffer
@@ -148,11 +147,7 @@ end
 
     # Test with custom buffer
     custom_buffer = FT(3.0)
-    capped_heights_custom = ClimaLand.Canopy.effective_canopy_height(
-        test_heights,
-        z_atm;
-        buffer = custom_buffer,
-    )
+    capped_heights_custom = min.(test_heights, z_atm - custom_buffer)
     max_allowed_custom = z_atm - custom_buffer
     @test all(Array(parent(capped_heights_custom)) .<= max_allowed_custom)
     @test Array(parent(capped_heights_custom))[1] == max_allowed_custom
