@@ -37,22 +37,28 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
-    """Annual total potential GPP (mol m⁻² yr⁻¹), for an average forest typically ~100"""
-    Ao_annual::FT
-    """Annual total precipitation (mol m⁻² yr⁻¹), ~60000 mol m⁻² yr⁻¹ corresponds to ~1000 mm"""
-    P_annual::FT
-    """Mean vapor pressure deficit during the growing season (Pa), typically ~1000 Pa"""
-    D_growing::FT
-    """Ambient CO₂ partial pressure (Pa), ~40 Pa corresponds to 400 ppm"""
-    ca::FT
-    """Growing season length (days), defined as continuous period above 0°C longer than 5 days"""
-    GSL::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
 
 # make these custom structs broadcastable as tuples
 Base.broadcastable(x::OptimalLAIParameters) = tuple(x)
+
+"""
+    OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
+
+Creates an `OptimalLAIParameters` object from a TOML parameter dictionary.
+"""
+function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
+    return OptimalLAIParameters{FT}(
+        k = FT(toml_dict["optimal_lai_k"]),
+        z = FT(toml_dict["optimal_lai_z"]),
+        chi = FT(toml_dict["optimal_lai_chi"]),
+        f0 = FT(toml_dict["optimal_lai_f0"]),
+        sigma = FT(toml_dict["optimal_lai_sigma"]),
+        alpha = FT(toml_dict["optimal_lai_alpha"]),
+    )
+end
 
 """
     OptimalLAIModel{FT, OLPT <: OptimalLAIParameters{FT}} <: AbstractLAIModel{FT}
@@ -523,19 +529,15 @@ function call_update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
     A = p.canopy.photosynthesis.An
     
     # Update LAI using the optimal LAI model
+    # Note: Ao_annual, P_annual, D_growing, ca, GSL are optional args with defaults in update_optimal_LAI
     @. L = update_optimal_LAI(
         local_noon_mask, 
         A, 
         L;
         k = parameters.k,
-        Ao_annual = parameters.Ao_annual,
-        P_annual = parameters.P_annual,
-        D_growing = parameters.D_growing,
         z = parameters.z,
-        ca = parameters.ca,
         chi = parameters.chi,
         f0 = parameters.f0,
-        GSL = parameters.GSL,
         sigma = parameters.sigma,
         alpha = parameters.alpha,
     )

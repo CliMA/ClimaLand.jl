@@ -183,19 +183,7 @@ photosynthesis = PModel{FT}(surface_domain, toml_dict; is_c3)
 
 # Set up optimal LAI model
 lai_model = Canopy.OptimalLAIModel{FT}(
-    Canopy.OptimalLAIParameters{FT}(
-        k = FT(0.5),
-        z = FT(12.227),
-        chi = FT(0.7),
-        f0 = FT(0.62),
-        sigma = FT(0.771),
-        alpha = FT(0.067),
-        Ao_annual = FT(100.0),
-        P_annual = FT(60000.0),
-        D_growing = FT(1000.0),
-        ca = FT(40.0),
-        GSL = FT(180.0),
-    )
+    Canopy.OptimalLAIParameters{FT}(toml_dict)
 )
 
 # Set up soil moisture stress using soil retention parameters

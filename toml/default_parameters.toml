@@ -466,3 +466,41 @@ value = 7.85
 type = "float"
 description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
 tag = "SIFParameters"
+
+# Optimal LAI Model parameters (Zhou et al. 2025)
+
+["optimal_lai_k"]
+value = 0.5
+type = "float"
+description = "Light extinction coefficient (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z"]
+value = 12.227
+type = "float"
+description = "Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_chi"]
+value = 0.7
+type = "float"
+description = "Ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0"]
+value = 0.62
+type = "float"
+description = "Fraction of annual precipitation used by plants (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma"]
+value = 0.771
+type = "float"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics"
+tag = "OptimalLAIModel"
+
+["optimal_lai_alpha"]
+value = 0.067
+type = "float"
+description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+tag = "OptimalLAIModel"
