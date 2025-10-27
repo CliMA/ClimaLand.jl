@@ -181,6 +181,11 @@ conductance = PModelConductance{FT}(toml_dict)
 is_c3 = FT(1)
 photosynthesis = PModel{FT}(surface_domain, toml_dict; is_c3)
 
+# Set up optimal LAI model
+lai_model = Canopy.OptimalLAIModel{FT}(
+    Canopy.OptimalLAIParameters{FT}(toml_dict)
+)
+
 # Set up soil moisture stress using soil retention parameters
 soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
     land_domain,
@@ -230,6 +235,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    lai_model,
     soil_moisture_stress,
     hydraulics,
     energy,
