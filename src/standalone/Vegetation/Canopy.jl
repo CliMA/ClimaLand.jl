@@ -607,7 +607,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, LAI, BM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -625,6 +625,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
     energy::EM
     "SIF model, a canopy component model"
     sif::SIFM
+    "LAI model, a canopy component model"
+    lai_model::LAI
     "Biomass parameterization, a canopy component model"
     biomass::BM
     "Boundary Conditions"
@@ -645,6 +647,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
+        lai_model::AbstractLAIModel{FT},
         biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
         parameters::SharedCanopyParameters{FT, PSE},
@@ -670,6 +673,7 @@ function CanopyModel{FT}(;
     hydraulics::AbstractPlantHydraulicsModel{FT},
     soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     sif::AbstractSIFModel{FT},
+    lai_model::AbstractLAIModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
@@ -709,6 +713,7 @@ function CanopyModel{FT}(;
         hydraulics,
         energy,
         sif,
+        lai_model,
         biomass,
         boundary_conditions,
         parameters,
@@ -781,6 +786,7 @@ function CanopyModel{FT}(
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     sif = Lee2015SIFModel{FT}(toml_dict),
+    lai_model,  # Required parameter - must be explicitly provided
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 
@@ -800,6 +806,7 @@ function CanopyModel{FT}(
         energy,
         biomass,
         sif,
+        lai_model,
     ]
         # For component models without parameters, skip the check
         !hasproperty(component, :parameters) && continue
@@ -832,6 +839,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         sif,
+        lai_model,
         biomass,
         boundary_conditions,
         parameters,
@@ -860,6 +868,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :lai_model,
     :soil_moisture_stress,
     :biomass,
 )
