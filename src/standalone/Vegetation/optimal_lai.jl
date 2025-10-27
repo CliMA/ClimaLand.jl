@@ -2,7 +2,9 @@ export AbstractLAIModel,
     OptimalLAIModel,
     OptimalLAIParameters,
     update_LAI,
-    initialize_LAI!
+    initialize_LAI!,
+    make_OptimalLAI_callback,
+    call_update_optimal_LAI
 
 """
     AbstractLAIModel{FT <: AbstractFloat}
@@ -35,6 +37,16 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
     alpha::FT
+    """Annual total potential GPP (mol m⁻² yr⁻¹), for an average forest typically ~100"""
+    Ao_annual::FT
+    """Annual total precipitation (mol m⁻² yr⁻¹), ~60000 mol m⁻² yr⁻¹ corresponds to ~1000 mm"""
+    P_annual::FT
+    """Mean vapor pressure deficit during the growing season (Pa), typically ~1000 Pa"""
+    D_growing::FT
+    """Ambient CO₂ partial pressure (Pa), ~40 Pa corresponds to 400 ppm"""
+    ca::FT
+    """Growing season length (days), defined as continuous period above 0°C longer than 5 days"""
+    GSL::FT
 end
 
 Base.eltype(::OptimalLAIParameters{FT}) where {FT} = FT
@@ -492,4 +504,129 @@ function update_optimal_LAI(
     L_steady = compute_steady_state_LAI(Ao_daily, m, k, LAI_max)
     L = update_LAI!(L, L_steady, alpha, local_noon_mask)
     return L
+end
+
+"""
+    call_update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
+
+Updates the LAI according to conditions at local noon using the optimal LAI model.
+"""
+function call_update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
+    # Import get_local_noon_mask function
+    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
+    
+    # Get parameters from the LAI model
+    parameters = canopy.lai_model.parameters
+    
+    # Get LAI and photosynthesis rate
+    L = p.canopy.lai_model.LAI
+    A = p.canopy.photosynthesis.An
+    
+    # Update LAI using the optimal LAI model
+    @. L = update_optimal_LAI(
+        local_noon_mask, 
+        A, 
+        L;
+        k = parameters.k,
+        Ao_annual = parameters.Ao_annual,
+        P_annual = parameters.P_annual,
+        D_growing = parameters.D_growing,
+        z = parameters.z,
+        ca = parameters.ca,
+        chi = parameters.chi,
+        f0 = parameters.f0,
+        GSL = parameters.GSL,
+        sigma = parameters.sigma,
+        alpha = parameters.alpha,
+    )
+end
+
+"""
+    get_local_noon_mask(t::FT, dt::FT, local_noon::FT) where {FT}
+
+This function determines whether the current time `t` (seconds UTC) is within a local noon window of width
+`dt` (seconds) centered around the local noon time.
+"""
+function get_local_noon_mask(t, dt, local_noon::FT) where {FT}
+    strict_noon_mask =
+        FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2
+    return FT(strict_noon_mask)
+end
+
+"""
+    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy, longitude = nothing) where {FT <: AbstractFloat}
+
+This constructs an IntervalBasedCallback for the optimal LAI model that updates the LAI
+using an exponential moving average at local noon.
+
+We check for local noon using the provided `longitude` (once passing
+in lat/lon for point/column domains, this can be automatically extracted from the domain axes) every dt.
+The time of local noon is expressed in seconds UTC and neglects the effects of obliquity and eccentricity, so
+it is constant throughout the year.
+
+# Arguments
+- `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
+- `t0`: ITime, with epoch in UTC.
+- `dt`: timestep
+- `canopy`: the canopy object containing the optimal LAI model parameters.
+- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
+    that it will be inferred from the canopy domain).
+"""
+function make_OptimalLAI_callback(
+    ::Type{FT},
+    t0,
+    dt,
+    canopy,
+    longitude = nothing,
+) where {FT <: AbstractFloat}
+    function seconds_after_midnight(date)
+        return FT(
+            Hour(date).value * 3600 +
+            Minute(date).value * 60 +
+            Second(date).value,
+        )
+    end
+
+    if isnothing(longitude)
+        try
+            longitude = get_long(canopy.domain.space.surface)
+        catch e
+            error(
+                "Longitude must be provided explicitly if the domain you are working on does not \
+                  have axes that specify longitude $e",
+            )
+        end
+    end
+
+    # this computes the time of local noon in seconds UTC without considering the
+    # effects of obliquity and orbital eccentricity, so it is constant throughout the year
+    # the max error is on the order of 20 minutes
+    seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
+    start_t = seconds_after_midnight(date(t0))
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
+    affect! =
+        (integrator) -> call_update_optimal_LAI(
+            integrator.p,
+            integrator.u,
+            (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC;
+            canopy = canopy,
+            dt = dt,
+            local_noon = local_noon,
+        )
+    return IntervalBasedCallback(
+        dt,         # period of this callback
+        t0,         # simulation start
+        dt,         # integration timestep
+        affect!;
+    )
+end
+
+"""
+    get_model_callbacks(component::OptimalLAIModel, canopy; t0, Δt)
+
+Creates the optimal LAI callback and returns it as a single element tuple of model callbacks.
+"""
+function get_model_callbacks(component::OptimalLAIModel{FT}, canopy; t0, Δt) where {FT}
+    lai_cb = make_OptimalLAI_callback(FT, t0, Δt, canopy)
+    return (lai_cb,)
 end
