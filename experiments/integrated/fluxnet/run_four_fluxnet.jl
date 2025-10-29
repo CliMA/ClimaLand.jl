@@ -34,19 +34,12 @@ end
 
 site_ID = ARGS[1]
 
-(; dz_tuple, nelements, zmin, zmax) = FluxnetSimulations.get_domain_info(FT)
-(; time_offset, lat, long, atmos_h) = FluxnetSimulations.get_location(site_ID)
-
-
-# Construct the ClimaLand domain to run the simulation on
-land_domain = Column(;
-    zlim = (zmin, zmax),
-    nelements = nelements,
-    dz_tuple = dz_tuple,
-    longlat = (long, lat),
-)
-surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
-
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+# Get the default values for this site's domain, location, and parameters
+(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+(; time_offset, lat, long, atmos_h) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (;
     soil_ν,
     soil_K_sat,
@@ -92,7 +85,16 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     h_canopy,
     z0_m,
     z0_b,
-) = FluxnetSimulations.get_parameters(FT, site_ID, land_domain)
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+
+# Construct the ClimaLand domain to run the simulation on
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
