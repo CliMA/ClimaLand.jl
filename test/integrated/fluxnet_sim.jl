@@ -6,6 +6,7 @@ using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
 using ClimaLand.Domains
+using ClimaLand.Soil
 
 const FT = Float64
 
@@ -51,8 +52,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -60,8 +60,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -99,8 +98,6 @@ end
     @test soil_ν == FT(0.5)
     @test soil_K_sat == FT(4e-7)
     @test soil_S_s == FT(1e-3)
-    @test soil_vg_n == FT(2.05)
-    @test soil_vg_α == FT(0.04)
     @test θ_r == FT(0.067)
     @test ν_ss_quartz == FT(0.1)
     @test ν_ss_om == FT(0.1)
@@ -108,8 +105,6 @@ end
     @test z_0m_soil == FT(0.01)
     @test z_0b_soil == FT(0.001)
     @test soil_ϵ == FT(0.98)
-    @test soil_α_PAR == FT(0.2)
-    @test soil_α_NIR == FT(0.2)
     @test Ω == FT(0.69)
     @test χl == FT(0.5)
     @test G_Function == ConstantGFunction(χl)
@@ -170,8 +165,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -179,8 +173,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -253,8 +246,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -262,8 +254,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -336,8 +327,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -345,8 +335,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
