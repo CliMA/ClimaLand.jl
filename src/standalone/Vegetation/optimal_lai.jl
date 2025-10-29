@@ -2,7 +2,7 @@ export AbstractLAIModel,
     OptimalLAIModel,
     OptimalLAIParameters,
     PrescribedLAIModel,
-    update_LAI,
+    update_LAI!,
     initialize_LAI!,
     make_OptimalLAI_callback,
     call_update_optimal_LAI
@@ -553,18 +553,6 @@ function call_update_optimal_LAI(p, Y, t; canopy, dt, local_noon)
         sigma = parameters.sigma,
         alpha = parameters.alpha,
     )
-end
-
-"""
-    get_local_noon_mask(t::FT, dt::FT, local_noon::FT) where {FT}
-
-This function determines whether the current time `t` (seconds UTC) is within a local noon window of width
-`dt` (seconds) centered around the local noon time.
-"""
-function get_local_noon_mask(t, dt, local_noon::FT) where {FT}
-    strict_noon_mask =
-        FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2
-    return FT(strict_noon_mask)
 end
 
 """
