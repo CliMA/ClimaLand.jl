@@ -249,6 +249,10 @@ end
     LAI = TimeVaryingInput(t -> FT(0.0))
     toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
+    # Set up optimal LAI model
+    lai_model =
+        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
     canopy = CanopyModel{FT}(
         canopy_domain,
         forcing,
@@ -256,6 +260,7 @@ end
         toml_dict;
         photosynthesis = PModel{FT}(canopy_domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
+        lai_model,
     )
     pmodel_callback = make_PModel_callback(FT, t0, dt, canopy)
     @test typeof(get_model_callbacks(canopy; t0, Δt = dt)[1]) ==
