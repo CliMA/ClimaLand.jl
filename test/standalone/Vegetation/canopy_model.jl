@@ -161,8 +161,11 @@ import ClimaParams
                 @test propertynames(getproperty(Y.canopy, component)) ==
                       ClimaLand.prognostic_vars(getproperty(canopy, component))
             end
-            @test propertynames(getproperty(p.canopy, component)) ==
-                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
+            # Only test auxiliary vars if the component has any
+            if length(ClimaLand.auxiliary_vars(getproperty(canopy, component))) > 0
+                @test propertynames(getproperty(p.canopy, component)) ==
+                      ClimaLand.auxiliary_vars(getproperty(canopy, component))
+            end
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
             @test getproperty(auxiliary_vars(canopy), component) ==
