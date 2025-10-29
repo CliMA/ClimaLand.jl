@@ -19,6 +19,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 const FT = Float32;
 toml_dict = LP.create_toml_dict(FT);
 
@@ -32,6 +33,9 @@ start_date = DateTime(2010, 1, 2)
 N_days = 364
 stop_date = start_date + Day(N_days)
 dt = 225.0;
+
+# Since we only have data for 2010, we need to use a periodic calendar to have forcing data
+# at the very end of the year.
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -40,7 +44,8 @@ dt = 225.0;
     atmos_h,
     start_date,
     toml_dict,
-    FT,
+    FT;
+    method = LinearInterpolation(PeriodicCalendar()),
 )
 ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),

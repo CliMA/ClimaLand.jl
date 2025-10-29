@@ -50,6 +50,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     FT;
     split_precip = true,
     gustiness = 1,
+    method = LinearInterpolation(Throw()),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -88,7 +89,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         timestamp_name = "TIMESTAMP_END",
     )
     UTC_datetimes =
-        UTC_datetimes_start + (UTC_datetimes_end - UTC_datetimes_start) ./ 2
+        UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
 
     # The TimeVaryingInput interface for columns expects the time in seconds
     # from the start date of the simulation
@@ -102,6 +103,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         column_name_map,
         seconds_since_start_date;
         preprocess_func = (x) -> x + 273.15,
+        method,
     )
     atmos_P = time_varying_input_from_data(
         data,
@@ -109,24 +111,28 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         column_name_map,
         seconds_since_start_date;
         preprocess_func = (x) -> x * 1000,
+        method,
     )
     atmos_u = time_varying_input_from_data(
         data,
         "WS_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
+        method,
     )
     LW_d = time_varying_input_from_data(
         data,
         "LW_IN_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
+        method,
     )
     SW_d = time_varying_input_from_data(
         data,
         "SW_IN_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
+        method,
     )
     c_co2 = time_varying_input_from_data(
         data,
@@ -134,6 +140,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         column_name_map,
         seconds_since_start_date;
         preprocess_func = (x) -> x * 1e-6, # convert from μmol/mol to mol/mol
+        method,
     )
 
     # Specific humidity is computed from P, VPD, and T using `compute_q`
@@ -146,6 +153,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         column_name_map,
         seconds_since_start_date;
         preprocess_func = q_closure,
+        method,
     )
 
     # Next is precipitation, which is reported as an accumulation over
@@ -166,6 +174,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
             column_name_map,
             seconds_since_start_date;
             preprocess_func = compute_rain,
+            method,
         )
         atmos_P_snow = time_varying_input_from_data(
             data,
@@ -173,6 +182,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
             column_name_map,
             seconds_since_start_date;
             preprocess_func = compute_snow,
+            method,
         )
     else
         atmos_P_liq = time_varying_input_from_data(
@@ -181,6 +191,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
             column_name_map,
             seconds_since_start_date;
             preprocess_func = (x) -> -x / 1000 / data_dt,
+            method,
         )
         atmos_P_snow = time_varying_input_from_data(
             data,
@@ -188,6 +199,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
             column_name_map,
             seconds_since_start_date;
             preprocess_func = (x) -> zero(x),
+            method,
         ) # no snow
     end
 
@@ -270,15 +282,19 @@ this is used in making some plots.
 function FluxnetSimulations.get_data_dt(site_ID)
     (data, columns) = read_fluxnet_data(site_ID)
 
-    varnames = ("TIMESTAMP")
+    varnames = ("TIMESTAMP_START")
     column_name_map =
         get_column_name_map(varnames, columns; error_on_missing = false)
 
     # Since we only need to know the difference in time between observations,
     # we can use a dummy hour offset from UTC, giving us the local times.
     dummy_hour_offset = 0
-    local_datetimes =
-        get_UTC_datetimes(dummy_hour_offset, data, column_name_map)
+    local_datetimes = get_UTC_datetimes(
+        dummy_hour_offset,
+        data,
+        column_name_map,
+        timestamp_name = varnames[1],
+    )
 
     # Get the difference in time between each timestamp pair, in seconds
     Δts = [
@@ -336,13 +352,16 @@ function FluxnetSimulations.get_data_dates(
     )
     # Get the midpoint of the averaging period
     UTC_datetimes =
-        UTC_datetimes_start + (UTC_datetimes_end - UTC_datetimes_start) ./ 2
+        UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
     earliest_date, latest_date = extrema(UTC_datetimes)
 
     # Compute the start and stop dates, applying the start_offset and duration if provided
     @assert Dates.value(start_offset) >= 0 "start_offset must be non-negative, got $start_offset"
     start_date = earliest_date + start_offset
     stop_date = isnothing(duration) ? latest_date : start_date + duration
+
+    @show earliest_date, latest_date
+    @show start_offset, duration, stop_date
 
     # If duration is provided, check that it is non-negative and that the stop date
     # is not greater than the latest date in the data

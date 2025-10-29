@@ -75,12 +75,13 @@ function time_varying_input_from_data(
     time_in_seconds::Vector;
     preprocess_func = identity,
     val = -9999,
+    method = LinearInterpolation(Throw()),
 )
     var_data = data[:, column_name_map[varname]]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
-    return TimeVaryingInput(t, preprocess_func.(v))
+    return TimeVaryingInput(t, preprocess_func.(v); method)
 end
 
 """
@@ -122,13 +123,22 @@ function time_varying_input_from_data(
     time_in_seconds::Vector;
     preprocess_func = identity,
     val = -9999,
+    method = LinearInterpolation(Throw()),
 )
     var_ids = [column_name_map[varname] for varname in varnames]
     var_data = data[:, var_ids]
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
-    return TimeVaryingInput(t, preprocess_func.(eachcol(v)...))
+    if isnothing(method)
+        return TimeVaryingInput(t, preprocess_func.(eachcol(v)...))
+    else
+        return TimeVaryingInput(
+            t,
+            preprocess_func.(eachcol(v)...);
+            method = method,
+        )
+    end
 end
 
 """
