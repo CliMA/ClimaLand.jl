@@ -65,6 +65,7 @@ function get_site_info(site_ID; fluxnet2015_metadata_path = nothing)
         long = nan_if_empty(site_metadata[column_name_map["longitude"]]),
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         time_offset = Int64(
             -1 * nan_if_empty(site_metadata[column_name_map["utc_offset"]]),
 =======
@@ -77,6 +78,11 @@ function get_site_info(site_ID; fluxnet2015_metadata_path = nothing)
             site_metadata[column_name_map["utc_offset"]],
         )),
 >>>>>>> a523e6aba (pain)
+=======
+        time_offset = Int64(
+            -1 * nan_if_empty(site_metadata[column_name_map["utc_offset"]]),
+        ),
+>>>>>>> a199d603d (cleaning up for a branch clone)
         atmospheric_sensor_height = parse_array_field(
             site_metadata[column_name_map["atmospheric_sensor_heights"]],
         ),

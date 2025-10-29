@@ -68,6 +68,7 @@ function FluxnetSimulations.get_parameters(
     soil_hydrology_cm = ClimaCore.MatrixFields.column_field2array(
         soil_params_gupta[:hydrology_cm],
     )[1],
+<<<<<<< HEAD
     θ_r = ClimaCore.Fields.field2array(soil_params_gupta[:θ_r])[1],
     ν_ss_quartz = ClimaCore.Fields.field2array(
         soil_params_grids[:ν_ss_quartz],
@@ -96,15 +97,24 @@ function FluxnetSimulations.get_parameters(
 >>>>>>> a523e6aba (pain)
     soil_S_s = FT(1e-2),
     soil_hydrology_cm = ClimaCore.MatrixFields.column_field2array(soil_params_gupta[:hydrology_cm])[1],
+=======
+>>>>>>> a199d603d (cleaning up for a branch clone)
     θ_r = ClimaCore.Fields.field2array(soil_params_gupta[:θ_r])[1],
-    ν_ss_quartz = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_quartz])[1],
+    ν_ss_quartz = ClimaCore.Fields.field2array(
+        soil_params_grids[:ν_ss_quartz],
+    )[1],
     ν_ss_om = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_om])[1],
-    ν_ss_gravel = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_gravel])[1],
+    ν_ss_gravel = ClimaCore.Fields.field2array(
+        soil_params_grids[:ν_ss_gravel],
+    )[1],
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.01),
     soil_ϵ = FT(0.98),
-    soil_albedo_params = ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface),
+    soil_albedo_params = ClimaLand.Soil.clm_soil_albedo_parameters(
+        domain.space.surface,
+    ),
     soil_albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
+<<<<<<< HEAD
 <<<<<<< HEAD
         ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface)...,
 >>>>>>> 4ccce0bef (for FluxnetSimulationsExt module, wrote access functions to get simulation info + parameters for 4 specific sites with hardcoded information and any other site with mapped info)
@@ -112,6 +122,12 @@ function FluxnetSimulations.get_parameters(
          NamedTuple{keys(soil_albedo_params)}(
                   (ClimaCore.Fields.field2array(v)[1] for v in values(soil_albedo_params)))...,
 >>>>>>> a523e6aba (pain)
+=======
+        NamedTuple{keys(soil_albedo_params)}((
+            ClimaCore.Fields.field2array(v)[1] for
+            v in values(soil_albedo_params)
+        ))...,
+>>>>>>> a199d603d (cleaning up for a branch clone)
     ),
     Ω = pft.parameters.Ω,
     χl = pft.parameters.χl,

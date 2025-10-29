@@ -271,6 +271,7 @@ AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
 <<<<<<< HEAD
+<<<<<<< HEAD
     try
         full_fluxnet_path = @clima_artifact("fluxnet2015", context)
         dirs = filter(
@@ -281,11 +282,21 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
         match = findfirst(d -> occursin(site_ID, d), dirs)
 =======
     try 
+=======
+    try
+>>>>>>> a199d603d (cleaning up for a branch clone)
         full_fluxnet_path = @clima_artifact("fluxnet2015", context)
-        dirs = filter(d -> isdir(joinpath(full_fluxnet_path, d)), readdir(full_fluxnet_path))
+        dirs = filter(
+            d -> isdir(joinpath(full_fluxnet_path, d)),
+            readdir(full_fluxnet_path),
+        )
 
+<<<<<<< HEAD
         match = findfirst(d -> occursin(site_ID, d), dirs) 
 >>>>>>> a523e6aba (pain)
+=======
+        match = findfirst(d -> occursin(site_ID, d), dirs)
+>>>>>>> a199d603d (cleaning up for a branch clone)
         @assert match !== nothing "No Fluxnet data found for site ID: $site_ID"
 
         site_dir = dirs[match]
@@ -299,12 +310,18 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
             data_path = joinpath(full_fluxnet_path, site_dir, site_path_hr)
         else
 <<<<<<< HEAD
+<<<<<<< HEAD
             error(
                 "There exists a directory $site_dir for site ID $site_ID, but found no data files for half-hourly or hourly data.",
             )
 =======
             error("There exists a directory $site_dir for site ID $site_ID, but found no data files for half-hourly or hourly data.")
 >>>>>>> a523e6aba (pain)
+=======
+            error(
+                "There exists a directory $site_dir for site ID $site_ID, but found no data files for half-hourly or hourly data.",
+            )
+>>>>>>> a199d603d (cleaning up for a branch clone)
         end
 
         return data_path
@@ -312,16 +329,21 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
         @info "Either the full fluxnet2015 dataset does not exist locally, or the site ID was not found. 
             Falling back to the fluxnet_sites artifact which contains only US-MOz, US-Var, US-NR1, and US-Ha1."
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
             
 >>>>>>> a523e6aba (pain)
+=======
+
+>>>>>>> a199d603d (cleaning up for a branch clone)
         @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
 
         folder_path = @clima_artifact("fluxnet_sites", context)
         data_path = joinpath(folder_path, "$(site_ID).csv")
         return data_path
     end
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 end
@@ -331,6 +353,9 @@ function fluxnet2015_data_path(; context = nothing)
 =======
     
 >>>>>>> a523e6aba (pain)
+=======
+
+>>>>>>> a199d603d (cleaning up for a branch clone)
 end
 
 function fluxnet2015_data_path(; context = nothing)

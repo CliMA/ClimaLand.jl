@@ -49,7 +49,7 @@ end
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
     @test atmos_h == FT(30)
-    
+
     # parameters
     (;
         soil_ν,
@@ -328,7 +328,7 @@ end
     @test nelements == 24
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
-    
+
 
 <<<<<<< HEAD
 
@@ -479,6 +479,7 @@ end
 <<<<<<< HEAD
 end
 nothing
+<<<<<<< HEAD
 =======
 
 end
@@ -487,3 +488,5 @@ end
 end
 nothing
 >>>>>>> a523e6aba (pain)
+=======
+>>>>>>> a199d603d (cleaning up for a branch clone)
