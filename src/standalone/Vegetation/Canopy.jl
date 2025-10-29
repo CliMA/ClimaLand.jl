@@ -786,7 +786,7 @@ function CanopyModel{FT}(
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
     sif = Lee2015SIFModel{FT}(toml_dict),
-    lai_model,  # Required parameter - must be explicitly provided
+    lai_model = PrescribedLAIModel{FT}(),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 

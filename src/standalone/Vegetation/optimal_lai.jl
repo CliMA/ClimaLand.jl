@@ -1,6 +1,7 @@
 export AbstractLAIModel,
     OptimalLAIModel,
     OptimalLAIParameters,
+    PrescribedLAIModel,
     update_LAI,
     initialize_LAI!,
     make_OptimalLAI_callback,
@@ -12,6 +13,24 @@ export AbstractLAIModel,
 An abstract type for LAI (Leaf Area Index) model parameterizations.
 """
 abstract type AbstractLAIModel{FT <: AbstractFloat} <: AbstractCanopyComponent{FT} end
+
+"""
+    PrescribedLAIModel{FT} <: AbstractLAIModel{FT}
+
+A no-op LAI model used when LAI is prescribed externally (e.g., through the biomass model).
+This model does not have any auxiliary variables or state, as LAI is managed by the
+`PrescribedBiomassModel` through its `PrescribedAreaIndices`.
+"""
+struct PrescribedLAIModel{FT} <: AbstractLAIModel{FT} end
+
+"""
+    PrescribedLAIModel{FT}()
+
+Constructor for the PrescribedLAIModel.
+"""
+PrescribedLAIModel{FT}() where {FT <: AbstractFloat} = PrescribedLAIModel{FT}()
+
+Base.eltype(::PrescribedLAIModel{FT}) where {FT} = FT
 
 """
     OptimalLAIParameters{FT<:AbstractFloat}
