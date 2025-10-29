@@ -157,6 +157,7 @@ end
 
     # geographical info
 <<<<<<< HEAD
+<<<<<<< HEAD
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
     @test time_offset == 5
@@ -171,6 +172,11 @@ end
     @test time_offset == 5
 >>>>>>> 0fbc3a466 (pain)
 >>>>>>> a523e6aba (pain)
+=======
+    (; time_offset, lat, long) =
+        FluxnetSimulations.get_location(FT, Val(site_ID))
+    @test time_offset == -6
+>>>>>>> main
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
     @test atmos_h == FT(32)
@@ -465,6 +471,7 @@ end
         h_leaf,
         h_stem,
         h_canopy,
+<<<<<<< HEAD
         z0_m,
         z0_b,
     ) = FluxnetSimulations.get_parameters(FT, site_ID, domain; θ_r = FT(0.067))
@@ -477,6 +484,22 @@ end
     @test Vcmax25 == FT(2.4e-5)
 <<<<<<< HEAD
 <<<<<<< HEAD
+=======
+        z_0m,
+        z_0b,
+    ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
+
+    # selected parameters from each "model group" for testing
+    @test soil_ν == FT(0.5)
+    @test soil_ϵ == FT(0.98)
+    @test Ω == FT(0.75)
+    @test ac_canopy == FT(745)
+    @test g0 == FT(5e-4)
+    @test Vcmax25 == FT(2.5e-5)
+    @test SAI == FT(0)
+    @test h_stem == FT(0)
+    @test z_0m == FT(0.13) * h_canopy
+>>>>>>> main
 end
 nothing
 <<<<<<< HEAD

@@ -1,34 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 julia_version = "1.11.7"
-manifest_format = "2.0"
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-project_hash = "53802e4fba14dac3d5e5fb1149db2ae8e60ebb4d"
-=======
-project_hash = "3edb2ca53d9a3a7f7b2ad2bcedfbffcd4cb01606"
->>>>>>> c27a63b7f (Update ClimaParams version to 0.11)
-=======
-project_hash = "0bced1bb33b7e850b870eac0d80cd11801260c1e"
->>>>>>> d2c6b4783 (tag v0.19.0; up deps)
-=======
-julia_version = "1.11.5"
-=======
-julia_version = "1.11.6"
->>>>>>> e0f100e33 (tag v0.20.1; update deps)
-=======
-julia_version = "1.11.7"
->>>>>>> 9e7c36dbf (update to v1 (#1488))
 manifest_format = "2.0"
 project_hash = "0257c8e4fc6fd73b316df90fb308c7d86009613a"
->>>>>>> 0c5991d6d (Update to ClimaParams v1 (#1406))
-=======
-project_hash = "53802e4fba14dac3d5e5fb1149db2ae8e60ebb4d"
->>>>>>> a199d603d (cleaning up for a branch clone)
 
 [[deps.ADTypes]]
 git-tree-sha1 = "27cecae79e5cc9935255f90c53bb831cc3c870d7"

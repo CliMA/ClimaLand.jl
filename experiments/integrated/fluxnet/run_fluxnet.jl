@@ -90,9 +90,24 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     h_leaf,
     h_stem,
     h_canopy,
+<<<<<<< HEAD
     z0_m,
     z0_b,
 ) = FluxnetSimulations.get_parameters(FT, site_ID, land_domain)
+=======
+    z_0m,
+    z_0b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+
+# Construct the ClimaLand domain to run the simulation on
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+>>>>>>> main
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes

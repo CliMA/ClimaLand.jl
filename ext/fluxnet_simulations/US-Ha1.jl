@@ -34,6 +34,7 @@ The values are provided as defaults, and can be overwritten by passing the corre
 keyword arguments to this function.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Atmosphere height:
     - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 =======
@@ -46,11 +47,16 @@ Atmosphere height:
     - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
 >>>>>>> 0fbc3a466 (pain)
 >>>>>>> a523e6aba (pain)
+=======
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-5 for Eastern Standard Time (EST).
+>>>>>>> main
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Ha1};
-    time_offset = 5,
+    time_offset = -5,
     lat = FT(42.5378),
     long = FT(-72.1715),
     atmos_h = FT(30),

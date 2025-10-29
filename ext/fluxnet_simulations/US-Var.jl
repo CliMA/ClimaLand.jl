@@ -74,14 +74,21 @@ function FluxnetSimulations.get_parameters(
     soil_ν = FT(0.5),
     soil_K_sat = FT(0.45 / 3600 / 100),
     soil_S_s = FT(1e-3),
+<<<<<<< HEAD
     soil_hydrology_cm = vanGenuchten{FT}(; α = FT(2.0), n = FT(2.0)),
     θ_r = FT(0.067),
+=======
+    soil_vg_n = FT(1.6),
+    soil_vg_α = FT(2.0),
+    θ_r = FT(0.0),
+>>>>>>> main
     ν_ss_quartz = FT(0.3),
     ν_ss_om = FT(0.02),
     ν_ss_gravel = FT(0.0),
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.01),
     soil_ϵ = FT(0.98),
+<<<<<<< HEAD
     soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
         PAR_albedo = FT(0.2),
         NIR_albedo = FT(0.2),
@@ -89,6 +96,13 @@ function FluxnetSimulations.get_parameters(
     Ω = FT(1.0),
     χl = FT(0.5),
     G_Function = ConstantGFunction(χl),
+=======
+    soil_α_PAR = FT(0.35),
+    soil_α_NIR = FT(0.35),
+    Ω = FT(0.75),
+    χl = FT(-0.3),
+    G_Function = ConstantGFunction(FT(0.5)),
+>>>>>>> main
     α_PAR_leaf = FT(0.11),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
