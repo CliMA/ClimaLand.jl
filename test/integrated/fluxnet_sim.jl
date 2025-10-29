@@ -45,7 +45,7 @@ end
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
     @test atmos_h == FT(30)
-    
+
     # parameters
     (;
         soil_ν,
@@ -322,7 +322,7 @@ end
     @test nelements == 14
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
-    
+
 
     (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))

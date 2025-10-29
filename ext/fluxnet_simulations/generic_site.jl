@@ -63,18 +63,28 @@ function FluxnetSimulations.get_parameters(
     soil_ν = ClimaCore.Fields.field2array(soil_params_gupta[:ν])[1],
     soil_K_sat = ClimaCore.Fields.field2array(soil_params_gupta[:K_sat])[1],
     soil_S_s = FT(1e-2),
-    soil_hydrology_cm = ClimaCore.MatrixFields.column_field2array(soil_params_gupta[:hydrology_cm])[1],
+    soil_hydrology_cm = ClimaCore.MatrixFields.column_field2array(
+        soil_params_gupta[:hydrology_cm],
+    )[1],
     θ_r = ClimaCore.Fields.field2array(soil_params_gupta[:θ_r])[1],
-    ν_ss_quartz = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_quartz])[1],
+    ν_ss_quartz = ClimaCore.Fields.field2array(
+        soil_params_grids[:ν_ss_quartz],
+    )[1],
     ν_ss_om = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_om])[1],
-    ν_ss_gravel = ClimaCore.Fields.field2array(soil_params_grids[:ν_ss_gravel])[1],
+    ν_ss_gravel = ClimaCore.Fields.field2array(
+        soil_params_grids[:ν_ss_gravel],
+    )[1],
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.01),
     soil_ϵ = FT(0.98),
-    soil_albedo_params = ClimaLand.Soil.clm_soil_albedo_parameters(domain.space.surface),
+    soil_albedo_params = ClimaLand.Soil.clm_soil_albedo_parameters(
+        domain.space.surface,
+    ),
     soil_albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
-         NamedTuple{keys(soil_albedo_params)}(
-                  (ClimaCore.Fields.field2array(v)[1] for v in values(soil_albedo_params)))...,
+        NamedTuple{keys(soil_albedo_params)}((
+            ClimaCore.Fields.field2array(v)[1] for
+            v in values(soil_albedo_params)
+        ))...,
     ),
     Ω = pft.parameters.Ω,
     χl = pft.parameters.χl,

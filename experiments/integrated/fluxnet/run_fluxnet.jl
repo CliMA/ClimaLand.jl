@@ -39,9 +39,9 @@ if (site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1"))
 
     # Get the default values for this site's domain, location, and parameters
     (; dz_tuple, nelements, zmin, zmax) =
-    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
     (; time_offset, lat, long, atmos_h) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+        FluxnetSimulations.get_location(FT, Val(site_ID_val))
 
     (;
         soil_ν,
@@ -90,10 +90,9 @@ if (site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1"))
         z0_b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 else
-    (; dz_tuple, nelements, zmin, zmax) =
-    FluxnetSimulations.get_domain_info(FT)
+    (; dz_tuple, nelements, zmin, zmax) = FluxnetSimulations.get_domain_info(FT)
     (; time_offset, lat, long, atmos_h) =
-    FluxnetSimulations.get_location(site_ID)
+        FluxnetSimulations.get_location(site_ID)
 end
 
 
@@ -183,12 +182,8 @@ soil_domain = land_domain
 # )
 
 forcing = (; atmos, radiation)
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = soil_hydrology_cm,
-)
+retention_parameters =
+    (; ν = soil_ν, θ_r, K_sat = soil_K_sat, hydrology_cm = soil_hydrology_cm)
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 
 soil = Soil.EnergyHydrology{FT}(

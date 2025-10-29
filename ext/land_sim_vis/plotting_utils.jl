@@ -405,7 +405,7 @@ function LandSimVis.make_diurnal_timeseries(
                 hour_of_day,
                 data_diurnal_cycle,
                 label = "Data",
-                color = "yellow",
+                color = "orange",
             )
             ax.title =
                 "$(sn): RMSD = " *
