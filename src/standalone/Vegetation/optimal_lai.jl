@@ -23,13 +23,6 @@ This model does not have any auxiliary variables or state, as LAI is managed by 
 """
 struct PrescribedLAIModel{FT} <: AbstractLAIModel{FT} end
 
-"""
-    PrescribedLAIModel{FT}()
-
-Constructor for the PrescribedLAIModel.
-"""
-PrescribedLAIModel{FT}() where {FT <: AbstractFloat} = PrescribedLAIModel{FT}()
-
 Base.eltype(::PrescribedLAIModel{FT}) where {FT} = FT
 
 """
