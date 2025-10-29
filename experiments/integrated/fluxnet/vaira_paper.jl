@@ -98,8 +98,8 @@ dt = Float64(450) # 7.5 minutes
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, _) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
-stop_date = start_date + Year(1)
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset; duration = Year(1))
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -331,7 +331,7 @@ GPP_data = comparison_data.gpp[data_id_post_spinup] .* 1e6
 GPP_model_monthly = compute_monthly_avg(GPP, model_dates)
 GPP_data_monthly = compute_monthly_avg(GPP_data, data_dates)
 
-# 
+#
 SW_u_model_monthly = compute_monthly_avg(SW_u, model_dates)
 SW_u_data = comparison_data.swu[data_id_post_spinup]
 SW_u_data_monthly = compute_monthly_avg(SW_u_data, model_dates)
