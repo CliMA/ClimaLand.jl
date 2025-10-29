@@ -803,6 +803,8 @@ end
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
+        lai_model =
+            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
 
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
@@ -827,6 +829,7 @@ end
                 hydraulics,
                 energy,
                 sif,
+                lai_model,
                 biomass,
                 boundary_conditions,
                 parameters,
@@ -850,6 +853,7 @@ end
             @test canopy.energy == energy
             @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
+            @test canopy.lai_model == lai_model
             @test canopy.boundary_conditions == boundary_conditions
             @test canopy.parameters == parameters
             @test canopy.domain == domain
