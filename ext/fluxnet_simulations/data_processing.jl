@@ -199,7 +199,7 @@ diagnostics in ClimaLand, and return the UTC time that corresponds to the end of
 - `data`: The data matrix containing timestamp information
 - `column_name_map`: Dictionary mapping variable names to column indices in the data
 - `timestamp_name`: The timestamp column name to use
-        (options: "TIMESTAMP" (default), "TIMESTAMP_START", "TIMESTAMP_END")
+        (options: "TIMESTAMP_START" (default), "TIMESTAMP_END", "TIMESTAMP")
 
 # Returns
 - `UTC_datetimes`: Vector of UTC DateTime objects
@@ -213,7 +213,7 @@ function get_UTC_datetimes(
     hour_offset_from_UTC,
     data,
     column_name_map;
-    timestamp_name = "TIMESTAMP",
+    timestamp_name = "TIMESTAMP_START",
 )
     @assert timestamp_name in ("TIMESTAMP", "TIMESTAMP_START", "TIMESTAMP_END") "Invalid timestamp column name $timestamp_name"
 
