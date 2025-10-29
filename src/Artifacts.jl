@@ -86,6 +86,24 @@ function era5_monthly_averages_single_level_path(; context = nothing)
 end
 
 """
+    era5_land_forcing_data2008_path(; context, lowres=false)
+
+Return the path to the directory that contains the ERA5 forcing data for 2008.
+
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
+"""
+function era5_land_forcing_data2008_folder_path(;
+    context = nothing,
+    lowres = false,
+)
+    if lowres
+        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+    else
+        return @clima_artifact("era5_land_forcing_data2008", context)
+    end
+end
+
+"""
     era5_lai_forcing_data2008_path(; context)
 
 Return the path to the directory that contains the ERA5 LAI forcing data for 2008.
