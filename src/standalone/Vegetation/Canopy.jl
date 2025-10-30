@@ -863,6 +863,7 @@ canopy_components(::CanopyModel) = (
     :biomass,
 )
 
+@nospecialize
 """
     prognostic_vars(canopy::CanopyModel)
 
@@ -930,7 +931,7 @@ function auxiliary_types(canopy::CanopyModel)
     end
     return NamedTuple{components}(auxiliary_list)
 end
-
+@specialize
 """
     filter_nt(nt::NamedTuple)
 
@@ -957,6 +958,7 @@ a NamedTuple with no nested NamedTuples.
 """
 filter_nt(nt) = nt
 
+@nospecialize
 """
     initialize_prognostic(
         model::CanopyModel{FT},
@@ -972,7 +974,7 @@ This function loops over the components of the `CanopyModel` and appends
 each component models prognostic state vector into a single state vector,
 structured by component name.
 """
-function initialize_prognostic(model::CanopyModel{FT}, coords) where {FT}
+function initialize_prognostic(model::CanopyModel, coords)
     components = canopy_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -1001,7 +1003,7 @@ This function loops over the components of the `CanopyModel` and appends
 each component models auxiliary state vector into a single state vector,
 structured by component name.
 """
-function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
+function initialize_auxiliary(model::CanopyModel, coords)
     components = canopy_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -1027,7 +1029,7 @@ Add boundary condition-related variables to the cache.
 This calls functions defined in canopy_boundary_fluxes.jl
 which dispatch on the boundary condition type to add the correct variables.
 """
-function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
+function initialize_boundary_vars(model::CanopyModel, coords)
     vars = boundary_vars(model.boundary_conditions, ClimaLand.TopBoundary())
     types = boundary_var_types(
         model,
@@ -1105,7 +1107,8 @@ Creates and returns the compute_exp_tendency! for the `CanopyModel`.
 function make_compute_exp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
     compute_exp_tendency_list = map(
-        x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
+        (@nospecialize x) ->
+            make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
     function compute_exp_tendency!(dY, Y, p, t)
@@ -1125,7 +1128,8 @@ Creates and returns the compute_imp_tendency! for the `CanopyModel`.
 function make_compute_imp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
     compute_imp_tendency_list = map(
-        x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
+        (@nospecialize x) ->
+            make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
     function compute_imp_tendency!(dY, Y, p, t)
@@ -1145,7 +1149,8 @@ Creates and returns the compute_jacobian! for the `CanopyModel`.
 function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
     components = canopy_components(canopy)
     update_jacobian_list = map(
-        x -> make_compute_jacobian(getproperty(canopy, x), canopy),
+        (@nospecialize x) ->
+            make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
     function compute_jacobian!(W, Y, p, dtγ, t)
@@ -1156,7 +1161,7 @@ function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
     end
     return compute_jacobian!
 end
-
+@specialize
 
 function ClimaLand.get_drivers(model::CanopyModel)
     ClimaLand.get_drivers(model.boundary_conditions)
@@ -1221,6 +1226,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     )
 end
 
+@nospecialize
 """
     ClimaLand.make_set_initial_cache(model::CanopyModel)
 
@@ -1269,5 +1275,5 @@ function get_model_callbacks(model::CanopyModel{FT}; t0, Δt) where {FT}
     end
     return callbacks
 end
-
+@specialize
 end
