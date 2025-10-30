@@ -148,6 +148,9 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            lai_model = Canopy.OptimalLAIModel{FT}(
+                Canopy.OptimalLAIParameters{FT}(toml_dict),
+            ),
         ),
        snow = Snow.SnowModel(
             FT,
@@ -204,6 +207,9 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        ),
     ),
     snow = Snow.SnowModel(
         FT,
