@@ -110,7 +110,7 @@ using Statistics
 
     # ClimaDiagnostics
 
-    ClimaLand.Diagnostics.define_diagnostics!(model)
+    ClimaLand.Diagnostics.define_diagnostics!(model, ["rn", "lhf"])
     diags = ["rn", "lhf"]
 
     tmpdir = mktempdir(".")
