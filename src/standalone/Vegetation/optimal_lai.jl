@@ -189,26 +189,27 @@ function compute_L_max(
     f0::FT,         # dimensionless
 ) where {FT}
     # Energy-limited fAPAR (Equation 11, first part)
-    fAPAR_energy = 1 - z / (k * Ao_annual)
+    fAPAR_energy = FT(1) - z / (k * Ao_annual)
 
     # Water-limited fAPAR (Equation 11, second part)
     fAPAR_water =
-        (ca * (1 - chi) / (1.6 * D_growing)) * (f0 * P_annual / Ao_annual)
+        (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) *
+        (f0 * P_annual / Ao_annual)
 
     # Take minimum of energy and water limitations (Equation 11)
     fAPAR_max = min(fAPAR_energy, fAPAR_water)
 
     # Ensure fAPAR is in valid range [0, 1]
-    fAPAR_max = max(0, min(1, fAPAR_max))
+    fAPAR_max = max(FT(0), min(FT(1), fAPAR_max))
 
     # Convert fAPAR to LAI using Beer's law (Equation 12)
     # LAI_max = -(1/k) * ln(1 - fAPAR_max)
-    LAI_max = -(1 / k) * log(1 - fAPAR_max)
+    LAI_max = -(FT(1) / k) * log(FT(1) - fAPAR_max)
 
     return LAI_max
 end
 
-fAPAR_max_fun(k, LAI_max) = 1 - exp(-k * LAI_max)
+fAPAR_max_fun(k::FT, LAI_max::FT) where {FT} = FT(1) - exp(-k * LAI_max)
 
 """
     compute_m(GSL, LAI_max, Ao_annual, sigma)
@@ -288,7 +289,7 @@ Corless et al. (1996) "On the Lambert W function"
 """
 function lambertw0(x::T) where {T <: Real}
     # Check domain
-    min_x = -1 / ℯ
+    min_x = -one(T) / T(ℯ)
     if x < min_x
         throw(
             DomainError(
@@ -299,24 +300,24 @@ function lambertw0(x::T) where {T <: Real}
     end
 
     # Special cases
-    if x == 0
+    if x == zero(T)
         return zero(T)
-    elseif abs(x - min_x) < 1e-10
+    elseif abs(x - min_x) < T(1e-10)
         return -one(T)
     end
 
     # Choose initial guess based on the region
-    if x < -0.32  # Near the branch point -1/e
+    if x < T(-0.32)  # Near the branch point -1/e
         # Series expansion near -1/e
-        p = sqrt(2 * (ℯ * x + 1))
-        w = -1 + p - p^2 / 3 + p^3 * 11 / 72
-    elseif x < 0
+        p = sqrt(T(2) * (T(ℯ) * x + one(T)))
+        w = -one(T) + p - p^2 / T(3) + p^3 * T(11) / T(72)
+    elseif x < zero(T)
         # For x ∈ [-0.32, 0], use a rational approximation
-        w = x / (1 + x)  # Simple approximation that's good enough for Halley
-    elseif x < 2.5
+        w = x / (one(T) + x)  # Simple approximation that's good enough for Halley
+    elseif x < T(2.5)
         # For small positive x, start with x as the guess (works well up to ~2.5)
-        w = x * (1 - x / 3)  # Slightly better than just x
-    elseif x < 10
+        w = x * (one(T) - x / T(3))  # Slightly better than just x
+    elseif x < T(10)
         # Log-based approximation (safe since x >= 2.5)
         l1 = log(x)
         l2 = log(l1)
@@ -325,7 +326,7 @@ function lambertw0(x::T) where {T <: Real}
         # Asymptotic expansion for large x
         l1 = log(x)
         l2 = log(l1)
-        w = l1 - l2 + l2 / l1 + l2 * (l2 - 2) / (2 * l1 * l1)
+        w = l1 - l2 + l2 / l1 + l2 * (l2 - T(2)) / (T(2) * l1 * l1)
     end
 
     # Halley's method refinement (typically converges in 2-3 iterations)
@@ -335,7 +336,7 @@ function lambertw0(x::T) where {T <: Real}
         f = wew - x
 
         # Check convergence
-        if abs(f) < 1e-14 * (1 + abs(x))
+        if abs(f) < T(1e-14) * (one(T) + abs(x))
             break
         end
 
@@ -344,10 +345,10 @@ function lambertw0(x::T) where {T <: Real}
         # where f = w*exp(w) - x
         # f' = exp(w) * (w + 1)
         # f'' = exp(w) * (w + 2)
-        w1 = w + 1
-        denom = ew * w1 - f * (w + 2) / (2 * w1)
+        w1 = w + one(T)
+        denom = ew * w1 - f * (w + T(2)) / (T(2) * w1)
 
-        if abs(denom) < 1e-20
+        if abs(denom) < T(1e-20)
             break
         end
 
@@ -411,14 +412,14 @@ function compute_steady_state_LAI(
 
     # Check if argument is in valid range for W₀ branch: [-1/e, 0]
     # If outside this range, use boundary solution
-    if arg < -1 / exp(1)
+    if arg < -FT(1) / FT(exp(1))
         # Beyond valid range; use maximum possible LAI
         L_s = LAI_max
     else
         # Equation 15: L_s = μ + (1/k) × W₀[-k μ exp(-k μ)]
         # Using our custom lambertw0 function (W₀ is the principal branch)
         w_val = lambertw0(arg)
-        L_s = mu + (1 / k) * w_val
+        L_s = mu + (FT(1) / k) * w_val
 
         # Take minimum with LAI_max (Equation 15)
         L_s = min(L_s, LAI_max)
@@ -492,8 +493,8 @@ function update_LAI!(
 end
 
 function compute_Ao_daily(A::FT, k::FT, L::FT) where {FT}
-    Ao_daily_inst = A / max(1 - exp(-k * L), eps(FT))
-    Ao_daily = Ao_daily_inst * 3600 * 8 # 3600 sec in an hour, 8 hour of sunlight
+    Ao_daily_inst = A / max(FT(1) - exp(-k * L), eps(FT))
+    Ao_daily = Ao_daily_inst * FT(3600) * FT(8) # 3600 sec in an hour, 8 hour of sunlight
     # Note: would be better to integrate daily A instead of assuming noon * 8 hours...
     return Ao_daily
 end
