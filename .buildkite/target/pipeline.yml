@@ -22,6 +22,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"ClimaCore\", rev=\"tr/mbf\"))'"
       - 'julia --project=.buildkite -e ''using Pkg; Pkg.develop(;path="."); Pkg.instantiate(;verbose=true)'''
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
     agents:
@@ -33,91 +34,91 @@ steps:
 
   - wait
 
-  - group: "Benchmark (CPU)"
-    steps:
-      - label: ":bucket: Bucket (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-        artifact_paths:
-          - "bucket_benchmark_cpu/*"
-        soft_fail: true
+  # - group: "Benchmark (CPU)"
+  #   steps:
+  #     - label: ":bucket: Bucket (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #       artifact_paths:
+  #         - "bucket_benchmark_cpu/*"
+  #       soft_fail: true
 
-      - label: ":droplet: RichardsModel (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-        artifact_paths:
-          - "richards_benchmark_cpu/*"
-        soft_fail: true
+  #     - label: ":droplet: RichardsModel (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #       artifact_paths:
+  #         - "richards_benchmark_cpu/*"
+  #       soft_fail: true
 
-      - label: "Soil (CPU) "
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-        artifact_paths:
-          - "soil_benchmark_cpu/*"
-        soft_fail: true
+  #     - label: "Soil (CPU) "
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #       artifact_paths:
+  #         - "soil_benchmark_cpu/*"
+  #       soft_fail: true
 
-      - label: ":snow_capped_mountain: Snowy Land (CPU)"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
-        env:
-          CLIMACOMMS_DEVICE: CPU
-        agents:
-          slurm_mem: 16GB
-          slurm_cpus_per_task: 4
-        artifact_paths:
-          - "snowy_land_benchmark_cpu/*"
-        soft_fail: true
+  #     - label: ":snow_capped_mountain: Snowy Land (CPU)"
+  #       command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+  #       env:
+  #         CLIMACOMMS_DEVICE: CPU
+  #       agents:
+  #         slurm_mem: 16GB
+  #         slurm_cpus_per_task: 4
+  #       artifact_paths:
+  #         - "snowy_land_benchmark_cpu/*"
+  #       soft_fail: true
 
   - group: "Target Benchmark (GPU)"
     steps:
-      - label: ":bucket: Bucket"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 16GB
-          slurm_gpus: 1
-        artifact_paths:
-          - "bucket_benchmark_gpu/*"
+      # - label: ":bucket: Bucket"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 16GB
+      #     slurm_gpus: 1
+      #   artifact_paths:
+      #     - "bucket_benchmark_gpu/*"
 
-      - wait: ~
-        continue_on_failure: true
+      # - wait: ~
+      #   continue_on_failure: true
 
-      - label: ":droplet: RichardsModel"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 16GB
-          slurm_gpus: 1
-        artifact_paths:
-          - "richards_benchmark_gpu/*"
+      # - label: ":droplet: RichardsModel"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 16GB
+      #     slurm_gpus: 1
+      #   artifact_paths:
+      #     - "richards_benchmark_gpu/*"
 
-      - wait: ~
-        continue_on_failure: true
-      - label: "Soil"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 16GB
-          slurm_gpus: 1
-        artifact_paths:
-          - "soil_benchmark_gpu/*"
+      # - wait: ~
+      #   continue_on_failure: true
+      # - label: "Soil"
+      #   command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+      #   env:
+      #     CLIMACOMMS_DEVICE: CUDA
+      #   agents:
+      #     slurm_mem: 16GB
+      #     slurm_gpus: 1
+      #   artifact_paths:
+      #     - "soil_benchmark_gpu/*"
 
-      - wait: ~
-        continue_on_failure: true
+      # - wait: ~
+      #   continue_on_failure: true
 
       - label: ":snow_capped_mountain: Snowy Land"
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
