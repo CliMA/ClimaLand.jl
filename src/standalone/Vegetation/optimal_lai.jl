@@ -193,7 +193,8 @@ function compute_L_max(
 
     # Water-limited fAPAR (Equation 11, second part)
     fAPAR_water =
-        (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) * (f0 * P_annual / Ao_annual)
+        (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) *
+        (f0 * P_annual / Ao_annual)
 
     # Take minimum of energy and water limitations (Equation 11)
     fAPAR_max = min(fAPAR_energy, fAPAR_water)

@@ -214,8 +214,9 @@ for FT in (Float32, Float64)
         )
 
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,

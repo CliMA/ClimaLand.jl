@@ -106,8 +106,9 @@ import ClimaParams
         forcing = (; atmos, radiation, ground)
 
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
@@ -535,8 +536,9 @@ end
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
@@ -731,8 +733,9 @@ end
         hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(domain, toml_dict)
 
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
@@ -803,8 +806,9 @@ end
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
@@ -932,10 +936,12 @@ end
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
-        canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict; lai_model)
+        canopy =
+            Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict; lai_model)
 
         # Check that the canopy model was created correctly
         @test ClimaComms.context(canopy) == ClimaComms.context()

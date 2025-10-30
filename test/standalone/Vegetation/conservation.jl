@@ -99,8 +99,9 @@ for FT in (Float32, Float64)
     )
     @testset "Canopy model total energy and water, FT = $FT" begin
         # Set up optimal LAI model
-        lai_model =
-            Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        )
 
         for domain in domains
             hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(
