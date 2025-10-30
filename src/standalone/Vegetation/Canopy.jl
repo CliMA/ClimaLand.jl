@@ -1092,7 +1092,13 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         lazy_r_stomata_canopy = lazy_canopy_conductance(p, Y, canopy.conductance, canopy)
 
         # update autotrophic respiration
-        lazy_Ra = lazy_autotrophic_respiration(
+        # lazy_Ra = lazy_autotrophic_respiration(
+        #     p,
+        #     Y,
+        #     canopy.autotrophic_respiration,
+        #     canopy,
+        # )
+        update_autotrophic_respiration!(
             p,
             Y,
             canopy.autotrophic_respiration,
@@ -1101,7 +1107,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         ClimaCore.DataLayouts.@fused_direct begin
             @. p.canopy.sif.SIF = lazy_sif
             @. p.canopy.conductance.r_stomata_canopy = lazy_r_stomata_canopy
-            @. p.canopy.autotrophic_respiration.Ra = lazy_Ra
+            # @. p.canopy.autotrophic_respiration.Ra = lazy_Ra
         end
         return
     end

@@ -106,6 +106,7 @@ function update_autotrophic_respiration!(
         β,
         h_canopy,
     )
+    return
 end
 
 

@@ -194,6 +194,7 @@ function run_timing_benchmarks(
                 ClimaComms.@elapsed device step_N_times!(simulation, 5)
             )
         end
+        @show timings_s[end]
     end
     num_samples = length(timings_s)
     average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
