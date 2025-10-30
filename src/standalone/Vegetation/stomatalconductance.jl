@@ -75,6 +75,31 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
         ) # multiply by LAI treating all leaves as if they are in parallel
 end
 
+function lazy_canopy_conductance(p, Y, model::MedlynConductanceModel, canopy)
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    earth_param_set = canopy.parameters.earth_param_set
+    thermo_params = earth_param_set.thermo_params
+    (; g1, g0, Drel) = canopy.conductance.parameters
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
+    R = LP.gas_constant(earth_param_set)
+    FT = typeof(R)
+    medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+    @. lazy(
+        1 / (
+            conductance_molar_flux_to_m_per_s(
+                medlyn_conductance(g0, Drel, medlyn_factor, An_leaf, c_co2_air), #conductance, leaf level
+                T_air,
+                R,
+                P_air,
+            ) * max(LAI, sqrt(eps(FT)))
+        )) # multiply by LAI treating all leaves as if they are in parallel
+end
+
 # For interfacing with ClimaParams
 
 """
@@ -163,4 +188,29 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
                 P_air,
             ) + eps(FT)
         ) # avoids division by zero, since conductance is zero when An is zero 
+end
+
+function lazy_canopy_conductance!(p, Y, model::PModelConductance, canopy)
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    earth_param_set = canopy.parameters.earth_param_set
+    (; Drel) = canopy.conductance.parameters
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
+    An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
+    R = LP.gas_constant(earth_param_set)
+    FT = eltype(model.parameters)
+
+    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
+    @. lazy(
+        1 / (
+            conductance_molar_flux_to_m_per_s(
+                gs_h2o_pmodel(χ, c_co2_air, An_canopy, Drel), # canopy level conductance in mol H2O/m^2/s
+                T_air,
+                R,
+                P_air,
+            ) + eps(FT)
+        )) # avoids division by zero, since conductance is zero when An is zero 
 end

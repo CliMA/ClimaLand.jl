@@ -87,6 +87,27 @@ function update_soil_moisture_stress!(
         compute_tuzet_moisture_stress(p_leaf, pc, sc)
 end
 
+function lazy_soil_moisture_stress(
+    p,
+    Y,
+    model::TuzetMoistureStressModel,
+    canopy,
+)
+    # unpack constants
+    earth_param_set = canopy.parameters.earth_param_set
+    grav = LP.grav(earth_param_set)
+    ρ_water = LP.ρ_cloud_liq(earth_param_set)
+    n_stem = canopy.hydraulics.n_stem
+    n_leaf = canopy.hydraulics.n_leaf
+    i_end = n_stem + n_leaf
+
+    ψ = p.canopy.hydraulics.ψ
+    p_leaf = @. lazy(ψ.:($$i_end) * ρ_water * grav) # converts head to hydrostatic pressure
+    (; sc, pc) = model
+    # Compute the moisture stress factor
+    @. lazy(compute_tuzet_moisture_stress(p_leaf, pc, sc))
+end
+
 """
     struct NoMoistureStressModel{FT} <: AbstractSoilMoistureStressModel{FT} end
 

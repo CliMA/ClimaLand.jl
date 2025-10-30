@@ -108,6 +108,47 @@ function update_autotrophic_respiration!(
     )
 end
 
+
+function lazy_autotrophic_respiration(
+    p,
+    Y,
+    autotrophic_respiration::AutotrophicRespirationModel,
+    canopy,
+)
+    hydraulics = canopy.hydraulics
+    n_stem = hydraulics.n_stem
+    n_leaf = hydraulics.n_leaf
+    h_canopy = hydraulics.compartment_surfaces[end]
+    i_end = n_stem + n_leaf
+    ψ = p.canopy.hydraulics.ψ
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+    SAI = area_index.stem
+    RAI = area_index.root
+    earth_param_set = canopy.parameters.earth_param_set
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    (; G_Function, Ω) = canopy.radiative_transfer.parameters
+    cosθs = p.drivers.cosθs
+    β = p.canopy.soil_moisture_stress.βm
+    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
+    @. lazy(compute_autrophic_respiration(
+        autotrophic_respiration,
+        Vcmax25_leaf,
+        LAI,
+        SAI,
+        RAI,
+        extinction_coeff(G_Function, cosθs),
+        Ω,
+        An_leaf,
+        Rd_leaf,
+        β,
+        h_canopy,
+    ))
+end
+
 """
     compute_autrophic_respiration(model::AutotrophicRespirationModel,
                                   Vcmax25,

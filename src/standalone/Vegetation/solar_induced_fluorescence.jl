@@ -92,6 +92,38 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
         sif_parameters,
     )
 end
+function lazy_SIF(p, Y, sif_model::Lee2015SIFModel, canopy)
+    SIF = p.canopy.sif.SIF
+    earth_param_set = canopy.parameters.earth_param_set
+
+    # Compute APAR
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    par_d = p.canopy.radiative_transfer.par_d
+    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    APAR_canopy_moles = @. lazy(
+        compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
+    )
+
+    # Get max photosynthesis rates
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    J_over_Jmax = get_J_over_Jmax(Y, p, canopy, canopy.photosynthesis)
+
+    T_freeze = LP.T_freeze(earth_param_set)
+    sif_parameters = sif_model.parameters
+
+    return @. lazy(compute_SIF_at_a_point(
+        APAR_canopy_moles,
+        T_canopy,
+        Vcmax25_leaf,
+        J_over_Jmax,
+        T_freeze,
+        sif_parameters,
+    ))
+end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
 

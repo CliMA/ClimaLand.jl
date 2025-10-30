@@ -158,6 +158,15 @@ function compute_PAR!(
     @. par = p.drivers.SW_d / 2
 end
 
+function compute_PAR(
+    ::Type{M},
+    ::Type{R},
+    SW_d,
+    t,
+) where {M <: AbstractRadiationModel, R <: ClimaLand.AbstractRadiativeDrivers}
+    SW_d / 2
+end
+
 """
     compute_NIR!(nir,
         model::AbstractRadiationModel,
@@ -178,6 +187,15 @@ function compute_NIR!(
     p,
     t,
 )
+    @. nir = p.drivers.SW_d / 2
+end
+
+function compute_NIR(
+    ::Type{M},
+    ::Type{R},
+    p,
+    t,
+) where {M <: AbstractRadiationModel, R <: ClimaLand.AbstractRadiativeDrivers}
     @. nir = p.drivers.SW_d / 2
 end
 
@@ -784,10 +802,26 @@ function update_radiative_transfer!(
 
     # update radiative transfer
     (; G_Function, Ω, λ_γ_PAR) = radiative_transfer.parameters
-    @. p.canopy.radiative_transfer.ϵ =
-        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-    compute_PAR!(par_d, radiative_transfer, bc.radiation, p, t)
-    compute_NIR!(nir_d, radiative_transfer, bc.radiation, p, t)
+    RT = Ref(typeof(radiative_transfer))
+    R = Ref(typeof(bc.radiation))
+    if canopy.boundary_conditions.prognostic_land_components == (:canopy, :snow, :soil, :soilco2)
+        ClimaCore.DataLayouts.@fused_direct begin 
+            @. p.canopy.radiative_transfer.ϵ =
+                radiative_transfer.parameters.ϵ_canopy * (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+            @. par_d .= compute_PAR.(RT, R, p.drivers.SW_d, t)
+            @. nir_d .= compute_PAR.(RT, R, p.drivers.SW_d, t)
+            @. p.α_ground.PAR = (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo + p.snow.snow_cover_fraction * p.snow.α_snow
+            @. p.α_ground.NIR = (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo + p.snow.snow_cover_fraction * p.snow.α_snow
+        end
+    else
+        ClimaCore.DataLayouts.@fused_direct begin 
+            @. p.canopy.radiative_transfer.ϵ =
+                radiative_transfer.parameters.ϵ_canopy * (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+            @. par_d .= compute_PAR.(RT, R, p.drivers.SW_d, t)
+            @. nir_d .= compute_PAR.(RT, R, p.drivers.SW_d, t)
+        end
+    end
+
 
     compute_fractional_absorbances!(
         p,
@@ -808,4 +842,5 @@ function update_radiative_transfer!(
             t,
         ),
     )
+    return
 end

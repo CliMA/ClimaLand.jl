@@ -335,7 +335,7 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     β = p.canopy.soil_moisture_stress.βm
     medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
 
-    @. Rd = dark_respiration_farquhar(
+    Rd = @.  lazy(dark_respiration_farquhar(
         is_c3,
         Vcmax25,
         β,
@@ -348,9 +348,11 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
         s5,
         s6,
         fC4,
-    ) # has moisture stress
-    A = @. lazy(
-        gross_leaf_photosynthesis_at_a_point_Farquhar(
+    )) # has moisture stress
+
+   
+
+    A = @. lazy(gross_leaf_photosynthesis_at_a_point_Farquhar(
             T_canopy,
             compute_APAR_leaf_moles(
                 f_abs,
@@ -388,13 +390,149 @@ function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
             s5,
             s6,
             E,
-        ),
-    ) # has moisture stress
+        ))
+
+
+
+
+    # has moisture stress
     # Compute net assimilation:
-    @. An = net_photosynthesis(A * β, Rd) # Rd has β accounted for already.
-    # GPP
-    @. GPP = A * β * LAI
+
+    ClimaCore.DataLayouts.@fused_direct begin 
+        @. An = net_photosynthesis(A * β, Rd) # Rd has β accounted for already.
+        # GPP
+        @. GPP = A * β * LAI
+    end
+    # An_lazy = 
 end
+
+function lazy_photosynthesis(p, Y, model::FarquharModel, canopy)
+    (;
+        Vcmax25,
+        is_c3,
+        Γstar25,
+        ΔHJmax,
+        ΔHVcmax,
+        ΔHΓstar,
+        fC3,
+        fC4,
+        ΔHRd,
+        To,
+        θj,
+        ϕ,
+        oi,
+        Kc25,
+        Ko25,
+        ΔHkc,
+        ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        E,
+    ) = model.parameters
+
+    # unpack a bunch of stuff from p and params
+    Rd = p.canopy.photosynthesis.Rd
+    An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    f_abs = p.canopy.radiative_transfer.par.abs
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    thermo_params = earth_param_set.thermo_params
+    (; λ_γ_PAR) = canopy.radiative_transfer.parameters
+    (; g1,) = canopy.conductance.parameters
+    par_d = p.canopy.radiative_transfer.par_d
+    area_index = p.canopy.biomass.area_index
+    LAI = area_index.leaf
+
+    β = p.canopy.soil_moisture_stress.βm
+    medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+
+    Rd = @.  lazy(dark_respiration_farquhar(
+        is_c3,
+        Vcmax25,
+        β,
+        T_canopy,
+        R,
+        To,
+        fC3,
+        ΔHRd,
+        Q10,
+        s5,
+        s6,
+        fC4,
+    )) # has moisture stress
+
+   
+
+    A = @. lazy(gross_leaf_photosynthesis_at_a_point_Farquhar(
+            T_canopy,
+            compute_APAR_leaf_moles(
+                f_abs,
+                par_d,
+                λ_γ_PAR,
+                lightspeed,
+                planck_h,
+                N_a,
+                LAI,
+            ),
+            c_co2_air,
+            medlyn_factor,
+            R,
+            Vcmax25,
+            is_c3,
+            Γstar25,
+            ΔHJmax,
+            ΔHVcmax,
+            ΔHΓstar,
+            fC3,
+            fC4,
+            To,
+            θj,
+            ϕ,
+            oi,
+            Kc25,
+            Ko25,
+            ΔHkc,
+            ΔHko,
+            Q10,
+            s1,
+            s2,
+            s3,
+            s4,
+            s5,
+            s6,
+            E,
+        ))
+
+
+
+
+    # has moisture stress
+    # Compute net assimilation:
+    An_lazy = @. lazy(net_photosynthesis(A * β, Rd))
+    GPP_lazy = @. lazy(A * β * LAI)
+    return (An_lazy, GPP_lazy)
+    ClimaCore.DataLayouts.@fused_direct begin 
+        @. An = net_photosynthesis(A * β, Rd) # Rd has β accounted for already.
+        # GPP
+        @. GPP = A * β * LAI
+    end
+    # An_lazy = 
+end
+
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 get_Vcmax25_leaf(p, m::FarquharModel) = m.parameters.Vcmax25

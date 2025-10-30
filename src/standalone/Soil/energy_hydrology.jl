@@ -1316,7 +1316,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     ClimaCore.Operators.column_integral_definite!(
         surface_field,
-        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # this line allocates
+       Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq,
     )
     return nothing
 end
