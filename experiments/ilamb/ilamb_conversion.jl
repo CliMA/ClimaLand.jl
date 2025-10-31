@@ -3,7 +3,7 @@
 #
 # To run this script, you can run
 # ```
-# julia --project=.buildkite experiments/misc/ilamb_conversion.jl <output_dir> <save_dir>
+# julia --project=.buildkite experiments/ilamb/ilamb_conversion.jl <output_dir> <save_dir>
 # ```
 # in the terminal.
 # Or, directly call `make_compatible_with_ILAMB(output_dir, save_dir)`

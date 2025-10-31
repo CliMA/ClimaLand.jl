@@ -156,3 +156,7 @@ end
 @safetestset "Diagnostics" begin
     include("diagnostics/diagnostics_tests.jl")
 end
+
+@safetestset "ILAMB setup" begin
+    include("../experiments/ilamb/tests/test_ilamb_setup.jl")
+end
