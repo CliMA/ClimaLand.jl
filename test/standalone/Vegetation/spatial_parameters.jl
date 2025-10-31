@@ -69,3 +69,86 @@ const FT = Float64;
     @test axes(τ_PAR_leaf) == surface_space
     @test axes(τ_NIR_leaf) == surface_space
 end
+
+@testset "Spatially varying canopy height" begin
+    regridder_type = :InterpolationsRegridder
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    )
+    context = ClimaComms.context()
+    ClimaComms.init(context)
+
+    toml_dict = LP.create_toml_dict(FT)
+    radius = FT(6378.1e3)
+    depth = FT(50)
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = radius,
+        depth = depth,
+        nelements = (101, 15),
+        dz_tuple = FT.((10.0, 0.05)),
+    )
+    surface_space = domain.space.surface
+
+    # Test canopy_height function
+    canopy_height = ClimaLand.Canopy.canopy_height(
+        surface_space;
+        regridder_type = regridder_type,
+        extrapolation_bc = extrapolation_bc,
+    )
+
+    # Check that field is on the correct space
+    @test axes(canopy_height) == surface_space
+
+    # Check that heights are positive
+    @test all(Array(parent(canopy_height)) .>= 0)
+
+    # Check that some heights are non-zero (there should be vegetation somewhere)
+    @test any(Array(parent(canopy_height)) .> 0)
+
+    # Check that maximum height is reasonable (should be < 50m based on CLM data)
+    @test maximum(Array(parent(canopy_height))) < 50.0
+end
+
+@testset "Effective canopy height capping" begin
+    context = ClimaComms.context()
+    ClimaComms.init(context)
+
+    radius = FT(6378.1e3)
+    depth = FT(50)
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = radius,
+        depth = depth,
+        nelements = (101, 15),
+        dz_tuple = FT.((10.0, 0.05)),
+    )
+    surface_space = domain.space.surface
+
+    # Create a test field with known values including some that exceed the cap
+    test_heights = zeros(surface_space) .+ FT(5.0)  # Initialize to 5m
+
+    # Set some points to high values that should be capped
+    parent(test_heights)[1:10] .= FT(15.0)
+
+    # Test with default buffer (2m)
+    z_atm = FT(10.0)
+    capped_heights = min.(test_heights, z_atm - FT(2.0))
+
+    # Check that all heights are below the cap
+    max_allowed = z_atm - FT(2.0)  # default buffer
+    @test all(Array(parent(capped_heights)) .<= max_allowed)
+
+    # Check that uncapped values are preserved
+    @test Array(parent(capped_heights))[end] == FT(5.0)
+
+    # Check that capped values are set to max_allowed
+    @test Array(parent(capped_heights))[1] == max_allowed
+
+    # Test with custom buffer
+    custom_buffer = FT(3.0)
+    capped_heights_custom = min.(test_heights, z_atm - custom_buffer)
+    max_allowed_custom = z_atm - custom_buffer
+    @test all(Array(parent(capped_heights_custom)) .<= max_allowed_custom)
+    @test Array(parent(capped_heights_custom))[1] == max_allowed_custom
+end

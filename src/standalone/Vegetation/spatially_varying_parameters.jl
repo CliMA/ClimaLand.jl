@@ -5,6 +5,8 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaLand: Artifacts
+
+export canopy_height
 """
     clm_canopy_radiation_parameters(
         surface_space;
@@ -304,4 +306,61 @@ function clm_medlyn_g1(
         file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
     return g1
+end
+
+"""
+    canopy_height(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        z_atm = nothing,
+        buffer = nothing,
+    )
+
+"""
+canopy_height(surface_space; kwargs...)
+
+function canopy_height(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    z_atm = nothing,
+    buffer = nothing,
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
+
+
+    # Create preprocessing function for height capping if z_atm is provided
+    if z_atm !== nothing
+        FT = eltype(surface_space)
+        buff = buffer === nothing ? FT(2.0) : buffer
+        max_height = z_atm - buff
+        preprocess_func = (data) -> min.(data, max_height)
+        file_reader_kwargs = (; preprocess_func = preprocess_func,)
+    else
+        file_reader_kwargs = NamedTuple()
+    end
+
+    height_field = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "z_top",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        file_reader_kwargs = file_reader_kwargs,
+    )
+    return height_field
 end
