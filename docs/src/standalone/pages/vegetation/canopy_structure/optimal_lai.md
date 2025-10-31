@@ -2,7 +2,7 @@
 
 The Optimal LAI model predicts seasonal to decadal dynamics of leaf area index based on optimality principles, balancing energy and water constraints.
 
-This model is based on Zhou et al. (2025), which presents a general model for the seasonal to decadal dynamics of leaf area that combines predictions from both the light use efficiency (LUE) framework and optimization theory.
+This model is based on [Zhou2025](@citet), which presents a general model for the seasonal to decadal dynamics of leaf area that combines predictions from both the light use efficiency (LUE) framework and optimization theory.
 
 ## Model Overview
 
@@ -97,5 +97,4 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). Setting $\alpha = 0.0
 
 ## References
 
-Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area" 
-Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
+[Zhou2025](@cite)
