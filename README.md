@@ -36,7 +36,7 @@ Then, you can install ClimaLand.jl by doing:
 
 ```Julia
 julia> using Pkg
-julia> Pkg.add(ClimaLand)
+julia> Pkg.add("ClimaLand")
 ```
 
 You are now ready to use `ClimaLand.jl`.
