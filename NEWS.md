@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add optimal LAI model that predicts seasonal to decadal leaf area index dynamics based on optimality principles balancing energy and water constraints PR[1501](https://github.com/CliMA/ClimaLand.jl/pull/1501)
 - Switch to use the Vast filesystem on central
 
 v1.0.0

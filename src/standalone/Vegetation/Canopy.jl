@@ -540,6 +540,20 @@ function PModelConductance{FT}(
     return PModelConductance{FT}(cond_params)
 end
 
+## LAI models
+"""
+    OptimalLAIModel{FT}(toml_dict::CP.ParamDict,
+                       ) where {FT <: AbstractFloat}
+
+Create an `OptimalLAIModel` using `toml_dict` of type `FT`.
+"""
+function OptimalLAIModel{FT}(
+    toml_dict::CP.ParamDict,
+) where {FT <: AbstractFloat}
+    parameters = OptimalLAIParameters{FT}(toml_dict)
+    return OptimalLAIModel{FT, typeof(parameters)}(parameters)
+end
+
 
 ########################################################
 # End component model convenience constructors
