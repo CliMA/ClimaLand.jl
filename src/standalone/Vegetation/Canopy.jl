@@ -542,7 +542,8 @@ end
 
 ## LAI models
 """
-    OptimalLAIModel{FT}(toml_dict::CP.ParamDict) where {FT <: AbstractFloat}
+    OptimalLAIModel{FT}(toml_dict::CP.ParamDict,
+                       ) where {FT <: AbstractFloat}
 
 Create an `OptimalLAIModel` using `toml_dict` of type `FT`.
 """
