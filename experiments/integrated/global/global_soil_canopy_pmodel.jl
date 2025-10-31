@@ -98,6 +98,10 @@ LAI =
 photosynthesis = PModel{FT}(canopy_domain, toml_dict)
 conductance = PModelConductance{FT}(toml_dict)
 
+# Set up optimal LAI model
+lai_model =
+    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
@@ -106,6 +110,7 @@ canopy = Canopy.CanopyModel{FT}(
     prognostic_land_components,
     photosynthesis,
     conductance,
+    lai_model,
 )
 
 # Combine the soil and canopy models into a single prognostic land model
