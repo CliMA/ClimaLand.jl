@@ -33,9 +33,25 @@ Returns geographical information for US-Ha1 (Massachusetts Harvard Forest) Fluxn
 The values are provided as defaults, and can be overwritten by passing the corresponding
 keyword arguments to this function.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Atmosphere height:
+    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+=======
+<<<<<<< HEAD
 The `time_offset` is the difference from UTC in hours
 and excludes daylight savings time, following Fluxnet convention.
 For this site, the local time is UTC-5 for Eastern Standard Time (EST).
+=======
+Atmosphere height:
+    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
+>>>>>>> 0fbc3a466 (pain)
+>>>>>>> a523e6aba (pain)
+=======
+The `time_offset` is the difference from UTC in hours
+and excludes daylight savings time, following Fluxnet convention.
+For this site, the local time is UTC-5 for Eastern Standard Time (EST).
+>>>>>>> main
 """
 function FluxnetSimulations.get_location(
     FT,
@@ -43,28 +59,9 @@ function FluxnetSimulations.get_location(
     time_offset = -5,
     lat = FT(42.5378),
     long = FT(-72.1715),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_Ha1}; kwargs...)
-
-Returns atmosphere height for US-Ha1 (Massachusetts Harvard Forest) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-
-Data sources:
-
-Atmosphere height:
-    - https://atmos.seas.harvard.edu/research-harvard_forest-instrumentation
-"""
-function FluxnetSimulations.get_fluxtower_height(
-    FT,
-    ::Val{:US_Ha1};
     atmos_h = FT(30),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """
@@ -89,8 +86,15 @@ function FluxnetSimulations.get_parameters(
     soil_ν = FT(0.5),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
-    soil_vg_n = FT(2.05),
-    soil_vg_α = FT(0.04),
+<<<<<<< HEAD
+<<<<<<< HEAD
+    soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+=======
+    hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+>>>>>>> a523e6aba (pain)
+=======
+    soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
+>>>>>>> fe513ef05 (run from fluxnet2015)
     θ_r = FT(0.067),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),
@@ -98,8 +102,10 @@ function FluxnetSimulations.get_parameters(
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.001),
     soil_ϵ = FT(0.98),
-    soil_α_PAR = FT(0.2),
-    soil_α_NIR = FT(0.2),
+    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+        PAR_albedo = FT(0.2),
+        NIR_albedo = FT(0.2),
+    ),
     Ω = FT(0.69),
     χl = FT(0.5),
     G_Function = ConstantGFunction(FT(0.5)),
@@ -141,8 +147,7 @@ function FluxnetSimulations.get_parameters(
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -150,8 +155,7 @@ function FluxnetSimulations.get_parameters(
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,

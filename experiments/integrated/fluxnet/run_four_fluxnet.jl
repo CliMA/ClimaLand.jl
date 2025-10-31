@@ -23,7 +23,7 @@ using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
-toml_dict = LP.create_toml_dict(FT)
+earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
@@ -34,19 +34,12 @@ end
 
 site_ID = ARGS[1]
 
-(; dz_tuple, nelements, zmin, zmax) = FluxnetSimulations.get_domain_info(FT)
-(; time_offset, lat, long, atmos_h) = FluxnetSimulations.get_location(site_ID)
-
-
-# Construct the ClimaLand domain to run the simulation on
-land_domain = Column(;
-    zlim = (zmin, zmax),
-    nelements = nelements,
-    dz_tuple = dz_tuple,
-    longlat = (long, lat),
-)
-surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
-
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+# Get the default values for this site's domain, location, and parameters
+(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+(; time_offset, lat, long, atmos_h) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (;
     soil_ν,
     soil_K_sat,
@@ -90,13 +83,8 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     h_leaf,
     h_stem,
     h_canopy,
-<<<<<<< HEAD
     z0_m,
     z0_b,
-) = FluxnetSimulations.get_parameters(FT, site_ID, land_domain)
-=======
-    z_0m,
-    z_0b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
@@ -107,10 +95,10 @@ land_domain = Column(;
     longlat = (long, lat),
 )
 surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
->>>>>>> main
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
+
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 (start_date, stop_date) =
@@ -122,7 +110,7 @@ dt = Float64(450) # 7.5 minutes
     time_offset,
     atmos_h,
     start_date,
-    toml_dict,
+    earth_param_set,
     FT,
 )
 
@@ -143,7 +131,7 @@ composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
     forcing,
-    toml_dict;
+    earth_param_set;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     albedo = soil_albedo,
@@ -165,7 +153,7 @@ drivers = Soil.Biogeochemistry.SoilDrivers(
     soil_organic_carbon,
     atmos,
 )
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers)
 
 # Now we set up the canopy model, one component at a time.
 # Set up radiative transfer
@@ -177,47 +165,41 @@ radiation_parameters = (;
     α_NIR_leaf,
     τ_NIR_leaf,
 )
-radiative_transfer = Canopy.TwoStreamModel{FT}(
-    surface_domain,
-    toml_dict;
-    radiation_parameters,
-    ϵ_canopy,
-)
+radiative_transfer =
+    Canopy.TwoStreamModel{FT}(surface_domain; radiation_parameters, ϵ_canopy)
 
 # Set up conductance
-conductance = Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
+conductance = Canopy.MedlynConductanceModel{FT}(surface_domain; g1)
 
 # Set up photosynthesis
 photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
-photosynthesis =
-    FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
+photosynthesis = FarquharModel{FT}(surface_domain; photosynthesis_parameters)
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI = ClimaLand.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
-    toml_dict;
+    LAI;
     n_stem,
     n_leaf,
     h_stem,
     h_leaf,
+    SAI,
+    RAI,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
     retention_model,
+    rooting_depth,
 )
-height = h_stem + h_leaf
-biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Set up the energy model
-energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
@@ -227,16 +209,15 @@ canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
     LAI,
-    toml_dict;
-    z_0m,
-    z_0b,
+    earth_param_set;
+    z_0m = z0_m,
+    z_0b = z0_b,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,
     conductance,
     hydraulics,
     energy,
-    biomass,
 )
 
 # Snow model
@@ -244,7 +225,7 @@ snow = Snow.SnowModel(
     FT,
     surface_domain,
     forcing,
-    toml_dict,
+    earth_param_set,
     dt;
     prognostic_land_components,
 )
@@ -283,8 +264,12 @@ diags = ClimaLand.default_diagnostics(
     start_date;
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
     output_vars,
-    reduction_period = :halfhourly,
+    average_period = :hourly,
 );
+
+## How often we want to update the drivers.
+data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
+updateat = Array(start_date:data_dt:stop_date)
 
 simulation = LandSimulation(
     start_date,
@@ -292,7 +277,7 @@ simulation = LandSimulation(
     dt,
     land;
     set_ic!,
-    updateat = dt, # How often we want to update the drivers.
+    updateat,
     diagnostics = diags,
 )
 @time solve!(simulation)
