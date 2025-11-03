@@ -145,13 +145,7 @@ using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
 import ClimaLand.Simulations: LandSimulation, solve!
-using ClimaLand:
-    initialize,
-    make_update_aux,
-    make_exp_tendency,
-    make_set_initial_cache,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes
+using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 # We also want to plot the solution
