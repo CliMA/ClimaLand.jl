@@ -6,7 +6,6 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaLand: Artifacts
 
-export canopy_height
 """
     clm_canopy_radiation_parameters(
         surface_space;
@@ -308,8 +307,10 @@ function clm_medlyn_g1(
     return g1
 end
 
+export clm_canopy_height, effective_canopy_height
+
 """
-    canopy_height(
+    clm_canopy_height(
         surface_space;
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
@@ -319,55 +320,32 @@ end
         ),
         interpolation_method = Interpolations.Linear(),
         lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
-        z_atm = nothing,
-        buffer = nothing,
     )
 
+Read spatially-varying canopy height data from CLM vegetation properties.
+
+Returns a Field of raw canopy heights from the CLM dataset without any modifications.
+For heights that respect atmospheric coupling constraints, use `effective_canopy_height`
+to cap the heights appropriately.
+
+# Arguments
+- `surface_space`: The surface space for regridding
+
+# Optional Arguments
+- `regridder_type`: Type of regridder (default: `:InterpolationsRegridder`)
+- `extrapolation_bc`: Boundary conditions for extrapolation
+- `interpolation_method`: Spatial interpolation method (default: Linear)
+- `lowres`: Use low-resolution CLM data
+
+# Returns
+- Field of canopy heights in meters
+
+# Example
+```julia
+raw_height = clm_canopy_height(surface_space)
+effective_height = effective_canopy_height(raw_height, 10.0; buffer=2.0)
+```
 """
-canopy_height(surface_space; kwargs...)
-
-function canopy_height(
-    surface_space;
-    regridder_type = :InterpolationsRegridder,
-    extrapolation_bc = (
-        Interpolations.Periodic(),
-        Interpolations.Flat(),
-        Interpolations.Flat(),
-    ),
-    interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
-    z_atm = nothing,
-    buffer = nothing,
-)
-    context = ClimaComms.context(surface_space)
-    clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
-
-
-    # Create preprocessing function for height capping if z_atm is provided
-    if z_atm !== nothing
-        FT = eltype(surface_space)
-        buff = buffer === nothing ? FT(2.0) : buffer
-        max_height = z_atm - buff
-        preprocess_func = (data) -> min.(data, max_height)
-        file_reader_kwargs = (; preprocess_func = preprocess_func,)
-    else
-        file_reader_kwargs = NamedTuple()
-    end
-
-    height_field = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "z_top",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        file_reader_kwargs = file_reader_kwargs,
-    )
-    return height_field
-end
-
-# Replace all uses of `canopy_height` with `clm_canopy_height` for backward compatibility
-export clm_canopy_height
-
 function clm_canopy_height(
     surface_space;
     regridder_type = :InterpolationsRegridder,
