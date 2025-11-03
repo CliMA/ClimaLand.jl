@@ -82,33 +82,30 @@ T_atmos = TimeVaryingInput(
 # Instead of relying on ClimaCore for field -> array, use ClimaAnalysis for
 # array -> array instead
 dest = ClimaCore.Fields.zeros(surface_space)
-fill!(ClimaCore.Fields.field_values(dest), NaN)
-ClimaUtilities.TimeVaryingInputs.evaluate!(dest, T_atmos, FT(0.0))
+coords = dest |> ClimaCore.Fields.coordinate_field
 
-longpts = range(-180.0, 180.0, 404)
-latpts = range(-90.0, 90.0, 202)
+longs = coords.long |> ClimaCore.Fields.field2array
+lats = coords.lat |> ClimaCore.Fields.field2array
 
-hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
+longs = unique!(sort(longs))
+lats = unique!(sort(lats))
 
-# lon by lat
-interpolated_array = Remapping.interpolate(dest, hcoords, nothing)
-
-# To make it easier to compare, put it in a OutputVar
-t2m_var_from_cc = TemplateVar() |> add_attribs(units = "K", long_name = "2 metre temperature") |> add_data(; data = interpolated_array) |>
-        add_dim("lon", collect(longpts), units = "degrees_east") |> add_dim("lat", collect(latpts), units = "degrees_north") |> initialize
-
-
-# Load data from OutputVar
 t2m_var_from_nc = ClimaAnalysis.OutputVar(era5_2008_data, "t2m")
 t2m_var_from_nc = ClimaAnalysis.select(t2m_var_from_nc; by = ClimaAnalysis.MatchValue(), time = DateTime("2008-03-01"))
 
-t2m_var_from_nc = ClimaAnalysis.resampled_as(t2m_var_from_nc, t2m_var_from_cc)
+# Like going from netcdf file to climacore field
+fake_cc = ClimaAnalysis.resampled_as(t2m_var_from_nc, lat = collect(lats), lon = collect(longs))
+# Like going from climacore field to netcdf file
+longpts = range(-180.0, 180.0, 404)
+latpts = range(-90.0, 90.0, 202)
+fake_cc = ClimaAnalysis.resampled_as(fake_cc, lon = longpts, lat = latpts)
 
 
-# Compare the bias
+# Resample t2m_var_from_nc to match the grid of fake_cc
+t2m_var_from_nc = ClimaAnalysis.resampled_as(t2m_var_from_nc, fake_cc)
+
+# Make a plot here
 fig = CairoMakie.Figure()
-ClimaAnalysis.Visualize.plot_bias_on_globe!(fig, t2m_var_from_cc, t2m_var_from_nc)
+ClimaAnalysis.Visualize.plot_bias_on_globe!(fig, fake_cc, t2m_var_from_nc, mask = ClimaAnalysis.apply_oceanmask)
 
-CairoMakie.save("bias.png", fig)
-
-close(T_atmos)
+CairoMakie.save("bias_latest_climautilities_fake_cc_all_linear.png", fig)

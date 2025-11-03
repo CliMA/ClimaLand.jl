@@ -64,7 +64,7 @@ era5_ncdata_path = [era5_2008_data]
 
 regridder_type = :InterpolationsRegridder
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
-interpolation_method = Interpolations.Linear()
+interpolation_method = Interpolations.Constant()
 
 T_atmos = TimeVaryingInput(
         era5_ncdata_path,
@@ -85,8 +85,8 @@ dest = ClimaCore.Fields.zeros(surface_space)
 fill!(ClimaCore.Fields.field_values(dest), NaN)
 ClimaUtilities.TimeVaryingInputs.evaluate!(dest, T_atmos, FT(0.0))
 
-longpts = range(-180.0, 180.0, 404)
-latpts = range(-90.0, 90.0, 202)
+longpts = range(-180.0, 179.0, 360)
+latpts = range(-90.0, 90.0, 181)
 
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 
@@ -102,13 +102,14 @@ t2m_var_from_cc = TemplateVar() |> add_attribs(units = "K", long_name = "2 metre
 t2m_var_from_nc = ClimaAnalysis.OutputVar(era5_2008_data, "t2m")
 t2m_var_from_nc = ClimaAnalysis.select(t2m_var_from_nc; by = ClimaAnalysis.MatchValue(), time = DateTime("2008-03-01"))
 
-t2m_var_from_nc = ClimaAnalysis.resampled_as(t2m_var_from_nc, t2m_var_from_cc)
+t2m_var_from_nc = ClimaAnalysis.shift_longitude(t2m_var_from_nc, -180.0, 180.0)
+# t2m_var_from_nc = ClimaAnalysis.resampled_as(t2m_var_from_nc, t2m_var_from_cc)
 
 
 # Compare the bias
 fig = CairoMakie.Figure()
-ClimaAnalysis.Visualize.plot_bias_on_globe!(fig, t2m_var_from_cc, t2m_var_from_nc)
+ClimaAnalysis.Visualize.plot_bias_on_globe!(fig, t2m_var_from_cc, t2m_var_from_nc, cmap_extrema = (-1.0, 1.0))
 
-CairoMakie.save("bias.png", fig)
+CairoMakie.save("bias_latest_climautilities_no_regridding_constant.png", fig)
 
 close(T_atmos)

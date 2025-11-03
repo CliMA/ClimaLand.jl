@@ -1562,11 +1562,13 @@ function prescribed_forcing_era5(
             time_interpolation_method = LinearInterpolation(PeriodicCalendar())
         end
     else
-        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
-            start_date,
-            stop_date;
-            context,
-        )
+        # era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
+        #     start_date,
+        #     stop_date;
+        #     context,
+        # )
+        era5_2008_data = "/net/sampo/data1/era5/forty_yrs_era5_land_forcing_data/forty_yrs_era5_land_forcing_data_artifact/era5_2008_1.0x1.0.nc"
+        era5_ncdata_path = [era5_2008_data]
         interpolation_method = Interpolations.Linear()
     end
 
