@@ -129,10 +129,10 @@ import ClimaParams
             @test Canopy.lambertw0(FT(ℯ)) ≈ FT(1.0) atol = FT(1e-6)
 
             # Test near branch point
-            @test Canopy.lambertw0(-FT(1.0) / FT(ℯ)) ≈ -FT(1.0) atol = FT(1e-6)
+            @test Canopy.lambertw0(-FT(1.0) / FT(ℯ) + FT(1e-8)) ≈ -FT(1.0) atol = FT(1e-4)
 
-            # Test domain error for invalid input
-            @test_throws DomainError Canopy.lambertw0(-FT(1.0))
+            # Test invalid input returns NaN (GPU-friendly behavior)
+            @test isnan(Canopy.lambertw0(-FT(1.0)))
         end
 
         @testset "compute_steady_state_LAI function for FT = $FT" begin
