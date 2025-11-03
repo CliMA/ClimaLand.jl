@@ -91,24 +91,24 @@ end
     )
     surface_space = domain.space.surface
 
-    # Test canopy_height function
-    canopy_height = ClimaLand.Canopy.canopy_height(
+    # Test clm_canopy_height function (reads raw CLM data)
+    raw_height = ClimaLand.Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
     )
 
     # Check that field is on the correct space
-    @test axes(canopy_height) == surface_space
+    @test axes(raw_height) == surface_space
 
     # Check that heights are positive
-    @test all(Array(parent(canopy_height)) .>= 0)
+    @test all(Array(parent(raw_height)) .>= 0)
 
     # Check that some heights are non-zero (there should be vegetation somewhere)
-    @test any(Array(parent(canopy_height)) .> 0)
+    @test any(Array(parent(raw_height)) .> 0)
 
     # Check that maximum height is reasonable (should be < 50m based on CLM data)
-    @test maximum(Array(parent(canopy_height))) < 50.0
+    @test maximum(Array(parent(raw_height))) < 50.0
 end
 
 @testset "Effective canopy height capping" begin
