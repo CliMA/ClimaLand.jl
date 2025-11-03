@@ -70,7 +70,6 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing=true
     )
     forcing = (; atmos, radiation)
 
@@ -138,9 +137,9 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("20008-04-01")
+stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
-nelements = (20, 15)
+nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(
     FT;
     context,
@@ -160,7 +159,8 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation = true,
     conservation_period = Day(10),
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+simulation =
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"
@@ -169,9 +169,9 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, diagnosti
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-#LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
-#LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-#LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
+LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
 LandSimVis.check_conservation(simulation; savedir = root_path)
 
 if LONGER_RUN
@@ -181,4 +181,3 @@ if LONGER_RUN
         joinpath(root_path, "ILAMB_diagnostics"),
     )
 end
-

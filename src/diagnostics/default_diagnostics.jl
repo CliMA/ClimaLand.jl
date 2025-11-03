@@ -159,11 +159,7 @@ This method can be extended for any model that extends `get_possible_diagnostics
 Note that `EnergyHydrology` and `LandModel` have a specialized method that handles conservation diagnostics.
 """
 function default_diagnostics(
-    model::Union{
-        CanopyModel{FT},
-        SoilCanopyModel{FT},
-        BucketModel{FT},
-    },
+    model::Union{CanopyModel{FT}, SoilCanopyModel{FT}, BucketModel{FT}},
     start_date;
     output_writer,
     output_vars = :short,
@@ -231,7 +227,7 @@ but rather included by providing `conservation = true`.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics.
 """
 function default_diagnostics(
-    land_model::Union{EnergyHydrology{FT},LandModel{FT}},
+    land_model::Union{EnergyHydrology{FT}, LandModel{FT}},
     start_date;
     output_writer,
     output_vars = :short,
