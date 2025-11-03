@@ -1,8 +1,11 @@
 using Test
 
+# Ensure extensions are loaded for SpaceVaryingInput
+using ClimaCore
+using NCDatasets
+
 import ClimaComms
 ClimaComms.@import_required_backends
-using ClimaCore
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities
@@ -74,9 +77,10 @@ end
     LAI = TimeVaryingInput(LAI_fun)
 
     # Create a spatially-varying height field
-    field_height = zeros(surface_space) .+ FT(3.0)  # Constant field of 3m for testing
+    coords = ClimaCore.Fields.coordinate_field(surface_space)
+    field_height = coords.lat .* 0 .+ FT(3.0)  # Constant field of 3m for testing
 
-    # Test with Field height
+    # Test with Field height (main-branch pattern)
     biomass = Canopy.PrescribedBiomassModel{FT}(
         surface_domain,
         LAI,
@@ -116,16 +120,16 @@ end
     LAI_fun = (t) -> FT(5.0)
     LAI = TimeVaryingInput(LAI_fun)
 
-    # Read spatially-varying canopy height from CLM data with automatic capping
-    z_atm = FT(10.0)
-    capped_height = Canopy.clm_canopy_height(
+    # Read spatially-varying canopy height from CLM data (old pattern)
+    raw_height = Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
-        z_atm = z_atm,
     )
+    z_atm = FT(10.0)
+    capped_height = Canopy.effective_canopy_height(raw_height, z_atm)
 
-    # Create biomass model with spatially-varying capped height
+    # Create biomass model with spatially-varying capped height (main-branch pattern)
     biomass = Canopy.PrescribedBiomassModel{FT}(
         surface_domain,
         LAI,
@@ -168,8 +172,6 @@ end
     surface_space = domain.space.surface
 
     # Set up forcing
-    earth_param_set = LP.LandParameters(toml_dict)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     start_date = DateTime(2005)
 
     u_atmos = t -> 10  # m/s
@@ -190,7 +192,7 @@ end
         TimeVaryingInput(P_atmos),
         start_date,
         h_atmos,
-        earth_param_set;
+        toml_dict;
         c_co2 = TimeVaryingInput(c_atmos),
     )
 
@@ -210,13 +212,13 @@ end
     LAI_fun = (t) -> FT(5.0)
     LAI = TimeVaryingInput(LAI_fun)
 
-    # Read and cap spatially-varying canopy height
-    capped_height = Canopy.clm_canopy_height(
+    # Read and cap spatially-varying canopy height (two-step pattern)
+    raw_height = Canopy.clm_canopy_height(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
-        z_atm = h_atmos,
     )
+    capped_height = Canopy.effective_canopy_height(raw_height, h_atmos)
 
     # Create biomass model with spatially-varying height
     biomass = Canopy.PrescribedBiomassModel{FT}(
