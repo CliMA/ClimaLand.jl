@@ -521,7 +521,8 @@ function LandSimVis.check_conservation(
     model::Union{
         ClimaLand.Soil.EnergyHydrology,
         ClimaLand.LandModel,
-    }domain::ClimaLand.Domains.SphericalShell,
+    },
+    domain::ClimaLand.Domains.SphericalShell,
     diagnostics,
     savedir,
     plot_stem_name,
