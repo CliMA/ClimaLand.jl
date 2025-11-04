@@ -278,11 +278,17 @@ Provide a robust initial guess for the Lambert W₀ function for use in iterativ
 
 # Algorithm
 - For x > 1: uses log(x) - log(log(x)) approximation
-- For x ≤ 1: uses max(x, -0.3) as a simple starting point
+- For x < -0.32 (near -1/e): uses series expansion for accurate convergence near branch point
+- For -0.32 ≤ x ≤ 1: uses max(x, -0.3) as a simple starting point
 """
 @inline function _lambertw0_initial_guess(x::T) where {T <: AbstractFloat}
     if x > one(T)
         return log(x) - log(max(log(x), T(1e-6)))
+    elseif x < T(-0.32)
+        # Near the branch point -1/e, use series expansion
+        # This handles the singular behavior at x = -1/e where W(x) = -1
+        p = sqrt(T(2) * (T(ℯ) * x + one(T)))
+        return -one(T) + p - p^2 / T(3) + p^3 * T(11) / T(72)
     else
         return max(x, T(-0.3))
     end
@@ -319,7 +325,7 @@ This implementation is designed to work on both CPU and GPU:
 Corless et al. (1996) "On the Lambert W function"
 """
 @inline function lambertw0(x::T; maxiter::Int = 16) where {T <: AbstractFloat}
-    if !(isfinite(x)) || x < MINARG
+    if !(isfinite(x)) || x < T(MINARG)
         return T(NaN)
     end
     w = _lambertw0_initial_guess(x)
@@ -327,11 +333,25 @@ Corless et al. (1996) "On the Lambert W function"
         ew = exp(w)
         f = w * ew - x
         # Halley denominator
-        denom = ew * (w + one(T)) - (w + T(2)) * f / (T(2) * w + T(2))
-        if denom == zero(T)
-            Δ = f / (ew * (w + one(T)))
+        # Special case: when w ≈ -1, both numerator and denominator approach 0
+        # This happens at the branch point x = -1/e, where W(-1/e) = -1
+        w_plus_1 = w + one(T)
+        if abs(w_plus_1) < eps(T)
+            # Already at or very near the solution w = -1, no update needed
+            Δ = zero(T)
         else
-            Δ = f / denom
+            two_w_plus_2 = T(2) * w_plus_1
+            if abs(two_w_plus_2) < eps(T)
+                # Near w = -1, use Newton's method instead of Halley
+                Δ = f / (ew * w_plus_1)
+            else
+                denom = ew * w_plus_1 - (w + T(2)) * f / two_w_plus_2
+                if abs(denom) < eps(T)
+                    Δ = f / (ew * w_plus_1)
+                else
+                    Δ = f / denom
+                end
+            end
         end
         w -= Δ
     end
