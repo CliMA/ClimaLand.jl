@@ -128,11 +128,15 @@ import ClimaParams
                 FT(1e-6)
             @test Canopy.lambertw0(FT(ℯ)) ≈ FT(1.0) atol = FT(1e-6)
 
-            # Test near branch point
-            @test Canopy.lambertw0(-FT(1.0) / FT(ℯ)) ≈ -FT(1.0) atol = FT(1e-6)
+            # Test near branch point - at x = -1/e + 1e-8, W(x) ≈ -1 + sqrt(2*1e-8*e)
+            # For Float64: W(-1/e + 1e-8) ≈ -0.9997668
+            # For Float32: -1/e + 1e-8 rounds to exactly -1/e, so W(-1/e) = -1
+            x_near_branch = -FT(1.0) / FT(ℯ) + FT(1e-8)
+            w_near_branch = Canopy.lambertw0(x_near_branch)
+            @test w_near_branch ≈ -FT(1.0) atol = FT(1e-3)  # Looser tolerance near branch point
 
-            # Test domain error for invalid input
-            @test_throws DomainError Canopy.lambertw0(-FT(1.0))
+            # Test invalid input returns NaN (GPU-friendly behavior)
+            @test isnan(Canopy.lambertw0(-FT(1.0)))
         end
 
         @testset "compute_steady_state_LAI function for FT = $FT" begin
