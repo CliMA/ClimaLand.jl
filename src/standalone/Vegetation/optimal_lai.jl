@@ -263,98 +263,98 @@ function compute_m(
     return m
 end
 
+const MINARG = -inv(Base.MathConstants.e)
+
 """
-    lambertw0(x)
+    _lambertw0_initial_guess(x::T) where {T<:AbstractFloat}
+
+Provide a robust initial guess for the Lambert W₀ function for use in iterative solvers.
+
+# Arguments
+- `x::T`: Input value, should be ≥ -1/e
+
+# Returns
+- Initial guess for W₀(x)
+
+# Algorithm
+- For x > 1: uses log(x) - log(log(x)) approximation
+- For x < -0.32 (near -1/e): uses series expansion for accurate convergence near branch point
+- For -0.32 ≤ x ≤ 1: uses max(x, -0.3) as a simple starting point
+"""
+@inline function _lambertw0_initial_guess(x::T) where {T <: AbstractFloat}
+    if x > one(T)
+        return log(x) - log(max(log(x), T(1e-6)))
+    elseif x < T(-0.32)
+        # Near the branch point -1/e, use series expansion
+        # This handles the singular behavior at x = -1/e where W(x) = -1
+        p = sqrt(T(2) * (T(ℯ) * x + one(T)))
+        return -one(T) + p - p^2 / T(3) + p^3 * T(11) / T(72)
+    else
+        return max(x, T(-0.3))
+    end
+end
+
+"""
+    lambertw0(x::T; maxiter::Int = 16) where {T<:AbstractFloat}
 
 Compute the principal branch (W₀) of the Lambert W function for x ∈ [-1/e, ∞).
 
-The Lambert W function satisfies W(x)·exp(W(x)) = x. This implementation uses
-Halley's method for fast convergence, typically requiring only 2-3 iterations.
+This is a GPU-device-friendly implementation using a fixed number of Halley iterations.
+The Lambert W function satisfies W(x)·exp(W(x)) = x.
 
 # Arguments
-- `x::Real`: Input value, must be ≥ -1/e ≈ -0.36788
+- `x::T`: Input value, must be ≥ -1/e ≈ -0.36788
+- `maxiter::Int`: Maximum number of Halley iterations (default: 16)
 
 # Returns
-- `W::Float64`: Lambert W₀(x), the principal branch value
+- `W::T`: Lambert W₀(x), the principal branch value, or NaN for invalid inputs
 
 # Algorithm
-Uses Halley's method with an appropriate initial guess:
-- For x near -1/e: use series expansion
-- For x ∈ [-1/e, -0.1]: use fitted approximation
-- For x ∈ [-0.1, 10]: use log-based approximation
-- For x > 10: use asymptotic expansion
+Uses Halley's method with a fixed number of iterations for GPU compatibility:
+- No dynamic memory allocation
+- No conditional breaks (runs all iterations)
+- Broadcastable for use with CuArrays: lambertw0.(cuarray)
+
+# Device Compatibility
+This implementation is designed to work on both CPU and GPU:
+- All operations are scalar and supported on CUDA.jl
+- No array allocations or dynamic loops
+- Type-generic over AbstractFloat (Float32, Float64)
 
 # References
 Corless et al. (1996) "On the Lambert W function"
 """
-function lambertw0(x::T) where {T <: Real}
-    # Check domain
-    min_x = -one(T) / T(ℯ)
-    if x < min_x
-        throw(
-            DomainError(
-                x,
-                "Lambert W₀ is only defined for x ≥ -1/e ≈ -0.36788",
-            ),
-        )
+@inline function lambertw0(x::T; maxiter::Int = 16) where {T <: AbstractFloat}
+    if !(isfinite(x)) || x < T(MINARG)
+        return T(NaN)
     end
-
-    # Special cases
-    if x == zero(T)
-        return zero(T)
-    elseif abs(x - min_x) < T(1e-10)
-        return -one(T)
-    end
-
-    # Choose initial guess based on the region
-    if x < T(-0.32)  # Near the branch point -1/e
-        # Series expansion near -1/e
-        p = sqrt(T(2) * (T(ℯ) * x + one(T)))
-        w = -one(T) + p - p^2 / T(3) + p^3 * T(11) / T(72)
-    elseif x < zero(T)
-        # For x ∈ [-0.32, 0], use a rational approximation
-        w = x / (one(T) + x)  # Simple approximation that's good enough for Halley
-    elseif x < T(2.5)
-        # For small positive x, start with x as the guess (works well up to ~2.5)
-        w = x * (one(T) - x / T(3))  # Slightly better than just x
-    elseif x < T(10)
-        # Log-based approximation (safe since x >= 2.5)
-        l1 = log(x)
-        l2 = log(l1)
-        w = l1 - l2 + l2 / l1
-    else
-        # Asymptotic expansion for large x
-        l1 = log(x)
-        l2 = log(l1)
-        w = l1 - l2 + l2 / l1 + l2 * (l2 - T(2)) / (T(2) * l1 * l1)
-    end
-
-    # Halley's method refinement (typically converges in 2-3 iterations)
-    for _ in 1:10  # Maximum iterations
+    w = _lambertw0_initial_guess(x)
+    for i in 1:maxiter
         ew = exp(w)
-        wew = w * ew
-        f = wew - x
-
-        # Check convergence
-        if abs(f) < T(1e-14) * (one(T) + abs(x))
-            break
+        f = w * ew - x
+        # Halley denominator
+        # Special case: when w ≈ -1, both numerator and denominator approach 0
+        # This happens at the branch point x = -1/e, where W(-1/e) = -1
+        w_plus_1 = w + one(T)
+        if abs(w_plus_1) < eps(T)
+            # Already at or very near the solution w = -1, no update needed
+            Δ = zero(T)
+        else
+            two_w_plus_2 = T(2) * w_plus_1
+            if abs(two_w_plus_2) < eps(T)
+                # Near w = -1, use Newton's method instead of Halley
+                Δ = f / (ew * w_plus_1)
+            else
+                denom = ew * w_plus_1 - (w + T(2)) * f / two_w_plus_2
+                if abs(denom) < eps(T)
+                    Δ = f / (ew * w_plus_1)
+                else
+                    Δ = f / denom
+                end
+            end
         end
-
-        # Halley's method update
-        # w_new = w - f / (f' - f * f'' / (2 * f'))
-        # where f = w*exp(w) - x
-        # f' = exp(w) * (w + 1)
-        # f'' = exp(w) * (w + 2)
-        w1 = w + one(T)
-        denom = ew * w1 - f * (w + T(2)) / (T(2) * w1)
-
-        if abs(denom) < T(1e-20)
-            break
-        end
-
-        w = w - f / denom
+        w -= Δ
     end
-
     return w
 end
 
