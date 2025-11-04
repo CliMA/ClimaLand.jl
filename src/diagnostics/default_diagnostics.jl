@@ -74,7 +74,7 @@ Currently, the following periods are supported:
 - :monthly
 """
 
-get_period(::Val{:every_dt}, dt) = Second(dt)
+get_period(::Val{:every_dt}, dt) = Second(float(dt))
 get_period(::Val{:halfhourly}, dt) = Minute(30)
 get_period(::Val{:hourly}, dt) = Hour(1)
 get_period(::Val{:daily}, dt) = Day(1)
