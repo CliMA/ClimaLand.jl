@@ -45,9 +45,16 @@ steps:
 
     - label: "Run ILAMB leaderboard"
       command:
-        - pushd $(pwd)
+        # - pushd $(pwd)
         - cd /net/sampo/data1/ilamb
         - export PATH="$(pwd)/ilamb_env/bin:$PATH"
         - export ILAMB_ROOT=$(pwd)
         - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
-        - popd
+        - tar czf $$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz $$ILAMB_ROOT/buildkite/_build
+        # - popd
+      artifact_paths:
+        - "$$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz"
+      agents:
+        - slurm_cpus_per_task: 4
+        - slurm_ntasks: 4
+        - slurm_mem: 32GB
