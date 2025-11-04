@@ -40,6 +40,7 @@ steps:
         # ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
         ILAMB_DIAG_DIR: "/home/kphan2/test_ilamb_diag"
         ILAMB_BUILDKITE_DIR: "/net/sampo/data1/ilamb/buildkite"
+        ILAMB_ROOT_DIR: "/net/sampo/data1/ilamb"
 
     - wait
 
@@ -49,12 +50,16 @@ steps:
         - cd /net/sampo/data1/ilamb
         - export PATH="$(pwd)/ilamb_env/bin:$PATH"
         - export ILAMB_ROOT=$(pwd)
-        - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
-        - tar czf $$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz $$ILAMB_ROOT/buildkite/_build
+        - ilamb-run --config $$ILAMB_ROOT_DIR/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT_DIR/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT_DIR/buildkite/_build
+        - tar czf $$ILAMB_ROOT_DIR/buildkite/ilamb_leaderboard.tar.gz $$ILAMB_ROOT_DIR/buildkite/_build
         # - popd
+      env:
+        # ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
+        ILAMB_ROOT_DIR: "/net/sampo/data1/ilamb"
       artifact_paths:
-        - "$$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz"
+        - "$$ILAMB_ROOT_DIR/buildkite/ilamb_leaderboard.tar.gz"
+        # - "/net/sampo/data1/ilamb/buildkite/ilamb_leaderboard.tar.gz"
       agents:
-        - slurm_cpus_per_task: 4
+        - slurm_cpus_per_task: 8
         - slurm_ntasks: 4
         - slurm_mem: 32GB
