@@ -23,15 +23,6 @@ function setup_run_for_ilamb(
         error("$ilamb_diagnostics_dir is not a directory")
     isdir(ilamb_root) || error("$ilamb_root is not a directory")
 
-    # The root ILAMB directory should contain MODELS (simulational data) and
-    # DATA (observational data)
-    # We can check if this is the correct directory by checking for the presence
-    # of the MODELS directory. We expect the MODELS and DATA directories to be
-    # at the same level
-    "DATA" in readdir(ilamb_root) || error(
-        "The DATA directory cannot be found in $ilamb_root. You cannot run ILAMB from this directory",
-    )
-
     # Make the MODELS directory
     MODELS_dir = joinpath(ilamb_root, "MODELS")
     if !isdir(MODELS_dir)
@@ -55,7 +46,7 @@ end
 Create a model name from the date and commit id.
 """
 function create_model_name(commit_id::String)
-    return "$(Dates.Date(now()))_$commit_id"
+    return "$(Dates.Date(Dates.now()))_$commit_id"
 end
 
 """
@@ -107,7 +98,8 @@ end
 """
     validate_symlinks(model_dir)
 
-Validate the symbolic links in `MODELS` directory where the ILAMB root is.
+Validate the symbolic links in `MODELS` directory where the ILAMB root directory
+is.
 
 The function `create_symlinks` only create symbolic links for the current simulation. The
 `MODELS` directory may contain the results of other longruns whose symbolic
@@ -138,9 +130,10 @@ function validate_symlinks(model_dir)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    if length(ARGS) != 2
+    # TODO: Rename ilamb_root_dir to ilamb_buildkite_dir
+    if length(ARGS) != 3
         error(
-            "Usage: julia --project=.buildkite ilamb_create_symlinks.jl <ilamb_diagnostics_dir> <ilamb_root_dir> <commit_id>",
+            "Usage: julia --project=.buildkite ilamb_setup.jl <ilamb_diagnostics_dir> <ilamb_root_dir> <commit_id>",
         )
     end
     ilamb_diagnostics_dir = ARGS[1]

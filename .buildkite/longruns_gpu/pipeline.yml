@@ -4,7 +4,6 @@ agents:
   modules: climacommon/2025_05_15
 
 env:
-  JULIA_CUDA_MEMORY_POOL: "cuda"
 
 # We check for the existence of `LONGER_RUN` to determine whether a `LONGER_RUN`
 # of `snowy_land.jl`. If you want to do a very long run on Buildkite manually,
@@ -23,13 +22,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
-      - julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-      - julia --project=.buildkite -e 'using Pkg; Pkg.precompile()'
-      - julia --project=.buildkite -e 'using CUDA; CUDA.precompile_runtime()'
-      - julia --project=.buildkite -e 'using Pkg; Pkg.status()'
-
     agents:
-      slurm_gpus: 1
       slurm_cpus_per_task: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
@@ -37,113 +30,24 @@ steps:
 
   - wait
 
-  - group: "Global Land Models"
-    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null
+  - group: "ILAMB leaderboard"
+    if: build.env("LONGER_RUN") != null && build.env("ILAMB_RUN") != null
     steps:
+    - label: "Set up for ILAMB"
+      command:
+        - julia --color=yes --project=.buildkite/ experiments/misc/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_COMMIT
+      env:
+        # ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
+        ILAMB_DIAG_DIR: "/home/kphan2/test_ilamb_diag"
+        ILAMB_BUILDKITE_DIR: "/net/sampo/data1/ilamb/buildkite"
 
-      - label: ":snow_capped_mountain: Snowy Land"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
-        artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
+    - wait
 
-      - label: ":snow_capped_mountain: Snowy Land + P Model"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
-        artifact_paths:
-          - "snowy_land_pmodel_longrun_gpu/*png"
-          - "snowy_land_pmodel_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: ":sunglasses: California regional simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/land_region.jl
-        artifact_paths: "california_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 01:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Soil"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Global bucket simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/bucket.jl
-        artifact_paths: "bucket_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-  - group: "Perturbed Low-res Global Land Models"
-    if: build.env("PERTURBED_RUN") != null
-    steps:
-
-      - label: ":snow_capped_mountain: Low-Res Snowy Land Perturbed Temperature"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land_temp.jl
-        artifact_paths:
-          - "lowres_snowy_land_longrun_temp_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          PERTURBED_RUN: ""
- 
-      - label: ":snow_capped_mountain: Low-Res Snowy Land Perturbed RH"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land_rh.jl
-        artifact_paths:
-          - "lowres_snowy_land_longrun_rh_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          PERTURBED_RUN: ""
-
-  - group: "Longer runs of Global Land Models"
-    if: build.env("LONGER_RUN") != null
-    steps:
-      - label: "Snowy Land, 19 years"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
-        artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          LONGER_RUN: ""
-
-      - label: "Soil, 20 years"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          LONGER_RUN: ""
+    - label: "Run ILAMB leaderboard"
+      command:
+        - pushd $(pwd)
+        - cd /net/sampo/data1/ilamb
+        - export PATH="$(pwd)/ilamb_env/bin:$PATH"
+        - export ILAMB_ROOT=$(pwd)
+        - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
+        - popd
