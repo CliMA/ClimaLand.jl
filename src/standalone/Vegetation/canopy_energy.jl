@@ -181,44 +181,6 @@ function root_energy_flux_per_ground_area!(
     fa_energy .= FT(0)
 end
 
-function ClimaLand.make_compute_jacobian(
-    model::BigLeafEnergyModel{FT},
-    canopy,
-) where {FT}
-    function compute_jacobian!(
-        jacobian::MatrixFields.FieldMatrixWithSolver,
-        Y,
-        p,
-        dtγ,
-        t,
-    )
-        (; matrix) = jacobian
-
-        # The derivative of the residual with respect to the prognostic variable
-        ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
-        ∂LHF∂qc = p.canopy.turbulent_fluxes.∂LHF∂qc
-        ∂SHF∂Tc = p.canopy.turbulent_fluxes.∂SHF∂Tc
-        ∂LW_n∂Tc = p.canopy.energy.∂LW_n∂Tc
-        ∂qc∂Tc = p.canopy.energy.∂qc∂Tc
-        ϵ_c = p.canopy.radiative_transfer.ϵ
-        area_index = p.canopy.biomass.area_index
-        ac_canopy = model.parameters.ac_canopy
-        earth_param_set = canopy.parameters.earth_param_set
-        _T_freeze = LP.T_freeze(earth_param_set)
-        _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
-        @. ∂qc∂Tc = partial_q_sat_partial_T_liq(
-            p.drivers.P,
-            Y.canopy.energy.T - _T_freeze,
-        )# use atmos air pressure as approximation for surface air pressure
-        @. ∂Tres∂T =
-            float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (∂LW_n∂Tc - ∂SHF∂Tc - ∂LHF∂qc * ∂qc∂Tc) /
-                (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
-            ) - (I,)
-    end
-    return compute_jacobian!
-end
 
 """
     partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
