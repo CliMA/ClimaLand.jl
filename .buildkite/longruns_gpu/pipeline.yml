@@ -55,9 +55,7 @@ steps:
         # - "$$ILAMB_ROOT_DIR/buildkite/ilamb_leaderboard.tar.gz"
         - "/net/sampo/data1/ilamb/buildkite/ilamb_leaderboard.tar.gz"
       agents:
-        - slurm_cpus_per_task: 8
-        - slurm_ntasks: 4
-        - slurm_mem: 64GB
+        - slurm_mem: 32GB
         - slurm_time: "2:00:00"
       concurrency: 1
       concurrency_group: "ilamb-run"
