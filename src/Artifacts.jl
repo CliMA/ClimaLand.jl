@@ -143,6 +143,17 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
     yearf =
         Dates.month(stop_date) == 12 ? Dates.year(stop_date) + 1 :
         Dates.year(stop_date)
+
+    if (year0 < 2000)
+        year_diff = yearf - year0
+
+        year0 = 2000
+        yearf = year0 + year_diff
+        @warn(
+            "MODIS LAI data is only available from 2000 to 2020. Adjusting start year to 2000 and end year to $yearf.",
+        )
+    end
+
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     paths = collect(
         joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
@@ -230,7 +241,9 @@ end
     )
 
 Return the path to the file that contains a year of fluxnet data
-corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var).
+corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var). If
+the site_ID is not in this set, the function will try to find the corresponding
+dataset, or throw an error if not found.
 
 Site publications and licenses:
 US-Ha1:
@@ -268,11 +281,48 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
+    try
+        full_fluxnet_path = @clima_artifact("fluxnet2015", context)
+        dirs = filter(
+            d -> isdir(joinpath(full_fluxnet_path, d)),
+            readdir(full_fluxnet_path),
+        )
 
-    folder_path = @clima_artifact("fluxnet_sites", context)
-    data_path = joinpath(folder_path, "$(site_ID).csv")
-    return data_path
+        match = findfirst(d -> occursin(site_ID, d), dirs)
+        @assert match !== nothing "No Fluxnet data found for site ID: $site_ID"
+
+        site_dir = dirs[match]
+        parts = split(site_dir, "FULLSET")
+        site_path_hh = join([parts[1], "FULLSET_HH", parts[2]], "") * ".csv"
+        site_path_hr = join([parts[1], "FULLSET_HR", parts[2]], "") * ".csv"
+
+        if isfile(joinpath(full_fluxnet_path, site_dir, site_path_hh))
+            data_path = joinpath(full_fluxnet_path, site_dir, site_path_hh)
+        elseif isfile(joinpath(full_fluxnet_path, site_dir, site_path_hr))
+            data_path = joinpath(full_fluxnet_path, site_dir, site_path_hr)
+        else
+            error(
+                "There exists a directory $site_dir for site ID $site_ID, but found no data files for half-hourly or hourly data.",
+            )
+        end
+
+        return data_path
+    catch
+        @info "Either the full fluxnet2015 dataset does not exist locally, or the site ID was not found. 
+            Falling back to the fluxnet_sites artifact which contains only US-MOz, US-Var, US-NR1, and US-Ha1."
+
+        @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
+
+        folder_path = @clima_artifact("fluxnet_sites", context)
+        data_path = joinpath(folder_path, "$(site_ID).csv")
+        return data_path
+    end
+
+end
+
+
+function fluxnet2015_data_path(; context = nothing)
+    return @clima_artifact("fluxnet2015", context)
 end
 
 """

@@ -17,8 +17,8 @@ Domain depth source: Xu and Baldocchi, 2003.
 function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_Var};
-    dz_tuple = FT.((0.05, 0.02)),
-    nelements = 24,
+    dz_tuple = nothing,
+    nelements = 14,
     zmin = FT(-0.5),
     zmax = FT(0),
 )
@@ -31,34 +31,16 @@ end
 Returns geographical information for US-Var (California Vaira Ranch Ione) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
-
-The `time_offset` is the difference from UTC in hours
-and excludes daylight savings time, following Fluxnet convention.
-For this site, the local time is UTC-8 for Pacific Standard Time (PST).
 """
 function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_Var};
-    time_offset = -8,
+    time_offset = 8,
     lat = FT(38.4133),
     long = FT(-120.9508),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_Var}; kwargs...)
-
-Returns atmosphere height for US-Var (California Vaira Ranch Ione) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-"""
-function FluxnetSimulations.get_fluxtower_height(
-    FT,
-    ::Val{:US_Var};
     atmos_h = FT(2),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """
@@ -85,38 +67,39 @@ Hydraulics parameters:
 function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:US_Var};
-    soil_ν = FT(0.5),
+    soil_ν = FT(0.45),
     soil_K_sat = FT(0.45 / 3600 / 100),
     soil_S_s = FT(1e-3),
-    soil_vg_n = FT(1.6),
-    soil_vg_α = FT(2.0),
-    θ_r = FT(0.0),
+    soil_hydrology_cm = vanGenuchten{FT}(; α = FT(2.0), n = FT(2.0)),
+    θ_r = FT(0.067),
     ν_ss_quartz = FT(0.3),
     ν_ss_om = FT(0.02),
     ν_ss_gravel = FT(0.0),
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.01),
     soil_ϵ = FT(0.98),
-    soil_α_PAR = FT(0.35),
-    soil_α_NIR = FT(0.35),
-    Ω = FT(0.75),
-    χl = FT(-0.3),
-    G_Function = ConstantGFunction(FT(0.5)),
+    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+        PAR_albedo = FT(0.2),
+        NIR_albedo = FT(0.2),
+    ),
+    Ω = FT(1.0),
+    χl = FT(0.5),
+    G_Function = ConstantGFunction(χl),
     α_PAR_leaf = FT(0.11),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
-    α_NIR_leaf = FT(0.45),
+    α_NIR_leaf = FT(0.35),
     τ_NIR_leaf = FT(0.34),
     ϵ_canopy = FT(0.97),
     g1 = FT(166),
     Drel = FT(1.6),
     g0 = FT(1e-4),
-    Vcmax25 = FT(2.5e-5),
+    Vcmax25 = FT(2 * 4.225e-5),
     ac_canopy = FT(745),
     pc = FT(-3e5),
-    sc = FT(4e-6),
+    sc = FT(1e-3),
     SAI = FT(0),
-    f_root_to_shoot = FT(3.5),
+    f_root_to_shoot = FT(1.0),
     K_sat_plant = 2e-8,
     ψ63 = FT(-2.7 / 0.0098),
     Weibull_param = FT(4),
@@ -140,8 +123,7 @@ function FluxnetSimulations.get_parameters(
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -149,8 +131,7 @@ function FluxnetSimulations.get_parameters(
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
