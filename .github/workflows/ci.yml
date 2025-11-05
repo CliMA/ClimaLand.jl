@@ -50,6 +50,8 @@ jobs:
         with:
           file: lcov.info
       - uses: codecov/codecov-action@v5
+        if: ${{ matrix.version == '1.10' }} && ${{ matrix.os == 'ubuntu-latest' }}
         with:
-          file: lcov.info
-          token: ${{secrets.CODECOV_TOKEN}}
+          files: lcov.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
