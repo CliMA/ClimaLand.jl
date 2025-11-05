@@ -476,8 +476,7 @@ function make_imp_tendency(land::LandModel)
             Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
         top_heat_flux = @. lazy(
             e_flux_falling_snow +
-            e_flux_falling_rain +
-            (
+            (e_flux_falling_rain +
                 p.snow.turbulent_fluxes.lhf +
                 p.snow.turbulent_fluxes.shf +
                 p.snow.R_n
@@ -493,23 +492,21 @@ function make_imp_tendency(land::LandModel)
             p.canopy.radiative_transfer.LW_n,
         )
         bottom_heat_flux = p.soil.bottom_bc.heat
-        #runoff_energy_flux = ;
+
         @. dY.∫F_e_dt = -(top_heat_flux - bottom_heat_flux)
 
         top_water_flux = @. lazy(
-            p.drivers.P_liq +
             p.drivers.P_snow +
-            p.snow.turbulent_fluxes.vapor_flux * p.snow.snow_cover_fraction +
-            (1 - p.snow.snow_cover_fraction) * (
+            (p.snow.turbulent_fluxes.vapor_flux + p.drivers.P_liq)* p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * ( 
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 p.soil.turbulent_fluxes.vapor_flux_ice
             ) +
-            p.canopy.turbulent_fluxes.transpiration,
+            p.canopy.turbulent_fluxes.transpiration + p.soil.infiltration,
         )
-        runoff_water_flux = @. lazy(p.soil.R_s + p.soil.R_ss)
         bottom_water_flux = p.soil.bottom_bc.water
         @. dY.∫F_vol_liq_water_dt =
-            -(top_water_flux + runoff_water_flux - bottom_water_flux)
+            -(top_water_flux - bottom_water_flux + p.soil.R_ss)
 
     end
     return imp_tendency!
