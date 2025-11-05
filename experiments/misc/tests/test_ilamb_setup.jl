@@ -29,13 +29,13 @@ end
 
     # Make dummy ILAMB directory
     ilamb_root_dir = mkdir(joinpath(tempdir, "ilamb"))
-    mkdir(joinpath(ilamb_root_dir, "DATA"))
 
     commit_id = "4242424"
     setup_run_for_ilamb(ilamb_diag_dir, ilamb_root_dir, commit_id)
 
+    # Test existence of directories and symlinks
     MODELS_dir = joinpath(ilamb_root_dir, "MODELS")
-    model_dir = joinpath(MODELS_dir, "$(Dates.Date(now()))_$commit_id")
+    model_dir = joinpath(MODELS_dir, "$(Dates.Date(Dates.now()))_$commit_id")
     symlink_evspsbl = joinpath(
         model_dir,
         "evspsbl_Lmon_CliMA_historical_r1i1p1f1_gn_200003-201902.nc",
@@ -67,7 +67,7 @@ end
         commit_id,
     )
 
-    model_dir2 = joinpath(MODELS_dir, "$(Dates.Date(now()))_$commit_id")
+    model_dir2 = joinpath(MODELS_dir, "$(Dates.Date(Dates.now()))_$commit_id")
     symlink_evspsbl = joinpath(
         model_dir2,
         "evspsbl_Lmon_CliMA_historical_r1i1p1f1_gn_200003-201902.nc",

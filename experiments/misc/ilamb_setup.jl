@@ -3,28 +3,29 @@ import Dates
 """
     setup_run_for_ilamb(
         ilamb_diagnostics_dir::String,
-        ilamb_root::String,
+        ilamb_models_parent_dir::String,
         commit_id::String,
     )
 
 Set up the ILAMB diagnostics produced from the run for ILAMB.
 
-This involves making the `MODELS` directory in `ilamb_root` if it does not
-exist, creating a model directory in the `MODELS` directory, and creating
-symbolic links in the model directory.
+This involves making the `MODELS` directory in `ilamb_models_parent_dir` if it
+does not exist, creating a model directory in the `MODELS` directory for this
+run, and creating symbolic links in the model directory pointing to NetCDF files
+in `ilamb_diagnostics_dir`.
 """
 function setup_run_for_ilamb(
     ilamb_diagnostics_dir::String,
-    ilamb_root::String,
+    ilamb_models_parent_dir::String,
     commit_id::String,
 )
     # Verify directories exist
     isdir(ilamb_diagnostics_dir) ||
         error("$ilamb_diagnostics_dir is not a directory")
-    isdir(ilamb_root) || error("$ilamb_root is not a directory")
+    isdir(ilamb_models_parent_dir) || error("$ilamb_root is not a directory")
 
     # Make the MODELS directory
-    MODELS_dir = joinpath(ilamb_root, "MODELS")
+    MODELS_dir = joinpath(ilamb_models_parent_dir, "MODELS")
     if !isdir(MODELS_dir)
         # This should not be called that often, since the MODELS directory should
         # persist from run to run
@@ -46,7 +47,11 @@ end
 Create a model name from the date and commit id.
 """
 function create_model_name(commit_id::String)
-    return "$(Dates.Date(Dates.now()))_$commit_id"
+    # On Github, commit IDs are shortened to 7 characters, so this script does
+    # the same. Also, `commit_id` should be passed by the BUILDKITE_COMMIT
+    # environment variable
+    short_commit_id = first(commit_id, 7)
+    return "$(Dates.Date(Dates.now()))_$short_commit_id"
 end
 
 """
@@ -59,11 +64,6 @@ Symbolic links are created rather than copied to avoid unnecessary data
 duplication.
 """
 function create_symlinks(ilamb_diagnostics_dir::String, model_dir::String)
-    # Make the directory with the variable name if it doesn't exists
-    # Then, check if a link exists or not
-    # If it does, then skip it and return a warning
-    # If it doesn't, make a new one (remember symlink(source, target))
-
     nc_filepaths = String[]
     # The directory should be flat, but we iterate recursively in case this
     # change for whatever reason
@@ -101,10 +101,10 @@ end
 Validate the symbolic links in `MODELS` directory where the ILAMB root directory
 is.
 
-The function `create_symlinks` only create symbolic links for the current simulation. The
-`MODELS` directory may contain the results of other longruns whose symbolic
-links may or may not be valid. For example, if the diagnostics are deleted, then
-the symbolic links will be invalid.
+The function `create_symlinks` only create symbolic links for the current
+simulation. The `MODELS` directory may contain the results of other longruns
+whose symbolic links may or may not be valid. For example, if the diagnostics
+are deleted, then the symbolic links will be invalid.
 
 Note that this does not remove the directory if all the symlinks associated with
 a particular run is deleted.
@@ -130,17 +130,14 @@ function validate_symlinks(model_dir)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # TODO: Rename ilamb_root_dir to ilamb_buildkite_dir
     if length(ARGS) != 3
         error(
-            "Usage: julia --project=.buildkite ilamb_setup.jl <ilamb_diagnostics_dir> <ilamb_root_dir> <commit_id>",
+            "Usage: julia --project=.buildkite ilamb_setup.jl <ilamb_diagnostics_dir> <ilamb_models_parent_dir> <commit_id>",
         )
     end
     ilamb_diagnostics_dir = ARGS[1]
-    ilamb_root_dir = ARGS[2]
-    # On Github, commit IDs are shortened to 7 characters, so this script does
-    # the same. Also, this should be gotten from the BUILDKITE_COMMIT
-    # environment variable
-    commit_id = first(ARGS[3], 7)
-    setup_run_for_ilamb(ilamb_diagnostics_dir, ilamb_root_dir, commit_id)
+    # This directory should store the MODELS directory
+    ilamb_models_parent_dir = ARGS[2]
+    commit_id = ARGS[3]
+    setup_run_for_ilamb(ilamb_diagnostics_dir, ilamb_models_parent_dir, commit_id)
 end
