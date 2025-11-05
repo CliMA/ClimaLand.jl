@@ -103,37 +103,110 @@ get_reduction(::Val{:max}) = max
 get_reduction(::Val{:min}) = min
 get_reduction(val) = @error("Diagnostic reduction type $val not supported.")
 
+"""
+    default_output_writer(domain::Union{SphericalShell, SphericalSurface}, start_date, outdir)
+
+Creates a NetCDF diagnostics output writer using the start_date and outdir provided;
+the default output coordinates are spaced evenly at locations which depend on the resolution
+of the `domain`.
+"""
+function default_output_writer(
+    domain::Union{SphericalShell, SphericalSurface},
+    start_date,
+    outdir,
+)
+    #If num_long = 360, num_lat = 180, the output points will align with the ERA5 1 degree grid
+    num_long, num_lat, _ =
+        ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
+    Δ_long = 360.0 / num_long
+    Δ_lat = 180.0 / num_lat
+    longs = collect(range(-180.0; length = num_long, step = Δ_long))
+    lats = collect(range(-90.0; length = num_lat, step = Δ_lat))
+    space =
+        haskey(domain.space, :subsurface) ? domain.space.subsurface :
+        domain.space.surface
+    output_writer =
+        NetCDFWriter(space, outdir; start_date, horizontal_pts = (longs, lats))
+    return output_writer
+end
+
+"""
+    default_output_writer(domain::Union{Plane,HybridBox}, start_date, outdir)
+
+Creates a NetCDF diagnostics output writer using the start_date and outdir provided;
+the default output coordinates are spaced evenly at locations which depend on the resolution
+of the `domain`.
+"""
+function default_output_writer(
+    domain::Union{Plane, HybridBox},
+    start_date,
+    outdir,
+)
+    space =
+        haskey(domain.space, :subsurface) ? domain.space.subsurface :
+        domain.space.surface
+    if domain.longlat isa Nothing
+        num_x, num_y, num_z =
+            ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
+        output_writer = NetCDFWriter(
+            space,
+            outdir;
+            start_date,
+            num_points = (num_x, num_y, num_z),
+        )
+    else
+        coords = ClimaLand.Domains.coordinates(domain).surface
+        longs = unique(parent(coords.long)[:])
+        lats = unique(parent(coords.lat)[:])
+        output_writer = NetCDFWriter(
+            space,
+            outdir;
+            start_date,
+            horizontal_pts = (longs, lats),
+        )
+    end
+
+    return output_writer
+end
+
+"""
+    default_output_writer(domain::Union{Column, Point}}, start_date, outdir)
+
+Creates an in memory diagnostics output writer for Column and Point domains.
+"""
+function default_output_writer(domain::Union{Column, Point}, start_date, outdir)
+    output_writer = DictWriter()
+    return output_writer
+end
 
 default_diagnostics(
     model::ClimaLand.AbstractModel,
     start_date::ITime{<:Any, <:Any, <:DateTime},
-    outdir,
-) = default_diagnostics(model, date(start_date), outdir)
+    outdir;
+    kwargs...,
+) = default_diagnostics(model, date(start_date), outdir; kwargs...)
 
 # The default diagnostics currently require a start date because they use Dates.Period.
 function default_diagnostics(
     model::ClimaLand.AbstractModel,
     start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
-    outdir,
+    outdir;
+    kwargs...,
 )
     @warn "Default diagnostics not available when running without a start date."
     return []
 end
 
-function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
-    # a start date is required for default diagnostics
-    domain = ClimaLand.get_domain(model)
-    default_diagnostic_domain =
-        haskey(domain.space, :subsurface) ? domain.space.subsurface :
-        domain.space.surface
-    output_writer = NetCDFWriter(default_diagnostic_domain, outdir; start_date)
-    return default_diagnostics(model, start_date; output_writer)
-end
-
 """
-    default_diagnostics(model::AbstractModel{FT},
-                        start_date;
-                        output_writer,
+    default_diagnostics(model::Union{
+                            CanopyModel{FT},
+                            SoilCanopyModel{FT},
+                            LandModel{FT},
+                            BucketModel{FT},
+                        },
+                        start_date::DateTime,
+                        outdir;
+                        output_writer = default_output_writer(get_domain(model), start_date, outdir),
                         output_vars = :short,
                         reduction_period = :monthly,
                         reduction_type = :average,
@@ -165,8 +238,13 @@ function default_diagnostics(
         LandModel{FT},
         BucketModel{FT},
     },
-    start_date;
-    output_writer,
+    start_date::DateTime,
+    outdir;
+    output_writer = default_output_writer(
+        get_domain(model),
+        start_date,
+        outdir,
+    ),
     output_vars = :short,
     reduction_period = :monthly,
     reduction_type = :average,
@@ -201,8 +279,9 @@ end
 """
     default_diagnostics(
         land_model::EnergyHydrology{FT},
-        start_date;
-        output_writer,
+        start_date::DateTime,
+        outdir;
+        output_writer = default_output_writer(get_domain(model), start_date, outdir),
         output_vars = :short,
         reduction_period = :monthly,
         reduction_type = :average,
@@ -233,8 +312,13 @@ Please see the method `get_possible_diagnostics` for the list of available diagn
 """
 function default_diagnostics(
     land_model::EnergyHydrology{FT},
-    start_date;
-    output_writer,
+    start_date::DateTime,
+    outdir;
+    output_writer = default_output_writer(
+        get_domain(land_model),
+        start_date,
+        outdir,
+    ),
     output_vars = :short,
     reduction_period = :monthly,
     reduction_type = :average,
@@ -290,7 +374,8 @@ end
 
 function default_diagnostics(
     model::AbstractModel,
-    start_date = nothing;
+    start_date = nothing,
+    outdir = nothing;
     output_writer = nothing,
     output_vars = nothing,
     reduction_period = nothing,

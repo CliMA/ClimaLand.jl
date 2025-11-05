@@ -29,8 +29,10 @@ function get_lat_lon_from_resolution(nelements)
     # used when running the simulations, this will need to be changed.
     num_long, num_lat, _ =
         ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
-    longs = collect(range(-180.0, 180.0, length = num_long))
-    lats = collect(range(-90.0, 90.0, length = num_lat))
+    Δ_long = 360.0 / num_long
+    Δ_lat = 180.0 / num_lat
+    longs = collect(range(-180.0; length = num_long, step = Δ_long))
+    lats = collect(range(-90.0; length = num_lat, step = Δ_lat))
     return lats, longs
 end
 

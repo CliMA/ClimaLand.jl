@@ -78,10 +78,12 @@ function setup_prob(
     stop_date,
     Δt;
     outdir = outdir,
-    nelements = (101, 15),
+    n_horzelements = (180, 360),
+    n_vertelements = 15,
 )
     toml_dict = LP.create_toml_dict(FT)
-    domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
+    domain =
+        ClimaLand.Domains.global_box_domain(FT; n_horzelements, n_vertelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
@@ -169,8 +171,10 @@ function setup_simulation(; greet = false)
     start_date = DateTime(2008)
     stop_date = Second(60 * 60.0 * 6) + start_date
     Δt = 450.0
-    nelements = (101, 15)
-    prob, cb = setup_prob(start_date, stop_date, Δt; nelements)
+    n_horzelements = (180, 360)
+    n_vertelements = 15
+    prob, cb =
+        setup_prob(start_date, stop_date, Δt; n_horzelements, n_vertelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

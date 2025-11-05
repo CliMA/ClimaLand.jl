@@ -1459,7 +1459,7 @@ function prescribed_forcing_era5(
             stop_date;
             context,
         )
-        interpolation_method = Interpolations.Linear()
+        interpolation_method = Interpolations.Constant()
     end
 
     # Pass a list of files in all cases

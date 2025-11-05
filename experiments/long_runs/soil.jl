@@ -58,8 +58,7 @@ outdir =
 start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
 stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
 Δt = 450.0
-nelements = (101, 15)
-domain = ClimaLand.Domains.global_domain(FT; context, nelements)
+domain = ClimaLand.Domains.global_box_domain(FT; context)
 toml_dict = LP.create_toml_dict(FT)
 
 # Forcing data
@@ -75,12 +74,8 @@ forcing = ClimaLand.prescribed_forcing_era5(
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
 diagnostics = ClimaLand.default_diagnostics(
     model,
-    start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-        domain.space.subsurface,
-        outdir;
-        start_date,
-    ),
+    start_date,
+    outdir;
     conservation = true,
     conservation_period = Day(10),
 )
@@ -88,7 +83,7 @@ simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 
 @info "Run: Global Soil Model"
-@info "Resolution: $nelements"
+@info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
 @info "Stop Date: $stop_date"

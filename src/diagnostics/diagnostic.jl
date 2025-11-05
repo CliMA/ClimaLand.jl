@@ -187,6 +187,31 @@ function close_output_writers(diagnostics)
     return nothing
 end
 
+
+function default_diagnostic_num_points(
+    domain::Union{SphericalShell, SphericalSurface},
+)
+    num_horizontal_elements, num_vertical_elements = domain.nelements
+
+    # 4 panels cover the cubed sphere from -180 to 180 in long
+    num_long = 4num_horizontal_elements
+    # 2 panels cover the cubed sphere from 0 to 180 in lat
+    num_lat = 2num_horizontal_elements
+
+    num_z = num_vertical_elements
+
+    return num_long, num_lat, num_z
+end
+
+function default_diagnostic_num_points(domain::Union{HybridBox, Plane})
+    num_lat, num_long, num_z = domain.nelements
+    return num_long, num_lat, num_z
+end
+
+function default_diagnostic_num_points(domain::Union{Point, Column})
+    return domain.nelements
+end
+
 # Do you want to define more diagnostics? Add them here
 include("land_compute_methods.jl")
 
@@ -195,31 +220,3 @@ include("define_diagnostics.jl")
 
 # Default diagnostics and higher level interfaces
 include("default_diagnostics.jl")
-
-if pkgversion(ClimaDiagnostics) < v"0.2.13"
-    # Default diagnostic resolution given a Space (approximately one point per
-    # element)
-    function default_diagnostic_num_points(domain::SphericalShell)
-        num_horizontal_elements, num_vertical_elements = domain.nelements
-
-        # 4 panels cover the cubed sphere from -180 to 180 in long
-        num_long = 4num_horizontal_elements
-        # 2 panels cover the cubed sphere from 0 to 180 in lat
-        num_lat = 2num_horizontal_elements
-
-        num_z = num_vertical_elements
-
-        return num_long, num_lat, num_z
-    end
-
-    function default_diagnostic_num_points(domain::HybridBox)
-        num_horz, num_vert = domain.nelements
-        return num_horz, num_horz, num_vert
-    end
-else
-    function default_diagnostic_num_points(domain)
-        return ClimaDiagnostics.Writers.default_num_points(
-            domain.space.subsurface,
-        )
-    end
-end

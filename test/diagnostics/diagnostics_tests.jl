@@ -1,6 +1,7 @@
 using Test
 using ClimaLand
 using ClimaLand: Domains, Soil, Canopy
+using ClimaLand.Domains: global_domain, global_box_domain, HybridBox, Column
 using ClimaLand.Simulations: LandSimulation, step!
 using ClimaLand.Diagnostics: @with_error
 import ClimaLand.Parameters as LP
@@ -472,4 +473,70 @@ end
         reduction_type,
         dt,
     )
+end
+
+@testset "Default diagnostic writers" begin
+    FT = Float32
+    start_date = DateTime(2008)
+    # Spherical domain
+    d = global_domain(FT)
+    num_x1, num_x2, num_z =
+        ClimaLand.Diagnostics.default_diagnostic_num_points(d)
+    @test num_x1 == d.nelements[1] * 4
+    @test num_x2 == d.nelements[1] * 2
+    @test num_z == d.nelements[2]
+    output_writer =
+        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+    @test output_writer.num_points == (num_x1, num_x2, num_z)
+    @test output_writer.start_date == start_date
+    @test output_writer.hpts[1] ==
+          collect(range(-180.0; step = 360.0 / num_x1, length = num_x1))
+    @test output_writer.hpts[2] ==
+          collect(range(-90.0; step = 180.0 / num_x2, length = num_x2))
+    # Cartesian globe
+    d = global_box_domain(FT)
+    output_writer =
+        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+    @test output_writer.num_points == (360, 180, 15)
+    @test output_writer.start_date == start_date
+    @test output_writer.hpts[1] ==
+          collect(range(-180.0; step = 1.0, length = 360))
+    @test output_writer.hpts[2] ==
+          collect(range(-90.0; step = 1.0, length = 180))
+    # Carestian region
+    d = HybridBox(;
+        xlim = FT.((-1e3, 1e3)),
+        ylim = FT.((-1e3, 1e3)),
+        zlim = FT.((-1.0, 0.0)),
+        nelements = (10, 10, 10),
+        longlat = FT.((0.0, 0.0)),
+    )
+    output_writer =
+        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+    @test output_writer.num_points == (10, 10, 10)
+    @test output_writer.start_date == start_date
+    radius_earth = 6.378e6
+    @test output_writer.hpts[1] == unique(
+        parent(ClimaCore.Fields.coordinate_field(d.space.surface).long)[:],
+    )
+    @test output_writer.hpts[2] == unique(
+        parent(ClimaCore.Fields.coordinate_field(d.space.surface).lat)[:],
+    )
+    # Cartesian box, no long lat
+    d = HybridBox(;
+        xlim = FT.((0.0, 1.0)),
+        ylim = FT.((0.0, 1.0)),
+        zlim = FT.((0.0, 1.0)),
+        nelements = (10, 10, 10),
+    )
+    num_points = ClimaLand.Diagnostics.default_diagnostic_num_points(d)
+    @test num_points == d.nelements
+    output_writer =
+        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+    @test output_writer.num_points == num_points
+    #Column
+    d = Column(; zlim = FT.((0.0, 1.0)), nelements = 20)
+    output_writer =
+        ClimaLand.Diagnostics.default_output_writer(d, start_date, "foo")
+    @test output_writer isa ClimaDiagnostics.Writers.DictWriter
 end
