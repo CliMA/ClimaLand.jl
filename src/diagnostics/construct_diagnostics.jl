@@ -1,11 +1,11 @@
 """
-    define_diagnostics!(land_model; requested_diags = nothing)
+    construct_diagnostics(land_model; requested_diags = nothing)
 
 Calls `add_diagnostic_variable!` for all available variables specializing the
 compute function for `land_model`. If `requested_diags` is not `nothing`, diagnostics are
 only added if their `short_name` is in `requested_diags`.
 """
-function define_diagnostics!(land_model; requested_diags = nothing)
+function construct_diagnostics(land_model; requested_diags = nothing)
     ### Conservation ###
     add_diagnostic_variable!(
         requested_diags;

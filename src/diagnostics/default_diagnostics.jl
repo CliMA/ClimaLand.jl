@@ -183,7 +183,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
-    define_diagnostics!(model; requested_diags = diagnostics)
+    construct_diagnostics(model; requested_diags = diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),
@@ -254,7 +254,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
-    define_diagnostics!(land_model; requested_diags = diagnostics)
+    construct_diagnostics(land_model; requested_diags = diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),

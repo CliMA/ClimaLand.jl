@@ -112,7 +112,7 @@ using Statistics
     # ClimaDiagnostics
 
     diags = ["rn", "lhf"]
-    ClimaLand.Diagnostics.define_diagnostics!(model; requested_diags = diags)
+    ClimaLand.Diagnostics.construct_diagnostics(model; requested_diags = diags)
 
     tmpdir = mktempdir(".")
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(

@@ -200,8 +200,8 @@ include("land_compute_methods.jl")
 # Default diagnostics and higher level interfaces
 include("default_diagnostics.jl")
 
-# define_diagnostics.jl contains the list of all the diagnostics
-include("define_diagnostics.jl")
+# construct_diagnostics.jl contains the list of all the diagnostics
+include("construct_diagnostics.jl")
 
 if pkgversion(ClimaDiagnostics) < v"0.2.13"
     # Default diagnostic resolution given a Space (approximately one point per
