@@ -1,8 +1,6 @@
 name: ci
 on:
   push:
-    branches:
-      - main
     tags: '*'
   pull_request:
 
@@ -32,11 +30,10 @@ jobs:
       - name: Restore cached Julia depot
         uses: actions/cache/restore@v4
         with:
-          # load cached Julia depot, without scratchspaces and logs
+          # load cached Julia depot, without scratchspaces, logs, and artifacts
           path: |
             ~/.julia/packages
             ~/.julia/compiled
-            ~/.julia/artifacts
             ~/.julia/registries
           # The cache key includes the OS, Julia version, and the project's dependencies
           key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
@@ -59,15 +56,3 @@ jobs:
           files: lcov.info
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Cache Julia depot if main branch
-        if: ${{ github.ref == 'refs/heads/main' }}
-        uses: actions/cache/save@v4
-        with:
-          # Cache Julia's depot, without scratchspaces and logs
-          path: |
-            ~/.julia/packages
-            ~/.julia/compiled
-            ~/.julia/artifacts
-            ~/.julia/registries
-          # Recompute the cache  key
-          key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
