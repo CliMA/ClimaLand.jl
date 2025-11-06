@@ -47,13 +47,12 @@ jobs:
             ${{ matrix.os }}-julia-${{ matrix.version }}-
             ${{ matrix.os }}-julia-
       - uses: julia-actions/julia-buildpkg@v1
-      - if: ${{ matrix.version != '1.10' || matrix.os != 'ubuntu-latest' }}
+      - name: Run tests
         uses: julia-actions/julia-runtest@v1
         with:
-          coverage: false
+          coverage: ${{ matrix.version == '1.10' && matrix.os == 'ubuntu-latest' }}
       - if: ${{ matrix.version == '1.10' && matrix.os == 'ubuntu-latest' }}
-        uses: julia-actions/julia-runtest@v1
-      - uses: julia-actions/julia-processcoverage@v1
+        uses: julia-actions/julia-processcoverage@v1
         with:
           file: lcov.info
       - uses: codecov/codecov-action@v5
