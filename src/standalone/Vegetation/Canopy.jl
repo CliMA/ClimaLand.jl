@@ -28,6 +28,7 @@ import ClimaLand:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
+    make_compute_imp_tendency,
     get_drivers,
     get_model_callbacks,
     total_liq_water_vol_per_area!,

@@ -138,7 +138,7 @@ end
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-06-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2008-06-15")
-Δt = 450.0
+Δt = 120.0
 nelements = (101, 15)
 domain = ClimaLand.Domains.global_domain(
     FT;
