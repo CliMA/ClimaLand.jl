@@ -35,7 +35,7 @@ steps:
     steps:
     - label: "Set up ILAMB leaderboard"
       command:
-        - julia --color=yes --project=.buildkite/ experiments/misc/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_COMMIT
+        - julia --color=yes --project=.buildkite/ experiments/misc/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_BUILD_NUMBER $BUILDKITE_COMMIT
       env:
         # ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
         ILAMB_DIAG_DIR: "/home/kphan2/worktree/ClimaLand.jl/ilamb-script/ilamb_files"
