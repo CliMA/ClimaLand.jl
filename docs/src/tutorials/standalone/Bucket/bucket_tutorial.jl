@@ -346,7 +346,19 @@ ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
 sol = solve!(simulation);
 
+# Now we can easily visualize the results using LandSimVis:
+
 LandSimVis.make_timeseries(simulation;)
+
+# Some prognostic variables::
+# ![](wsoil_timeseries.png)
+# ![](ssfc_timeseries.png)
+# ![](tsoil_timeseries.png)
+
+# Some diagnostic variables::
+# ![](rn_timeseries.png)
+# ![](shf_timeseries.png)
+# ![](lhf_timeseries.png)
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
