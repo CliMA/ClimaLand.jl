@@ -150,7 +150,6 @@ using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 # We also want to plot the solution, for which we import ClimaLand utilities
 # for plotting and saving.
-using Plots
 import ClimaDiagnostics
 using CairoMakie, ClimaAnalysis, GeoMakie
 import ClimaLand.LandSimVis as LandSimVis
@@ -359,91 +358,3 @@ LandSimVis.make_timeseries(simulation;)
 # ![](rn_timeseries.png)
 # ![](shf_timeseries.png)
 # ![](lhf_timeseries.png)
-
-# Extracting the solution from what is returned by the ODE.jl commands
-# is a bit clunky right now, but we are working on hiding some of this.
-# `parent` extracts the underlying data from the ClimaCore.Fields.Field object
-# and we loop over the solution `sol` because of how the data is stored
-# within solutions returned by ODE.jl - indexed by timestep.
-times = FT.(sol.t)
-W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(times)];
-Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(times)];
-σS = [parent(sol.u[k].bucket.σS)[1] for k in 1:length(times)];
-T_sfc =
-    [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(times)];
-evaporation = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux)[1]
-    for k in 1:length(times)
-];
-R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(times)];
-# The turbulent energy flux is the sum of latent and sensible heat fluxes.
-LHF = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.lhf)[1] for
-    k in 1:length(times)
-];
-SHF = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.shf)[1] for
-    k in 1:length(times)
-];
-turbulent_energy_flux = SHF .+ LHF
-
-plot(
-    times ./ 86400,
-    W,
-    label = "",
-    xlabel = "time (days)",
-    ylabel = "W (m)",
-    title = "Land water storage (m)",
-)
-savefig("w.png")
-# ![](w.png)
-
-plot(
-    times ./ 86400,
-    σS,
-    label = "",
-    xlabel = "time (days)",
-    ylabel = "σS (m)",
-    title = "Area weighted SWE (m) ",
-)
-savefig("swe.png")
-# ![](swe.png)
-
-plot(
-    times ./ 86400,
-    snow_precip.(times),
-    label = "Net precipitation",
-    xlabel = "time (days)",
-    ylabel = "Flux (m/s)",
-    title = "Surface water fluxes",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, evaporation, label = "Sublimation/Evaporation")
-savefig("water_f.png")
-# ![](water_f.png)
-
-plot(
-    times ./ 86400,
-    T_sfc,
-    title = "Surface Temperatures",
-    label = "Ground temperature",
-    xlabel = "time (days)",
-    ylabel = "T_sfc (K)",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, T_atmos.(times), label = "Atmospheric Temperature")
-savefig("t.png")
-# ![](t.png)
-plot(
-    times ./ 86400,
-    R_n,
-    label = "Net radiative flux",
-    xlabel = "time (days)",
-    ylabel = "Flux (W/m^2)",
-    title = "Surface energy fluxes",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
-plot!(times ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
-savefig("energy_f.png")
-# ![](energy_f.png)
