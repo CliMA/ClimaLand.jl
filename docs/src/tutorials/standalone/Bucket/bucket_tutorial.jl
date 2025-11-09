@@ -148,8 +148,12 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
-# We also want to plot the solution
+# We also want to plot the solution, for which we import ClimaLand utilities
+# for plotting and saving.
 using Plots
+import ClimaDiagnostics
+using CairoMakie, ClimaAnalysis, GeoMakie
+import ClimaLand.LandSimVis as LandSimVis
 
 # And we need to use the DateTime type to store start dates
 using Dates
