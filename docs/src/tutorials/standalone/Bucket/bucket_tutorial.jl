@@ -297,10 +297,27 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 
 
-# We need a callback to get and store the auxiliary fields, as they
-# are not stored by default. We also need a callback to update the
-# drivers (atmos and radiation)
+# To store auxiliary prognostic fields, as they
+# are not stored by default, we use ClimaDiagnostics (for details, see
+# [here](@ref "Using ClimaLand Diagnostics to save simulation output")).
+# The output is saved at an hourly resolution (cf. Δt = 3600 s above).
+# Note that for each of the prognostic variables, there is a corresponding diagnostic
+# (see the full list of diagnostics
+# [here](@ref "Available diagnostic variables")):
+# - Subsurface water storage `W`: `wsoil`
+# - Snow water equivalent times snow cover fraction `σS`: `ssfc`
+# - Surface water content `Ws`: `wsfc`
+# - Land temperature `T`: `tsoil`
+
 saveat = Second(Δt)
+diag_writer = ClimaDiagnostics.Writers.DictWriter();
+diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+    model,
+    start_date;
+    output_vars = ["lhf", "shf", "rn", "wsoil", "ssfc", "wsfc", "tsoil"],
+    output_writer = diag_writer,
+    reduction_period = :hourly,
+);
 saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
 saved_values = saving_cb.affect!.saved_values;
 
@@ -316,7 +333,7 @@ simulation = LandSimulation(
     solver_kwargs = (; saveat),
     timestepper = ode_algo,
     user_callbacks = (saving_cb,),
-    diagnostics = (),
+    diagnostics = diagnostics,
 );
 Y = simulation._integrator.u;
 p = simulation._integrator.p;
@@ -328,6 +345,8 @@ Y.bucket |> propertynames
 ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
 sol = solve!(simulation);
+
+LandSimVis.make_timeseries(simulation;)
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
