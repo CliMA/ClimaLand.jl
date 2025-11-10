@@ -37,9 +37,9 @@ jobs:
             ubuntu-latest-julia-1.11-
             ubuntu-latest-julia-
       - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.precompile()'
+        run: julia -O0 --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.precompile()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
-        run: julia --color=yes --project=docs/ --procs=4 docs/make.jl
+        run: julia -O0 --color=yes --project=docs/ --procs=4 docs/make.jl
