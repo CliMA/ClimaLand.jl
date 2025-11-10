@@ -317,8 +317,6 @@ diagnostics = ClimaLand.Diagnostics.default_diagnostics(
     output_writer = diag_writer,
     reduction_period = :hourly,
 );
-saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
-saved_values = saving_cb.affect!.saved_values;
 
 # Create the LandSimulation object, which will also create and initialize the state vectors,
 # the cache, the driver callbacks, and set the initial conditions.
@@ -331,7 +329,6 @@ simulation = LandSimulation(
     updateat = Second(Δt),
     solver_kwargs = (; saveat),
     timestepper = ode_algo,
-    user_callbacks = (saving_cb,),
     diagnostics = diagnostics,
 );
 Y = simulation._integrator.u;
