@@ -172,9 +172,8 @@ function default_diagnostics(
     reduction_type = :average,
     dt = nothing,
 ) where {FT}
-    define_diagnostics!(model)
-
     possible_diags = get_possible_diagnostics(model)
+
     if output_vars == :long
         diagnostics = possible_diags
     elseif output_vars == :short
@@ -184,6 +183,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
+    construct_diagnostics(model; requested_diags = diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),
@@ -243,9 +243,8 @@ function default_diagnostics(
     dt = nothing,
 ) where {FT}
 
-    define_diagnostics!(land_model)
-
     possible_diags = get_possible_diagnostics(land_model)
+
     if output_vars == :long
         diagnostics = possible_diags
     elseif output_vars == :short
@@ -255,6 +254,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
+    construct_diagnostics(land_model; requested_diags = diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),

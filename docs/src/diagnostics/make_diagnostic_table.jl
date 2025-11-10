@@ -3,7 +3,7 @@ using PrettyTables
 
 # Print all available diagnostics to an ASCII table
 
-CL.Diagnostics.define_diagnostics!(nothing)
+CL.Diagnostics.construct_diagnostics(nothing; requested_diags = nothing)
 short_names = []
 long_names = []
 units = []
