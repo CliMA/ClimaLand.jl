@@ -514,11 +514,14 @@ function LandSimVis.check_conservation(
 end
 
 function LandSimVis.check_conservation(m, d, diags, o, pn)
-    @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology, and the domain must be global."
+    @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology/LandModel, and the domain must be global."
 end
 
 function LandSimVis.check_conservation(
-    model::ClimaLand.Soil.EnergyHydrology,
+    model::Union{
+        ClimaLand.Soil.EnergyHydrology,
+        ClimaLand.LandModel,
+    },
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics,
     savedir,
