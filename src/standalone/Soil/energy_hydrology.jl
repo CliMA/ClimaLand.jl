@@ -1345,7 +1345,7 @@ function ClimaLand.total_energy_per_area!(
 end
 
 """
-    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::EnergyHydrology, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
+    turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::EnergyHydrology, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
 
 This function computes the turbulent surface fluxes for a coupled simulation.
 This function is very similar to the `EnergyHydrology` method of `turbulent_fluxes!`,
@@ -1355,7 +1355,7 @@ atmosphere fields to compute the surface fluxes, rather than some being stored i
 This function is intended to be called by ClimaCoupler.jl when computing
 fluxes for a coupled simulation with the integrated land model.
 """
-function ClimaLand.coupler_compute_turbulent_fluxes!(
+function ClimaLand.turbulent_fluxes!(
     dest,
     atmos::CoupledAtmosphere,
     model::EnergyHydrology,

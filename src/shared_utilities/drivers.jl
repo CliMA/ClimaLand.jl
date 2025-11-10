@@ -378,8 +378,8 @@ end
     turbulent_fluxes!(dest,
                       atmos::PrescribedAtmosphere,
                       model::AbstractModel,
-                      Y::ClimaCore.Fields.FieldVector,
-                      p::NamedTuple,
+                      Y,
+                      p,
                       t
                       )
 
@@ -395,8 +395,8 @@ function turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
     model::AbstractModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
+    Y,
+    p,
     t,
 )
     T_sfc = surface_temperature(model, Y, p, t)
@@ -431,7 +431,7 @@ function turbulent_fluxes!(
 end
 
 """
-    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::AbstractModel, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
+    turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::AbstractModel, Y, p, t)
 
 This function computes the turbulent surface fluxes for a coupled simulation.
 This function is very similar to the default method of `turbulent_fluxes!`,
@@ -441,12 +441,12 @@ atmosphere fields to compute the surface fluxes, rather than some being stored i
 This function is intended to be called by ClimaCoupler.jl when computing
 fluxes for a coupled simulation with the integrated land model.
 """
-function coupler_compute_turbulent_fluxes!(
+function turbulent_fluxes!(
     dest,
     atmos::CoupledAtmosphere,
     model::AbstractModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
+    Y,
+    p,
     t,
 )
     T_sfc = surface_temperature(model, Y, p, t)
@@ -630,31 +630,6 @@ function compute_turbulent_fluxes_at_a_point(
         conditions.buoy_flux,
     )
 end
-
-"""
-    turbulent_fluxes!(dest,
-                    atmos::CoupledAtmosphere,
-                    model::AbstractModel,
-                    Y,
-                    p,
-                    t)
-
-Computes the turbulent surface fluxes terms at the ground for a coupled simulation.
-In this case, the coupler has already computed turbulent fluxes and updated
-them in each of the component models, so this function does nothing.
-"""
-function ClimaLand.turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    model::AbstractModel,
-    Y,
-    p,
-    t,
-)
-    # coupler has done its thing behind the scenes already
-    return nothing
-end
-
 
 """
     PrescribedRadiativeFluxes{FT, SW, LW, DT, T, TP} <: AbstractRadiativeDrivers{FT}
