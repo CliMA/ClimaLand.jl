@@ -1264,13 +1264,15 @@ end
 
 Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
 is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
-sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
+sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt. Similarly, if the LAI model
+is the OptimalLAIModel, then `set_historical_cache!` will initialize the LAI values.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
+        set_historical_cache!(p, Y0, model.lai_model, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = model.hydraulics
         n_stem = hydraulics.n_stem
@@ -1288,6 +1290,16 @@ values, so this function sets the historical cache values for the photosynthesis
 However, for other photosynthesis models this is not needed, so do nothing by default.
 """
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return nothing
+end
+
+"""
+    set_historical_cache!(p, Y0, m::AbstractLAIModel, canopy)
+
+For some LAI models (namely the OptimalLAIModel), we need to initialize LAI values
+before the simulation. However, for other LAI models this is not needed, so do nothing by default.
+"""
+function set_historical_cache!(p, Y0, m::AbstractLAIModel, canopy)
     return nothing
 end
 
