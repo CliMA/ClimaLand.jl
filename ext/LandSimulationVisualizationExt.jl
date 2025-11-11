@@ -45,13 +45,13 @@ end
 A default method for `make_leaderboard_plots` notifying the user that these plots have not been enable for their domain/model combination.
 """
 function LandSimVis.make_leaderboard_plots(m, d, diag)
-    @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel or BucketModel, and the domain must be global."
+    @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel or BucketModel, and the domain must be global or box."
 end
 
 """
     function make_leaderboard_plots(
         model::ClimaLand.LandModel,
-        domain::ClimaLand.Domains.SphericalShell,
+        domain::Union{ClimaLand.Domains.SphericalShell,ClimaLand.Domains.HybridBox},
         diagnostics;
         savedir,
         leaderboard_data_sources = ["ERA5", "ILAMB"],
@@ -65,7 +65,10 @@ The first two arguments are used for dispatch only.
 """
 function LandSimVis.make_leaderboard_plots(
     model::ClimaLand.LandModel,
-    domain::ClimaLand.Domains.SphericalShell,
+    domain::Union{
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
     diagnostics;
     savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
@@ -92,7 +95,10 @@ end
 
 function LandSimVis.make_leaderboard_plots(
     model::ClimaLand.Bucket.BucketModel,
-    domain::ClimaLand.Domains.SphericalShell,
+    domain::Union{
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
     diagnostics;
     savedir = ".",
     leaderboard_data_sources = ["ERA5"],
@@ -277,7 +283,7 @@ function LandSimVis.make_annual_timeseries(
 end
 
 function LandSimVis.make_annual_timeseries(
-    domain::ClimaLand.Domains.AbstractDomain,
+    domain::Union{ClimaLand.Domains.Point, ClimaLand.Domains.Column},
     diagnostics;
     plot_stem_name = "annual_timeseries",
     savedir = ".",
@@ -287,10 +293,7 @@ function LandSimVis.make_annual_timeseries(
 end
 
 function LandSimVis.make_annual_timeseries(
-    domain::Union{
-        ClimaLand.Domains.SphericalShell,
-        ClimaLand.Domains.SphericalSurface,
-    },
+    domain::ClimaLand.Domains.AbstractDomain,
     diagnostics;
     plot_stem_name = "annual_timeseries",
     savedir = ".",
@@ -514,12 +517,15 @@ function LandSimVis.check_conservation(
 end
 
 function LandSimVis.check_conservation(m, d, diags, o, pn)
-    @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology, and the domain must be global."
+    @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology, and the domain must be global/box."
 end
 
 function LandSimVis.check_conservation(
     model::ClimaLand.Soil.EnergyHydrology,
-    domain::ClimaLand.Domains.SphericalShell,
+    domain::Union{
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
     diagnostics,
     savedir,
     plot_stem_name,

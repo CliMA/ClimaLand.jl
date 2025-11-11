@@ -20,7 +20,8 @@ using ClimaLand.Domains:
     get_Δz,
     average_horizontal_resolution_degrees,
     get_lat,
-    get_long
+    get_long,
+    global_box_domain
 
 FT = Float32
 @testset "Clima Core Domains, FT = $FT" begin
@@ -673,4 +674,17 @@ end
 
         @test all(Array(parent(θ_r)) .== FT.(θ_r_nc[:]))
     end
+end
+
+@testset "Global box domain" begin
+    FT = Float32
+    d = global_box_domain(FT)
+    @test d.longlat == FT.((-0.5, -0.5))
+    @test d.dz_tuple == FT.((10.0, 0.05))
+    @test d.zlim == FT.((-50, 0))
+    @test d.nelements == (180, 360, 15)
+    @test d.npolynomial == 0
+    @test d.periodic == (false, false)
+    @test d.xlim == FT.((-90.5, 89.5))
+    @test d.ylim == FT.((-180.5, 179.5))
 end

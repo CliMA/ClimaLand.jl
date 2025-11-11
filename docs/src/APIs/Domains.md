@@ -13,6 +13,7 @@ ClimaLand.Domains.Column
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
 ClimaLand.Domains.global_domain
+ClimaLand.Domains.global_box_domain
 ClimaLand.Domains.coordinates
 ClimaLand.Domains.obtain_surface_space
 ClimaLand.Domains.obtain_surface_domain
