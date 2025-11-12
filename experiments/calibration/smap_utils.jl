@@ -541,95 +541,119 @@ end
 
 """
     create_valid_observation_mask(
-        lons_smap::Array{Float64,2},
-        lats_smap::Array{Float64,2},
-        sm_smap::Array{Float64,2},
-        model_coords::NamedTuple
+        lons_smap, lats_smap, sm_smap, model_coords
     )
 
-Create a combined mask identifying pixels with:
-1. Valid SMAP observations (not NaN)
-2. Corresponding to land pixels in the model domain
+Map model grid points to SMAP pixels and create observation vector.
 
-# Arguments
-- `lons_smap::Array{Float64,2}`: SMAP longitude grid
-- `lats_smap::Array{Float64,2}`: SMAP latitude grid
-- `sm_smap::Array{Float64,2}`: SMAP soil moisture grid
-- `model_coords::NamedTuple`: Model coordinates with fields (lons, lats, land_mask)
+Returns SMAP pixel assignments so model output can be spatially averaged 
+to match SMAP's 9km resolution during forward model evaluation.
 
 # Returns
-- `NamedTuple` with:
-  - `observation_vector::Vector{Float64}`: Valid SMAP observations (no NaNs)
-  - `valid_indices::Vector{Int}`: Indices into flattened model grid
-  - `valid_mask::BitVector`: Boolean mask for flattened model grid
-  - `lons::Vector{Float64}`: Longitudes of valid observations
-  - `lats::Vector{Float64}`: Latitudes of valid observations
-  - `coverage_stats::Dict`: Coverage statistics
+- observation_vector: SMAP observations (one per unique SMAP pixel with valid data)
+- smap_pixel_groups: Vector of vectors - each inner vector contains model grid indices 
+                     that fall within one SMAP pixel
+- smap_pixel_values: SMAP observation value for each pixel group
+- coverage_stats: Coverage statistics
 """
 function create_valid_observation_mask(
     lons_smap::Array{Float64,2},
     lats_smap::Array{Float64,2},
     sm_smap::Array{Float64,2},
-    model_coords::NamedTuple  # (lons, lats, land_mask)
+    model_coords::NamedTuple
 )
-    # Regrid SMAP to model coordinates using nearest neighbor
-    model_sm = regrid_smap_to_coords(
-        lons_smap,
-        lats_smap,
-        sm_smap,
-        model_coords.lons,
-        model_coords.lats
-    )
+    n_model = length(model_coords.lons)
     
-    # Create combined mask: land AND valid SMAP
-    valid_smap = .!isnan.(model_sm)
-    valid_mask = model_coords.land_mask .& valid_smap
+    # For each model point, find nearest SMAP pixel
+    smap_assignments = fill(0, n_model)  # Which SMAP pixel does each model point belong to?
     
-    # Extract valid observations and coordinates
-    valid_indices = findall(valid_mask)
-    obs_vector = model_sm[valid_mask]
-    obs_lons = model_coords.lons[valid_mask]
-    obs_lats = model_coords.lats[valid_mask]
+    # Flatten SMAP grid for easier indexing
+    smap_flat_idx = LinearIndices(sm_smap)
+    lons_smap_flat = vec(lons_smap)
+    lats_smap_flat = vec(lats_smap)
+    sm_smap_flat = vec(sm_smap)
+    
+    @info "Assigning model points to SMAP pixels..." n_model
+    
+    # Assign each model point to nearest SMAP pixel
+    for i in 1:n_model
+        # Skip ocean points
+        !model_coords.land_mask[i] && continue
+        
+        lon_model = model_coords.lons[i]
+        lat_model = model_coords.lats[i]
+        
+        # Find nearest SMAP pixel (Euclidean distance in lat-lon space)
+        # Note: For better accuracy, could use great circle distance
+        dist_sq = (lons_smap_flat .- lon_model).^2 .+ (lats_smap_flat .- lat_model).^2
+        nearest_idx = argmin(dist_sq)
+        
+        smap_assignments[i] = nearest_idx
+    end
+    
+    # Group model indices by SMAP pixel
+    smap_pixel_groups = Dict{Int, Vector{Int}}()
+    
+    for i in 1:n_model
+        smap_idx = smap_assignments[i]
+        smap_idx == 0 && continue  # Skip ocean
+        
+        if !haskey(smap_pixel_groups, smap_idx)
+            smap_pixel_groups[smap_idx] = Int[]
+        end
+        push!(smap_pixel_groups[smap_idx], i)
+    end
+    
+    @info "Model points grouped into SMAP pixels" n_unique_smap_pixels=length(smap_pixel_groups)
+    
+    # Filter to only SMAP pixels with valid data
+    valid_smap_pixels = Int[]
+    valid_model_groups = Vector{Vector{Int}}()
+    valid_smap_values = Float64[]
+    
+    for (smap_idx, model_indices) in smap_pixel_groups
+        sm_val = sm_smap_flat[smap_idx]
+        
+        # Only include if SMAP has valid data (not NaN)
+        if !isnan(sm_val)
+            push!(valid_smap_pixels, smap_idx)
+            push!(valid_model_groups, model_indices)
+            push!(valid_smap_values, sm_val)
+        end
+    end
+    
+    @info "Valid SMAP pixels identified" n_valid=length(valid_smap_pixels)
     
     # Calculate coverage statistics
     n_land = sum(model_coords.land_mask)
-    n_smap_valid = sum(valid_smap)
-    n_both_valid = sum(valid_mask)
+    n_model_in_valid_smap = sum(length(group) for group in valid_model_groups)
     
     coverage_stats = Dict(
-        "total_pixels" => length(model_coords.land_mask),
-        "land_pixels" => n_land,
-        "smap_valid_pixels" => n_smap_valid,
-        "both_valid_pixels" => n_both_valid,
-        "land_coverage_pct" => round(100 * n_both_valid / n_land, digits=2),
-        "smap_coverage_pct" => round(100 * n_both_valid / n_smap_valid, digits=2)
+        "total_model_points" => n_model,
+        "land_model_points" => n_land,
+        "unique_smap_pixels" => length(smap_pixel_groups),
+        "valid_smap_pixels" => length(valid_smap_pixels),
+        "model_points_in_valid_smap" => n_model_in_valid_smap,
+        "land_coverage_pct" => round(100 * n_model_in_valid_smap / max(n_land, 1), digits=2),
+        "avg_model_points_per_smap_pixel" => round(n_model_in_valid_smap / max(length(valid_smap_pixels), 1), digits=2)
     )
     
-    @info "Valid observation mask created" coverage_stats...
+    @info "Coverage statistics" coverage_stats...
     
     return (
-        observation_vector = obs_vector,
-        valid_indices = valid_indices,
-        valid_mask = valid_mask,
-        lons = obs_lons,
-        lats = obs_lats,
+        observation_vector = valid_smap_values,  # SMAP observations (one per pixel)
+        smap_pixel_groups = valid_model_groups,  # Model indices to average per SMAP pixel
+        smap_pixel_indices = valid_smap_pixels,  # SMAP linear indices
         coverage_stats = coverage_stats
     )
 end
 
 """
-    extract_model_coords_from_space(surface_space, land_mask)
+    extract_model_coords_from_space(surface_space, land_mask_field)
 
 Extract coordinate vectors and land mask from ClimaCore surface space.
-
-# Arguments
-- `surface_space`: ClimaCore surface space
-- `land_mask::ClimaCore.Field`: Land mask field (typically from domain)
-
-# Returns
-- `NamedTuple`: (lons, lats, land_mask) as vectors
 """
-function extract_model_coords_from_space(surface_space, land_mask)
+function extract_model_coords_from_space(surface_space, land_mask_field)
     coords = ClimaCore.Fields.coordinate_field(surface_space)
     
     # Extract and flatten coordinates
@@ -638,7 +662,7 @@ function extract_model_coords_from_space(surface_space, land_mask)
     
     lons_vec = vec(parent(lons_field))
     lats_vec = vec(parent(lats_field))
-    land_mask_vec = vec(parent(land_mask)) .> 0.5  # Convert to boolean
+    land_mask_vec = vec(parent(land_mask_field)) .> 0.5  # Convert to boolean
     
     @info "Extracted model coordinates" n_points=length(lons_vec) n_land=sum(land_mask_vec)
     

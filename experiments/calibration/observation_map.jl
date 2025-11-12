@@ -3,6 +3,7 @@ import Dates
 import ClimaCalibrate
 import ClimaCalibrate.EnsembleBuilder
 import ClimaCalibrate.Checker
+using Statistics  # for mean() in aggregate_to_smap_pixels
 
 include(
     joinpath(pkgdir(ClimaLand), "experiments/calibration/observation_utils.jl"),
@@ -86,101 +87,248 @@ function process_member_data!(
     diagnostics_folder_path,
     short_names,
 )
-    nelements = CALIBRATE_CONFIG.nelements
+    @info "Processing member $col_idx with short names: $short_names"
     
-    @info "Short names: $short_names"
+    # **NEW: Detect if we're using joint calibration or single-variable**
+    has_smap = "sm_surface" in short_names
+    has_lhf = "lhf" in short_names
     
-    # **NEW: Handle SMAP vs ERA5**
-    if "sm_surface" in short_names && !isnothing(obs_metadata)
-        @info "Processing SMAP soil moisture observations"
-        return process_smap_member_data(
+    if has_smap && has_lhf
+        # Joint calibration: process both variables
+        @info "Joint calibration detected: processing both LH and SMAP"
+        return process_joint_member_data!(
+            g_ens_builder,
+            col_idx,
             diagnostics_folder_path,
-            short_names,
-            current_minibatch,
-            obs_metadata
+            short_names
+        )
+    elseif has_smap
+        # SMAP only
+        @info "SMAP-only calibration"
+        obs_file = CALIBRATE_CONFIG.obs_vec_filepath
+        obs_data = JLD2.load(obs_file)
+        return process_smap_member_data!(
+            g_ens_builder,
+            col_idx,
+            diagnostics_folder_path,
+            ["sm_surface"],  # Only SM
+            obs_data
         )
     else
-        # Existing ERA5 processing
-        return process_era5_member_data(
+        # ERA5 only (LH flux)
+        @info "ERA5-only calibration"
+        return process_era5_member_data!(
+            g_ens_builder,
+            col_idx,
             diagnostics_folder_path,
-            short_names,
-            current_minibatch,
-            nelements
+            short_names
         )
     end
 end
 
 """
-    process_smap_member_data(diagnostics_folder_path, short_names, current_minibatch, obs_metadata)
+    process_joint_member_data!(g_ens_builder, col_idx, diagnostics_folder_path, short_names)
 
-Process model soil moisture and subset to match SMAP observation locations.
+Process both LH flux (ERA5) and SMAP soil moisture for joint calibration.
+Concatenates in the same order as observation vector: [LH..., SM...]
 """
-function process_smap_member_data(
+function process_joint_member_data!(
+    g_ens_builder,
+    col_idx,
     diagnostics_folder_path,
-    short_names,
-    current_minibatch,
-    obs_metadata
+    short_names
 )
-    valid_indices = obs_metadata["valid_indices"]
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
-    nelements = CALIBRATE_CONFIG.nelements
+    obs_file = CALIBRATE_CONFIG.obs_vec_filepath
+    obs_data = JLD2.load(obs_file)
     
-    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
-    
-    vars = map(short_names) do short_name
-        var = sim_var_dict[short_name]()
-        var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
-        
-        # Apply ocean mask
-        ocean_mask = make_ocean_mask(nelements)
-        var = ocean_mask(var)
-        
-        var
+    # Check that we have the expected structure
+    if !("lhf_metadata" in keys(obs_data) && "sm_metadata" in keys(obs_data))
+        error("Joint observation file is missing required metadata. Expected 'lhf_metadata' and 'sm_metadata'.")
     end
     
-    # Flatten and subset to SMAP observation locations
-    flattened_data = map(current_minibatch) do idx
-        start_date, stop_date = sample_date_ranges[idx]
-        flat_data = map(vars) do var
-            var = ClimaAnalysis.window(
-                var,
-                "time",
-                left = start_date,
-                right = stop_date,
-                by = ClimaAnalysis.MatchValue(),
-            )
-            
-            # Flatten the entire grid
-            full_flat = ClimaAnalysis.flatten(var).data
-            
-            # **CRITICAL: Subset to match SMAP observation locations**
-            smap_subset = full_flat[valid_indices]
-            
-            @info "Subsetted model output to SMAP locations" full_size=length(full_flat) subset_size=length(smap_subset)
-            
-            smap_subset
-        end
-        flat_data
+    @info "Processing joint calibration data"
+    
+    # 1. Process LH flux (ERA5 style)
+    lhf_vector = process_era5_variable(diagnostics_folder_path, "lhf")
+    
+    # 2. Process SMAP (with spatial aggregation)
+    sm_vector = process_smap_variable(
+        diagnostics_folder_path,
+        "sm_surface",
+        obs_data["sm_metadata"]
+    )
+    
+    # 3. Apply scaling if observations were pre-scaled
+    if haskey(obs_data, "scale_lhf") && haskey(obs_data, "scale_sm")
+        scale_lhf = obs_data["scale_lhf"]
+        scale_sm = obs_data["scale_sm"]
+        
+        lhf_vector .*= scale_lhf
+        sm_vector .*= scale_sm
+        
+        @info "Applied observation scaling" scale_lhf scale_sm
     end
     
-    member = vcat(vcat(flattened_data...)...)
-    @info "Size of SMAP-matched member data: $(length(member))"
+    # 4. Concatenate in same order as observation vector: [LH, SM]
+    member_vector = vcat(lhf_vector, sm_vector)
     
-    return member
+    @info "Joint member processing complete" n_lhf=length(lhf_vector) n_sm=length(sm_vector) total=length(member_vector)
+    
+    # Fill the g_ensemble column
+    EnsembleBuilder.set_g_ens_col!(g_ens_builder, col_idx, member_vector)
+    
+    return nothing
 end
 
 """
-    process_era5_member_data(diagnostics_folder_path, short_names, current_minibatch, nelements)
+    process_era5_variable(diagnostics_folder_path, short_name)
 
-Process ERA5 variables (existing functionality).
+Process a single ERA5 variable and return flattened vector.
 """
-function process_era5_member_data(
+function process_era5_variable(diagnostics_folder_path, short_name)
+    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
+    
+    var = sim_var_dict[short_name]()
+    var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
+
+    # Remove longitude double-counting
+    lons = ClimaAnalysis.longitudes(var)
+    var = ClimaAnalysis.window(
+        var,
+        "longitude",
+        right = length(lons) - 1,
+        by = ClimaAnalysis.Index(),
+    )
+
+    # Remove polar latitudes
+    lats = ClimaAnalysis.latitudes(var)
+    var = ClimaAnalysis.window(
+        var,
+        "latitude",
+        left = 2,
+        right = length(lats) - 1,
+        by = ClimaAnalysis.Index(),
+    )
+    
+    # Flatten to vector
+    var_flat = ClimaAnalysis.flatten(var)
+    
+    @info "Processed ERA5 variable" short_name size=length(var_flat.data)
+    
+    return var_flat.data
+end
+
+"""
+    process_smap_variable(diagnostics_folder_path, short_name, sm_metadata)
+
+Process SMAP variable with spatial aggregation to match SMAP pixels.
+"""
+function process_smap_variable(
     diagnostics_folder_path,
-    short_names,
-    current_minibatch,
-    nelements
+    short_name,
+    sm_metadata
 )
-    # **EXISTING CODE** from your original process_member_data
+    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
+    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
+    
+    member_data_all_periods = []
+    
+    for (period_idx, (start_str, stop_str)) in enumerate(sample_date_ranges)
+        start_date = DateTime(start_str)
+        stop_date = DateTime(stop_str)
+        
+        period_metadata = sm_metadata[period_idx]
+        smap_pixel_groups = period_metadata["smap_pixel_groups"]
+        
+        # Extract model data for this period
+        var = sim_var_dict[short_name]()
+        
+        # Get temporal window
+        var_window = ClimaAnalysis.window(
+            var,
+            "time",
+            left = start_date,
+            right = stop_date,
+            by = ClimaAnalysis.MatchValue(),
+        )
+        
+        # Average over time
+        var_avg = ClimaAnalysis.average_time(var_window)
+        
+        # Flatten spatial dimensions
+        var_flat = ClimaAnalysis.flatten(var_avg)
+        full_data = var_flat.data
+        
+        # Aggregate to SMAP pixel resolution
+        smap_aggregated = aggregate_to_smap_pixels(full_data, smap_pixel_groups)
+        
+        push!(member_data_all_periods, smap_aggregated)
+    end
+    
+    # Concatenate all periods
+    member_vector = vcat(member_data_all_periods...)
+    
+    @info "Processed SMAP variable" short_name total_obs=length(member_vector)
+    
+    return member_vector
+end
+
+"""
+    aggregate_to_smap_pixels(model_data::Vector, smap_pixel_groups::Vector{Vector{Int}})
+
+Aggregate fine-resolution model output to coarse SMAP pixels by spatial averaging.
+
+# Arguments
+- model_data: Flattened model grid (all spatial points)
+- smap_pixel_groups: Vector of vectors, where each inner vector contains 
+                     model grid indices belonging to one SMAP pixel
+
+# Returns
+- Vector of aggregated values, one per SMAP pixel (spatial mean)
+"""
+function aggregate_to_smap_pixels(
+    model_data::Vector{FT},
+    smap_pixel_groups::Vector{Vector{Int}}
+) where FT
+    n_smap_pixels = length(smap_pixel_groups)
+    aggregated = zeros(FT, n_smap_pixels)
+    
+    for (i, model_indices) in enumerate(smap_pixel_groups)
+        if isempty(model_indices)
+            aggregated[i] = NaN
+            continue
+        end
+        
+        # Extract model values for this SMAP pixel
+        pixel_values = model_data[model_indices]
+        
+        # Spatial average (could also use median, area-weighted mean, etc.)
+        # Filter NaNs if any
+        valid_values = filter(!isnan, pixel_values)
+        
+        if isempty(valid_values)
+            aggregated[i] = NaN
+            @warn "All model points are NaN for SMAP pixel $i"
+        else
+            aggregated[i] = mean(valid_values)
+        end
+    end
+    
+    return aggregated
+end
+
+"""
+    process_era5_member_data!(g_ens_builder, col_idx, diagnostics_folder_path, short_names)
+
+Process ERA5 variables (existing functionality, now renamed for clarity).
+"""
+function process_era5_member_data!(
+    g_ens_builder,
+    col_idx,
+    diagnostics_folder_path,
+    short_names
+)
+    # **EXISTING CODE** - just renamed from process_member_data
     era5_obs_vars = ext.get_era5_obs_var_dict()
     
     for short_name in short_names
@@ -215,18 +363,9 @@ function process_era5_member_data(
         var
     end
 
-    # This check should be used, because fill_g_ens_col! is not aware of the
-    # meaning of the time dimension (e.g. seasonal averages vs monthly
-    # averages). For example, without this check, if the simulation data contain
-    # monthly averages and metadata track seasonal averages, then no error is
-    # thrown, because all dates in metadata are in all the dates in var.
     seq_indices_checker = Checker.SequentialIndicesChecker()
     checkers = (seq_indices_checker,)
 
-    # fill_g_ens_col! will remove the spinup and is mask-aware.
-    # g_ens_builder contain the metadata from the observations, so
-    # fill_g_ens_col! will only choose values over temporal and spatial
-    # coordinates that exist in the observational data
     for var in vars
         use_var = EnsembleBuilder.fill_g_ens_col!(
             g_ens_builder,
@@ -239,6 +378,7 @@ function process_era5_member_data(
             "OutputVar with short name ($(ClimaAnalysis.short_name(var))) was passed, but not used",
         )
     end
+    
     return nothing
 end
 

@@ -11,9 +11,40 @@ export uSPACStomatalModel,
 
 # From Bassiouni et al. 2023
 
-# uSPAC frames the problem in terms of dimensionless Π-groups (ratios of soil, xylem, guard cell, and atmospheric conductances/pressures). These ratios determine whether water use is “supply-limited” or “demand-limited.”
-# shows that the optimal strategy in this trait-space is equivalent to a piecewise β(s): flat at high moisture (fww), declining to shutoff at s_w. So the “optimal control” solution reduces to something that looks like an empirical stress function, but whose shape is diagnosed from traits.
-# "optimality-based closure" is actually operationalized as a trait-linked stress function instead of a per-timestep optimization. Parameters can be tied directly to measurable hydraulic traits
+# THIS IS NOT OPTIMALITY THEORY AS CODED HERE, but it CAN replicate optimality when appropriate!
+# unitless Soil-Plant-Atmosphere continuum (uSPAC; Bassiouni et al. 2023) uses dimensional analysis (Buckingham Π theorem)
+# to express stomatal behavior via dimensionless Π-groups representing ratios of:
+#   - Plant hydraulic conductances (xylem, guard cells, roots)
+#   - Soil-plant-atmosphere pressure gradients
+#   - determine whether water use is “supply-limited” or “demand-limited”
+# 
+# The piecewise linear β(s) form is an empirical stress function that:
+#   1. Collapses well across ecosystems when plotted in Π-space
+#   2. Can be diagnosed from measurable plant/soil traits
+#   3. Can be calibrated from observations (via EKP)
+
+# Flow chart of stomatal conductance calculation:
+# Soil Moisture (θ or ψ_soil from ClimaLand)
+#     ↓ (converted to)
+# Soil Saturation: s = (θ - θ_r) / (θ_sat - θ_r)
+#     ↓ (fed into)
+# β(s) = piecewise linear stress function
+#     ↓ (scales)
+# Transpiration: T = β(s) × E₀ × leaf_area_factor
+#     ↓ (converted to)
+# Molar flux: E_mol = (ρ_water × T) / M_water
+#     ↓ (used to calculate)
+# Stomatal Conductance: gsw = E_mol × (P_air / VPD)
+
+# Key Points
+# Direct scaling: Soil moisture directly scales transpiration via β(s), not through an intermediate optimization step
+# No photosynthesis coupling: Unlike Medlyn, this doesn't involve carbon assimilation (An) in the conductance calculation
+# Diagnostic approach: Given s, the model immediately knows the stress level and resulting conductance
+# Shape matters: The parameters (fww, s_star, s_w) determine:
+#   fww: Maximum fraction of potential ET when well-watered
+#   s_star: When does water limitation begin?
+#   s_w: When does the plant completely shut down?
+
 
 """
     uSPACStomatalModel{FT}

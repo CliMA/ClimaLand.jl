@@ -20,4 +20,6 @@ export CLIMACOMMS_CONTEXT="SINGLETON"
 module load climacommon
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/generate_observations.jl
+julia --project experiments/calibration/generate_smap_observations.jl
+julia --project experiments/calibration/generate_joint_observations.jl
 julia --project=.buildkite/ experiments/calibration/run_uspac_calibration.jl
