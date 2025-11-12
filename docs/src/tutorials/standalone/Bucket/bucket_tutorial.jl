@@ -296,7 +296,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 
 
-# To store auxiliary prognostic fields, as they
+# To store diagnostic variables, as they
 # are not stored by default, we use ClimaDiagnostics (for details, see
 # [here](@ref "Using ClimaLand Diagnostics to save simulation output")).
 # The output is saved at an hourly resolution (cf. Δt = 3600 s above).
