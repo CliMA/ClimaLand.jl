@@ -340,7 +340,7 @@ Y.bucket |> propertynames
 # net radiation, and the surface specific humidity.
 ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
-sol = solve!(simulation);
+solve!(simulation);
 
 # Now we can easily visualize the results using LandSimVis:
 
