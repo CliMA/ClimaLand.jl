@@ -145,17 +145,14 @@ using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
 import ClimaLand.Simulations: LandSimulation, solve!
-using ClimaLand:
-    initialize,
-    make_update_aux,
-    make_exp_tendency,
-    make_set_initial_cache,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes
+using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
-# We also want to plot the solution
-using Plots
+# We also want to plot the solution, for which we import ClimaLand utilities
+# for plotting and saving.
+import ClimaDiagnostics
+using CairoMakie, ClimaAnalysis, GeoMakie
+import ClimaLand.LandSimVis as LandSimVis
 
 # And we need to use the DateTime type to store start dates
 using Dates
@@ -299,12 +296,27 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 
 
-# We need a callback to get and store the auxiliary fields, as they
-# are not stored by default. We also need a callback to update the
-# drivers (atmos and radiation)
+# To store diagnostic variables, as they
+# are not stored by default, we use ClimaDiagnostics (for details, see
+# [here](@ref "Using ClimaLand Diagnostics to save simulation output")).
+# The output is saved at an hourly resolution (cf. Δt = 3600 s above).
+# Note that for each of the prognostic variables, there is a corresponding diagnostic
+# (see the full list of diagnostics
+# [here](@ref "Available diagnostic variables")):
+# - Subsurface water storage `W`: `wsoil`
+# - Snow water equivalent times snow cover fraction `σS`: `ssfc`
+# - Surface water content `Ws`: `wsfc`
+# - Land temperature `T`: `tsoil`
+
 saveat = Second(Δt)
-saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat);
-saved_values = saving_cb.affect!.saved_values;
+diag_writer = ClimaDiagnostics.Writers.DictWriter();
+diagnostics = ClimaLand.Diagnostics.default_diagnostics(
+    model,
+    start_date;
+    output_vars = ["lhf", "shf", "rn", "wsoil", "ssfc", "wsfc", "tsoil"],
+    output_writer = diag_writer,
+    reduction_period = :hourly,
+);
 
 # Create the LandSimulation object, which will also create and initialize the state vectors,
 # the cache, the driver callbacks, and set the initial conditions.
@@ -317,8 +329,7 @@ simulation = LandSimulation(
     updateat = Second(Δt),
     solver_kwargs = (; saveat),
     timestepper = ode_algo,
-    user_callbacks = (saving_cb,),
-    diagnostics = (),
+    diagnostics = diagnostics,
 );
 Y = simulation._integrator.u;
 p = simulation._integrator.p;
@@ -329,92 +340,18 @@ Y.bucket |> propertynames
 # net radiation, and the surface specific humidity.
 ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
-sol = solve!(simulation);
+solve!(simulation);
 
-# Extracting the solution from what is returned by the ODE.jl commands
-# is a bit clunky right now, but we are working on hiding some of this.
-# `parent` extracts the underlying data from the ClimaCore.Fields.Field object
-# and we loop over the solution `sol` because of how the data is stored
-# within solutions returned by ODE.jl - indexed by timestep.
-times = FT.(sol.t)
-W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(times)];
-Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(times)];
-σS = [parent(sol.u[k].bucket.σS)[1] for k in 1:length(times)];
-T_sfc =
-    [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(times)];
-evaporation = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux)[1]
-    for k in 1:length(times)
-];
-R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(times)];
-# The turbulent energy flux is the sum of latent and sensible heat fluxes.
-LHF = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.lhf)[1] for
-    k in 1:length(times)
-];
-SHF = [
-    parent(saved_values.saveval[k].bucket.turbulent_fluxes.shf)[1] for
-    k in 1:length(times)
-];
-turbulent_energy_flux = SHF .+ LHF
+# Now we can easily visualize the results using LandSimVis:
 
-plot(
-    times ./ 86400,
-    W,
-    label = "",
-    xlabel = "time (days)",
-    ylabel = "W (m)",
-    title = "Land water storage (m)",
-)
-savefig("w.png")
-# ![](w.png)
+LandSimVis.make_timeseries(simulation;)
 
-plot(
-    times ./ 86400,
-    σS,
-    label = "",
-    xlabel = "time (days)",
-    ylabel = "σS (m)",
-    title = "Area weighted SWE (m) ",
-)
-savefig("swe.png")
-# ![](swe.png)
+# Some prognostic variables::
+# ![](wsoil_timeseries.png)
+# ![](ssfc_timeseries.png)
+# ![](tsoil_timeseries.png)
 
-plot(
-    times ./ 86400,
-    snow_precip.(times),
-    label = "Net precipitation",
-    xlabel = "time (days)",
-    ylabel = "Flux (m/s)",
-    title = "Surface water fluxes",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, evaporation, label = "Sublimation/Evaporation")
-savefig("water_f.png")
-# ![](water_f.png)
-
-plot(
-    times ./ 86400,
-    T_sfc,
-    title = "Surface Temperatures",
-    label = "Ground temperature",
-    xlabel = "time (days)",
-    ylabel = "T_sfc (K)",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, T_atmos.(times), label = "Atmospheric Temperature")
-savefig("t.png")
-# ![](t.png)
-plot(
-    times ./ 86400,
-    R_n,
-    label = "Net radiative flux",
-    xlabel = "time (days)",
-    ylabel = "Flux (W/m^2)",
-    title = "Surface energy fluxes",
-    legend = :bottomright,
-)
-plot!(times ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
-plot!(times ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
-savefig("energy_f.png")
-# ![](energy_f.png)
+# Some diagnostic variables::
+# ![](rn_timeseries.png)
+# ![](shf_timeseries.png)
+# ![](lhf_timeseries.png)
