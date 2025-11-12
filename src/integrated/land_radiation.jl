@@ -109,9 +109,6 @@ function Canopy.ground_albedo_PAR(
     p,
     t,
 )
-    @. p.α_ground.PAR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.PAR
 end
 
@@ -134,8 +131,5 @@ function Canopy.ground_albedo_NIR(
     p,
     t,
 )
-    @. p.α_ground.NIR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.NIR
 end

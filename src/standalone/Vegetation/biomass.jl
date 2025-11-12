@@ -282,11 +282,18 @@ function update_biomass!(
     canopy,
 ) where {FT}
     (; LAI, SAI, RAI) = component.plant_area_index
-    evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
-    p.canopy.biomass.area_index.leaf .=
-        clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
-    @. p.canopy.biomass.area_index.stem = SAI
-    @. p.canopy.biomass.area_index.root = RAI
+    # evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
+    p.canopy.biomass.area_index.leaf .= FT(0)
+    # TODO: use aux types
+    # p.canopy.biomass.area_index .=  NamedTuple{(:root, :stem, :leaf)}.(tuple.( RAI, SAI, clip.(p.canopy.biomass.area_index.leaf, FT(0.05)), ))
+    # return
+   ClimaCore.DataLayouts.@fused_direct begin
+        @. p.canopy.biomass.area_index.leaf =
+            clip(p.canopy.biomass.area_index.leaf, FT(0.05))
+        @. p.canopy.biomass.area_index.stem = SAI
+        @. p.canopy.biomass.area_index.root = RAI
+    end
+    return
 end
 
 """
