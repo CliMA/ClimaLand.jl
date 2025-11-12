@@ -14,6 +14,7 @@ import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 using ClimaCore
@@ -21,12 +22,14 @@ using ClimaLand
 using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
+using ClimaLand.Canopy: uSPACPiParameters, uSPACConductancePi
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaTimeSteppers as CTS
 
 using Dates
+using Statistics
 
 import ClimaCalibrate
 import JLD2

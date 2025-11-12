@@ -15,6 +15,7 @@ export MODULEPATH="/groups/esm/modules:$MODULEPATH"
 # Set environment variables for CliMA
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
+export JULIA_ARTIFACT_TOML="/resnick/scratch/egreich/ClimaLand.jl/Overrides.toml"
 
 # Build and run the Julia code
 module load climacommon

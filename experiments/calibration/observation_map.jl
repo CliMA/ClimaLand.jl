@@ -34,6 +34,18 @@ function ClimaCalibrate.observation_map(iteration)
     short_names = ClimaCalibrate.ObservationRecipe.short_names(
         first(obs_series.observations),
     )
+    
+    # **NEW: Load SMAP observation metadata if using SMAP**
+    obs_metadata = nothing
+    if "sm_surface" in short_names
+        obs_file = CALIBRATE_CONFIG.obs_vec_filepath
+        if isfile(obs_file)
+            obs_metadata = JLD2.load(obs_file)
+            @info "Loaded SMAP observation metadata" valid_obs=length(obs_metadata["valid_indices"])
+        else
+            error("SMAP observation file not found: $obs_file")
+        end
+    end
 
     g_ens_builder = EnsembleBuilder.GEnsembleBuilder(ekp)
     for m in 1:ensemble_size
@@ -75,11 +87,105 @@ function process_member_data!(
     short_names,
 )
     nelements = CALIBRATE_CONFIG.nelements
+    
     @info "Short names: $short_names"
+    
+    # **NEW: Handle SMAP vs ERA5**
+    if "sm_surface" in short_names && !isnothing(obs_metadata)
+        @info "Processing SMAP soil moisture observations"
+        return process_smap_member_data(
+            diagnostics_folder_path,
+            short_names,
+            current_minibatch,
+            obs_metadata
+        )
+    else
+        # Existing ERA5 processing
+        return process_era5_member_data(
+            diagnostics_folder_path,
+            short_names,
+            current_minibatch,
+            nelements
+        )
+    end
+end
+
+"""
+    process_smap_member_data(diagnostics_folder_path, short_names, current_minibatch, obs_metadata)
+
+Process model soil moisture and subset to match SMAP observation locations.
+"""
+function process_smap_member_data(
+    diagnostics_folder_path,
+    short_names,
+    current_minibatch,
+    obs_metadata
+)
+    valid_indices = obs_metadata["valid_indices"]
+    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
+    nelements = CALIBRATE_CONFIG.nelements
+    
+    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
+    
+    vars = map(short_names) do short_name
+        var = sim_var_dict[short_name]()
+        var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
+        
+        # Apply ocean mask
+        ocean_mask = make_ocean_mask(nelements)
+        var = ocean_mask(var)
+        
+        var
+    end
+    
+    # Flatten and subset to SMAP observation locations
+    flattened_data = map(current_minibatch) do idx
+        start_date, stop_date = sample_date_ranges[idx]
+        flat_data = map(vars) do var
+            var = ClimaAnalysis.window(
+                var,
+                "time",
+                left = start_date,
+                right = stop_date,
+                by = ClimaAnalysis.MatchValue(),
+            )
+            
+            # Flatten the entire grid
+            full_flat = ClimaAnalysis.flatten(var).data
+            
+            # **CRITICAL: Subset to match SMAP observation locations**
+            smap_subset = full_flat[valid_indices]
+            
+            @info "Subsetted model output to SMAP locations" full_size=length(full_flat) subset_size=length(smap_subset)
+            
+            smap_subset
+        end
+        flat_data
+    end
+    
+    member = vcat(vcat(flattened_data...)...)
+    @info "Size of SMAP-matched member data: $(length(member))"
+    
+    return member
+end
+
+"""
+    process_era5_member_data(diagnostics_folder_path, short_names, current_minibatch, nelements)
+
+Process ERA5 variables (existing functionality).
+"""
+function process_era5_member_data(
+    diagnostics_folder_path,
+    short_names,
+    current_minibatch,
+    nelements
+)
+    # **EXISTING CODE** from your original process_member_data
     era5_obs_vars = ext.get_era5_obs_var_dict()
+    
     for short_name in short_names
         short_name in keys(era5_obs_vars) || error(
-            "Variable $short_name does not appear in the observation dataset. Add the variable to get_era5_obs_var_dict",
+            "Variable $short_name does not appear in the observation dataset."
         )
     end
 
@@ -98,7 +204,6 @@ function process_member_data!(
             by = ClimaAnalysis.Index(),
         )
 
-        # Exclude the poles
         lats = ClimaAnalysis.latitudes(var)
         var = ClimaAnalysis.window(
             var,
@@ -107,6 +212,7 @@ function process_member_data!(
             right = length(lats) - 1,
             by = ClimaAnalysis.Index(),
         )
+        var
     end
 
     # This check should be used, because fill_g_ens_col! is not aware of the

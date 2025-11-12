@@ -177,7 +177,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         @warn "Overwriting the file $obs_vec_filepath to generate the vector of observations"
 
     observation_vector = make_era5_observation_vector(
-        covar_estimator, 
+        covar_estimator,
         short_names,
         sample_date_ranges,
         nelements,

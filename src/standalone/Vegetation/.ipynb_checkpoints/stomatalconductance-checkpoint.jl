@@ -458,7 +458,7 @@ end
 @inline _as_like_field(like, x::Number, ::Type{FT}) where {FT} = @. zero(like) + FT(x)
 @inline _as_like_field(like, x,       ::Type)               = x   # assume array/Field-like already shaped
 
-@inline _σ(x) = inv(one(x) + exp(-x))
+#@inline _σ(x) = inv(one(x) + exp(-x)) DEFINED ABOVE ELSEWHERE
 
 # Elementwise uSPAC Π → (fww, s*, s_w); written as scalar funcs so we can broadcast them
 # --- covariate extractors (auto-pull; return Fields matching grid) ---

@@ -458,7 +458,7 @@ end
 @inline _as_like_field(like, x::Number, ::Type{FT}) where {FT} = @. zero(like) + FT(x)
 @inline _as_like_field(like, x,       ::Type)               = x   # assume array/Field-like already shaped
 
-@inline _σ(x) = inv(one(x) + exp(-x))
+#@inline _σ(x) = inv(one(x) + exp(-x)) DEFINED ABOVE ELSEWHERE
 
 # Elementwise uSPAC Π → (fww, s*, s_w); written as scalar funcs so we can broadcast them
 # --- covariate extractors (auto-pull; return Fields matching grid) ---
@@ -488,19 +488,34 @@ end
 
 # --- uSPAC algebra as scalar funcs so we can broadcast ---
 @inline function _uspac_fww_from_Pi(ΠR, ΠF)
+    # Add safeguard to prevent division by zero when ΠR ≈ 0
+    # Use a minimum threshold of 1e-6 or 100*eps, whichever is larger
+    FT = typeof(ΠR)
+    ΠR_safe = max(abs(ΠR), FT(1e-6), eps(FT) * FT(100))
+    # Preserve sign of ΠR
+    ΠR_safe = ifelse(ΠR < zero(FT), -ΠR_safe, ΠR_safe)
+    
     halfΠF = ΠF / 2
-    rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR
+    rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR_safe
     rad = ifelse(rad > eps(rad), rad, eps(rad))
-    return 1 - (1 / (2 * ΠR)) * (1 + halfΠF - sqrt(rad))
+    return 1 - (1 / (2 * ΠR_safe)) * (1 + halfΠF - sqrt(rad))
 end
 @inline function _uspac_s_of_beta(β, ΠR, ΠF, ΠT, ΠS, b)
     β = clamp(β, zero(β), one(β))
-    denom = 1 - (1 - β) * ΠR
+    
+    # Add safeguards to prevent division by zero when π-groups ≈ 0
+    FT = typeof(β)
+    ΠR_safe = max(abs(ΠR), FT(1e-6), eps(FT) * FT(100))
+    ΠR_safe = ifelse(ΠR < zero(FT), -ΠR_safe, ΠR_safe)
+    ΠT_safe = max(abs(ΠT), FT(1e-6), eps(FT) * FT(100))
+    ΠS_safe = max(abs(ΠS), FT(1e-6), eps(FT) * FT(100))
+    
+    denom = 1 - (1 - β) * ΠR_safe
     denom = ifelse(abs(denom) < sqrt(eps(denom)), sign(denom) * sqrt(eps(denom)), denom)
-    termA = (4 * β * ΠS * ΠS) / max(ΠT, eps(ΠT))
+    termA = (4 * β * ΠS_safe * ΠS_safe) / ΠT_safe
     termB = (2 * (1 - β) - β * ΠF) / denom
     inner = sqrt(max(1 + termA * termB, eps(termA))) - 1
-    base  = (ΠT / (2 * β * ΠS)) * inner
+    base  = (ΠT_safe / (2 * β * ΠS_safe)) * inner
     s = (max(base, eps(base)))^(-one(b)/b)
     return clamp(s, zero(s), one(s))
 end
