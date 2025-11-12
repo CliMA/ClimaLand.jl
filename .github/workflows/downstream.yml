@@ -54,6 +54,6 @@ jobs:
           path: ClimaCoupler.jl
 
       - run: |
-          julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.instantiate()'
-          julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.develop(; path = ".")'
-          julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ ClimaCoupler.jl/experiments/ClimaEarth/test/runtests.jl
+          julia -O0 --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.instantiate()'
+          julia -O0 --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.develop(; path = ".")'
+          julia -O0 --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ ClimaCoupler.jl/experiments/ClimaEarth/test/runtests.jl

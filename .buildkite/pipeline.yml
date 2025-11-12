@@ -185,7 +185,7 @@ steps:
   - group: "GPU: unit tests and global bucket"
     steps:
       - label: "GPU runtests"
-        command: "julia --color=yes --project=test test/runtests.jl"
+        command: "julia -O0 --color=yes --project=test test/runtests.jl"
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
