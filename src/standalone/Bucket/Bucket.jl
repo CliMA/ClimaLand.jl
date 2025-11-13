@@ -210,7 +210,7 @@ function PrescribedSurfaceAlbedo{FT}(
     # Construct object containing info to read in surface albedo over time
     albedo = TimeVaryingInput(
         data_handler,
-        method = LinearInterpolation(PeriodicCalendar(Year(1), Date(2010))), # this repeats 2010 over and over again.
+        method = LinearInterpolation(PeriodicCalendar(Year(1), Date(2018))), # this repeats 2010 over and over again.
     )
     return PrescribedSurfaceAlbedo{FT, typeof(albedo)}(albedo)
 end
