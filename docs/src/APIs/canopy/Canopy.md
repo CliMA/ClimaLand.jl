@@ -20,6 +20,8 @@ ClimaLand.Canopy.CanopyModel{FT}(
 ) where {FT}
 ClimaLand.Canopy.SharedCanopyParameters
 ClimaLand.Canopy.AbstractCanopyComponent
+ClimaLand.Canopy.clm_canopy_height
+ClimaLand.Canopy.effective_canopy_height
 ```
 
 ## Canopy Model Boundary Fluxes
