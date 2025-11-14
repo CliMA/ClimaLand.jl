@@ -71,9 +71,7 @@ function phase_change_source(
 
     ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     # Equation (23) of Dall'Amico
-    θstar =
-        inverse_matric_potential(hydrology_cm, min(ψw0 + ψT, FT(0))) *
-        (ν - θ_r) + θ_r
+    θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
     return (θ_l - θstar) / τ
 end
 
