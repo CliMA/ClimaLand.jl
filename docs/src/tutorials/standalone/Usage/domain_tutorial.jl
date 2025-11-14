@@ -90,6 +90,18 @@ the same indexing of surface and subsurface domains and variables. Otherwise we 
 to develop additional infrastructure in order to, for example, select the correct subsurface
 column corresponding to a particular surface location.
 
+## Helper functions for global simulations
+In order to make it easier to set up a global domain, we provide two helper functions:
+- Spherical Geometry: [`Domains.global_domain`](@ref ClimaLand.Domains.global_domain)
+- Cartesian Geometry: [`Domains.global_box_domain`](@ref ClimaLand.Domains.global_box_domain)
+
+The former is useful if your model requires knowledge of spherical geometry. For example,
+any horizontal flux computation need to be aware of this in order to be correct. However,
+we do not yet support lateral flow in the soil. In this case, columns are independent of each
+other, spherical geometric effects are not needed, and we can use a regular Cartesian grid.
+The latter function provides that. Another material difference between the two is that the latter
+places coordinate points equispaced in lat/lon, while the former does not, since it is based on
+an equiangular cubed sphere.
 
 ## How variable initialization depends on domains
 Single component models (soil, snow, vegetation, canopy...) must have an associated domain in order
@@ -125,20 +137,13 @@ will only have variables on the surface of the domain (which in this case, would
 SphericalShell domain). The user still must define the prognostic_domain_names method. This functionality is required
 for most multi-component models.
 
-
 ## Future work
 Almost all interactions between variables in land surface models are within column - that is, there is only
 vertical transport and exchanges. The exception to this is the horizontal flow of water on the surface
-and within the soil. The tendency (produced by `make_exp_tendency` and `make_imp_tendency`) functions
-(the ODE functions) can be split into "vertical" and "horizontal" pieces.
-
-We envision each step of the land surface model simulation to be solved  in two steps: (1) the vertical tendency
+and within the soil. This is not currently supported. We envision each step of the land surface model 
+simulation to be solved  in two steps: (1) the vertical tendency
 evaluations are carried out (and can be parallelized), and (2) the horizontal tendency functions are then evaluated
 (possibly less frequently?) and require communication between columns.
-In this case, tendency functions will need to be aware of the domain.
-In general, tendencies reflecting horizontal flow will be treated explicitly and include in the explicit tendency function.
-Tendencies reflecting vertical flow may be treated explicitly or implicitly depending on the use case. To solve the problem,
-we then use IMEX (mixed explicit/implicit) methods.
 
 
 [^1]: finite differencing is used in the vertical, and spectral elements are used in the horizontal.

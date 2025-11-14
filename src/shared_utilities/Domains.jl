@@ -1243,34 +1243,34 @@ end
 
 """
     global_domain(
-    FT;
-    apply_mask = true,
-    mask_threshold = 0.5,
-    nelements = (101, 15),
-    dz_tuple = (10.0, 0.05),
-    depth = 50.0,
-    npolynomial = 0,
-    context = ClimaComms.context(),
-    filepath = landseamask_file_path(;context),
-    regridder_type = :InterpolationsRegridder,
-    extrapolation_bc = (
-        Interpolations.Periodic(),
-        Interpolations.Flat(),
-        Interpolations.Flat(),
-    ),
-    interpolation_method = Interpolations.Constant()
-)
+        FT;
+        apply_mask = true,
+        mask_threshold = 0.5,
+        nelements = (101, 15),
+        dz_tuple = (10.0, 0.05),
+        depth = 50.0,
+        npolynomial = 0,
+        context = ClimaComms.context(),
+        filepath = landseamask_file_path(;context),
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant()
+    )
 
-Helper function to create a SphericalShell domain with (101,15) elements, a
+Helper function to create a `SphericalShell` domain with `nelements` elements, a
 depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
-10m at the bottom of the domain, with npolynomial = 0 and GL quadrature.
+10m at the bottom of the domain, with `npolynomial = 0` and GL quadrature.
 
 `npolynomial` determines the order of polynomial base to use for the spatial
 discretization, which is correlated to the spatial resolution of the domain.
 
 When `npolynomial` is zero, the element is equivalent to a single point. In this
-case, the resolution of the model is sqrt((360*180)/(101*101*6)). The factor of 6 arises
-because there are 101x101 elements per side of the cubed sphere, meaning 6*101*101 for the
+case, the resolution of the model is sqrt((360 x 180)/(101 x 101 x 6)). The factor of 6 arises
+because there are 101x101 elements per side of the cubed sphere, meaning 6 x 101 x 101 for the
 entire globe.
 
 When `npolynomial` is greater than 1, a Gauss-Legendre-Lobotto quadrature is
@@ -1332,6 +1332,104 @@ function global_domain(
     return domain
 end
 
+"""
+    global_box_domain(
+        FT;
+        apply_mask = true,
+        mask_threshold = 0.5,
+        n_vertelements = 15,
+        n_horzelements = (180,360),
+        dz_tuple = (10.0, 0.05),
+        depth = 50.0,
+        npolynomial = 0,
+        context = ClimaComms.context(),
+        filepath = landseamask_file_path(;context),
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant()
+    )
+
+Helper function to create a `HybridBox` domain corresponding to the entire globe,
+i.e. a regular latitude/longitude grid  with `n_horzelements` horizontal elements. The box has a
+depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
+10m at the bottom of the domain, with npolynomial = 0, GL quadrature, 
+and `n_vertelements` vertical elements.
+
+`npolynomial` determines the order of polynomial base to use for the spatial
+discretization, which is correlated to the spatial resolution of the domain.
+
+When `npolynomial` is zero, the element is equivalent to a single point. In this
+case, the resolution of the model with the default `n_horzelements` is one degree.
+
+When `npolynomial` is greater than 1, a Gauss-Legendre-Lobotto quadrature is
+used, with `npolynomial + 1` points along the element. In this case, there are
+always points two points on the boundaries for each direction with the other
+points in the interior. These points are not equally spaced.
+
+In practice, there is no reason to use `npolynomial` greater than 1 in the current
+version of ClimaLand. To increase resolution, we recommend increasing the number of elements
+rather than increasing the polynomial order.
+"""
+function global_box_domain(
+    FT;
+    apply_mask = true,
+    mask_threshold = 0.5,
+    n_vertelements = 15,
+    n_horzelements = (180, 360),
+    dz_tuple = (10.0, 0.05),
+    depth = 50,
+    npolynomial = 0,
+    context = ClimaComms.context(),
+    filepath = landseamask_file_path(; context),
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    nelements = (n_horzelements..., n_vertelements)
+    if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
+        @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
+        apply_mask = false
+    end
+    radius_earth = FT(6.378e6)
+    zlim = (-FT(depth), FT(0.0))
+    xlim = FT.((π * radius_earth, π * radius_earth))
+    ylim = FT.((π / 2 * radius_earth, π / 2 * radius_earth))
+    longlat = FT.((-0.5, -0.5))
+    dz_tuple = FT.(dz_tuple)
+    device = ClimaComms.device()
+    domain = HybridBox(;
+        xlim,
+        ylim,
+        zlim,
+        nelements,
+        npolynomial,
+        device,
+        dz_tuple,
+        longlat,
+    )
+    if apply_mask
+        surface_space = domain.space.surface # 2d space
+        binary_mask = landsea_mask(
+            domain;
+            threshold = mask_threshold,
+            regridder_type,
+            extrapolation_bc,
+            interpolation_method,
+            filepath,
+        )
+        Spaces.set_mask!(surface_space, binary_mask)
+    end
+
+    return domain
+end
 
 """
     use_lowres_clm(space)
@@ -1380,5 +1478,6 @@ export coordinates,
     obtain_surface_domain,
     get_Δz,
     average_horizontal_resolution_degrees,
-    global_domain
+    global_domain,
+    global_box_domain
 end
