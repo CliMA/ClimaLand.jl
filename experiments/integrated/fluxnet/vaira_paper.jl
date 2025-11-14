@@ -38,8 +38,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     soil_ν,
     soil_K_sat,
     soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
+    soil_hydrology_cm,
     θ_r,
     ν_ss_quartz,
     ν_ss_om,
@@ -47,10 +46,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     z_0m_soil,
     z_0b_soil,
     soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
+    soil_albedo,
     Ω,
     χl,
+    G_Function,
     α_PAR_leaf,
     λ_γ_PAR,
     τ_PAR_leaf,
@@ -73,15 +72,14 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     plant_ν,
     plant_S_s,
     rooting_depth,
-    G_Function,
     n_stem,
     n_leaf,
     h_leaf,
     h_stem,
     h_canopy,
-    z_0m,
-    z_0b,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+    z0_m,
+    z0_b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;

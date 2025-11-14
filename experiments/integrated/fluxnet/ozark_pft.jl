@@ -44,8 +44,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     soil_ν,
     soil_K_sat,
     soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
+    soil_hydrology_cm,
     θ_r,
     ν_ss_quartz,
     ν_ss_om,
@@ -53,10 +52,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     z_0m_soil,
     z_0b_soil,
     soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
+    soil_albedo,
     Ω,
     χl,
+    G_Function,
     α_PAR_leaf,
     λ_γ_PAR,
     τ_PAR_leaf,
@@ -84,9 +83,9 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-    z_0m,
-    z_0b,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+    z0_m,
+    z0_b,
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
 
 compartment_midpoints =
     n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]

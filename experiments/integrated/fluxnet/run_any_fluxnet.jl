@@ -212,8 +212,8 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m,
-    z_0b,
+    z_0m = z_0m_soil,
+    z_0b = z_0b_soil,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,
