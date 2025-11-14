@@ -36,9 +36,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 # Get the default values for this site's domain, location, and parameters
 (; dz_tuple, nelements, zmin, zmax) =
     FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; time_offset, lat, long) =
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 (;
     soil_ν,
     soil_K_sat,
