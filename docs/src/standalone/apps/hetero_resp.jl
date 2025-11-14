@@ -8,7 +8,7 @@ function ParamViz.parameterisation(
     Ea_sx,
     kM_sx,
     kM_O₂,
-    O₂_a,
+    O₂_f,
     p_sx,
     Csom, # parameters
     θ_a100,
@@ -40,7 +40,7 @@ function Rh_app_f()
             "Activation energy, Ea_sx (J mol⁻¹)",
             "Michaelis constant for soil, kM_sx (kg C m⁻³)",
             "Michaelis constant for O₂, kM_O₂ (m³ m⁻³)",
-            "Volumetric fraction of O₂ in the soil air, O₂_a (dimensionless)",
+            "Volumetric fraction of O₂ in the soil air, O₂_f (dimensionless)",
             "Fraction of soil carbon that is considered soluble, p_sx (dimensionless)",
             "Soil organic C, Csom (kg C m⁻³)",
         ),
@@ -50,7 +50,7 @@ function Rh_app_f()
             FT.([50e3, 70e3]), # Ea_sx
             FT.([1e-10, 0.1]), # kM_sx
             FT.([1e-10, 0.1]), # kM_o2
-            FT.([0.005, 0.5]), # O2_a
+            FT.([0.005, 0.5]), # O2_f
             FT.([0.005, 0.5]), # p_sx
             FT.([1.0, 10.0]), # Csom
         ),
@@ -60,7 +60,7 @@ function Rh_app_f()
             (J * mol^-1, J * mol^-1), # Ea_sx
             (kg * m^-3, kg * m^-3), # kM_sx
             (m^3 * m^-3, m^3 * m^-3), # kM_O2
-            (m, m), # O2_a
+            (m, m), # O2_f
             (m, m), # p_sx
             (kg * m^-3, kg * m^-3), # Csom
         ),

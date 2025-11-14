@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Make soil organic carbon and soil O2 prognostic; remove prescribed Soil Organic Carbon driver [#1545](https://github.com/CliMA/ClimaLand.jl/pull/1545)
 
 v1.1.1
 -------

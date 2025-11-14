@@ -367,7 +367,7 @@ end
     SoilCanopyModel,
     LandModel,
     SoilCO2Model,
-} p.drivers.soc # need to fix this in src/shared_utilities/drivers
+} Y.soilco2.SOC # SOC is now prognostic
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
 @diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
 @diagnostic_compute "radiation_longwave_down" Union{
@@ -547,10 +547,12 @@ end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
 
-@diagnostic_compute "soilco2_diffusivity" SoilCO2Model p.D
-@diagnostic_compute "soilco2_source_microbe" SoilCO2Model p.Sm
+@diagnostic_compute "soilco2_diffusivity" SoilCO2Model p.soilco2.D
+@diagnostic_compute "soilco2_source_microbe" SoilCO2Model p.soilco2.Sm
+@diagnostic_compute "soilo2_diffusivity" SoilCO2Model p.soilco2.D_o2
 @diagnostic_compute "soilco2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" Union{SoilCanopyModel, LandModel} p.soilco2.Sm
+@diagnostic_compute "soilo2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D_o2
 
 ## Other ##
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
@@ -914,7 +916,9 @@ function compute_canopy_temperature!(
     end
 end
 
-@diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.C
+@diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.CO2
+@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2_f
+@diagnostic_compute "soc" Union{SoilCanopyModel, LandModel} Y.soilco2.SOC
 @diagnostic_compute "soil_water_content" Union{SoilCanopyModel, LandModel} Y.soil.ϑ_l
 # @diagnostic_compute "plant_water_content" Union{SoilCanopyModel, LandModel} Y.canopy.hydraulics.ϑ_l # return a Tuple
 @diagnostic_compute "soil_ice_content" Union{SoilCanopyModel, LandModel} Y.soil.θ_i

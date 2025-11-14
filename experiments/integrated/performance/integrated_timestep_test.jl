@@ -88,7 +88,7 @@ function set_ic!(Y, p, t0, model)
             model.soil.parameters.earth_param_set,
         )
 
-    Y.soilco2.C = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
     ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
@@ -222,14 +222,8 @@ soil = Soil.EnergyHydrology{FT}(
 )
 
 # Soil microbes model setup
-soil_organic_carbon =
-    ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-drivers = Soil.Biogeochemistry.SoilDrivers(
-    co2_prognostic_soil,
-    soil_organic_carbon,
-    atmos,
-)
+drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
 soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
 # Canopy model setup

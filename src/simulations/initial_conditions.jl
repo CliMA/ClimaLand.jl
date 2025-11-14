@@ -228,7 +228,9 @@ function make_set_initial_state_from_file(
             land.snow.parameters,
         )
         # SoilCO2 IC
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
         # Soil IC
         T_bounds = extrema(p.snow.T)
         set_soil_initial_conditions!(
@@ -299,7 +301,9 @@ function make_set_initial_state_from_file(
         evaluate!(p.drivers.T, atmos.T, t0)
         T_bounds = extrema(p.drivers.T)
 
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
 
         # If the canopy model has an energy model, we need to set the initial temperature

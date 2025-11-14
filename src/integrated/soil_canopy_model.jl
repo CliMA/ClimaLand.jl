@@ -114,7 +114,6 @@ end
             domain,
             Soil.Biogeochemistry.SoilDrivers(
                PrognosticMet(soil.parameters),
-                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
             toml_dict,
@@ -156,7 +155,6 @@ function SoilCanopyModel{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             PrognosticMet(soil.parameters),
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
         toml_dict,
@@ -489,6 +487,5 @@ function ClimaLand.get_drivers(model::SoilCanopyModel)
     return (
         model.canopy.boundary_conditions.atmos,
         model.canopy.boundary_conditions.radiation,
-        model.soilco2.drivers.soc,
     )
 end

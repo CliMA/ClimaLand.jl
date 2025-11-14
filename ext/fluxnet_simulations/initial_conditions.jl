@@ -233,7 +233,10 @@ end
 """
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.Biogeochemistry.SoilCO2Model)
 
-Sets Y.soilco2.C in place with the atmospheric CO2 concentration, in mol co2 per mol air.
+Sets Y.soilco2.CO2, Y.soilco2.O2_f, and Y.soilco2.SOC in place with initial values:
+- CO2: atmospheric CO2 concentration in mol co2 per mol air
+- O2_f: volumetric fraction of O2 in soil air (~0.21)
+- SOC: soil organic carbon concentration (kg C/m³)
 """
 function set_fluxnet_ic!(
     Y,
@@ -242,5 +245,7 @@ function set_fluxnet_ic!(
     Δ_date,
     model::ClimaLand.Soil.Biogeochemistry.SoilCO2Model,
 )
-    Y.soilco2.C .= 0.000412
+    Y.soilco2.CO2 .= 0.000412
+    Y.soilco2.O2_f .= 0.21  # Atmospheric O2 volumetric fraction
+    Y.soilco2.SOC .= 5.0    # Default SOC concentration (kg C/m³)
 end

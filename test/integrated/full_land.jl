@@ -36,13 +36,8 @@ for FT in (Float32, Float64)
         # SoilCO2 model
         co2_prognostic_soil =
             Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-        soil_organic_carbon =
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-        soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-            co2_prognostic_soil,
-            soil_organic_carbon,
-            atmos,
-        )
+        soilco2_drivers =
+            Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
         soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
             domain,
             soilco2_drivers,

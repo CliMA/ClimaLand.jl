@@ -67,9 +67,9 @@ end
             domain,
             Soil.Biogeochemistry.SoilDrivers(
                Soil.Biogeochemistry.PrognosticMet(soil.parameters),
-                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
+            toml_dict,
         ),
     ) where {FT}
 
@@ -93,7 +93,6 @@ function LandSoilBiogeochemistry{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             Soil.Biogeochemistry.PrognosticMet(soil.parameters),
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
         toml_dict,
@@ -165,8 +164,8 @@ function ClimaLand.get_drivers(model::LandSoilBiogeochemistry)
         <:AbstractRadiativeDrivers,
         <:Soil.AbstractRunoffModel,
     }
-        return (bc.atmos, bc.radiation, model.soilco2.drivers.soc)
+        return (bc.atmos, bc.radiation)
     else
-        return (model.soilco2.drivers.atmos, model.soilco2.drivers.soc)
+        return (model.soilco2.drivers.atmos,)
     end
 end
