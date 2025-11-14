@@ -38,7 +38,7 @@ import ClimaLand:
     Soil
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
-export SharedCanopyParameters, CanopyModel
+export CanopyModel
 include("./component_models.jl")
 include("./biomass.jl")
 include("./PlantHydraulics.jl")
@@ -697,7 +697,7 @@ function CanopyModel{FT}(;
         sif,
         biomass,
         boundary_conditions,
-        parameters,
+        earth_param_set,
         domain,
     )
     return CanopyModel{FT, typeof.(args)...}(args...)
@@ -713,7 +713,7 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        surface_flux_parameterization = MoninObukhovConstantRoughness{FT}(toml_dict),
+        surface_flux_parameterization = MoninObukhovHeightBased{FT}(toml_dict),
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -726,7 +726,7 @@ end
         sif = Lee2015SIFModel{FT}(toml_dict),
     ) where {FT, PSE}
 
-Creates a `CanopyModel` with the provided `domain`, `forcing`, and `parameters`.
+Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`.
 
 Defaults are provided for each canopy component model, which can be overridden
 by passing in a different instance of that type of model. Default parameters are also provided
@@ -763,7 +763,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    surface_flux_parameterization = MoninObukhovConstantRoughness{FT}(
+    surface_flux_parameterization = MoninObukhovHeightBased{FT}(
         toml_dict,
         biomass.height,
     ),

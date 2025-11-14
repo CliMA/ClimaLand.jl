@@ -3,7 +3,20 @@ using Thermodynamics
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
 
-import ClimaLand: turbulent_fluxes!, AbstractBC
+import ClimaLand: turbulent_fluxes!, AbstractBC, surface_air_density
+function surface_air_density(
+    atmos::PrescribedAtmosphere,
+    model::CanopyModel,
+    Y,
+    p,
+    t,
+    T_sfc,
+)
+    thermo_params =
+        LP.thermodynamic_parameters(model.earth_param_set)
+    return ClimaLand.compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
+end
+
 
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
@@ -383,7 +396,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     LAI::FT,
     SAI::FT,
     earth_param_set::EP;
-) where {FT <: AbstractFloat, EP, F}
+) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     if u isa FT
         u = SVector{2, FT}(u, 0)
@@ -422,7 +435,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = η / ustar
+    r_b_leaf::FT = η / max(ustar, gustiness)
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 

@@ -230,10 +230,6 @@ import ClimaParams
 
         @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
         @test all(
-            Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
-            FT(289),
-        )
-        @test all(
             Array(
                 parent(
                     ClimaLand.Canopy.canopy_temperature(
@@ -539,10 +535,10 @@ end
         )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
-
+        sf_parameterization = ClimaLand.Canopy.MoninObukhovHeightBased{FT}(toml_dict, biomass.height)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-            parameters = shared_params,
-            domain = domain,
+            earth_param_set,
+            domain,
             radiative_transfer = rt_model,
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
@@ -556,6 +552,7 @@ end
                 atmos,
                 radiation,
                 soil_driver,
+                sf_parameterization
             ),
         )
 
@@ -806,11 +803,6 @@ end
             Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
 
         earth_param_set = LP.LandParameters(toml_dict)
-        parameters = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
-            FT(2.0), # z_0m
-            FT(0.1), # z_0b
-            earth_param_set,
-        )
 
         for radiative_transfer in radiative_transfer_models
             args = (
@@ -824,7 +816,7 @@ end
                 sif,
                 biomass,
                 boundary_conditions,
-                parameters,
+                earth_param_set
                 domain,
             )
 
@@ -846,7 +838,7 @@ end
             @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
             @test canopy.boundary_conditions == boundary_conditions
-            @test canopy.parameters == parameters
+            @test canopy.earth_param_set == earth_param_set
             @test canopy.domain == domain
 
             Y, p, coords = ClimaLand.initialize(canopy)

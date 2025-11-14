@@ -456,6 +456,12 @@ description = "Intercept of line relating leaf-level fluorescence to spectromete
 tag = "SIFParameters"
 
 # Canopy roughness
+["canopy_z_0min"]
+value = 0.013
+type = "float"
+description = "Minimum roughness"
+tag = "ConstantRoughnessModel"
+
 ["canopy_z_0m_coeff"]
 value = 0.13
 type = "float"
@@ -474,8 +480,8 @@ type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "ConstantRoughnessModel"
 
-["canopy_u0"]
-value = 0.0025
+["canopy_η"]
+value = 100.0
 type = "float"
 description = ""
 tag = "ConstantRoughnessModel"
