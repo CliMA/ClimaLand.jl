@@ -79,7 +79,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_canopy,
     z0_m,
     z0_b,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;

@@ -83,7 +83,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_canopy,
     z0_m,
     z0_b,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
+) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 compartment_midpoints =
     n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
