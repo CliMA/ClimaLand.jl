@@ -147,3 +147,42 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
+
+  - wait
+
+  # To check if the ILAMB leaderboard should be generated or not, we check for
+  # the existence of `LONGER_RUN` and `ILAMB_RUN`. If both environment variables
+  # exist, then this group step is ran and otherwise, this group step does not
+  # run. If you want to generate the ILAMB leaderboard for a twenty year long
+  # run, then pass both `LONGER_RUN=""` and `ILAMB_RUN=""` as environment
+  # variables on Buildkite when starting a new build.
+
+  - group: "ILAMB leaderboard"
+    if: build.env("LONGER_RUN") != null && build.env("ILAMB_RUN") != null
+    steps:
+    - label: "Set up ILAMB leaderboard"
+      command:
+        - julia --color=yes --project=.buildkite/ experiments/ilamb/tests/test_ilamb_setup.jl
+        - julia --color=yes --project=.buildkite/ experiments/misc/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_BUILD_NUMBER $BUILDKITE_COMMIT
+      env:
+        ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
+        ILAMB_BUILDKITE_DIR: "/net/sampo/data1/ilamb/buildkite"
+
+    - wait
+
+    - label: "Run ILAMB leaderboard"
+      command:
+        - export PATH="$${ILAMB_ROOT}/ilamb_env/bin:$PATH"
+        - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
+        - tar czf $$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz -C $$ILAMB_ROOT/buildkite _build
+      env:
+        # This cannot be renamed as the ILAMB software checks for the existence
+        # of the `ILAMB_ROOT` environment variable.
+        ILAMB_ROOT: "/net/sampo/data1/ilamb"
+      artifact_paths:
+        - "/net/sampo/data1/ilamb/buildkite/ilamb_leaderboard.tar.gz"
+      agents:
+        - slurm_mem: 32GB
+        - slurm_time: "2:00:00"
+      concurrency: 1
+      concurrency_group: "ilamb-run"
