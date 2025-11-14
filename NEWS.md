@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Make soil organic carbon and soil O2 prognostic [#1545](https://github.com/CliMA/ClimaLand.jl/pull/1545)
 - ClimaLand LandModel computes fluxes when run with a coupled atmosphere. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
 
 v1.0.2
