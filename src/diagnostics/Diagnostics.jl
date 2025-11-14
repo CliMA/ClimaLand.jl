@@ -27,7 +27,7 @@ import ..Canopy:
     PModelConductance,
     canopy_temperature
 import ..Domains:
-    top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
+    top_center_to_surface, AbstractDomain, SphericalShell, HybridBox, Column
 import ClimaLand
 import ..heaviside
 

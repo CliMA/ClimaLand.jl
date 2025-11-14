@@ -126,7 +126,8 @@ function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
     default_diagnostic_domain =
         haskey(domain.space, :subsurface) ? domain.space.subsurface :
         domain.space.surface
-    output_writer = NetCDFWriter(default_diagnostic_domain, outdir; start_date)
+    num_points= default_diagnostic_num_points(domain)
+    output_writer = NetCDFWriter(default_diagnostic_domain, outdir; start_date, num_points)
     return default_diagnostics(model, start_date; output_writer)
 end
 
