@@ -117,7 +117,6 @@ end
             domain,
             Soil.Biogeochemistry.SoilDrivers(
                PrognosticMet(soil.parameters),
-                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
             toml_dict,
@@ -159,7 +158,6 @@ function SoilCanopyModel{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             PrognosticMet(soil.parameters),
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
         toml_dict,

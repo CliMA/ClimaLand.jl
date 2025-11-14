@@ -57,8 +57,6 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     kM_sx::FT
     "Michaelis constant for O2 (m3 m-3)"
     kM_o2::FT
-    "Volumetric fraction of O₂ in the soil air, dimensionless"
-    O2_a::FT
     "Diffusion coefficient of oxygen in air, dimensionless"
     D_oa::FT
     "Fraction of soil carbon that is considered soluble, dimensionless"
@@ -86,7 +84,6 @@ function SoilCO2ModelParameters(
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,
-        :O2_volume_fraction => :O2_a,
         :oxygen_diffusion_coefficient => :D_oa,
         :soluble_soil_carbon_fraction => :p_sx,
     )
@@ -168,12 +165,13 @@ function SoilCO2Model{FT}(
 end
 
 ClimaLand.name(model::SoilCO2Model) = :soilco2
-ClimaLand.prognostic_vars(::SoilCO2Model) = (:C,)
-ClimaLand.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT,)
-ClimaLand.prognostic_domain_names(::SoilCO2Model) = (:subsurface,)
+ClimaLand.prognostic_vars(::SoilCO2Model) = (:C, :O2, :SOC)
+ClimaLand.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.prognostic_domain_names(::SoilCO2Model) = (:subsurface, :subsurface, :subsurface)
 
 ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :D,
+    :D_o2,
     :Sm,
     ClimaLand.boundary_vars(
         model.boundary_conditions.top,
@@ -189,6 +187,7 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
 ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,
+    FT,
     ClimaLand.boundary_var_types(
         model,
         model.boundary_conditions.top,
@@ -201,6 +200,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     )...,
 )
 ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
+    :subsurface,
     :subsurface,
     :subsurface,
     ClimaLand.boundary_var_domain_names(
@@ -245,8 +245,9 @@ end
 
 An extension of the function `make_compute_exp_tendency`, for the soilco2 equation.
 This function creates and returns a function which computes the entire
-right hand side of the PDE for `C`, and updates `dY.soil.C` in place
-with that value. These quantities will be stepped explicitly.
+right hand side of the PDE for `C`, `O2`, and `SOC`, and updates `dY.soilco2.C`, 
+`dY.soilco2.O2`, and `dY.soilco2.SOC` in place with those values. 
+These quantities will be stepped explicitly.
 
 This has been written so as to work with Differential Equations.jl.
 """
@@ -258,12 +259,26 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = ClimaCore.Operators.InterpolateC2F()
         gradc2f_C = ClimaCore.Operators.GradientC2F()
+        gradc2f_O2 = ClimaCore.Operators.GradientC2F()
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
+        divf2c_O2 = ClimaCore.Operators.DivergenceF2C(
+            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
+        ) # O2 diffusion with same boundary conditions as CO2
+        
+        # CO2 diffusion
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
+        
+        # O2 diffusion (same diffusivity as CO2)
+        @. dY.soilco2.O2 =
+            -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(Y.soilco2.O2))
+        
+        # SOC has no diffusion, only consumption
+        @. dY.soilco2.SOC = 0.0
 
         # Source terms are added in here
         for src in model.sources
@@ -298,7 +313,9 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil.
+case of microbe production of CO2 in soil, consumption of O2, and 
+consumption of SOC. As CO2 is produced, O2 is consumed at the same rate,
+and SOC is consumed accordingly to conserve carbon mass.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -307,7 +324,12 @@ function ClimaLand.source!(
     p::NamedTuple,
     params,
 )
+    # CO2 production (kg C m⁻³ s⁻¹)
     dY.soilco2.C .+= p.soilco2.Sm
+    # O2 consumption at same rate as CO2 production (kg C m⁻³ s⁻¹)
+    dY.soilco2.O2 .-= p.soilco2.Sm
+    # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ s⁻¹)
+    dY.soilco2.SOC .-= p.soilco2.Sm
 end
 
 """
@@ -333,13 +355,10 @@ $(DocStringExtensions.FIELDS)
 struct SoilDrivers{
     FT,
     MET <: AbstractSoilDriver,
-    SOC <: PrescribedSoilOrganicCarbon{FT},
     ATM <: AbstractAtmosphericDrivers{FT},
 }
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
     met::MET
-    "Soil SOM driver - Prescribed only"
-    soc::SOC
     "Prescribed or coupled atmospheric variables"
     atmos::ATM
 end
@@ -439,7 +458,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
-        Csom = p.drivers.soc
+        Csom = Y.soilco2.SOC  # Now using prognostic SOC
         P_sfc = p.drivers.P
         θ_w = θ_l
         ν = model.drivers.met.ν
@@ -448,7 +467,10 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
 
         p.soilco2.D .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
-        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, ν, params)
+        # O2 diffusivity is the same as CO2 diffusivity
+        p.soilco2.D_o2 .=
+            co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
+        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2, ν, params)
     end
     return update_aux!
 end
@@ -601,7 +623,7 @@ function ClimaLand.boundary_flux!(
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)
-    return (model.drivers.atmos, model.drivers.soc)
+    return (model.drivers.atmos,)
 end
 
 Base.broadcastable(ps::SoilCO2ModelParameters) = tuple(ps)

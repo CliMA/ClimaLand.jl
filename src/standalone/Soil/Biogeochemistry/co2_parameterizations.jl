@@ -5,27 +5,30 @@ export volumetric_air_content, co2_diffusivity, microbe_source
     microbe_source(T_soil::FT,
                    θ_l::FT,
                    Csom::FT,
+                   O2::FT,
                    ν::FT,
                    params::SoilCO2ModelParameters{FT}
                    ) where {FT}
 
 Computes the CO₂ production in the soil by microbes, in depth and time (kg C / m^3/s), using
 the Dual Arrhenius Michaelis Menten model (Davidson et al., 2012).
+The O2 parameter is now prognostic instead of a parameter.
 """
 function microbe_source(
     T_soil::FT,
     θ_l::FT,
     Csom::FT,
+    O2::FT,
     ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, D_oa, O2_a, earth_param_set) =
+    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, D_oa, earth_param_set) =
         params
     R = FT(LP.gas_constant(earth_param_set))
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
-    O2 = D_oa * O2_a * (max((ν - θ_l), 0)^(FT(4 / 3))) # Oxygen concentration
+    # Use prognostic O2 directly instead of computing from parameters
     MM_o2 = O2 / (kM_o2 + O2) # Oxygen limitation factor, 0-1
     R_sm = Vmax * MM_sx * MM_o2 # Respiration, kg C m⁻³ s⁻¹
     return R_sm

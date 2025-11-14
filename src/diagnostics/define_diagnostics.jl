@@ -757,6 +757,17 @@ function define_diagnostics!(land_model)
             compute_soilco2_diffusivity!(out, Y, p, t, land_model),
     )
 
+    # Soil O2 diffusivity
+    add_diagnostic_variable!(
+        short_name = "sod",
+        long_name = "Soil O2 Diffusivity",
+        standard_name = "soil_o2_diffusivity",
+        units = "m^2 s^-1",
+        comments = "The diffusivity of O2 in the porous phase of the soil. Depends on soil texture, moisture, and temperature. (depth resolved)",
+        compute! = (out, Y, p, t) ->
+            compute_soilo2_diffusivity!(out, Y, p, t, land_model),
+    )
+
     # Soil CO2 microbial source
     add_diagnostic_variable!(
         short_name = "scms",
@@ -854,6 +865,26 @@ function define_diagnostics!(land_model)
         units = "kg C m^3",
         comments = "Concentration of CO2 in the porous air space of the soil. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilco2!(out, Y, p, t, land_model),
+    )
+
+    # Soil O2
+    add_diagnostic_variable!(
+        short_name = "so2",
+        long_name = "Soil O2",
+        standard_name = "soil_o2",
+        units = "kg C m^3",
+        comments = "Concentration of O2 in the porous air space of the soil. (depth resolved)",
+        compute! = (out, Y, p, t) -> compute_soilo2!(out, Y, p, t, land_model),
+    )
+
+    # Soil Organic Carbon
+    add_diagnostic_variable!(
+        short_name = "soc",
+        long_name = "Soil Organic Carbon",
+        standard_name = "soil_organic_carbon",
+        units = "kg C m^3",
+        comments = "Concentration of soil organic carbon. (depth resolved)",
+        compute! = (out, Y, p, t) -> compute_soc!(out, Y, p, t, land_model),
     )
 
     # Soil water content

@@ -43,14 +43,14 @@ for FT in (Float32, Float64)
               (θ_a / θ_a100)^(FT(2) + FT(3) / b)
         @test typeof(D) == FT
 
-        ms = microbe_source(T_soil, θ_l, Csom, ν, parameters)
+        ms = microbe_source(T_soil, θ_l, Csom, O2, ν, parameters)
         # check that the value is correct
-        (; p_sx, D_liq, kM_o2, D_oa, kM_sx, O2_a, α_sx, Ea_sx) = parameters
+        (; p_sx, D_liq, kM_o2, D_oa, kM_sx, α_sx, Ea_sx) = parameters
         MM_sx =
             p_sx * Csom * D_liq * θ_l^3 / (kM_sx + p_sx * Csom * D_liq * θ_l^3)
-        MM_o2 =
-            D_oa * O2_a * ((ν - θ_l)^(FT(4 / 3))) /
-            (kM_o2 + D_oa * O2_a * ((ν - θ_l)^(FT(4 / 3))))
+        # Use the O2 value directly (now prognostic)
+        O2 = FT(0.3)  # Typical value for testing
+        MM_o2 = O2 / (kM_o2 + O2)
         @test ms == α_sx * exp(-Ea_sx / (R * T_soil)) * MM_sx * MM_o2
         @test typeof(ms) == FT
     end

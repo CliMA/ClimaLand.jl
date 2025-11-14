@@ -18,9 +18,6 @@ for FT in (Float32, Float64)
         T_soil = (z, t) -> eltype(z)(t)
         θ_l = (z, t) -> eltype(z)(0.3)
         θ_i = (z, t) -> eltype(z)(0)
-        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
-            TimeVaryingInput((t) -> 5),
-        )
         D_ref = FT(0.0)
         parameters = SoilCO2ModelParameters(toml_dict; D_ref)
 
@@ -62,7 +59,7 @@ for FT in (Float32, Float64)
         n = FT(2)
         hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
         prescribed_met = PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm)
-        soil_drivers = SoilDrivers(prescribed_met, Csom, atmos)
+        soil_drivers = SoilDrivers(prescribed_met, atmos)
 
         model = SoilCO2Model{FT}(
             soil_domain,
@@ -78,10 +75,14 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(model)
         t = Float64(1)
         Y.soilco2.C .= FT(4)
+        Y.soilco2.O2 .= FT(0.2)  # Initialize O2
+        Y.soilco2.SOC .= FT(5.0)  # Initialize SOC
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t)
         exp_tendency!(dY, Y, p, t)
         @test dY.soilco2.C ≈ p.soilco2.Sm
+        @test dY.soilco2.O2 ≈ -p.soilco2.Sm  # O2 consumed at same rate as CO2 produced
+        @test dY.soilco2.SOC ≈ -p.soilco2.Sm  # SOC consumed at same rate as CO2 produced
         @test p.soilco2.top_bc_wvec ==
               ClimaCore.Geometry.WVector.(p.soilco2.top_bc)
         @test p.soilco2.bottom_bc_wvec ==
@@ -98,8 +99,6 @@ for FT in (Float32, Float64)
         Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
             TimeVaryingInput((t) -> 5),
         )
-
-        parameters = SoilCO2ModelParameters(toml_dict)
         C = FT(4)
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -140,7 +139,6 @@ for FT in (Float32, Float64)
         hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
         soil_drivers = SoilDrivers(
             PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm),
-            Csom,
             atmos, # need to create some functions
         )
 
@@ -158,6 +156,8 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(model)
         t = Float64(1)
         Y.soilco2.C .= FT(C)
+        Y.soilco2.O2 .= FT(0.2)  # Initialize O2
+        Y.soilco2.SOC .= FT(5.0)  # Initialize SOC
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t)
         exp_tendency!(dY, Y, p, t)

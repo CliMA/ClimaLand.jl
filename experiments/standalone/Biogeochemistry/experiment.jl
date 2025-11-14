@@ -95,8 +95,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
 
     # Make biogeochemistry model
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
+    
     co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(toml_dict)
     C = FT(100)
 
@@ -105,7 +104,6 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     co2_boundary_conditions = (; top = co2_top_bc, bottom = co2_bot_bc)
     drivers = Soil.Biogeochemistry.SoilDrivers(
         PrognosticMet(soil_parameters),
-        Csom,
         atmos,
     )
     soilco2 = SoilCO2Model{FT}(
@@ -144,7 +142,23 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             C = FT(0.0)
             return FT(C)
         end
+        # Initialize O2 concentration (volumetric fraction in soil air)
+        # Using a typical atmospheric O2 concentration scaled by air-filled porosity
+        function O2_profile(z::FT) where {FT}
+            # Typical atmospheric O2 volume fraction is ~0.21 
+            # Multiply by D_oa parameter (~1.67) to get soil O2 concentration
+            O2 = FT(0.21 * 1.67 * (ν - 0.33))  # air-filled porosity approximation
+            return FT(O2)
+        end
+        # Initialize SOC (soil organic carbon) concentration (kg C m⁻³)
+        function SOC_profile(z::FT) where {FT}
+            # Typical SOC values range from 1-10 kg C m⁻³
+            Csom = FT(5.0)
+            return FT(Csom)
+        end
         Y.soilco2.C .= CO2_profile.(z)
+        Y.soilco2.O2 .= O2_profile.(z)
+        Y.soilco2.SOC .= SOC_profile.(z)
     end
 
     function set_ic!(Y, p, t0, model)
