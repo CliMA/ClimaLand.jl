@@ -67,7 +67,7 @@ function phase_change_source(
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
-    Tf_depressed = _T_freeze * exp(_grav * ψw0 / _LH_f0)
+    Tf_depressed = max(_T_freeze * exp(_grav * ψw0 / _LH_f0), FT(1)) # Clip this to prevent Tf_depressed == 0
 
     ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     # Equation (23) of Dall'Amico
