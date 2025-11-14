@@ -12,7 +12,6 @@ import ClimaParams as CP
                                 FT;
                                 gustiness=1,
                                 split_precip= true,
-                                c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
@@ -38,6 +37,7 @@ and that these names are:
 "WS_F" (wind speed in m/s)
 "LW_IN_F" (downwelling LW radiation in W/m^2)
 "SW_IN_F" (downwelling SW radiation in W/m^2)
+"CO2_F_MDS" (CO2 concentration in μmol/mol)
 """
 function FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -50,13 +50,12 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     FT;
     split_precip = true,
     gustiness = 1,
-    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
 )
     earth_param_set = LP.LandParameters(toml_dict)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Read data and process timestamps
+    (data, columns) = read_fluxnet_data(site_ID)
 
     # Determine which column index corresponds to which varname
     varnames = (
@@ -69,39 +68,32 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         "WS_F",
         "LW_IN_F",
         "SW_IN_F",
+        "CO2_F_MDS",
     )
-    column_name_map = Dict(
-        varname => findfirst(columns[:] .== varname) for varname in varnames
-    )
-    # If any of these are missing, error, because we need all of them
-    # to run a simulation
-    nothing_id = findall(collect(values(column_name_map)) .== nothing)
-    if !isempty(nothing_id)
-        @error("$(labels[nothing_id]) is missing in the data, but required.")
-    end
+    column_name_map =
+        get_column_name_map(varnames, columns; error_on_missing = false)
 
-    # Convert the local timestamp to UTC
-    # Since it was read in as Float64 type, convert to a string before
-    # converting to a DateTime
-    local_datetime_start =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime =
-        local_datetime_start .+
-        (local_datetime_end .- local_datetime_start) ./ 2
-    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
+    # Convert the local timestamps to UTC, using the midpoint of each averaging
+    # period as the corresponding datetime
+    UTC_datetimes_start = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map;
+        timestamp_name = "TIMESTAMP_START",
+    )
+    UTC_datetimes_end = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map;
+        timestamp_name = "TIMESTAMP_END",
+    )
+    UTC_datetimes =
+        UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
 
     # The TimeVaryingInput interface for columns expects the time in seconds
     # from the start date of the simulation
     seconds_since_start_date =
-        [Second(UTC - start_date).value for UTC in UTC_datetime]
+        [Second(UTC - start_date).value for UTC in UTC_datetimes]
 
     # Create the TVI objects
     atmos_T = time_varying_input_from_data(
@@ -136,6 +128,13 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         column_name_map,
         seconds_since_start_date,
     )
+    c_co2 = time_varying_input_from_data(
+        data,
+        "CO2_F_MDS",
+        column_name_map,
+        seconds_since_start_date;
+        preprocess_func = (x) -> x * 1e-6, # convert from μmol/mol to mol/mol
+    )
 
     # Specific humidity is computed from P, VPD, and T using `compute_q`
     # This is computed from multiple columns of data; the argument order of q_closure, compute_q, must match the
@@ -153,7 +152,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     # the time between observations in the data
     # Convert to a flux using data_dt. Also, change the sign, because in ClimaLand
     # precipitation is a downward flux (negative), and convert from accumulated mm to m/s
-    data_dt = Second(local_datetime[2] - local_datetime[1]).value # seconds
+    data_dt = Second(UTC_datetimes[2] - UTC_datetimes[1]).value # seconds
     if split_precip
         compute_rain(T, VPD, precip; thermo_params = thermo_params) =
             -1 * precip / 1000 / data_dt *
@@ -269,13 +268,26 @@ A helper function to get the difference in time between observations;
 this is used in making some plots.
 """
 function FluxnetSimulations.get_data_dt(site_ID)
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    # Convert to seconds
+    (data, columns) = read_fluxnet_data(site_ID)
+
+    varnames = ("TIMESTAMP_START",)
+    column_name_map =
+        get_column_name_map(varnames, columns; error_on_missing = true)
+
+    # Since we only need to know the difference in time between observations,
+    # we can use a dummy hour offset from UTC, giving us the local times.
+    dummy_hour_offset = 0
+    local_datetimes = get_UTC_datetimes(
+        dummy_hour_offset,
+        data,
+        column_name_map;
+        timestamp_name = varnames[1],
+    )
+
+    # Get the difference in time between each timestamp pair, in seconds
     Δts = [
         Second(Δdate).value for
-        Δdate in (local_datetime[2:end] .- local_datetime[1:(end - 1)])
+        Δdate in (local_datetimes[2:end] .- local_datetimes[1:(end - 1)])
     ]
     # Make sure all the Δts are the same
     @assert all(Δts .== Δts[1])
@@ -306,50 +318,44 @@ function FluxnetSimulations.get_data_dates(
     duration::Union{Nothing, Period} = nothing,
     start_offset::Period = Second(0),
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    # Determine which column index corresponds to which varname
-    varnames = ("TIMESTAMP_START", "TIMESTAMP_END")
-    column_name_map = Dict(
-        varname => findfirst(columns[:] .== varname) for varname in varnames
-    )
-    # If any of these are missing, error, because we need all of them
-    nothing_id = findall(collect(values(column_name_map)) .== nothing)
-    if !isempty(nothing_id)
-        @error("$(labels[nothing_id]) is missing in the data, but required.")
-    end
+    (data, columns) = read_fluxnet_data(site_ID)
 
-    # Convert the local timestamp to UTC
-    # Since it was read in as Float64 type, convert to a string before
-    # converting to a DateTime
-    local_datetime_start =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
-    local_datetime =
-        local_datetime_start .+
-        (local_datetime_end .- local_datetime_start) ./ 2
-    UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
-    earliest_date, latest_date = extrema(UTC_datetime)
-    Dates.value(start_offset) < 0 && error("start_offset must be non-negative")
-    if !isnothing(duration) && Dates.value(duration) < 0
-        error("If duration is not provided, it must be non-negative.")
-    end
-    duration_available_ms = latest_date - earliest_date
+    # If any of these are missing, error, because we need all of them
+    varnames = ("TIMESTAMP_START", "TIMESTAMP_END")
+    column_name_map =
+        get_column_name_map(varnames, columns; error_on_missing = true)
+
+    # Convert the local timestamps to UTC
+    UTC_datetimes_start = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map;
+        timestamp_name = "TIMESTAMP_START",
+    )
+    UTC_datetimes_end = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map;
+        timestamp_name = "TIMESTAMP_END",
+    )
+    # Get the midpoint of the averaging period
+    UTC_datetimes =
+        UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
+    earliest_date, latest_date = extrema(UTC_datetimes)
+
+    # Compute the start and stop dates, applying the start_offset and duration if provided
+    @assert Dates.value(start_offset) >= 0 "start_offset must be non-negative, got $start_offset"
     start_date = earliest_date + start_offset
     stop_date = isnothing(duration) ? latest_date : start_date + duration
-    if !isnothing(duration) && (stop_date > latest_date)
-        error(
-            "The sum of the requested duration of $duration and start_offset of $start_offset \
-            is greater than the available $duration_available_ms of data.",
-        )
+
+    # If duration is provided, check that it is non-negative and that the stop date
+    # is not greater than the latest date in the data
+    if !isnothing(duration)
+        @assert Dates.value(duration) >= 0 "If duration is provided, it must be non-negative."
+        @assert stop_date <= latest_date "The sum of the requested duration $duration and start_offset $start_offset \
+            is greater than the available duration $(latest_date - earliest_date) of data."
     end
+
     return (start_date, stop_date)
 end
 
@@ -412,32 +418,21 @@ end
         site_ID,
         hour_offset_from_UTC;
         val = -9999,
-        timestamp_end = true
 )
 
-Gets and returns the a NamedTuple with the comparison
-data for the Fluxnet `site_ID`, given its hour offset from
-UTC, and the value used to indicate missing data (`val`), and the
-averaging period.
+Gets and returns the a NamedTuple with the comparison data for the Fluxnet `site_ID`,
+given its hour offset from UTC, and the value used to indicate missing data (`val`).
 
-Fluxnet as has two timestamps associated with it: TIMESTAMP_START and TIMESTAMP_END,
-with the first referring to the start of the averaging period, and the second the end.
-ClimaLand diagnostics are averaged, accumulated, or otherwise reduced
-over a time period (e.g. hourly, daily, monthly). They are saved with the first date following
-that average period. For example, the hourly average from 11-noon is saved with a timestamp of
-noon. To make a true comparison to Fluxnet data, therefore, we must use halfhourly diagnostics in ClimaLAnd,
-and return the UTC time that corresponds to the end
-of the averaging period in fluxnet; this is true by default. If `timestamp_end = false`,
-we return the point halfway between TIMESTAMP_START and TIMESTAMP_END
+Note that the time associated with the comparison data is the end of the averaging
+period used in Fluxnet, which aligns with convention used for saving ClimaLand diagnostics.
 """
 function FluxnetSimulations.get_comparison_data(
     site_ID::String,
     hour_offset_from_UTC::Int;
     val = -9999,
-    timestamp_end = true,
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Read data and process timestamps
+    (data, columns) = read_fluxnet_data(site_ID)
 
     # Determine which column index corresponds to which varname
     varnames = (
@@ -460,30 +455,18 @@ function FluxnetSimulations.get_comparison_data(
         "TS_F_MDS_5",
         "P_F",
     )
-    column_name_map = Dict(
-        varname => findfirst(columns[:] .== varname) for varname in varnames
+
+    # For comparison data, we don't need to error on missing variables
+    column_name_map =
+        get_column_name_map(varnames, columns; error_on_missing = false)
+    UTC_datetimes = get_UTC_datetimes(
+        hour_offset_from_UTC,
+        data,
+        column_name_map,
+        timestamp_name = "TIMESTAMP_END",
     )
+    data_dt = Second(UTC_datetimes[2] - UTC_datetimes[1]).value # seconds
 
-
-    local_datetime_end =
-        DateTime.(
-            string.(Int.(data[:, column_name_map["TIMESTAMP_END"]])),
-            "yyyymmddHHMM",
-        )
-    data_dt = Second(local_datetime_end[2] - local_datetime_end[1]).value # seconds
-    if timestamp_end
-        UTC_datetime = local_datetime_end .- Dates.Hour(hour_offset_from_UTC)
-    else
-        local_datetime_start =
-            DateTime.(
-                string.(Int.(data[:, column_name_map["TIMESTAMP_START"]])),
-                "yyyymmddHHMM",
-            )
-        local_datetime =
-            local_datetime_start .+
-            (local_datetime_end .- local_datetime_start) ./ 2
-        UTC_datetime = local_datetime .- Dates.Hour(hour_offset_from_UTC)
-    end
     gpp = FluxnetSimulations.get_comparison_data(
         data,
         "GPP_DT_VUT_REF",
@@ -612,7 +595,7 @@ function FluxnetSimulations.get_comparison_data(
         val,
     )
     return merge(
-        (; UTC_datetime = UTC_datetime),
+        (; UTC_datetime = UTC_datetimes),
         gpp,
         lhf,
         shf,
