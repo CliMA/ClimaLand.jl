@@ -252,8 +252,8 @@ right hand side of the PDE for `C`, `O2_a`, and `SOC`, and updates `dY.soilco2.C
 `dY.soilco2.O2_a`, and `dY.soilco2.SOC` in place with those values. 
 These quantities will be stepped explicitly.
 
-For O2_a (volumetric fraction), we convert to O2 concentration, apply diffusion,
-then convert back to O2_a tendency using: dO2_a = dO2 / (D_oa * θ_a^(4/3))
+For O2_a (volumetric fraction), we convert to O2 mass concentration using ideal gas law,
+apply diffusion, then convert back to O2_a tendency.
 
 This has been written so as to work with Differential Equations.jl.
 """
@@ -279,20 +279,25 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
         
-        # O2 diffusion: Apply diffusion to O2 concentration (in p.soilco2.O2)
+        # O2 diffusion: Apply diffusion to O2 mass concentration (in p.soilco2.O2)
         # then convert tendency back to O2_a
         dO2 = -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2))
         
-        # Convert dO2 (concentration tendency) to dO2_a (fraction tendency)
-        # Since O2 = D_oa * O2_a * θ_a^(4/3), we have dO2_a = dO2 / (D_oa * θ_a^(4/3))
-        # We need to get θ_a = ν - θ_l at each point
-        (; D_oa) = model.parameters
+        # Convert dO2 (mass concentration tendency, kg/m³/s) to dO2_a (fraction tendency, 1/s)
+        # Since O2 = θ_a * O2_a * P * M_O2 / (R * T), we have:
+        # dO2_a = dO2 / (θ_a * P * M_O2 / (R * T))
+        # Get θ_a, T, and P at each point
         ν = model.drivers.met.ν
-        # Get θ_l from the drivers (either prescribed or from Y for prognostic case)
         z = model.domain.fields.z
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
         θ_a = @. max(ν - θ_l, eps(eltype(θ_l)))
-        conversion_factor = @. D_oa * θ_a^(4/3) + eps(eltype(θ_a))
+        T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
+        P_sfc = p.drivers.P
+        
+        # Compute conversion factor: θ_a * P * M_O2 / (R * T)
+        R = eltype(dO2)(8.314462618)  # J/(mol·K)
+        M_O2 = eltype(dO2)(0.032)      # kg/mol
+        conversion_factor = @. θ_a * P_sfc * M_O2 / (R * T_soil) + eps(eltype(dO2))
         @. dY.soilco2.O2_a = dO2 / conversion_factor
         
         # SOC has no diffusion, only consumption
@@ -489,10 +494,10 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         p.soilco2.D_o2 .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
         
-        # Compute O2 concentration from O2_a (volumetric fraction)
-        # O2 = D_oa * O2_a * θ_a^(4/3), where θ_a is volumetric air content
-        (; D_oa) = params
-        @. p.soilco2.O2 = D_oa * Y.soilco2.O2_a * (max(ν - θ_l, 0))^(4/3)
+        # Compute O2 mass concentration (kg/m³) from O2_a (volumetric fraction)
+        # using ideal gas law: ρ_O2 = θ_a * f_O2 * P * M_O2 / (R * T)
+        θ_a = @. max(ν - θ_l, 0)
+        @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, θ_a, T_soil, P_sfc)
         
         p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2_a, ν, params)
     end
