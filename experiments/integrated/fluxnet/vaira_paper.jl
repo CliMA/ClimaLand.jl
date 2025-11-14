@@ -32,15 +32,13 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 # Get the default values for this site's domain, location, and parameters
 (; dz_tuple, nelements, zmin, zmax) =
     FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; time_offset, lat, long) =
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 (;
     soil_ν,
     soil_K_sat,
     soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
+    soil_hydrology_cm,
     θ_r,
     ν_ss_quartz,
     ν_ss_om,
@@ -48,10 +46,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     z_0m_soil,
     z_0b_soil,
     soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
+    soil_albedo,
     Ω,
     χl,
+    G_Function,
     α_PAR_leaf,
     λ_γ_PAR,
     τ_PAR_leaf,
@@ -74,14 +72,13 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     plant_ν,
     plant_S_s,
     rooting_depth,
-    G_Function,
     n_stem,
     n_leaf,
     h_leaf,
     h_stem,
     h_canopy,
-    z_0m,
-    z_0b,
+    z0_m,
+    z0_b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
