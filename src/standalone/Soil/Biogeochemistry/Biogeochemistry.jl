@@ -165,7 +165,7 @@ function SoilCO2Model{FT}(
 end
 
 ClimaLand.name(model::SoilCO2Model) = :soilco2
-ClimaLand.prognostic_vars(::SoilCO2Model) = (:C, :O2, :SOC)
+ClimaLand.prognostic_vars(::SoilCO2Model) = (:C, :O2_a, :SOC)
 ClimaLand.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT, FT, FT)
 ClimaLand.prognostic_domain_names(::SoilCO2Model) = (:subsurface, :subsurface, :subsurface)
 
@@ -245,8 +245,8 @@ end
 
 An extension of the function `make_compute_exp_tendency`, for the soilco2 equation.
 This function creates and returns a function which computes the entire
-right hand side of the PDE for `C`, `O2`, and `SOC`, and updates `dY.soilco2.C`, 
-`dY.soilco2.O2`, and `dY.soilco2.SOC` in place with those values. 
+right hand side of the PDE for `C`, `O2_a`, and `SOC`, and updates `dY.soilco2.C`, 
+`dY.soilco2.O2_a`, and `dY.soilco2.SOC` in place with those values. 
 These quantities will be stepped explicitly.
 
 This has been written so as to work with Differential Equations.jl.
@@ -259,23 +259,23 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = ClimaCore.Operators.InterpolateC2F()
         gradc2f_C = ClimaCore.Operators.GradientC2F()
-        gradc2f_O2 = ClimaCore.Operators.GradientC2F()
+        gradc2f_O2_a = ClimaCore.Operators.GradientC2F()
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
-        divf2c_O2 = ClimaCore.Operators.DivergenceF2C(
+        divf2c_O2_a = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
-        ) # O2 diffusion with same boundary conditions as CO2
+        ) # O2_a diffusion with same boundary conditions as CO2
         
         # CO2 diffusion
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
         
-        # O2 diffusion (same diffusivity as CO2)
-        @. dY.soilco2.O2 =
-            -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(Y.soilco2.O2))
+        # O2_a diffusion (same diffusivity as CO2)
+        @. dY.soilco2.O2_a =
+            -divf2c_O2_a(-interpc2f(p.soilco2.D_o2) * gradc2f_O2_a(Y.soilco2.O2_a))
         
         # SOC has no diffusion, only consumption
         @. dY.soilco2.SOC = 0.0
@@ -313,8 +313,8 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil, consumption of O2, and 
-consumption of SOC. As CO2 is produced, O2 is consumed at the same rate,
+case of microbe production of CO2 in soil, consumption of O2_a (volumetric O2 fraction), 
+and consumption of SOC. As CO2 is produced, O2_a is consumed at the same rate,
 and SOC is consumed accordingly to conserve carbon mass.
 """
 function ClimaLand.source!(
@@ -326,8 +326,8 @@ function ClimaLand.source!(
 )
     # CO2 production (kg C m⁻³ s⁻¹)
     dY.soilco2.C .+= p.soilco2.Sm
-    # O2 consumption at same rate as CO2 production (kg C m⁻³ s⁻¹)
-    dY.soilco2.O2 .-= p.soilco2.Sm
+    # O2_a consumption at same rate as CO2 production (kg C m⁻³ s⁻¹)
+    dY.soilco2.O2_a .-= p.soilco2.Sm
     # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ s⁻¹)
     dY.soilco2.SOC .-= p.soilco2.Sm
 end
@@ -470,7 +470,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # O2 diffusivity is the same as CO2 diffusivity
         p.soilco2.D_o2 .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
-        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2, ν, params)
+        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2_a, ν, params)
     end
     return update_aux!
 end

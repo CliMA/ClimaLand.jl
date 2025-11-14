@@ -870,10 +870,10 @@ function define_diagnostics!(land_model)
     # Soil O2
     add_diagnostic_variable!(
         short_name = "so2",
-        long_name = "Soil O2",
-        standard_name = "soil_o2",
-        units = "kg C m^3",
-        comments = "Concentration of O2 in the porous air space of the soil. (depth resolved)",
+        long_name = "Soil O2 Volumetric Fraction",
+        standard_name = "soil_o2_volumetric_fraction",
+        units = "m^3 m^-3",
+        comments = "Volumetric fraction of O₂ in the soil air space (O2_a). (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilo2!(out, Y, p, t, land_model),
     )
 

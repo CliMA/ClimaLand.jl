@@ -848,7 +848,7 @@ function compute_canopy_temperature!(
 end
 
 @diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.C
-@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2
+@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2_a
 @diagnostic_compute "soc" Union{SoilCanopyModel, LandModel} Y.soilco2.SOC
 @diagnostic_compute "soil_water_content" Union{SoilCanopyModel, LandModel} Y.soil.ϑ_l
 # @diagnostic_compute "plant_water_content" Union{SoilCanopyModel, LandModel} Y.canopy.hydraulics.ϑ_l # return a Tuple

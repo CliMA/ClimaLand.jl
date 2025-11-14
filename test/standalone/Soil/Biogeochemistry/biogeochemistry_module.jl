@@ -75,13 +75,13 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(model)
         t = Float64(1)
         Y.soilco2.C .= FT(4)
-        Y.soilco2.O2 .= FT(0.2)  # Initialize O2
+        Y.soilco2.O2_a .= FT(0.2)  # Initialize O2_a
         Y.soilco2.SOC .= FT(5.0)  # Initialize SOC
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t)
         exp_tendency!(dY, Y, p, t)
         @test dY.soilco2.C ≈ p.soilco2.Sm
-        @test dY.soilco2.O2 ≈ -p.soilco2.Sm  # O2 consumed at same rate as CO2 produced
+        @test dY.soilco2.O2_a ≈ -p.soilco2.Sm  # O2_a consumed at same rate as CO2 produced
         @test dY.soilco2.SOC ≈ -p.soilco2.Sm  # SOC consumed at same rate as CO2 produced
         @test p.soilco2.top_bc_wvec ==
               ClimaCore.Geometry.WVector.(p.soilco2.top_bc)
@@ -156,7 +156,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(model)
         t = Float64(1)
         Y.soilco2.C .= FT(C)
-        Y.soilco2.O2 .= FT(0.2)  # Initialize O2
+        Y.soilco2.O2_a .= FT(0.2)  # Initialize O2_a
         Y.soilco2.SOC .= FT(5.0)  # Initialize SOC
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t)

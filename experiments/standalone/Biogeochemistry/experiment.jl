@@ -142,13 +142,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             C = FT(0.0)
             return FT(C)
         end
-        # Initialize O2 concentration (volumetric fraction in soil air)
-        # Using a typical atmospheric O2 concentration scaled by air-filled porosity
-        function O2_profile(z::FT) where {FT}
-            # Typical atmospheric O2 volume fraction is ~0.21 
-            # Multiply by D_oa parameter (~1.67) to get soil O2 concentration
-            O2 = FT(0.21 * 1.67 * (ν - 0.33))  # air-filled porosity approximation
-            return FT(O2)
+        # Initialize O2_a (volumetric fraction of O₂ in the soil air)
+        function O2_a_profile(z::FT) where {FT}
+            # Typical atmospheric O2 volume fraction is ~0.21
+            O2_a = FT(0.21)
+            return FT(O2_a)
         end
         # Initialize SOC (soil organic carbon) concentration (kg C m⁻³)
         function SOC_profile(z::FT) where {FT}
@@ -157,7 +155,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             return FT(Csom)
         end
         Y.soilco2.C .= CO2_profile.(z)
-        Y.soilco2.O2 .= O2_profile.(z)
+        Y.soilco2.O2_a .= O2_a_profile.(z)
         Y.soilco2.SOC .= SOC_profile.(z)
     end
 
