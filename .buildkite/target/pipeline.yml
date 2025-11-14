@@ -4,14 +4,16 @@ agents:
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
-  JULIA_NVTX_CALLBACKS: gc
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_CUDA_MEMORY_POOL: "cuda"
+  JULIA_MAX_NUM_PRECOMPILE_FILES: 100
 
 steps:
   - label: "init environment :computer:"
     key: "init_env"
+    concurrency: 1
+    concurrency_group: "depot/climaland-benchmark"
     command:
       - "echo $$JULIA_DEPOT_PATH"
 
@@ -20,89 +22,127 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - 'julia --project=.buildkite -e ''using Pkg; Pkg.develop(;path="."); Pkg.instantiate(;verbose=true)'''
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
     agents:
       slurm_gpus: 1
+      slurm_nodes: 1
       slurm_ntasks: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
 
   - wait
 
+  - group: "Benchmark (CPU)"
+    steps:
+      - label: ":bucket: Bucket (CPU)"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+        env:
+          CLIMACOMMS_DEVICE: CPU
+        agents:
+          slurm_mem: 16GB
+          slurm_cpus_per_task: 4
+        artifact_paths:
+          - "bucket_benchmark_cpu/*"
+        soft_fail: true
 
-  - group: "Target Benchmark"
+      - label: ":droplet: RichardsModel (CPU)"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+        env:
+          CLIMACOMMS_DEVICE: CPU
+        agents:
+          slurm_mem: 16GB
+          slurm_cpus_per_task: 4
+        artifact_paths:
+          - "richards_benchmark_cpu/*"
+        soft_fail: true
+
+      - label: "Soil (CPU) "
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+        env:
+          CLIMACOMMS_DEVICE: CPU
+        agents:
+          slurm_mem: 16GB
+          slurm_cpus_per_task: 4
+        artifact_paths:
+          - "soil_benchmark_cpu/*"
+        soft_fail: true
+
+      - label: ":snow_capped_mountain: Snowy Land (CPU)"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+        env:
+          CLIMACOMMS_DEVICE: CPU
+        agents:
+          slurm_mem: 16GB
+          slurm_cpus_per_task: 4
+        artifact_paths:
+          - "snowy_land_benchmark_cpu/*"
+        soft_fail: true
+
+  - group: "Target Benchmark (GPU)"
     steps:
       - label: ":bucket: Bucket"
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        artifact_paths:
-          - "bucket_benchmark_gpu/flame*html"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 16GB
           slurm_gpus: 1
+        artifact_paths:
+          - "bucket_benchmark_gpu/*"
+
+      - wait: ~
+        continue_on_failure: true
 
       - label: ":droplet: RichardsModel"
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        artifact_paths:
-          - "richards_benchmark_gpu/flame*html"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 16GB
           slurm_gpus: 1
+        artifact_paths:
+          - "richards_benchmark_gpu/*"
+
+      - wait: ~
+        continue_on_failure: true
+      - label: "Soil"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 16GB
+          slurm_gpus: 1
+        artifact_paths:
+          - "soil_benchmark_gpu/*"
+
+      - wait: ~
+        continue_on_failure: true
 
       - label: ":snow_capped_mountain: Snowy Land"
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
-        artifact_paths:
-          - "snowy_land_benchmark_gpu/flame*html"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 24GB
           slurm_gpus: 1
+        artifact_paths:
+          - "snowy_land_benchmark_gpu/*"
 
-  - group: "Target Benchmark Nsight"
+  - group: "Profile with Nsight"
     steps:
-      - label: ":bucket: Bucket"
-        command:
-          - mkdir -p bucket_benchmark_gpu
-          - >
-            nsys profile --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl --profiler nsight
-        artifact_paths:
-          - "bucket_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 32G
-          slurm_gpus: 1
-
-      - label: ":droplet: RichardsModel"
-        command:
-          - mkdir -p richards_benchmark_gpu
-          - >
-            nsys profile --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl --profiler nsight
-        artifact_paths:
-          - "richards_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 64G
-          slurm_gpus: 1
-
       - label: ":snow_capped_mountain: Snowy Land"
         command:
           - mkdir -p snowy_land_benchmark_gpu
           - >
-            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=snowy_land_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl --profiler nsight
+            nsys profile --start-later=true --capture-range=cudaProfilerApi --trace=nvtx,mpi,cuda,osrt --cuda-memory-usage=true --kill=none --output=snowy_land_benchmark_gpu/report
+            julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
         artifact_paths:
           - "snowy_land_benchmark_gpu/report*"
         env:
           CLIMACOMMS_DEVICE: CUDA
+          JULIA_NVTX_CALLBACKS: "gc,alloc,free,inference"
         agents:
           slurm_mem: 64G
+          slurm_cpus_per_task: 4
           slurm_gpus: 1
