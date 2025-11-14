@@ -172,6 +172,7 @@ ClimaLand.prognostic_domain_names(::SoilCO2Model) = (:subsurface, :subsurface, :
 ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :D,
     :D_o2,
+    :O2,
     :Sm,
     ClimaLand.boundary_vars(
         model.boundary_conditions.top,
@@ -188,6 +189,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     ClimaLand.boundary_var_types(
         model,
         model.boundary_conditions.top,
@@ -200,6 +202,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     )...,
 )
 ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
+    :subsurface,
     :subsurface,
     :subsurface,
     :subsurface,
@@ -249,6 +252,9 @@ right hand side of the PDE for `C`, `O2_a`, and `SOC`, and updates `dY.soilco2.C
 `dY.soilco2.O2_a`, and `dY.soilco2.SOC` in place with those values. 
 These quantities will be stepped explicitly.
 
+For O2_a (volumetric fraction), we convert to O2 concentration, apply diffusion,
+then convert back to O2_a tendency using: dO2_a = dO2 / (D_oa * θ_a^(4/3))
+
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
@@ -259,23 +265,35 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = ClimaCore.Operators.InterpolateC2F()
         gradc2f_C = ClimaCore.Operators.GradientC2F()
-        gradc2f_O2_a = ClimaCore.Operators.GradientC2F()
+        gradc2f_O2 = ClimaCore.Operators.GradientC2F()
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
-        divf2c_O2_a = ClimaCore.Operators.DivergenceF2C(
+        divf2c_O2 = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
-        ) # O2_a diffusion with same boundary conditions as CO2
+        ) # O2 diffusion with same boundary conditions as CO2
         
         # CO2 diffusion
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
         
-        # O2_a diffusion (same diffusivity as CO2)
-        @. dY.soilco2.O2_a =
-            -divf2c_O2_a(-interpc2f(p.soilco2.D_o2) * gradc2f_O2_a(Y.soilco2.O2_a))
+        # O2 diffusion: Apply diffusion to O2 concentration (in p.soilco2.O2)
+        # then convert tendency back to O2_a
+        dO2 = -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2))
+        
+        # Convert dO2 (concentration tendency) to dO2_a (fraction tendency)
+        # Since O2 = D_oa * O2_a * θ_a^(4/3), we have dO2_a = dO2 / (D_oa * θ_a^(4/3))
+        # We need to get θ_a = ν - θ_l at each point
+        (; D_oa) = model.parameters
+        ν = model.drivers.met.ν
+        # Get θ_l from the drivers (either prescribed or from Y for prognostic case)
+        z = model.domain.fields.z
+        θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
+        θ_a = @. max(ν - θ_l, eps(eltype(θ_l)))
+        conversion_factor = @. D_oa * θ_a^(4/3) + eps(eltype(θ_a))
+        @. dY.soilco2.O2_a = dO2 / conversion_factor
         
         # SOC has no diffusion, only consumption
         @. dY.soilco2.SOC = 0.0
@@ -470,6 +488,12 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # O2 diffusivity is the same as CO2 diffusivity
         p.soilco2.D_o2 .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
+        
+        # Compute O2 concentration from O2_a (volumetric fraction)
+        # O2 = D_oa * O2_a * θ_a^(4/3), where θ_a is volumetric air content
+        (; D_oa) = params
+        @. p.soilco2.O2 = D_oa * Y.soilco2.O2_a * (max(ν - θ_l, 0))^(4/3)
+        
         p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2_a, ν, params)
     end
     return update_aux!
