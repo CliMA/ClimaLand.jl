@@ -74,12 +74,9 @@ soil = Soil.EnergyHydrology{FT}(
 )
 
 # Soil microbes model
-soil_organic_carbon =
-    ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
 drivers = Soil.Biogeochemistry.SoilDrivers(
     co2_prognostic_soil,
-    soil_organic_carbon,
     atmos,
 )
 soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
