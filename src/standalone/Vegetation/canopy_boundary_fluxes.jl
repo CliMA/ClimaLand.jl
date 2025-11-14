@@ -202,7 +202,7 @@ end
 """
     function ClimaLand.turbulent_fluxes!(
         dest,
-        atmos::PrescribedAtmosphere,
+        atmos::AbstractAtmosphericDrivers,
         sf_parameterization::MoninObukhovCanopyFluxes,
         model::CanopyModel,
         Y::ClimaCore.Fields.FieldVector,
@@ -220,74 +220,30 @@ SurfaceFluxes before adjusting to account for these resistances.
 """
 function ClimaLand.turbulent_fluxes!(
     dest,
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     sf_parameterization::MoninObukhovCanopyFluxes,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 )
+    @static if pkgversion(ClimaLand) < v"1.1" &&
+               typeof(atmos) <: CoupledAtmosphere
+        return nothing # Coupler has already computed the fluxes and updated `dest` in place
+    end
     T_sfc = canopy_temperature(model.energy, model, Y, p)
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
     d_sfc = sf_parameterization.displ
     z_0m = sf_parameterization.z_0m
     z_0b = sf_parameterization.z_0b
     Cd = sf_parameterization.Cd
-    u_air = p.drivers.u
-    h_air = atmos.h
 
+    momentum_fluxes = Val(return_momentum_fluxes(atmos))
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
-            Val(false), # return_extra_fluxes
+            momentum_fluxes, # return_extra_fluxes
             p.drivers.thermal_state,
-            u_air,
-            h_air,
-            atmos.gustiness,
-            T_sfc,
-            r_stomata_canopy,
-            d_sfc,
-            z_0m,
-            z_0b,
-            Cd,
-            p.canopy.biomass.area_index.leaf,
-            p.canopy.biomass.area_index.stem,
-            Ref(model.earth_param_set),
-        )
-    return nothing
-end
-
-"""
-    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::CanopyModel, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
-
-This function computes the turbulent surface fluxes for a coupled simulation.
-This function is very similar to the `CanopyModel` method of `turbulent_fluxes!`,
-but it is used with a `CoupledAtmosphere` which contains all the necessary
-atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
-
-This function is intended to be called by ClimaCoupler.jl when computing
-fluxes for a coupled simulation with the integrated land model.
-"""
-function ClimaLand.coupler_compute_turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    sf_parameterization::MoninObukhovCanopyFluxes,
-    model::CanopyModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    T_sfc = canopy_temperature(model.energy, model, Y, p)
-    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
-    d_sfc = sf_parameterization.displ
-    z_0m = sf_parameterization.z_0m
-    z_0b = sf_parameterization.z_0b
-    Cd = sf_parameterization.Cd
-
-    dest .=
-        canopy_turbulent_fluxes_at_a_point.(
-            Val(true), # return_extra_fluxes
-            atmos.thermal_state,
-            atmos.u,
+            p.drivers.u,
             atmos.h,
             atmos.gustiness,
             T_sfc,
@@ -302,6 +258,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
         )
     return nothing
 end
+
 
 """
     canopy_turbulent_fluxes_at_a_point(return_extra_fluxes, args...)

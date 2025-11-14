@@ -18,6 +18,7 @@ using StaticArrays
 import ..Parameters as LP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
+    AbstractAtmosphericDrivers,
     PrescribedAtmosphere,
     PrescribedPrecipitation,
     PrescribedSoilOrganicCarbon,
@@ -317,24 +318,18 @@ When constructed with a space, the struct contains the fields needed to compute
 surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
 """
 struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
-    "Atmospheric horizontal wind velocity vector at the reference height (m/s)"
-    u::Union{Nothing, Fields.Field}
     "Atmospheric reference height (m), relative to surface elevation"
     h::Union{Nothing, Fields.Field}
     "Minimum wind speed (gustiness; m/s), which is always a spatial constant"
     gustiness::Union{Nothing, FT}
-    "Atmospheric thermodynamic state at the reference height"
-    thermal_state::Union{Nothing, Fields.Field}
     "Create a `CoupledAtmosphere` with default values"
     function CoupledAtmosphere{FT}() where {FT}
-        return new{FT}(nothing, nothing, nothing, nothing)
+        return new{FT}(nothing, nothing)
     end
     function CoupledAtmosphere{FT}(space, atmos_h) where {FT}
         return new{FT}(
-            Fields.zeros(SVector{2, FT}, space),
             atmos_h, # Field of atmosphere height on `space`
             FT(1), # gustiness is always a spatial constant, for now
-            Fields.zeros(Thermodynamics.PhaseEquil{FT}, space),
         )
     end
 end
@@ -374,44 +369,54 @@ function set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p) where {FT}
     return nothing
 end
 
+return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
+return_momentum_fluxes(atmos::CoupledAtmosphere) = true
+
 """
     turbulent_fluxes!(dest,
-                      atmos::PrescribedAtmosphere,
+                      atmos::AbstractAtmosphericDrivers,
                       model::AbstractModel,
-                      Y::ClimaCore.Fields.FieldVector,
-                      p::NamedTuple,
+                      Y,
+                      p,
                       t
                       )
 
-Computes the turbulent surface flux terms at the ground for a standalone simulation,
+Computes the turbulent surface flux terms at the ground,
 including turbulent energy fluxes as well as the water vapor flux
 (in units of m^3/m^2/s of water).
 Positive fluxes indicate flow from the ground to the atmosphere.
 
-It solves for these given atmospheric conditions, stored in `atmos`,
+It solves for these given atmospheric conditions,
 model parameters, and the surface conditions.
+
+To maintain backwards capability with ClimaLandv1.0.1, we also provide
+a method which does nothing when called with a CoupledAtmosphere.
 """
 function turbulent_fluxes!(
     dest,
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     model::AbstractModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
+    Y,
+    p,
     t,
 )
+    @static if pkgversion(ClimaLand) < v"1.1" &&
+               typeof(atmos) <: CoupledAtmosphere
+        return nothing # Coupler has already computed the fluxes and updated `dest` in place
+    end
+
     T_sfc = surface_temperature(model, Y, p, t)
     ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
+    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
     d_sfc = displacement_height(model, Y, p)
-    u_air = p.drivers.u
-    h_air = atmos.h
 
+    momentum_fluxes = Val(return_momentum_fluxes(atmos))
     dest .=
         turbulent_fluxes_at_a_point.(
-            Val(false), # return_extra_fluxes
+            momentum_fluxes, # return_extra_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -420,55 +425,7 @@ function turbulent_fluxes!(
             r_sfc,
             d_sfc,
             p.drivers.thermal_state,
-            u_air,
-            h_air,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            model.parameters.earth_param_set,
-        )
-    return nothing
-end
-
-"""
-    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::AbstractModel, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
-
-This function computes the turbulent surface fluxes for a coupled simulation.
-This function is very similar to the default method of `turbulent_fluxes!`,
-but it is used with a `CoupledAtmosphere` which contains all the necessary
-atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
-
-This function is intended to be called by ClimaCoupler.jl when computing
-fluxes for a coupled simulation with the integrated land model.
-"""
-function coupler_compute_turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    model::AbstractModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    T_sfc = surface_temperature(model, Y, p, t)
-    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
-    β_sfc = surface_evaporative_scaling(model, Y, p)
-    h_sfc = surface_height(model, Y, p)
-    r_sfc = surface_resistance(model, Y, p, t)
-    d_sfc = displacement_height(model, Y, p)
-
-    dest .=
-        turbulent_fluxes_at_a_point.(
-            Val(true), # return_extra_fluxes
-            T_sfc,
-            q_sfc,
-            ρ_sfc,
-            β_sfc,
-            h_sfc,
-            r_sfc,
-            d_sfc,
-            atmos.thermal_state,
-            atmos.u,
+            p.drivers.u,
             atmos.h,
             atmos.gustiness,
             model.parameters.z_0m,
@@ -477,7 +434,6 @@ function coupler_compute_turbulent_fluxes!(
         )
     return nothing
 end
-
 """
     turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
 
@@ -632,31 +588,6 @@ function compute_turbulent_fluxes_at_a_point(
 end
 
 """
-    turbulent_fluxes!(dest,
-                    atmos::CoupledAtmosphere,
-                    model::AbstractModel,
-                    Y,
-                    p,
-                    t)
-
-Computes the turbulent surface fluxes terms at the ground for a coupled simulation.
-In this case, the coupler has already computed turbulent fluxes and updated
-them in each of the component models, so this function does nothing.
-"""
-function ClimaLand.turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    model::AbstractModel,
-    Y,
-    p,
-    t,
-)
-    # coupler has done its thing behind the scenes already
-    return nothing
-end
-
-
-"""
     PrescribedRadiativeFluxes{FT, SW, LW, DT, T, TP} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
@@ -808,7 +739,7 @@ end
 
 """
     surface_air_density(
-                        atmos::PrescribedAtmosphere,
+                        atmos::AbstractAtmosphericDrivers,
                         model::AbstractModel,
                         Y,
                         p,
@@ -818,15 +749,10 @@ end
 
 A helper function which returns the surface air density.
 
-We additionally include the `atmos` type as an argument because
-the surface air density computation will change between a coupled simulation
-and a prescibed atmos simulation.
-
-Extending this function for your model is only necessary if you need to
-compute the air density in a different way.
+This assumes the atmospheric thermal state is stored in p.drivers.
 """
 function surface_air_density(
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     model::AbstractModel,
     Y,
     p,
@@ -839,37 +765,7 @@ function surface_air_density(
 end
 
 """
-    surface_air_density(
-                        atmos::CoupledAtmosphere,
-                        model::AbstractModel,
-                        Y,
-                        p,
-                        t,
-                        T_sfc,
-                        )
-
-A helper function which returns the surface air density; this assumes that
-the `model` has a property called `parameters` containing `earth_param_set`.
-
-This method is similar to the general method above, except in this case
-we get the thermodynamic parameters from the `atmos` object. This is used
-when running with a coupled atmosphere.
-"""
-function surface_air_density(
-    atmos::CoupledAtmosphere,
-    model::AbstractModel,
-    Y,
-    p,
-    t,
-    T_sfc,
-)
-    thermo_params =
-        LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    return compute_ρ_sfc.(thermo_params, atmos.thermal_state, T_sfc)
-end
-
-"""
-    surface_specific_humidity(atmos, model::AbstractModel, Y, p, T_sfc, ρ_sfc)
+    surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
@@ -879,14 +775,7 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_specific_humidity(
-    atmos,
-    model::AbstractModel,
-    Y,
-    p,
-    T_sfc,
-    ρ_sfc,
-) end
+function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
 
 """
     surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
@@ -1280,16 +1169,20 @@ end
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
-with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, and `q`.
+with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q, `u`, and `thermal_state`.
 
-This is intended to be used in coupled simulations with ClimaCoupler.jl
+This is intended to be used in coupled simulations with ClimaCoupler.jl.
 """
 function ClimaLand.initialize_drivers(
     a::CoupledAtmosphere{FT},
     coords,
 ) where {FT}
-    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q)
-    types = ([FT for k in keys]...,)
+    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u, :thermal_state)
+    types = (
+        [FT for k in 1:(length(keys) - 2)]...,
+        SVector{2, FT},
+        Thermodynamics.PhaseEquil{FT},
+    )
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,

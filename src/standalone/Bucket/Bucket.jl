@@ -590,6 +590,33 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
 end
 
 """
+    turbulent_fluxes!(dest,
+                    atmos::CoupledAtmosphere,
+                    model::BucketModel,
+                    Y,
+                    p,
+                    t)
+
+Computes the turbulent surface fluxes terms at the ground for a coupled bucket.
+In this case, the coupler has already computed turbulent fluxes and updated
+them in each of the component models, so this function does nothing.
+
+Note that this function is not used for the full land model; in that case,
+the turbulent fluxes are computed by the full land model during each step.
+"""
+function ClimaLand.turbulent_fluxes!(
+    dest,
+    atmos::CoupledAtmosphere,
+    model::BucketModel,
+    Y,
+    p,
+    t,
+)
+    # coupler has done its thing behind the scenes already
+    return nothing
+end
+
+"""
     next_albedo!(next_α_sfc,
                  model_albedo::PrescribedBaregroundAlbedo{FT},
                  parameters, Y, p, t)
