@@ -414,8 +414,6 @@ end
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
-        z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
-        z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
         lat = FT(0.0) # degree
         long = FT(-180) # degree
@@ -535,7 +533,7 @@ end
         )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
-        sf_parameterization = ClimaLand.Canopy.MoninObukhovHeightBased{FT}(toml_dict, biomass.height)
+        sf_parameterization = ClimaLand.Canopy.MoninObukhovHeightBased(toml_dict, biomass.height)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
@@ -567,7 +565,7 @@ end
         jacobian! = ClimaLand.make_jacobian(canopy)
 
         set_initial_cache!(p, Y, t0)
-        T_sfc = ClimaLand.surface_temperature(canopy, Y, p, t0)
+        T_sfc = Y.canopy.energy.T
         ρ_sfc = ClimaLand.surface_air_density(
             canopy.boundary_conditions.atmos,
             canopy,
@@ -594,7 +592,7 @@ end
         Y_2.canopy.energy.T = FT(289 + ΔT)
         p_2 = deepcopy(p)
         set_initial_cache!(p_2, Y_2, t0)
-        T_sfc2 = ClimaLand.surface_temperature(canopy, Y_2, p_2, t0)
+        T_sfc2 =  Y_2.canopy.energy.T
         ρ_sfc2 = ClimaLand.surface_air_density(
             canopy.boundary_conditions.atmos,
             canopy,
@@ -799,8 +797,12 @@ end
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         soil_driver = PrescribedGroundConditions{FT}()
+        surface_flux_parameterization = MoninObukhovHeightBased(
+            toml_dict,
+            toml_dict["canopy_height"],
+        )
         boundary_conditions =
-            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
+            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver, surface_flux_parameterization)
 
         earth_param_set = LP.LandParameters(toml_dict)
 
@@ -816,7 +818,7 @@ end
                 sif,
                 biomass,
                 boundary_conditions,
-                earth_param_set
+                earth_param_set,
                 domain,
             )
 

@@ -1,6 +1,7 @@
+export MoninObukhovCanopyFluxes, MoninObukhovHeightBased
 abstract type AbstractCanopySFParameterization{FT <: AbstractFloat} end
 
-struct MoninObukhovHeightBased{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
+struct MoninObukhovCanopyFluxes{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
        AbstractCanopySFParameterization{FT}
     "Minimum roughness length (m)"
     z_0min::FT
@@ -14,12 +15,13 @@ struct MoninObukhovHeightBased{FT, F <: Union{FT, ClimaCore.Fields.Field}} <:
     η::FT
 end
 
-function MoninObukhovHeightBased{FT}(toml_dict, height) where {FT}
+function MoninObukhovHeightBased(toml_dict, height)
     z_0min = toml_dict["canopy_z_0min"]
     z_0m = toml_dict["canopy_z_0m_coeff"] .* height .+ z_0min
     z_0b = toml_dict["canopy_z_0b_coeff"] .* height .+ z_0min
     displ = toml_dict["canopy_d_coeff"] .* height
     η = toml_dict["canopy_η"]
+    FT=typeof(η)
     F = typeof(height)
-    return MoninObukhovHeightBased{FT, F}(z_0min, z_0m, z_0b, displ, η)
+    return MoninObukhovCanopyFluxes{FT, F}(z_0min, z_0m, z_0b, displ, η)
 end

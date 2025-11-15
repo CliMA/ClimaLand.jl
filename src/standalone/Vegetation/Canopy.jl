@@ -713,7 +713,6 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        surface_flux_parameterization = MoninObukhovHeightBased{FT}(toml_dict),
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -724,6 +723,7 @@ end
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
+        surface_flux_parameterization = MoninObukhovHeightBased(toml_dict, biomass.height),
     ) where {FT, PSE}
 
 Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`.
@@ -763,9 +763,9 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    surface_flux_parameterization = MoninObukhovHeightBased{FT}(
+    surface_flux_parameterization = MoninObukhovHeightBased(
         toml_dict,
-        biomass.height,
+        toml_dict["canopy_height"],
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}

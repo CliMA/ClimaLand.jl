@@ -229,7 +229,7 @@ SurfaceFluxes before adjusting to account for these resistances.
 function ClimaLand.turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
-    sf_parameterization::MoninObukhovHeightBased,
+    sf_parameterization::MoninObukhovCanopyFluxes,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -278,7 +278,7 @@ fluxes for a coupled simulation with the integrated land model.
 function ClimaLand.coupler_compute_turbulent_fluxes!(
     dest,
     atmos::CoupledAtmosphere,
-    sf_parameterization::MoninObukhovHeightBased,
+    sf_parameterization::MoninObukhovCanopyFluxes,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
