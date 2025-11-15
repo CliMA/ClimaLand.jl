@@ -163,11 +163,11 @@ radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
     α_PAR_leaf,
-    τ_PAR_leaf,
+    #τ_PAR_leaf,
     α_NIR_leaf,
-    τ_NIR_leaf,
+    #τ_NIR_leaf,
 )
-radiative_transfer = Canopy.TwoStreamModel{FT}(
+radiative_transfer = Canopy.BeerLambertModel{FT}(
     surface_domain,
     toml_dict;
     radiation_parameters,
@@ -180,6 +180,10 @@ conductance = PModelConductance{FT}(toml_dict)
 # Set up photosynthesis
 is_c3 = FT(1)
 photosynthesis = PModel{FT}(surface_domain, toml_dict; is_c3)
+
+# Set up optimal LAI model
+lai_model =
+    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
 
 # Set up soil moisture stress using soil retention parameters
 soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
@@ -230,6 +234,7 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer,
     photosynthesis,
     conductance,
+    lai_model,
     soil_moisture_stress,
     hydraulics,
     energy,
@@ -255,7 +260,18 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 # Callbacks
-output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil"]
+output_vars = [
+    "gpp",
+    "shf",
+    "lhf",
+    "swu",
+    "lwu",
+    "swc",
+    "swe",
+    "tsoil",
+    "lai",
+    "lai_pred",
+]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
@@ -277,6 +293,7 @@ simulation = LandSimulation(
 
 @time solve!(simulation)
 
+#=
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
     pkgdir(ClimaLand),
@@ -301,3 +318,57 @@ LandSimVis.make_timeseries(
     spinup_date = start_date + Day(20),
     comparison_data,
 )
+=#
+
+# Need to solve!
+# can also look at simulation._integrator.p
+
+short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_names = [d.output_short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_units = [d.variable.units for d in simulation.diagnostics]
+i = 10
+dn = diag_names[i]
+unit = diag_units[i]
+sn = short_names[i]
+model_time, LAI_opt = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation.diagnostics[1].output_writer,
+    dn,
+)
+LAI_opt
+
+
+i = 9
+dn = diag_names[i]
+unit = diag_units[i]
+sn = short_names[i]
+model_time, LAI_obs = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation.diagnostics[1].output_writer,
+    dn,
+)
+LAI_obs
+
+save_Δt = model_time[2] - model_time[1] # in seconds since the start_date. if model_time is an Itime, the epoch should be start_date
+import ClimaUtilities.TimeManager: ITime, date
+function time_to_date(t::ITime, start_date)
+    start_date != t.epoch &&
+        @warn("$(start_date) is different from the simulation time epoch.")
+    return isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+end
+model_dates = time_to_date.(model_time, start_date)
+
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+p = lines!(ax, model_dates, LAI_obs, label = "LAI obs")
+p2 = lines!(ax, model_dates, LAI_opt, label = "LAI opt")
+ax.ylabel = "LAI m2 m-2"
+axislegend()
+save("test.png", fig)
+
+
+# Thoughts:
+# it makes no sense to have LAI < 0
+# maybe params (α, z, m) are not adequate with our units of A (GPP)
+# Solutions:
+# we could convert A internally
+# and force L to be 0 min
