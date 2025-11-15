@@ -630,7 +630,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     # drivers
     FT = eltype(parameters)
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
 
     ψ = p.canopy.hydraulics.ψ
     n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
@@ -645,7 +645,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+                LP.thermodynamic_parameters(canopy.earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
@@ -717,7 +717,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     # update the acclimated Vcmax25, Jmax25, ξ using EMA
     parameters = canopy.photosynthesis.parameters
     constants = canopy.photosynthesis.constants
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
 
     # drivers
     FT = eltype(parameters)
@@ -867,7 +867,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(canopy.parameters.earth_param_set),
+                LP.thermodynamic_parameters(canopy.earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
@@ -1011,7 +1011,7 @@ end
 
 function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
     par_d = p.canopy.radiative_transfer.par_d
     (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
