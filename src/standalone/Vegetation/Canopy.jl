@@ -679,10 +679,6 @@ function CanopyModel{FT}(;
         ClimaLand.Domains.SphericalSurface,
     },
 ) where {FT, B, PSE}
-    if typeof(energy) <: PrescribedCanopyTempModel{FT}
-        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
-    end
 
     if typeof(photosynthesis) <: PModel{FT}
         @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
@@ -782,11 +778,6 @@ function CanopyModel{FT}(
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
-
-    if typeof(energy) <: PrescribedCanopyTempModel{FT}
-        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(atmos) <: PrescribedAtmosphere{FT}
-    end
 
     # Confirm that each spatially-varying parameter is on the correct domain
     for component in [
