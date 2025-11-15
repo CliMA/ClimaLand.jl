@@ -679,10 +679,6 @@ function CanopyModel{FT}(;
         ClimaLand.Domains.SphericalSurface,
     },
 ) where {FT, B, PSE}
-    if typeof(energy) <: PrescribedCanopyTempModel{FT}
-        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
-    end
 
     if typeof(photosynthesis) <: PModel{FT}
         @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
