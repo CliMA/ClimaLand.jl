@@ -779,11 +779,6 @@ function CanopyModel{FT}(
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 
-    if typeof(energy) <: PrescribedCanopyTempModel{FT}
-        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(atmos) <: PrescribedAtmosphere{FT}
-    end
-
     # Confirm that each spatially-varying parameter is on the correct domain
     for component in [
         autotrophic_respiration,
