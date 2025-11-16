@@ -263,7 +263,7 @@ function EnergyHydrology{FT}(;
 end
 
 function make_update_boundary_fluxes(model::EnergyHydrology)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
         soil_boundary_fluxes!(
@@ -307,7 +307,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
         dY.soil.∫F_vol_liq_water_dt .= 0
@@ -355,7 +355,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_imp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
@@ -426,7 +426,7 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
-    function compute_jacobian!(
+    NVTX.@annotate function compute_jacobian!(
         jacobian::MatrixFields.FieldMatrixWithSolver,
         Y,
         p,
@@ -681,7 +681,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::EnergyHydrology)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         (;
             ν,
             hydrology_cm,

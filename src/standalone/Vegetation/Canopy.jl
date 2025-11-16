@@ -6,6 +6,7 @@ using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
+using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
@@ -1062,7 +1063,7 @@ so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
 function ClimaLand.make_update_aux(canopy::CanopyModel)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
 
         # This updates LAI; it must come first.
         update_biomass!(p, Y, t, canopy.biomass, canopy)
@@ -1108,7 +1109,7 @@ function make_compute_exp_tendency(canopy::CanopyModel)
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1128,7 +1129,7 @@ function make_compute_imp_tendency(canopy::CanopyModel)
         x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1148,7 +1149,7 @@ function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
         x -> make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_jacobian!(W, Y, p, dtγ, t)
+    NVTX.@annotate function compute_jacobian!(W, Y, p, dtγ, t)
         for f! in update_jacobian_list
             f!(W, Y, p, dtγ, t)
         end
