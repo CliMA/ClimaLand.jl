@@ -12,9 +12,12 @@ function surface_air_density(
     t,
     T_sfc,
 )
-    thermo_params =
-        LP.thermodynamic_parameters(model.earth_param_set)
-    return ClimaLand.compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
+    thermo_params = LP.thermodynamic_parameters(model.earth_param_set)
+    return ClimaLand.compute_ρ_sfc.(
+        thermo_params,
+        p.drivers.thermal_state,
+        T_sfc,
+    )
 end
 
 
