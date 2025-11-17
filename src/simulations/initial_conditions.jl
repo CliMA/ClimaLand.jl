@@ -87,6 +87,97 @@ function set_soil_initial_conditions!(
 end
 
 """
+    set_saturated_soil_initial_conditions!(Y, p, t0, soil)
+
+Sets the soil initial conditions, stored in `Y.soil.ϑ_l`, `Y.soil.θ_i`,
+`Y.soil.ρe_int`, and defined on the `subsurface_space` corresponding to
+unfrozen soil at 98% of saturation, and with constant temperature equal
+to the atmospheric temperature at the surface.
+
+If used with a CoupledAtmosphere, we assume that p.drivers.T has already been 
+updated.
+"""
+function set_saturated_soil_initial_conditions!(Y, p, t0, soil)
+    params = soil.parameters
+    ν = params.ν
+    θ_r = params.θ_r
+    FT = eltype(Y.soil.ϑ_l)
+    @. Y.soil.ϑ_l = FT(0.98) * (ν - θ_r) + θ_r
+    Y.soil.θ_i .= FT(0.0)
+    θ_l = ClimaLand.Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+    nelements =
+        soil.domain.nelements isa Integer ? soil.domain.nelements :
+        soil.domain.nelements[end]
+    # If CoupledAtmosphere, p.drivers.T is assumed to be updated already
+    if soil.boundary_conditions.top.atmos isa ClimaLand.PrescribedAtmosphere
+        evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
+    end
+    for i in 1:nelements
+        ClimaCore.Fields.level(p.soil.T, i) .= p.drivers.T
+    end
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            θ_l,
+            Y.soil.θ_i,
+            params.ρc_ds,
+            params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.soil.T,
+            params.earth_param_set,
+        )
+    return nothing
+end
+
+"""
+    set_saturated_soil_initial_conditions!(Y, p, t0, soil)
+
+Sets the soil initial conditions, stored in `Y.soil.ϑ_l`, `Y.soil.θ_i`,
+`Y.soil.ρe_int`, and defined on the `subsurface_space` corresponding to
+unfrozen soil at 99% of saturation and with constant temperature equal
+to the atmospheric temperature at the surface.
+
+If used with a CoupledAtmosphere, we assume that p.drivers.T has already been 
+updated.
+"""
+function set_saturated_soil_initial_conditions!(Y, p, t0, soil)
+    params = soil.parameters
+    (; ν, θ_r) = params
+    FT = eltype(Y.soil.ϑ_l)
+    @. Y.soil.ϑ_l = FT(0.99) * (ν - θ_r) + θ_r
+    Y.soil.θ_i .= FT(0.0)
+    θ_l = ClimaLand.Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+    nelements =
+        soil.domain.nelements isa Integer ? soil.domain.nelements :
+        soil.domain.nelements[end]
+    # If CoupledAtmosphere, p.drivers.T is assumed to be updated already
+    if soil.boundary_conditions.top.atmos isa ClimaLand.PrescribedAtmosphere
+        evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
+    end
+    for i in 1:nelements
+        ClimaCore.Fields.level(p.soil.T, i) .= p.drivers.T
+    end
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            θ_l,
+            Y.soil.θ_i,
+            params.ρc_ds,
+            params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.soil.T,
+            params.earth_param_set,
+        )
+    return nothing
+end
+
+"""
     clip_to_bounds(
     T::FT,
     lb::FT,
@@ -197,7 +288,7 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
 end
 
 """
-    make_set_initial_state_from_file(ic_path, land::LandModel{FT}) where {FT}
+    make_set_initial_state_from_file(ic_path, land::LandModel{FT}; saturated = true) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from `ic_path`, a netCDF file.
@@ -211,15 +302,26 @@ The returned function is a closure for `ic_path`. It could also be for `land`, a
 many other ClimaLand functions are, but we wish to preserve the argument `land`
 in `set_ic!` for users who wish to define their own initial condition function,
 which may require parameters, etc, stored in `land`.
+
+If used with a CoupledAtmosphere, we assume p.drivers.T has already been updated
+with the atmosphere temperature.
+
+If saturated == true, the initial conditions from the file are not used for the soil,
+and the soil initial conditions are set to 98% of saturation with no frozen soil,
+and the temperature set to the atmospheric temperature at all levels.
 """
 function make_set_initial_state_from_file(
     ic_path,
-    land::LandModel{FT},
+    land::LandModel{FT};
+    saturated = true,
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t0)
+        end
         # Snow IC
-        evaluate!(p.snow.T, atmos.T, t0)
+        p.snow.T .= p.drivers.T
         set_snow_initial_conditions!(
             Y,
             p,
@@ -230,16 +332,21 @@ function make_set_initial_state_from_file(
         # SoilCO2 IC
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         # Soil IC
-        T_bounds = extrema(p.snow.T)
-        set_soil_initial_conditions!(
-            Y,
-            land.soil.parameters.ν,
-            land.soil.parameters.θ_r,
-            land.soil.domain.space.subsurface,
-            ic_path,
-            land.soil,
-            T_bounds,
-        )
+        if saturated
+            set_saturated_soil_initial_conditions!(Y, p, t0, land.soil)
+        else
+            T_bounds = extrema(p.drivers.T)
+            set_soil_initial_conditions!(
+                Y,
+                land.soil.parameters.ν,
+                land.soil.parameters.θ_r,
+                land.soil.domain.space.subsurface,
+                ic_path,
+                land.soil,
+                T_bounds,
+            )
+        end
+
         # Canopy IC
         # Set canopy moisture variable by setting canopy potential(moisture) equal 
         # to soil potential (soil moisture), averaged over the soil layers,
@@ -268,14 +375,14 @@ function make_set_initial_state_from_file(
                 ) .* land.canopy.hydraulics.parameters.ν
         end
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            evaluate!(Y.canopy.energy.T, atmos.T, t0)
+            Y.canopy.energy.T .= p.drivers.T
         end
     end
     return set_ic!
 end
 
 """
-    make_set_initial_state_from_file(ic_path, land::SoilCanopyModel{FT}) where {FT}
+    make_set_initial_state_from_file(ic_path, land::SoilCanopyModel{FT}; saturated = true) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from `ic_path`, a netCDF file.
@@ -289,38 +396,51 @@ The returned function is a closure for `ic_path`. It could also be for `land`, a
 many other ClimaLand functions are, but we wish to preserve the argument `land`
 in `set_ic!` for users who wish to define their own initial condition function,
 which may require parameters, etc, stored in `land`.
+
+If used with a CoupledAtmosphere, we assume p.drivers.T has already been updated
+with the atmosphere temperature.
+
+If saturated == true, the initial conditions from the file are not used for the soil,
+and the soil initial conditions are set to 98% of saturation with no frozen soil,
+and the temperature set to the atmospheric temperature at all levels.
 """
 function make_set_initial_state_from_file(
     ic_path,
-    land::SoilCanopyModel{FT},
+    land::SoilCanopyModel{FT};
+    saturated = true,
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
-        evaluate!(p.drivers.T, atmos.T, t0)
-        T_bounds = extrema(p.drivers.T)
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t0)
+        end
 
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
 
         # If the canopy model has an energy model, we need to set the initial temperature
-        hasproperty(Y.canopy, :energy) &&
-            evaluate!(Y.canopy.energy.T, atmos.T, t0)
+        hasproperty(Y.canopy, :energy) && Y.canopy.energy.T .= p.drivers.T
+        if saturated
+            set_saturated_soil_initial_conditions!(Y, p, t0, land.soil)
+        else
+            T_bounds = extrema(p.drivers.T)
 
-        set_soil_initial_conditions!(
-            Y,
-            land.soil.parameters.ν,
-            land.soil.parameters.θ_r,
-            land.soil.domain.space.subsurface,
-            ic_path,
-            land.soil,
-            T_bounds,
-        )
+            set_soil_initial_conditions!(
+                Y,
+                land.soil.parameters.ν,
+                land.soil.parameters.θ_r,
+                land.soil.domain.space.subsurface,
+                ic_path,
+                land.soil,
+                T_bounds,
+            )
+        end
     end
     return set_ic!
 end
 
 """
-    make_set_initial_state_from_file(ic_path, model::ClimaLand.Soil.EnergyHydrology{FT}) where {FT}
+    make_set_initial_state_from_file(ic_path, model::ClimaLand.Soil.EnergyHydrology{FT}; saturated = true) where {FT}
 
 Returns a function which takes (Y,p,t0,model) as arguments, and updates
 the state Y in place with initial conditions from `ic_path`, a netCDF file.
@@ -334,25 +454,38 @@ The returned function is a closure for `ic_path`. It could also be for `model`, 
 many other ClimaLand functions are, but we wish to preserve the argument `model`
 in `set_ic!` for users who wish to define their own initial condition function,
 which may require parameters, etc, stored in `model`.
+
+If used with a CoupledAtmosphere, we assume p.drivers.T has already been updated
+with the atmosphere temperature. 
+
+If saturated == true, the initial conditions from the file are not used for the soil,
+and the soil initial conditions are set to 98% of saturation with no frozen soil,
+and the temperature set to the atmospheric temperature at all levels.
 """
 function make_set_initial_state_from_file(
     ic_path,
-    model::ClimaLand.Soil.EnergyHydrology{FT},
+    model::ClimaLand.Soil.EnergyHydrology{FT};
+    saturated = true,
 ) where {FT}
     function set_ic!(Y, p, t0, model)
         atmos = model.boundary_conditions.top.atmos
-        evaluate!(p.drivers.T, atmos.T, t0)
-        T_bounds = extrema(p.drivers.T)
-
-        set_soil_initial_conditions!(
-            Y,
-            model.parameters.ν,
-            model.parameters.θ_r,
-            model.domain.space.subsurface,
-            ic_path,
-            model,
-            T_bounds,
-        )
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t0)
+        end
+        if saturated
+            set_saturated_soil_initial_conditions!(Y, p, t0, model)
+        else
+            T_bounds = extrema(p.drivers.T)
+            set_soil_initial_conditions!(
+                Y,
+                model.parameters.ν,
+                model.parameters.θ_r,
+                model.domain.space.subsurface,
+                ic_path,
+                model,
+                T_bounds,
+            )
+        end
     end
     return set_ic!
 end
