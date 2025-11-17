@@ -252,7 +252,7 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 # Callbacks
-output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil"]
+output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil", "sco2", "so2", "soc"]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
@@ -273,6 +273,38 @@ simulation = LandSimulation(
 )
 
 @time solve!(simulation)
+
+
+using Logging
+
+io = open("logfile.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
+
+# ERROR:
+#=
+┌ Error: ClimaLand simulation crashed. Stacktrace for failed simulation
+│   exception =
+│    MethodError: objects of type ClimaCore.Operators.InterpolateC2F{@NamedTuple{}} are not callable
+│    The object of type `ClimaCore.Operators.InterpolateC2F{@NamedTuple{}}` exists, but no method is defined for this combination of argument types when trying to treat it as a callable object.
+=#
+
+
+
+
+
+
+
+
+
+
+
+
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(

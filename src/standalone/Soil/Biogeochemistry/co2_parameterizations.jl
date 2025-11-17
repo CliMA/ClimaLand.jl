@@ -1,36 +1,33 @@
-export volumetric_air_content, co2_diffusivity, microbe_source, o2_concentration
+export volumetric_air_content, co2_diffusivity, microbe_source, o2_concentration, o2_availability
 
 
 """
     microbe_source(T_soil::FT,
                    θ_l::FT,
                    Csom::FT,
-                   O2_a::FT,
-                   ν::FT,
+                   O2_avail::FT,
                    params::SoilCO2ModelParameters{FT}
                    ) where {FT}
 
 Computes the CO₂ production in the soil by microbes, in depth and time (kg C / m^3/s), using
 the Dual Arrhenius Michaelis Menten model (Davidson et al., 2012).
-O2_a is the prognostic volumetric fraction of O₂ in the soil air.
+O2_avail is a dimensionless O₂ availability metric that accounts for tortuosity effects.
 """
 function microbe_source(
     T_soil::FT,
     θ_l::FT,
     Csom::FT,
-    O2_a::FT,
-    ν::FT,
+    O2_avail::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, D_oa, earth_param_set) =
+    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) =
         params
     R = FT(LP.gas_constant(earth_param_set))
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
-    # Compute O2 from prognostic O2_a
-    O2 = D_oa * O2_a * (max((ν - θ_l), 0)^(FT(4 / 3))) # Oxygen concentration
-    MM_o2 = O2 / (kM_o2 + O2) # Oxygen limitation factor, 0-1
+    # Use pre-computed O2 availability (includes tortuosity effects)
+    MM_o2 = O2_avail / (kM_o2 + O2_avail) # Oxygen limitation factor, 0-1
     R_sm = Vmax * MM_sx * MM_o2 # Respiration, kg C m⁻³ s⁻¹
     return R_sm
 end
@@ -68,6 +65,37 @@ function o2_concentration(
     # O2 mass concentration in soil (kg/m³)
     ρ_O2 = θ_a * O2_a * P_sfc * M_O2 / (R * T_soil)
     return ρ_O2
+end
+
+
+"""
+    o2_availability(O2_a::FT,
+                    θ_a::FT,
+                    D_oa::FT,
+                    ) where {FT}
+
+Computes the dimensionless O₂ availability for microbial kinetics using
+the Millington-Quirk tortuosity model.
+
+The O2 availability accounts for diffusion limitations in porous media:
+    O2_avail = D_oa * O2_a * θ_a^(4/3)
+
+where:
+- O2_a: volumetric fraction of O2 in air (dimensionless, ~0.21)
+- θ_a: volumetric air content (m³ air / m³ soil)
+- D_oa: oxygen diffusion coefficient in air (dimensionless)
+- θ_a^(4/3): Millington-Quirk tortuosity factor
+
+This is used in Michaelis-Menten kinetics for microbial respiration.
+"""
+function o2_availability(
+    O2_a::FT,
+    θ_a::FT,
+    D_oa::FT,
+) where {FT}
+    # Dimensionless O2 availability with tortuosity
+    O2_avail = D_oa * O2_a * θ_a^(FT(4 / 3))
+    return O2_avail
 end
 
 

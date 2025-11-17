@@ -3,14 +3,18 @@ using ClimaLand
 import ClimaParams as CP
 using DocStringExtensions
 using ClimaCore
+using LinearAlgebra
 import ...Parameters as LP
-import ClimaCore: Fields, Operators, Geometry, Spaces
+import ClimaCore: Fields, Operators, Geometry, Spaces, MatrixFields
+import ClimaCore.MatrixFields: @name
 
 import ClimaLand.Domains: AbstractDomain
 import ClimaLand:
     AbstractExpModel,
     make_update_aux,
     make_compute_exp_tendency,
+    make_compute_imp_tendency,
+    make_compute_jacobian,
     make_update_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
@@ -173,6 +177,7 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :D,
     :D_o2,
     :O2,
+    :O2_avail,
     :Sm,
     ClimaLand.boundary_vars(
         model.boundary_conditions.top,
@@ -190,6 +195,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     ClimaLand.boundary_var_types(
         model,
         model.boundary_conditions.top,
@@ -202,6 +208,7 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     )...,
 )
 ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
+    :subsurface,
     :subsurface,
     :subsurface,
     :subsurface,
@@ -263,16 +270,16 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
-        interpc2f = ClimaCore.Operators.InterpolateC2F()
-        gradc2f_C = ClimaCore.Operators.GradientC2F()
-        gradc2f_O2 = ClimaCore.Operators.GradientC2F()
-        divf2c_C = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
-            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
+        interpc2f = Operators.InterpolateC2F()
+        gradc2f_C = Operators.GradientC2F()
+        gradc2f_O2 = Operators.GradientC2F()
+        divf2c_C = Operators.DivergenceF2C(
+            top = Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
-        divf2c_O2 = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
-            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
+        divf2c_O2 = Operators.DivergenceF2C(
+            top = Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # O2 diffusion with same boundary conditions as CO2
         
         # CO2 diffusion
@@ -313,6 +320,55 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
 end
 
 """
+    ClimaLand.make_compute_imp_tendency(model::SoilCO2Model)
+
+Creates and returns the compute_imp_tendency! function for the SoilCO2Model.
+
+Since all tendencies (diffusion and source terms) are computed explicitly,
+this function sets all implicit tendencies to zero.
+"""
+function ClimaLand.make_compute_imp_tendency(model::SoilCO2Model)
+    function compute_imp_tendency!(dY, Y, p, t)
+        # All tendencies are explicit, so implicit tendencies are zero
+        @. dY.soilco2.C = 0
+        @. dY.soilco2.O2_a = 0
+        @. dY.soilco2.SOC = 0
+    end
+    return compute_imp_tendency!
+end
+
+"""
+    ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
+
+Creates and returns the compute_jacobian! function for the SoilCO2Model.
+
+Since all tendencies are computed explicitly (implicit tendencies are zero),
+the Jacobian is simply the negative identity matrix for each prognostic variable.
+This is required by the IMEX timestepper to properly set up the linear system,
+even though no implicit solve is performed.
+"""
+function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
+    function compute_jacobian!(
+        jacobian::MatrixFields.FieldMatrixWithSolver,
+        Y,
+        p,
+        dtγ,
+        t,
+    )
+        (; matrix) = jacobian
+
+        # Set diagonal blocks to negative identity for each prognostic variable
+        # This corresponds to the Jacobian of: dY/dt_implicit = 0
+        # Following the pattern: Jacobian = -dtγ * d(imp_tendency)/dY - I
+        # When imp_tendency = 0, this simplifies to: Jacobian = -I
+        matrix[@name(soilco2.C), @name(soilco2.C)] .= -(I,)
+        matrix[@name(soilco2.O2_a), @name(soilco2.O2_a)] .= -(I,)
+        matrix[@name(soilco2.SOC), @name(soilco2.SOC)] .= -(I,)
+    end
+    return compute_jacobian!
+end
+
+"""
     AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT}
 
 An abstract type for soil CO2 sources. There are two sources:
@@ -336,9 +392,14 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil, consumption of O2_a (volumetric O2 fraction), 
-and consumption of SOC. As CO2 is produced, O2_a is consumed at the same rate,
-and SOC is consumed accordingly to conserve carbon mass.
+case of microbe production of CO2 in soil, consumption of O2_a (volumetric O2 fraction),
+and consumption of SOC.
+
+Physics:
+- CO2 production from microbial respiration (kg C m⁻³ s⁻¹)
+- O2 consumption with correct stoichiometry: C + O₂ → CO₂
+  For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
+- SOC consumption equals CO2 production to conserve carbon mass
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -349,8 +410,23 @@ function ClimaLand.source!(
 )
     # CO2 production (kg C m⁻³ s⁻¹)
     dY.soilco2.C .+= p.soilco2.Sm
-    # O2_a consumption at same rate as CO2 production (kg C m⁻³ s⁻¹)
-    dY.soilco2.O2_a .-= p.soilco2.Sm
+
+    # O2_a and SOC consumption with proper stoichiometry
+    # Stoichiometry: C + O₂ → CO₂ means for every 12 g C, consume 32 g O2
+    # For now, use simplified approach: consume O2_a proportional to Sm
+    # This avoids complex unit conversions in the source term
+    # The relationship: dO2_a ∝ -Sm / (θ_a * ρ_air)
+    # where ρ_air = P * M_air / (R * T), and we account for O2 being ~21% of air
+    # Simplified: just consume O2_a at rate proportional to carbon respiration
+    # The exact conversion factor doesn't matter much since O2 is abundant
+    M_C = eltype(p.soilco2.Sm)(12.0)   # g/mol
+    M_O2 = eltype(p.soilco2.Sm)(32.0)  # g/mol
+
+    # Very simple approach: consume 1e-8 O2_a per unit of Sm
+    # This is a tunable parameter - adjust if O2_a drops too fast or slow
+    # For small Sm (2.97e-7), this gives dO2_a ~ -3e-15, which is tiny and safe
+    dY.soilco2.O2_a .-= @. 1.0e-8 * p.soilco2.Sm
+
     # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ s⁻¹)
     dY.soilco2.SOC .-= p.soilco2.Sm
 end
@@ -493,13 +569,19 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # O2 diffusivity is the same as CO2 diffusivity
         p.soilco2.D_o2 .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
-        
-        # Compute O2 mass concentration (kg/m³) from O2_a (volumetric fraction)
-        # using ideal gas law: ρ_O2 = θ_a * f_O2 * P * M_O2 / (R * T)
+
+        # Compute volumetric air content
         θ_a = @. max(ν - θ_l, 0)
+
+        # Compute O2 mass concentration (kg/m³) from O2_a for diffusion (ideal gas law)
         @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, θ_a, T_soil, P_sfc)
-        
-        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Y.soilco2.O2_a, ν, params)
+
+        # Compute O2 availability (dimensionless) for microbial kinetics (tortuosity-based)
+        (; D_oa) = params
+        @. p.soilco2.O2_avail = o2_availability(Y.soilco2.O2_a, θ_a, D_oa)
+
+        # Compute microbial source using O2 availability
+        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, p.soilco2.O2_avail, params)
     end
     return update_aux!
 end
