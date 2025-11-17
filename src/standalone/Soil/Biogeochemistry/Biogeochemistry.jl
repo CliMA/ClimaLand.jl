@@ -270,16 +270,16 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
-        interpc2f = Operators.InterpolateC2F()
-        gradc2f_C = Operators.GradientC2F()
-        gradc2f_O2 = Operators.GradientC2F()
-        divf2c_C = Operators.DivergenceF2C(
-            top = Operators.SetValue(p.soilco2.top_bc_wvec),
-            bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
+        interpc2f = ClimaCore.Operators.InterpolateC2F()
+        gradc2f_C = ClimaCore.Operators.GradientC2F()
+        gradc2f_O2 = ClimaCore.Operators.GradientC2F()
+        divf2c_C = ClimaCore.Operators.DivergenceF2C(
+            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
-        divf2c_O2 = Operators.DivergenceF2C(
-            top = Operators.SetValue(p.soilco2.top_bc_wvec),
-            bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
+        divf2c_O2 = ClimaCore.Operators.DivergenceF2C(
+            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # O2 diffusion with same boundary conditions as CO2
         
         # CO2 diffusion
