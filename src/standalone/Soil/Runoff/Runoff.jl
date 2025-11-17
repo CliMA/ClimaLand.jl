@@ -248,7 +248,6 @@ function update_infiltration_water_flux!(
 
     precip = p.drivers.P_liq
     @. p.soil.infiltration = topmodel_surface_infiltration(
-        p.soil.h∇,
         runoff.f_max,
         runoff.f_over,
         model.domain.fields.depth - p.soil.h∇,
@@ -309,10 +308,10 @@ function ClimaLand.source!(
 end
 
 """
-    topmodel_surface_infiltration(h∇, f_max, f_over, z∇, f_ic, precip)
+    topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
 
 A pointwise function which returns the infiltration into the soil,
-given the precipitation flux (m/s), the water table thickness h∇>=0,
+given the precipitation flux (m/s),
 the depth to the water table z∇>0, the infiltration capacity flux f_ic,
 and the TOPMODEL parameters f_max and f_over.
 
@@ -320,7 +319,7 @@ see: Niu et al. (2005),
 "A simple TOPMODEL-based runoff parameterization (SIMTOP) for
 use in global climate models", Equations (8) and (11).
 """
-function topmodel_surface_infiltration(h∇, f_max, f_over, z∇, f_ic, precip)
+function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
     f_sat = f_max * exp(-f_over / 2 * z∇)
     return (1 - f_sat) * max(f_ic, precip)
 end
@@ -407,5 +406,27 @@ based on the type of runoff model being used.
 """
 get_subsurface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
 get_subsurface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_ss
+
+
+"""
+    get_saturated_height(runoff_model, Y, p)
+
+A helper function which returns the integrated height of 
+saturated soil based on the type of runoff model being used.
+"""
+get_saturated_height(runoff_model::AbstractRunoffModel, Y, p) = nothing
+get_saturated_height(runoff_model::TOPMODELRunoff, Y, p) = p.soil.h∇
+
+
+"""
+    get_soil_fsat(runoff_model, Y, p)
+
+A helper function which returns the surface saturated fraction
+ based on the type of runoff model being used.
+"""
+get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
+function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
+    @. lazy(runoff_model.f_max * exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)))
+end
 
 end

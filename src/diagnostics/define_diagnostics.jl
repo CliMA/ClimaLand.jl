@@ -654,6 +654,46 @@ function define_diagnostics!(land_model)
             compute_infiltration!(out, Y, p, t, land_model),
     )
 
+    add_diagnostic_variable!(
+        short_name = "sath",
+        long_name = "Saturated height of soil",
+        standard_name = "saturated_height",
+        units = "m",
+        comments = "The integrated height of soil which is saturated (m)",
+        compute! = (out, Y, p, t) ->
+            compute_saturated_height!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "infc",
+        long_name = "Infiltration Capacity",
+        standard_name = "infiltration_capacity",
+        units = "m s^-1",
+        comments = "The maximum flux of liquid water volume into the soil (m^3 of water per m^2 of ground per second).",
+        compute! = (out, Y, p, t) ->
+            compute_infiltration_capacity!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "sfsat",
+        long_name = "Soil saturated fraction at the surface",
+        standard_name = "soil_fsat",
+        units = "",
+        comments = "The fraction of the soil surface which is saturated (unitless)",
+        compute! = (out, Y, p, t) ->
+            compute_soil_fsat!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "sdr",
+        long_name = "Soil drainage",
+        standard_name = "soil drainage",
+        units = "m s^-1",
+        comments = "The flux of liquid water volume out of the soil domain bottom (m^3 of water per m^2 of ground per second).",
+        compute! = (out, Y, p, t) ->
+            compute_bottom_water_flux!(out, Y, p, t, land_model),
+    )
+
     # Soil albedo
     add_diagnostic_variable!(
         short_name = "salb",

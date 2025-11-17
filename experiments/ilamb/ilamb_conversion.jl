@@ -98,14 +98,14 @@ const ILAMB_VARIABLES = Dict(
     "sr" => ILAMBMapping(
         "mrro",
         "Surface Runoff",
-        1000.0 / 2.63e6, # 1 month ≈ 2,629,440 seconds = 2.63 × 10e6 seconds
+        1000.0 * 2.63e6, # 1 month ≈ 2,629,440 seconds = 2.63 × 10e6 seconds
         "kg m-2 s-1",
         "m s^-1",
     ),
     "ssr" => ILAMBMapping(
         "mrros",
         "Subsurface Runoff",
-        1000.0,
+        1000.0* 2.63e6,
         "kg m-2 s-1",
         "m s^-1",
     ),
