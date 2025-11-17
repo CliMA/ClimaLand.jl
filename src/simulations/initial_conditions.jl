@@ -86,6 +86,38 @@ function set_soil_initial_conditions!(
     return nothing
 end
 
+function set_saturated_soil_initial_conditions!(Y, p, t0, soil)
+    params = soil.parameters
+    ν = params.ν
+    θ_r = params.θ_r
+    FT = eltype(Y.soil.ϑ_l)
+    @. Y.soil.ϑ_l = FT(0.98) * (ν - θ_r) + θ_r
+    Y.soil.θ_i .= FT(0.0)
+    θ_l = ClimaLand.Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+    for i in 1:15
+        evaluate!(
+            ClimaCore.Fields.level(p.soil.T, i),
+            soil.boundary_conditions.top.atmos.T,
+            t0,
+        )
+    end
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            θ_l,
+            Y.soil.θ_i,
+            params.ρc_ds,
+            params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.soil.T,
+            params.earth_param_set,
+        )
+    return nothing
+end
+
 """
     clip_to_bounds(
     T::FT,
@@ -214,7 +246,8 @@ which may require parameters, etc, stored in `land`.
 """
 function make_set_initial_state_from_file(
     ic_path,
-    land::LandModel{FT},
+    land::LandModel{FT};
+    saturated = false,
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
@@ -230,16 +263,21 @@ function make_set_initial_state_from_file(
         # SoilCO2 IC
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         # Soil IC
-        T_bounds = extrema(p.snow.T)
-        set_soil_initial_conditions!(
-            Y,
-            land.soil.parameters.ν,
-            land.soil.parameters.θ_r,
-            land.soil.domain.space.subsurface,
-            ic_path,
-            land.soil,
-            T_bounds,
-        )
+        if saturated
+            set_saturated_soil_initial_conditions!(Y, p, t0, land.soil)
+        else
+            T_bounds = extrema(p.snow.T)
+            set_soil_initial_conditions!(
+                Y,
+                land.soil.parameters.ν,
+                land.soil.parameters.θ_r,
+                land.soil.domain.space.subsurface,
+                ic_path,
+                land.soil,
+                T_bounds,
+            )
+        end
+
         # Canopy IC
         # Set canopy moisture variable by setting canopy potential(moisture) equal 
         # to soil potential (soil moisture), averaged over the soil layers,
