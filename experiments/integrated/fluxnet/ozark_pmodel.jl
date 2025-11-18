@@ -286,14 +286,6 @@ end
 
 close(io)
 
-# ERROR:
-#=
-┌ Error: ClimaLand simulation crashed. Stacktrace for failed simulation
-│   exception =
-│    MethodError: objects of type ClimaCore.Operators.InterpolateC2F{@NamedTuple{}} are not callable
-│    The object of type `ClimaCore.Operators.InterpolateC2F{@NamedTuple{}}` exists, but no method is defined for this combination of argument types when trying to treat it as a callable object.
-=#
-
 
 #=
 short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.

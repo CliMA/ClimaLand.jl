@@ -31,6 +31,7 @@ export SoilCO2ModelParameters,
     MicrobeProduction,
     SoilCO2FluxBC,
     AtmosCO2StateBC,
+    AtmosO2StateBC,
     SoilCO2StateBC,
     AbstractSoilDriver,
     SoilDrivers
@@ -139,8 +140,8 @@ SoilCO2Model{FT}(
         toml_dict::CP.ParamDict;
         parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
         boundary_conditions::BC = (
-            top = AtmosCO2StateBC(),
-            bottom = SoilCO2FluxBC((p, t) -> 0.0) # no flux
+            top = (co2 = AtmosCO2StateBC(), o2 = AtmosO2StateBC()),
+            bottom = (co2 = SoilCO2FluxBC((p, t) -> 0.0), o2 = SoilCO2FluxBC((p, t) -> 0.0)),
         ),
         sources::Tuple = (MicrobeProduction{FT}(),),
     ) where {FT, BC, DT}
@@ -148,6 +149,7 @@ SoilCO2Model{FT}(
 A constructor for `SoilCO2Model`.
 Defaults are provided for the parameters, boundary conditions, and sources.
 These can be overridden by providing the appropriate keyword arguments.
+Boundary conditions are nested: top/bottom each have separate `co2` and `o2` BCs.
 """
 function SoilCO2Model{FT}(
     domain::ClimaLand.AbstractDomain,
@@ -155,8 +157,8 @@ function SoilCO2Model{FT}(
     toml_dict::CP.ParamDict;
     parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
     boundary_conditions::BC = (
-        top = AtmosCO2StateBC(),
-        bottom = SoilCO2FluxBC((p, t) -> 0.0), # no flux
+        top = (co2 = AtmosCO2StateBC(), o2 = AtmosO2StateBC()),
+        bottom = (co2 = SoilCO2FluxBC((p, t) -> 0.0), o2 = SoilCO2FluxBC((p, t) -> 0.0)),
     ),
     sources::Tuple = (MicrobeProduction{FT}(),),
 ) where {FT, BC, DT}
@@ -175,14 +177,21 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :O2,
     :O2_avail,
     :Sm,
+    :θ_a,
+    # CO2 boundary vars (top_bc, bottom_bc, top_bc_wvec, bottom_bc_wvec)
     ClimaLand.boundary_vars(
-        model.boundary_conditions.top,
+        model.boundary_conditions.top.co2,
         ClimaLand.TopBoundary(),
     )...,
     ClimaLand.boundary_vars(
-        model.boundary_conditions.bottom,
+        model.boundary_conditions.bottom.co2,
         ClimaLand.BottomBoundary(),
     )...,
+    # O2 boundary vars (top_bc_o2, bottom_bc_o2, top_bc_o2_wvec, bottom_bc_o2_wvec)
+    :top_bc_o2,
+    :bottom_bc_o2,
+    :top_bc_o2_wvec,
+    :bottom_bc_o2_wvec,
 )
 
 
@@ -192,16 +201,23 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    # CO2 boundary var types
     ClimaLand.boundary_var_types(
         model,
-        model.boundary_conditions.top,
+        model.boundary_conditions.top.co2,
         ClimaLand.TopBoundary(),
     )...,
     ClimaLand.boundary_var_types(
         model,
-        model.boundary_conditions.bottom,
+        model.boundary_conditions.bottom.co2,
         ClimaLand.BottomBoundary(),
     )...,
+    # O2 boundary var types
+    FT,
+    FT,
+    Geometry.WVector{FT},
+    Geometry.WVector{FT},
 )
 ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
@@ -209,23 +225,32 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
     :subsurface,
     :subsurface,
+    :subsurface,
+    # CO2 boundary var domain names
     ClimaLand.boundary_var_domain_names(
-        model.boundary_conditions.top,
+        model.boundary_conditions.top.co2,
         ClimaLand.TopBoundary(),
     )...,
     ClimaLand.boundary_var_domain_names(
-        model.boundary_conditions.bottom,
+        model.boundary_conditions.bottom.co2,
         ClimaLand.BottomBoundary(),
     )...,
+    # O2 boundary var domain names
+    :surface,
+    :surface,
+    :surface,
+    :surface,
 )
 
 function make_update_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
+
+        # Update CO2 boundary fluxes
         boundary_flux!(
             p.soilco2.top_bc,
-            model.boundary_conditions.top,
+            model.boundary_conditions.top.co2,
             TopBoundary(),
             Δz_top,
             Y,
@@ -234,7 +259,27 @@ function make_update_boundary_fluxes(model::SoilCO2Model)
         )
         boundary_flux!(
             p.soilco2.bottom_bc,
-            model.boundary_conditions.bottom,
+            model.boundary_conditions.bottom.co2,
+            BottomBoundary(),
+            Δz_bottom,
+            Y,
+            p,
+            t,
+        )
+
+        # Update O2 boundary fluxes
+        boundary_flux!(
+            p.soilco2.top_bc_o2,
+            model.boundary_conditions.top.o2,
+            TopBoundary(),
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+        boundary_flux!(
+            p.soilco2.bottom_bc_o2,
+            model.boundary_conditions.bottom.o2,
             BottomBoundary(),
             Δz_bottom,
             Y,
@@ -262,10 +307,18 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
     function compute_exp_tendency!(dY, Y, p, t)
+        # CO2 boundary conditions
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
         @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
+
+        # O2 boundary conditions
+        top_flux_bc_o2 = p.soilco2.top_bc_o2
+        bottom_flux_bc_o2 = p.soilco2.bottom_bc_o2
+        @. p.soilco2.top_bc_o2_wvec = Geometry.WVector(top_flux_bc_o2)
+        @. p.soilco2.bottom_bc_o2_wvec = Geometry.WVector(bottom_flux_bc_o2)
+
         interpc2f = Operators.InterpolateC2F()
         gradc2f_C = Operators.GradientC2F()
         gradc2f_O2 = Operators.GradientC2F()
@@ -274,10 +327,10 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
             bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
         divf2c_O2 = Operators.DivergenceF2C(
-            top = Operators.SetValue(p.soilco2.top_bc_wvec),
-            bottom = Operators.SetValue(p.soilco2.bottom_bc_wvec),
-        ) # O2 diffusion with same boundary conditions as CO2
-        
+            top = Operators.SetValue(p.soilco2.top_bc_o2_wvec),
+            bottom = Operators.SetValue(p.soilco2.bottom_bc_o2_wvec),
+        ) # O2 diffusion with atmospheric O2 (0.21) at top boundary
+
         # CO2 diffusion
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
@@ -288,18 +341,15 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         # Convert dO2 (mass concentration tendency, kg/m³/s) to dO2_a (fraction tendency, 1/s)
         # Since O2 = θ_a * O2_a * P * M_O2 / (R * T), we have:
         # dO2_a = dO2 / (θ_a * P * M_O2 / (R * T))
-        # Get θ_a, T, and P at each point
         FT = eltype(Y.soilco2.C)
-        ν = model.drivers.met.ν
-        θ_l = Y.soil.ϑ_l
-        θ_a = @. max(ν - θ_l, FT(0))
         T_soil = p.soil.T
         P_sfc = p.drivers.P
 
         # Compute conversion factor: θ_a * P * M_O2 / (R * T)
+        # Use θ_a from auxiliary variables (computed in update_aux!)
         R = FT(8.314462618)  # J/(mol·K)
         M_O2 = FT(0.032)      # kg/mol
-        conversion_factor = @. θ_a * P_sfc * M_O2 / (R * T_soil) + eps(FT)
+        conversion_factor = @. p.soilco2.θ_a * P_sfc * M_O2 / (R * T_soil) + eps(FT)
 
         # Apply O2 diffusion and convert to O2_a tendency in one step
         @. dY.soilco2.O2_a = (-divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2))) / conversion_factor
@@ -554,16 +604,16 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         p.soilco2.D_o2 .=
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
 
-        # Compute volumetric air content
+        # Compute volumetric air content and store in auxiliary variables
         FT = eltype(Y.soilco2.C)
-        θ_a = @. max(ν - θ_l, FT(0))
+        p.soilco2.θ_a .= @. max(ν - θ_l, FT(0))
 
         # Compute O2 mass concentration (kg/m³) from O2_a for diffusion (ideal gas law)
-        @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, θ_a, T_soil, P_sfc)
+        @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, p.soilco2.θ_a, T_soil, P_sfc)
 
         # Compute O2 availability (dimensionless) for microbial kinetics (tortuosity-based)
         (; D_oa) = params
-        @. p.soilco2.O2_avail = o2_availability(Y.soilco2.O2_a, θ_a, D_oa)
+        @. p.soilco2.O2_avail = o2_availability(Y.soilco2.O2_a, p.soilco2.θ_a, D_oa)
 
         # Compute microbial source using O2 availability
         p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, p.soilco2.O2_avail, params)
@@ -716,6 +766,58 @@ function ClimaLand.boundary_flux!(
     C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.C)
     C_bc = p.drivers.c_co2
     @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
+end
+
+"""
+    AtmosO2StateBC <: ClimaLand.AbstractBC
+
+Set the O2 mass concentration to the atmospheric one (0.21 volumetric fraction).
+"""
+struct AtmosO2StateBC <: ClimaLand.AbstractBC end
+
+"""
+    ClimaLand.boundary_flux!(bc_field,
+    bc::AtmosO2StateBC,
+    boundary::ClimaLand.TopBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+    )
+
+A method of ClimaLand.boundary_flux which returns the O2 diffusive flux in the case when the
+atmospheric O2 (0.21 volumetric fraction) is used at top of the domain.
+"""
+function ClimaLand.boundary_flux!(
+    bc_field,
+    bc::AtmosO2StateBC,
+    boundary::ClimaLand.TopBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    FT = eltype(Δz)
+    D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
+    O2_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.O2)  # Current O2 mass concentration at top
+
+    # Compute atmospheric O2 mass concentration from O2_a = 0.21
+    # O2 mass concentration in soil: O2 = θ_a * O2_a * P * M_O2 / (R * T)
+    # where θ_a is the air-filled porosity
+
+    # Get air-filled porosity at top of soil (already computed in update_aux!)
+    θ_a_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
+    T_soil_top = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    P_sfc = p.drivers.P
+
+    R = FT(8.314462618)  # J/(mol·K)
+    M_O2 = FT(0.032)      # kg/mol
+    O2_a_atm = FT(0.21)   # Atmospheric O2 volumetric fraction
+
+    # O2 mass concentration at surface (kg/m³ soil) assuming atmospheric O2_a = 0.21
+    O2_bc = @. θ_a_top * O2_a_atm * P_sfc * M_O2 / (R * T_soil_top)
+
+    @. bc_field = ClimaLand.diffusive_flux(D_o2, O2_bc, O2_c, Δz)
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)
