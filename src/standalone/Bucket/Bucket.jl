@@ -180,12 +180,14 @@ end
         albedo_file_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path(),
         varname = "sw_alb",
         regridder_type = :InterpolationsRegridder,
+        time_interpolation_method = LinearInterpolation(PeriodicCalendar(Year(1), Date(2010))),
     ) where {FT}
 
 Constructor for the PrescribedSurfaceAlbedo struct.
 The `varname` must correspond to the name of the variable in the NetCDF
 file retrieved by the `get_infile` function.
 The input data file must have a time component.
+This repeats 2010 by default.
 """
 function PrescribedSurfaceAlbedo{FT}(
     start_date::Union{DateTime, DateTimeNoLeap},
@@ -193,6 +195,9 @@ function PrescribedSurfaceAlbedo{FT}(
     albedo_file_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
     regridder_type = :InterpolationsRegridder,
+    time_interpolation_method = LinearInterpolation(
+        PeriodicCalendar(Year(1), Date(2010)),
+    ),
 ) where {FT}
     # Verify inputs
     if typeof(space) <: ClimaCore.Spaces.PointSpace
@@ -208,10 +213,7 @@ function PrescribedSurfaceAlbedo{FT}(
     )
 
     # Construct object containing info to read in surface albedo over time
-    albedo = TimeVaryingInput(
-        data_handler,
-        method = LinearInterpolation(PeriodicCalendar(Year(1), Date(2010))), # this repeats 2010 over and over again.
-    )
+    albedo = TimeVaryingInput(data_handler, method = time_interpolation_method)
     return PrescribedSurfaceAlbedo{FT, typeof(albedo)}(albedo)
 end
 
