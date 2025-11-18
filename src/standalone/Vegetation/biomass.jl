@@ -68,6 +68,7 @@ end
                           time_interpolation_method = LinearInterpolation(),
                           regridder_type = :InterpolationsRegridder,
                           interpolation_method = Interpolations.Constant(),
+                          modis_lai_ncdata_path = nothing,
                           context = ClimaComms.context(surface_space))
 
 A helper function which constructs the TimeVaryingInput object for Leaf Area
@@ -77,6 +78,9 @@ surface_space, the start and stop dates, and the earth_param_set.
 The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
 by passing interpolation_method = Interpolations.Linear().
+
+If `modis_lai_ncdata_path` is provided, it will be used directly.
+Otherwise, the path will be inferred from the start and stop dates.
 """
 function prescribed_lai_modis(
     surface_space,
@@ -85,13 +89,16 @@ function prescribed_lai_modis(
     time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
     interpolation_method = Interpolations.Constant(),
+    modis_lai_ncdata_path = nothing,
     context = ClimaComms.context(surface_space),
 )
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-        context,
-        start_date,
-        stop_date,
-    )
+    modis_lai_ncdata_path =
+        isnothing(modis_lai_ncdata_path) ?
+        ClimaLand.Artifacts.modis_lai_multiyear_paths(;
+            context,
+            start_date,
+            stop_date,
+        ) : modis_lai_ncdata_path
     return TimeVaryingInput(
         modis_lai_ncdata_path,
         ["lai"],
