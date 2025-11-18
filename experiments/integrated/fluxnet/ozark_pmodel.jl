@@ -295,9 +295,20 @@ close(io)
 =#
 
 
-
-
-
+#=
+short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_names = [d.output_short_name for d in simulation.diagnostics] # short_name_X_average e.g.
+diag_units = [d.variable.units for d in simulation.diagnostics]
+i = 11
+dn = diag_names[i]
+unit = diag_units[i]
+sn = short_names[i]
+model_time, soc = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation.diagnostics[1].output_writer,
+    dn,
+)
+soc
+=#
 
 
 
