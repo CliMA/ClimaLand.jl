@@ -56,7 +56,15 @@ import ClimaComms
 using Interpolations
 using JLD2
 import ClimaLand
-import CUDA
+# import CUDA  # Only needed for regrid_cwd_to_model_space
+# Only load CUDA if needed for GPU operations
+if !@isdefined(CUDA)
+    try
+        import CUDA
+    catch
+        # CUDA not available, CPU-only mode
+    end
+end
 
 function calculate_cwd_from_era5(
     era5_paths::Vector{String},
@@ -65,100 +73,81 @@ function calculate_cwd_from_era5(
 )
     @info "Reading ERA5 data from $(length(era5_paths)) file(s)"
     
-    # Initialize accumulators
-    lons = nothing
-    lats = nothing
-    CWD_sum = nothing  # Sum of annual CWD across all years
-    year_count = 0
+    # Read coordinates from first file
+    ds = NCDataset(era5_paths[1])
+    lons_raw = ds["longitude"][:]
+    lats_raw = ds["latitude"][:]
+    close(ds)
     
-    # Process each file (year)
-    for era5_path in era5_paths
+    # Convert to Float32 and remove Missing type
+    lons = Float32.(collect(skipmissing(lons_raw)))
+    lats = Float32.(collect(skipmissing(lats_raw)))
+    
+    # Initialize CWD accumulator
+    CWD_spatial = zeros(Float32, length(lons), length(lats))  # Also use Float32 here
+    year_count = 0  # Add this line
+    
+    # Process each file
+    for (i, era5_path) in enumerate(era5_paths)
         @info "Processing file: $era5_path"
+        
         ds = NCDataset(era5_path)
         
-        # Get coordinates (same for all files)
-        if lons === nothing
-            lons = Array(ds["lon"])  # degrees East
-            lats = Array(ds["lat"])  # degrees North
-            nlon, nlat = length(lons), length(lats)
-            CWD_sum = zeros(Float64, nlon, nlat)
-        end
+        # Read time, temperature (t2m), and precipitation (mtpr)
+        times = ds["valid_time"][:]
+        T_K = ds["t2m"][:, :, :]  # Temperature in Kelvin [lon, lat, time]
+        precip = ds["mtpr"][:, :, :]  # Total precipitation rate [lon, lat, time]
         
-        precip_var = ds["mtpr"]  # m/s - (lon, lat, time)
-        temp_var = ds["t2m"]     # K - (lon, lat, time)
+        close(ds)  # Close file immediately after reading
         
-        nlon, nlat, ntime = size(precip_var)
+        nlon, nlat, ntime = size(precip)
+        @info "Processing CWD" nlon nlat ntime
         
-        @info "Processing spatial CWD" nlon nlat ntime
+        # Timestep in seconds (ERA5 is hourly)
+        dt_seconds = 3600.0
         
-        # Timestep in hours (ERA5 is hourly)
-        dt_hours = 1.0
-        dt_seconds = dt_hours * 3600.0
+        # **VECTORIZED APPROACH**
+        # Convert units for all data at once
+        @info "Converting units..."
+        precip_mm = precip .* dt_seconds .* 1000.0  # m/s → mm/hour
+        temp_C = T_K .- 273.15  # K → °C
         
-        # Temporary storage for this year's CWD
-        CWD_this_year = zeros(Float64, nlon, nlat)
+        # Calculate PET for all points at once
+        @info "Calculating PET..."
+        PET_mm = similar(temp_C)
+        @. PET_mm = max(0.0, 0.05 * temp_C * (1.0 + 0.01 * temp_C) / 24.0)  # mm/hour
         
-        # Process each spatial location
-        Threads.@threads for j in 1:nlat
-            for i in 1:nlon
-                # Extract time series at this location
-                precip_ts = precip_var[i, j, :]  # m/s
-                temp_ts = temp_var[i, j, :]      # K
-                
-                # Skip if all missing
-                if all(ismissing, precip_ts) || all(ismissing, temp_ts)
-                    continue
-                end
-                
-                # Calculate CWD as cumulative PET - AET
-                cwd_cumulative = 0.0  # mm
-                
-                for t in 1:ntime
-                    if ismissing(precip_ts[t]) || ismissing(temp_ts[t])
-                        continue
-                    end
-                    
-                    # Convert precipitation from m/s to mm per timestep
-                    P_mm = precip_ts[t] * dt_seconds * 1000.0  # m/s → mm
-                    
-                    # Estimate PET using simplified temperature-based formula
-                    temp_C = temp_ts[t] - 273.15
-                    if temp_C > 0
-                        PET_mm_day = 0.05 * temp_C * (1.0 + 0.01 * temp_C)
-                        PET_mm = PET_mm_day / 24.0  # Convert to hourly
-                    else
-                        PET_mm = 0.0
-                    end
-                    
-                    # Estimate AET as minimum of PET and available water
-                    # (simplified assumption: all precipitation is immediately available)
-                    AET_mm = min(PET_mm, P_mm)
-                    
-                    # Accumulate deficit: CWD = PET - AET
-                    cwd_cumulative += (PET_mm - AET_mm)
-                end
-                
-                # Store this year's total CWD
-                CWD_this_year[i, j] = cwd_cumulative
-            end
-        end
+        # Calculate AET (minimum of PET and available water)
+        @info "Calculating AET..."
+        AET_mm = min.(PET_mm, precip_mm)
+        
+        # Calculate deficit at each timestep
+        @info "Calculating deficit..."
+        deficit_mm = PET_mm .- AET_mm
+        
+        # Sum over time dimension to get annual CWD
+        @info "Summing over time..."
+        CWD_this_year = dropdims(sum(deficit_mm, dims=3), dims=3)
+        
+        # Handle missing values (convert NaN to 0)
+        replace!(x -> isnan(x) ? 0.0 : x, CWD_this_year)
         
         # Accumulate across years
-        CWD_sum .+= CWD_this_year
+        CWD_spatial .+= CWD_this_year
         year_count += 1
         
-        close(ds)
+        @info "Year complete" year_count min_CWD=minimum(filter(!isnan, CWD_this_year)) max_CWD=maximum(filter(!isnan, CWD_this_year))
     end
     
-    # Average across all years to get climatological mean annual CWD
-    CWD_spatial = CWD_sum ./ year_count
+    # Average across all years
+    CWD_spatial = CWD_spatial ./ year_count
     
-    # Convert to Float32 for storage efficiency
+    # Convert to Float32
     CWD_spatial = Float32.(CWD_spatial)
     
     # Print statistics
     valid_cwd = filter(!isnan, CWD_spatial)
-    @info "CWD statistics (mm/year) averaged over $year_count year(s):" min=minimum(valid_cwd) max=maximum(valid_cwd) mean=mean(valid_cwd) median=median(valid_cwd)
+    @info "Final CWD statistics (mm/year) averaged over $year_count year(s):" min=minimum(valid_cwd) max=maximum(valid_cwd) mean=mean(valid_cwd) median=median(valid_cwd)
     
     return lons, lats, CWD_spatial
 end
