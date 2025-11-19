@@ -4,7 +4,7 @@ import Dates: Month, Period, DateTime
 
 import ClimaComms
 using ClimaCore: Spaces, Fields
-
+using LazyBroadcast: lazy
 import ..Parameters as LP
 
 import ..AbstractModel, ..AbstractLandModel

@@ -59,7 +59,8 @@ start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
 stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
 Δt = 450.0
 nelements = (101, 15)
-domain = ClimaLand.Domains.global_domain(FT; context, nelements)
+dz_tuple = FT.((2,0.05))
+domain = ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
 toml_dict = LP.create_toml_dict(FT)
 
 # Forcing data
@@ -95,7 +96,7 @@ simulation =
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-short_names = ["swc", "sie", "si", "et"]
+short_names = ["swc", "sie", "si", "et", "wvpa"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
 LandSimVis.make_heatmaps(
     simulation;

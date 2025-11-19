@@ -1,5 +1,6 @@
 module Runoff
 using DocStringExtensions
+using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.Operators: column_integral_definite!
 using ClimaLand

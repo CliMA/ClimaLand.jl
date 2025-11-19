@@ -514,7 +514,7 @@ function get_possible_diagnostics(model::LandModel)
 
     additional_diagnostics =
         ["swa", "swu", "lwu",  "tair", "precip"]
-
+	@show unique!(append!(component_diagnostics, additional_diagnostics))
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 
@@ -565,6 +565,7 @@ function get_short_diagnostics(model::LandModel)
         "msf",
         "lwp",
         "iwc",
+	"sdr"
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

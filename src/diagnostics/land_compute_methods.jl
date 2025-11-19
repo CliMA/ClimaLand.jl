@@ -588,7 +588,7 @@ end
 
 function compute_soil_fsat!(out, Y, p, t, land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel})
     soil = get_soil(land_model)
-    Runoff.get_soil_fsat(soil.boundary_conditions.top.runoff, Y, p, model.domains.fields.depth)
+    Runoff.get_soil_fsat(soil.boundary_conditions.top.runoff, Y, p, soil.domain.fields.depth)
 end
 
 function compute_surface_runoff!(
