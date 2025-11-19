@@ -3,19 +3,19 @@ ClimaComms.@import_required_backends
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
-
+using ClimaLand.Soil.Runoff
 using Test
 using ClimaCore, NCDatasets
 FT = Float32
 @testset "Base runoff functionality, FT = $FT" begin
-    runoff = ClimaLand.Soil.Runoff.NoRunoff()
-    @test ClimaLand.Soil.Runoff.runoff_vars(runoff) == (:infiltration,)
-    @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff) == (:surface,)
-    @test ClimaLand.Soil.Runoff.runoff_var_types(runoff, FT) == (FT,)
+    runoff = Runoff.NoRunoff()
+    @test Runoff.runoff_vars(runoff) == (:infiltration,)
+    @test Runoff.runoff_var_domain_names(runoff) == (:surface,)
+    @test Runoff.runoff_var_types(runoff, FT) == (FT,)
 
     precip = 5.0
-    @test ClimaLand.Soil.Runoff.subsurface_runoff_source(runoff) == nothing
-    struct Foo{FT} <: ClimaLand.Soil.Runoff.AbstractSoilSource{FT} end
+    @test Runoff.subsurface_runoff_source(runoff) == nothing
+    struct Foo{FT} <: Runoff.AbstractSoilSource{FT} end
     srcs = (1, 2, 3)
     @test ClimaLand.Soil.append_source(nothing, srcs) == srcs
     @test ClimaLand.Soil.append_source(Foo{FT}(), srcs) == (srcs..., Foo{FT}())
@@ -74,8 +74,15 @@ end
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
     @test p.soil.top_bc == p.drivers.P_liq
-    @test typeof(bc.top.runoff) <: ClimaLand.Soil.Runoff.NoRunoff
+    @test typeof(bc.top.runoff) <: Runoff.NoRunoff
     @test :infiltration ∈ propertynames(p.soil)
+
+    @test Runoff.get_saturated_height(bc.top.runoff, Y, p) isa Nothing
+    @test Runoff.get_subsurface_runoff(bc.top.runoff, Y, p) isa Nothing
+    @test Runoff.get_surface_runoff(bc.top.runoff, Y, p) isa Nothing
+    @test Runoff.get_soil_fsat(bc.top.runoff, Y, p, model.domain.depth) isa
+          Nothing
+
 end
 
 @testset "Richards model, TOPMODEL runoff FT =$FT" begin
@@ -90,22 +97,18 @@ end
     f_max = ClimaCore.Fields.ones(surface_space) .* FT(0.5)
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = f_max,
-        R_sb = R_sb,
-    )
-    @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) ==
+    runoff_model =
+        Runoff.TOPMODELRunoff{FT}(; f_over = f_over, f_max = f_max, R_sb = R_sb)
+    @test Runoff.runoff_vars(runoff_model) ==
           (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
-    @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) ==
+    @test Runoff.runoff_var_domain_names(runoff_model) ==
           (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
-    @test ClimaLand.Soil.Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT)
+    @test Runoff.runoff_var_types(runoff_model, FT) == (FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
     @test runoff_model.subsurface_source ==
-          ClimaLand.Soil.Runoff.TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
+          Runoff.TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
 
     vg_α = ClimaCore.Fields.ones(subsurface_space) .* FT(0.2)
     hydrology_cm = map(vg_α) do (α)
@@ -164,16 +167,14 @@ end
     )
     @test scratch == p.soil.h∇
     @test p.soil.R_ss ==
-          ClimaLand.Soil.Runoff.topmodel_ss_flux.(
+          Runoff.topmodel_ss_flux.(
         runoff_model.subsurface_source.R_sb,
         runoff_model.f_over,
         model.domain.depth .- p.soil.h∇,
     )
-    ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
+    ic = Runoff.soil_infiltration_capacity(model, Y, p)
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
-    @test p.soil.infiltration ==
-          @. ClimaLand.Soil.Runoff.topmodel_surface_infiltration(
-        p.soil.h∇,
+    @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
         f_max,
         f_over,
         model.domain.depth - p.soil.h∇,
@@ -181,6 +182,14 @@ end
         precip_field,
     )
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
+
+    @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
+    @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
+    @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
+    tmp = p.soil.R_s
+    tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
+    @test tmp == @. runoff_model.f_max *
+             exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
 
 end
 
@@ -194,13 +203,12 @@ end
     )
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
-    runoff_model = ClimaLand.Soil.Runoff.SurfaceRunoff()
-    @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) ==
+    runoff_model = Runoff.SurfaceRunoff()
+    @test Runoff.runoff_vars(runoff_model) ==
           (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
-    @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) ==
+    @test Runoff.runoff_var_domain_names(runoff_model) ==
           (:subsurface, :surface, :surface, :subsurface)
-    @test ClimaLand.Soil.Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT)
+    @test Runoff.runoff_var_types(runoff_model, FT) == (FT, FT, FT, FT)
 
 
     @test runoff_model.subsurface_source == nothing
@@ -252,14 +260,14 @@ end
     evaluate!(p.drivers.P_liq, atmos.liquid_precip, FT(0))
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
-    ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
+    ic = Runoff.soil_infiltration_capacity(model, Y, p)
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
     @test p.soil.infiltration ==
-          ClimaLand.Soil.Runoff.surface_infiltration.(
+          Runoff.surface_infiltration.(
         ic,
         precip_field,
         ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated),
     )
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
-
+    @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
 end

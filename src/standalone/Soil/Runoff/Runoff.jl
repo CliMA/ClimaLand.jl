@@ -1,5 +1,6 @@
 module Runoff
 using DocStringExtensions
+using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
@@ -426,7 +427,10 @@ A helper function which returns the surface saturated fraction
 """
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
-    @. lazy(runoff_model.f_max * exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)))
+    @. lazy(
+        runoff_model.f_max *
+        exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
+    )
 end
 
 end
