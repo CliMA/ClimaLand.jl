@@ -114,17 +114,13 @@ dt = Float64(450) # 7.5 minutes
 # Now we set up the model. For the soil model, we pick
 # a model type and package up parameters.
 soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
 
 forcing = (; atmos, radiation)
 retention_parameters = (;
     ν = soil_ν,
     θ_r,
     K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
+    hydrology_cm = soil_hydrology_cm,
 )
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 

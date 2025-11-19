@@ -115,15 +115,12 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
 
 # Construct the soil model
 prognostic_land_components = (:snow, :soil)
-α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
+α_soil = soil_albedo
 runoff = ClimaLand.Soil.SurfaceRunoff()
 retention_parameters = (;
     ν = soil_ν,
     K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
+    hydrology_cm = soil_hydrology_cm,
     θ_r = θ_r,
 )
 composition_parameters = (; ν_ss_quartz, ν_ss_om, ν_ss_gravel)
