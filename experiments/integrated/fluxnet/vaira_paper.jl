@@ -114,12 +114,8 @@ stop_date = start_date + Year(1)
 soil_domain = land_domain
 
 forcing = (; atmos, radiation)
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = soil_hydrology_cm,
-)
+retention_parameters =
+    (; ν = soil_ν, θ_r, K_sat = soil_K_sat, hydrology_cm = soil_hydrology_cm)
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 
 soil = Soil.EnergyHydrology{FT}(

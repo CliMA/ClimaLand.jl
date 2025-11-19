@@ -162,12 +162,8 @@ pft_pcts = [
 soil_domain = land_domain
 
 runoff = ClimaLand.Soil.Runoff.SurfaceRunoff()
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = soil_hydrology_cm,
-)
+retention_parameters =
+    (; ν = soil_ν, θ_r, K_sat = soil_K_sat, hydrology_cm = soil_hydrology_cm)
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
