@@ -1,6 +1,7 @@
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
+using ClimaCore
 
 export make_set_initial_state_from_file
 
@@ -217,6 +218,7 @@ function make_set_initial_state_from_file(
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
+        # Snow IC
         evaluate!(p.snow.T, atmos.T, t0)
         set_snow_initial_conditions!(
             Y,
@@ -225,11 +227,10 @@ function make_set_initial_state_from_file(
             ic_path,
             land.snow.parameters,
         )
+        # SoilCO2 IC
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-        T_bounds = extrema(Y.canopy.energy.T)
-
+        # Soil IC
+        T_bounds = extrema(p.snow.T)
         set_soil_initial_conditions!(
             Y,
             land.soil.parameters.ν,
@@ -239,6 +240,36 @@ function make_set_initial_state_from_file(
             land.soil,
             T_bounds,
         )
+        # Canopy IC
+        # Set canopy moisture variable by setting canopy potential(moisture) equal 
+        # to soil potential (soil moisture), averaged over the soil layers,
+        # which would correspond to approximate steady state
+        if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
+            @. p.soil.ψ = ClimaLand.Soil.pressure_head(
+                land.soil.parameters.hydrology_cm,
+                land.soil.parameters.θ_r,
+                Y.soil.ϑ_l,
+                land.soil.parameters.ν - Y.soil.θ_i,
+                land.soil.parameters.S_s,
+            )
+            ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l.:1))
+            z = land.soil.domain.fields.z
+            tmp = @. ClimaLand.Canopy.root_distribution(
+                z,
+                land.canopy.biomass.rooting_depth,
+            ) * p.soil.ψ / land.soil.domain.fields.depth
+            ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
+            Y.canopy.hydraulics.ϑ_l.:1 .=
+                ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+                    land.canopy.hydraulics.parameters.retention_model,
+                    ψ_roots,
+                    land.canopy.hydraulics.parameters.ν,
+                    land.canopy.hydraulics.parameters.S_s,
+                ) .* land.canopy.hydraulics.parameters.ν
+        end
+        if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
+            evaluate!(Y.canopy.energy.T, atmos.T, t0)
+        end
     end
     return set_ic!
 end
