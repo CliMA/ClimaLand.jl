@@ -460,28 +460,28 @@ tag = "SIFParameters"
 value = 0.013
 type = "float"
 description = "Minimum roughness"
-tag = "ConstantRoughnessModel"
+tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
 value = 0.13
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
-tag = "ConstantRoughnessModel"
+tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
 value = 0.013
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
-tag = "ConstantRoughnessModel"
+tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
 value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
-tag = "ConstantRoughnessModel"
+tag = "MoninObukhovCanopyFluxes"
 
-["canopy_η"]
-value = 100.0
+["leaf_Cd"]
+value = 0.01
 type = "float"
 description = ""
-tag = "ConstantRoughnessModel"
+tag = "MoninObukhovCanopyFluxes"

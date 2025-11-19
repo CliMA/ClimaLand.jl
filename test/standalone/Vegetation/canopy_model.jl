@@ -193,7 +193,7 @@ import ClimaParams
         exp_tendency!(dY, Y, p, t0)
         turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
         sf_parameterization =
-            canopy.boundary_conditions.surface_flux_parameterization
+            canopy.boundary_conditions.turbulent_flux_parameterization
         ClimaLand.turbulent_fluxes!(
             turb_fluxes_copy,
             atmos,
@@ -533,7 +533,7 @@ end
         )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
-        sf_parameterization = ClimaLand.Canopy.MoninObukhovHeightBased(toml_dict, biomass.height)
+        sf_parameterization = ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
@@ -797,12 +797,12 @@ end
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         soil_driver = PrescribedGroundConditions{FT}()
-        surface_flux_parameterization = MoninObukhovHeightBased(
+        turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
             toml_dict,
             toml_dict["canopy_height"],
         )
         boundary_conditions =
-            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver, surface_flux_parameterization)
+            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver, turbulent_flux_parameterization)
 
         earth_param_set = LP.LandParameters(toml_dict)
 

@@ -3,21 +3,10 @@ using Thermodynamics
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
 
-import ClimaLand: turbulent_fluxes!, AbstractBC, surface_air_density
-function surface_air_density(
-    atmos::PrescribedAtmosphere,
-    model::CanopyModel,
-    Y,
-    p,
-    t,
-    T_sfc,
-)
-    thermo_params = LP.thermodynamic_parameters(model.earth_param_set)
-    return ClimaLand.compute_ρ_sfc.(
-        thermo_params,
-        p.drivers.thermal_state,
-        T_sfc,
-    )
+import ClimaLand: turbulent_fluxes!, AbstractBC, get_earth_param_set
+
+function get_earth_param_set(model::CanopyModel)
+    return model.earth_param_set
 end
 
 
@@ -32,7 +21,7 @@ abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
         G <: AbstractGroundConditions,
-        R <: AbstractCanopySFParameterization,
+        R <: AbstractCanopyFluxParameterization,
         C::Tuple
     } <: AbstractCanopyBC
 
@@ -49,7 +38,7 @@ struct AtmosDrivenCanopyBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     G <: AbstractGroundConditions,
-    R <: AbstractCanopySFParameterization,
+    R <: AbstractCanopyFluxParameterization,
     C <: Tuple,
 } <: AbstractCanopyBC
     "The atmospheric conditions driving the model"
@@ -58,8 +47,8 @@ struct AtmosDrivenCanopyBC{
     radiation::B
     "Ground conditions"
     ground::G
-    "Surface flux parameterization"
-    surface_flux_parameterization::R
+    "Turbulent flux (latent, sensible, vapor, and momentum) parameterization"
+    turbulent_flux_parameterization::R
     "Prognostic land components present"
     prognostic_land_components::C
 end
@@ -69,7 +58,7 @@ end
         atmos,
         radiation,
         ground,
-        surface_flux_parameterization;
+        turbulent_flux_parameterization;
         prognostic_land_components = (:canopy,),
     )
 
@@ -85,7 +74,7 @@ function AtmosDrivenCanopyBC(
     atmos,
     radiation,
     ground,
-    surface_flux_parameterization;
+    turbulent_flux_parameterization;
     prognostic_land_components = (:canopy,),
 )
     if typeof(ground) <: PrescribedGroundConditions
@@ -98,7 +87,7 @@ function AtmosDrivenCanopyBC(
         atmos,
         radiation,
         ground,
-        surface_flux_parameterization,
+        turbulent_flux_parameterization,
         prognostic_land_components,
     )
     return AtmosDrivenCanopyBC(args...)
@@ -147,7 +136,7 @@ function canopy_boundary_fluxes!(
     bc = canopy.boundary_conditions
     radiation = bc.radiation
     atmos = bc.atmos
-    sf_parameterization = bc.surface_flux_parameterization
+    sf_parameterization = bc.turbulent_flux_parameterization
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
@@ -243,7 +232,7 @@ function ClimaLand.turbulent_fluxes!(
     d_sfc = sf_parameterization.displ
     z_0m = sf_parameterization.z_0m
     z_0b = sf_parameterization.z_0b
-    η = sf_parameterization.η
+    Cd = sf_parameterization.Cd
     u_air = p.drivers.u
     h_air = atmos.h
 
@@ -259,7 +248,7 @@ function ClimaLand.turbulent_fluxes!(
             d_sfc,
             z_0m,
             z_0b,
-            η,
+            Cd,
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             Ref(model.earth_param_set),
@@ -292,7 +281,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     d_sfc = sf_parameterization.displ
     z_0m = sf_parameterization.z_0m
     z_0b = sf_parameterization.z_0b
-    η = sf_parameterization.η
+    Cd = sf_parameterization.Cd
 
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
@@ -306,7 +295,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             d_sfc,
             z_0m,
             z_0b,
-            η,
+            Cd,
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
             Ref(model.earth_param_set),
@@ -372,7 +361,7 @@ end
         d_sfc::FT,
         z_0m::FT,
         z_0b::FT,
-        η::FT,
+        Cd::FT,
         LAI::FT,
         SAI::FT,
         earth_param_set::EP;
@@ -395,7 +384,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     d_sfc::FT,
     z_0m::FT,
     z_0b::FT,
-    η::FT,
+    Cd::FT,
     LAI::FT,
     SAI::FT,
     earth_param_set::EP;
@@ -438,7 +427,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = η / max(ustar, gustiness)
+    r_b_leaf::FT = 1 / (Cd*max(ustar, gustiness))
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 

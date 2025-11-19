@@ -56,7 +56,7 @@ include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
-include("./canopy_surface_fluxes.jl")
+include("./canopy_turbulent_fluxes.jl")
 
 
 
@@ -319,7 +319,7 @@ function PlantHydraulicsModel{FT}(
     n_stem::Int = 0,
     n_leaf::Int = 1,
     h_stem::FT = FT(0),
-    h_leaf::FT = toml_dict["canopy_height"] / n_leaf,
+    h_leaf::FT = FT(1),
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
@@ -723,7 +723,7 @@ end
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
-        surface_flux_parameterization = MoninObukhovHeightBased(toml_dict, biomass.height),
+        turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
     ) where {FT, PSE}
 
 Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`.
@@ -763,7 +763,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    surface_flux_parameterization = MoninObukhovHeightBased(
+    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         toml_dict["canopy_height"],
     ),
@@ -801,7 +801,7 @@ function CanopyModel{FT}(
         atmos,
         radiation,
         ground,
-        surface_flux_parameterization,
+        turbulent_flux_parameterization,
         prognostic_land_components,
     )
 
