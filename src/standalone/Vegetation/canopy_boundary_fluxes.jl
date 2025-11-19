@@ -203,7 +203,7 @@ end
     function ClimaLand.turbulent_fluxes!(
         dest,
         atmos::PrescribedAtmosphere,
-        sf_parameterization::,
+        sf_parameterization::MoninObukhovCanopyFluxes,
         model::CanopyModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -427,7 +427,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = 1 / (Cd*max(ustar, gustiness))
+    r_b_leaf::FT = 1 / (Cd * max(ustar, gustiness))
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 

@@ -834,8 +834,7 @@ function surface_air_density(
     T_sfc,
 )
     eps = get_earth_param_set(model)
-    thermo_params =
-        LP.thermodynamic_parameters(eps)
+    thermo_params = LP.thermodynamic_parameters(eps)
     return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
 end
 
