@@ -278,7 +278,9 @@ function EnergyHydrology{FT}(
         runoff;
         prognostic_land_components,
     )
-    bottom_bc = EnergyWaterFreeDrainage()
+    bottom_water_flux = WaterFluxBC((p, t) -> 0.0);
+    bottom_heat_flux = HeatFluxBC((p, t) -> 0.0);
+    bottom_bc = WaterHeatBC(; water = bottom_water_flux, heat = bottom_heat_flux)
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
     sources = (additional_sources..., PhaseChange{FT}())

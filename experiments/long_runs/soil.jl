@@ -18,6 +18,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
+using ClimaUtilities.TimeManager:ITime
 
 using ClimaDiagnostics
 using ClimaUtilities
@@ -84,8 +85,34 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation = true,
     conservation_period = Day(10),
 )
+function set_ic!(Y, p, t0, model)
+    params = model.parameters
+    ν = params.ν
+    θ_r = params.θ_r
+    FT = eltype(Y.soil.ϑ_l)
+    @. Y.soil.ϑ_l = FT(0.98)*(ν-θ_r) + θ_r
+    Y.soil.θ_i .= FT(0.0)
+    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+    for i in 1:15
+        evaluate!(ClimaCore.Fields.level(p.soil.T,i), model.boundary_conditions.top.atmos.T, ITime(0, epoch = start_date))
+    end
+    ρc_s =
+        Soil.volumetric_heat_capacity.(
+            θ_l,
+            Y.soil.θ_i,
+            params.ρc_ds,
+            params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.soil.T,
+            params.earth_param_set,
+        )
+end
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!);
 
 @info "Run: Global Soil Model"
 @info "Resolution: $nelements"
