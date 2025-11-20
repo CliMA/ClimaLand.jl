@@ -41,17 +41,6 @@ steps:
     if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null
     steps:
 
-      - label: ":snow_capped_mountain: Snowy Land"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
-        artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
       - label: ":snow_capped_mountain: Snowy Land + P Model"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
@@ -61,36 +50,6 @@ steps:
         agents:
           slurm_gpus: 1
           slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: ":sunglasses: California regional simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/land_region.jl
-        artifact_paths: "california_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 01:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Soil"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Global bucket simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/bucket.jl
-        artifact_paths: "bucket_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
