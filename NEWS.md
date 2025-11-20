@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -------
 - Switch to use the Vast filesystem on central
+- `define_diagnostics!` renamed to `construct_diagnostics`
+  PR[#1526](https://github.com/CliMA/ClimaLand.jl/pull/1526)
 
 v1.0.0
 ------

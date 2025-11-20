@@ -118,7 +118,7 @@ rather than computing one, like the Bowen ratio above. For example,
 
 ### Add that diagnostic(s) variable to your list of variables
 
-These functions are defined in `src/diagnostics/define_diagnostics.jl`.
+These functions are defined in `src/diagnostics/construct_diagnostics.jl`.
 
 ```Julia
  add_diagnostic_variable!(

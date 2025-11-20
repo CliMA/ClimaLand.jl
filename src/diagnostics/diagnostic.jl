@@ -9,7 +9,8 @@ const ALL_DIAGNOSTICS = Dict{String, DiagnosticVariable}()
 
 """
 
-    add_diagnostic_variable!(; short_name,
+    add_diagnostic_variable!(requested_diags;
+                               short_name,
                                long_name,
                                standard_name,
                                units,
@@ -18,7 +19,8 @@ const ALL_DIAGNOSTICS = Dict{String, DiagnosticVariable}()
 
 
 Add a new variable to the `ALL_DIAGNOSTICS` dictionary (this function mutates the state of
-`ClimaLand.ALL_DIAGNOSTICS`).
+`ClimaLand.ALL_DIAGNOSTICS`). If `requested_diags` is not `nothing`, the variable is only
+added if the `short_name` is in `requested_diags`.
 
 If possible, please follow the naming scheme outline in
 https://airtable.com/appYNLuWqAgzLbhSq/shrKcLEdssxb8Yvcp/tblL7dJkC3vl5zQLb
@@ -49,7 +51,8 @@ Keyword arguments
                              `.=`).
 
 """
-function add_diagnostic_variable!(;
+function add_diagnostic_variable!(
+    requested_diags;
     short_name,
     long_name,
     standard_name = "",
@@ -57,15 +60,19 @@ function add_diagnostic_variable!(;
     comments = "",
     compute!,
 )
-    ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
-        short_name,
-        long_name,
-        standard_name,
-        units,
-        comments,
-        compute!,
-    )
+    if isnothing(requested_diags) || short_name in requested_diags
+        ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
+            short_name,
+            long_name,
+            standard_name,
+            units,
+            comments,
+            compute!,
+        )
+    end
+    return
 end
+
 
 """
 
@@ -190,11 +197,11 @@ end
 # Do you want to define more diagnostics? Add them here
 include("land_compute_methods.jl")
 
-# define_diagnostics.jl contains the list of all the diagnostics
-include("define_diagnostics.jl")
-
 # Default diagnostics and higher level interfaces
 include("default_diagnostics.jl")
+
+# construct_diagnostics.jl contains the list of all the diagnostics
+include("construct_diagnostics.jl")
 
 if pkgversion(ClimaDiagnostics) < v"0.2.13"
     # Default diagnostic resolution given a Space (approximately one point per
