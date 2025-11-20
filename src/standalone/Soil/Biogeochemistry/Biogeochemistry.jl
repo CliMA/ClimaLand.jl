@@ -335,24 +335,37 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
 
-        # O2 diffusion: Apply diffusion to O2 mass concentration (in p.soilco2.O2)
+        # O2 diffusion: Apply diffusion to O2 mass concentration in air (p.soilco2.O2)
         # then convert tendency back to O2_a
         #
-        # Convert dO2 (mass concentration tendency, kg/m³/s) to dO2_a (fraction tendency, 1/s)
-        # Since O2 = θ_a * O2_a * P * M_O2 / (R * T), we have:
-        # dO2_a = dO2 / (θ_a * P * M_O2 / (R * T))
+        # Physics: The PDE for O2 in soil is:
+        #   ∂(θ_a * ρ_O2_air)/∂t = ∇·(D_eff * ∇ρ_O2_air) + Source
+        # where D_eff = D_o2 * θ_a accounts for the tortuous diffusion path.
+        #
+        # Since ρ_O2_air = O2_a * P * M_O2 / (R * T), we have:
+        #   ∂(θ_a * O2_a)/∂t ≈ (R * T)/(P * M_O2) * ∇·(D_o2 * θ_a * ∇ρ_O2_air) + Source_term
+        #
+        # Rearranging for ∂O2_a/∂t:
+        #   ∂O2_a/∂t = (R * T)/(θ_a * P * M_O2) * ∇·(D_o2 * θ_a * ∇ρ_O2_air) + ...
         FT = eltype(Y.soilco2.C)
         T_soil = p.soil.T
         P_sfc = p.drivers.P
-
-        # Compute conversion factor: θ_a * P * M_O2 / (R * T)
-        # Use θ_a from auxiliary variables (computed in update_aux!)
         R = FT(8.314462618)  # J/(mol·K)
         M_O2 = FT(0.032)      # kg/mol
-        conversion_factor = @. p.soilco2.θ_a * P_sfc * M_O2 / (R * T_soil) + eps(FT)
 
-        # Apply O2 diffusion and convert to O2_a tendency in one step
-        @. dY.soilco2.O2_a = (-divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2))) / conversion_factor
+        # Effective diffusivity: D_eff = D_o2 * θ_a
+        D_eff = @. interpc2f(p.soilco2.D_o2 * p.soilco2.θ_a)
+
+        # Diffusive flux in terms of ρ_O2_air: Flux = -D_eff * ∇ρ_O2_air
+        diffusive_flux_O2 = @. -D_eff * gradc2f_O2(p.soilco2.O2)
+
+        # Divergence gives rate of change of (θ_a * ρ_O2_air) per m³ soil
+        # Units: kg O2/(m³ soil · s)
+        div_flux = @. -divf2c_O2(diffusive_flux_O2)
+
+        # Convert to O2_a tendency: divide by (θ_a * P * M_O2 / (R * T))
+        conversion_factor = @. p.soilco2.θ_a * P_sfc * M_O2 / (R * T_soil) + eps(FT)
+        @. dY.soilco2.O2_a = div_flux / conversion_factor
         
         # SOC has no diffusion, only consumption
         @. dY.soilco2.SOC = 0.0
@@ -406,7 +419,7 @@ function ClimaLand.source!(
     p::NamedTuple,
     params,
 )
-    # CO2 production (kg C m⁻³ s⁻¹)
+    # CO2 production (kg C m⁻³ soil s⁻¹)
     dY.soilco2.C .+= p.soilco2.Sm
 
     # O2_a and SOC consumption with proper stoichiometry
@@ -416,52 +429,34 @@ function ClimaLand.source!(
     # Stoichiometry: C + O₂ → CO₂
     # For every 12 g C respired, 32 g O₂ is consumed (molar mass ratio)
     #
-    # We need to convert carbon respiration rate (Sm, kg C/m³/s) to O2_a tendency.
+    # We need to convert carbon respiration rate (Sm, kg C/m³ soil/s) to O2_a tendency.
     #
-    # Step 1: Convert C respiration to O2 mass consumption rate
-    #   dO2/dt = -(M_O2/M_C) * Sm = -(32/12) * Sm  [kg O2/m³/s]
+    # Step 1: Convert C respiration to O2 mass consumption rate per m³ soil
+    #   d(θ_a * ρ_O2_air)/dt = -(M_O2/M_C) * Sm  [kg O2/(m³ soil · s)]
     #
-    # Step 2: Convert O2 mass concentration to O2_a volumetric fraction
-    #   From ideal gas law: O2 = θ_a * O2_a * P * M_O2 / (R * T)
-    #   where:
-    #     θ_a = air-filled porosity (m³ air / m³ soil)
-    #     O2_a = volumetric O2 fraction in air (m³ O2 / m³ air)
-    #     P = atmospheric pressure (Pa)
-    #     M_O2 = molar mass of O2 = 0.032 kg/mol
-    #     R = gas constant = 8.314 J/(mol·K)
-    #     T = soil temperature (K)
+    # Step 2: Since ρ_O2_air = O2_a * P * M_O2 / (R * T), we have:
+    #   θ_a * P * M_O2 / (R * T) * dO2_a/dt = -(M_O2/M_C) * Sm
     #
-    # Step 3: Differentiate to get O2_a tendency
-    #   dO2_a/dt = dO2/dt / (θ_a * P * M_O2 / (R * T))
-    #            = -(M_O2/M_C) * Sm / (θ_a * P * M_O2 / (R * T))
-    #            = -(1/M_C) * (R * T / (θ_a * P)) * Sm
-    #            = -(R * T) / (12.0 * θ_a * P) * Sm
+    # Step 3: Solve for dO2_a/dt:
+    #   dO2_a/dt = -(M_O2/M_C) * Sm / (θ_a * P * M_O2 / (R * T))
+    #            = -(M_O2/M_C) * (R * T) / (θ_a * P * M_O2) * Sm
+    #            = -(R * T) / (M_C * θ_a * P) * Sm
     #
     # This is the physically correct conversion from C respiration to O2_a consumption.
 
     M_C = eltype(p.soilco2.Sm)(12.0e-3)   # kg/mol (molar mass of carbon)
-    M_O2 = eltype(p.soilco2.Sm)(32.0e-3)  # kg/mol (molar mass of O2)
     R = eltype(p.soilco2.Sm)(8.314462618)  # J/(mol·K) (universal gas constant)
-
-    # Get environmental variables needed for conversion
-    # Compute θ_a from soil state (need to access from model parameters and Y)
-    # For integrated models: θ_a = ν - ϑ_l (where ν is porosity from parameters)
-    # We get ν from src which should store model info, but MicrobeProduction is empty
-    # So we compute θ_a directly from available auxiliary variables
-    # Note: In update_aux, θ_a is computed and used to calculate O2, so we can derive it
-    # θ_a is already embedded in p.soilco2.O2 via: O2 = θ_a * O2_a * P * M_O2 / (R * T)
-    # So: θ_a = O2 * R * T / (O2_a * P * M_O2)
     T_soil = p.soil.T  # soil temperature (K)
     P_sfc = p.drivers.P   # atmospheric pressure (Pa)
 
-    # Compute θ_a from the relationship: O2 = θ_a * O2_a * P * M_O2 / (R * T)
-    θ_a = @. p.soilco2.O2 * R * T_soil / (Y.soilco2.O2_a * P_sfc * M_O2)
+    # Get θ_a from auxiliary variables (already computed in update_aux!)
+    θ_a = p.soilco2.θ_a
 
     # Apply stoichiometric O2 consumption with proper unit conversion
-    # Factor: (R * T) / (M_C * θ_a * P) converts from kg C/m³/s to O2_a fraction/s
-    dY.soilco2.O2_a .-= @. (R * T_soil) / (M_C * θ_a * P_sfc) * p.soilco2.Sm
+    # Factor: (R * T) / (M_C * θ_a * P) converts from kg C/(m³ soil · s) to O2_a fraction/s
+    dY.soilco2.O2_a .-= @. (R * T_soil) / (M_C * θ_a * P_sfc + eps(eltype(p.soilco2.Sm))) * p.soilco2.Sm
 
-    # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ s⁻¹)
+    # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ soil s⁻¹)
     dY.soilco2.SOC .-= p.soilco2.Sm
 end
 
@@ -608,8 +603,8 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         FT = eltype(Y.soilco2.C)
         p.soilco2.θ_a .= @. max(ν - θ_l, FT(0))
 
-        # Compute O2 mass concentration (kg/m³) from O2_a for diffusion (ideal gas law)
-        @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, p.soilco2.θ_a, T_soil, P_sfc)
+        # Compute O2 mass concentration (kg O2/m³ air) from O2_a for diffusion (ideal gas law)
+        @. p.soilco2.O2 = o2_concentration(Y.soilco2.O2_a, T_soil, P_sfc)
 
         # Compute O2 availability (dimensionless) for microbial kinetics (tortuosity-based)
         (; D_oa) = params
@@ -798,15 +793,12 @@ function ClimaLand.boundary_flux!(
     t,
 )
     FT = eltype(Δz)
-    D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
-    O2_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.O2)  # Current O2 mass concentration at top
-
-    # Compute atmospheric O2 mass concentration from O2_a = 0.21
-    # O2 mass concentration in soil: O2 = θ_a * O2_a * P * M_O2 / (R * T)
-    # where θ_a is the air-filled porosity
-
-    # Get air-filled porosity at top of soil (already computed in update_aux!)
     θ_a_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
+    D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
+    O2_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.O2)  # Current O2 mass concentration in air at top (kg O2/m³ air)
+
+    # Compute atmospheric O2 mass concentration in air from O2_a = 0.21
+    # O2 mass concentration in air: ρ_O2_air = O2_a * P * M_O2 / (R * T)
     T_soil_top = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     P_sfc = p.drivers.P
 
@@ -814,10 +806,14 @@ function ClimaLand.boundary_flux!(
     M_O2 = FT(0.032)      # kg/mol
     O2_a_atm = FT(0.21)   # Atmospheric O2 volumetric fraction
 
-    # O2 mass concentration at surface (kg/m³ soil) assuming atmospheric O2_a = 0.21
-    O2_bc = @. θ_a_top * O2_a_atm * P_sfc * M_O2 / (R * T_soil_top)
+    # O2 mass concentration in air at the boundary (kg O2/m³ air)
+    O2_bc = @. O2_a_atm * P_sfc * M_O2 / (R * T_soil_top)
 
-    @. bc_field = ClimaLand.diffusive_flux(D_o2, O2_bc, O2_c, Δz)
+    # Effective diffusivity accounting for air-filled porosity
+    D_eff = @. D_o2 * θ_a_top
+
+    # Diffusive flux (kg O2/(m² soil · s))
+    @. bc_field = ClimaLand.diffusive_flux(D_eff, O2_bc, O2_c, Δz)
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)

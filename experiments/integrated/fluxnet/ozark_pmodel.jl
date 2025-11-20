@@ -252,7 +252,7 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     land,
 )
 # Callbacks
-output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil", "sco2", "so2", "soc"]
+output_vars = ["gpp", "shf", "lhf", "swu", "lwu", "swc", "swe", "tsoil", "sco2", "so2", "soc", "scms"]
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
@@ -344,9 +344,7 @@ save("soc.png", fig)
 
 ####################
 
-
-
-  # Get diagnostic names
+ # Get diagnostic names
   diag_names = [d.output_short_name for d in simulation.diagnostics]
 
   # Set indices manually based on your earlier code
@@ -400,192 +398,573 @@ save("soc.png", fig)
   model_dates_o2a = time_to_date.(model_time_o2a, start_date)
   model_dates_soc = time_to_date.(model_time_soc, start_date)
 
-  # Better color scheme
-  colors = reverse(cgrad(:RdYlBu, n_layers, categorical = true))
+  # Get depth coordinates
+  z_profile = parent(land.soil.domain.fields.z)[:, 1]
+
+  # Filter to top 1m only (biologically active zone)
+  depth_mask = z_profile .>= -1.0
+  layers_top1m = findall(depth_mask)
+  z_top1m = z_profile[depth_mask]
+  n_layers_top1m = length(layers_top1m)
+
+  # Better color scheme for top 1m layers
+  colors = reverse(cgrad(:RdYlBu, n_layers_top1m, categorical = true))
 
   # ============================================================================
-  # TIMESERIES PLOTS
+  # TIMESERIES PLOTS (Top 1m only)
   # ============================================================================
 
-  layer_step = max(1, n_layers ÷ 10)
-  layers_to_plot = 1:layer_step:n_layers
-  if !(n_layers in layers_to_plot)
-      layers_to_plot = [layers_to_plot..., n_layers]
+  layer_step = max(1, n_layers_top1m ÷ 10)
+  layers_to_plot = layers_top1m[1:layer_step:end]
+  if !(layers_top1m[end] in layers_to_plot)
+      layers_to_plot = [layers_to_plot..., layers_top1m[end]]
   end
 
-  # CO2 timeseries at selected depths
+  # CO2 timeseries at selected depths (top 1m)
   fig_co2_ts = Figure(size = (1200, 600))
   ax_co2 = Axis(fig_co2_ts[1, 1],
       xlabel = "Date",
       ylabel = "CO2 (kg C/m³)",
-      title = "CO2 Time Series at Selected Depths"
+      title = "CO2 Time Series (Top 1m)"
   )
-  for layer in layers_to_plot
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
       lines!(ax_co2, model_dates_co2, co2_layers[layer],
-             color = colors[layer],
+             color = colors[color_idx],
              linewidth = 2,
-             label = layer == n_layers ? "Surface" : layer == 1 ? "Bottom" : "Layer $layer")
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
   end
   Legend(fig_co2_ts[1, 2], ax_co2, "Depth", framevisible = true)
-  save("co2_timeseries_all_depths.png", fig_co2_ts)
+  save("co2_timeseries_top1m.png", fig_co2_ts)
 
-  # O2_a timeseries at selected depths
+  # O2_a timeseries at selected depths (top 1m)
   fig_o2a_ts = Figure(size = (1200, 600))
   ax_o2a = Axis(fig_o2a_ts[1, 1],
       xlabel = "Date",
       ylabel = "O2_a (fraction)",
-      title = "O2_a Time Series at Selected Depths",
-      yscale = log10
+      title = "O2_a Time Series (Top 1m)",
+      limits = (nothing, (0, 0.25))
   )
-  for layer in layers_to_plot
-      valid_vals = o2a_layers[layer] .> 1e-40
-      if any(valid_vals)
-          lines!(ax_o2a, model_dates_o2a[valid_vals], o2a_layers[layer][valid_vals],
-                 color = colors[layer],
-                 linewidth = 2,
-                 label = layer == n_layers ? "Surface" : layer == 1 ? "Bottom" : "Layer $layer")
-      end
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax_o2a, model_dates_o2a, o2a_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
   end
   Legend(fig_o2a_ts[1, 2], ax_o2a, "Depth", framevisible = true)
-  save("o2a_timeseries_all_depths.png", fig_o2a_ts)
+  save("o2a_timeseries_top1m.png", fig_o2a_ts)
 
-  # SOC timeseries at selected depths
+  # SOC timeseries at selected depths (top 1m)
   fig_soc_ts = Figure(size = (1200, 600))
   ax_soc = Axis(fig_soc_ts[1, 1],
       xlabel = "Date",
       ylabel = "SOC (kg C/m³)",
-      title = "SOC Time Series at Selected Depths"
+      title = "SOC Time Series (Top 1m)"
   )
-  for layer in layers_to_plot
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
       lines!(ax_soc, model_dates_soc, soc_layers[layer],
-             color = colors[layer],
+             color = colors[color_idx],
              linewidth = 2,
-             label = layer == n_layers ? "Surface" : layer == 1 ? "Bottom" : "Layer $layer")
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
   end
   Legend(fig_soc_ts[1, 2], ax_soc, "Depth", framevisible = true)
-  save("soc_timeseries_all_depths.png", fig_soc_ts)
+  save("soc_timeseries_top1m.png", fig_soc_ts)
 
   # ============================================================================
-  # VERTICAL PROFILE PLOTS - WITH TEMPORAL EVOLUTION (10 snapshots)
+  # VERTICAL PROFILE PLOTS - TOP 1M ONLY (10 snapshots)
   # ============================================================================
-
-  # Get depth coordinates
-  z_profile = parent(land.soil.domain.fields.z)[:, 1]
 
   # Select 10 time snapshots evenly distributed
   n_times = length(model_time_co2)
   time_indices = unique(round.(Int, range(1, n_times, length=10)))
   n_snapshots = length(time_indices)
 
-  # Color gradient for time evolution (early = blue, late = red)
+  # Color gradient for time evolution
   time_colors = cgrad(:viridis, n_snapshots, categorical = true)
 
-  # CO2 vertical profiles over time
+  # CO2 vertical profiles over time (top 1m)
   fig_co2_prof = Figure(size = (900, 800))
   ax_co2_prof = Axis(fig_co2_prof[1, 1],
       xlabel = "CO2 (kg C/m³)",
       ylabel = "Depth (m)",
-      title = "CO2 Vertical Profile Evolution"
+      title = "CO2 Vertical Profile Evolution (Top 1m)"
   )
   for (i, tidx) in enumerate(time_indices)
-      # Get profile at this time
-      profile = [co2_layers[layer][tidx] for layer in 1:n_layers]
+      profile = [co2_layers[layer][tidx] for layer in layers_top1m]
       date_label = Dates.format(model_dates_co2[tidx], "yyyy-mm-dd")
-      lines!(ax_co2_prof, profile, z_profile,
+      lines!(ax_co2_prof, profile, z_top1m,
              linewidth = 2,
              color = time_colors[i],
              label = date_label)
   end
   Legend(fig_co2_prof[1, 2], ax_co2_prof, "Date", framevisible = true)
-  save("co2_profile_evolution.png", fig_co2_prof)
+  save("co2_profile_evolution_top1m.png", fig_co2_prof)
 
-  # O2_a vertical profiles over time
+  # O2_a vertical profiles over time (top 1m)
   fig_o2a_prof = Figure(size = (900, 800))
   ax_o2a_prof = Axis(fig_o2a_prof[1, 1],
       xlabel = "O2_a (fraction)",
       ylabel = "Depth (m)",
-      title = "O2_a Vertical Profile Evolution",
-      xscale = log10
+      title = "O2_a Vertical Profile Evolution (Top 1m)",
+      limits = ((0, 0.25), nothing)
   )
   for (i, tidx) in enumerate(time_indices)
-      # Get profile at this time
-      profile = [o2a_layers[layer][tidx] for layer in 1:n_layers]
-      # Filter for positive values
-      valid_idx = profile .> 1e-40
-      if any(valid_idx)
-          date_label = Dates.format(model_dates_o2a[tidx], "yyyy-mm-dd")
-          lines!(ax_o2a_prof, profile[valid_idx], z_profile[valid_idx],
-                 linewidth = 2,
-                 color = time_colors[i],
-                 label = date_label)
-      end
+      profile = [o2a_layers[layer][tidx] for layer in layers_top1m]
+      date_label = Dates.format(model_dates_o2a[tidx], "yyyy-mm-dd")
+      lines!(ax_o2a_prof, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i],
+             label = date_label)
   end
   Legend(fig_o2a_prof[1, 2], ax_o2a_prof, "Date", framevisible = true)
-  save("o2a_profile_evolution.png", fig_o2a_prof)
+  save("o2a_profile_evolution_top1m.png", fig_o2a_prof)
 
-  # SOC vertical profiles over time
+  # SOC vertical profiles over time (top 1m)
   fig_soc_prof = Figure(size = (900, 800))
   ax_soc_prof = Axis(fig_soc_prof[1, 1],
       xlabel = "SOC (kg C/m³)",
       ylabel = "Depth (m)",
-      title = "SOC Vertical Profile Evolution"
+      title = "SOC Vertical Profile Evolution (Top 1m)"
   )
   for (i, tidx) in enumerate(time_indices)
-      # Get profile at this time
-      profile = [soc_layers[layer][tidx] for layer in 1:n_layers]
+      profile = [soc_layers[layer][tidx] for layer in layers_top1m]
       date_label = Dates.format(model_dates_soc[tidx], "yyyy-mm-dd")
-      lines!(ax_soc_prof, profile, z_profile,
+      lines!(ax_soc_prof, profile, z_top1m,
              linewidth = 2,
              color = time_colors[i],
              label = date_label)
   end
   Legend(fig_soc_prof[1, 2], ax_soc_prof, "Date", framevisible = true)
-  save("soc_profile_evolution.png", fig_soc_prof)
+  save("soc_profile_evolution_top1m.png", fig_soc_prof)
 
   # ============================================================================
-  # FINAL TIMESTEP PROFILES (as before, for comparison)
+  # FINAL TIMESTEP PROFILES (Top 1m)
   # ============================================================================
 
-  # Get final profiles
-  co2_profile = parent(simulation._integrator.u.soilco2.C)[:, 1]
-  o2a_profile = parent(simulation._integrator.u.soilco2.O2_a)[:, 1]
-  soc_profile = parent(simulation._integrator.u.soilco2.SOC)[:, 1]
+  # Get final profiles (top 1m only)
+  co2_profile_full = parent(simulation._integrator.u.soilco2.C)[:, 1]
+  o2a_profile_full = parent(simulation._integrator.u.soilco2.O2_a)[:, 1]
+  soc_profile_full = parent(simulation._integrator.u.soilco2.SOC)[:, 1]
 
-  # CO2 vertical profile (final)
+  co2_profile = co2_profile_full[depth_mask]
+  o2a_profile = o2a_profile_full[depth_mask]
+  soc_profile = soc_profile_full[depth_mask]
+
+  # CO2 vertical profile (final, top 1m)
   fig_co2_prof_final = Figure(size = (700, 800))
   ax_co2_prof_final = Axis(fig_co2_prof_final[1, 1],
       xlabel = "CO2 (kg C/m³)",
       ylabel = "Depth (m)",
-      title = "CO2 Vertical Profile (Final Time)"
+      title = "CO2 Vertical Profile - Final Time (Top 1m)"
   )
-  lines!(ax_co2_prof_final, co2_profile, z_profile, linewidth = 3, color = :dodgerblue)
-  scatter!(ax_co2_prof_final, co2_profile, z_profile, markersize = 12, color = :dodgerblue, strokewidth = 1, strokecolor = :black)
-  save("co2_profile_final.png", fig_co2_prof_final)
+  lines!(ax_co2_prof_final, co2_profile, z_top1m, linewidth = 3, color = :dodgerblue)
+  scatter!(ax_co2_prof_final, co2_profile, z_top1m, markersize = 12, color = :dodgerblue, strokewidth = 1, strokecolor = :black)
+  save("co2_profile_final_top1m.png", fig_co2_prof_final)
 
-  # O2_a vertical profile (final)
+  # O2_a vertical profile (final, top 1m)
   fig_o2a_prof_final = Figure(size = (700, 800))
   ax_o2a_prof_final = Axis(fig_o2a_prof_final[1, 1],
       xlabel = "O2_a (fraction)",
       ylabel = "Depth (m)",
-      title = "O2_a Vertical Profile (Final Time)",
-      xscale = log10
+      title = "O2_a Vertical Profile - Final Time (Top 1m)",
+      limits = ((0, 0.25), nothing)
   )
-  valid_o2 = o2a_profile .> 1e-40
-  lines!(ax_o2a_prof_final, o2a_profile[valid_o2], z_profile[valid_o2], linewidth = 3, color = :crimson)
-  scatter!(ax_o2a_prof_final, o2a_profile[valid_o2], z_profile[valid_o2], markersize = 12, color = :crimson, strokewidth = 1, strokecolor =
-  :black)
-  save("o2a_profile_final.png", fig_o2a_prof_final)
+  lines!(ax_o2a_prof_final, o2a_profile, z_top1m, linewidth = 3, color = :crimson)
+  scatter!(ax_o2a_prof_final, o2a_profile, z_top1m, markersize = 12, color = :crimson, strokewidth = 1, strokecolor = :black)
+  save("o2a_profile_final_top1m.png", fig_o2a_prof_final)
 
-  # SOC vertical profile (final)
+  # SOC vertical profile (final, top 1m)
   fig_soc_prof_final = Figure(size = (700, 800))
   ax_soc_prof_final = Axis(fig_soc_prof_final[1, 1],
       xlabel = "SOC (kg C/m³)",
       ylabel = "Depth (m)",
-      title = "SOC Vertical Profile (Final Time)"
+      title = "SOC Vertical Profile - Final Time (Top 1m)"
   )
-  lines!(ax_soc_prof_final, soc_profile, z_profile, linewidth = 3, color = :forestgreen)
-  scatter!(ax_soc_prof_final, soc_profile, z_profile, markersize = 12, color = :forestgreen, strokewidth = 1, strokecolor = :black)
-  save("soc_profile_final.png", fig_soc_prof_final)
+  lines!(ax_soc_prof_final, soc_profile, z_top1m, linewidth = 3, color = :forestgreen)
+  scatter!(ax_soc_prof_final, soc_profile, z_top1m, markersize = 12, color = :forestgreen, strokewidth = 1, strokecolor = :black)
+  save("soc_profile_final_top1m.png", fig_soc_prof_final)
+
+  # ============================================================================
+  # SOIL MOISTURE AND TEMPERATURE PLOTS (Top 1m)
+  # ============================================================================
+
+  # Find indices for soil variables
+  swc_idx = 6
+  tsoil_idx = 8
+
+  # Get soil moisture and temperature data
+  model_time_swc, swc_layers = get_all_layers(
+      simulation.diagnostics[1].output_writer, diag_names[swc_idx], n_layers
+  )
+  model_time_tsoil, tsoil_layers = get_all_layers(
+      simulation.diagnostics[1].output_writer, diag_names[tsoil_idx], n_layers
+  )
+
+  # Convert times to dates
+  model_dates_swc = time_to_date.(model_time_swc, start_date)
+  model_dates_tsoil = time_to_date.(model_time_tsoil, start_date)
+
+  # Soil water content timeseries (top 1m)
+  fig_swc_ts = Figure(size = (1200, 600))
+  ax_swc = Axis(fig_swc_ts[1, 1],
+      xlabel = "Date",
+      ylabel = "Soil Water Content (m³/m³)",
+      title = "Soil Water Content Time Series (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax_swc, model_dates_swc, swc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
+  end
+  Legend(fig_swc_ts[1, 2], ax_swc, "Depth", framevisible = true)
+  save("swc_timeseries_top1m.png", fig_swc_ts)
+
+  # Soil temperature timeseries (top 1m)
+  fig_tsoil_ts = Figure(size = (1200, 600))
+  ax_tsoil = Axis(fig_tsoil_ts[1, 1],
+      xlabel = "Date",
+      ylabel = "Soil Temperature (K)",
+      title = "Soil Temperature Time Series (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax_tsoil, model_dates_tsoil, tsoil_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
+  end
+  Legend(fig_tsoil_ts[1, 2], ax_tsoil, "Depth", framevisible = true)
+  save("tsoil_timeseries_top1m.png", fig_tsoil_ts)
+
+  # Soil water content vertical profiles (top 1m)
+  fig_swc_prof = Figure(size = (900, 800))
+  ax_swc_prof = Axis(fig_swc_prof[1, 1],
+      xlabel = "Soil Water Content (m³/m³)",
+      ylabel = "Depth (m)",
+      title = "Soil Water Content Profile Evolution (Top 1m)"
+  )
+  for (i, tidx) in enumerate(time_indices)
+      profile = [swc_layers[layer][tidx] for layer in layers_top1m]
+      date_label = Dates.format(model_dates_swc[tidx], "yyyy-mm-dd")
+      lines!(ax_swc_prof, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i],
+             label = date_label)
+  end
+  Legend(fig_swc_prof[1, 2], ax_swc_prof, "Date", framevisible = true)
+  save("swc_profile_evolution_top1m.png", fig_swc_prof)
+
+  # Soil temperature vertical profiles (top 1m)
+  fig_tsoil_prof = Figure(size = (900, 800))
+  ax_tsoil_prof = Axis(fig_tsoil_prof[1, 1],
+      xlabel = "Soil Temperature (K)",
+      ylabel = "Depth (m)",
+      title = "Soil Temperature Profile Evolution (Top 1m)"
+  )
+  for (i, tidx) in enumerate(time_indices)
+      profile = [tsoil_layers[layer][tidx] for layer in layers_top1m]
+      date_label = Dates.format(model_dates_tsoil[tidx], "yyyy-mm-dd")
+      lines!(ax_tsoil_prof, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i],
+             label = date_label)
+  end
+  Legend(fig_tsoil_prof[1, 2], ax_tsoil_prof, "Date", framevisible = true)
+  save("tsoil_profile_evolution_top1m.png", fig_tsoil_prof)
+
+  # ============================================================================
+  # COMBINED PLOT: O2, SWC, and Temperature together
+  # ============================================================================
+
+  fig_combined = Figure(size = (1400, 1000))
+
+  # O2_a timeseries
+  ax1 = Axis(fig_combined[1, 1],
+      xlabel = "Date",
+      ylabel = "O2_a (fraction)",
+      title = "O2_a (Top 1m)",
+      limits = (nothing, (0, 0.25))
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax1, model_dates_o2a, o2a_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
+  end
+
+  # Soil water content
+  ax2 = Axis(fig_combined[2, 1],
+      xlabel = "Date",
+      ylabel = "SWC (m³/m³)",
+      title = "Soil Water Content (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax2, model_dates_swc, swc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+
+  # Soil temperature
+  ax3 = Axis(fig_combined[3, 1],
+      xlabel = "Date",
+      ylabel = "T (K)",
+      title = "Soil Temperature (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax3, model_dates_tsoil, tsoil_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+
+  # Shared legend on the right
+  Legend(fig_combined[1:3, 2], ax1, "Depth", framevisible = true)
+
+  save("o2_swc_temp_combined_top1m.png", fig_combined)
+
+
+  # ============================================================================
+  # FIGURE 1: Multi-variable timeseries (5 subplots: SOC, CO2, O2, Tsoil, SWC)
+  # ============================================================================
+
+  fig_timeseries = Figure(size = (1400, 1200))
+
+  # SOC timeseries
+  ax1 = Axis(fig_timeseries[1, 1],
+      ylabel = "SOC (kg C/m³)",
+      title = "Biogeochemistry & Soil State Variables (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax1, model_dates_soc, soc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
+  end
+  hidexdecorations!(ax1, grid = false)
+
+  # CO2 timeseries
+  ax2 = Axis(fig_timeseries[2, 1],
+      ylabel = "CO2 (kg C/m³)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax2, model_dates_co2, co2_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax2, grid = false)
+
+  # O2_a timeseries
+  ax3 = Axis(fig_timeseries[3, 1],
+      ylabel = "O2_a (fraction)",
+      limits = (nothing, (0, 0.25))
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax3, model_dates_o2a, o2a_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax3, grid = false)
+
+  # Soil temperature
+  ax4 = Axis(fig_timeseries[4, 1],
+      ylabel = "T (K)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax4, model_dates_tsoil, tsoil_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax4, grid = false)
+
+  # Soil water content
+  ax5 = Axis(fig_timeseries[5, 1],
+      xlabel = "Date",
+      ylabel = "SWC (m³/m³)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax5, model_dates_swc, swc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+
+  # Shared legend
+  Legend(fig_timeseries[1:5, 2], ax1, "Depth", framevisible = true)
+
+  # Link x-axes for synchronized zooming
+  linkxaxes!(ax1, ax2, ax3, ax4, ax5)
+
+  save("biogeochem_timeseries_all_top1m.png", fig_timeseries)
+
+  # ============================================================================
+  # FIGURE 2: Vertical profiles of SOC, CO2, O2 (3 subplots side by side)
+  # ============================================================================
+
+  fig_profiles = Figure(size = (1600, 700))
+
+  # SOC profiles
+  ax_soc = Axis(fig_profiles[1, 1],
+      xlabel = "SOC (kg C/m³)",
+      ylabel = "Depth (m)",
+      title = "SOC Profile Evolution"
+  )
+  for (i, tidx) in enumerate(time_indices)
+      profile = [soc_layers[layer][tidx] for layer in layers_top1m]
+      date_label = Dates.format(model_dates_soc[tidx], "yyyy-mm-dd")
+      lines!(ax_soc, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i],
+             label = date_label)
+  end
+
+  # CO2 profiles
+  ax_co2 = Axis(fig_profiles[1, 2],
+      xlabel = "CO2 (kg C/m³)",
+      ylabel = "Depth (m)",
+      title = "CO2 Profile Evolution"
+  )
+  for (i, tidx) in enumerate(time_indices)
+      profile = [co2_layers[layer][tidx] for layer in layers_top1m]
+      lines!(ax_co2, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i])
+  end
+
+  # O2_a profiles
+  ax_o2 = Axis(fig_profiles[1, 3],
+      xlabel = "O2_a (fraction)",
+      ylabel = "Depth (m)",
+      title = "O2_a Profile Evolution",
+      limits = ((0, 0.25), nothing)
+  )
+  for (i, tidx) in enumerate(time_indices)
+      profile = [o2a_layers[layer][tidx] for layer in layers_top1m]
+      lines!(ax_o2, profile, z_top1m,
+             linewidth = 2,
+             color = time_colors[i])
+  end
+
+  # Shared legend
+  Legend(fig_profiles[1, 4], ax_soc, "Date", framevisible = true)
+
+  # Link y-axes for consistent depth scale
+  linkyaxes!(ax_soc, ax_co2, ax_o2)
+
+  save("biogeochem_profiles_top1m.png", fig_profiles)
+
+
+
+ # ============================================================================
+  # FIGURE 1: Multi-variable timeseries (6 subplots: SOC, CO2, O2, Tsoil, SWC, Respiration)
+  # ============================================================================
+
+  # Update indices
+  co2_idx = 9
+  o2a_idx = 10
+  soc_idx = 11
+  resp_idx = 12  # New respiration index
+
+  # Get respiration data
+  model_time_resp, resp_layers = get_all_layers(
+      simulation.diagnostics[1].output_writer, diag_names[resp_idx], n_layers
+  )
+  model_dates_resp = time_to_date.(model_time_resp, start_date)
+
+  fig_timeseries = Figure(size = (1400, 1400))
+
+  # SOC timeseries
+  ax1 = Axis(fig_timeseries[1, 1],
+      ylabel = "SOC (kg C/m³)",
+      title = "Biogeochemistry & Soil State Variables (Top 1m)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax1, model_dates_soc, soc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2,
+             label = layer == layers_top1m[end] ? "Surface" : "$(round(z_profile[layer], digits=2))m")
+  end
+  hidexdecorations!(ax1, grid = false)
+
+  # CO2 timeseries
+  ax2 = Axis(fig_timeseries[2, 1],
+      ylabel = "CO2 (kg C/m³)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax2, model_dates_co2, co2_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax2, grid = false)
+
+  # O2_a timeseries
+  ax3 = Axis(fig_timeseries[3, 1],
+      ylabel = "O2_a (fraction)",
+      limits = (nothing, (0, 0.25))
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax3, model_dates_o2a, o2a_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax3, grid = false)
+
+  # Respiration timeseries (NEW!)
+  ax4 = Axis(fig_timeseries[4, 1],
+      ylabel = "Respiration (kg C/m³/s)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax4, model_dates_resp, resp_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax4, grid = false)
+
+  # Soil temperature
+  ax5 = Axis(fig_timeseries[5, 1],
+      ylabel = "T (K)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax5, model_dates_tsoil, tsoil_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+  hidexdecorations!(ax5, grid = false)
+
+  # Soil water content
+  ax6 = Axis(fig_timeseries[6, 1],
+      xlabel = "Date",
+      ylabel = "SWC (m³/m³)"
+  )
+  for (i, layer) in enumerate(layers_to_plot)
+      color_idx = findfirst(layers_top1m .== layer)
+      lines!(ax6, model_dates_swc, swc_layers[layer],
+             color = colors[color_idx],
+             linewidth = 2)
+  end
+
+  # Shared legend
+  Legend(fig_timeseries[1:6, 2], ax1, "Depth", framevisible = true)
+
+  # Link x-axes for synchronized zooming
+  linkxaxes!(ax1, ax2, ax3, ax4, ax5, ax6)
+
+  save("biogeochem_timeseries_all_top1m.png", fig_timeseries)
+
 
 =#
 
