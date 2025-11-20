@@ -6,6 +6,7 @@ using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
+using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
@@ -1053,37 +1054,53 @@ so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
 function ClimaLand.make_update_aux(canopy::CanopyModel)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
 
         # This updates LAI; it must come first.
         update_biomass!(p, Y, t, canopy.biomass, canopy)
 
-        # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
-
+        # TODO: see if reordering is possible
         # update the cache for hydraulics; what this update depends
         # on the type of canopy.hydraulics
         PlantHydraulics.update_hydraulics!(p, Y, canopy.hydraulics, canopy)
 
         # Update soil moisture stress, used in photosynthesis and conductance
-        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
+        βm_lazy = lazy_soil_moisture_stress(p, Y, canopy.soil_moisture_stress, canopy)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
-        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        (An_lazy, GPP_lazy) = lazy_photosynthesis(p, Y, canopy.photosynthesis, canopy)
+        ClimaCore.DataLayouts.@fused_direct begin
+            @. p.canopy.soil_moisture_stress.βm = βm_lazy
+            @. p.canopy.photosynthesis.An = An_lazy
+            @. p.canopy.photosynthesis.GPP = GPP_lazy
+        end
 
         # update SIF
-        update_SIF!(p, Y, canopy.sif, canopy)
+        lazy_sif = lazy_SIF(p, Y, canopy.sif, canopy)
 
         # update stomatal conductance
-        update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+        lazy_r_stomata_canopy = lazy_canopy_conductance(p, Y, canopy.conductance, canopy)
 
         # update autotrophic respiration
+        # lazy_Ra = lazy_autotrophic_respiration(
+        #     p,
+        #     Y,
+        #     canopy.autotrophic_respiration,
+        #     canopy,
+        # )
         update_autotrophic_respiration!(
             p,
             Y,
             canopy.autotrophic_respiration,
             canopy,
         )
+        ClimaCore.DataLayouts.@fused_direct begin
+            @. p.canopy.sif.SIF = lazy_sif
+            @. p.canopy.conductance.r_stomata_canopy = lazy_r_stomata_canopy
+            # @. p.canopy.autotrophic_respiration.Ra = lazy_Ra
+        end
+        return
     end
     return update_aux!
 end
@@ -1099,7 +1116,7 @@ function make_compute_exp_tendency(canopy::CanopyModel)
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1119,7 +1136,7 @@ function make_compute_imp_tendency(canopy::CanopyModel)
         x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1139,7 +1156,7 @@ function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
         x -> make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_jacobian!(W, Y, p, dtγ, t)
+    NVTX.@annotate function compute_jacobian!(W, Y, p, dtγ, t)
         for f! in update_jacobian_list
             f!(W, Y, p, dtγ, t)
         end

@@ -398,6 +398,7 @@ and returns the fluxes in a named tuple.
 Note that an additiontal resistance is used in computing both
 evaporation and sensible heat flux, and this modifies the output
 of `SurfaceFluxes.surface_conditions`.
+TODO: This uses 204 registers per thread. Try splitting it up
 """
 function canopy_compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
