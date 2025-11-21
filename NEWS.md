@@ -3,6 +3,12 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+v1.0.2
+------
+
+v1.0.1
+------
 - Switch to use the Vast filesystem on central
 
 v1.0.0
