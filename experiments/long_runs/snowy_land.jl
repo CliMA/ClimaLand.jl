@@ -162,7 +162,7 @@ LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
 
 if LONGER_RUN
-    include("../misc/ilamb_conversion.jl")
+    include("../ilamb/ilamb_conversion.jl")
     make_compatible_with_ILAMB(
         joinpath(root_path, "output_active"),
         joinpath(root_path, "ILAMB_diagnostics"),
