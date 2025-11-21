@@ -35,7 +35,8 @@ using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaLand.Simulations: LandSimulation, solve!
+import ClimaLand.Simulations:
+    LandSimulation, solve!, make_set_initial_state_from_file
 
 using Dates
 
@@ -159,12 +160,13 @@ domain = ClimaLand.Domains.global_domain(
 )
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-set_ic! =  make_set_initial_state_from_file(ClimaLand.Artifacts.soil_ic_2008_50m_path(;
-                                                                                      context = ClimaComms.context(model),
-                                                                                      ),
-                                            model;
-                                            saturated = true
-                                            )
+set_ic! = make_set_initial_state_from_file(
+    ClimaLand.Artifacts.soil_ic_2008_50m_path(;
+        context = ClimaComms.context(model),
+    ),
+    model;
+    saturated = true,
+)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
