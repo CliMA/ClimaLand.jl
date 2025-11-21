@@ -383,7 +383,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
 end
 
 function get_possible_diagnostics(model::SoilCO2Model)
-    return ["sco2", "hr", "scd", "scms", "soc"]
+    return ["sco2", "hr", "scd", "scms", "so2", "soc"]
 end
 function get_possible_diagnostics(model::CanopyModel)
     diagnostics = [

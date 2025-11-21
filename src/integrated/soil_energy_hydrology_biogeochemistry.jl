@@ -67,7 +67,6 @@ end
             domain,
             Soil.Biogeochemistry.SoilDrivers(
                Soil.Biogeochemistry.PrognosticMet(soil.parameters),
-                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
         ),
@@ -93,7 +92,6 @@ function LandSoilBiogeochemistry{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             Soil.Biogeochemistry.PrognosticMet(soil.parameters),
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
         toml_dict,
