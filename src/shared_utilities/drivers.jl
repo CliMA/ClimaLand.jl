@@ -545,7 +545,7 @@ function compute_turbulent_fluxes_at_a_point(
         state_in,
         state_sfc,
         z_0m,
-        z_0b,
+        z_0b;
         beta = β_sfc,
         gustiness = gustiness,
     )
