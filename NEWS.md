@@ -3,6 +3,16 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+v1.0.2
+------
+- Add runoff diagnostics [#1552](https://github.com/CliMA/ClimaLand.jl/pull/1552)
+- Use fluxnet measured CO2 and allow non-integer time offsets  [#1509](https://github.com/CliMA/ClimaLand.jl/pull/1509)
+- Add for global box domain [#1539](https://github.com/CliMA/ClimaLand.jl/pull/1539)
+- Add ILAMB conversion script and ILAMB leaderboard [#1534](https://github.com/CliMA/ClimaLand.jl/pull/1534)
+
+v1.0.1
+------
 - Switch to use the Vast filesystem on central
 
 v1.0.0
