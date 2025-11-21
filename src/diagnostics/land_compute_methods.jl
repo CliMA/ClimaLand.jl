@@ -586,6 +586,22 @@ function compute_lw_up!(out, Y, p, t, land_model::BucketModel)
     end
 end
 
+function compute_soil_fsat!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    Runoff.get_soil_fsat(
+        soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+        soil.domain.fields.depth,
+    )
+end
+
 function compute_surface_runoff!(
     out,
     Y,
@@ -596,6 +612,7 @@ function compute_surface_runoff!(
     soil = get_soil(land_model)
     return Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p)
 end
+
 function compute_subsurface_runoff!(
     out,
     Y,
@@ -609,6 +626,42 @@ function compute_subsurface_runoff!(
         Y,
         p,
     )
+end
+
+function compute_saturated_height!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    return Runoff.get_saturated_height(
+        soil.boundary_conditions.top.runoff,
+        Y,
+        p,
+    )
+end
+
+function compute_infiltration_capacity!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    return Runoff.soil_infiltration_capacity(soil, Y, p)
+end
+
+function compute_bottom_water_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    return p.soil.bottom_bc.water
 end
 
 function compute_evapotranspiration!(

@@ -334,7 +334,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
 )
-    append!(diagnostics, ["sr", "ssr"])
+    append!(diagnostics, ["sr", "ssr", "sfsat", "sath", "infc"])
     return nothing
 end
 function add_diagnostics!(
@@ -373,7 +373,9 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "stc",
         "swp",
         "infil",
+        "iwc",
         "precip",
+        "sdr",
     ]
 
     # Add diagnostics based on the top boundary condition type and runoff model
@@ -510,8 +512,7 @@ function get_possible_diagnostics(model::LandModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics =
-        ["swa", "swu", "lwu", "infil", "iwc", "tair", "precip"]
+    additional_diagnostics = ["swa", "swu", "lwu", "tair", "precip"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -563,6 +564,7 @@ function get_short_diagnostics(model::LandModel)
         "msf",
         "lwp",
         "iwc",
+        "sdr",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

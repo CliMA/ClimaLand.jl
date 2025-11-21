@@ -204,7 +204,7 @@ function LandSimVis.check_conservation(
         )
         CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
         CairoMakie.save(
-            joinpath(savedir, "$(quantity_names[i])_$(plot_stem_name).pdf"),
+            joinpath(savedir, "$(quantity_names[i])_$(plot_stem_name).png"),
             fig_cycle,
         )
     end
