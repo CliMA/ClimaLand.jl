@@ -364,7 +364,8 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         div_flux = @. -divf2c_O2(diffusive_flux_O2)
 
         # Convert to O2_a tendency: divide by (θ_a * P * M_O2 / (R * T))
-        conversion_factor = @. p.soilco2.θ_a * P_sfc * M_O2 / (R * T_soil) + eps(FT)
+        # Protect against division by zero when θ_a = 0
+        conversion_factor = @. max(p.soilco2.θ_a * P_sfc * M_O2 / (R * T_soil), eps(FT))
         @. dY.soilco2.O2_a = div_flux / conversion_factor
         
         # SOC has no diffusion, only consumption
@@ -454,7 +455,8 @@ function ClimaLand.source!(
 
     # Apply stoichiometric O2 consumption with proper unit conversion
     # Factor: (R * T) / (M_C * θ_a * P) converts from kg C/(m³ soil · s) to O2_a fraction/s
-    dY.soilco2.O2_a .-= @. (R * T_soil) / (M_C * θ_a * P_sfc + eps(eltype(p.soilco2.Sm))) * p.soilco2.Sm
+    # Protect against division by zero when θ_a = 0
+    dY.soilco2.O2_a .-= @. (R * T_soil) / max(M_C * θ_a * P_sfc, eps(eltype(p.soilco2.Sm))) * p.soilco2.Sm
 
     # SOC consumption at same rate as CO2 production to conserve carbon (kg C m⁻³ soil s⁻¹)
     dY.soilco2.SOC .-= p.soilco2.Sm
@@ -582,6 +584,13 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
     function update_aux!(p, Y, t)
+        # Enforce positivity of prognostic variables to prevent unphysical values
+        # This acts as a safety net after the ODE integrator updates Y
+        FT = eltype(Y.soilco2.C)
+        Y.soilco2.C .= max.(Y.soilco2.C, FT(0))
+        Y.soilco2.O2_a .= max.(Y.soilco2.O2_a, FT(0))
+        Y.soilco2.SOC .= max.(Y.soilco2.SOC, FT(0))
+
         params = model.parameters
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
