@@ -93,23 +93,23 @@ function set_saturated_soil_initial_conditions!(Y, soil, t0)
     FT = eltype(Y.soil.ϑ_l)
     @. Y.soil.ϑ_l = FT(0.98) * (ν - θ_r) + θ_r
     Y.soil.θ_i .= FT(0.0)
-    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+    θ_l = ClimaLand.Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
     for i in 1:15
         evaluate!(
             ClimaCore.Fields.level(p.soil.T, i),
-            model.boundary_conditions.top.atmos.T,
+            soil.boundary_conditions.top.atmos.T,
             t0,
         )
     end
     ρc_s =
-        Soil.volumetric_heat_capacity.(
+        ClimaLand.Soil.volumetric_heat_capacity.(
             θ_l,
             Y.soil.θ_i,
             params.ρc_ds,
             params.earth_param_set,
         )
     Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
+        ClimaLand.Soil.volumetric_internal_energy.(
             Y.soil.θ_i,
             ρc_s,
             p.soil.T,
