@@ -80,8 +80,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
         h_leaf,
         h_stem,
         h_canopy,
-        z_0m,
-        z_0b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Vcmax25 = FT(1e-4))
 
     @test soil_ν == FT(0.5)
@@ -128,8 +126,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test n_leaf == Int64(1)
     @test h_leaf == FT(12)
     @test h_stem == FT(14)
-    @test z_0m == FT(0.13) * h_canopy
-    @test z_0b == FT(0.1) * z_0m
 
 end
 
@@ -201,8 +197,6 @@ end
         h_leaf,
         h_stem,
         h_canopy,
-        z_0m,
-        z_0b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
 
     # selected parameters from each "model group" for testing
@@ -214,7 +208,6 @@ end
     @test Vcmax25 == FT(6e-5)
     @test SAI == FT(1.0)
     @test h_stem == FT(9)
-    @test z_0m == FT(0.13) * h_canopy
 
 end
 
@@ -286,8 +279,6 @@ end
         h_leaf,
         h_stem,
         h_canopy,
-        z_0m,
-        z_0b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Ω = FT(1))
 
     # selected parameters from each "model group" for testing
@@ -299,7 +290,6 @@ end
     @test Vcmax25 == FT(9e-5)
     @test SAI == FT(1.0)
     @test h_stem == FT(7.5)
-    @test z_0m == FT(0.13) * h_canopy
 end
 
 
@@ -370,8 +360,6 @@ end
         h_leaf,
         h_stem,
         h_canopy,
-        z_0m,
-        z_0b,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
 
     # selected parameters from each "model group" for testing
@@ -383,5 +371,4 @@ end
     @test Vcmax25 == FT(2.5e-5)
     @test SAI == FT(0)
     @test h_stem == FT(0)
-    @test z_0m == FT(0.13) * h_canopy
 end

@@ -137,18 +137,6 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
-# Shared Canopy Parameters
-
-["canopy_momentum_roughness_length"]
-value = 0.1
-type = "float"
-description = "Roughness length for momentum (m)"
-
-["canopy_scalar_roughness_length"]
-value = 0.2
-type = "float"
-description = "Roughness length for scalars (m)"
-
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
@@ -466,3 +454,34 @@ value = 7.85
 type = "float"
 description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
 tag = "SIFParameters"
+
+# Canopy roughness
+["canopy_z_0min"]
+value = 0.013
+type = "float"
+description = "Minimum roughness"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0m_coeff"]
+value = 0.13
+type = "float"
+description = "Scalar multipling canopy height to get z_0m"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0b_coeff"]
+value = 0.013
+type = "float"
+description = "Scalar multipling canopy height to get z_0b"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_d_coeff"]
+value = 0.67
+type = "float"
+description = "Scalar multipling canopy height to get displacement height"
+tag = "MoninObukhovCanopyFluxes"
+
+["leaf_Cd"]
+value = 0.01
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"

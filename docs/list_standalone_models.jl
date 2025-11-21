@@ -24,6 +24,9 @@ standalone_models = [
         "Canopy energy" => [
             "Physics" => "standalone/pages/vegetation/canopy_energy/canopy_energy.md",
         ]
+        "Canopy energy" => [
+            "Physics" => "standalone/pages/vegetation/turbulent_fluxes/turbulent_fluxes.md",
+        ]
         "Soil moisture stress" => [
             "Piecewise model" => "standalone/pages/vegetation/soil_moisture_stress/piecewise_model.md",
             "Tuzet model" => "standalone/pages/vegetation/soil_moisture_stress/tuzet_model.md",

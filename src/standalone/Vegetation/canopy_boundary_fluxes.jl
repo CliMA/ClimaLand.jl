@@ -3,14 +3,12 @@ using Thermodynamics
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
 
-import ClimaLand:
-    surface_temperature,
-    surface_evaporative_scaling,
-    surface_height,
-    surface_resistance,
-    displacement_height,
-    turbulent_fluxes!,
-    AbstractBC
+import ClimaLand: turbulent_fluxes!, AbstractBC, get_earth_param_set
+
+function get_earth_param_set(model::CanopyModel)
+    return model.earth_param_set
+end
+
 
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
@@ -23,6 +21,7 @@ abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
         G <: AbstractGroundConditions,
+        R <: AbstractCanopyFluxParameterization,
         C::Tuple
     } <: AbstractCanopyBC
 
@@ -39,6 +38,7 @@ struct AtmosDrivenCanopyBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     G <: AbstractGroundConditions,
+    R <: AbstractCanopyFluxParameterization,
     C <: Tuple,
 } <: AbstractCanopyBC
     "The atmospheric conditions driving the model"
@@ -47,6 +47,8 @@ struct AtmosDrivenCanopyBC{
     radiation::B
     "Ground conditions"
     ground::G
+    "Turbulent flux (latent, sensible, vapor, and momentum) parameterization"
+    turbulent_flux_parameterization::R
     "Prognostic land components present"
     prognostic_land_components::C
 end
@@ -55,12 +57,13 @@ end
     AtmosDrivenCanopyBC(
         atmos,
         radiation,
-        ground;
+        ground,
+        turbulent_flux_parameterization;
         prognostic_land_components = (:canopy,),
     )
 
 An outer constructor for `AtmosDrivenCanopyBC` which is
-intended for use as a default when running standlone canopy
+intended for use as a default when running canopy
 models.
 
 This is also checks the logic that:
@@ -70,7 +73,8 @@ This is also checks the logic that:
 function AtmosDrivenCanopyBC(
     atmos,
     radiation,
-    ground;
+    ground,
+    turbulent_flux_parameterization;
     prognostic_land_components = (:canopy,),
 )
     if typeof(ground) <: PrescribedGroundConditions
@@ -79,7 +83,13 @@ function AtmosDrivenCanopyBC(
         @assert :soil ∈ prognostic_land_components
     end
 
-    args = (atmos, radiation, ground, prognostic_land_components)
+    args = (
+        atmos,
+        radiation,
+        ground,
+        turbulent_flux_parameterization,
+        prognostic_land_components,
+    )
     return AtmosDrivenCanopyBC(args...)
 end
 
@@ -91,59 +101,6 @@ function ClimaLand.get_drivers(bc::AtmosDrivenCanopyBC)
     end
 end
 
-
-"""
-    ClimaLand.displacment_height(model::CanopyModel, Y, p)
-
-A helper function which returns the displacement height for the canopy
-model.
-
-See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
-"""
-function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return FT(0.67) * model.biomass.height
-end
-
-"""
-    ClimaLand.surface_resistance(
-        model::CanopyModel{FT},
-        Y,
-        p,
-        t,
-    ) where {FT}
-Returns the stomatal resistance field of the
-`CanopyModel` canopy.
-"""
-function ClimaLand.surface_resistance(
-    model::CanopyModel{FT},
-    Y,
-    p,
-    t,
-) where {FT}
-    return p.canopy.conductance.r_stomata_canopy
-end
-
-"""
-    ClimaLand.surface_temperature(model::CanopyModel, Y, p, t)
-
-A helper function which returns the temperature for the canopy
-model.
-"""
-function ClimaLand.surface_temperature(model::CanopyModel, Y, p, t)
-    return canopy_temperature(model.energy, model, Y, p)
-end
-
-"""
-    ClimaLand.surface_height(model::CanopyModel, Y, _...)
-
-A helper function which returns the surface height for the canopy
-model, which is stored in the parameter struct.
-
-This assumes that the surface elevation is zero.
-"""
-function ClimaLand.surface_height(model::CanopyModel{FT}, _...) where {FT}
-    return FT(0)
-end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
@@ -179,6 +136,7 @@ function canopy_boundary_fluxes!(
     bc = canopy.boundary_conditions
     radiation = bc.radiation
     atmos = bc.atmos
+    sf_parameterization = bc.turbulent_flux_parameterization
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
@@ -187,7 +145,15 @@ function canopy_boundary_fluxes!(
     canopy_tf = p.canopy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
-    ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
+    ClimaLand.turbulent_fluxes!(
+        canopy_tf,
+        atmos,
+        sf_parameterization,
+        canopy,
+        Y,
+        p,
+        t,
+    )
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -226,7 +192,7 @@ function canopy_boundary_fluxes!(
         bc.ground,
         canopy,
         bc.radiation,
-        canopy.parameters.earth_param_set,
+        canopy.earth_param_set,
         Y,
         t,
     )
@@ -237,6 +203,7 @@ end
     function ClimaLand.turbulent_fluxes!(
         dest,
         atmos::PrescribedAtmosphere,
+        sf_parameterization::MoninObukhovCanopyFluxes,
         model::CanopyModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -254,33 +221,37 @@ SurfaceFluxes before adjusting to account for these resistances.
 function ClimaLand.turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
+    sf_parameterization::MoninObukhovCanopyFluxes,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 )
-    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
-    h_sfc = ClimaLand.surface_height(model, Y, p)
-    r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    T_sfc = canopy_temperature(model.energy, model, Y, p)
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    d_sfc = sf_parameterization.displ
+    z_0m = sf_parameterization.z_0m
+    z_0b = sf_parameterization.z_0b
+    Cd = sf_parameterization.Cd
     u_air = p.drivers.u
     h_air = atmos.h
+
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
             Val(false), # return_extra_fluxes
-            T_sfc,
-            h_sfc,
-            r_stomata_canopy,
-            d_sfc,
             p.drivers.thermal_state,
             u_air,
             h_air,
+            atmos.gustiness,
+            T_sfc,
+            r_stomata_canopy,
+            d_sfc,
+            z_0m,
+            z_0b,
+            Cd,
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            Ref(model.parameters.earth_param_set),
+            Ref(model.earth_param_set),
         )
     return nothing
 end
@@ -299,31 +270,35 @@ fluxes for a coupled simulation with the integrated land model.
 function ClimaLand.coupler_compute_turbulent_fluxes!(
     dest,
     atmos::CoupledAtmosphere,
+    sf_parameterization::MoninObukhovCanopyFluxes,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 )
-    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
-    h_sfc = ClimaLand.surface_height(model, Y, p)
-    r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    T_sfc = canopy_temperature(model.energy, model, Y, p)
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    d_sfc = sf_parameterization.displ
+    z_0m = sf_parameterization.z_0m
+    z_0b = sf_parameterization.z_0b
+    Cd = sf_parameterization.Cd
+
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
             Val(true), # return_extra_fluxes
-            T_sfc,
-            h_sfc,
-            r_stomata_canopy,
-            d_sfc,
             atmos.thermal_state,
             atmos.u,
             atmos.h,
+            atmos.gustiness,
+            T_sfc,
+            r_stomata_canopy,
+            d_sfc,
+            z_0m,
+            z_0b,
+            Cd,
             p.canopy.biomass.area_index.leaf,
             p.canopy.biomass.area_index.stem,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            Ref(model.parameters.earth_param_set),
+            Ref(model.earth_param_set),
         )
     return nothing
 end
@@ -377,20 +352,20 @@ end
 
 """
     function canopy_compute_turbulent_fluxes_at_a_point(
+        ts_in,
+        u::Union{FT, SVector{2, FT}},
+        h::FT,    
+        gustiness::FT,
         T_sfc::FT,
-        h_sfc::FT,
         r_stomata_canopy::FT,
         d_sfc::FT,
-        ts_in,
-        u::FT,
-        h::FT,
-        LAI::FT,
-        SAI::FT,
-        gustiness::FT,
         z_0m::FT,
         z_0b::FT,
+        Cd::FT,
+        LAI::FT,
+        SAI::FT,
         earth_param_set::EP;
-    ) where {FT <: AbstractFloat, EP}
+    ) where {FT <: AbstractFloat, EP, F}
 
 Computes the turbulent surface fluxes for the canopy at a point
 and returns the fluxes in a named tuple.
@@ -400,29 +375,25 @@ evaporation and sensible heat flux, and this modifies the output
 of `SurfaceFluxes.surface_conditions`.
 """
 function canopy_compute_turbulent_fluxes_at_a_point(
-    T_sfc::FT,
-    h_sfc::FT,
-    r_stomata_canopy::FT,
-    d_sfc::FT,
     ts_in,
     u::Union{FT, SVector{2, FT}},
     h::FT,
-    LAI::FT,
-    SAI::FT,
     gustiness::FT,
+    T_sfc::FT,
+    r_stomata_canopy::FT,
+    d_sfc::FT,
     z_0m::FT,
     z_0b::FT,
+    Cd::FT,
+    LAI::FT,
+    SAI::FT,
     earth_param_set::EP;
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    # The following will not run on GPU
-    #    h - d_sfc - h_sfc < 0 &&
-    #        @error("Surface height is larger than atmos height in surface fluxes")
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     if u isa FT
         u = SVector{2, FT}(u, 0)
     end
-    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
+    state_in = SurfaceFluxes.StateValues(h - d_sfc, u, ts_in)
 
     ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
@@ -456,7 +427,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_leaf::FT = 1 / (Cd * max(ustar, gustiness))
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
