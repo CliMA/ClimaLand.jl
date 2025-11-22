@@ -18,6 +18,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
+using ClimaUtilities.TimeManager: ITime
 
 using ClimaDiagnostics
 using ClimaUtilities
@@ -84,8 +85,17 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation = true,
     conservation_period = Day(10),
 )
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+set_ic! =  ClimaLand.Simulations.set_saturated_soil_initial_conditions!
+
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model;
+    outdir,
+    diagnostics,
+    set_ic!,
+);
 
 @info "Run: Global Soil Model"
 @info "Resolution: $nelements"
