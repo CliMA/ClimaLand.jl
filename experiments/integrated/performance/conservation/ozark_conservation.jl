@@ -201,6 +201,10 @@ for float_type in (Float32, Float64)
     photosynthesis =
         FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
+    # Set up optimal LAI model
+    lai_model =
+        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
     # Set up plant hydraulics
     # Read in LAI from MODIS data
     surface_space = land_domain.space.surface
@@ -251,6 +255,7 @@ for float_type in (Float32, Float64)
         radiative_transfer,
         photosynthesis,
         conductance,
+        lai_model,
         hydraulics,
         energy,
         biomass,

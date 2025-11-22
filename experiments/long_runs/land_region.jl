@@ -91,6 +91,10 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
+    # Set up optimal LAI model
+    lai_model =
+        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -98,6 +102,7 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         hydraulics,
+        lai_model,
         z_0m,
         z_0b,
     )
