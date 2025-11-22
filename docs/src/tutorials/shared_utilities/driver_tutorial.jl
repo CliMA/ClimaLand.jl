@@ -32,9 +32,7 @@
 # the start date. The start date should be in UTC.
 
 # Note: for coupled runs, corresponding types `CoupledAtmosphere`
-# and `CoupledRadiativeFluxes` exist. However, these are not defined
-# in ClimaLand, but rather inside of the Clima Coupler repository.
-
+# and `CoupledRadiativeFluxes` exist. 
 
 # # Creating site-level drivers for radiation
 

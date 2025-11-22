@@ -89,7 +89,6 @@ import ClimaLand:
     source!,
     heaviside,
     surface_temperature,
-    surface_specific_humidity,
     surface_albedo,
     surface_emissivity,
     surface_height,
@@ -97,7 +96,8 @@ import ClimaLand:
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    return_momentum_fluxes
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
