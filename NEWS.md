@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- ClimaLand computes fluxes when run with a coupled atmosphere. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
+- ClimaLand computes fluxes when run with a coupled atmosphere and integrated land is being used. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
 
 v1.0.1
 ------
