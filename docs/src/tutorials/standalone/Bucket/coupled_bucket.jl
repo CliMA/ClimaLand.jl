@@ -74,9 +74,10 @@
 # struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 # ```
 
-# Then, we have defined a new method for `turbulent_fluxes!` and `net_radiation!` which dispatch for these types,
-# and updates dest with the fluxes that the coupler has updated `p.bucket.turbulent_fluxes` and `p.bucket.R_n` with.
-# In pseudo code:
+# Then, we have defined a new method for `turbulent_fluxes!` and `net_radiation!` which dispatch for these types.
+# Since the coupler has updated `p.bucket.turbulent_fluxes` and `p.bucket.R_n` in place, we do not need
+# to do anything.
+# In code:
 #
 # ```julia
 # function ClimaLand.turbulent_fluxes!(
@@ -84,11 +85,7 @@
 #    atmos::CoupledAtmosphere,
 #    model::BucketModel,
 #    p)
-#    dest .= (
-#         lhf = p.bucket.turbulent_fluxes.lhf,
-#         shf = p.bucket.turbulent_fluxes.shf,
-#         vapor_flux = p.bucket.turbulent_fluxes.vapor_flux,
-#     )
+#    return nothing
 # end
 # ```
 
@@ -100,32 +97,25 @@
 #     radiation::CoupledRadiativeFluxes{FT},
 #     model::BucketModel{FT},
 #     p)
-#     dest .= p.bucket.R_n
+#     return nothing
 # end
 # ```
 
-# These methods update the values stored in the auxiliary state `p`. Importantly, these functions are
+# Importantly, these functions are
 # called by the bucket model
 # each time step **after** the coupler has already computed these values
 # (or extracted them from another model) and modified `p`!
+# Please note that the behavior in the LandModel is different. In that case,
+# the land model computes its fluxes in its step, regardless of if the simulation
+# is coupled or standalone. We will unify this behavior in the future.
 
 # # Surface air density
 # Within the right hand side/ODE function calls for the bucket model, we need both the
 # surface air density (for computing specific humidity at the surface). In standalone runs,
 # we call the function [`surface_air_density`](@ref ClimaLand.surface_air_density),
-# When the `atmos` type is `PrescribedAtmosphere`, this function uses the atmospheric state and surface
+# This function uses the atmospheric state and surface
 # temperature to estimate the surface air density assuming an ideal gas and hydrostatic balance
 # and by extrapolating from the air density at the lowest level of the atmosphere.
-
-# In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:
-# ```julia
-# function ClimaLand.surface_air_density(
-#     atmos::CoupledAtmosphere,
-#     model::BucketModel,
-#     p)
-#     return p.bucket.ρ_sfc
-# end
-# ```
 
 # Again, this functions is called in the ODE function of the bucket model *after* the coupler
 # has updated the values of `p` with the correct values at that timestep.

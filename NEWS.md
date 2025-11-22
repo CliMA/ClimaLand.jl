@@ -3,8 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- ![breaking change][badge-💥breaking] Rename `coupler_compute_turbulent_fluxes!` so that ClimaLand computes
-  fluxes when run with a coupled atmosphere. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
+- ClimaLand computes fluxes when run with a coupled atmosphere. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
 
 v1.0.1
 ------
