@@ -85,9 +85,7 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation = true,
     conservation_period = Day(10),
 )
-function set_ic!(Y, p, t0, soil)
-    ClimaLand.Simulations.set_saturated_soil_initial_conditions!(Y, soil, t0)
-end
+set_ic! =  ClimaLand.Simulations.set_saturated_soil_initial_conditions!
 
 simulation = LandSimulation(
     start_date,

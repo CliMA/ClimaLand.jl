@@ -86,7 +86,7 @@ function set_soil_initial_conditions!(
     return nothing
 end
 
-function set_saturated_soil_initial_conditions!(Y, soil, t0)
+function set_saturated_soil_initial_conditions!(Y, p, t0, soil)
     params = soil.parameters
     ν = params.ν
     θ_r = params.θ_r
@@ -264,7 +264,7 @@ function make_set_initial_state_from_file(
         Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         # Soil IC
         if saturated
-            set_saturated_soil_initial_conditions!(Y, land.soil, t0)
+            set_saturated_soil_initial_conditions!(Y, p, t0, land.soil)
         else
             T_bounds = extrema(p.snow.T)
             set_soil_initial_conditions!(
