@@ -177,7 +177,6 @@ steps:
         key: "global_bucket_temporalmap_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         artifact_paths:
-        artifact_paths:
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0000/*png"
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
