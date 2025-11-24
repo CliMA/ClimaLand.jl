@@ -180,3 +180,19 @@ function get_model_callbacks(
 )
     return ()
 end
+
+function ClimaLand.make_update_implicit_aux(
+    component::AbstractCanopyComponent,
+    canopy,
+)
+    uia!(p, Y, t) = nothing
+    return uia!
+end
+
+function ClimaLand.make_update_implicit_boundary_fluxes(
+    component::AbstractCanopyComponent,
+    canopy,
+)
+    uibf!(p, Y, t) = nothing
+    return uibf!
+end
