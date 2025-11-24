@@ -594,12 +594,17 @@ function compute_soil_fsat!(
     land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
-    Runoff.get_soil_fsat(
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .= Runoff.get_soil_fsat(
         soil.boundary_conditions.top.runoff,
         Y,
         p,
         soil.domain.fields.depth,
     )
+    return out
 end
 
 function compute_surface_runoff!(
@@ -610,7 +615,12 @@ function compute_surface_runoff!(
     land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
-    return Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .= Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p)
+    return out
 end
 
 function compute_subsurface_runoff!(
@@ -621,11 +631,13 @@ function compute_subsurface_runoff!(
     land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
-    return Runoff.get_subsurface_runoff(
-        soil.boundary_conditions.top.runoff,
-        Y,
-        p,
-    )
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .=
+        Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
+    return out
 end
 
 function compute_saturated_height!(
@@ -636,11 +648,14 @@ function compute_saturated_height!(
     land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
-    return Runoff.get_saturated_height(
-        soil.boundary_conditions.top.runoff,
-        Y,
-        p,
-    )
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+
+    out .=
+        Runoff.get_saturated_height(soil.boundary_conditions.top.runoff, Y, p)
+    return out
 end
 
 function compute_infiltration_capacity!(
@@ -651,18 +666,19 @@ function compute_infiltration_capacity!(
     land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
 )
     soil = get_soil(land_model)
-    return Runoff.soil_infiltration_capacity(soil, Y, p)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .= Runoff.soil_infiltration_capacity(soil, Y, p)
+    return out
 end
 
-function compute_bottom_water_flux!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
-)
-    return p.soil.bottom_bc.water
-end
+@diagnostic_compute "bottom_water_flux" Union{
+    EnergyHydrology,
+    SoilCanopyModel,
+    LandModel,
+} p.soil.bottom_bc.water
 
 function compute_evapotranspiration!(
     out,
