@@ -26,6 +26,7 @@ import ClimaLand:
     initialize_prognostic,
     initialize_auxiliary,
     make_update_boundary_fluxes,
+    make_update_implicit_cache,
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
@@ -1088,6 +1089,21 @@ function make_compute_exp_tendency(canopy::CanopyModel)
 
     end
     return compute_exp_tendency!
+end
+
+function make_update_implicit_cache(canopy::CanopyModel)
+    components = canopy_components(canopy)
+    update_implicit_cache_list = map(
+        x -> make_update_implicit_cache(getproperty(canopy, x), canopy),
+        components,
+    )
+    function update_implicit_cache!(p, Y, t)
+        for f! in update_implicit_cache_list
+            f!(p,Y,t)
+        end
+
+    end
+    return update_implicit_cache!
 end
 
 """

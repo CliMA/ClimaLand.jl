@@ -24,7 +24,8 @@ export AbstractModel,
     name,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-    get_earth_param_set
+    get_earth_param_set,
+    make_update_implicit_cache
 
 import ClimaComms: context, device
 import .Domains: coordinates
@@ -39,8 +40,7 @@ abstract type AbstractModel{FT <: AbstractFloat} end
 """
     AbstractImExModel{FT} <: AbstractModel{FT}
 
-An abstract type for models which must be treated implicitly (and which may
-also have tendency terms that can be treated explicitly).
+An abstract type for models which have both implicit and explicitly stepped variables
 This inherits all the default function definitions from AbstractModel, as well
 as `make_imp_tendency` and `make_compute_imp_tendency` defaults.
 """
@@ -49,7 +49,7 @@ abstract type AbstractImExModel{FT} <: AbstractModel{FT} end
 """
     AbstractExpModel{FT} <: AbstractModel{FT}
 
-An abstract type for models which must be treated explicitly.
+An abstract type for models with only explicitly stepped variables.
 This inherits all the default function definitions from AbstractModel, as well
 as a `make_imp_tendency` default.
 """
@@ -211,21 +211,29 @@ updates the prognostic state of variables that are stepped implicitly.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
-    update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    update_implicit_cache! = make_update_implicit_cache(model)
     function imp_tendency!(dY, Y, p, t)
-        update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+        update_implicit_cache!(p, Y, t)
         compute_imp_tendency!(dY, Y, p, t)
     end
     return imp_tendency!
+end
+
+function make_update_implicit_cache(model::AbstractImExModel)
+    update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    function update_implicit_cache!(p,Y, t)
+        update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
+    end
+    return update_implicit_cache!
 end
 
 """
     make_imp_tendency(model::AbstractModel)
 
 Returns an `imp_tendency` that does nothing. This model type is not
-stepped explicity.
+stepped implicitly.
 """
 function make_imp_tendency(model::AbstractModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
@@ -316,6 +324,11 @@ function make_set_initial_cache(model::AbstractModel)
         update_cache!(p, Y0, t0)
     end
     return set_initial_cache!
+end
+
+function make_update_implicit_cache(model::AbstractModel)
+    update_implicit_cache!(p,Y,t) = nothing
+    return update_implicit_cache!
 end
 
 """

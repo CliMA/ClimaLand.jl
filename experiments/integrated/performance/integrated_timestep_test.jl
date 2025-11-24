@@ -407,7 +407,7 @@ ax3 = Axis(
     title = "T throughout simulation; length = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
 )
 for i in 1:length(times)
-    lines!(ax3, FT.(times[i]) ./ 3600.0, T_states[i], label = "dt $(dts[i]) s")
+    lines!(ax3, FT.(times[i]) ./ 3600.0, T_states[i], label = "dt $(dts[i]) min")
 end
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)

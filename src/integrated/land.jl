@@ -344,7 +344,7 @@ function make_update_boundary_fluxes(
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
-
+        
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -359,7 +359,6 @@ function make_update_boundary_fluxes(
             p,
             land.soil.parameters.earth_param_set,
         )
-
         # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
@@ -388,6 +387,70 @@ function make_update_boundary_fluxes(
     end
     return update_boundary_fluxes!
 end
+
+function make_update_implicit_cache(
+    land::LandModel{FT, MM, SM, RM, SnM},
+) where {
+    FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+    SnM <: Snow.SnowModel{FT},
+}
+
+    function update_implicit_cache!(p, Y, t)
+         (;ν,
+         hydrology_cm,
+         S_s,
+         θ_r,
+         ρc_ds,
+         earth_param_set,
+         ) = land.soil.parameters
+        
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                p.soil.θ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+        # Radiation - updates Rn for soil and snow also
+        lsm_radiant_energy_fluxes!(
+            p,
+            land,
+            land.canopy.radiative_transfer,
+            Y,
+            t,
+        )
+
+        # Effective (radiative) land properties
+        set_eff_land_radiation_properties!(
+            p,
+            land.soil.parameters.earth_param_set,
+        )
+
+        # Update canopy
+        canopy = land.canopy
+        bc = canopy.boundary_conditions
+        radiation = bc.radiation
+        atmos = bc.atmos
+        ground=bc.ground
+        canopy_tf = p.canopy.turbulent_fluxes
+        sf_parameterization = bc.turbulent_flux_parameterization
+
+        # Compute transpiration, SHF, LHF
+        ClimaLand.turbulent_fluxes!(canopy_tf, atmos, sf_parameterization, canopy, Y, p, t)
+      
+    end
+    return update_implicit_cache!
+end
+
 
 """
     lsm_radiant_energy_fluxes!(p,land::LandModel{FT},
@@ -515,7 +578,7 @@ function soil_boundary_fluxes!(
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
-    liquid_influx =
+    liquid_influx = 
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)
     # This partitions the influx into runoff and infiltration
     Soil.update_infiltration_water_flux!(
@@ -553,8 +616,8 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
-        p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        #p.excess_heat_flux +
+        #p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
 
     return nothing

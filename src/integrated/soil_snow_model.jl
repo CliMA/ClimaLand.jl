@@ -368,8 +368,8 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
-        p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        #p.excess_heat_flux +
+        #p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
 
     return nothing
@@ -390,7 +390,7 @@ function Soil.compute_liquid_influx(
     prognostic_land_components::Val{(:snow, :soil)},
 )
     return @. lazy(
-        p.snow.water_runoff * p.snow.snow_cover_fraction +
+        p.snow.water_runoff * p.snow.snow_cover_fraction * 0  +
         (1 - p.snow.snow_cover_fraction) * p.drivers.P_liq,
     )
 end
@@ -437,7 +437,7 @@ function Soil.compute_infiltration_energy_flux(
             p.drivers.P_liq *
             (1 - p.snow.snow_cover_fraction) *
             Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
-            p.snow.energy_runoff * p.snow.snow_cover_fraction
+            p.snow.energy_runoff * p.snow.snow_cover_fraction * 0 
         ),
     )
 end
