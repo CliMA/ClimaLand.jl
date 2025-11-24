@@ -11,7 +11,7 @@ import ClimaLand:
     AbstractExpModel,
     make_update_aux,
     make_compute_exp_tendency,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -213,7 +213,7 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     )...,
 )
 
-function make_update_boundary_fluxes(model::SoilCO2Model)
+function make_update_explicit_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
