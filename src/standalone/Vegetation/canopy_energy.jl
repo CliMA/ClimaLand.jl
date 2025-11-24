@@ -113,6 +113,42 @@ where the canopy temperature is modeled prognostically.
 """
 canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = Y.canopy.energy.T
 
+function make_update_implicit_boundary_fluxes(
+    model::BigLeafEnergyModel{FT},
+    canopy,
+) where {FT}
+    function update_implicit_boundary_fluxes!(p, Y, t)
+        bc = canopy.boundary_conditions
+        radiation = bc.radiation
+        atmos = bc.atmos
+        ground = bc.ground
+        canopy_tf = p.canopy.turbulent_fluxes
+        sf_parameterization = bc.turbulent_flux_parameterization
+
+        # Compute transpiration, SHF, LHF
+        ClimaLand.turbulent_fluxes!(
+            canopy_tf,
+            atmos,
+            sf_parameterization,
+            canopy,
+            Y,
+            p,
+            t,
+        )
+        # Update the canopy radiation
+        canopy_radiant_energy_fluxes!(
+            p,
+            ground,
+            canopy,
+            radiation,
+            canopy.earth_param_set,
+            Y,
+            t,
+        )
+    end
+    return update_implicit_boundary_fluxes!
+end
+
 function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,

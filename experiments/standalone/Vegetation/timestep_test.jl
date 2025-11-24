@@ -225,7 +225,7 @@ ax3 = Axis(
 )
 times = times ./ 3600.0 # hours
 for i in 1:length(times)
-    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) s")
+    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) min")
 end
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)

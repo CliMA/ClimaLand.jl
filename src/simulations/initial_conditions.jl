@@ -199,9 +199,9 @@ Enforces the constraint that T < 273.15 if S > 0.
 """
 function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
     if S > sqrt(eps(FT)) # if snow is on the ground
-        return min(T, FT(273))
+        return min(T, FT(273.15))
     else
-        return T
+        return FT(273.16)
     end
 end
 
@@ -238,15 +238,6 @@ function make_set_initial_state_from_file(
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
         end
-        # Snow IC
-        p.snow.T .= p.drivers.T
-        set_snow_initial_conditions!(
-            Y,
-            p,
-            land.snow.domain.space.surface,
-            ic_path,
-            land.snow.parameters,
-        )
         # SoilCO2 IC
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
@@ -268,6 +259,35 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # Snow IC
+        # Use soil temperature at top to set IC
+        soil = land.soil
+        ρc_s =
+            ClimaLand.Soil.volumetric_heat_capacity.(
+                min.(Y.soil.ϑ_l, soil.parameters.ν .- Y.soil.θ_i), # θ_l
+                Y.soil.θ_i,
+                soil.parameters.ρc_ds,
+                soil.parameters.earth_param_set,
+            )
+        p.soil.T .=
+            ClimaLand.Soil.temperature_from_ρe_int.(
+                Y.soil.ρe_int,
+                Y.soil.θ_i,
+                ρc_s,
+                soil.parameters.earth_param_set,
+            )
+        T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+        p.snow.T .= T_sfc
+        set_snow_initial_conditions!(
+            Y,
+            p,
+            land.snow.domain.space.surface,
+            ic_path,
+            land.snow.parameters,
+        )
+
+        
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
