@@ -156,11 +156,9 @@ function make_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
-    update_aux! = make_update_aux(land)
-    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    update_imp_c! = make_update_implicit_cache(land)
     function imp_tendency!(dY, Y, p, t)
-        update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+        update_imp_c!(p, Y, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -206,6 +204,18 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
         end
     end
     return update_boundary_fluxes!
+end
+
+function make_update_implicit_cache(land::AbstractLandModel)
+    components = land_components(land)
+    update_imp_cache_function_list =
+        map(x -> make_update_implicit_cache(getproperty(land, x)), components)
+    function update_imp_cache!(p, Y, t)
+        for f! in update_imp_cache_function_list
+            f!(p, Y, t)
+        end
+    end
+    return update_imp_cache!
 end
 
 function make_compute_jacobian(land::AbstractLandModel)

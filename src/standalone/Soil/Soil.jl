@@ -78,6 +78,7 @@ import ClimaLand:
     make_compute_imp_tendency,
     make_update_boundary_fluxes,
     make_compute_jacobian,
+    make_update_implicit_cache,
     prognostic_vars,
     auxiliary_vars,
     prognostic_domain_names,

@@ -342,7 +342,7 @@ function make_update_boundary_fluxes(
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
-        # update root extraction
+    # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
 
         # Radiation - updates Rn for soil and snow also
@@ -359,7 +359,6 @@ function make_update_boundary_fluxes(
             p,
             land.soil.parameters.earth_param_set,
         )
-
         # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
@@ -388,6 +387,42 @@ function make_update_boundary_fluxes(
     end
     return update_boundary_fluxes!
 end
+
+function make_update_implicit_cache(
+    land::LandModel{FT, MM, SM, RM, SnM},
+) where {
+    FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+    SnM <: Snow.SnowModel{FT},
+}
+    update_soil_ic! = make_update_implicit_cache(land.soil)
+    update_canopy_ic! = make_update_implicit_cache(land.canopy)
+
+    function update_implicit_cache!(p, Y, t)
+        # Radiation - updates Rn for soil and snow also
+        lsm_radiant_energy_fluxes!(
+            p,
+            land,
+            land.canopy.radiative_transfer,
+            Y,
+            t,
+        )
+
+        # Effective (radiative) land properties
+        set_eff_land_radiation_properties!(
+            p,
+            land.soil.parameters.earth_param_set,
+        )
+
+        # Update canopy
+        update_canopy_ic!(p, Y, t)
+        update_soil_ic!(p, Y, t)
+    end
+    return update_implicit_cache!
+end
+=#
 
 """
     lsm_radiant_energy_fluxes!(p,land::LandModel{FT},

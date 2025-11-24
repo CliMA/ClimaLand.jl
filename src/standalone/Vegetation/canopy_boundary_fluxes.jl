@@ -260,14 +260,14 @@ function canopy_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _, _) =
+    (LH, SH, Ẽ, r_ae, ∂LHF∂Tc, ∂SHF∂Tc, _, _, _) =
         canopy_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
         shf = SH,
         transpiration = Ẽ,
         r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
+        ∂LHF∂Tc = ∂LHF∂Tc,
         ∂SHF∂Tc = ∂SHF∂Tc,
     )
 end
@@ -275,14 +275,14 @@ function canopy_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, ρτxz, ρτyz, buoy_flux) =
+    (LH, SH, Ẽ, r_ae, ∂LHF∂Tc, ∂SHF∂Tc, ρτxz, ρτyz, buoy_flux) =
         canopy_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
         shf = SH,
         transpiration = Ẽ,
         r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
+        ∂LHF∂Tc = ∂LHF∂Tc,
         ∂SHF∂Tc = ∂SHF∂Tc,
         ρτxz = ρτxz,
         ρτyz = ρτyz,
@@ -335,7 +335,6 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         u = SVector{2, FT}(u, 0)
     end
     state_in = SurfaceFluxes.StateValues(h - d_sfc, u, ts_in)
-    T_sfc = T_sfc < 0 ? FT(NaN) : T_sfc
     ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
@@ -368,6 +367,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+    P_air = Thermodynamics.air_pressure(thermo_params, ts_in)
     r_b_leaf::FT = 1 / (Cd * max(ustar, gustiness))
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
@@ -383,10 +383,8 @@ function canopy_compute_turbulent_fluxes_at_a_point(
             conditions.Ch,
             states,
             scheme,
-        ) * r_ae / (r_b_canopy_total + r_ae)
-    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy.
+        ) * r_ae / (r_b_canopy_total + r_ae)    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy.
     LH = _LH_v0 * E
-
     # Derivatives
     # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
     ∂ρsfc∂Tc =
@@ -394,28 +392,74 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         (Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int) *
         (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int - 1) /
         T_int
-    ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
-
-    ∂LHF∂qc =
-        ρ_sfc * _LH_v0 / (r_b_canopy_lai + r_stomata_canopy + r_ae) +
-        LH / ρ_sfc * ∂ρsfc∂Tc
-
-    ∂SHF∂Tc =
-        ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
-        SH / ρ_sfc * ∂ρsfc∂Tc +
-        SH / cp_m_sfc * ∂cp_m_sfc∂Tc
-
+    
+    ∂qc∂Tc = partial_q_sat_partial_T_liq(P_air, T_sfc - FT(273.15))
+    ∂LHF∂Tc = _LH_v0 * ρ_sfc/(r_b_canopy_lai + r_stomata_canopy + r_ae) * ∂qc∂Tc + LH / ρ_sfc * ∂ρsfc∂Tc
+    ∂SHF∂Tc = ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
+        SH / ρ_sfc * ∂ρsfc∂Tc
     return (
         lhf = LH,
         shf = SH,
         transpiration = Ẽ,
         r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
+        ∂LHF∂Tc = ∂LHF∂Tc,
         ∂SHF∂Tc = ∂SHF∂Tc,
         ρτxz = conditions.ρτxz,
         ρτyz = conditions.ρτyz,
         conditions.buoy_flux,
     )
+end
+
+"""
+    partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
+
+Computes the quantity ∂q_sat∂T at temperature T and pressure P,
+over liquid water. The temperature must be in Celsius.
+
+Uses the polynomial approximation from Flatau et al. (1992).
+"""
+function partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
+    esat = FT(
+        6.11213476e2 +
+        4.44007856e1 * T +
+        1.43064234 * T^2 +
+        2.64461437e-2 * T^3 +
+        3.05903558e-4 * T^4 +
+        1.96237241e-6 * T^5 +
+        8.92344772e-9 * T^6 - 3.73208410e-11 * T^7 + 2.09339997e-14 * T^8,
+    )
+    desatdT = FT(
+        4.44017302e1 +
+        1.43064234*2 * T +
+        2.64461437e-2*3 * T^2 +
+        3.05903558e-4*4 * T^3 +
+        1.96237241e-6*5 * T^4 +
+        8.92344772e-9*6 * T^5 - 3.73208410e-11*7 * T^6 + 2.09339997e-14*8 * T^7
+    )
+
+    return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
+end
+
+"""
+    partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
+
+Computes the quantity ∂q_sat∂T at temperature T and pressure P,
+over liquid water. The temperature must be in Celsius.
+
+Uses the polynomial approximation from Flatau et al. (1992).
+"""
+function q_sat_liq(P::FT, T::FT) where {FT}
+    esat = FT(
+        6.11213476e2 +
+        4.44007856e1 * T +
+        1.43064234 * T^2 +
+        2.64461437e-2 * T^3 +
+        3.05903558e-4 * T^4 +
+        1.96237241e-6 * T^5 +
+        8.92344772e-9 * T^6 - 3.73208410e-11 * T^7 + 2.09339997e-14 * T^8,
+    )
+
+    return FT(0.622) * esat / (P - FT(0.378) * esat)
 end
 
 """
@@ -431,7 +475,7 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
+            (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂Tc, :∂SHF∂Tc),
             Tuple{FT, FT, FT, FT, FT, FT},
         },
     )
