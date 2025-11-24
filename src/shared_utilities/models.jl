@@ -203,11 +203,11 @@ updates the prognostic state of variables that are stepped implicitly.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
-    update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+#    update_aux! = make_update_aux(model)
+#    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function imp_tendency!(dY, Y, p, t)
-        update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+#        update_aux!(p, Y, t)
+#        update_boundary_fluxes!(p, Y, t)
         compute_imp_tendency!(dY, Y, p, t)
     end
     return imp_tendency!

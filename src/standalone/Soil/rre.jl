@@ -159,7 +159,13 @@ right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
 """
 function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_imp_tendency!(dY, Y, p, t)
+        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+
+        update_boundary_fluxes!(p,Y,t)
+        
         z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
@@ -398,6 +404,7 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
     )
         (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
 
         # Create divergence operator
         divf2c_op = Operators.DivergenceF2C()
