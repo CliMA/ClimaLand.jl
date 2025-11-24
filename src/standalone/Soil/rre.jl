@@ -379,6 +379,23 @@ function ClimaLand.make_update_aux(model::RichardsModel)
     return update_aux!
 end
 
+function ClimaLand.make_update_implicit_cache(model::RichardsModel)
+    ubf! = make_update_boundary_fluxes(model)
+    function update_imp_cache!(p,Y,t)
+        (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
+        @. p.soil.K = hydraulic_conductivity(
+            hydrology_cm,
+            K_sat,
+            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
+        )
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+        if haskey(p.soil, :dfluxBCdY)
+            ubf!(p,Y,t)
+        end
+    end
+    return update_imp_cache!
+end
+
 """
     ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
 

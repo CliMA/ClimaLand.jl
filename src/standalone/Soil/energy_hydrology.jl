@@ -416,6 +416,40 @@ function ClimaLand.make_compute_imp_tendency(
     return compute_imp_tendency!
 end
 
+function ClimaLand.make_update_implicit_cache(model::EnergyHydrology)
+    ubf! = make_update_boundary_fluxes(model)
+    function update_imp_cache!(p,Y,t)
+        (;ν,
+         hydrology_cm,
+         S_s,
+         θ_r,
+         ρc_ds,
+         earth_param_set,
+         ) = model.parameters
+        
+ #       @. p.soil.θ_l =
+        #            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
+        # Do I need to update κ, K as well? or will those have already been updated by the explicit piece?
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                p.soil.θ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+        if haskey(p.soil, :dfluxBCdY)
+            ubf!(p,Y,t)
+        end
+    end
+    return update_imp_cache!
+end
+
 """
     ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
 
