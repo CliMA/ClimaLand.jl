@@ -192,7 +192,17 @@ import ClimaParams
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
         turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
-        ClimaLand.turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0)
+        sf_parameterization =
+            canopy.boundary_conditions.turbulent_flux_parameterization
+        ClimaLand.turbulent_fluxes!(
+            turb_fluxes_copy,
+            atmos,
+            sf_parameterization,
+            canopy,
+            Y,
+            p,
+            t0,
+        )
 
         @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
         @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
@@ -219,10 +229,6 @@ import ClimaParams
         )
 
         @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
-        @test all(
-            Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
-            FT(289),
-        )
         @test all(
             Array(
                 parent(
@@ -267,7 +273,15 @@ import ClimaParams
 
         VPD = es .- ea
 
-        turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
+        turbulent_fluxes!(
+            turb_fluxes_copy,
+            atmos,
+            sf_parameterization,
+            canopy,
+            Y,
+            p,
+            t0,
+        ) #Per unit m^2 of leaf
         r_ae = Array(parent(turb_fluxes_copy.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
@@ -400,14 +414,7 @@ end
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
-        z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
-        z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
-        shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-            z_0m,
-            z_0b,
-            earth_param_set,
-        )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
         start_date = DateTime(2005)
@@ -526,10 +533,11 @@ end
         )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
-
+        sf_parameterization =
+            ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
-            parameters = shared_params,
-            domain = domain,
+            earth_param_set,
+            domain,
             radiative_transfer = rt_model,
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
@@ -543,6 +551,7 @@ end
                 atmos,
                 radiation,
                 soil_driver,
+                sf_parameterization,
             ),
         )
 
@@ -557,7 +566,7 @@ end
         jacobian! = ClimaLand.make_jacobian(canopy)
 
         set_initial_cache!(p, Y, t0)
-        T_sfc = ClimaLand.surface_temperature(canopy, Y, p, t0)
+        T_sfc = Y.canopy.energy.T
         ρ_sfc = ClimaLand.surface_air_density(
             canopy.boundary_conditions.atmos,
             canopy,
@@ -584,7 +593,7 @@ end
         Y_2.canopy.energy.T = FT(289 + ΔT)
         p_2 = deepcopy(p)
         set_initial_cache!(p_2, Y_2, t0)
-        T_sfc2 = ClimaLand.surface_temperature(canopy, Y_2, p_2, t0)
+        T_sfc2 = Y_2.canopy.energy.T
         ρ_sfc2 = ClimaLand.surface_air_density(
             canopy.boundary_conditions.atmos,
             canopy,
@@ -789,15 +798,16 @@ end
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
         soil_driver = PrescribedGroundConditions{FT}()
-        boundary_conditions =
-            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
+        turbulent_flux_parameterization =
+            MoninObukhovCanopyFluxes(toml_dict, toml_dict["canopy_height"])
+        boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+            atmos,
+            radiation,
+            soil_driver,
+            turbulent_flux_parameterization,
+        )
 
         earth_param_set = LP.LandParameters(toml_dict)
-        parameters = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
-            FT(2.0), # z_0m
-            FT(0.1), # z_0b
-            earth_param_set,
-        )
 
         for radiative_transfer in radiative_transfer_models
             args = (
@@ -811,7 +821,7 @@ end
                 sif,
                 biomass,
                 boundary_conditions,
-                parameters,
+                earth_param_set,
                 domain,
             )
 
@@ -833,7 +843,7 @@ end
             @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
             @test canopy.boundary_conditions == boundary_conditions
-            @test canopy.parameters == parameters
+            @test canopy.earth_param_set == earth_param_set
             @test canopy.domain == domain
 
             Y, p, coords = ClimaLand.initialize(canopy)

@@ -79,8 +79,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-    z_0m,
-    z_0b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
@@ -224,8 +222,6 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m,
-    z_0b,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,

@@ -38,7 +38,7 @@ import ClimaLand:
     Soil
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
-export SharedCanopyParameters, CanopyModel
+export CanopyModel
 include("./component_models.jl")
 include("./biomass.jl")
 include("./PlantHydraulics.jl")
@@ -56,6 +56,8 @@ include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
+include("./canopy_turbulent_fluxes.jl")
+
 
 
 ########################################################
@@ -545,21 +547,6 @@ end
 ########################################################
 
 """
-    SharedCanopyParameters{FT <: AbstractFloat, PSE}
-
-A place to store shared parameters that are required by multiple canopy components.
-$(DocStringExtensions.FIELDS)
-"""
-struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
-    "Roughness length for momentum (m)"
-    z_0m::FT
-    "Roughness length for scalars (m)"
-    z_0b::FT
-    "Earth param set"
-    earth_param_set::PSE
-end
-
-"""
      CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
@@ -606,7 +593,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -628,8 +615,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
     biomass::BM
     "Boundary Conditions"
     boundary_conditions::B
-    "Shared canopy parameters between component models"
-    parameters::PS
+    "Shared parameters between component models"
+    earth_param_set::PSE
     "Canopy model domain"
     domain::D
 end
@@ -646,7 +633,7 @@ end
         sif::AbstractSIFModel{FT},
         biomass::AbstractBiomassModel{FT},
         boundary_conditions::B,
-        parameters::SharedCanopyParameters{FT, PSE},
+        earth_param_set::PSE,
         domain::Union{
             ClimaLand.Domains.Point,
             ClimaLand.Domains.Plane,
@@ -672,7 +659,7 @@ function CanopyModel{FT}(;
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::PrescribedBiomassModel{FT},
     boundary_conditions::B,
-    parameters::SharedCanopyParameters{FT, PSE},
+    earth_param_set::PSE,
     domain::Union{
         ClimaLand.Domains.Point,
         ClimaLand.Domains.Plane,
@@ -706,7 +693,7 @@ function CanopyModel{FT}(;
         sif,
         biomass,
         boundary_conditions,
-        parameters,
+        earth_param_set,
         domain,
     )
     return CanopyModel{FT, typeof.(args)...}(args...)
@@ -722,8 +709,6 @@ end
         forcing::NamedTuple,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        z_0m = toml_dict["canopy_momentum_roughness_length"],
-        z_0b = toml_dict["canopy_scalar_roughness_length"],
         prognostic_land_components = (:canopy,),
         autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
         radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -734,9 +719,10 @@ end
         energy = BigLeafEnergyModel{FT}(toml_dict),
         biomass= PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
         sif = Lee2015SIFModel{FT}(toml_dict),
+        turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height),
     ) where {FT, PSE}
 
-Creates a `CanopyModel` with the provided `domain`, `forcing`, and `parameters`.
+Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`.
 
 Defaults are provided for each canopy component model, which can be overridden
 by passing in a different instance of that type of model. Default parameters are also provided
@@ -764,8 +750,6 @@ function CanopyModel{FT}(
     forcing::NamedTuple,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
-    z_0m = toml_dict["canopy_momentum_roughness_length"],
-    z_0b = toml_dict["canopy_scalar_roughness_length"],
     prognostic_land_components = (:canopy,),
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
@@ -775,6 +759,10 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
+        toml_dict,
+        toml_dict["canopy_height"],
+    ),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
@@ -804,15 +792,11 @@ function CanopyModel{FT}(
         atmos,
         radiation,
         ground,
+        turbulent_flux_parameterization,
         prognostic_land_components,
     )
 
     earth_param_set = LP.LandParameters(toml_dict)
-    parameters = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        z_0m,
-        z_0b,
-        earth_param_set,
-    )
     args = (
         autotrophic_respiration,
         radiative_transfer,
@@ -824,7 +808,7 @@ function CanopyModel{FT}(
         sif,
         biomass,
         boundary_conditions,
-        parameters,
+        earth_param_set,
         domain,
     )
     return CanopyModel{FT, typeof.(args)...}(args...)

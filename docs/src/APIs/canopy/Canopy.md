@@ -18,7 +18,6 @@ ClimaLand.Canopy.CanopyModel{FT}(
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict,
 ) where {FT}
-ClimaLand.Canopy.SharedCanopyParameters
 ClimaLand.Canopy.AbstractCanopyComponent
 ```
 
@@ -27,5 +26,6 @@ ClimaLand.Canopy.AbstractCanopyComponent
 ```@docs
 ClimaLand.Canopy.AbstractCanopyBC
 ClimaLand.Canopy.AtmosDrivenCanopyBC
+ClimaLand.Canopy.MoninObukhovCanopyFluxes
 ```
 

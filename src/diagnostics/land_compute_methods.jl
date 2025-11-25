@@ -127,7 +127,7 @@ function compute_stomatal_conductance!(
     conductance_model::MedlynConductanceModel,
 )
     (; g1, g0, Drel) = conductance_model.parameters
-    earth_param_set = canopy.parameters.earth_param_set
+    earth_param_set = canopy.earth_param_set
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     An_leaf = get_An_leaf(p, canopy.photosynthesis)
     if isnothing(out)

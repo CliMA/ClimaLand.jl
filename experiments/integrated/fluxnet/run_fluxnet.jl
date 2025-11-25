@@ -85,8 +85,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-    z_0m,
-    z_0b,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
@@ -215,15 +213,12 @@ energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
-
 # Combine the components into a CanopyModel
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m,
-    z_0b,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,

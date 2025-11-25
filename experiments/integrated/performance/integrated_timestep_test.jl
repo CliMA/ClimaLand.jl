@@ -287,8 +287,6 @@ biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Put all the components together to form the canopy model
-z_0m = FT(0.13) * h_canopy
-z_0b = FT(0.1) * z_0m
 canopy_domain = obtain_surface_domain(land_domain)
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
@@ -297,8 +295,6 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m,
-    z_0b,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,
