@@ -112,7 +112,34 @@ Returns the canopy temperature under the `BigLeafEnergyModel` model,
 where the canopy temperature is modeled prognostically.
 """
 canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = Y.canopy.energy.T
+function make_update_implicit_cache(
+    model::BigLeafEnergyModel{FT},
+    canopy,
+) where {FT}
+    function update_implicit_cache!(p,Y,t)
+        bc = canopy.boundary_conditions
+        radiation = bc.radiation
+        atmos = bc.atmos
+        ground=bc.ground
+        canopy_tf = p.canopy.turbulent_fluxes
+        # Compute transpiration, SHF, LHF
+        ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
+        # Update the canopy radiation
+        canopy_radiant_energy_fluxes!(
+            p,
+            ground,
+            canopy,
+            radiation,
+            canopy.parameters.earth_param_set,
+            Y,
+            t,
+        )
+    end
+    return update_implicit_cache!
+end
 
+
+    
 function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,

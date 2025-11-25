@@ -191,7 +191,6 @@ function LandSimulation(
             T_exp! = exp_tendency!,
             T_imp! = T_imp!,
             dss! = ClimaLand.dss!,
-            cache! = set_initial_cache!
         ),
         Y,
         (t0, tf),

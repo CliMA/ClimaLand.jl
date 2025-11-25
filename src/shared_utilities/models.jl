@@ -23,7 +23,8 @@ export AbstractModel,
     get_model_callbacks,
     name,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    make_update_implicit_cache
 
 import ClimaComms: context, device
 import .Domains: coordinates
@@ -203,14 +204,22 @@ updates the prognostic state of variables that are stepped implicitly.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
-#    update_aux! = make_update_aux(model)
-#    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    update_implicit_cache! = make_update_implicit_cache(model)
     function imp_tendency!(dY, Y, p, t)
-#        update_aux!(p, Y, t)
-#        update_boundary_fluxes!(p, Y, t)
+        update_implicit_cache!(p, Y, t)
         compute_imp_tendency!(dY, Y, p, t)
     end
     return imp_tendency!
+end
+
+function make_update_implicit_cache(model::AbstractImExModel)
+    update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    function update_implicit_cache!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
+    end
+    return update_implicit_cache!
 end
 
 """
@@ -308,6 +317,11 @@ function make_set_initial_cache(model::AbstractModel)
         update_cache!(p, Y0, t0)
     end
     return set_initial_cache!
+end
+
+function make_update_implicit_cache(model::AbstractModel)
+    update_implicit_cache!(p,Y,t) = nothing
+    return update_implicit_cache!
 end
 
 """

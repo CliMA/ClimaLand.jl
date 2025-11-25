@@ -341,22 +341,9 @@ function ClimaLand.make_compute_exp_tendency(
     return compute_exp_tendency!
 end
 
-"""
-    make_compute_imp_tendency(model::EnergyHydrology)
-
-An extension of the function `make_compute_imp_tendency`, for the integrated
-soil energy and heat equations, including phase change.
-
-This version of this function computes the right hand side of the PDE for
-`Y.soil.ϑ_l`, which is the only quantity we currently step implicitly.
-
-This has been written so as to work with Differential Equations.jl.
-"""
-function ClimaLand.make_compute_imp_tendency(
-    model::EnergyHydrology{FT},
-) where {FT}
-    function compute_imp_tendency!(dY, Y, p, t)
-        # Update ψ θ_l and T
+function make_update_implicit_cache(model::EnergyHydrology)
+    function update_implicit_cache!(p,Y,t)
+                # Update ψ θ_l and T
         (;ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set, ) = model.parameters
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
@@ -373,9 +360,25 @@ function ClimaLand.make_compute_imp_tendency(
         )
         @. p.soil.ψ =
             pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+    end
+    return update_implicit_cache!
+end
 
-        
-        # Do everything else
+"""
+    make_compute_imp_tendency(model::EnergyHydrology)
+
+An extension of the function `make_compute_imp_tendency`, for the integrated
+soil energy and heat equations, including phase change.
+
+This version of this function computes the right hand side of the PDE for
+`Y.soil.ϑ_l`, which is the only quantity we currently step implicitly.
+
+This has been written so as to work with Differential Equations.jl.
+"""
+function ClimaLand.make_compute_imp_tendency(
+    model::EnergyHydrology{FT},
+) where {FT}
+    function compute_imp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
@@ -456,23 +459,6 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
 
-        # Update ψ θ_l and T
-        @. p.soil.θ_l =
-            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
-        @. p.soil.T = temperature_from_ρe_int(
-            Y.soil.ρe_int,
-            Y.soil.θ_i,
-            volumetric_heat_capacity(
-                p.soil.θ_l,
-                Y.soil.θ_i,
-                ρc_ds,
-                earth_param_set,
-            ),
-            earth_param_set,
-        )
-        @. p.soil.ψ =
-            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
-        
         # Create divergence operator
         divf2c_op = Operators.DivergenceF2C()
         divf2c_matrix = MatrixFields.operator_matrix(divf2c_op)

@@ -97,7 +97,8 @@ import ClimaLand:
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    make_update_implicit_cache
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
