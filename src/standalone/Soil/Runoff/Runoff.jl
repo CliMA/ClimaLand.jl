@@ -386,7 +386,7 @@ saturated based on if the total volumetric water content, `twc` is greater
 than porosity `ν`.
 """
 function is_saturated(twc::FT, ν::FT) where {FT}
-    return ClimaLand.heaviside(twc - ν*FT(0.9999))
+    return ClimaLand.heaviside(twc - ν)
 end
 
 """
