@@ -3,7 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 -------
-
+ - Start from saturated conditions [#1555](https://github.com/CliMA/ClimaLand.jl/pull/1555)
+ 
 v1.0.2
 ------
 - Add runoff diagnostics [#1552](https://github.com/CliMA/ClimaLand.jl/pull/1552)
