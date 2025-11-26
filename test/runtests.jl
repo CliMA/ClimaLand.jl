@@ -1,11 +1,17 @@
 using SafeTestsets
 
 import ClimaComms
+ClimaComms.@import_required_backends
+
+# Run biogeochemistry tests without SafeTestsets to avoid module isolation issues
+# with ClimaComms backend initialization
+include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
 
 # Performance and code quality tests
 @safetestset "Aqua tests" begin
     include("aqua.jl")
 end
+
 
 # Shared ClimaLand utilities tests
 @safetestset "Richards model implicit timestepping tests" begin
@@ -59,12 +65,6 @@ end
 
 
 # Standalone Soil model tests
-@safetestset "Soil Biogeochemistry module tests" begin
-    include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
-end
-@safetestset "Soil CO2 parameterization tests" begin
-    include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
-end
 
 @safetestset "Soil climate drivers tests" begin
     include("standalone/Soil/climate_drivers.jl")

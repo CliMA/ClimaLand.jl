@@ -103,6 +103,8 @@ function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
         @name(soil.∫F_vol_liq_water_dt),
         @name(soil.∫F_e_dt),
         @name(soilco2.C),
+        @name(soilco2.O2_a),
+        @name(soilco2.SOC),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),
         @name(snow.S),
