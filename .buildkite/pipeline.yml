@@ -100,6 +100,9 @@ steps:
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
 
+      - label: "Biogeochemistry module tests"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/biogeochemistry_module.jl"
+
       - label: "Implicit stepper full soil; saturated soil"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/energy_hydrology_saturated.jl"
 
