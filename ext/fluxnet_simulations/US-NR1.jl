@@ -33,39 +33,19 @@ Returns geographical information for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
 The values are provided as defaults, and can be overwritten by passing the
 corresponding keyword arguments to this function.
 
-The `time_offset` is the difference from UTC in hours
-and excludes daylight savings time, following Fluxnet convention.
-For this site, the local time is UTC-7 for Mountain Standard Time (MST).
-"""
-function FluxnetSimulations.get_location(
-    FT,
-    ::Val{:US_NR1};
-    time_offset = -7,
-    lat = FT(40.0329),
-    long = FT(-105.5464),
-)
-    return (; time_offset, lat, long)
-end
-
-"""
-    get_fluxtower_height(FT, ::Val{:US_NR1}; kwargs...)
-
-Returns atmosphere height for US-NR1 (Colorado Niwot Ridge) Fluxnet site.
-The values are provided as defaults, and can be overwritten by passing the
-corresponding keyword arguments to this function.
-
-Data sources:
-
 Atmosphere height:
     - Metzger, Stefan & Burba, George & Burns, Sean & Blanken, Peter & Li,
     Jiahong & Luo, Hongyan & Zulueta, Rommel. (2016). https://doi.org/10.5194/amt-9-1341-2016
 """
-function FluxnetSimulations.get_fluxtower_height(
+function FluxnetSimulations.get_location(
     FT,
     ::Val{:US_NR1};
+    time_offset = 7,
+    lat = FT(40.0329),
+    long = FT(-105.5464),
     atmos_h = FT(21.5),
 )
-    return (; atmos_h,)
+    return (; time_offset, lat, long, atmos_h)
 end
 
 """
@@ -91,8 +71,7 @@ function FluxnetSimulations.get_parameters(
     soil_ν = FT(0.45),
     soil_K_sat = FT(4e-7),
     soil_S_s = FT(1e-3),
-    soil_vg_n = FT(2.05),
-    soil_vg_α = FT(0.04),
+    soil_hydrology_cm = vanGenuchten{FT}(; α = FT(0.04), n = FT(2.05)),
     θ_r = FT(0.0),
     ν_ss_quartz = FT(0.1),
     ν_ss_om = FT(0.1),
@@ -100,11 +79,13 @@ function FluxnetSimulations.get_parameters(
     z_0m_soil = FT(0.1),
     z_0b_soil = FT(0.1),
     soil_ϵ = FT(0.98),
-    soil_α_PAR = FT(0.2),
-    soil_α_NIR = FT(0.2),
+    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+        PAR_albedo = FT(0.2),
+        NIR_albedo = FT(0.2),
+    ),
     Ω = FT(0.71),
     χl = FT(0.5),
-    G_Function = ConstantGFunction(FT(0.5)),
+    G_Function = ConstantGFunction(χl),
     α_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
@@ -141,8 +122,7 @@ function FluxnetSimulations.get_parameters(
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -150,8 +130,7 @@ function FluxnetSimulations.get_parameters(
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
