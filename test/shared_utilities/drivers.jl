@@ -149,6 +149,8 @@ end
         :T,
         :P,
         :q,
+        :u,
+        :thermal_state,
         :SW_d,
         :LW_d,
         :cosθs,

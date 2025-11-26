@@ -126,22 +126,15 @@ end
 
 
 """
-    ClimaLand.surface_specific_humidity(atmos::PrescribedAtmosphere, model::SnowModel, Y, p, _...)
+    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
-In the case of a PrescibedAtmoshere, the atmosphere thermal state is accessed
-from the drivers in the cache.
+This asumes the atmospheric surface state is stored in p.drivers.
 """
-function ClimaLand.surface_specific_humidity(
-    atmos::PrescribedAtmosphere,
-    model::SnowModel,
-    Y,
-    p,
-    _...,
-)
+function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
@@ -152,32 +145,6 @@ function ClimaLand.surface_specific_humidity(
     return p.snow.q_sfc
 end
 
-"""
-    ClimaLand.surface_specific_humidity(atmos::CoupledAtmosphere, model::SnowModel, Y, p, _...)
-
-Returns the precomputed specific humidity over snow as a weighted
-fraction of the saturated specific humidity over liquid and frozen
-water.
-
-In the case of a CoupledAtmoshere, the atmosphere thermal state is accessed
-from the atmosphere object.
-"""
-function ClimaLand.surface_specific_humidity(
-    atmos::CoupledAtmosphere,
-    model::SnowModel,
-    Y,
-    p,
-    _...,
-)
-    @. p.snow.q_sfc = snow_surface_specific_humidity(
-        p.snow.T_sfc,
-        p.snow.q_l,
-        atmos.thermal_state,
-        model.parameters,
-    )
-
-    return p.snow.q_sfc
-end
 
 """
     snow_surface_specific_humidity(T_sfc::FT, q_l::FT, atmos_ts, parameters) where {FT}

@@ -967,18 +967,20 @@ end
 
 function turbulent_fluxes!(
     dest,
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     model::EnergyHydrology{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 ) where {FT}
+    @static if pkgversion(ClimaLand) < v"1.1" &&
+               typeof(atmos) <: CoupledAtmosphere
+        return nothing # Coupler has already computed the fluxes and updated `dest` in place
+    end
     # Obtain surface quantities needed for computation; these should not allocate
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
     h_sfc = ClimaLand.surface_height(model, Y, p)
     d_sfc = ClimaLand.displacement_height(model, Y, p)
-    u_air = p.drivers.u
-    h_air = atmos.h
     (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
         model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
@@ -993,9 +995,12 @@ function turbulent_fluxes!(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
+
+    momentum_fluxes = Val(return_momentum_fluxes(atmos))
+
     dest .=
         soil_turbulent_fluxes_at_a_point.(
-            Val(false), # return_extra_fluxes
+            momentum_fluxes, # return_extra_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
@@ -1006,8 +1011,8 @@ function turbulent_fluxes!(
             θ_r_sfc,
             K_sat_sfc,
             p.drivers.thermal_state,
-            u_air,
-            h_air,
+            p.drivers.u,
+            atmos.h,
             atmos.gustiness,
             z_0m,
             z_0b,
@@ -1341,68 +1346,5 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
-    return nothing
-end
-
-"""
-    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::EnergyHydrology, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
-
-This function computes the turbulent surface fluxes for a coupled simulation.
-This function is very similar to the `EnergyHydrology` method of `turbulent_fluxes!`,
-but it is used with a `CoupledAtmosphere` which contains all the necessary
-atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
-
-This function is intended to be called by ClimaCoupler.jl when computing
-fluxes for a coupled simulation with the integrated land model.
-"""
-function ClimaLand.coupler_compute_turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    model::EnergyHydrology,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    # Obtain surface quantities needed for computation; these should not allocate
-    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
-    h_sfc = ClimaLand.surface_height(model, Y, p)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
-    (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
-        model.parameters
-    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
-    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
-    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
-    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
-    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
-    θ_l_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(
-        θ_l_sfc,
-        p.soil.θ_l,
-        model.domain.fields.z,
-        model.domain.fields.Δz_top,
-    )
-    dest .=
-        soil_turbulent_fluxes_at_a_point.(
-            Val(true), # return_extra_fluxes
-            T_sfc,
-            θ_l_sfc,
-            θ_i_sfc,
-            h_sfc,
-            d_sfc,
-            hydrology_cm_sfc,
-            ν_sfc,
-            θ_r_sfc,
-            K_sat_sfc,
-            atmos.thermal_state,
-            atmos.u,
-            atmos.h,
-            atmos.gustiness,
-            z_0m,
-            z_0b,
-            Ω,
-            γ,
-            γT_ref,
-            Ref(earth_param_set),
-        )
     return nothing
 end

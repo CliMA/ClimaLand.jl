@@ -35,7 +35,8 @@ import ClimaLand:
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
     IntervalBasedCallback,
-    Soil
+    Soil,
+    return_momentum_fluxes
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export CanopyModel
