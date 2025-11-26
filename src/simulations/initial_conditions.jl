@@ -330,7 +330,7 @@ function make_set_initial_state_from_file(
                 ) .* land.canopy.hydraulics.parameters.ν
         end
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.snow.T
+            Y.canopy.energy.T .= p.drivers.T
         end
     end
     return set_ic!
@@ -376,7 +376,7 @@ function make_set_initial_state_from_file(
         # If the canopy model has an energy model, we need to set the initial temperature
         hasproperty(Y.canopy, :energy) && Y.canopy.energy.T .= p.drivers.T
         if saturated
-            set_saturated_soil_initial_conditions!(Y, p, t0, model)
+            set_saturated_soil_initial_conditions!(Y, p, t0, land.soil)
         else
             T_bounds = extrema(p.drivers.T)
 
