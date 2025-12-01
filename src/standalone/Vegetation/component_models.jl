@@ -20,6 +20,7 @@ the canopy component parameterizations.
 """
 abstract type AbstractCanopyComponent{FT <: AbstractFloat} end
 
+@nospecialize
 """
     ClimaLand.auxiliary_types(::AbstractCanopyComponent)
 
@@ -180,3 +181,4 @@ function get_model_callbacks(
 )
     return ()
 end
+@specialize

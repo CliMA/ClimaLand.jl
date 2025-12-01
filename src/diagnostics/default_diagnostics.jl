@@ -7,7 +7,7 @@ export default_diagnostics
 #
 # If you are developing new models, add your defaults here. If you want to add
 # more high level interfaces, add them here. Feel free to include extra files.
-
+@nospecialize
 """
     function common_diagnostics(reduction_period,
                                 reduction_type,
@@ -58,7 +58,7 @@ function common_diagnostics(
         end...,
     )
 end
-
+@specialize
 """
     get_period(val, dt)
 
@@ -103,7 +103,7 @@ get_reduction(::Val{:max}) = max
 get_reduction(::Val{:min}) = min
 get_reduction(val) = @error("Diagnostic reduction type $val not supported.")
 
-
+@nospecialize
 default_diagnostics(
     model::ClimaLand.AbstractModel,
     start_date::ITime{<:Any, <:Any, <:DateTime},
@@ -579,3 +579,4 @@ end
 function get_short_diagnostics(model::BucketModel)
     return get_possible_diagnostics(model)
 end
+@specialize
