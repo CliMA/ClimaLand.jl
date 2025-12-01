@@ -146,7 +146,7 @@ function canopy_boundary_fluxes!(
         canopy,
         Y,
         p,
-        t,
+        t)
     if canopy.hydraulics isa PlantHydraulicsModel
         n_stem = canopy.hydraulics.n_stem
         n_leaf = canopy.hydraulics.n_leaf
@@ -165,14 +165,7 @@ function canopy_boundary_fluxes!(
     # to handle standalone canopy simulations vs integrated ones
 
     # Update the root flux of water per unit ground area in place
-    root_water_flux_per_ground_area!(
-        p,
-        bc.ground,
-        canopy.hydraulics,
-        canopy,
-        Y,
-        t,
-    )
+    root_water_flux_per_ground_area!(p, bc.ground, canopy.hydraulics, canopy, Y, t)
     # Update the root flux of energy per unit ground area in place
     root_energy_flux_per_ground_area!(p, bc.ground, canopy.energy, canopy, Y, t)
 
