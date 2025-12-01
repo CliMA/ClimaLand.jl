@@ -571,7 +571,6 @@ function get_short_diagnostics(model::LandModel)
         "precip",
         "lhf",
         "msf",
-        "lwp",
         "iwc",
         "sdr",
     ]

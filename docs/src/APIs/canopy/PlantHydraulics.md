@@ -34,7 +34,7 @@ ClimaLand.Canopy.PlantHydraulicsModel{FT}(
 ClimaLand.Canopy.SteadyStateModel{FT}()
 ```
 
-## Prognostic Hlant Hydraulics Diagnostic Variables
+## Prognostic Plant Hydraulics Diagnostic Variables
 
 ```@docs
 ClimaLand.PlantHydraulics.water_flux

@@ -246,19 +246,26 @@ function compute_leaf_water_potential!(
     end
 end
 
+# @diagnostic_compute "flux_per_ground_area" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.fa # return a Tuple
 @diagnostic_compute "root_flux_per_ground_area" Union{
     SoilCanopyModel,
     LandModel,
     CanopyModel,
 } p.canopy.hydraulics.fa_roots
-
-# Biomass
 @diagnostic_compute "leaf_area_index" Union{
     SoilCanopyModel,
     LandModel,
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
 
+# Canopy - Soil moisture stress
+@diagnostic_compute "moisture_stress_factor" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.soil_moisture_stress.βm
+
+# Canopy - Hydraulics
 @diagnostic_compute "root_area_index" Union{
     SoilCanopyModel,
     LandModel,
@@ -269,14 +276,6 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.biomass.area_index.stem
-
-# Canopy - Soil moisture stress
-@diagnostic_compute "moisture_stress_factor" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.soil_moisture_stress.βm
-
 
 # Canopy - Photosynthesis
 @diagnostic_compute "photosynthesis_gross_canopy" Union{
