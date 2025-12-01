@@ -15,6 +15,7 @@ using Insolation
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
 using StaticArrays
+using NVTX
 import ..Parameters as LP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
@@ -1228,7 +1229,7 @@ function make_update_drivers(driver_tuple::Tuple)
         update_driver_list = map(driver_tuple) do (driver)
             make_update_drivers(driver)
         end
-        function update_drivers!(p, t)
+        NVTX.@annotate function update_drivers!(p, t)
             for ud! in update_driver_list
                 ud!(p, t)
             end
