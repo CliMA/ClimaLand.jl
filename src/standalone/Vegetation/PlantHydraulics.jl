@@ -33,8 +33,6 @@ export PlantHydraulicsModel,
     inverse_water_retention_curve,
     root_water_flux_per_ground_area!,
     PlantHydraulicsParameters,
-    PrescribedTranspiration,
-    DiagnosticTranspiration,
     AbstractConductivityModel,
     AbstractRetentionModel,
     LinearRetentionCurve,
@@ -49,14 +47,6 @@ An abstract type for plant hydraulics models.
 abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLand.name(::AbstractPlantHydraulicsModel) = :hydraulics
-
-"""
-    AbstractTranspiration{FT <: AbstractFloat}
-
-An abstract type for types representing different models of
-transpiration (Prescribed or Diagnostic)
-"""
-abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
     PlantHydraulicsParameters
@@ -139,7 +129,7 @@ option (intendend only for debugging) to use a prescribed transpiration rate.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsModel{FT, PS, T, AA <: AbstractArray{FT}} <:
+struct PlantHydraulicsModel{FT, PS, AA <: AbstractArray{FT}} <:
        AbstractPlantHydraulicsModel{FT}
     "The number of stem compartments for the plant; can be zero"
     n_stem::Int64
@@ -153,8 +143,6 @@ struct PlantHydraulicsModel{FT, PS, T, AA <: AbstractArray{FT}} <:
     compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
     parameters::PS
-    "The transpiration model, of type `AbstractTranspiration`"
-    transpiration::T
 end
 
 function PlantHydraulicsModel{FT}(;
@@ -163,9 +151,7 @@ function PlantHydraulicsModel{FT}(;
     compartment_midpoints::Vector{FT},
     compartment_surfaces::Vector{FT},
     parameters::PlantHydraulicsParameters{FT},
-    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
 ) where {FT}
-    args = (parameters, transpiration)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
     for i in 1:length(compartment_midpoints)
@@ -183,7 +169,7 @@ function PlantHydraulicsModel{FT}(;
     end
     return PlantHydraulicsModel{
         FT,
-        typeof.(args)...,
+        typeof(parameters),
         typeof(compartment_midpoints),
     }(
         n_stem,
@@ -191,7 +177,7 @@ function PlantHydraulicsModel{FT}(;
         compartment_midpoints,
         compartment_surfaces,
         compartment_labels,
-        args...,
+        parameters,
     )
 end
 
@@ -230,7 +216,7 @@ Defines the auxiliary types for the PlantHydraulicsModel.
 """
 ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     NTuple{model.n_stem + model.n_leaf, FT},
-    NTuple{model.n_stem + model.n_leaf, FT},
+    NTuple{model.n_stem + model.n_leaf - 1, FT},
     FT,
 )
 ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
@@ -243,7 +229,7 @@ Computes the harmonic mean of x >=0 and y >=0; returns zero if both
 x and y are zero.
 
 """
-harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
+harmonic_mean(x::FT, y::FT) where {FT} = 2 * x * y / max(x + y, eps(FT))
 
 """
     water_flux(
@@ -484,6 +470,7 @@ function make_compute_exp_tendency(
         # for broadcasted expressions using the macro @.
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
+        i_end = n_stem + n_leaf
         @inbounds for i in 1:(n_stem + n_leaf)
             im1 = i - 1
             ip1 = i + 1
@@ -493,6 +480,10 @@ function make_compute_exp_tendency(
             if i == 1
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / max(AI * dz, eps(FT)) * (fa_roots - fa.:($$i))
+            elseif i == i_end
+                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                    1 / max(AI * dz, eps(FT)) *
+                    (fa.:($$im1) - p.canopy.turbulent_fluxes.transpiration)
             else
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
@@ -572,74 +563,7 @@ function root_water_flux_per_ground_area!(
             ψ_base,
             hydraulic_conductivity(conductivity_model, ψ_soil),
             hydraulic_conductivity(conductivity_model, ψ_base),
-        ) *
-        (model.compartment_surfaces[1] - (-rooting_depth)) *
-        above_ground_area_index
-end
-
-"""
-    PrescribedTranspiration{FT, F <: Function} <: AbstractTranspiration{FT}
-
-A concrete type used for dispatch when computing the transpiration
-from the leaves, in the case where transpiration is prescribed.
-"""
-struct PrescribedTranspiration{FT, F <: Function} <: AbstractTranspiration{FT}
-    T::F
-end
-
-function PrescribedTranspiration{FT}(T::Function) where {FT <: AbstractFloat}
-    return PrescribedTranspiration{FT, typeof(T)}(T)
-end
-
-"""
-    transpiration_per_ground_area(
-        transpiration::PrescribedTranspiration{FT},
-        Y,
-        p,
-        t,
-    )::FT where {FT}
-
-A method which computes the transpiration in meters/sec between the leaf
-and the atmosphere,
-in the case of a standalone plant hydraulics model with prescribed
-transpiration rate.
-
-Transpiration should be per unit ground area, not per leaf area.
-"""
-function transpiration_per_ground_area(
-    transpiration::PrescribedTranspiration{FT},
-    _,
-    _,
-    t,
-)::FT where {FT}
-    return FT(transpiration.T(t)) # (m/s)
-end
-
-"""
-    DiagnosticTranspiration{FT} <: AbstractTranspiration{FT}
-
-A concrete type used for dispatch in the case where transpiration is computed
-diagnostically, as a function of prognostic variables and parameters,
-and stored in `p` during the `update_aux!` step.
-"""
-struct DiagnosticTranspiration{FT} <: AbstractTranspiration{FT} end
-
-"""
-    transpiration_per_ground_area(transpiration::DiagnosticTranspiration, Y, p, t)
-
-Returns the transpiration computed diagnostically using local conditions.
-In this case, it just returns the value which was computed and stored in
-the `aux` state during the update_aux! step.
-
-Transpiration should be per unit ground area, not per leaf area.
-"""
-function transpiration_per_ground_area(
-    transpiration::DiagnosticTranspiration,
-    Y,
-    p,
-    t,
-)
-    return p.canopy.turbulent_fluxes.transpiration
+        ) * above_ground_area_index
 end
 
 """
@@ -742,6 +666,5 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
                 ),
             ) * PlantHydraulics.harmonic_mean(areaip1, areai)
     end
-    # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 end
 end
