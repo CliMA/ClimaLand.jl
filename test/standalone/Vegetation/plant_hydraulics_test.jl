@@ -14,9 +14,8 @@ import ClimaLand.Parameters as LP
 import Insolation
 using Dates
 
-
 for FT in (Float32, Float64)
-    @testset "Plant hydraulics parameterizations, FT = $FT" begin
+    @testset "Prognostic hydraulics parameterizations, FT = $FT" begin
         ν = FT(0.5)
         S_s = FT(1e-2)
         K_sat = FT(1.8e-8)
@@ -51,7 +50,7 @@ for FT in (Float32, Float64)
         )
     end
 
-    @testset "Plant hydraulics model integration tests, FT = $FT" begin
+    @testset "Prognostic plant hydraulics model integration tests, FT = $FT" begin
         toml_dict = LP.create_toml_dict(FT)
 
         domain = Plane(;
@@ -337,4 +336,22 @@ for FT in (Float32, Float64)
             ) .≈ FT(0),
         )
     end
+end
+
+@testset "Steady state hydraulics test" begin
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    z_sfc = FT(0)
+    longlat = (FT(-118), FT(34.1))
+    domain = ClimaLand.Domains.Point(; z_sfc, longlat)
+    LAI = TimeVaryingInput(t -> FT(8))
+    atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
+    ground = PrescribedGroundConditions{FT}()
+    forcing = (; atmos, radiation, ground)
+    toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
+    hydraulics = Canopy.PlantHydraulics.SteadyStateModel{FT}()
+    canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict; hydraulics)
+    Y, p, cds = initialize(canopy)
+    @test propertynames(Y.canopy) == (:energy,)
+    @test ~(:hydraulics ∈ propertynames(Y.canopy))
 end
