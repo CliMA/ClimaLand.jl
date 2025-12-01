@@ -138,8 +138,6 @@ function make_update_implicit_cache(
     return update_implicit_cache!
 end
 
-
-    
 function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,
@@ -163,9 +161,37 @@ function make_compute_imp_tendency(
         @. dY.canopy.energy.T =
             -(
                 -p.canopy.radiative_transfer.LW_n -
-                p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
-                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
+                p.canopy.turbulent_fluxes.lhf
+            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+    end
+    return compute_imp_tendency!
+end
+    
+function make_compute_exp_tendency(
+    model::BigLeafEnergyModel{FT},
+    canopy,
+) where {FT}
+    function compute_imp_tendency!(dY, Y, p, t)
+        area_index = p.canopy.biomass.area_index
+        ac_canopy = model.parameters.ac_canopy
+        # Energy Equation:
+        # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
+        # or( ac_canopy AI)∂T∂t = -∑F
+        # where ∑F = F_sfc - F_bot, and both F_sfc and F_bot are per
+        # unit area ground [W/m^2].
+        # Because they are per unit area ground, we need the factor of
+        # area index on the LHF, as ac_canopy [J/m^2/K]
+        # is per unit area plant.
+
+        # d(energy.T) = - net_energy_flux / specific_heat_capacity
+        # To prevent dividing by zero, change AI" to
+        # "max(AI, eps(FT))"
+
+        @. dY.canopy.energy.T =
+            -(
+                -p.canopy.radiative_transfer.SW_n -
+                p.canopy.energy.fa_energy_roots
             ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!
