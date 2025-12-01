@@ -18,9 +18,6 @@ ClimaLand.PlantHydraulics.AbstractConductivityModel
 ClimaLand.PlantHydraulics.Weibull
 ClimaLand.PlantHydraulics.AbstractRetentionModel
 ClimaLand.PlantHydraulics.LinearRetentionCurve
-ClimaLand.PlantHydraulics.AbstractTranspiration
-ClimaLand.PlantHydraulics.DiagnosticTranspiration
-ClimaLand.PlantHydraulics.PrescribedTranspiration
 ```
 
 ## Constructor Methods
