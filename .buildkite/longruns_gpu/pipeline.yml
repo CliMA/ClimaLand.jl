@@ -109,7 +109,7 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           PERTURBED_RUN: ""
- 
+
       - label: ":snow_capped_mountain: Low-Res Snowy Land Perturbed RH"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/low_res_snowy_land_rh.jl
@@ -127,15 +127,19 @@ steps:
     steps:
       - label: "Snowy Land, 19 years"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
+          - "snowy_land_pmodel_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
+
+      - label: "Send simulation output to Azure VM for visualization"
+        command:
+          - rsync -avz snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/* azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
 
       - label: "Soil, 20 years"
         command:
