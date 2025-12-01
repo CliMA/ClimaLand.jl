@@ -204,7 +204,6 @@ import ClimaParams
             t0,
         )
 
-        @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
         @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
         @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
         @test p.canopy.turbulent_fluxes.transpiration ==
@@ -741,7 +740,6 @@ end
         Y.canopy.hydraulics .= canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(289)
         p.canopy.hydraulics.ψ.:1 .= NaN
-        p.canopy.hydraulics.fa.:1 .= NaN
         dY.canopy.hydraulics.ϑ_l.:1 .= NaN
 
         set_initial_cache! = make_set_initial_cache(canopy)
@@ -749,7 +747,6 @@ end
         set_initial_cache!(p, Y, t0)
 
         @test all(Array(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1)))
-        @test all(Array(parent(p.canopy.hydraulics.fa.:1)) .== FT(0))
         @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0))
@@ -956,6 +953,7 @@ end
             :biomass,
             :turbulent_fluxes,
         )
+        @test propertynames(p.canopy.hydraulics) == (:ψ, :fa_roots)
         for component in ClimaLand.Canopy.canopy_components(canopy)
             # Only hydraulics has a prognostic variable
             if component == :hydraulics

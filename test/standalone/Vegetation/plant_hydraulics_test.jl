@@ -272,7 +272,7 @@ for FT in (Float32, Float64)
         tendecy of the model also results in a steady state. This check is repeated using
         the plant hydraulics model directly.
         =======================#
-        ftol = FT == Float32 ? FT(1e-10) : FT(1e-16)
+        ftol = FT(T0A * 1e-4) # 0.01% error in the solution
         soln = nlsolve(
             initial_compute_exp_tendency!,
             Vector{FT}(-3.0:-3:-33);
@@ -306,8 +306,8 @@ for FT in (Float32, Float64)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
 
-        @test all(parent(dY.canopy.hydraulics.ϑ_l) .< ftol) # starts in equilibrium
-
+        @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l))[:] .< ftol) # starts in equilibrium
+        @test all(parent(p.canopy.hydraulics.fa)[:] .- T0A .< ftol) # Fluxes are as we expect
 
         # repeat using the plant hydraulics model directly
         # make sure it agrees with what we get when use the canopy model ODE
