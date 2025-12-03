@@ -8,7 +8,7 @@ To add a variable for the leaderboard, add a key-value pair to the dictionary
 `sim_var_dict` whose key is the short name of the variable and the value is an
 anonymous function that returns a `OutputVar`. For each variable, any
 preprocessing should be done in the corresponding anonymous function which
-includes unit conversion and shifting the dates.
+includes unit conversion.
 
 The variable should have only three dimensions: time, longitude, and latitude.
 """
@@ -22,8 +22,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "lwu",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             return sim_var
         end
 
@@ -33,8 +31,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "et",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             (ClimaAnalysis.units(sim_var) == "kg m^-2 s^-1") && (
                 sim_var = ClimaAnalysis.convert_units(
                     sim_var,
@@ -52,8 +48,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "gpp",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             # converting from to `mol CO2 m^-2 s^-1` in sim to `g C m-2 day-1` in obs
             (ClimaAnalysis.units(sim_var) == "mol CO2 m^-2 s^-1") && (
                 sim_var = ClimaAnalysis.convert_units(
@@ -71,8 +65,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "lhf",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             return sim_var
         end
 
@@ -82,8 +74,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "shf",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             return sim_var
         end
 
@@ -93,8 +83,6 @@ function get_sim_var_dict(diagnostics_folder_path)
                 ClimaAnalysis.SimDir(diagnostics_folder_path),
                 short_name = "swu",
             )
-            sim_var =
-                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
             return sim_var
         end
     return sim_var_dict

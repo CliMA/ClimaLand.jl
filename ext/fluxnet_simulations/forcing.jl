@@ -423,7 +423,7 @@ end
 Gets and returns the a NamedTuple with the comparison data for the Fluxnet `site_ID`,
 given its hour offset from UTC, and the value used to indicate missing data (`val`).
 
-Note that the time associated with the comparison data is the end of the averaging
+Note that the time associated with the comparison data is the start of the averaging
 period used in Fluxnet, which aligns with convention used for saving ClimaLand diagnostics.
 """
 function FluxnetSimulations.get_comparison_data(
@@ -463,7 +463,7 @@ function FluxnetSimulations.get_comparison_data(
         hour_offset_from_UTC,
         data,
         column_name_map,
-        timestamp_name = "TIMESTAMP_END",
+        timestamp_name = "TIMESTAMP_START",
     )
     data_dt = Second(UTC_datetimes[2] - UTC_datetimes[1]).value # seconds
 

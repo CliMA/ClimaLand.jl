@@ -185,13 +185,13 @@ then average them to get the timestamp at the midpoints. This can be done by cal
 twice, once with `timestamp_name = "TIMESTAMP_START"` and once with `"TIMESTAMP_END"`,
 then averaging the results.
 
-For comparison data, we want to get the timestamp at the end of the averaging period (described below).
-This can be done by calling this function with `timestamp_name = "TIMESTAMP_END"`.
+For comparison data, we want to get the timestamp at the start of the averaging period (described below).
+This can be done by calling this function with `timestamp_name = "TIMESTAMP_START"`.
 
 ClimaLand diagnostics are reduced over a time period (e.g. hourly, daily, monthly), and saved with the
-first date following that average period. For example, the hourly average from 11-noon is saved with a
-timestamp of noon. To make a true comparison to Fluxnet data, therefore, we must use halfhourly
-diagnostics in ClimaLand, and return the UTC time that corresponds to the end of the averaging period in Fluxnet.
+first date of period. For example, the hourly average from 11-noon is saved with a
+timestamp of 11. To make a true comparison to Fluxnet data, therefore, we must use halfhourly
+diagnostics in ClimaLand, and return the UTC time that corresponds to the start of the averaging period in Fluxnet.
 
 # Arguments
 - `hour_offset_from_UTC`: The hour offset from UTC for the local timezone
