@@ -465,10 +465,6 @@ end
 function extract_aridity!(like, p, canopy, ::Type{FT}) where {FT}
     # drivers first; then canopy.parameters; else soft default
     ari = _getfirst(p.drivers, (:CWD_mm, :aridity_index, :PET_MAP_ratio, :MAP_over_PET), nothing)
-    if ari === nothing && Base.hasproperty(canopy, :parameters)
-        ari = _getfirst(canopy.parameters, (:CWD_mm, :aridity_index, :PET_MAP_ratio, :MAP_over_PET), nothing)
-    end
-    ari === nothing && (ari = FT(100.0))  # safe fallback for smoke tests
     return _as_like_field(like, ari, FT)
 end
 
@@ -488,30 +484,25 @@ end
 
 # --- uSPAC algebra as scalar funcs so we can broadcast ---
 @inline function _uspac_fww_from_Pi(ΠR, ΠF)
-    # Add safeguard to prevent division by zero when ΠR ≈ 0
-    # Use a minimum threshold of 1e-6 or 100*eps, whichever is larger
-    FT = typeof(ΠR)
-    ΠR_safe = max(abs(ΠR), FT(1e-6), eps(FT) * FT(100))
-    # Preserve sign of ΠR
-    ΠR_safe = ifelse(ΠR < zero(FT), -ΠR_safe, ΠR_safe)
-    
+    ΠR_safe = max(abs(ΠR), sqrt(eps(ΠR)))  # Prevent division by zero
     halfΠF = ΠF / 2
     rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR_safe
-    rad = ifelse(rad > eps(rad), rad, eps(rad))
-    return 1 - (1 / (2 * ΠR_safe)) * (1 + halfΠF - sqrt(rad))
+    rad = max(rad, eps(rad))  # Ensure positive radicand
+    fww = 1 - (1 / (2 * ΠR_safe)) * (1 + halfΠF - sqrt(rad))
+    return clamp(fww, zero(fww), one(fww))  # Ensure [0,1]
 end
+
 @inline function _uspac_s_of_beta(β, ΠR, ΠF, ΠT, ΠS, b)
     β = clamp(β, zero(β), one(β))
     
-    # Add safeguards to prevent division by zero when π-groups ≈ 0
-    FT = typeof(β)
-    ΠR_safe = max(abs(ΠR), FT(1e-6), eps(FT) * FT(100))
-    ΠR_safe = ifelse(ΠR < zero(FT), -ΠR_safe, ΠR_safe)
-    ΠT_safe = max(abs(ΠT), FT(1e-6), eps(FT) * FT(100))
-    ΠS_safe = max(abs(ΠS), FT(1e-6), eps(FT) * FT(100))
-    
-    denom = 1 - (1 - β) * ΠR_safe
+    # Bassiouni et al Eq. 5
+    denom = 1 - (1 - β) * ΠR
     denom = ifelse(abs(denom) < sqrt(eps(denom)), sign(denom) * sqrt(eps(denom)), denom)
+    
+    # Safeguard ΠT and ΠS
+    ΠT_safe = max(abs(ΠT), sqrt(eps(ΠT)))
+    ΠS_safe = max(abs(ΠS), sqrt(eps(ΠS)))
+    
     termA = (4 * β * ΠS_safe * ΠS_safe) / ΠT_safe
     termB = (2 * (1 - β) - β * ΠF) / denom
     inner = sqrt(max(1 + termA * termB, eps(termA))) - 1

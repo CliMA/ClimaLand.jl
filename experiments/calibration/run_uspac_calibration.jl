@@ -11,54 +11,31 @@ import JLD2
 #include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 include(joinpath(@__DIR__, "api.jl"))
 
-#NOTE: must run generate_observations.jl AND generate_smap_observations.jl FIRST (slurm file already does this)
-
-# Generate seasonal date ranges programmatically
-function generate_seasonal_date_ranges(start_year, end_year)
-    ranges = []
-    for year in start_year:end_year
-        if year == 2015
-            # SMAP starts April 2015
-            push!(ranges, ("2015-06-01", "2015-06-01"))  # Summer
-            push!(ranges, ("2015-09-01", "2015-09-01"))  # Fall
-            push!(ranges, ("2015-12-01", "2015-12-01"))  # Winter
-        else
-            push!(ranges, ("$year-03-01", "$year-03-01"))  # Spring
-            push!(ranges, ("$year-06-01", "$year-06-01"))  # Summer
-            push!(ranges, ("$year-09-01", "$year-09-01"))  # Fall
-            push!(ranges, ("$year-12-01", "$year-12-01"))  # Winter
-        end
-    end
-    return ranges
-end
+#NOTE: must run generate_observations.jl FIRST (slurm file already does this)
 
 # -------------------- CALIBRATION CONFIG --------------------
-# For JOINT calibration against LH flux AND SMAP soil moisture
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["lhf", "sm_surface"],  # ← Both variables
-    minibatch_size = 35,
-    n_iterations = 10,
-    sample_date_ranges = generate_seasonal_date_ranges(2015, 2023),
-    extend = Dates.Month(0),
+    short_names = ["lhf"],
+    minibatch_size = 1,
+    n_iterations = 3,
+    # Overlapping 2-year windows: Dec to Sep
+    sample_date_ranges = [("2016-12-1", "2019-9-1")], #[("$(2016 + i)-12-1", "$(2018 + i)-9-1") for i in 0:2],
+    extend = Dates.Month(3),
     spinup = Dates.Month(3),
+    # Grid (horizontal elements, vertical levels)
     nelements = (101, 15),
-    output_dir = "experiments/calibration/land_model_joint",  # ← Joint calibration output
+    output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
-    obs_vec_filepath = "experiments/calibration/land_observation_vector_joint.jld2",  # ← Combined obs
+    # Point this to the LE observation vector you built from your RS product
+    # (same ordering/mask/time aggregation as your observation_map expects)
+    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
 )
 
-# For latent heat flux only (original):
+# Later: add SMAP SWC later
 # const CALIBRATE_CONFIG = CalibrateConfig(;
-#     short_names = ["lhf"],
-#     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
-#     output_dir = "experiments/calibration/land_model",
-# )
-
-# For SMAP soil moisture only:
-# const CALIBRATE_CONFIG = CalibrateConfig(;
-#     short_names = ["sm_surface"],
-#     obs_vec_filepath = "experiments/calibration/land_observation_vector_SMAP.jld2",
-#     output_dir = "experiments/calibration/land_model_smap",
+#     short_names = ["sm_surface"],   # <<< SMAP variable key
+#     obs_vec_filepath = "experiments/calibration/land_observation_vector_SMAP_SM.jld2",
+#     # keep other fields (date ranges, nelements, etc.)
 # )
 
 if abspath(PROGRAM_FILE) == @__FILE__
@@ -67,75 +44,27 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Changed prior means from 0.0 to 0.1 to avoid division-by-zero in stomatalconductance.jl
     # When all π-groups = 0, the model has mathematical singularities that produce zero conductance
     priors = EKP.ParameterDistribution[
-        EKP.constrained_gaussian("alpha_R", 0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("beta_R",  0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("alpha_F", 0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("beta_F",  0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("alpha_T", 0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("beta_Ts", 0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("alpha_S", 0.1, 0.30, -Inf, Inf),
-        EKP.constrained_gaussian("beta_Ss", 0.1, 0.30, -Inf, Inf),
+        EKP.constrained_gaussian("alpha_R", 0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("beta_R",  0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("alpha_F", 0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("beta_F",  0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("alpha_T", 0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("beta_Ts", 0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("alpha_S", 0.0, 10, -Inf, Inf),
+        EKP.constrained_gaussian("beta_Ss", 0.0, 10, -Inf, Inf),
     ]
     prior = EKP.combine_distributions(priors)
 
     # -------------------- OBSERVATIONS --------------------
-    obs_data = JLD2.load(CALIBRATE_CONFIG.obs_vec_filepath)
-    
-    # **JOINT OBSERVATION VECTOR**
-    # Check if this is a joint calibration file (has both lhf_vector and sm_vector)
-    if "lhf_vector_scaled" in keys(obs_data) && "sm_vector_scaled" in keys(obs_data)
-        @info "Loading JOINT observation vector (LH + SMAP) with pre-applied scaling"
-        
-        # Use the SCALED versions (this is what we want for calibration)
-        lhf_obs = obs_data["lhf_vector_scaled"]
-        sm_obs = obs_data["sm_vector_scaled"]
-        
-        # The observation_vector in the file is already concatenated and scaled
-        observation_vector = obs_data["observation_vector"]
-        
-        @info "Joint observations loaded" n_lhf=length(lhf_obs) n_sm=length(sm_obs) total=length(observation_vector)
-        
-        # Print weighting info
-        if haskey(obs_data, "lhf_weight") && haskey(obs_data, "sm_weight")
-            @info "Observation weighting" lhf_weight=obs_data["lhf_weight"] sm_weight=obs_data["sm_weight"] normalize_by_variance=obs_data["normalize_by_variance"]
-        end
-        
-        # Print SMAP coverage info
-        if "sm_metadata" in keys(obs_data)
-            @info "SMAP observation metadata:"
-            for (i, meta) in enumerate(obs_data["sm_metadata"])
-                println("  Period $i: $(meta["start_date"]) to $(meta["stop_date"])")
-                println("    Observations: $(meta["n_observations"])")
-                if haskey(meta, "coverage_stats")
-                    println("    Coverage: $(meta["coverage_stats"]["land_coverage_pct"])%")
-                    if haskey(meta["coverage_stats"], "avg_model_points_per_smap_pixel")
-                        println("    Avg model pts/SMAP pixel: $(meta["coverage_stats"]["avg_model_points_per_smap_pixel"])")
-                    end
-                end
-            end
-        end
-    else
-        # Fallback for single-variable files (SMAP-only or LH-only)
-        @info "Loading single-variable observation vector"
-        observation_vector = obs_data["observation_vector"]
-        
-        # Print SMAP info if available
-        if "metadata" in keys(obs_data) && !isempty(obs_data["metadata"])
-            meta = obs_data["metadata"]
-            if isa(meta, AbstractVector)
-                @info "SMAP-only calibration" n_periods=length(meta)
-                for (i, m) in enumerate(meta)
-                    if haskey(m, "n_observations")
-                        println("  Period $i: $(m["n_observations"]) observations")
-                    end
-                end
-            end
-        end
-    end
+    # This is a *vector* you’ve prebuilt from your RS LE (e.g., FLUXCOM/GLEAM),
+    # using the same grid/mask/time aggregation that observation_map.jl will extract
+    # from the model diagnostics for each minibatch.
+    observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
 
     sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
     minibatch_size     = CALIBRATE_CONFIG.minibatch_size
 
+    # Note: names are purely cosmetic labels for EKP’s ObservationSeries
     obs_series = EKP.ObservationSeries(Dict(
         "observations" => observation_vector,
         "names" => [string(Dates.year(start_date)) for (start_date, _) in sample_date_ranges],
@@ -208,4 +137,5 @@ if abspath(PROGRAM_FILE) == @__FILE__
         prior,
         CALIBRATE_CONFIG.output_dir,
     )
+
 end

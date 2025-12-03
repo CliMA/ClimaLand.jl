@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N gen_cwd_field
+#PBS -A UCIT0011
+#PBS -q casper
+#PBS -l select=1:ncpus=4:mem=64GB
+#PBS -l walltime=01:00:00
+#PBS -j oe
+#PBS -o logs/generate_cwd_field.out
+
+module load ncarenv/23.09
+module load julia/1.10.0
+
+cd $PBS_O_WORKDIR
+mkdir -p logs
+
+echo "Job started on $(hostname) at $(date)"
+echo "Job ID: $PBS_JOBID"
+
+# Set environment for single-process
+export CLIMACOMMS_CONTEXT="SingletonCommsContext"
+export JULIA_NUM_THREADS=4
+
+# Generate CWD field file
+julia --project -t 4 experiments/calibration/generate_cwd_field.jl
+
+echo "Job completed at $(date)"

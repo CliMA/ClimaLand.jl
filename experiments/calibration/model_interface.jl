@@ -54,53 +54,75 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "snowy_land_longrun_$(device_suffix)"
 
 
-# Include CWD and SM variability calculation utilities
-include("calculate_CWD.jl")
-#include("calculate_drydown.jl")  # Now calculates SM variability
-
 function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
-    # ========== Load or calculate CWD field ==========
-    start_year = Dates.year(start_date)
-    stop_year = Dates.year(stop_date)
+    # ========== Load CWD field ==========
+    # cwd_file = joinpath(@__DIR__, "cwd_era5.jld2")
+
+
+    # cwd_data = JLD2.load(cwd_file)
+    # lons_cwd = cwd_data["lons"]
+    # lats_cwd = cwd_data["lats"]
+    # CWD_spatial = cwd_data["CWD_field"]
     
-    # CWD filename - use year range that covers the SPINUP period too
-    # For 2015-2024 data with 3-month spinup, we need CWD for 2015-2024
-    # (spinup starts in March 2015, so we still only need 2015 data)
-    if start_year == stop_year
-        cwd_file = joinpath(@__DIR__, "cwd_era5_$(start_year).jld2")
-    else
-        cwd_file = joinpath(@__DIR__, "cwd_era5_$(start_year)_$(stop_year).jld2")
-    end
-    
-    if !isfile(cwd_file)
-        @warn "CWD file not found, calculating from ERA5 data" cwd_file
-        
-        # Get ERA5 file paths for the FULL period (2015-2024)
-        era5_paths = ClimaLand.Artifacts.find_era5_year_paths(
-            start_date,
-            stop_date;
-            context = context  # Use the global context
+    # CWD_field = regrid_cwd_to_model_space(lons_cwd, lats_cwd, CWD_spatial, surface_space, FT)
+
+
+    """
+        load_cwd_field(surface_space, FT)
+
+    Load cumulative water deficit (CWD) from a JLD2 file and regrid to model surface space.
+    CWD should be a spatial field (2D: lon × lat) representing long-term water stress.
+    """
+    function load_cwd_field(surface_space, FT)
+        cwd_file = joinpath(
+            pkgdir(ClimaLand),
+            "experiments",
+            "calibration",
+            "cwd_era5.jld2"
         )
         
-        lons_cwd, lats_cwd, CWD_spatial = calculate_cwd_from_era5(
-            era5_paths,
-            start_date,
-            stop_date,
-        )
+        if !isfile(cwd_file)
+            @warn "CWD file not found at $cwd_file, using zero CWD"
+            return ClimaCore.Fields.zeros(FT, surface_space)
+        end
         
-        JLD2.jldsave(cwd_file; lons=lons_cwd, lats=lats_cwd, CWD_spatial, start_year, stop_year)
-        @info "Saved CWD to" cwd_file
-    else
-        cwd_data = JLD2.load(cwd_file)
-        lons_cwd = cwd_data["lons"]
-        lats_cwd = cwd_data["lats"]
-        CWD_spatial = cwd_data["CWD_spatial"]
+        @info "Loading CWD from $cwd_file"
+        
+        # Load CWD data from JLD2
+        cwd_data_dict = JLD2.load(cwd_file)
+        
+        # file structure:
+        # "CWD_field" => Float64 array (lon, lat)
+        # "lons" => Float64 vector
+        # "lats" => Float64 vector
+        
+        if !haskey(cwd_data_dict, "CWD_field")
+            @error "CWD file missing 'CWD_field' key. Available keys: $(keys(cwd_data_dict))"
+            return ClimaCore.Fields.zeros(FT, surface_space)
+        end
+
+        cwd_field = cwd_data_dict["CWD_field"]
+
+        # Transfer to GPU if needed
+        # Check if the model's surface_space is on GPU
+        if parent(ClimaCore.Fields.zeros(FT, surface_space)) isa CUDA.CuArray
+            @info "Transferring CWD field to GPU"
+            # Create a new field on GPU and copy data
+            cwd_field_gpu = similar(ClimaCore.Fields.zeros(FT, surface_space))
+            parent(cwd_field_gpu) .= CUDA.CuArray(parent(cwd_field))
+            cwd_field = cwd_field_gpu
+        end
+
+        @info "CWD field loaded successfully"
+        
+        return cwd_field
     end
     
-    CWD_field = regrid_cwd_to_model_space(lons_cwd, lats_cwd, CWD_spatial, surface_space, FT)
+    # Load CWD (Cumulative Water Deficit) map
+    CWD_field = load_cwd_field(surface_space, FT)
 
     # ========== Load or calculate SM variability field ==========
     # Use coefficient of variation (CV) for normalized variability across climates
@@ -182,7 +204,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
     # Now you have both CWD_field and sm_var_field (CV) as covariates
     # CWD: spatial gradient in long-term water deficit (climate-driven)
     # SM_CV: spatial gradient in soil moisture variability (soil/landscape-driven)
-    @info "Covariate fields loaded" CWD_mean=mean(CWD_field) #SM_CV_mean=mean(sm_var_field)
+    @info "Covariate fields loaded"
 
     # Forcing data - always use high resolution for calibration runs
     atmos, radiation = ClimaLand.prescribed_forcing_era5(

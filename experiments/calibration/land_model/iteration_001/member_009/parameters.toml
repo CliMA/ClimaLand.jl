@@ -1,0 +1,31 @@
+[beta_Ts]
+value = 0.0
+type = "float"
+
+[beta_Ss]
+value = 19.999999999999993
+type = "float"
+
+[alpha_F]
+value = 0.0
+type = "float"
+
+[alpha_R]
+value = 0.0
+type = "float"
+
+[alpha_T]
+value = 0.0
+type = "float"
+
+[alpha_S]
+value = 0.0
+type = "float"
+
+[beta_R]
+value = 0.0
+type = "float"
+
+[beta_F]
+value = 0.0
+type = "float"

@@ -11,6 +11,12 @@ export uSPACStomatalModel,
 
 # From Bassiouni et al. 2023
 
+# The uSPAC method is fundamentally different from traditional empirical stomatal conductance models 
+# in that its parameters have clear biophysical meaning. uSpac is empirical in the sense that β(s) 
+# is a fitted piecewise function, but unlike traditional empirical models, 
+# its parameters encode measurable plant hydraulic strategies, making them interpretable, 
+# predictable, and transferable across species/climates.
+
 # THIS IS NOT OPTIMALITY THEORY AS CODED HERE, but it CAN replicate optimality when appropriate!
 # unitless Soil-Plant-Atmosphere continuum (uSPAC; Bassiouni et al. 2023) uses dimensional analysis (Buckingham Π theorem)
 # to express stomatal behavior via dimensionless Π-groups representing ratios of:
@@ -44,6 +50,18 @@ export uSPACStomatalModel,
 #   fww: Maximum fraction of potential ET when well-watered
 #   s_star: When does water limitation begin?
 #   s_w: When does the plant completely shut down?
+
+# Parameters have biophysical meaning: Each Π-group represents a measurable trait ratio.
+
+# Parameters are predictable: Given plant/soil traits, you can compute (fww, s*, s_w) mechanistically.
+
+# Parameters vary systematically:
+    # Isohydric species → high ΠR → lower fww, higher s_star
+    # Deep-rooted species → high ΠT → lower s_w (can access deeper water)
+    # This matches observed trait spectra (Wright et al. 2004, Bartlett et al. 2016).
+
+# Parameters can acclimate!!!!!!: If climate changes → E0 changes → ΠF changes → fww changes predictably.
+
 
 
 """
@@ -126,10 +144,10 @@ end
 Compute (fww, s_star, s_w) directly from Π-groups and soil exponent `b`.
 
 Inputs (dimensionless):
-- ΠR = |ψ_g50| / |ψ_x50|
-- ΠF = E0 / (K_P,max * |ψ_g50|)
-- ΠT = (K_SR,max * |ψ_s_sat|) / E0
-- ΠS = |ψ_g50| / |ψ_s_sat|
+- ΠR = |ψ_g50| / |ψ_x50| = Plant hydraulic risk tolerance
+- ΠF = E0 / (K_P,max * |ψ_g50|) = Plant water flux control
+- ΠT = (K_SR,max * |ψ_s_sat|) / E0 = Soil-root water transport capacity
+- ΠS = |ψ_g50| / |ψ_s_sat| = Soil suitability
 
 Other:
 - `b`        : Campbell/Clapp–Hornberger soil exponent (default 4.38)

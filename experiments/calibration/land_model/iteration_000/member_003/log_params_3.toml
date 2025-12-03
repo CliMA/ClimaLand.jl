@@ -1,0 +1,935 @@
+[thermal_conductivity_of_soil_minerals]
+used_in = ["Land", "getindex"]
+value = 2.5
+type = "float"
+description = "Thermal conductivity of soil minerals, excluding quartz (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[orbit_eccentricity_at_epoch]
+used_in = ["Insolation", "getindex"]
+value = 0.016708634
+type = "float"
+description = "Orbital eccentricity at epoch (unitless)."
+
+[potential_temperature_reference_pressure]
+used_in = ["Thermodynamics", "getindex"]
+value = 100000.0
+type = "float"
+description = "Reference pressure for potential temperature calculations ($p_0$) (Pa)."
+
+[prandtl_number_0_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 0.74
+type = "float"
+description = "The turbulent Prandtl number in neutral conditions ($Pr_0$) for the Businger universal functions (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[kelvin_25C]
+used_in = ["Land", "getindex"]
+value = 298.15
+type = "float"
+description = "Reference temperature equal to 25°C (K)."
+
+[CO2_compensation_point_25c]
+used_in = ["Land", "getindex"]
+value = 4.275e-5
+type = "float"
+description = "CO₂ compensation point ($\\Gamma^*$) at 25°C (mol mol⁻¹). Source: Bernacchi et al. (2001)."
+
+[photosystem_II_quantum_yield]
+used_in = ["Land", "getindex"]
+value = 0.7
+type = "float"
+description = "Quantum yield of photosystem II (unitless). Source: Bonan (2019); Bernacchi (2003)."
+
+[beta_min]
+tag = "WuWuSnowCoverFractionModel"
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
+
+[canopy_emissivity]
+used_in = ["getindex"]
+value = 0.97
+type = "float"
+description = "Emissivity of the canopy (unitless)."
+
+[temperature_triple_point]
+used_in = ["Thermodynamics", "getindex"]
+value = 273.16
+type = "float"
+description = "Triple point temperature of water (K)."
+
+[relative_contribution_factor]
+used_in = ["getindex"]
+value = 0.25
+type = "float"
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless)."
+
+[O2_michaelis_menten]
+used_in = ["Land", "getindex"]
+value = 0.2784
+type = "float"
+description = "Michaelis-Menten parameter for O₂ at 25°C (mol mol⁻¹). Source: Bernacchi et al. (2001)."
+
+[length_orbit_semi_major]
+used_in = ["Insolation", "getindex"]
+value = 149597870000
+type = "float"
+description = "Semi-major axis of the planetary orbit (m). Derived as 1 * `astronomical_unit`."
+
+[kf]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.05
+type = "float"
+description = "The rate coefficient for florescence, unitless"
+
+[particle_density_quartz]
+used_in = ["Land", "getindex"]
+value = 2660.0
+type = "float"
+description = "Particle density of quartz (kg m⁻³). Source: Hillel (1982); De Vries (1966)."
+
+[specific_leaf_density]
+used_in = ["getindex"]
+value = 0.05
+type = "float"
+description = "Specific leaf density (kg C m⁻² leaf)."
+
+[temperature_surface_reference]
+used_in = ["Thermodynamics", "getindex"]
+value = 290
+type = "float"
+description = "Surface temperature in a reference temperature profile (K)."
+
+[moisture_stress_pc]
+tag = "SoilMoistureStress"
+used_in = ["getindex"]
+value = -2.0e6
+type = "float"
+description = "Pa"
+
+[f_over]
+tag = "TOPMODELRunoff"
+used_in = ["getindex"]
+value = 3.28
+type = "float"
+description = "Units are 1/m"
+
+[wavelength_per_PAR_photon]
+used_in = ["getindex"]
+value = 5.0e-7
+type = "float"
+description = "Typical wavelength of a photon in the Photosynthetically Active Radiation (PAR) band (m)."
+
+[latent_heat_sublimation_at_reference]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 2834400
+type = "float"
+description = "Latent heat of sublimation at the reference temperature (J kg⁻¹)."
+
+[isobaric_specific_heat_ice]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 2070.0
+type = "float"
+description = "Isobaric specific heat of ice (J kg⁻¹ K⁻¹)."
+
+[soil_scalar_roughness_length]
+used_in = ["getindex"]
+value = 0.007
+type = "float"
+description = "Scalar roughness length for soil (m), assuming friction velocity $u_*$ of 5 m s⁻¹. Source: CLM5 Technical Note."
+
+[isobaric_specific_heat_dry_air]
+used_in = ["Thermodynamics", "getindex"]
+value = 1004.5
+type = "float"
+description = "Isobaric specific heat of dry air (J kg⁻¹ K⁻¹)."
+
+[day]
+used_in = ["Insolation", "getindex"]
+value = 86400
+type = "float"
+description = "Length of a day (s)."
+
+[isobaric_specific_heat_vapor]
+used_in = ["Thermodynamics", "getindex"]
+value = 1859
+type = "float"
+description = "Isobaric specific heat of water vapor (J kg⁻¹ K⁻¹)."
+
+[kd_p2]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.0273
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+
+[root_leaf_nitrogen_ratio]
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "Ratio of root nitrogen to top leaf nitrogen (unitless)."
+
+[vol_heat_capacity_quartz]
+used_in = ["Land", "getindex"]
+value = 2.01e6
+type = "float"
+description = "Volumetric heat capacity of quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[molar_mass_water]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 0.01801528
+type = "float"
+description = "Molar mass of water (kg mol⁻¹)."
+
+[diffusivity_of_water_vapor]
+used_in = ["Land", "getindex"]
+value = 2.26e-5
+type = "float"
+description = "Diffusivity of water vapor in air (m² s⁻¹)."
+
+[vol_heat_capacity_minerals]
+used_in = ["Land", "getindex"]
+value = 2.01e6
+type = "float"
+description = "Volumetric heat capacity of soil minerals excluding quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[z0]
+tag = "WuWuSnowCoverFractionModel"
+used_in = ["getindex"]
+value = 0.106
+type = "float"
+description = "The value used to normalize snow depth when computing snow cover fraction (m)"
+
+[thermal_conductivity_of_water_ice]
+used_in = ["getindex", "Land"]
+value = 2.21
+type = "float"
+description = "Thermal conductivity of water ice at its freezing temperature (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[snow_scalar_roughness_length]
+used_in = ["getindex"]
+value = 0.08
+type = "float"
+description = "Scalar roughness length for snow (m), assuming friction velocity $u_*$ of 5 m s⁻¹. Source: CLM5 Technical Note."
+
+[most_stability_exponent_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 4.42
+type = "float"
+description = "The MOST stability exponent ($\\gamma$) for the Businger universal functions (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[temperature_saturation_adjustment_min]
+used_in = ["Thermodynamics", "getindex"]
+value = 1
+type = "float"
+description = "Minimum temperature difference for unsaturated case in saturation adjustment (K)."
+
+[canopy_height]
+tag = "PrescribedBiomassModel"
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "The constant canopy height (m)"
+
+[soil_C_substrate_diffusivity]
+used_in = ["Land", "getindex"]
+value = 3.17
+type = "float"
+description = "Diffusivity of soil C substrate in liquid (unitless). Source: Ryan et al. (2018), DOI: 10.5194/gmd-11-1909-2018."
+
+[michaelis_constant]
+used_in = ["Land", "getindex"]
+value = 0.005
+type = "float"
+description = "Michaelis constant (kg C m⁻³). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[thermal_conductivity_of_air]
+used_in = ["Land", "getindex"]
+value = 0.024
+type = "float"
+description = "Thermal conductivity of air (J m⁻¹ s⁻¹ K⁻¹)."
+
+[plant_S_s]
+tag = "PlantHydraulicsParameters"
+used_in = ["getindex"]
+value = 9.8e-5
+type = "float"
+description = "Storativity (m3/m3). Computed by 1e-2 * 0.0098."
+
+[kn_p2]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.5944
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+
+[RAI]
+tag = "PrescribedAreaIndices"
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "The constant root area index (RAI; m2/m2)"
+
+[oxygen_diffusion_coefficient]
+used_in = ["Land", "getindex"]
+value = 1.67
+type = "float"
+description = "Diffusion coefficient of oxygen in air (dimensionless). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[alpha_0]
+tag = "ZenithAngleAlbedoModel"
+used_in = ["getindex"]
+value = 0.64
+type = "float"
+description = "Free parameter controlling the minimum snow albedo"
+
+[stefan_boltzmann_constant]
+used_in = ["Land", "getindex"]
+value = 5.67e-8
+type = "float"
+description = "Stefan-Boltzmann constant ($\\sigma$) (W m⁻² K⁻⁴)."
+
+[longitude_perihelion_at_epoch]
+used_in = ["Insolation", "getindex"]
+value = 4.938188299449
+type = "float"
+description = "Longitude of perihelion at epoch (radians). Corresponds to 282.9373°."
+
+[vol_heat_capacity_organic_matter]
+used_in = ["Land", "getindex"]
+value = 2.51e6
+type = "float"
+description = "Volumetric heat capacity of organic matter (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[entropy_water_vapor]
+used_in = ["Thermodynamics", "getindex"]
+value = 10513.6
+type = "float"
+description = "Specific entropy of water vapor at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+
+[light_speed]
+used_in = ["Land", "getindex"]
+value = 299792458
+type = "float"
+description = "Speed of light in vacuum (c) (m s⁻¹)."
+
+[planck_constant]
+used_in = ["Land", "getindex"]
+value = 6.626e-34
+type = "float"
+description = "Planck's constant (h) (J s)."
+
+[entropy_dry_air]
+used_in = ["Thermodynamics", "getindex"]
+value = 6864.8
+type = "float"
+description = "Specific entropy of dry air at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+
+[x0]
+tag = "ZenithAngleAlbedoModel"
+used_in = ["getindex"]
+value = 0.2
+type = "float"
+description = "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
+
+[coefficient_a_m_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 4.7
+type = "float"
+description = "Coefficient $a_m$ for the Businger momentum universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[density_ice_water]
+used_in = ["Land", "getindex"]
+value = 916.7
+type = "float"
+description = "Density of water ice (kg m⁻³)."
+
+[temperature_saturation_adjustment_max]
+used_in = ["Thermodynamics", "getindex"]
+value = 1000
+type = "float"
+description = "Maximum temperature for saturation adjustment (K)."
+
+[beta_R]
+used_in = ["getindex"]
+value = 20.0
+type = "float"
+
+[snow_emissivity]
+used_in = ["getindex"]
+value = 0.97
+type = "float"
+description = "Emissivity of snow (unitless). Source: CLM5 Technical Note."
+
+[thermal_conductivity_of_liquid_water]
+used_in = ["Land", "getindex"]
+value = 0.57
+type = "float"
+description = "Thermal conductivity of liquid water at 10°C (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[kappa_p2]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 7.85
+type = "float"
+description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+
+[delta_S]
+used_in = ["getindex"]
+value = 0.1
+type = "float"
+description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
+
+[beta_Ts]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[snow_albedo]
+used_in = ["getindex"]
+value = 0.8
+type = "float"
+description = "Albedo of snow (unitless)."
+
+[alpha_R]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[alpha_T]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[kersten_number_alpha]
+used_in = ["Land", "getindex"]
+value = 0.24
+type = "float"
+description = "A unitless empirical constant ($\\alpha$) used in computing the Kersten number. Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[soilCO2_activation_energy]
+used_in = ["Land", "getindex"]
+value = 61000.0
+type = "float"
+description = "Activation energy for soil CO₂ model (J mol⁻¹). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[N_factor_Vcmax25]
+used_in = ["getindex"]
+value = 0.0008
+type = "float"
+description = "Factor converting Vcmax at 25°C to nitrogen content (mol CO₂ m⁻² s⁻¹ kgC (kgC)⁻¹)."
+
+[K_sat_plant]
+tag = "Weibull"
+used_in = ["getindex"]
+value = 7.0e-8
+type = "float"
+description = "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation. Units are m / s."
+
+[temperature_reference_soil_hydraulic_conductivity]
+used_in = ["Land", "getindex"]
+value = 288
+type = "float"
+description = "The reference temperature for adjusting soil hydraulic conductivity (K)."
+
+[snow_density]
+used_in = ["getindex"]
+value = 200
+type = "float"
+description = "Density of snow (kg m⁻³)."
+
+[k]
+tag = "ZenithAngleAlbedoModel"
+used_in = ["getindex"]
+value = 2.0
+type = "float"
+description = "Rate at which albedo drops to its minimum value with zenith angle"
+
+[temperature_saturation_adjustment_init_min]
+used_in = ["Thermodynamics", "getindex"]
+value = 150
+type = "float"
+description = "Minimum temperature for saturation adjustment initialization (K)."
+
+[kersten_number_beta]
+used_in = ["Land", "getindex"]
+value = 18.3
+type = "float"
+description = "A unitless empirical constant ($\\beta$) used in computing the Kersten number. Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[Weibull_c]
+tag = "Weibull"
+used_in = ["getindex"]
+value = 4
+type = "float"
+description = "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016). Unitless. Holtzman's original c param value."
+
+[SAI]
+tag = "PrescribedAreaIndices"
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+description = "The constant stem area index (SAI; m2/m2)"
+
+[orbit_obliquity_at_epoch]
+used_in = ["Insolation", "getindex"]
+value = 0.408979125113246
+type = "float"
+description = "Obliquity of the ecliptic at epoch (radians). Corresponds to 23.43278°."
+
+[temperature_min_reference]
+used_in = ["Thermodynamics", "getindex"]
+value = 220
+type = "float"
+description = "Minimum temperature in a reference temperature profile (K)."
+
+[alpha_S]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[temperature_homogenous_nucleation]
+used_in = ["Thermodynamics", "getindex"]
+value = 233
+type = "float"
+description = "Temperature for homogeneous ice nucleation (K)."
+
+[min_kd]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.087
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+
+[wet_snow_hydraulic_conductivity]
+used_in = ["getindex"]
+value = 0.001
+type = "float"
+description = "Hydraulic conductivity of wet snow (m s⁻¹)."
+
+[Farquhar_curvature_parameter]
+used_in = ["Land", "getindex"]
+value = 0.9
+type = "float"
+description = "Curvature parameter for calculating J, a unitless fitting constant. Source: von Caemmerer (2000, 2013); Bernacchi et al. (2003, 2013); von Caemmerer et al. (2009)."
+
+[entropy_reference_temperature]
+used_in = ["Thermodynamics", "getindex"]
+value = 298.15
+type = "float"
+description = "Reference temperature for entropy calculations (K)."
+
+[most_stability_parameter_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 2.5
+type = "float"
+description = "The MOST stability parameter ($\\zeta_a$) for the Businger universal functions (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[molar_mass_dry_air]
+used_in = ["Thermodynamics", "getindex"]
+value = 0.02897
+type = "float"
+description = "Molar mass of dry air (kg mol⁻¹)."
+
+[psi_63]
+tag = "Weibull"
+used_in = ["getindex"]
+value = -408.16326530612247
+type = "float"
+description = "The absolute water potential in xylem (or xylem water potential) at which ∼63% of maximum xylem conductance is lost (Liu, 2020). Computed by -4 / 0.0098. Holtzman's original parameter value is -4 MPa"
+
+[intercellular_O2_concentration]
+used_in = ["Land", "getindex"]
+value = 0.209
+type = "float"
+description = "Intercellular O₂ concentration, assumed constant (mol mol⁻¹)."
+
+[epoch_time]
+used_in = ["Insolation", "getindex"]
+value = 2000-01-01T11:58:56.816Z
+type = "datetime"
+description = "J2000 epoch (Jan 1, 2000 11:58:56.816 UTC) as a DateTime"
+
+[beta_Ss]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[alpha_F]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[density_liquid_water]
+used_in = ["Land", "getindex"]
+value = 1000
+type = "float"
+description = "Density of liquid water (kg m⁻³)."
+
+[CO2_michaelis_menten]
+used_in = ["Land", "getindex"]
+value = 0.0004049
+type = "float"
+description = "Michaelis-Menten parameter for CO₂ at 25°C (mol mol⁻¹). Source: Bernacchi et al. (2001)."
+
+[moisture_stress_sc]
+tag = "SoilMoistureStress"
+used_in = ["getindex"]
+value = 5.0e-6
+type = "float"
+description = "1/Pa"
+
+[coefficient_b_m_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 15.0
+type = "float"
+description = "Coefficient $b_m$ for the Businger momentum universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[emissivity_bare_soil]
+used_in = ["getindex"]
+value = 0.96
+type = "float"
+description = "Emissivity of bare soil (unitless). Source: CLM5 Technical Note (2020)."
+
+[live_stem_wood_coeff]
+used_in = ["getindex"]
+value = 0.01
+type = "float"
+description = "Live stem wood coefficient (kg C m⁻³)."
+
+[O2_activation_energy]
+used_in = ["Land", "getindex"]
+value = 36380.0
+type = "float"
+description = "Energy of activation for oxygen (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[kn_p1]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 6.2473
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+
+[delta_alpha]
+tag = "ZenithAngleAlbedoModel"
+used_in = ["getindex"]
+value = 0.06
+type = "float"
+description = "Free parameter controlling the snow albedo when θs = 90∘"
+
+[thermal_conductivity_of_organic_matter]
+used_in = ["Land", "getindex"]
+value = 0.25
+type = "float"
+description = "Thermal conductivity of organic matter (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[thermal_conductivity_of_quartz]
+used_in = ["Land", "getindex"]
+value = 8.0
+type = "float"
+description = "Thermal conductivity of quartz (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[universal_gas_constant]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 8.3144598
+type = "float"
+description = "Universal gas constant (R) (J mol⁻¹ K⁻¹)."
+
+[R_sb]
+tag = "TOPMODELRunoff"
+used_in = ["getindex"]
+value = 1.484e-7
+type = "float"
+description = "Units are m/s"
+
+[isobaric_specific_heat_liquid]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 4181
+type = "float"
+description = "Isobaric specific heat of liquid water (J kg⁻¹ K⁻¹)."
+
+[CO2_activation_energy]
+used_in = ["Land", "getindex"]
+value = 79430.0
+type = "float"
+description = "Energy of activation for CO₂ (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[latent_heat_vaporization_at_reference]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 2500800
+type = "float"
+description = "Latent heat of vaporization at the reference temperature (J kg⁻¹)."
+
+[snow_momentum_roughness_length]
+used_in = ["getindex"]
+value = 0.0024
+type = "float"
+description = "Momentum roughness length for snow (m). Source: CLM5 Technical Note."
+
+[O2_michaelis_constant]
+used_in = ["Land", "getindex"]
+value = 0.004
+type = "float"
+description = "Michaelis constant for O₂ (m³ m⁻³). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[plant_nu]
+tag = "PlantHydraulicsParameters"
+used_in = ["getindex"]
+value = 0.000144
+type = "float"
+description = "Porosity (m3/m3)"
+
+[CO2_diffusion_coefficient]
+used_in = ["getindex"]
+value = 1.39e-5
+type = "float"
+description = "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹). Source: Ryan et al. (2018), DOI: 10.5194/gmd-11-1909-2018."
+
+[soilCO2_pre_exponential_factor]
+used_in = ["Land", "getindex"]
+value = 194000.0
+type = "float"
+description = "Pre-exponential factor for soil CO₂ model (kg C m⁻³ s⁻¹). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[O2_volume_fraction]
+used_in = ["Land", "getindex"]
+value = 0.209
+type = "float"
+description = "Volumetric fraction of O₂ in the soil air (dimensionless). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+[gravitational_acceleration]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 9.81
+type = "float"
+description = "Gravitational acceleration on the planet (m s⁻²)."
+
+[Jmax_activation_energy]
+used_in = ["Land", "getindex"]
+value = 43540.0
+type = "float"
+description = "Energy of activation for Jmax (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[coefficient_b_h_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 9.0
+type = "float"
+description = "Coefficient $b_h$ for the Businger heat universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[coefficient_a_h_businger]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 4.7
+type = "float"
+description = "Coefficient $a_h$ for the Businger heat universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[soil_momentum_roughness_length]
+used_in = ["getindex"]
+value = 0.01
+type = "float"
+description = "Momentum roughness length for soil (m). Source: CLM5 Technical Note."
+
+[a]
+tag = "LinearRetentionCurve"
+used_in = ["getindex"]
+value = 0.00196
+type = "float"
+description = "Units are 1/m. Bulk modulus of elasticity and slope of potential to volume curve. See also Corcuera, 2002, and Christoffersen, 2016. Computed by 0.2 * 0.0098."
+
+[pow_icenuc]
+used_in = ["Thermodynamics", "getindex"]
+value = 1
+type = "float"
+description = "Exponent in the ice nucleation parameterization (unitless)."
+
+[avogadro_constant]
+used_in = ["Land", "getindex"]
+value = 6.02214076e23
+type = "float"
+description = "Avogadro's constant ($N_A$) (mol⁻¹)."
+
+[pressure_triple_point]
+used_in = ["Thermodynamics", "getindex"]
+value = 611.657
+type = "float"
+description = "Triple point pressure of water (Pa)."
+
+[thermodynamics_temperature_reference]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 273.16
+type = "float"
+description = "Reference temperature for thermodynamics (K)."
+
+[dark_respiration_factor]
+used_in = ["Land", "getindex"]
+value = 0.015
+type = "float"
+description = "Constant factor appearing in the dark respiration term (unitless). Source: Bonan (2019)."
+
+[temperature_water_freeze]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 273.15
+type = "float"
+description = "Freezing temperature of water (K)."
+
+[total_solar_irradiance]
+used_in = ["Insolation", "getindex"]
+value = 1362
+type = "float"
+description = "Total solar irradiance (TSI) at the mean orbital distance (W m⁻²)."
+
+[mean_anomaly_at_epoch]
+used_in = ["Insolation", "getindex"]
+value = 6.24006014121
+type = "float"
+description = "Mean anomaly at epoch (radians). Corresponds to 357.52911°."
+
+[stem_leaf_nitrogen_ratio]
+used_in = ["getindex"]
+value = 0.1
+type = "float"
+description = "Ratio of stem nitrogen to top leaf nitrogen (unitless)."
+
+[maximum_dry_soil_layer_depth]
+used_in = ["getindex"]
+value = 0.015
+type = "float"
+description = "Maximum depth of the dry soil layer that can develop under evaporation (m). Source: Shokri and Or (2011), DOI: 10.1029/2010WR010284"
+
+[ice_impedance_omega]
+used_in = ["getindex"]
+value = 7.0
+type = "float"
+description = "A unitless impedance parameter ($\\Omega$) used to adjust soil hydraulic conductivity for ice presence. Source: Lundin, J. Hydrol. 118:289-310 (1990)."
+
+[beta_0]
+tag = "WuWuSnowCoverFractionModel"
+used_in = ["getindex"]
+value = 1.77
+type = "float"
+description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
+
+[holding_capacity_of_water_in_snow]
+used_in = ["getindex"]
+value = 0.08
+type = "float"
+description = "Volumetric holding capacity of liquid water in a snowpack (unitless)."
+
+[ac_canopy]
+tag = "BigLeafEnergyModel"
+used_in = ["getindex"]
+value = 2500.0
+type = "float"
+description = "Specific heat per emitting area [J/m^2/K]"
+
+[kd_p1]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.03
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+
+[temperature_factor_soil_hydraulic_conductivity]
+used_in = ["Land", "getindex"]
+value = 0.0264
+type = "float"
+description = "An empirical parameter for adjusting soil hydraulic conductivity based on temperature (K⁻¹)."
+
+[von_karman_constant]
+used_in = ["SurfaceFluxes", "getindex"]
+value = 0.4
+type = "float"
+description = "The von Kármán constant ($\\kappa$), a dimensionless constant describing the logarithmic velocity profile near a boundary."
+
+[Rd_activation_energy]
+used_in = ["Land", "getindex"]
+value = 46390.0
+type = "float"
+description = "Energy of activation for dark respiration, Rd (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[Vcmax_activation_energy]
+used_in = ["Land", "getindex"]
+value = 65330.0
+type = "float"
+description = "Energy of activation for Vcmax (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[gas_constant_vapor]
+used_in = ["Thermodynamics", "getindex"]
+value = 461.5
+type = "float"
+description = "Gas constant for water vapor (J kg⁻¹ K⁻¹)."
+
+[mean_sea_level_pressure]
+used_in = ["Thermodynamics", "getindex", "Land"]
+value = 101325
+type = "float"
+description = "Mean sea level pressure ($p_{MSL}$) (Pa)."
+
+[kp]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 4.0
+type = "float"
+description = "Rate coefficient for photochemical quenching"
+
+[gas_constant_dry_air]
+used_in = ["Thermodynamics", "getindex"]
+value = 287.0
+type = "float"
+description = "Gas constant for dry air (J kg⁻¹ K⁻¹)."
+
+[soluble_soil_carbon_fraction]
+used_in = ["Land", "getindex"]
+value = 0.024
+type = "float"
+description = "Fraction of soil carbon that is considered soluble (dimensionless). Source: Davidson et al. (2011), DOI: 10.1111/j.1365-2486.2011.02546.x."
+
+["Γstar_activation_energy"]
+used_in = ["Land", "getindex"]
+value = 37830.0
+type = "float"
+description = "Energy of activation for $\\Gamma^*$ (J mol⁻¹). Source: Bonan (2019), Table 11.2; Bernacchi et al. (2001, 2003)."
+
+[beta_F]
+used_in = ["getindex"]
+value = 0.0
+type = "float"
+
+[beta]
+tag = "ZenithAngleAlbedoModel"
+used_in = ["getindex"]
+value = 0.4
+type = "float"
+description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
+
+[particle_density_organic_matter]
+used_in = ["Land", "getindex"]
+value = 1300.0
+type = "float"
+description = "Particle density of organic matter (kg m⁻³). Source: Hillel (1982)."
+
+[anomalistic_year_length]
+used_in = ["Insolation", "getindex"]
+value = 31558464
+type = "float"
+description = "Length of an anomalistic year (s). Derived as 365.25 * `day`."
+
+[kappa_p1]
+tag = "SIFParameters"
+used_in = ["getindex"]
+value = 0.045
+type = "float"
+description = "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+
+[particle_density_minerals]
+used_in = ["Land", "getindex"]
+value = 2650.0
+type = "float"
+description = "Particle density of soil minerals (kg m⁻³). Source: Hillel (1982)."
+
+[gamma]
+tag = "WuWuSnowCoverFractionModel"
+used_in = ["getindex"]
+value = 0.08
+type = "float"
+description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
