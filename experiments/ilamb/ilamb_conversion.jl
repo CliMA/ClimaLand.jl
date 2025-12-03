@@ -167,10 +167,9 @@ function make_ilamb_netcdf_file(filepath, save_dir)
     clima_ds = NCDatasets.NCDataset(filepath)
     clima_short_name = find_short_name(filepath)
 
-    # Shift dates by one month and add 14 days, since ClimaDiagnostics save
-    # dates at the end of the period instead of at the beginning and ILAMB wants
-    # the days to be in the middle of the months
-    dates = clima_ds["date"] .- Dates.Month(1) .+ Dates.Day(14)
+    # Add 14 days, since ClimaDiagnostics save dates at the start of the period
+    # and ILAMB wants the days to be in the middle of the months
+    dates = clima_ds["date"] .+ Dates.Day(14)
     start_date = first(dates)
     end_date = last(dates)
 
