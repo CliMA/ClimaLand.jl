@@ -163,7 +163,7 @@ LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
 if LONGER_RUN
     include("../ilamb/ilamb_conversion.jl")
     make_compatible_with_ILAMB(
-        joinpath(root_path, "output_active"),
-        joinpath(root_path, "ILAMB_diagnostics"),
+        joinpath(root_path, "global_diagnostics", "output_active"),
+        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end

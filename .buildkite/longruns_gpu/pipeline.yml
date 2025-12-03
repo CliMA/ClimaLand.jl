@@ -169,7 +169,7 @@ steps:
         - julia --color=yes --project=.buildkite/ experiments/ilamb/tests/test_ilamb_setup.jl
         - julia --color=yes --project=.buildkite/ experiments/ilamb/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_BUILD_NUMBER $BUILDKITE_COMMIT
       env:
-        ILAMB_DIAG_DIR: "snowy_land_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
+        ILAMB_DIAG_DIR: "snowy_land_pmodel_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
         ILAMB_BUILDKITE_DIR: "/net/sampo/data1/ilamb/buildkite"
 
     - wait
