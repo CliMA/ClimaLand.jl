@@ -291,7 +291,6 @@ end
             c = FT(4),
         ),
         retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
-        transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
@@ -325,7 +324,6 @@ function PlantHydraulicsModel{FT}(
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
     retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
-    transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
@@ -365,7 +363,6 @@ function PlantHydraulicsModel{FT}(
         compartment_midpoints,
         compartment_surfaces,
         parameters,
-        transpiration,
     )
 end
 

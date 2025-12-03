@@ -69,8 +69,6 @@ struct SoilCanopyModel{
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
         @assert Soil.PhaseChange{FT}() in soil.sources
-        @assert canopy.hydraulics.transpiration isa
-                Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa PrognosticMet
 

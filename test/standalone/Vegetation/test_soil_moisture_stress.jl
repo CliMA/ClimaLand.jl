@@ -48,7 +48,6 @@ for FT in (Float32, Float64)
             # # set initial conditions
             Y.canopy.hydraulics.ϑ_l.:1 .= canopy.hydraulics.parameters.ν
             p.canopy.hydraulics.ψ.:1 .= NaN
-            p.canopy.hydraulics.fa.:1 .= NaN
             set_initial_cache! = make_set_initial_cache(canopy)
             set_initial_cache!(p, Y, FT(0.0))
 
@@ -58,7 +57,6 @@ for FT in (Float32, Float64)
             p.canopy.soil_moisture_stress.βm .= 0
             Y.canopy.hydraulics.ϑ_l.:1 .= canopy.hydraulics.parameters.ν / 2
             p.canopy.hydraulics.ψ.:1 .= NaN
-            p.canopy.hydraulics.fa.:1 .= NaN
             set_initial_cache! = make_set_initial_cache(canopy)
             set_initial_cache!(p, Y, FT(0.0))
             grav = LP.grav(earth_param_set)
