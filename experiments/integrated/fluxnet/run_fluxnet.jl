@@ -101,6 +101,22 @@ dt = Float64(450) # 7.5 minutes
 # the atmospheric and radiative driver structs for the model
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
+
+orig_date0 = start_date
+orig_datef = stop_date
+
+# Clamp to available data range [2000, 2020]
+start_date = clamp(orig_date0, Date(2000, 1, 1), Date(2020, 12, 31))
+stop_date = clamp(orig_datef, Date(2000, 1, 1), Date(2020, 12, 31))
+
+# Warn if any adjustment happened
+if start_date != orig_date0 || stop_date != orig_datef
+    @warn(
+        "MODIS LAI data is only available from 2000 to 2020. " *
+        "Adjusted start year from $orig_date0 to $start_date and end year from $orig_datef to $stop_date.",
+    )
+end
+
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
