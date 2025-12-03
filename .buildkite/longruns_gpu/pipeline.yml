@@ -139,7 +139,7 @@ steps:
 
       - label: "Send simulation output to Azure VM for visualization"
         command:
-          - rsync -avz snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/* azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
+          - rsync -avz "/scratch/clima/slurm-buildkite/climaland-long-runs/$BUILDKITE_BUILD_NUMBER/climaland-long-runs/snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/"* azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
 
       - label: "Soil, 20 years"
         command:
