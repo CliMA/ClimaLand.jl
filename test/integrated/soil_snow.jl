@@ -61,7 +61,7 @@ function init_snow!(Y, S, params)
     Y.snow.S .= S
     Y.snow.S_l .= 0
     @. Y.snow.U =
-        ClimaLand.Snow.energy_from_q_l_and_swe(Y.snow.S, 1.0f0, params)
+        ClimaLand.Snow.energy_from_q_l_and_swe(Y.snow.S, 0.0f0, params)
 end
 
 t = Float64(0)
