@@ -38,13 +38,9 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 # default parameters using the global ClimaLand parameter maps. We also
 # need the offset of the local time of the site in hours from UTC. This is
 # because ClimaLand simulations are carried out in UTC, while the fluxtower
-# data is reported in local time.
-(; time_offset, lat, long) =
+# data is reported in local time. The height of sensors is reported in m.
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-
-# ClimaLand also needs to know the height at which the atmospheric data
-# was recorded.
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # It is also useful to know the bounds of the data,
 # in UTC, to use as the start and stop date of the simulation.
