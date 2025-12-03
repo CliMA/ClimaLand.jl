@@ -122,6 +122,7 @@ function modis_lai_single_year_path(;
     context = nothing,
     year = Dates.year(DateTime(2008)),
 )
+    year =clamp(year, 2000, 2020)
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     return joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
 end
@@ -139,18 +140,18 @@ simulate past that date.
 """
 function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
     # Get the year of the start and final dates
-    year0 = Dates.year(start_date)
-    yearf =
-        Dates.month(stop_date) == 12 ? Dates.year(stop_date) + 1 :
-        Dates.year(stop_date)
+    orig_year0 = Dates.year(start_date)
+    orig_yearf = Dates.month(stop_date) == 12 ? Dates.year(stop_date) + 1 : Dates.year(stop_date)
 
-    if (year0 < 2000)
-        year_diff = yearf - year0
+    # Clamp to available data range [2000, 2020]
+    year0 = clamp(orig_year0, 2000, 2020)
+    yearf = clamp(orig_yearf, 2000, 2020)
 
-        year0 = 2000
-        yearf = year0 + year_diff
+    # Warn if any adjustment happened
+    if year0 != orig_year0 || yearf != orig_yearf
         @warn(
-            "MODIS LAI data is only available from 2000 to 2020. Adjusting start year to 2000 and end year to $yearf.",
+            "MODIS LAI data is only available from 2000 to 2020. " *
+            "Adjusted start year from $orig_year0 to $year0 and end year from $orig_yearf to $yearf.",
         )
     end
 

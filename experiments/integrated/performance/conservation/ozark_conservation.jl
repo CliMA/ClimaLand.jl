@@ -136,10 +136,6 @@ for float_type in (Float32, Float64)
     )
 
     # Soil model
-    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-        PAR_albedo = soil_α_PAR,
-        NIR_albedo = soil_α_NIR,
-    )
     retention_parameters = (;
         ν = soil_ν,
         θ_r,

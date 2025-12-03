@@ -134,8 +134,6 @@ function FluxnetSimulations.get_parameters(
     )[1],
     h_canopy = FluxnetSimulationsExt.get_canopy_height(site_ID),
     h_stem = ((h_canopy - h_leaf)) > 0 ? h_canopy - h_leaf : FT(0.0),
-    z0_m = FT(0.13) * h_canopy,
-    z0_b = FT(0.1) * z0_m,
 )
     return (;
         soil_ν,
@@ -180,8 +178,6 @@ function FluxnetSimulations.get_parameters(
         h_leaf,
         h_stem,
         h_canopy,
-        z0_m,
-        z0_b,
     )
 end
 

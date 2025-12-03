@@ -90,8 +90,6 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     h_leaf,
     h_stem,
     h_canopy,
-    z0_m,
-    z0_b,
 ) = FluxnetSimulations.get_parameters(FT, site_ID, land_domain)
 
 # Set up the timestepping information for the simulation
@@ -208,8 +206,6 @@ canopy = Canopy.CanopyModel{FT}(
     canopy_forcing,
     LAI,
     toml_dict;
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
     prognostic_land_components,
     radiative_transfer,
     photosynthesis,
