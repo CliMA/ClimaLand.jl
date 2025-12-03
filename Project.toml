@@ -1,7 +1,7 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-authors = ["Clima Land Team"]
 version = "1.1.0"
+authors = ["Clima Land Team"]
 
 [deps]
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
@@ -48,7 +48,7 @@ CairoMakie = "0.12.5, 0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.17"
 ClimaComms = "0.6.2"
 ClimaCore = "0.14.30"
-ClimaDiagnostics = "0.2.13"
+ClimaDiagnostics = "0.2.13, 0.3"
 ClimaParams = "1"
 ClimaTimeSteppers = "0.8.2"
 ClimaUtilities = "0.1.25"
