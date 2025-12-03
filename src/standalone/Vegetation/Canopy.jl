@@ -1108,7 +1108,7 @@ function make_compute_exp_tendency(canopy::CanopyModel)
     end
     return compute_exp_tendency!
 end
-
+#=
 function make_update_implicit_cache(canopy::CanopyModel)
     components = canopy_components(canopy)
     update_implicit_cache_list = map(
@@ -1123,7 +1123,7 @@ function make_update_implicit_cache(canopy::CanopyModel)
     end
     return update_implicit_cache!
 end
-
+=#
 """
     make_compute_imp_tendency(canopy::CanopyModel)
 

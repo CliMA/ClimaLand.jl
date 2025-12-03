@@ -72,7 +72,7 @@ atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset) + Day(150)
 N_days = 20.0
-stop_date = start_date + Day(N_days) + Second(80)
+stop_date = start_date + Hour(30)
 
 # Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -98,7 +98,7 @@ LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Overwrite energy parameter for stability
-energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e3))
+energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e4))
 
 # Construct canopy model
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
@@ -134,9 +134,8 @@ function set_ic!(Y, p, t0, model)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 ref_dt = 6.0
-dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
+dts = [ref_dt, 60.0, 600.0, 1800.0, 3600.0]
 
-ref_T = []
 mean_err = []
 p95_err = []
 p99_err = []
@@ -148,24 +147,35 @@ for dt in dts
     @info dt
 
     # Create update times for driver and saving callback
-    saveat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
+    saveat = vcat(Array(start_date:Second(3600):stop_date), stop_date)
     simulation = LandSimulation(
         start_date,
         stop_date,
         dt,
         canopy;
         set_ic! = set_ic!,
-        updateat = Second(3 * 3600),
+        updateat = Second(3* 3600),
         solver_kwargs = (; saveat = deepcopy(saveat)),
         timestepper = ode_algo,
         user_callbacks = (),
     )
-    @time sol = solve!(simulation)
     # Save results for comparison
     if dt == ref_dt
-        global ref_T =
-            [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+        n_steps = Int(Second(stop_date - start_date)/Second(dt))
+        global ref_T = []
+        global atmos_T = []
+        push!(atmos_T, parent(simulation._integrator.p.drivers.T)[1])
+        push!(ref_T, parent(simulation._integrator.u.canopy.energy.T)[1])
+        for i in 1:n_steps
+            ClimaLand.Simulations.step!(simulation)
+            if i % 600 == 0
+                push!(ref_T, parent(simulation._integrator.u.canopy.energy.T)[1])
+                push!(atmos_T, parent(simulation._integrator.p.drivers.T)[1])
+                @show simulation._integrator.t
+            end
+        end
     else
+        @time sol = solve!(simulation)
         T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 
         global ΔT = abs.(T .- ref_T)
@@ -216,6 +226,7 @@ lines!(ax2, dts, dts / 1e3)
 save(joinpath(savedir, "convergence.png"), fig2)
 
 # Plot T throughout full simulation for each run
+
 fig3 = Figure()
 ax3 = Axis(
     fig3[1, 1],
@@ -224,8 +235,10 @@ ax3 = Axis(
     title = "T throughout simulation; length = $(sim_time / 24) days, dts in [$(dts[1]), $(dts[end])]",
 )
 times = times ./ 3600.0 # hours
+lines!(ax3, times[1], ref_T, label = "Ref")
+lines!(ax3, times[1], atmos_T, label = "T_atms")
 for i in 1:length(times)
-    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) s")
+    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) min")
 end
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)

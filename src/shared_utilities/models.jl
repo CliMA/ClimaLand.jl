@@ -215,7 +215,7 @@ end
 function make_update_implicit_cache(model::AbstractImExModel)
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
-    function update_implicit_cache!(dY, Y, p, t)
+    function update_implicit_cache!(p,Y, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
     end
