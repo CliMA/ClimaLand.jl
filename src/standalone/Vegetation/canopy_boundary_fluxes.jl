@@ -149,7 +149,7 @@ function canopy_boundary_fluxes!(
         Y,
         t,
     )
-
+    
     # Compute transpiration, SHF, LHF
     ClimaLand.turbulent_fluxes!(
         p.canopy.turbulent_fluxes,
@@ -335,7 +335,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         u = SVector{2, FT}(u, 0)
     end
     state_in = SurfaceFluxes.StateValues(h - d_sfc, u, ts_in)
-
+    T_sfc = T_sfc < 0 ? FT(NaN) : T_sfc
     ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
