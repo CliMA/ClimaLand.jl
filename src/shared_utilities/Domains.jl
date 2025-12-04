@@ -1337,8 +1337,7 @@ end
         FT;
         apply_mask = true,
         mask_threshold = 0.5,
-        n_vertelements = 15,
-        n_horzelements = (180,360),
+        nelements = (180, 360, 15),
         dz_tuple = (10.0, 0.05),
         depth = 50.0,
         npolynomial = 0,
@@ -1354,16 +1353,16 @@ end
     )
 
 Helper function to create a `HybridBox` domain corresponding to the entire globe,
-i.e. a regular latitude/longitude grid  with `n_horzelements` horizontal elements. The box has a
-depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
+i.e. a regular latitude/longitude grid  with `nelements[1:2]` horizontal elements (lat, long).
+The box has a depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
 10m at the bottom of the domain, with npolynomial = 0, GL quadrature, 
-and `n_vertelements` vertical elements.
+and `nelements[3]` vertical elements.
 
 `npolynomial` determines the order of polynomial base to use for the spatial
 discretization, which is correlated to the spatial resolution of the domain.
 
 When `npolynomial` is zero, the element is equivalent to a single point. In this
-case, the resolution of the model with the default `n_horzelements` is one degree.
+case, the resolution of the model with the default `nelements` is one degree.
 
 When `npolynomial` is greater than 1, a Gauss-Legendre-Lobotto quadrature is
 used, with `npolynomial + 1` points along the element. In this case, there are
@@ -1378,8 +1377,7 @@ function global_box_domain(
     FT;
     apply_mask = true,
     mask_threshold = 0.5,
-    n_vertelements = 15,
-    n_horzelements = (180, 360),
+    nelements = (180, 360, 15),
     dz_tuple = (10.0, 0.05),
     depth = 50,
     npolynomial = 0,
@@ -1393,7 +1391,6 @@ function global_box_domain(
     ),
     interpolation_method = Interpolations.Constant(),
 )
-    nelements = (n_horzelements..., n_vertelements)
     if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
         @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
         apply_mask = false

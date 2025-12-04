@@ -16,7 +16,7 @@
 # saved at the bottom of this file
 
 # Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
+# Number of spatial elements: 180, 360, 15
 # Soil depth: 50 m
 # Simulation duration: 6 hours
 # Timestep: 450 s
@@ -78,10 +78,10 @@ function setup_prob(
     stop_date,
     Δt;
     outdir = outdir,
-    nelements = (101, 15),
+    nelements = (180, 360, 15),
 )
     toml_dict = LP.create_toml_dict(FT)
-    domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
+    domain = ClimaLand.Domains.global_box_domain(FT; nelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
 
@@ -169,7 +169,7 @@ function setup_simulation(; greet = false)
     start_date = DateTime(2008)
     stop_date = Second(60 * 60.0 * 6) + start_date
     Δt = 450.0
-    nelements = (101, 15)
+    nelements = (180, 360, 15)
     prob, cb = setup_prob(start_date, stop_date, Δt; nelements)
 
     # Define timestepper and ODE algorithm
