@@ -156,8 +156,8 @@ function default_output_writer(
         )
     else
         coords = ClimaLand.Domains.coordinates(domain).surface
-        longs = unique(parent(coords.long))
-        lats = unique(parent(coords.lat))
+        longs = unique(Array(parent(coords.long))[:])
+        lats = unique(Array(parent(coords.lat))[:])
         output_writer = NetCDFWriter(
             space,
             outdir;
