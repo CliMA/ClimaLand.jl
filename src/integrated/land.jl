@@ -311,6 +311,7 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
 )
 
+
 """
     make_update_boundary_fluxes(
         land::LandModel{FT, MM, SM, RM, SnM},
@@ -330,7 +331,7 @@ models.
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
 """
-function make_update_boundary_fluxes(
+function make_update_explicit_boundary_fluxes(
     land::LandModel{FT, MM, SM, RM, SnM},
 ) where {
     FT,
@@ -339,15 +340,25 @@ function make_update_boundary_fluxes(
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
 }
-    update_soil_bf! = make_update_boundary_fluxes(land.soil)
-    update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
-    update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
-    update_snow_bf! = make_update_boundary_fluxes(land.snow)
+    update_soil_bf! = make_update_explicit_boundary_fluxes(land.soil)
+    update_soilco2_bf! = make_update_explicit_boundary_fluxes(land.soilco2)
+    update_canopy_bf! = make_update_explicit_boundary_fluxes(land.canopy)
+    update_snow_bf! = make_update_explicit_boundary_fluxes(land.snow)
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+
+        # Compute the ground heat flux in place:
+        update_soil_snow_ground_heat_flux!(
+            p,
+            Y,
+            land.soil.parameters,
+            land.snow.parameters,
+            land.soil.domain,
+            FT,
+        )
 
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
@@ -364,15 +375,6 @@ function make_update_boundary_fluxes(
             land.soil.parameters.earth_param_set,
         )
 
-        # Compute the ground heat flux in place:
-        update_soil_snow_ground_heat_flux!(
-            p,
-            Y,
-            land.soil.parameters,
-            land.snow.parameters,
-            land.soil.domain,
-            FT,
-        )
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
 
@@ -388,6 +390,49 @@ function make_update_boundary_fluxes(
         # Update canopy
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
+        update_soilco2_bf!(p, Y, t)
+    end
+    return update_boundary_fluxes!
+end
+
+
+"""
+    make_update_implicit_boundary_fluxes(
+        land::LandModel{FT, MM, SM, RM, SnM},
+    ) where {
+        FT,
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        SM <: Soil.RichardsModel{FT},
+        RM <: Canopy.CanopyModel{FT}
+        SnM <: Snow.SnowModel{FT}
+        }
+
+A method which makes a function; the returned function
+updates the additional auxiliary variables for the integrated model,
+as well as updates the boundary auxiliary variables for all component
+models.
+
+This function is called each ode function evaluation, prior to the tendency function
+evaluation.
+"""
+function make_update_implicit_boundary_fluxes(
+    land::LandModel{FT, MM, SM, RM, SnM},
+) where {
+    FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+    SnM <: Snow.SnowModel{FT},
+}
+    update_soil_bf! = make_update_implicit_boundary_fluxes(land.soil)
+    update_soilco2_bf! = make_update_implicit_boundary_fluxes(land.soilco2)
+    update_canopy_bf! = make_update_implicit_boundary_fluxes(land.canopy)
+    update_snow_bf! = make_update_implicit_boundary_fluxes(land.snow)
+
+    function update_boundary_fluxes!(p, Y, t)
+        update_snow_bf!(p, Y, t)
+        update_soil_bf!(p, Y, t)
+        update_canopy_bf!(p, Y, t)
         update_soilco2_bf!(p, Y, t)
     end
     return update_boundary_fluxes!
