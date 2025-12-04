@@ -104,7 +104,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     o2_top_bc = Soil.Biogeochemistry.AtmosO2StateBC(
         co2_parameters.earth_param_set,
         co2_parameters.M_O2,
-        co2_parameters.O2_a,
+        co2_parameters.O2_a_atm,
     )
     o2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0)
     co2_boundary_conditions = (;

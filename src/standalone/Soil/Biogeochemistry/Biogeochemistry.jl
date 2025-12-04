@@ -58,8 +58,8 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     kM_sx::FT
     "Michaelis constant for O2 (m3 m-3)"
     kM_o2::FT
-    "Volumetric fraction of O₂ in atmospheric air, dimensionless"
-    O2_a::FT
+    "Volumetric fraction of O₂ in atmospheric air (reference value for boundary condition), dimensionless"
+    O2_a_atm::FT
     "Diffusion coefficient of oxygen in air, dimensionless"
     D_oa::FT
     "Fraction of soil carbon that is considered soluble, dimensionless"
@@ -91,7 +91,7 @@ function SoilCO2ModelParameters(
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,
-        :O2_volume_fraction => :O2_a,
+        :O2_volume_fraction => :O2_a_atm,
         :oxygen_diffusion_coefficient => :D_oa,
         :soluble_soil_carbon_fraction => :p_sx,
         :molar_mass_carbon => :M_C,
@@ -177,7 +177,7 @@ function SoilCO2Model{FT}(
                 o2 = AtmosO2StateBC(
                     parameters.earth_param_set,
                     parameters.M_O2,
-                    parameters.O2_a,
+                    parameters.O2_a_atm,
                 ),
             ),
             bottom = (
@@ -822,13 +822,12 @@ struct AtmosO2StateBC{FT <: AbstractFloat} <: ClimaLand.AbstractBC
 end
 
 """
-    AtmosO2StateBC(earth_param_set, M_O2::FT, O2_a::FT) where {FT}
+    AtmosO2StateBC(earth_param_set, M_O2::FT, O2_a_atm::FT) where {FT}
 
 Constructor for AtmosO2StateBC that gets parameters from LandParameters and model parameters.
 """
-function AtmosO2StateBC(earth_param_set, M_O2::FT, O2_a::FT) where {FT}
+function AtmosO2StateBC(earth_param_set, M_O2::FT, O2_a_atm::FT) where {FT}
     R = FT(LP.gas_constant(earth_param_set))
-    O2_a_atm = FT(O2_a)
     return AtmosO2StateBC{FT}(R, M_O2, O2_a_atm)
 end
 
