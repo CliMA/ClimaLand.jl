@@ -134,7 +134,7 @@ function set_ic!(Y, p, t0, model)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 ref_dt = 6.0
-dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0]#, 3600.0]
+dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
 
 ref_T = []
 mean_err = []
