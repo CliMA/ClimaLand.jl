@@ -4,7 +4,7 @@
 # using ERA5 data.
 
 # Simulation Setup
-# Number of spatial elements: 101 in horizontal, 5 in vertical
+# Number of spatial elements: 180,360 in horizontal, 5 in vertical
 # Soil depth: 3.5 m
 # Simulation duration: 365 d
 # Timestep: 3600 s
@@ -79,15 +79,10 @@ start_date = DateTime(2008)
 stop_date = DateTime(2010)
 # Domain
 depth = FT(3.5)
-n_vertelements = 7
+nelements = (180, 360, 7)
 dz_tuple = FT.((1.0, 0.05))
-domain = ClimaLand.Domains.global_box_domain(
-    FT;
-    context,
-    n_vertelements,
-    depth,
-    dz_tuple,
-)
+domain =
+    ClimaLand.Domains.global_box_domain(FT; context, nelements, depth, dz_tuple)
 @info "Run: Global Bucket Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
