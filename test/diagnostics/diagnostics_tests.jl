@@ -517,10 +517,10 @@ end
     @test output_writer.start_date == start_date
     radius_earth = 6.378e6
     @test output_writer.hpts[1] == unique(
-        parent(ClimaCore.Fields.coordinate_field(d.space.surface).long)[:],
+        Array(parent(ClimaCore.Fields.coordinate_field(d.space.surface).long))[:],
     )
     @test output_writer.hpts[2] == unique(
-        parent(ClimaCore.Fields.coordinate_field(d.space.surface).lat)[:],
+        Array(parent(ClimaCore.Fields.coordinate_field(d.space.surface).lat))[:],
     )
     # Cartesian box, no long lat
     d = HybridBox(;
