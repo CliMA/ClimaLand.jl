@@ -73,9 +73,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
 # Get site-specific information: location coordinates, time offset, and sensor
 # height.
-(; time_offset, lat, long) =
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # Get maximum simulation start and end dates
 (start_date, stop_date) =

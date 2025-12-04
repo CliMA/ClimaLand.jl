@@ -70,11 +70,9 @@ toml_dict = LP.create_toml_dict(FT);
 site_ID = "US-MOz";
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 # Get the latitude and longitude in degrees, as well as the
-# time offset in hours of local time from UTC
-(; time_offset, lat, long) =
+# time offset in hours of local time from UTC and height of sensors in m
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val));
-# Get the height of the sensors in m
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
 # Set a start and stop date of the simulation in UTC, as well as
 # a timestep in seconds
 start_date = DateTime("2010-05-01", "yyyy-mm-dd")
