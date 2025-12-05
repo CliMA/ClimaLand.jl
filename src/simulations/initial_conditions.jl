@@ -91,52 +91,6 @@ end
 
 Sets the soil initial conditions, stored in `Y.soil.ϑ_l`, `Y.soil.θ_i`,
 `Y.soil.ρe_int`, and defined on the `subsurface_space` corresponding to
-unfrozen soil at 98% of saturation, and with constant temperature equal
-to the atmospheric temperature at the surface.
-
-If used with a CoupledAtmosphere, we assume that p.drivers.T has already been 
-updated.
-"""
-function set_saturated_soil_initial_conditions!(Y, p, t0, soil)
-    params = soil.parameters
-    ν = params.ν
-    θ_r = params.θ_r
-    FT = eltype(Y.soil.ϑ_l)
-    @. Y.soil.ϑ_l = FT(0.98) * (ν - θ_r) + θ_r
-    Y.soil.θ_i .= FT(0.0)
-    θ_l = ClimaLand.Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
-    nelements =
-        soil.domain.nelements isa Integer ? soil.domain.nelements :
-        soil.domain.nelements[end]
-    # If CoupledAtmosphere, p.drivers.T is assumed to be updated already
-    if soil.boundary_conditions.top.atmos isa ClimaLand.PrescribedAtmosphere
-        evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
-    end
-    for i in 1:nelements
-        ClimaCore.Fields.level(p.soil.T, i) .= p.drivers.T
-    end
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            θ_l,
-            Y.soil.θ_i,
-            params.ρc_ds,
-            params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        ClimaLand.Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            p.soil.T,
-            params.earth_param_set,
-        )
-    return nothing
-end
-
-"""
-    set_saturated_soil_initial_conditions!(Y, p, t0, soil)
-
-Sets the soil initial conditions, stored in `Y.soil.ϑ_l`, `Y.soil.θ_i`,
-`Y.soil.ρe_int`, and defined on the `subsurface_space` corresponding to
 unfrozen soil at 99% of saturation and with constant temperature equal
 to the atmospheric temperature at the surface.
 
