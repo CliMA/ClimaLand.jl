@@ -1,5 +1,6 @@
 export PrescribedCanopyTempModel,
     BigLeafEnergyModel,
+    SteadyStateModel,
     AbstractCanopyEnergyModel,
     canopy_temperature,
     root_energy_flux_per_ground_area!,
@@ -23,6 +24,33 @@ ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
     (FT, FT, FT)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
     (:surface, :surface, :surface)
+
+set_historical_cache!(p,Y,energy::AbstractCanopyEnergyModel, canopy, t0) = nothing
+"""
+    SteadyStateModel{FT} <: AbstractCanopyEnergyModel{FT}
+
+A model for the energy of the canopy which assumes the canopy temperature
+satisfies steady state (flux balance).
+"""
+struct SteadyStateModel{FT} <: AbstractCanopyEnergyModel{FT} end
+
+ClimaLand.auxiliary_vars(model::SteadyStateModel) =
+    (:fa_energy_roots, :T)
+ClimaLand.auxiliary_types(model::SteadyStateModel{FT}) where {FT} =
+    (FT, FT)
+ClimaLand.auxiliary_domain_names(model::SteadyStateModel) =
+    (:surface, :surface, )
+
+set_historical_cache!(p,Y,energy::SteadyStateModel, canopy, t0) = evaluate!(p.canopy.energy.T, canopy.boundary_conditions.atmos.T, t0)
+
+"""
+    canopy_temperature(model::SteadyStateModel, canopy, Y, p)
+
+Returns the canopy temperature under the `SteadyStateModel` model
+"""
+function canopy_temperature(model::SteadyStateModel, canopy, Y, p)
+    p.canopy.energy.T
+end
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}

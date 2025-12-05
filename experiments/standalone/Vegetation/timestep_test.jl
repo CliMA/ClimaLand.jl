@@ -72,7 +72,7 @@ atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset) + Day(150)
 N_days = 20.0
-stop_date = start_date + Day(N_days) + Second(80)
+stop_date = start_date + Day(N_days)
 
 # Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -98,7 +98,7 @@ LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # Overwrite energy parameter for stability
-energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e3))
+energy = ClimaLand.Canopy.SteadyStateModel{FT}()
 
 # Construct canopy model
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
@@ -109,14 +109,9 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     energy,
 );
 
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 6,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
+timestepper = CTS.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
 function set_ic!(Y, p, t0, model)
     atmos = model.boundary_conditions.atmos
     (; retention_model, ν, S_s) = model.hydraulics.parameters
@@ -131,10 +126,10 @@ function set_ic!(Y, p, t0, model)
         )
 
     Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    #evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 ref_dt = 6.0
-dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
+dts = [ref_dt, 30.0, 450.0, 900.0, 1800.0, 3600.0]
 
 ref_T = []
 mean_err = []
@@ -143,38 +138,44 @@ p99_err = []
 sol_err = []
 T_states = []
 times = []
+ref_times = []
 ΔT = FT(0)
 for dt in dts
     @info dt
 
     # Create update times for driver and saving callback
-    saveat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
+    saveat = 3600
     simulation = LandSimulation(
         start_date,
         stop_date,
         dt,
         canopy;
         set_ic! = set_ic!,
-        updateat = Second(3 * 3600),
-        solver_kwargs = (; saveat = deepcopy(saveat)),
+        updateat = Second(3600),
         timestepper = ode_algo,
         user_callbacks = (),
     )
-    @time sol = solve!(simulation)
-    # Save results for comparison
-    if dt == ref_dt
-        global ref_T =
-            [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
-    else
-        T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
-
+    nsteps = Int(Second(stop_date - start_date)/Second(dt))
+    T = []
+  @time  for step in 1:nsteps
+        if Int(float(simulation._integrator.t)) % saveat == 0
+            if dt == ref_dt
+                push!(ref_T, parent(simulation._integrator.p.canopy.energy.T)[1])
+                push!(ref_times, float(simulation._integrator.t))
+            else
+                push!(T, parent(simulation._integrator.p.canopy.energy.T)[1])
+#                push!(times, float(simulation._integrator.t))
+            end
+        end
+        ClimaLand.Simulations.step!(simulation)
+    end
+    if dt != ref_dt
         global ΔT = abs.(T .- ref_T)
         push!(mean_err, FT(mean(ΔT)))
         push!(p95_err, FT(percentile(ΔT, 95)))
         push!(p99_err, FT(percentile(ΔT, 99)))
         push!(sol_err, ΔT[end])
         push!(T_states, T)
-        push!(times, float.(sol.t))
     end
 end
 savedir = generate_output_path(
@@ -195,9 +196,9 @@ ax = Axis(
     title = "Error in T over $(sim_time / 24) day sim, dts in [$(dts[1]), $(dts[end])]",
 )
 dts = dts[2:end] ./ 60
-lines!(ax, dts, FT.(mean_err), label = "Mean Error")
-lines!(ax, dts, FT.(p95_err), label = "95th% Error")
-lines!(ax, dts, FT.(p99_err), label = "99th% Error")
+lines!(ax, dts, FT.(mean_err.+eps(FT)), label = "Mean Error")
+lines!(ax, dts, FT.(p95_err.+eps(FT)), label = "95th% Error")
+lines!(ax, dts, FT.(p99_err.+eps(FT)), label = "99th% Error")
 axislegend(ax, position = :rb)
 save(joinpath(savedir, "errors.png"), fig)
 
@@ -224,8 +225,8 @@ ax3 = Axis(
     title = "T throughout simulation; length = $(sim_time / 24) days, dts in [$(dts[1]), $(dts[end])]",
 )
 times = times ./ 3600.0 # hours
-for i in 1:length(times)
-    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) s")
+for i in 1:length(dts)-1
+    lines!(ax3, ref_times, T_states[i], label = "dt $(dts[i]) min")
 end
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)

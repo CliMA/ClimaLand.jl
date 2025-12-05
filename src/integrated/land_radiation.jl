@@ -35,7 +35,7 @@ In integrated mode, we have already computed those quantities in
 LW and SW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
 and `p.canopy.radiative_transfer.SW_n`.
 """
-function Canopy.canopy_radiant_energy_fluxes!(
+function Canopy.canopy_lw_energy_fluxes!(
     p::NamedTuple,
     s::PrognosticGroundConditions,
     canopy,
@@ -138,4 +138,8 @@ function Canopy.ground_albedo_NIR(
         (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
         p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.NIR
+end
+
+function ground_net_longwave()
+    
 end

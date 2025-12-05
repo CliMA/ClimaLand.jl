@@ -350,18 +350,19 @@ function make_update_boundary_fluxes(
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
 
         # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
+        lsm_lw_energy_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
             Y,
             t,
         )
-
-        # Effective (radiative) land properties
-        set_eff_land_radiation_properties!(
+        lsm_sw_energy_fluxes!(
             p,
-            land.soil.parameters.earth_param_set,
+            land,
+            land.canopy.radiative_transfer,
+            Y,
+            t,
         )
 
         # Compute the ground heat flux in place:
@@ -389,6 +390,12 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
+
+        # Effective (radiative) land properties
+        set_eff_land_radiation_properties!(
+            p,
+            land.soil.parameters.earth_param_set,
+        )
     end
     return update_boundary_fluxes!
 end
@@ -410,7 +417,7 @@ where the canopy LAI is zero. Note also that this serves the role of
 `canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
 when the Canopy is run in standalone mode.
 """
-function lsm_radiant_energy_fluxes!(
+function lsm_lw_energy_fluxes!(
     p,
     land::LandModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},

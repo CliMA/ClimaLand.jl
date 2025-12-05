@@ -173,7 +173,7 @@ function LandSimulation(
 
     # Create tendencies and jacobian update function
     exp_tendency! = make_exp_tendency(model)
-    if model isa ClimaLand.AbstractExpModel
+    if model isa ClimaLand.AbstractExpModel || model isa ClimaLand.Canopy.CanopyModel
         T_imp! = nothing
     else
         imp_tendency! = ClimaLand.make_imp_tendency(model)

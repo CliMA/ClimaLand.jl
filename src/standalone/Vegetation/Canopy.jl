@@ -14,7 +14,7 @@ using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 import Insolation.Parameters as IP
 using Dates
-
+using RootSolvers
 import ClimaLand:
     name,
     prognostic_vars,
@@ -1207,6 +1207,7 @@ sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
+        set_historical_cache!(p, Y0, model.energy, model, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible

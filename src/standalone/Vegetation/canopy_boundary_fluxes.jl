@@ -104,7 +104,7 @@ end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
-        canopy_boundary_fluxes!(p, canopy, Y, t)
+        canopy_boundary_fluxes!(p, canopy, canopy.energy, Y, t)
     end
     return update_boundary_fluxes!
 end
@@ -130,6 +130,7 @@ within the explicit tendency of the canopy model.
 function canopy_boundary_fluxes!(
     p::NamedTuple,
     canopy::CanopyModel,
+    energy::AbstractCanopyEnergyModel,
     Y::ClimaCore.Fields.FieldVector,
     t,
 )
@@ -187,7 +188,146 @@ function canopy_boundary_fluxes!(
     )
 
     # Update the canopy radiation
-    canopy_radiant_energy_fluxes!(
+    canopy_sw_energy_fluxes!(
+        p,
+        bc.ground,
+        canopy,
+        bc.radiation,
+        canopy.earth_param_set,
+        Y,
+        t,
+    )
+
+    canopy_lw_energy_fluxes!(
+        p,
+        bc.ground,
+        canopy,
+        bc.radiation,
+        canopy.earth_param_set,
+        Y,
+        t,
+    )
+
+end
+
+
+function flux_balance_equation(T::FT, ϵ_c::FT, ϵ_g::FT, T_g::FT, σ::FT, LW_d::FT, SW_n::FT, root_energy_flux::FT, ts_in, u::FT, h::FT, r_stomata_canopy::FT, d_sfc::FT, z_0m::FT, z_0b::FT, Cd::FT, LAI::FT, SAI::FT, earth_param_set, gustiness::FT) where {FT}
+    T = max(T, ts_in.T- FT(5))
+    T = min(T, ts_in.T+FT(5))
+    LW_n = canopy_net_longwave(T, ϵ_c, ϵ_g, T_g, σ, LW_d)
+    R_n = SW_n + LW_n
+    turb_fluxes = canopy_compute_turbulent_fluxes_at_a_point(ts_in, u, h, gustiness,T, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set)
+    return FT(-R_n + (turb_fluxes.shf + turb_fluxes.lhf) - root_energy_flux)
+end
+function root_solve(ϵ_c, ϵ_g, T_g, σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness)
+    f(T) = flux_balance_equation(T, ϵ_c, ϵ_g, T_g, σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness)
+    FT = typeof(ϵ_c)
+    soln = RootSolvers.find_zero(f, SecantMethod(ts_in.T - FT(3), ts_in.T +FT(3)))
+    return soln.root
+end
+                   
+function solve_for_T!(p, Y, bc, atmos, radiation, earth_param_set)
+    T = p.canopy.energy.T
+    root_energy_flux = p.canopy.energy.fa_energy_roots
+    LW_d = p.drivers.LW_d
+    SW_n = p.canopy.radiative_transfer.SW_n
+    ts_in = p.drivers.thermal_state
+    u = p.drivers.u
+    h = atmos.h
+    gustiness = atmos.gustiness
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    sf_parameterization = bc.turbulent_flux_parameterization
+    d_sfc = sf_parameterization.displ
+    z_0m = sf_parameterization.z_0m
+    z_0b = sf_parameterization.z_0b
+    Cd = sf_parameterization.Cd
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
+    ϵ_c = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    # Long wave: use ground conditions from the ground driver
+    T_g = p.drivers.T_ground
+    ϵ_g = bc.ground.ϵ
+    FT = eltype(T)
+    _σ = FT(LP.Stefan(earth_param_set))
+    T .= root_solve.(ϵ_c, ϵ_g, T_g, _σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness)
+    if parent(T)[1] < 0
+        @show ϵ_c, ϵ_g, T_g, _σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness
+    end
+end
+
+function canopy_boundary_fluxes!(
+    p::NamedTuple,
+    canopy::CanopyModel,
+    energy::SteadyStateModel,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+)
+    bc = canopy.boundary_conditions
+    radiation = bc.radiation
+    atmos = bc.atmos
+    sf_parameterization = bc.turbulent_flux_parameterization
+    root_water_flux = p.canopy.hydraulics.fa_roots
+    root_energy_flux = p.canopy.energy.fa_energy_roots
+    fa = p.canopy.hydraulics.fa
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
+    canopy_tf = p.canopy.turbulent_fluxes
+    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+
+    #Explicit terms
+    root_water_flux_per_ground_area!(
+        root_water_flux,
+        bc.ground,
+        canopy.hydraulics,
+        canopy,
+        Y,
+        p,
+        t,
+    )
+    # Update the root flux of energy per unit ground area in place
+    root_energy_flux_per_ground_area!(
+        root_energy_flux,
+        bc.ground,
+        canopy.energy,
+        canopy,
+        Y,
+        p,
+        t,
+    )
+    canopy_sw_energy_fluxes!(
+        p,
+        bc.ground,
+        canopy,
+        bc.radiation,
+        canopy.earth_param_set,
+        Y,
+        t,
+    )
+
+    # Solve for T
+    solve_for_T!(p, Y, bc, atmos, radiation, canopy.earth_param_set)
+    # compute fluxes using this T
+
+    
+    # Compute transpiration, SHF, LHF
+    ClimaLand.turbulent_fluxes!(
+        canopy_tf,
+        atmos,
+        sf_parameterization,
+        canopy,
+        Y,
+        p,
+        t,
+    )
+    # Transpiration is per unit ground area, not leaf area (mult by LAI)
+    fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
+        canopy.hydraulics.transpiration,
+        Y,
+        p,
+        t,
+    )
+
+    canopy_lw_energy_fluxes!(
         p,
         bc.ground,
         canopy,
