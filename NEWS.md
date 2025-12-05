@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+ - Start from saturated conditions [#1555](https://github.com/CliMA/ClimaLand.jl/pull/1555)
 - ClimaLand LandModel computes fluxes when run with a coupled atmosphere. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
 
 v1.0.2
