@@ -3,8 +3,15 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- Remove internal canopy PrescribedTranspiration type and method. PR[#1561]((https://github.com/CliMA/ClimaLand.jl/pull/1561)
-- ClimaLand LandModel computes fluxes when run with a coupled atmosphere. PR[#1538]((https://github.com/CliMA/ClimaLand.jl/pull/1538)
+
+v1.1.1
+-------
+- Update SurfaceFluxes compatibility to support v0.14 PR[#1563](https://github.com/CliMA/ClimaLand.jl/pull/1563)
+- Remove internal canopy PrescribedTranspiration type and method. PR[#1561](https://github.com/CliMA/ClimaLand.jl/pull/1561)
+
+v1.1.0
+-------
+- ClimaLand LandModel computes fluxes when run with a coupled atmosphere. PR[#1561](https://github.com/CliMA/ClimaLand.jl/pull/1561)
 
 v1.0.2
 ------
