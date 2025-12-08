@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- Use new spun-up IC with zero flux at the bottom of the domain by default; miscellaneous bug fixes [#1584](https://github.com/CliMA/ClimaLand.jl/pull/1584)
 - Use Gryanik surface flux parameters [#1578](https://github.com/CliMA/ClimaLand.jl/pull/1578)
 
 v1.2.1

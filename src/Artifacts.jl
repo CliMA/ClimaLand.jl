@@ -7,13 +7,55 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import LazyArtifacts
 
 """
+     saturated_land_ic_path(; context = nothing)
+
+Returns the path to the spun-up land initial conditions created with zero
+flux at the bottom of the soil domain, which extends 15 m in vertical 
+extent; these boundary conditions allow for a water table to form.
+
+This file contains the following variables:
+- soil ϑ_l
+- soil θ_i
+- soil ρe_int
+- leaf water potential
+- snow water equivalent
+
+Spun-up initial conditions similar to these can be created by 
+running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
+using the default global_box_domain, with a soil model with no flux
+at the bottom boundary,
+and then running the ClimaArtifacts script 
+`saturated_soil_ic/create_artifacts.jl` with a command line argument
+pointing to the correct path, as documented in that file.
+"""
+function saturated_land_ic_path(; context = nothing)
+    dir = @clima_artifact("saturated_land_ic", context)
+    return joinpath(dir, "saturated_land_ic.nc")
+end
+
+"""
     soil_ic_2008_50m_path(; context)
 
 Return the path to the file that contains the spun-up soil and snow initial
-conditions for Jan 1, 2008.
+conditions for Jan 1, 2008. A free drainage boundary condition was used.
+The soil domain has a depth of 50m.
 
-The soil domain has a depth of 50m; we have ensured that surface properties
-and fluxes are spun-up, but the deep soil water may not be.
+Initial conditions corresponding to a no flux boundary condition, and for
+a shallower domain, can be obtained using `satured_land_ic_path`.
+
+This file contains the following variables:
+- soil ϑ_l
+- soil θ_i
+- soil ρe_int
+- snow water equivalent
+
+Spun-up initial conditions similar to these can be created by 
+running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
+using the default global domain (not box), changing the soil boundary
+condition to free drainage at the bottom of the domain,
+and then running the ClimaArtifacts script 
+`soil_ic_2008_50m/create_artifacts.jl` with a command line argument
+pointing to the correct path, as documented in that file.
 """
 function soil_ic_2008_50m_path(; context = nothing)
     dir = @clima_artifact("soil_ic_2008_50m", context)
