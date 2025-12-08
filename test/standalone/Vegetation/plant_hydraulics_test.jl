@@ -14,7 +14,6 @@ import ClimaLand.Parameters as LP
 import Insolation
 using Dates
 
-
 for FT in (Float32, Float64)
     @testset "Plant hydraulics parameterizations, FT = $FT" begin
         ν = FT(0.5)
@@ -177,13 +176,7 @@ for FT in (Float32, Float64)
             range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
         )
 
-
-        function leaf_transpiration(t)
-            T = FT(1e-8) # m/s
-        end
-
         ψ_soil0 = FT(0.0)
-        transpiration = PrescribedTranspiration{FT}(leaf_transpiration)
 
         soil_driver = PrescribedGroundConditions{FT}()
 
@@ -208,11 +201,10 @@ for FT in (Float32, Float64)
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = plant_hydraulics_param_set,
-            transpiration = transpiration,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_surfaces,
-            compartment_midpoints = compartment_midpoints,
+            n_stem,
+            n_leaf,
+            compartment_surfaces,
+            compartment_midpoints,
         )
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
@@ -234,9 +226,9 @@ for FT in (Float32, Float64)
             ),
         )
         # Set system to hydrostatic equilibrium
+        AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
+        T0A = FT(1e-8) * AI[:leaf]
         function initial_compute_exp_tendency!(F, Y)
-            AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
-            T0A = FT(1e-8) * AI[:leaf]
             for i in 1:(n_leaf + n_stem)
                 if i == 1
                     fa =
@@ -280,11 +272,11 @@ for FT in (Float32, Float64)
         tendecy of the model also results in a steady state. This check is repeated using
         the plant hydraulics model directly.
         =======================#
-
+        ftol = FT(T0A * 1e-4) # 0.01% error in the solution
         soln = nlsolve(
             initial_compute_exp_tendency!,
-            Vector{FT}(-0.03:0.01:0.07);
-            ftol = eps(FT),
+            Vector{FT}(-3.0:-3:-33);
+            ftol,
             method = :newton,
             iterations = 20,
         )
@@ -304,18 +296,17 @@ for FT in (Float32, Float64)
         dY = similar(Y)
         for i in 1:(n_stem + n_leaf)
             Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
-            p.canopy.hydraulics.ψ.:($i) .= NaN
-            p.canopy.hydraulics.fa.:($i) .= NaN
             dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
         end
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
-        canopy_exp_tendency! = make_exp_tendency(model)
+        # overwrite transpiration with the prescribed value we want to test steady state with
+        p.canopy.turbulent_fluxes.transpiration .= T0A
+        canopy_exp_tendency! = make_compute_exp_tendency(model)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
-        tolerance = sqrt(eps(FT))
-        @test all(parent(dY.canopy.hydraulics.ϑ_l) .< tolerance) # starts in equilibrium
-
+        @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l))[:] .< ftol) # starts in equilibrium
+        @test all(parent(p.canopy.hydraulics.fa)[:] .- T0A .< ftol) # Fluxes are as we expect
 
         # repeat using the plant hydraulics model directly
         # make sure it agrees with what we get when use the canopy model ODE
@@ -323,11 +314,10 @@ for FT in (Float32, Float64)
         standalone_dY = similar(Y)
         for i in 1:(n_stem + n_leaf)
             Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
-            p.canopy.hydraulics.ψ.:($i) .= NaN
-            p.canopy.hydraulics.fa.:($i) .= NaN
             standalone_dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
         end
         set_initial_cache!(p, Y, 0.0)
+        p.canopy.turbulent_fluxes.transpiration .= T0A
         standalone_exp_tendency! =
             make_compute_exp_tendency(model.hydraulics, model)
         standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
