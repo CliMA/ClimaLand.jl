@@ -14,7 +14,7 @@ import ClimaLand:
     auxiliary_vars,
     auxiliary_types,
     auxiliary_domain_names,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
     FTfromY
 
 using ClimaLand.Domains
@@ -72,11 +72,11 @@ ClimaLand.auxiliary_vars(model::PondModel) = (:runoff,)
 ClimaLand.auxiliary_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(model::PondModel) = (:surface,)
 
-function ClimaLand.make_update_boundary_fluxes(model::PondModel)
-    function update_boundary_fluxes!(p, Y, t)
+function ClimaLand.make_update_explicit_boundary_fluxes(model::PondModel)
+    function update_explicit_boundary_fluxes!(p, Y, t)
         p.surface_water.runoff .= surface_runoff(model.runoff, Y, p, t)
     end
-    return update_boundary_fluxes!
+    return update_explicit_boundary_fluxes!
 end
 
 
