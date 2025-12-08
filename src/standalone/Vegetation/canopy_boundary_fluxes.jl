@@ -212,17 +212,25 @@ end
 
 
 function flux_balance_equation(T::FT, ϵ_c::FT, ϵ_g::FT, T_g::FT, σ::FT, LW_d::FT, SW_n::FT, root_energy_flux::FT, ts_in, u::FT, h::FT, r_stomata_canopy::FT, d_sfc::FT, z_0m::FT, z_0b::FT, Cd::FT, LAI::FT, SAI::FT, earth_param_set, gustiness::FT) where {FT}
-    T = max(T, ts_in.T- FT(5))
-    T = min(T, ts_in.T+FT(5))
     LW_n = canopy_net_longwave(T, ϵ_c, ϵ_g, T_g, σ, LW_d)
     R_n = SW_n + LW_n
-    turb_fluxes = canopy_compute_turbulent_fluxes_at_a_point(ts_in, u, h, gustiness,T, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set)
+    turb_fluxes = canopy_compute_turbulent_fluxes_at_a_point(ts_in, u, h, gustiness,T, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set);
     return FT(-R_n + (turb_fluxes.shf + turb_fluxes.lhf) - root_energy_flux)
 end
 function root_solve(ϵ_c, ϵ_g, T_g, σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness)
     f(T) = flux_balance_equation(T, ϵ_c, ϵ_g, T_g, σ, LW_d, SW_n, root_energy_flux, ts_in, u, h, r_stomata_canopy, d_sfc, z_0m, z_0b, Cd, LAI, SAI, earth_param_set, gustiness)
     FT = typeof(ϵ_c)
-    soln = RootSolvers.find_zero(f, SecantMethod(ts_in.T - FT(3), ts_in.T +FT(3)))
+    soln = RootSolvers.find_zero(f, SecantMethod(ts_in.T - FT(3), ts_in.T +FT(3)), RootSolvers.CompactSolution(), nothing, 3)
+ #   if soln.root < ts_in.T - FT(10) || soln.root > ts_in + FT(10)
+ #       return ts_in.T
+ #   else
+ #       return soln.root
+ #   end
+    
+    if soln.root < 0
+        @show soln
+    end
+    
     return soln.root
 end
                    
@@ -565,7 +573,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         lhf = LH,
         shf = SH,
         transpiration = Ẽ,
-        r_ae = r_ae,
+        r_ae = conditions.L_MO,
         ∂LHF∂qc = ∂LHF∂qc,
         ∂SHF∂Tc = ∂SHF∂Tc,
         ρτxz = conditions.ρτxz,

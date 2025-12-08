@@ -72,7 +72,7 @@ atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset) + Day(150)
 N_days = 20.0
-stop_date = start_date + Day(N_days)
+stop_date = start_date + Hour(200)
 
 # Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -140,6 +140,7 @@ T_states = []
 times = []
 ref_times = []
 ΔT = FT(0)
+atmos_T = []
 for dt in dts
     @info dt
 
@@ -161,6 +162,8 @@ for dt in dts
         if Int(float(simulation._integrator.t)) % saveat == 0
             if dt == ref_dt
                 push!(ref_T, parent(simulation._integrator.p.canopy.energy.T)[1])
+                push!(atmos_T, parent(simulation._integrator.p.drivers.T)[1])
+
                 push!(ref_times, float(simulation._integrator.t))
             else
                 push!(T, parent(simulation._integrator.p.canopy.energy.T)[1])
@@ -225,8 +228,9 @@ ax3 = Axis(
     title = "T throughout simulation; length = $(sim_time / 24) days, dts in [$(dts[1]), $(dts[end])]",
 )
 times = times ./ 3600.0 # hours
-for i in 1:length(dts)-1
+for i in 2:length(dts)
     lines!(ax3, ref_times, T_states[i], label = "dt $(dts[i]) min")
 end
+lines!(ax3, ref_times, atmos_T, label = "Atmos")
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)
