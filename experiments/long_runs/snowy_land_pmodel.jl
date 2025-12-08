@@ -69,6 +69,7 @@ function setup_model(
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
+    use_lowres_forcing = true
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
@@ -77,6 +78,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing,
     )
     forcing = (; atmos, radiation)
 

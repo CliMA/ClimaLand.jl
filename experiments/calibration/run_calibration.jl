@@ -11,24 +11,30 @@ import JLD2
 include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["lwu"],
+    short_names = ["lwu", "shf", "lhf"],
     minibatch_size = 1,
-    n_iterations = 1,
-    sample_date_ranges = [("2007-12-1", "2007-12-1")],
+    n_iterations = 10,
+    sample_date_ranges = [
+        ("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9
+    ], # 2000 to 2020
     extend = Dates.Month(3),
-    spinup = Dates.Month(0),
+    spinup = Dates.Month(3),
     nelements = (180, 360, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
-    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    obs_vec_filepath = "/glade/derecho/scratch/kdeck/recalibrate_saturated",
     model_type = ClimaLand.LandModel,
 )
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
+    priors = [
+        EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
+        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
+        EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
+        EKP.constrained_gaussian("canopy_u0", 100, 90, 0, Inf),
+        EKP.constrained_gaussian("ac_canopy", 3.5e4, 2e4, 2.5e3, 2.5e5),
+    ]
     prior = EKP.combine_distributions(priors)
 
     observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)

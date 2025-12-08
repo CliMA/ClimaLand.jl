@@ -6,6 +6,11 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 
 import LazyArtifacts
 
+function saturated_land_ic_path(; context = nothing)
+    dir = @clima_artifact("saturated_land_ic", context)
+    return joinpath(dir, "saturated_land_ic.nc")
+end
+
 """
     soil_ic_2008_50m_path(; context)
 
