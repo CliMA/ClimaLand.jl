@@ -439,6 +439,15 @@ function add_diagnostics!(
     return nothing
 end
 
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::ClimaLand.Canopy.PlantHydraulicsModel,
+)
+    append!(diagnostics, ["lwp", "far"])
+    return nothing
+end
+
 ## Possible diagnostics for standalone models
 """
     get_possible_diagnostics(model)
@@ -480,8 +489,6 @@ function get_possible_diagnostics(model::CanopyModel)
         "trans",
         "clhf",
         "cshf",
-        "lwp",
-        # "fa", # return a Tuple
         "far",
         "lai",
         "msf",
@@ -516,6 +523,8 @@ function get_possible_diagnostics(model::CanopyModel)
 
     # Add conditional diagnostics based on atmosphere type
     add_diagnostics!(diagnostics, model, model.boundary_conditions.atmos)
+    # Add conditional diagnostics based on hydraulics model
+    add_diagnostics!(diagnostics, model, model.hydraulics)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
@@ -647,7 +656,6 @@ function get_short_diagnostics(model::LandModel)
         "precip",
         "lhf",
         "msf",
-        "lwp",
         "iwc",
         "sdr",
     ]

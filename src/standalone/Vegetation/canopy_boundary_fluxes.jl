@@ -137,13 +137,7 @@ function canopy_boundary_fluxes!(
     radiation = bc.radiation
     atmos = bc.atmos
     sf_parameterization = bc.turbulent_flux_parameterization
-    root_water_flux = p.canopy.hydraulics.fa_roots
-    root_energy_flux = p.canopy.energy.fa_energy_roots
-    fa = p.canopy.hydraulics.fa
-    LAI = p.canopy.biomass.area_index.leaf
-    SAI = p.canopy.biomass.area_index.stem
     canopy_tf = p.canopy.turbulent_fluxes
-    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
     ClimaLand.turbulent_fluxes!(
         canopy_tf,
@@ -152,39 +146,28 @@ function canopy_boundary_fluxes!(
         canopy,
         Y,
         p,
-        t,
-    )
-    # Transpiration is per unit ground area, not leaf area (mult by LAI)
-    fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
-        canopy.hydraulics.transpiration,
-        Y,
-        p,
-        t,
-    )
+        t)
+    if canopy.hydraulics isa PlantHydraulicsModel
+        n_stem = canopy.hydraulics.n_stem
+        n_leaf = canopy.hydraulics.n_leaf
+        fa = p.canopy.hydraulics.fa
+        i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+        fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
+            canopy.hydraulics.transpiration,
+            Y,
+            p,
+            t,
+        )
+    end
+
     # Note that in the three functions below,
     # we dispatch off of the ground conditions `bc.ground`
     # to handle standalone canopy simulations vs integrated ones
 
     # Update the root flux of water per unit ground area in place
-    root_water_flux_per_ground_area!(
-        root_water_flux,
-        bc.ground,
-        canopy.hydraulics,
-        canopy,
-        Y,
-        p,
-        t,
-    )
+    root_water_flux_per_ground_area!(p, bc.ground, canopy.hydraulics, canopy, Y, t)
     # Update the root flux of energy per unit ground area in place
-    root_energy_flux_per_ground_area!(
-        root_energy_flux,
-        bc.ground,
-        canopy.energy,
-        canopy,
-        Y,
-        p,
-        t,
-    )
+    root_energy_flux_per_ground_area!(p, bc.ground, canopy.energy, canopy, Y, t)
 
     # Update the canopy radiation
     canopy_radiant_energy_fluxes!(

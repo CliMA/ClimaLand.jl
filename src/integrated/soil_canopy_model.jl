@@ -69,8 +69,10 @@ struct SoilCanopyModel{
         # Runoff and sublimation are also automatically included in the soil model
         @assert RootExtraction{FT}() in soil.sources
         @assert Soil.PhaseChange{FT}() in soil.sources
-        @assert canopy.hydraulics.transpiration isa
-                Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
+        if canopy.hydraulics isa Canopy.PlantHydraulics.PlantHydraulicsModel
+            @assert canopy.hydraulics.transpiration isa
+                    Canopy.PlantHydraulics.DiagnosticTranspiration{FT}
+        end
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
         @assert soilco2.drivers.met isa PrognosticMet
 
@@ -261,8 +263,6 @@ function make_update_boundary_fluxes(
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     function update_boundary_fluxes!(p, Y, t)
-        # update root extraction
-        update_root_extraction!(p, Y, t, land)
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,
@@ -280,6 +280,9 @@ function make_update_boundary_fluxes(
         update_soil_bf!(p, Y, t)
         update_canopy_bf!(p, Y, t)
         update_soilco2_bf!(p, Y, t)
+
+        # update root extraction
+        update_root_extraction!(p, Y, t, land)
     end
     return update_boundary_fluxes!
 end

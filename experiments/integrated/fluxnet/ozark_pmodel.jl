@@ -186,27 +186,16 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
     soil_params = retention_parameters,
 )
 
-# Set up plant hydraulics
+
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-# Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
-RAI = maxLAI * f_root_to_shoot
-hydraulics = Canopy.PlantHydraulicsModel{FT}(
-    surface_domain,
-    toml_dict;
-    n_stem,
-    n_leaf,
-    h_stem,
-    h_leaf,
-    ν = plant_ν,
-    S_s = plant_S_s,
-    conductivity_model,
-    retention_model,
-)
+
+hydraulics = Canopy.PlantHydraulics.SteadyStateModel{FT}()
 height = h_stem + h_leaf
+RAI = FT(0)
+SAI = FT(0)
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 

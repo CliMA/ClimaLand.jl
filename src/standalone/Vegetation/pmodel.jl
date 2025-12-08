@@ -631,9 +631,6 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     # drivers
     FT = eltype(parameters)
     earth_param_set = canopy.earth_param_set
-
-    ψ = p.canopy.hydraulics.ψ
-    n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     βm = p.canopy.soil_moisture_stress.βm
