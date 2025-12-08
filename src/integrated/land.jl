@@ -130,7 +130,6 @@ end
             domain,
             Soil.Biogeochemistry.SoilDrivers(
                PrognosticMet(soil.parameters),
-                PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
                 forcing.atmos,
             ),
             toml_dict,
@@ -186,7 +185,6 @@ function LandModel{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             PrognosticMet(soil.parameters),
-            PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
             forcing.atmos,
         ),
         toml_dict,
@@ -671,14 +669,12 @@ end
 
 Returns the "drivers", or forcing variables, for the LandModel.
 
-These consist of atmospheric and radiative forcing, as well as
-soil organic carbon.
+These consist of atmospheric and radiative forcing.
 """
 function ClimaLand.get_drivers(model::LandModel)
     return (
         model.canopy.boundary_conditions.atmos,
         model.canopy.boundary_conditions.radiation,
-        model.soilco2.drivers.soc,
     )
 end
 

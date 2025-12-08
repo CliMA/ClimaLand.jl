@@ -485,3 +485,65 @@ value = 0.01
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
+
+# Soil CO2 biogeochemistry parameters
+
+["CO2_diffusion_coefficient"]
+value = 1.39e-5
+type = "float"
+description = "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
+tag = "SoilCO2Parameters"
+
+["soil_C_substrate_diffusivity"]
+value = 3.17
+type = "float"
+description = "Diffusivity of soil C substrate in liquid (unitless)"
+tag = "SoilCO2Parameters"
+
+["soilCO2_pre_exponential_factor"]
+value = 194000.0
+type = "float"
+description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
+tag = "SoilCO2Parameters"
+
+["soilCO2_activation_energy"]
+value = 61000.0
+type = "float"
+description = "Activation energy for DAMM model (J mol⁻¹)"
+tag = "SoilCO2Parameters"
+
+["michaelis_constant"]
+value = 0.005
+type = "float"
+description = "Michaelis constant for substrate (kg C m⁻³)"
+tag = "SoilCO2Parameters"
+
+["O2_michaelis_constant"]
+value = 0.004
+type = "float"
+description = "Michaelis constant for O₂ (m³ m⁻³)"
+tag = "SoilCO2Parameters"
+
+["oxygen_diffusion_coefficient"]
+value = 1.67
+type = "float"
+description = "Diffusion coefficient of oxygen in air, dimensionless"
+tag = "SoilCO2Parameters"
+
+["soluble_soil_carbon_fraction"]
+value = 0.024
+type = "float"
+description = "Fraction of soil carbon that is considered soluble, dimensionless"
+tag = "SoilCO2Parameters"
+
+["molar_mass_carbon"]
+value = 12.0e-3
+type = "float"
+description = "Molar mass of carbon (kg/mol)"
+tag = "SoilCO2Parameters"
+
+["molar_mass_oxygen"]
+value = 0.032
+type = "float"
+description = "Molar mass of oxygen (kg/mol)"
+tag = "SoilCO2Parameters"

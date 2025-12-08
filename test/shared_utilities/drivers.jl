@@ -103,15 +103,6 @@ end
     p = (; drivers = ClimaLand.initialize_drivers((pp,), coords))
     precip_update!(p, 0.0)
     @test p.drivers.P_liq == sfc_instance .* 0 .- FT(1)
-
-
-    soc = TimeVaryingInput((t) -> 1.0)
-    subsfc_instance = ClimaCore.Fields.zeros(axes(coords.subsurface)) .+ 1
-    soc_driver = ClimaLand.PrescribedSoilOrganicCarbon{FT}(soc)
-    soc_update! = ClimaLand.make_update_drivers((soc_driver,))
-    soc_p = (; drivers = ClimaLand.initialize_drivers((soc_driver,), coords))
-    soc_update!(soc_p, 0.0)
-    @test soc_p.drivers.soc == subsfc_instance
 end
 
 @testset "Dewpoint to RH" begin

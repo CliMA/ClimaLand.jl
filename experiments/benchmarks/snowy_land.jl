@@ -123,7 +123,7 @@ function setup_prob(
         )
     Y.soil.ρe_int .=
         Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, earth_param_set)
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     # we need t0 to set IC
     t0 = 0.0
     tf = Second(stop_date - start_date).value

@@ -50,7 +50,6 @@ for FT in (Float32, Float64)
             :LW_d,
             :cosθs,
             :frac_diff,
-            :soc,
         )
         function init_soil!(Y, z, params)
             ν = params.ν
@@ -76,7 +75,9 @@ for FT in (Float32, Float64)
         end
 
         function init_co2!(Y, C_0)
-            Y.soilco2.C .= C_0
+            Y.soilco2.CO2 .= C_0
+            Y.soilco2.O2_f .= FT(0.21)  # Initialize O2_f
+            Y.soilco2.SOC .= FT(5.0)    # Initialize SOC
         end
 
         z = coords.subsurface.z
@@ -94,7 +95,7 @@ for FT in (Float32, Float64)
             t0,
             z,
         )
-        @test all(parent(p.drivers.soc) .== FT(5.0))
+        @test all(parent(Y.soilco2.SOC) .== FT(5.0))
         @test p.soil.θ_l ≈ Soil.Biogeochemistry.soil_moisture(
             model.soilco2.drivers.met,
             p,

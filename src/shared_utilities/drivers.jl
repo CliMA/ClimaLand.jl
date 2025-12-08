@@ -21,7 +21,6 @@ export AbstractAtmosphericDrivers,
     AbstractAtmosphericDrivers,
     PrescribedAtmosphere,
     PrescribedPrecipitation,
-    PrescribedSoilOrganicCarbon,
     PrescribedGroundConditions,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
@@ -83,21 +82,6 @@ An abstract type of radiative drivers of land models.
 """
 abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
-
-"""
-     PrescribedSoilOrganicCarbon{FT}
-
-A type for prescribing soil organic carbon.
-$(DocStringExtensions.FIELDS)
-"""
-struct PrescribedSoilOrganicCarbon{FT, SOC <: AbstractTimeVaryingInput} <:
-       AbstractClimaLandDrivers{FT}
-    "Soil organic carbon, function of time and space: kg C/m^3"
-    soc::SOC
-end
-
-PrescribedSoilOrganicCarbon{FT}(soc) where {FT} =
-    PrescribedSoilOrganicCarbon{FT, typeof(soc)}(soc)
 
 """
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
@@ -1145,28 +1129,6 @@ function initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords) where {FT}
 end
 
 """
-    initialize_drivers(r::PrescribedSoilOrganicCarbon{FT}, coords) where {FT}
-
-Creates and returns a NamedTuple for the `PrescribedSoilOrganicCarbon` driver,
- with variable `soc`.
-"""
-function initialize_drivers(
-    r::PrescribedSoilOrganicCarbon{FT},
-    coords,
-) where {FT}
-    keys = (:soc,)
-    types = (FT,)
-    domain_names = (:subsurface,)
-    model_name = :drivers
-    # intialize_vars packages the variables as a named tuple,
-    # as part of a named tuple with `model_name` as the key.
-    # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
-    return vars.drivers
-end
-
-"""
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
@@ -1354,18 +1316,6 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         end
     end
 
-    return update_drivers!
-end
-
-"""
-    make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
-Creates and returns a function which updates the driver variables
-in the case of a PrescribedSoilOrganicCarbon.
-"""
-function make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
-    function update_drivers!(p, t)
-        evaluate!(p.drivers.soc, d.soc, t)
-    end
     return update_drivers!
 end
 
