@@ -1,9 +1,10 @@
 module NeuralSnow
-
+using StaticArrays
 using Flux
 using ClimaLand
 using ClimaLand.Snow:
     AbstractDensityModel, SnowModel, SnowParameters, snow_bulk_density
+import ClimaComms
 import ClimaLand.Snow:
     density_prog_vars,
     density_prog_types,
@@ -11,6 +12,8 @@ import ClimaLand.Snow:
     update_density_and_depth!,
     update_density_prog!
 import ClimaLand.Parameters as LP
+import Adapt
+import ClimaCore
 using Thermodynamics
 
 using HTTP, Flux, BSON
@@ -26,9 +29,9 @@ along with the prognostic SWE variable, using a neural network for the rate of c
 The input to the network are temporally averaged, which we achieve using an exponentially moving average,
 with a rate of `\alpha`.
 """
-struct NeuralDepthModel{FT} <: AbstractDensityModel{FT}
+struct NeuralDepthModel{FT, MD <: Flux.Chain} <: AbstractDensityModel{FT}
     "The Flux neural network for compute dz/dt"
-    z_model::Flux.Chain
+    z_model::MD
     "The inverse of the averaging window time (1/s)"
     α::FT
 end
@@ -44,7 +47,7 @@ function get_znetwork()
     z_idx = 1
     p_idx = 7
     nfeatures = 7
-    zmodel = ModelTools.make_model(nfeatures, 4, z_idx, p_idx)
+    zmodel = ModelTools.make_model(Float32, nfeatures, 4, z_idx, p_idx)
     zmodel_state = BSON.load(IOBuffer(HTTP.get(download_link).body))[:zstate]
     Flux.loadmodel!(zmodel, zmodel_state) #Return to this to deterine how to load model for Flux v0.15 and above
     ModelTools.settimescale!(zmodel, 86400.0)
@@ -84,11 +87,11 @@ In the case of using the default model in the Charbonneau et. al. paper, The use
 which sets the model scaling in order to guarantee the snow depth remains nonnegative."
 """
 function NeuralDepthModel(
-    FT::DataType;
+    ::Type{FT};
     Δt::Union{AbstractFloat, Nothing} = nothing,
     model::Union{Flux.Chain, Nothing} = nothing,
     α::Union{AbstractFloat, Nothing} = nothing,
-)
+) where {FT}
     usemodel = isnothing(model) ? get_znetwork() : model
     usemodel = converted_model_type(usemodel, FT)
     weight = !isnothing(α) ? FT(α) : FT(2 / 86400)
@@ -100,7 +103,9 @@ function NeuralDepthModel(
                    default value is unstable in this case.")
         end
     end
-    return NeuralDepthModel{FT}(usemodel, weight)
+    # Converts all weights to static arrays for gpu compatibility
+    static_model =  Adapt.adapt_structure(SArray, usemodel)
+    return NeuralDepthModel{FT, typeof(static_model)}(static_model, weight)
 end
 
 #Define the additional prognostic variables needed for using this parameterization:
@@ -148,8 +153,9 @@ function eval_nn(
     qrel::FT,
     u::FT,
 )::FT where {FT}
-    #model() of a Vector{FT} returns a 1-element Matrix, return the internal value:
-    return density.z_model([z, swe, qrel, R, u, T, P])[1]
+    # model() of a Vector{FT} returns a 1-element Matrix
+    # use SVector for gpu compatibility
+    return density.z_model(SVector(z, swe, qrel, R, u, T, P))[]
 end
 
 """
