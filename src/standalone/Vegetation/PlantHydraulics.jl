@@ -251,11 +251,10 @@ end
 """
     harmonic_mean(x::FT,y::FT) where {FT}
 
-Computes the harmonic mean of x >=0 and y >=0; returns zero if both
-x and y are zero.
-
+Computes the harmonic mean of x >=0 and y >=0; returns zero if either
+x or y are zero.
 """
-harmonic_mean(x::FT, y::FT) where {FT} = 2 * x * y / max(x + y, eps(FT))
+harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
 
 """
     water_flux(

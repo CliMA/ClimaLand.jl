@@ -4,6 +4,10 @@ ClimaLand.jl Release Notes
 main
 ------
 
+v1.2.1
+-------
+- Previous bug fix to harmonic mean formula produces instability; revert until we can solve the issues fixing it causes [#1575](https://github.com/CliMA/ClimaLand.jl/pull/1575)
+
 v1.2.0
 -------
 - Make soil organic carbon and soil O2 prognostic; remove prescribed Soil Organic Carbon driver [#1545](https://github.com/CliMA/ClimaLand.jl/pull/1545)
