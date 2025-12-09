@@ -51,7 +51,7 @@ steps:
 
       - label: "Snow Col de Porte"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
-        artifact_paths: "experiments/standalone/Snow/cdp/output_active/*png"
+        artifact_paths: "experiments/standalone/Snow/cpu/cdp/output_active/*png"
 
       - label: "Varying LAI, no stem compartment"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai.jl"
@@ -177,7 +177,6 @@ steps:
         key: "global_bucket_temporalmap_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         artifact_paths:
-        artifact_paths:
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0000/*png"
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
@@ -227,6 +226,15 @@ steps:
           - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/output_0000/*png"
           - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
           - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
+
+      - label: "Snow Col de Porte GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
+        artifact_paths: "experiments/standalone/Snow/gpu/cdp/output_active/*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
   - group: "CPU/GPU comparisons"
     steps:
