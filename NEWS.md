@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- Previous bug fix to harmonic mean formula produces instability; revert until we can solve the issues fixing it causes [#1575](https://github.com/CliMA/ClimaLand.jl/pull/1575)
 
 v1.2.0
 -------
