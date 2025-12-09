@@ -381,6 +381,7 @@ Given the directory `output_dir` with NetCDF files produced by ClimaDiagnostics,
 create NetCDF files compatible with ILAMB in the directory `save_dir`.
 """
 function make_compatible_with_ILAMB(output_dir, save_dir)
+    !ispath(save_dir) && mkpath(save_dir)
     nc_filepaths = find_netcdf_files_for_ilamb(output_dir)
     for nc_filepath in nc_filepaths
         make_ilamb_netcdf_file(nc_filepath, save_dir)
