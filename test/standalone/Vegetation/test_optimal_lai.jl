@@ -40,10 +40,18 @@ import ClimaParams
             @test model.parameters === params
             @test eltype(model) == FT
 
-            # Test auxiliary variables
-            @test Canopy.auxiliary_vars(model) == (:LAI,)
-            @test Canopy.auxiliary_types(model) == (FT,)
-            @test Canopy.auxiliary_domain_names(model) == (:surface,)
+            # Test auxiliary variables (LAI + A0 tracking variables)
+            @test Canopy.auxiliary_vars(model) == (
+                :LAI,
+                :A0_daily,
+                :A0_annual,
+                :A0_daily_acc,
+                :A0_annual_acc,
+                :last_day_of_year,
+            )
+            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT)
+            @test Canopy.auxiliary_domain_names(model) ==
+                  (:surface, :surface, :surface, :surface, :surface, :surface)
         end
 
         @testset "compute_L_max function for FT = $FT" begin
@@ -184,19 +192,19 @@ import ClimaParams
             @test LAI_negative_test >= FT(0.0)
         end
 
-        @testset "compute_Ao_daily function for FT = $FT" begin
-            A = FT(10.0)  # Some instantaneous GPP
-            k = FT(0.5)
-            L = FT(2.0)
+        @testset "compute_PPFD function for FT = $FT" begin
+            # Test PPFD computation from PAR
+            par_d = FT(500.0)  # W m⁻² (typical midday)
+            λ_γ_PAR = FT(5e-7)  # 500 nm
+            lightspeed = FT(3e8)  # m s⁻¹
+            planck_h = FT(6.626e-34)  # J s
+            N_a = FT(6.022e23)  # mol⁻¹
 
-            Ao_daily = Canopy.compute_Ao_daily(A, k, L)
+            PPFD = Canopy.compute_PPFD(par_d, λ_γ_PAR, lightspeed, planck_h, N_a)
 
-            @test Ao_daily isa FT
-            @test Ao_daily > FT(0.0)
-
-            # Test with zero LAI - should handle gracefully
-            Ao_zero_lai = Canopy.compute_Ao_daily(A, k, FT(0.0))
-            @test isfinite(Ao_zero_lai)
+            @test PPFD isa FT
+            @test PPFD > FT(0.0)
+            @test isfinite(PPFD)
         end
 
         @testset "get_local_noon_mask function for FT = $FT" begin
@@ -224,24 +232,24 @@ import ClimaParams
 
         @testset "update_optimal_LAI integration test for FT = $FT" begin
             local_noon_mask = FT(1.0)
-            A = FT(10.0)  # mol m⁻² s⁻¹
+            A0_daily = FT(0.5)  # mol CO₂ m⁻² day⁻¹
             L = FT(2.0)   # m² m⁻²
 
             L_new = Canopy.update_optimal_LAI(
                 local_noon_mask,
-                A,
-                L;
-                k = FT(0.5),
-                Ao_annual = FT(100.0),
-                P_annual = FT(60000.0),
-                D_growing = FT(1000.0),
-                z = FT(12.227),
-                ca = FT(40.0),
-                chi = FT(0.7),
-                f0 = FT(0.62),
-                GSL = FT(180.0),
-                sigma = FT(0.771),
-                alpha = FT(0.067),
+                A0_daily,
+                L,
+                FT(0.5),       # k
+                FT(100.0),     # A0_annual
+                FT(60000.0),   # P_annual
+                FT(1000.0),    # D_growing
+                FT(12.227),    # z
+                FT(40.0),      # ca
+                FT(0.7),       # chi
+                FT(0.62),      # f0
+                FT(180.0),     # GSL
+                FT(0.771),     # sigma
+                FT(0.067),     # alpha
             )
 
             @test L_new isa FT
@@ -249,8 +257,129 @@ import ClimaParams
             @test L_new < FT(20.0)  # Reasonable LAI range
 
             # Test with no update (mask = 0)
-            L_no_update = Canopy.update_optimal_LAI(FT(0.0), A, L; k = FT(0.5))
+            L_no_update = Canopy.update_optimal_LAI(
+                FT(0.0),       # local_noon_mask = 0
+                A0_daily,
+                L,
+                FT(0.5),       # k
+                FT(100.0),     # A0_annual
+                FT(60000.0),   # P_annual
+                FT(1000.0),    # D_growing
+                FT(12.227),    # z
+                FT(40.0),      # ca
+                FT(0.7),       # chi
+                FT(0.62),      # f0
+                FT(180.0),     # GSL
+                FT(0.771),     # sigma
+                FT(0.067),     # alpha
+            )
             @test L_no_update == L
+        end
+
+        @testset "update_A0_and_LAI_at_noon function for FT = $FT" begin
+            # Test accumulation at local noon
+            A0_daily = FT(0.5)
+            A0_annual = FT(100.0)
+            A0_daily_acc = FT(0.6)  # Accumulated during the day
+            A0_annual_acc = FT(50.0)  # Accumulated during the year
+            last_doy = FT(100.0)
+            current_doy = FT(101.0)
+            L = FT(2.0)
+
+            # Optimal LAI parameters
+            k = FT(0.5)
+            P_annual = FT(60000.0)
+            D_growing = FT(1000.0)
+            z = FT(12.227)
+            ca = FT(40.0)
+            chi = FT(0.7)
+            f0 = FT(0.62)
+            GSL = FT(180.0)
+            sigma = FT(0.771)
+            alpha = FT(0.067)
+
+            # At local noon, should finalize daily A0 and accumulate to annual
+            new_daily, new_annual, new_daily_acc, new_annual_acc, new_last_doy, new_L =
+                Canopy.update_A0_and_LAI_at_noon(
+                    FT(1.0),  # local noon mask
+                    A0_daily,
+                    A0_annual,
+                    A0_daily_acc,
+                    A0_annual_acc,
+                    last_doy,
+                    current_doy,
+                    L,
+                    k,
+                    P_annual,
+                    D_growing,
+                    z,
+                    ca,
+                    chi,
+                    f0,
+                    GSL,
+                    sigma,
+                    alpha,
+                )
+
+            @test new_daily ≈ A0_daily_acc  # Daily A0 is finalized from accumulator
+            @test new_daily_acc ≈ FT(0.0)   # Accumulator reset
+            @test new_annual_acc ≈ A0_annual_acc + new_daily  # Annual accumulator updated
+            @test new_last_doy ≈ current_doy
+            @test new_L isa FT  # LAI is updated
+
+            # Test year change detection (day of year decreased)
+            _, new_annual_year_change, _, _, _, _ =
+                Canopy.update_A0_and_LAI_at_noon(
+                    FT(1.0),
+                    A0_daily,
+                    A0_annual,
+                    A0_daily_acc,
+                    A0_annual_acc,
+                    FT(365.0),  # last day of year
+                    FT(1.0),    # first day of new year
+                    L,
+                    k,
+                    P_annual,
+                    D_growing,
+                    z,
+                    ca,
+                    chi,
+                    f0,
+                    GSL,
+                    sigma,
+                    alpha,
+                )
+
+            @test new_annual_year_change ≈ A0_annual_acc  # Annual finalized before new year
+
+            # Test no update when not at noon
+            same_daily, same_annual, same_daily_acc, same_annual_acc, same_last_doy, same_L =
+                Canopy.update_A0_and_LAI_at_noon(
+                    FT(0.0),  # not at noon
+                    A0_daily,
+                    A0_annual,
+                    A0_daily_acc,
+                    A0_annual_acc,
+                    last_doy,
+                    current_doy,
+                    L,
+                    k,
+                    P_annual,
+                    D_growing,
+                    z,
+                    ca,
+                    chi,
+                    f0,
+                    GSL,
+                    sigma,
+                    alpha,
+                )
+
+            @test same_daily == A0_daily
+            @test same_annual == A0_annual
+            @test same_daily_acc == A0_daily_acc
+            @test same_annual_acc == A0_annual_acc
+            @test same_L == L  # LAI unchanged when not at noon
         end
     end
 end
