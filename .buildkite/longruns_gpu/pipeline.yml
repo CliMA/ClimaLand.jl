@@ -126,7 +126,7 @@ steps:
     if: build.env("LONGER_RUN") != null
     steps:
       - label: "Snowy Land, 19 years"
-        id: "snowy_land_pmodel_run"
+        key: "snowy_land_pmodel_run"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
