@@ -123,7 +123,14 @@ x_train, y_train = DataTools.make_data(usedata, pred_vars, target, out_scale);
 # We then create the model itself given the hyperparameters specified
 # above, and indicate which features are to be used to determine the
 # boundary constraints on the network.
-model = ModelTools.make_model(nfeatures, n, z_idx, p_idx, in_scale = in_scales)
+model = ModelTools.make_model(
+    Float64,
+    nfeatures,
+    n,
+    z_idx,
+    p_idx,
+    in_scale = in_scales,
+)
 
 # As training updates are better with the scaled data, we have to modify
 # the timescale and output scaling of the model structure prior to training.

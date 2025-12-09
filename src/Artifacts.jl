@@ -495,6 +495,7 @@ function ceres_albedo_dataset_path(; context = nothing)
     )
 end
 
+# TODO: This should be a ClimaArtifact
 neural_snow_znetwork_link() =
     "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
 
