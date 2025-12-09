@@ -226,7 +226,7 @@ for FT in (Float32, Float64)
             ),
         )
         # Set system to hydrostatic equilibrium
-        AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
+        AI = (; leaf = FT(LAI(1.0)), root = RAI, stem = SAI)
         T0A = FT(1e-8) * AI[:leaf]
         function initial_compute_exp_tendency!(F, Y)
             for i in 1:(n_leaf + n_stem)
@@ -245,7 +245,10 @@ for FT in (Float32, Float64)
                                 conductivity_model,
                                 Y[i],
                             ),
-                        ) .* AI[:stem]
+                        ) .* ClimaLand.Canopy.PlantHydraulics.harmonic_mean(
+                            AI[:stem],
+                            AI[:root],
+                        )
                 else
                     fa =
                         water_flux(
@@ -261,7 +264,10 @@ for FT in (Float32, Float64)
                                 conductivity_model,
                                 Y[i],
                             ),
-                        ) * AI[plant_hydraulics.compartment_labels[i]]
+                        ) * ClimaLand.Canopy.PlantHydraulics.harmonic_mean(
+                            AI[plant_hydraulics.compartment_labels[i - 1]],
+                            AI[plant_hydraulics.compartment_labels[i]],
+                        )
                 end
                 F[i] = fa - T0A
             end
@@ -272,7 +278,7 @@ for FT in (Float32, Float64)
         tendecy of the model also results in a steady state. This check is repeated using
         the plant hydraulics model directly.
         =======================#
-        ftol = FT(T0A * 1e-4) # 0.01% error in the solution
+        ftol = FT(T0A * 1e-4)
         soln = nlsolve(
             initial_compute_exp_tendency!,
             Vector{FT}(-3.0:-3:-33);

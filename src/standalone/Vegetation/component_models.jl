@@ -180,3 +180,11 @@ function get_model_callbacks(
 )
     return ()
 end
+
+function ClimaLand.make_update_implicit_cache(
+    component::AbstractCanopyComponent,
+    canopy,
+)
+    uic!(p,Y,t) = nothing
+    return uic!
+end
