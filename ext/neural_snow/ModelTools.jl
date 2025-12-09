@@ -32,7 +32,7 @@ function Flux.loadmodel!(
 end
 
 """
-    make_model(nfeatures, n, z_idx, p_idx; in_scale, dtype)
+    make_model(::Type{FT}, nfeatures, n, z_idx, p_idx; in_scale,)
 
 Create the neural network to be trained, with initial scaling weights.
 
@@ -70,7 +70,6 @@ function make_model(
         ),
         get_boundaries = Parallel(
             vcat,
-
             up_bound = let p_idx = p_idx
                 x -> SVector(relu(x[1]) * (x[p_idx + 1] > 0))
             end, # = upper = relu(upper)

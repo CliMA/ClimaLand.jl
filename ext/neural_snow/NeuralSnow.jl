@@ -104,7 +104,7 @@ function NeuralDepthModel(
         end
     end
     # Converts all weights to static arrays for gpu compatibility
-    static_model =  Adapt.adapt_structure(SArray, usemodel)
+    static_model = Adapt.adapt_structure(SArray, usemodel)
     return NeuralDepthModel{FT, typeof(static_model)}(static_model, weight)
 end
 
