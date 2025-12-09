@@ -1,8 +1,33 @@
 # Optimal LAI Model
 
-The Optimal LAI model predicts seasonal to decadal dynamics of leaf area index based on optimality principles, balancing energy and water constraints.
+The Optimal LAI model predicts seasonal to decadal dynamics of leaf area index (LAI) based on optimality principles, balancing energy and water constraints.
 
 This model is based on [Zhou2025](@citet), which presents a general model for the seasonal to decadal dynamics of leaf area that combines predictions from both the light use efficiency (LUE) framework and optimization theory.
+
+## Key Concepts and Definitions
+
+### Potential vs Actual GPP
+
+The model distinguishes between two types of gross primary productivity (GPP):
+
+- **Potential GPP ($A_0$)**: The hypothetical GPP that would be achieved if the canopy absorbed all incoming photosynthetically active radiation (PAR). This corresponds to setting the fraction of absorbed PAR (fAPAR) to 1, which would require an infinitely dense canopy. This is computed as:
+  ```math
+  A_0 = \text{LUE} \times \text{PPFD}
+  ```
+  where LUE is the light use efficiency (mol CO₂ per mol photons) and PPFD is the photosynthetic photon flux density (mol photons m⁻² time⁻¹).
+
+- **Actual GPP ($A$)**: The GPP achieved by the actual canopy with finite LAI:
+  ```math
+  A = A_0 \times \text{fAPAR} = A_0 \times (1 - e^{-k \cdot \text{LAI}})
+  ```
+
+### fAPAR and Beer-Lambert Law
+
+The fraction of absorbed photosynthetically active radiation (fAPAR) follows Beer-Lambert's law:
+```math
+\text{fAPAR} = 1 - e^{-k \cdot \text{LAI}}
+```
+where $k$ is the light extinction coefficient. This represents the fraction of incoming PAR that is absorbed by the canopy.
 
 ## Model Overview
 
@@ -13,7 +38,7 @@ The optimal LAI model computes LAI dynamically by:
 
 ## Seasonal Maximum LAI
 
-The seasonal maximum LAI (LAI$_{max}$) is determined by the minimum of energy-limited and water-limited constraints:
+The seasonal maximum LAI (LAI$_{max}$) is determined by the minimum of energy-limited and water-limited constraints (Equations 11-12 in Zhou et al. 2025):
 
 ```math
 \begin{align}
@@ -24,19 +49,23 @@ The seasonal maximum LAI (LAI$_{max}$) is determined by the minimum of energy-li
 \end{align}
 ```
 
+**Physical interpretation:**
+- **Energy-limited fAPAR**: Represents the optimal trade-off between carbon gain from photosynthesis and the cost of building/maintaining leaves. When $z / (k \cdot A_{0,annual})$ is large (high leaf cost relative to potential carbon gain), the optimal fAPAR is reduced.
+- **Water-limited fAPAR**: Represents the constraint imposed by water availability. The numerator represents the water use efficiency (related to stomatal conductance), while the denominator relates to evaporative demand.
+
 where:
-- $A_{0,annual}$ is the annual total potential GPP (mol m⁻² yr⁻¹)
-- $P_{annual}$ is the annual total precipitation (mol m⁻² yr⁻¹)
-- $D_{growing}$ is the mean vapor pressure deficit during the growing season (Pa)
+- $A_{0,annual}$ is the annual total potential GPP (mol CO₂ m⁻² yr⁻¹) — the integrated daily $A_0$ over the year
+- $P_{annual}$ is the annual total precipitation (mol H₂O m⁻² yr⁻¹). Conversion: 1 mm precipitation ≈ 55.5 mol H₂O m⁻²
+- $D_{growing}$ is the mean vapor pressure deficit during the growing season (Pa), where growing season is defined as days with T > 0°C
 - $k$ is the light extinction coefficient (dimensionless)
-- $z$ is the unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)
-- $c_a$ is the ambient CO₂ partial pressure (Pa)
-- $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless)
-- $f_0$ is the fraction of annual precipitation used by plants (dimensionless)
+- $z$ is the unit cost of constructing and maintaining leaves (mol CO₂ m⁻² yr⁻¹)
+- $c_a$ is the ambient CO₂ partial pressure (Pa). Conversion: 400 ppm at 101325 Pa ≈ 40 Pa
+- $\chi$ is the ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), from stomatal optimization
+- $f_0$ is the fraction of annual precipitation available to plants (dimensionless), varies with aridity
 
 ## Daily Steady-State LAI
 
-Given daily meteorological conditions, the steady-state LAI ($L_s$) represents the LAI that would be in equilibrium with GPP if conditions were held constant:
+Given daily meteorological conditions, the steady-state LAI ($L_s$) represents the LAI that would be in equilibrium with GPP if conditions were held constant (Equations 13-15):
 
 ```math
 \begin{align}
@@ -46,33 +75,41 @@ L_s &= \min\left\{\mu + \frac{1}{k} W_0[-k\mu \exp(-k\mu)], \text{LAI}_{max}\rig
 ```
 
 where:
-- $A_{0,daily}$ is the daily potential GPP (mol m⁻² day⁻¹)
-- $m$ is a parameter relating steady-state LAI to steady-state GPP, computed as:
+- $A_{0,daily}$ is the daily potential GPP (mol CO₂ m⁻² day⁻¹)
+- $m$ is a parameter relating steady-state LAI to steady-state GPP (Equation 20):
 
 ```math
 m = \frac{\sigma \cdot \text{GSL} \cdot \text{LAI}_{max}}{A_{0,annual} \cdot \text{fAPAR}_{max}}
 ```
 
-where GSL is the growing season length (days) and $\sigma$ is a dimensionless parameter representing departure from square-wave LAI dynamics.
+where GSL is the growing season length (days) and $\sigma$ is a dimensionless parameter representing departure from square-wave LAI dynamics (σ = 1 would mean LAI instantly reaches LAI$_{max}$ at the start of the growing season).
 
-- $W_0$ is the principal branch of the Lambert W function
+- $W_0$ is the principal branch of the Lambert W function, which satisfies $W(x) e^{W(x)} = x$
 
 ## LAI Update
 
-The actual LAI is updated using an exponential weighted moving average to represent the time lag for photosynthate allocation to leaves:
+The actual LAI is updated using an exponential weighted moving average to represent the time lag for photosynthate allocation to leaves (Equation 16):
 
 ```math
 \text{LAI}_{new} = \alpha \cdot L_s + (1-\alpha) \cdot \text{LAI}_{prev}
 ```
 
-where $\alpha$ is a smoothing factor (dimensionless, 0-1). Setting $\alpha = 0.067$ corresponds to approximately 15 days of memory.
+where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory timescale is $\tau \approx 1/\alpha$ days. Setting $\alpha = 0.067$ corresponds to approximately 15 days of memory.
+
+## Model Assumptions
+
+1. **No soil moisture stress on potential GPP**: The potential GPP ($A_0$) assumes no soil moisture limitation (β = 1). The actual GPP includes soil moisture stress.
+2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
+3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
+4. **Growing season definition**: The growing season is defined as continuous periods with air temperature > 0°C lasting more than 5 days.
+5. **Daily update at local noon**: LAI is updated once per day at local solar noon.
 
 ## Parameters
 
 | Parameter | Symbol | Unit | Typical Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | Light extinction coefficient | $k$ | - | 0.5 | Controls light attenuation through canopy |
-| Leaf construction cost | $z$ | mol m⁻² yr⁻¹ | 12.227 | Unit cost of building and maintaining leaves |
+| Leaf construction cost | $z$ | mol CO₂ m⁻² yr⁻¹ | 12.227 | Unit cost of building and maintaining leaves |
 | CO₂ concentration ratio | $\chi$ | - | 0.7 | Ratio of leaf-internal to ambient CO₂ |
 | Precipitation fraction | $f_0$ | - | 0.62 | Fraction of precipitation used by plants |
 | LAI dynamics parameter | $\sigma$ | - | 0.771 | Departure from square-wave dynamics |
@@ -82,18 +119,56 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). Setting $\alpha = 0.0
 
 | Driver | Symbol | Unit | Description |
 | :--- | :---: | :---: | :--- |
-| Daily potential GPP | $A_{0,daily}$ | mol m⁻² day⁻¹ | GPP with fAPAR = 1 |
-| Annual potential GPP | $A_{0,annual}$ | mol m⁻² yr⁻¹ | Yearly integral of $A_0$ |
-| Annual precipitation | $P_{annual}$ | mol m⁻² yr⁻¹ | Total yearly precipitation |
-| Growing season VPD | $D_{growing}$ | Pa | Mean VPD when T > 0°C |
-| Growing season length | GSL | days | Length of continuous period T > 0°C |
-| CO₂ partial pressure | $c_a$ | Pa | Ambient CO₂ concentration |
+| Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1 and β = 1 |
+| Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of daily $A_0$ |
+| Annual precipitation | $P_{annual}$ | mol H₂O m⁻² yr⁻¹ | Total yearly precipitation (1 mm ≈ 55.5 mol m⁻²) |
+| Growing season VPD | $D_{growing}$ | Pa | Mean VPD during growing season (T > 0°C) |
+| Growing season length | GSL | days | Length of continuous period with T > 0°C |
+| CO₂ partial pressure | $c_a$ | Pa | Ambient CO₂ (400 ppm ≈ 40 Pa at sea level) |
 
 ## Output
 
-| Output | Symbol | Unit | Range |
+| Output | Symbol | Unit | Typical Range |
 | :--- | :---: | :---: | :---: |
 | Leaf Area Index | LAI | m² m⁻² | 0-10 |
+
+## Implementation Notes
+
+### Potential GPP Calculation
+
+The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1 and β = 1:
+
+```math
+A_0 = \text{PPFD} \times \text{LUE}_{potential}
+```
+
+where:
+- PPFD is the total photosynthetic photon flux density (mol photons m⁻² s⁻¹), computed from downwelling PAR
+- LUE$_{potential}$ is the light use efficiency with β = 1 (no soil moisture stress)
+
+The P-model intermediate values (ϕ₀, Γ*, η*, K$_{mm}$, ξ, c$_i$, m$_j$, m') are computed using the same formulations as in `pmodel.jl`.
+
+### Daily and Annual A₀ Accumulation
+
+- **Daily A₀**: Accumulated every timestep by integrating instantaneous A₀. Finalized at local noon.
+- **Annual A₀**: Accumulated from daily values. Reset on January 1 of each year.
+
+This approach ensures proper integration of A₀ over time rather than relying on approximations based on instantaneous values.
+
+### Auxiliary Variables
+
+The model maintains the following state in `p.canopy.lai_model`:
+- `LAI`: Current leaf area index (m² m⁻²)
+- `A0_daily`: Daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹)
+- `A0_annual`: Annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹)
+- `A0_daily_acc`: Accumulator for current day's potential GPP
+- `A0_annual_acc`: Accumulator for current year's potential GPP
+
+### Unit Conversions
+
+- **Precipitation**: 1 mm water = 1 kg m⁻² = 55.5 mol H₂O m⁻² (using molar mass of water = 18 g/mol)
+- **CO₂ partial pressure**: At standard pressure (101325 Pa), 400 ppm CO₂ ≈ 40.5 Pa
+- **A₀ units**: The P-model computes LUE in kg C/mol photons, so A₀ is converted to mol CO₂ using M$_c$ = 0.0120107 kg/mol
 
 ## References
 
