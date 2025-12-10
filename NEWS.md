@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- ![breaking change][badge-💥breaking] `LandModel` now can be used without a soilco2 component. The convenience constructor now does not create a soilco2 component by default. PR[#1580](https://github.com/CliMA/ClimaLand.jl/pull/1580)
 - Use new spun-up IC with zero flux at the bottom of the domain by default; miscellaneous bug fixes [#1584](https://github.com/CliMA/ClimaLand.jl/pull/1584)
 - Use Gryanik surface flux parameters [#1578](https://github.com/CliMA/ClimaLand.jl/pull/1578)
 

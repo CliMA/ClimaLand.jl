@@ -78,6 +78,59 @@ for FT in (Float32, Float64)
         @test model.canopy == canopy
         @test model.snow == snow
     end
+
+    @testset "LandModel with no soilco2 model constructor, FT=$FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Domains.global_domain(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
+        forcing = (; atmos, radiation)
+        prognostic_land_components = (:canopy, :snow, :soil)
+
+        # Soil model
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+
+        # Canopy model
+        surface_domain = Domains.obtain_surface_domain(domain)
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
+        canopy_forcing = (; atmos, radiation, ground)
+        canopy = Canopy.CanopyModel{FT}(
+            surface_domain,
+            canopy_forcing,
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+        )
+
+        # Snow model
+        dt = FT(180)
+        snow = SnowModel(
+            FT,
+            surface_domain,
+            forcing,
+            toml_dict,
+            dt;
+            prognostic_land_components,
+        )
+        soilco2 = nothing
+        model = LandModel{FT}(canopy, snow, soil, soilco2)
+
+        # The constructor has many asserts that check the model
+        # components, so we don't need to check them again here.
+        @test model.soil == soil
+        @test isnothing(model.soilco2)
+        @test model.canopy == canopy
+        @test model.snow == snow
+        Y, p, cds = initialize(model)
+        @test !hasproperty(Y, :soilco2)
+        @test ClimaLand.land_components(model) == (:soil, :snow, :canopy)
+    end
 end
 
 """
@@ -205,7 +258,14 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
     stop_date,
 );
 
-land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+land = LandModel{FT}(
+    forcing,
+    LAI,
+    toml_dict,
+    domain,
+    Δt;
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+);
 
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()

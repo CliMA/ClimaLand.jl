@@ -248,9 +248,11 @@ function make_set_initial_state_from_file(
             land.snow.parameters,
         )
         # SoilCO2 IC
-        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        if !isnothing(land.soilco2)
+            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        end
         # Soil IC
         if enforce_constraints
             # get only the values over land

@@ -248,7 +248,14 @@ end
 
 @testset "LandModel diagnostics" begin
     LAI = TimeVaryingInput((t) -> FT(1.0))
-    model = Soil.LandModel{FT}((; atmos, radiation), LAI, toml_dict, domain, dt)
+    model = Soil.LandModel{FT}(
+        (; atmos, radiation),
+        LAI,
+        toml_dict,
+        domain,
+        dt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    )
 
     function set_ic!(Y, p, t0, model)
         Y.soil.ϑ_l .= FT(0.24)

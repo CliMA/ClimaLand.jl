@@ -753,12 +753,23 @@ function compute_total_respiration!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            p.soilco2.top_bc * FT(83.26) + p.canopy.autotrophic_respiration.Ra # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+        if isnothing(land_model.soilco2)
+            @. out = p.canopy.autotrophic_respiration.Ra
+        else
+            @. out =
+                p.soilco2.top_bc * FT(83.26) +
+                p.canopy.autotrophic_respiration.Ra # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+        end
         return out
     else
-        out .=
-            p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
+        if isnothing(land_model.soilco2)
+            @. out = p.canopy.autotrophic_respiration.Ra
+
+        else
+            out .=
+                p.soilco2.top_bc .* FT(83.26) .+
+                p.canopy.autotrophic_respiration.Ra
+        end
     end
 end
 @diagnostic_compute "total_respiration" CanopyModel p.canopy.autotrophic_respiration.Ra
