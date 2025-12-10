@@ -111,6 +111,10 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_energy_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_energy_conservation/output_active/*full_soil_*png"
 
+      - label: "Global LandModel (no soilco2) Run CPU"
+        command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy_snow.jl"
+        artifact_paths: "experiments/integrated/global/global_soil_canopy_snow/*png"
+
       - label: "Global Run CPU MPI"
         command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
         artifact_paths: "experiments/integrated/global/output_active/*png"

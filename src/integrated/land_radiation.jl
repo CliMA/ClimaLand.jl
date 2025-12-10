@@ -92,7 +92,10 @@ end
 
 """
     Canopy.ground_albedo_PAR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+       prognostic_land_components::Union{
+            Val{(:canopy, :snow, :soil, :soilco2)},
+            Val{(:canopy, :snow, :soil)},
+        },
         ground,
         Y,
         p,
@@ -103,7 +106,10 @@ A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function i
 the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_PAR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     ground,
     Y,
     p,
@@ -117,7 +123,10 @@ end
 
 """
     Canopy.ground_albedo_NIR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+        prognostic_land_components::Union{
+            Val{(:canopy, :snow, :soil, :soilco2)},
+            Val{(:canopy, :snow, :soil)},
+            },
         ground,
         Y,
         p,
@@ -128,7 +137,10 @@ A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function i
 the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     ground,
     Y,
     p,

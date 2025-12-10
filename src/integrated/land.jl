@@ -2,12 +2,12 @@ export LandModel
 """
     struct LandModel{
         FT,
-        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
         SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
         SnM <: Snow.SnowModel{FT},
     } <: AbstractLandModel{FT}
-        "The soil microbe model to be used"
+        "The soil microbe model to be used, or `nothing` if no soil microbe model is used"
         soilco2::MM
         "The soil model to be used"
         soil::SM
@@ -27,7 +27,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct LandModel{
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     VM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
@@ -47,12 +47,14 @@ struct LandModel{
         soilco2::MM,
     ) where {
         FT,
-        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
         SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
         SnM <: Snow.SnowModel{FT},
     }
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+        prognostic_land_components =
+            isnothing(soilco2) ? (:canopy, :snow, :soil) :
+            (:canopy, :snow, :soil, :soilco2)
         top_soil_bc = soil.boundary_conditions.top
         canopy_bc = canopy.boundary_conditions
         snow_bc = snow.boundary_conditions
@@ -64,17 +66,19 @@ struct LandModel{
                 prognostic_land_components
         @assert snow_bc.prognostic_land_components == prognostic_land_components
 
-        @assert top_soil_bc.atmos == soilco2.drivers.atmos
+        isnothing(soilco2) || @assert top_soil_bc.atmos == soilco2.drivers.atmos
         @assert top_soil_bc.atmos == canopy_bc.atmos
         @assert top_soil_bc.radiation == canopy_bc.radiation
         @assert top_soil_bc.atmos == snow_bc.atmos
         @assert top_soil_bc.radiation == snow_bc.radiation
 
         @assert Domains.obtain_surface_domain(soil.domain) == canopy.domain
-        @assert Domains.obtain_surface_domain(soilco2.domain) == canopy.domain
+        isnothing(soilco2) ||
+            @assert Domains.obtain_surface_domain(soilco2.domain) ==
+                    canopy.domain
         @assert snow.domain == canopy.domain
 
-        @assert soil.parameters.earth_param_set ==
+        isnothing(soilco2) || @assert soil.parameters.earth_param_set ==
                 soilco2.parameters.earth_param_set
         @assert soil.parameters.earth_param_set == canopy.earth_param_set
         @assert soil.parameters.earth_param_set ==
@@ -98,16 +102,17 @@ struct LandModel{
         @assert RootExtraction{FT}() in soil.sources
         @assert Soil.PhaseChange{FT}() in soil.sources
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
-        @assert soilco2.drivers.met isa PrognosticMet
+        isnothing(soilco2) || @assert soilco2.drivers.met isa PrognosticMet
         comparison = PrognosticMet(soil.parameters)
         # check_land_equality allocates, and should only be used in initialization
-        for property in propertynames(soilco2.drivers.met)
-            check_land_equality(
-                getproperty(soilco2.drivers.met, property),
-                getproperty(comparison, property),
-            )
+        if !isnothing(soilco2)
+            for property in propertynames(soilco2.drivers.met)
+                check_land_equality(
+                    getproperty(soilco2.drivers.met, property),
+                    getproperty(comparison, property),
+                )
+            end
         end
-
         return new{FT, MM, SM, VM, SnM}(soilco2, soil, canopy, snow)
     end
 end
@@ -117,23 +122,29 @@ end
         forcing,
         LAI,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        domain::Union{
+            ClimaLand.Domains.Column,
+            ClimaLand.Domains.SphericalShell,
+            ClimaLand.Domains.HybridBox,
+        },
         Δt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
             toml_dict;
-            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            prognostic_land_components,
             additional_sources = (ClimaLand.RootExtraction{FT}(),),
         ),
-        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+        soilco2 = :soilco2 in prognostic_land_components ?
+                Soil.Biogeochemistry.SoilCO2Model{FT}(
             domain,
             Soil.Biogeochemistry.SoilDrivers(
-               PrognosticMet(soil.parameters),
+                PrognosticMet(soil.parameters),
                 forcing.atmos,
             ),
             toml_dict,
-        ),
+        ) : nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
             (;
@@ -143,15 +154,15 @@ end
             ),
             LAI,
             toml_dict;
-            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            prognostic_land_components,
         ),
-       snow = Snow.SnowModel(
+        snow = Snow.SnowModel(
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
             forcing,
             toml_dict,
             Δt;
-            prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            prognostic_land_components,
         ),
     ) where {FT}
 
@@ -174,21 +185,23 @@ function LandModel{FT}(
         ClimaLand.Domains.HybridBox,
     },
     Δt;
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
         toml_dict;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
     ),
-    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+    soilco2 = :soilco2 in prognostic_land_components ?
+              Soil.Biogeochemistry.SoilCO2Model{FT}(
         domain,
         Soil.Biogeochemistry.SoilDrivers(
             PrognosticMet(soil.parameters),
             forcing.atmos,
         ),
         toml_dict,
-    ),
+    ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
         (;
@@ -198,7 +211,7 @@ function LandModel{FT}(
         ),
         LAI,
         toml_dict;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components,
     ),
     snow = Snow.SnowModel(
         FT,
@@ -206,7 +219,7 @@ function LandModel{FT}(
         forcing,
         toml_dict,
         Δt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components,
     ),
 ) where {FT}
     return LandModel{FT}(canopy, snow, soil, soilco2)
@@ -226,6 +239,8 @@ the components returned by `land_components!`.
 This needs to be fixed.
 """
 ClimaLand.land_components(land::LandModel) = (:soil, :snow, :soilco2, :canopy)
+ClimaLand.land_components(land::LandModel{FT, Nothing}) where {FT} =
+    (:soil, :snow, :canopy)
 """
     lsm_aux_vars(m::LandModel)
 
@@ -330,13 +345,15 @@ function make_update_boundary_fluxes(
     land::LandModel{FT, MM, SM, RM, SnM},
 ) where {
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
-    update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
+    update_soilco2_bf! =
+        isnothing(land.soilco2) ? Returns(nothing) :
+        make_update_boundary_fluxes(land.soilco2)
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
 
@@ -507,7 +524,10 @@ the presence of the canopy modifies the soil BC.
 """
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     soil::EnergyHydrology,
     Y,
     p,
@@ -562,8 +582,11 @@ end
 
 """
    compute_liquid_influx(p,
-                         model,
-                         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+            model,
+            prognostic_land_components::Union{
+                Val{(:canopy, :snow, :soil, :soilco2)},
+                Val{(:canopy, :snow, :soil)},
+            },
     )
 
 Returns the liquid water volume flux at the surface of the soil; uses
@@ -572,7 +595,10 @@ the same method as the soil+snow integrated model.
 function Soil.compute_liquid_influx(
     p,
     model,
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
 )
     Soil.compute_liquid_influx(p, model, Val((:snow, :soil)))
 end
@@ -582,7 +608,10 @@ end
         p,
         runoff,
         atmos,
-        prognostic_land_components:::Val{(:canopy, :snow, :soil, :soilco2)},
+        prognostic_land_components:Union{
+            Val{(:canopy, :snow, :soil, :soilco2)},
+            Val{(:canopy, :snow, :soil)},
+            },
         liquid_influx,
         model::EnergyHydrology,
         Y,
@@ -597,7 +626,10 @@ function Soil.compute_infiltration_energy_flux(
     p,
     runoff,
     atmos,
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     liquid_influx,
     model::EnergyHydrology,
     Y,
@@ -617,7 +649,10 @@ end
 
 function snow_boundary_fluxes!(
     bc::Snow.AtmosDrivenSnowBC,
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     model::SnowModel{FT},
     Y,
     p,
@@ -658,7 +693,10 @@ end
 
 
 function ClimaLand.Soil.sublimation_source(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
     FT,
 )
     return SoilSublimationwithSnow{FT}()
