@@ -80,7 +80,7 @@ function LandParameters(toml_dict::CP.ParamDict)
     insol_params = InsolationParameters(toml_dict)
     IP = typeof(insol_params)
 
-    surf_flux_params = SurfaceFluxesParameters(toml_dict, UF.BusingerParams)
+    surf_flux_params = SurfaceFluxesParameters(toml_dict, UF.GryanikParams)
     SFP = typeof(surf_flux_params)
 
     name_map = (;
