@@ -32,7 +32,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
         EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
-        EKP.constrained_gaussian("canopy_u0", 100, 90, 0, Inf),
+        EKP.constrained_gaussian("leaf_Cd", 0.01, 0.05, 0, Inf),
         EKP.constrained_gaussian("ac_canopy", 3.5e4, 2e4, 2.5e3, 2.5e5),
     ]
     prior = EKP.combine_distributions(priors)
