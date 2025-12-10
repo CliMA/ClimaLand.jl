@@ -740,26 +740,75 @@ function call_update_optimal_LAI(
     ca_Pa = @. lazy(ca * P_air)
 
     # At local noon: finalize daily A0, update annual accumulator, update LAI
-    # Use individual field updates to avoid tuple broadcast issues
-    update_A0_and_LAI_at_noon!(
-        local_noon_mask,
-        p.canopy.lai_model.A0_daily,
+    # Inline the update logic to avoid tuple broadcasting issues
+    # We need to cache values that will be used in later updates
+    year_changed = @. lazy(local_noon_mask == FT(1) && current_doy < p.canopy.lai_model.last_day_of_year)
+    new_A0_daily = @. lazy(p.canopy.lai_model.A0_daily_acc)  # Cache this before resetting
+    new_A0_annual = @. lazy(p.canopy.lai_model.A0_annual_acc)  # Cache this for year change
+
+    # Update A0_annual if year changed
+    @. p.canopy.lai_model.A0_annual = ifelse(
+        year_changed,
+        new_A0_annual,
         p.canopy.lai_model.A0_annual,
+    )
+
+    # Update A0_daily at noon
+    @. p.canopy.lai_model.A0_daily = ifelse(
+        local_noon_mask == FT(1),
+        new_A0_daily,
+        p.canopy.lai_model.A0_daily,
+    )
+
+    # Reset A0_annual_acc if year changed, otherwise add new daily value at noon
+    @. p.canopy.lai_model.A0_annual_acc = ifelse(
+        year_changed,
+        FT(0),
+        ifelse(
+            local_noon_mask == FT(1),
+            p.canopy.lai_model.A0_annual_acc + new_A0_daily,
+            p.canopy.lai_model.A0_annual_acc,
+        ),
+    )
+
+    # Reset A0_daily_acc at noon
+    @. p.canopy.lai_model.A0_daily_acc = ifelse(
+        local_noon_mask == FT(1),
+        FT(0),
         p.canopy.lai_model.A0_daily_acc,
-        p.canopy.lai_model.A0_annual_acc,
-        p.canopy.lai_model.last_day_of_year,
+    )
+
+    # Update last_day_of_year at noon
+    @. p.canopy.lai_model.last_day_of_year = ifelse(
+        local_noon_mask == FT(1),
         current_doy,
+        p.canopy.lai_model.last_day_of_year,
+    )
+
+    # Update LAI at noon using the finalized values
+    @. p.canopy.lai_model.LAI = ifelse(
+        local_noon_mask == FT(1),
+        update_optimal_LAI(
+            FT(1),  # At noon, we always update
+            new_A0_daily,
+            p.canopy.lai_model.LAI,
+            parameters.k,
+            ifelse(
+                year_changed,
+                new_A0_annual,
+                p.canopy.lai_model.A0_annual,
+            ),
+            P_annual,
+            D_growing,
+            parameters.z,
+            ca_Pa,
+            parameters.chi,
+            parameters.f0,
+            GSL,
+            parameters.sigma,
+            parameters.alpha,
+        ),
         p.canopy.lai_model.LAI,
-        parameters.k,
-        P_annual,
-        D_growing,
-        parameters.z,
-        ca_Pa,
-        parameters.chi,
-        parameters.f0,
-        GSL,
-        parameters.sigma,
-        parameters.alpha,
     )
 end
 

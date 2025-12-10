@@ -288,6 +288,19 @@ simulation = LandSimulation(
 @time solve!(simulation)
 
 #=
+using Logging
+
+io = open("logfile.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
+=#
+
+#=
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
     pkgdir(ClimaLand),
@@ -320,7 +333,7 @@ LandSimVis.make_timeseries(
 short_names = [d.variable.short_name for d in simulation.diagnostics] # short_name_X_average e.g.
 diag_names = [d.output_short_name for d in simulation.diagnostics] # short_name_X_average e.g.
 diag_units = [d.variable.units for d in simulation.diagnostics]
-i = 10
+i = 14
 dn = diag_names[i]
 unit = diag_units[i]
 sn = short_names[i]
@@ -331,7 +344,7 @@ model_time, LAI_opt = ClimaLand.Diagnostics.diagnostic_as_vectors(
 LAI_opt
 
 
-i = 9
+i = 13
 dn = diag_names[i]
 unit = diag_units[i]
 sn = short_names[i]
