@@ -60,6 +60,53 @@ FT = Float32
     @test ClimaLand.add_drivers_to_cache((;), dm, nothing) == (;)
 end
 
+@testset "Nothing model, FT = $FT" begin
+    nm = ClimaLand.NothingModel{FT}()
+    @test ClimaLand.prognostic_vars(nm) == ()
+    @test ClimaLand.prognostic_types(nm) == ()
+    @test ClimaLand.prognostic_domain_names(nm) == ()
+    @test ClimaLand.auxiliary_vars(nm) == ()
+    @test ClimaLand.auxiliary_types(nm) == ()
+    @test ClimaLand.auxiliary_domain_names(nm) == ()
+    # ClimaLand.name(::DefaultModel) = :default
+    # dm = DefaultModel{FT}()
+    @test ClimaLand.prognostic_vars(nm) == ()
+    @test ClimaLand.prognostic_types(nm) == ()
+    @test ClimaLand.prognostic_domain_names(nm) == ()
+    @test ClimaLand.auxiliary_vars(nm) == ()
+    @test ClimaLand.auxiliary_types(nm) == ()
+    @test ClimaLand.auxiliary_domain_names(nm) == ()
+
+    tendency_args = ((default = [1],), 2, 3, 4)
+    nm_exp_tendency! = make_exp_tendency(nm)
+    @test nm_exp_tendency!(tendency_args...) |> isnothing
+    @test tendency_args == ((default = [1],), 2, 3, 4)
+
+    tendency_args = ((default = [1],), 2, 3, 4)
+    nm_compute_exp_tendency! = make_compute_exp_tendency(nm)
+    @test nm_compute_exp_tendency!(tendency_args...) |> isnothing
+    @test tendency_args == ((default = [1],), 2, 3, 4)
+
+    tendency_args = ((default = [1],), 2, 3, 4)
+    nm_imp_tendency! = make_imp_tendency(nm)
+    @test nm_imp_tendency!(tendency_args...) |> isnothing
+    @test tendency_args == ((default = [1],), 2, 3, 4)
+
+    tendency_args = ((default = [1],), 2, 3, 4)
+    nm_compute_imp_tendency! = make_compute_imp_tendency(nm)
+    @test nm_compute_imp_tendency!(tendency_args...) |> isnothing
+    @test tendency_args == ((default = [1],), 2, 3, 4)
+
+    x = [1, 2, 3]
+    nm_update_aux! = make_update_aux(nm)
+    @test isnothing(nm_update_aux!(x...))
+    @test x == [1, 2, 3]
+
+    @test ClimaLand.get_drivers(nm) == ()
+    @test ClimaLand.add_drivers_to_cache((;), nm, nothing) == (;)
+end
+
+
 @testset "Default ImEx model, FT = $FT" begin
     struct DefaultImExModel{FT} <: AbstractImExModel{FT} end
     dm_imex = DefaultImExModel{FT}()

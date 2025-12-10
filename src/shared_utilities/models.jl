@@ -22,6 +22,7 @@ export AbstractModel,
     get_drivers,
     get_model_callbacks,
     name,
+    NothingModel,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
     get_earth_param_set
@@ -35,6 +36,13 @@ import .Domains: coordinates
 An abstract type for all models.
 """
 abstract type AbstractModel{FT <: AbstractFloat} end
+
+"""
+    NothingModel{FT} <: AbstractModel{FT}
+
+A model which does nothing;
+"""
+struct NothingModel{FT} <: AbstractModel{FT} end
 
 """
     AbstractImExModel{FT} <: AbstractModel{FT}
@@ -235,6 +243,13 @@ function make_imp_tendency(model::AbstractModel)
 end
 
 """
+    make_imp_tendency(model::NothingModel)
+
+Returns an `imp_tendency` that does nothing.
+"""
+make_imp_tendency(model::NothingModel) = Returns(nothing)
+
+"""
     make_exp_tendency(model::AbstractModel)
 
 Returns an `exp_tendency` that updates auxiliary variables and
@@ -253,6 +268,13 @@ function make_exp_tendency(model::AbstractModel)
     end
     return exp_tendency!
 end
+
+"""
+    make_exp_tendency(model::NothingModel)
+
+    Returns an `exp_tendency` that does nothing.
+"""
+make_exp_tendency(model::NothingModel) = Returns(nothing)
 
 """
     make_compute_imp_tendency(model::AbstractModel)
@@ -274,6 +296,13 @@ function make_compute_imp_tendency(model::AbstractModel)
 end
 
 """
+    make_compute_imp_tendency(model::NothingModel)
+
+Returns a `compute_imp_tendency!` that does nothing.
+"""
+make_compute_imp_tendency(model::NothingModel) = Returns(nothing)
+
+"""
     make_compute_exp_tendency(model::AbstractModel)
 
 Return a `compute_exp_tendency!` function that updates state variables
@@ -291,6 +320,13 @@ function make_compute_exp_tendency(model::AbstractModel)
     end
     return compute_exp_tendency!
 end
+
+"""
+    make_compute_exp_tendency(model::NothingModel)
+
+Returns a `compute_exp_tendency!` that does nothing.
+"""
+make_compute_exp_tendency(model::NothingModel) = Returns(nothing)
 
 """
     make_set_initial_cache(model::AbstractModel)
@@ -350,6 +386,8 @@ function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
     )
     return ClimaCore.Fields.FieldVector(; state_nt...)
 end
+
+initialize_prognostic(model::NothingModel) = Returns(nothing)
 
 """
     initialize_auxiliary(model::AbstractModel, state::NamedTuple)

@@ -1,0 +1,124 @@
+import SciMLBase
+import ClimaComms
+ClimaComms.@import_required_backends
+import ClimaTimeSteppers as CTS
+using ClimaCore
+using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaUtilities.ClimaArtifacts: @clima_artifact
+import ClimaParams as CP
+
+using ClimaLand
+using ClimaLand.Soil
+using ClimaLand.Canopy
+import ClimaLand
+import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
+
+import CairoMakie
+import GeoMakie
+using Statistics
+using Dates
+import NCDatasets
+
+import ClimaDiagnostics
+import ClimaAnalysis
+import ClimaAnalysis.Visualize as viz
+import ClimaUtilities
+time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+context = ClimaComms.context()
+ClimaComms.init(context)
+outdir = generate_output_path("experiments/integrated/global_soil_canopy_snow")
+
+device_suffix =
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
+
+FT = Float64
+toml_dict = LP.create_toml_dict(FT)
+prognostic_land_components = (:canopy, :snow, :soil)
+
+# Set up the domain
+nelements = (50, 10)
+dz_tuple = (10.0, 0.1)
+domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
+surface_space = domain.space.surface
+subsurface_space = domain.space.subsurface
+
+# Set up dates and times for the simulation
+# Note that the P Model takes a few weeks to spin up, so this short of a run
+# really only tests software functionality.
+start_date = DateTime(2008);
+dt = 450.0
+stop_date = start_date + Dates.Second(3600)
+
+# Forcing data - this is run on Caltech central,
+# which only has low resolution forcing data
+atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    start_date,
+    stop_date,
+    surface_space,
+    toml_dict,
+    FT;
+    time_interpolation_method,
+    context,
+    use_lowres_forcing = true,
+)
+
+
+ground = ClimaLand.PrognosticGroundConditions{FT}()
+forcing = (; atmos, radiation, ground)
+
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+
+land = LandModel{FT}(
+    forcing,
+    LAI,
+    toml_dict,
+    domain,
+    dt;
+    prognostic_land_components = prognostic_land_components,
+)
+
+# ClimaDiagnostics
+nc_writer =
+    ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir; start_date)
+
+diags = ClimaLand.default_diagnostics(
+    land,
+    start_date;
+    output_writer = nc_writer,
+    reduction_period = :hourly,
+)
+
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    dt,
+    land;
+    outdir,
+    diagnostics = diags,
+    user_callbacks = (),
+)
+ClimaLand.Simulations.solve!(simulation)
+
+# ClimaAnalysis
+if ClimaComms.iamroot(context)
+    simdir = ClimaAnalysis.SimDir(outdir)
+
+    for short_name in ClimaAnalysis.available_vars(simdir)
+        var = get(simdir; short_name)
+        times = var.dims["time"]
+        for t in times
+            fig = CairoMakie.Figure(size = (800, 600))
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+            )
+            CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
+        end
+    end
+end
