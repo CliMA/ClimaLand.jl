@@ -171,7 +171,7 @@ function set_historical_cache!(
     P_annual = eltype(model.parameters)(60000.0),
     D_growing = eltype(model.parameters)(1000.0),
     ca = eltype(model.parameters)(40.0),
-    GSL = eltype(model.parameters)(180.0),
+    GSL = eltype(model.parameters)(240.0),
 )
     parameters = model.parameters
     FT = eltype(parameters)
@@ -921,7 +921,7 @@ function make_OptimalLAI_callback(
     canopy;
     P_annual = FT(60000.0),
     D_growing = FT(1000.0),
-    GSL = FT(180.0),
+    GSL = FT(240.0),
     longitude = nothing,
 ) where {FT <: AbstractFloat}
     function seconds_after_midnight(d)
@@ -997,7 +997,7 @@ function get_model_callbacks(
     Δt,
     P_annual = FT(60000.0),
     D_growing = FT(1000.0),
-    GSL = FT(180.0),
+    GSL = FT(240.0),
 ) where {FT}
     lai_cb = make_OptimalLAI_callback(
         FT,
