@@ -1401,7 +1401,7 @@ function global_box_domain(
     ylim = FT.((π / 2 * radius_earth, π / 2 * radius_earth))
     longlat = FT.((-0.5, -0.5))
     dz_tuple = FT.(dz_tuple)
-    device = ClimaComms.device()
+    device = ClimaComms.device(context)
     domain = HybridBox(;
         xlim,
         ylim,

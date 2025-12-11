@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.47
+value = 0.71
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -33,7 +33,7 @@ tag = "TOPMODELRunoff"
 # Big leaf energy parameters
 
 ["ac_canopy"]
-value = 2.5e3
+value = 2.7e3
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"
@@ -165,13 +165,13 @@ tag = "WuWuSnowCoverFractionModel"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.30
+value = 0.15
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β"]
-value = 192
+value = 67
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration (Stocker 2020)"
 tag = "PModelParameters"
@@ -481,7 +481,7 @@ description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.01
+value = 0.0032
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"

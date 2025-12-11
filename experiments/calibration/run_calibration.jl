@@ -20,9 +20,9 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (180, 360, 15),
-    output_dir = "experiments/calibration/land_model",
+    output_dir = "/glade/derecho/scratch/kdeck/recalibrate_saturated",
     rng_seed = 42,
-    obs_vec_filepath = "/glade/derecho/scratch/kdeck/recalibrate_saturated",
+    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
     model_type = ClimaLand.LandModel,
 )
 
