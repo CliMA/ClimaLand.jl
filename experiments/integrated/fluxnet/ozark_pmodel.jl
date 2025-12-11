@@ -374,6 +374,65 @@ p2 = lines!(ax, model_dates, LAI_opt, label = "LAI opt")
 axislegend()
 save("LAI_test.png", fig)
 
+#### new fig
+
+using CairoMakie
+  import ClimaUtilities.TimeManager: ITime, date
+
+  # Helper: convert ITime to DateTime
+  function time_to_date(t::ITime, start_date)
+      start_date != t.epoch &&
+          @warn("$(start_date) is different from the simulation time epoch.")
+      isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+  end
+
+  # Helper: fetch diagnostic by short_name
+  function diag_by_short_name(diags, short_name)
+      idx = findfirst(d -> d.variable.short_name == short_name, diags)
+      isnothing(idx) && error("No diagnostic named $short_name")
+      dn = diags[idx].output_short_name
+      model_time, vals = ClimaLand.Diagnostics.diagnostic_as_vectors(
+          diags[1].output_writer, dn)
+      return model_time, vals
+  end
+
+  # Pull diagnostics
+  model_time, LAI_opt = diag_by_short_name(simulation.diagnostics, "lai_pred")
+  _, LAI_obs = diag_by_short_name(simulation.diagnostics, "lai")
+  _, A0_daily = diag_by_short_name(simulation.diagnostics, "a0_daily")
+
+  # Convert times to dates
+  model_dates = time_to_date.(model_time, start_date)
+
+  # Plot
+  fig = Figure(size = (900, 600))
+
+  ax_l = Axis(fig[1, 1],
+      ylabel = "LAI (m² m⁻²)",
+      xlabel = "Date",
+  )
+  lines!(ax_l, model_dates, LAI_obs, label = "LAI obs")
+  lines!(ax_l, model_dates, LAI_opt, label = "LAI opt")
+
+  ax_r = Axis(fig[1, 1];
+      yaxisposition = :right,
+      ylabel = "A₀_daily (mol CO₂ m⁻² day⁻¹)",
+      xticksvisible = false,
+      xticklabelsvisible = false,
+      xgridvisible = false,
+      yticklabelcolor = :gray30,
+      rightspinecolor = :gray30,
+      ytickcolor = :gray30,
+  )
+  lines!(ax_r, model_dates, A0_daily, color = :gray30, label = "A₀_daily")
+
+  axislegend(ax_l, position = :lt)
+  axislegend(ax_r, position = :rt)
+
+  save("LAI_A0_dual.png", fig)
+  fig
+
+
 
 # Thoughts:
 # it makes no sense to have LAI < 0

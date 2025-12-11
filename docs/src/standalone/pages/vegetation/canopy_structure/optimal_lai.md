@@ -101,7 +101,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 1. **No soil moisture stress on potential GPP**: The potential GPP ($A_0$) assumes no soil moisture limitation (β = 1). The actual GPP includes soil moisture stress.
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
-4. **Growing season definition**: The growing season is defined as continuous periods with air temperature > 0°C lasting more than 5 days.
+4. **Growing season inputs are provided, not diagnosed**: The model takes growing season length (GSL) and growing-season VPD as inputs; it does not currently diagnose season onset/offset from temperature. Defaults assume a 240-day GSL.
 5. **Daily update at local noon**: LAI is updated once per day at local solar noon.
 
 ## Parameters
@@ -123,7 +123,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 | Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of daily $A_0$ |
 | Annual precipitation | $P_{annual}$ | mol H₂O m⁻² yr⁻¹ | Total yearly precipitation (1 mm ≈ 55.5 mol m⁻²) |
 | Growing season VPD | $D_{growing}$ | Pa | Mean VPD during growing season (T > 0°C) |
-| Growing season length | GSL | days | Length of continuous period with T > 0°C |
+| Growing season length | GSL | days | Length of continuous period with T > 0°C; default 240 days |
 | CO₂ partial pressure | $c_a$ | Pa | Ambient CO₂ (400 ppm ≈ 40 Pa at sea level) |
 
 ## Output
