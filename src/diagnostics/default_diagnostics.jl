@@ -485,6 +485,8 @@ function get_possible_diagnostics(model::CanopyModel)
         "far",
         "lai",
         "lai_pred",
+        "a0_daily",
+        "a0_annual",
         "msf",
         "rai",
         "sai",

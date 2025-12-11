@@ -125,14 +125,14 @@ Initialize the LAI and A0 fields to given initial values.
 - `model::OptimalLAIModel`: the optimal LAI model
 - `initial_LAI`: initial LAI value (m² m⁻², default 1.0)
 - `initial_A0_daily`: initial daily potential GPP (mol CO₂ m⁻² day⁻¹, default 0.5)
-- `initial_A0_annual`: initial annual potential GPP (mol CO₂ m⁻² yr⁻¹, default 100.0)
+- `initial_A0_annual`: initial annual potential GPP (mol CO₂ m⁻² yr⁻¹, default 258.0)
 """
 function initialize_LAI!(
     p,
     model::OptimalLAIModel;
     initial_LAI = eltype(model)(1.0),
     initial_A0_daily = eltype(model)(0.5),
-    initial_A0_annual = eltype(model)(100.0),
+    initial_A0_annual = eltype(model)(258.0),
 )
     FT = eltype(model)
     p.canopy.lai_model.LAI .= initial_LAI
@@ -151,7 +151,7 @@ This method assumes that the LAI is initially in equilibrium with the initial co
 of the simulation.
 
 # Arguments
-- `A0_annual`: Initial annual potential GPP (mol CO₂ m⁻² yr⁻¹), default 100.0
+- `A0_annual`: Initial annual potential GPP (mol CO₂ m⁻² yr⁻¹), default 258.0
 - `A0_daily`: Initial daily potential GPP (mol CO₂ m⁻² day⁻¹), default 0.5
 - `P_annual`: Annual precipitation (mol H₂O m⁻² yr⁻¹), default 60000.0 (~1080 mm)
 - `D_growing`: Mean VPD during growing season (Pa), default 1000.0
@@ -166,7 +166,7 @@ function set_historical_cache!(
     Y0,
     model::OptimalLAIModel,
     canopy;
-    A0_annual = eltype(model.parameters)(100.0),
+    A0_annual = eltype(model.parameters)(258.0),
     A0_daily = eltype(model.parameters)(0.5),
     P_annual = eltype(model.parameters)(60000.0),
     D_growing = eltype(model.parameters)(1000.0),
