@@ -261,6 +261,21 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.lai_model.LAI
+@diagnostic_compute "a0_daily" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_daily
+@diagnostic_compute "a0_annual" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_annual
+@diagnostic_compute "a0_daily_acc" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_daily_acc
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{

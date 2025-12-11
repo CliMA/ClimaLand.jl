@@ -381,5 +381,113 @@ import ClimaParams
             @test same_annual_acc == A0_annual_acc
             @test same_L == L  # LAI unchanged when not at noon
         end
+
+        @testset "Full LAI computation trace with Ozark-like parameters for FT = $FT" begin
+            # Parameters matching Ozark site conditions
+            A0_annual = FT(258.0)   # mol CO₂ m⁻² yr⁻¹ (from simulation)
+            P_annual = FT(60000.0)  # mol H₂O m⁻² yr⁻¹ (~1080 mm)
+            D_growing = FT(1000.0)  # Pa
+            k = FT(0.5)
+            z = FT(12.227)          # mol m⁻² yr⁻¹
+            ca = FT(40.0)           # Pa (~400 ppm)
+            chi = FT(0.7)
+            f0 = FT(0.62)
+            GSL = FT(180.0)         # days
+            sigma = FT(0.771)
+            alpha = FT(0.067)
+
+            # Step 1: Compute LAI_max
+            fAPAR_energy = FT(1) - z / (k * A0_annual)
+            fAPAR_water = (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) * (f0 * P_annual / A0_annual)
+            fAPAR_max = min(fAPAR_energy, fAPAR_water)
+            fAPAR_max = max(FT(0), min(FT(1), fAPAR_max))
+            LAI_max_manual = -(FT(1) / k) * log(FT(1) - fAPAR_max)
+
+            LAI_max_func = Canopy.compute_L_max(A0_annual, P_annual, D_growing, k, z, ca, chi, f0)
+
+            @test LAI_max_manual ≈ LAI_max_func
+            @test LAI_max_func > FT(4.0)  # Ozark should support LAI > 4
+            @test LAI_max_func < FT(6.0)  # But not unreasonably high
+
+            # Step 2: Compute m
+            fAPAR_max_from_LAI = FT(1) - exp(-k * LAI_max_func)
+            m_manual = (sigma * GSL * LAI_max_func) / (A0_annual * fAPAR_max_from_LAI)
+
+            m_func = Canopy.compute_m(GSL, LAI_max_func, A0_annual, sigma, k)
+
+            @test m_manual ≈ m_func
+            @test m_func > FT(2.0)  # Should be reasonable positive value
+            @test m_func < FT(5.0)
+
+            # Step 3: Compute L_steady for a summer day with A0_daily = 1.5
+            A0_daily_summer = FT(1.5)  # mol CO₂ m⁻² day⁻¹
+            mu = m_func * A0_daily_summer
+            arg = -k * mu * exp(-k * mu)
+            w_val = Canopy.lambertw0(arg)
+            L_steady_manual = mu + (FT(1) / k) * w_val
+            L_steady_manual = min(L_steady_manual, LAI_max_func)
+            L_steady_manual = max(FT(0), L_steady_manual)
+
+            L_steady_func = Canopy.compute_steady_state_LAI(A0_daily_summer, m_func, k, LAI_max_func)
+
+            @test L_steady_manual ≈ L_steady_func
+            @test L_steady_func > FT(2.5)  # Summer should give reasonable LAI
+            @test L_steady_func < FT(5.0)
+
+            # Step 4: Test update_optimal_LAI integrates correctly
+            L_prev = FT(1.0)
+            L_new = Canopy.update_optimal_LAI(
+                FT(1.0),       # local_noon_mask
+                A0_daily_summer,
+                L_prev,
+                k,
+                A0_annual,
+                P_annual,
+                D_growing,
+                z,
+                ca,
+                chi,
+                f0,
+                GSL,
+                sigma,
+                alpha,
+            )
+
+            # Manual calculation of expected new LAI
+            L_expected = alpha * L_steady_func + (FT(1) - alpha) * L_prev
+            @test L_new ≈ L_expected
+            @test L_new > L_prev  # LAI should increase toward summer steady state
+
+            # Step 5: Test that after many iterations, LAI converges to L_steady
+            L_current = FT(1.0)
+            for _ in 1:100  # 100 days of updates
+                L_current = Canopy.update_optimal_LAI(
+                    FT(1.0),
+                    A0_daily_summer,
+                    L_current,
+                    k,
+                    A0_annual,
+                    P_annual,
+                    D_growing,
+                    z,
+                    ca,
+                    chi,
+                    f0,
+                    GSL,
+                    sigma,
+                    alpha,
+                )
+            end
+            @test L_current ≈ L_steady_func atol = FT(0.1)  # Should converge to steady state
+
+            # Step 6: Test with winter-like A0_daily = 0.2
+            A0_daily_winter = FT(0.2)
+            L_steady_winter = Canopy.compute_steady_state_LAI(A0_daily_winter, m_func, k, LAI_max_func)
+            @test L_steady_winter < FT(1.0)  # Winter should have low steady-state LAI
+            @test L_steady_winter >= FT(0.0)
+
+            # Print diagnostic values for debugging
+            @info "Ozark-like LAI computation trace" LAI_max=LAI_max_func m=m_func L_steady_summer=L_steady_func L_steady_winter=L_steady_winter fAPAR_energy=fAPAR_energy fAPAR_water=fAPAR_water
+        end
     end
 end

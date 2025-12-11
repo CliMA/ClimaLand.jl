@@ -265,6 +265,8 @@ output_vars = [
     "scms",
     "lai",
     "lai_pred",
+    "a0_daily",
+    "a0_annual",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -368,9 +370,9 @@ fig = Figure()
 ax = Axis(fig[1, 1])
 p = lines!(ax, model_dates, LAI_obs, label = "LAI obs")
 p2 = lines!(ax, model_dates, LAI_opt, label = "LAI opt")
-ax.ylabel = "LAI m2 m-2"
+#ax.ylabel = "LAI m2 m-2"
 axislegend()
-save("test.png", fig)
+save("LAI_test.png", fig)
 
 
 # Thoughts:
