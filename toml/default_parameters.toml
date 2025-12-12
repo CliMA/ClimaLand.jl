@@ -549,6 +549,8 @@ description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
 
 # Optimal LAI Model parameters (Zhou et al. 2025)
+# Water limitation is handled through β (soil moisture stress) in daily GPP,
+# not through LAI_max, allowing response to precipitation events.
 
 ["optimal_lai_k"]
 value = 0.5
@@ -562,20 +564,8 @@ type = "float"
 description = "Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)"
 tag = "OptimalLAIModel"
 
-["optimal_lai_chi"]
-value = 0.7
-type = "float"
-description = "Ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless)"
-tag = "OptimalLAIModel"
-
-["optimal_lai_f0"]
-value = 0.62
-type = "float"
-description = "Fraction of annual precipitation used by plants (dimensionless)"
-tag = "OptimalLAIModel"
-
 ["optimal_lai_sigma"]
-value = 0.771
+value = 1.1
 type = "float"
 description = "Dimensionless parameter representing departure from square-wave LAI dynamics"
 tag = "OptimalLAIModel"

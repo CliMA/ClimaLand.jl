@@ -5,7 +5,8 @@ export PModelParameters,
     set_historical_cache!,
     update_optimal_EMA,
     make_PModel_callback,
-    compute_A0_potential
+    compute_A0_potential,
+    compute_A0_daily
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -1431,6 +1432,83 @@ function compute_A0_potential(
     return PPFD * LUE_potential
 end
 
+"""
+    compute_A0_daily(
+        is_c3::FT,
+        parameters::PModelParameters{FT},
+        constants::PModelConstants{FT},
+        T_canopy::FT,
+        P_air::FT,
+        VPD::FT,
+        ca::FT,
+        PPFD::FT,
+        βm::FT,
+    ) where {FT}
+
+Compute instantaneous daily potential GPP (A₀) using the P-model with fAPAR = 1 and actual β.
+
+This represents the GPP that would be achieved if the canopy absorbed all incoming
+photosynthetically active radiation (PAR), but accounting for actual soil moisture stress.
+Used by the optimal LAI model to compute daily potential GPP for determining steady-state LAI.
+
+# Arguments
+- `is_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `parameters`: PModelParameters object
+- `constants`: PModelConstants object
+- `T_canopy::FT`: Canopy temperature (K)
+- `P_air::FT`: Atmospheric pressure (Pa)
+- `VPD::FT`: Vapor pressure deficit (Pa), should be > 0
+- `ca::FT`: Ambient CO₂ concentration (mol/mol)
+- `PPFD::FT`: Photosynthetic photon flux density (mol photons m⁻² s⁻¹).
+           This is the total incoming PAR, NOT absorbed PAR.
+- `βm::FT`: Soil moisture stress factor (dimensionless, 0-1), from soil moisture stress model
+
+# Returns
+- `A0::FT`: Instantaneous daily potential GPP (kg C m⁻² s⁻¹)
+
+# Notes
+The daily potential GPP is computed as: A₀ = PPFD × LUE
+where LUE includes the actual soil moisture stress factor (βm).
+This differs from `compute_A0_potential` which uses β = 1.
+"""
+function compute_A0_daily(
+    is_c3::FT,
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    PPFD::FT,
+    βm::FT,
+) where {FT}
+    (; cstar, β) = parameters
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
+        constants
+
+    # Convert ca from mol/mol to partial pressure (Pa)
+    ca_pp = ca * P_air
+
+    # Compute P-model intermediate values
+    ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
+    Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
+    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+
+    # Compute optimal ξ and intercellular CO₂
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+
+    # Compute mj and m' (with Jmax limitation)
+    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
+    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+
+    # Compute LUE with actual βm (soil moisture stress)
+    LUE_daily = compute_LUE(ϕ0, βm, mprime, Mc)
+
+    # Daily potential GPP = PPFD × LUE (fAPAR = 1 is implicit in using full PPFD)
+    return PPFD * LUE_daily
+end
 
 """
     vcmax_pmodel(
