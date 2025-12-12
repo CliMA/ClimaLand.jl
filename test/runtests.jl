@@ -126,6 +126,9 @@ end
 @safetestset "PFT tests" begin
     include("standalone/Vegetation/test_pfts.jl")
 end
+@safetestset "Optimal LAI model tests" begin
+    include("standalone/Vegetation/test_optimal_lai.jl")
+end
 
 # Integrated LSM tests
 @safetestset "Integrated LSM unit tests" begin

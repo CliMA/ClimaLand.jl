@@ -144,6 +144,9 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+            lai_model = Canopy.OptimalLAIModel{FT}(
+                Canopy.OptimalLAIParameters{FT}(toml_dict),
+            ),
         ),
        snow = Snow.SnowModel(
             FT,
@@ -199,6 +202,9 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+        ),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -704,6 +710,7 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
     function set_initial_cache!(p, Y0, t0)
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
+        Canopy.set_historical_cache!(p, Y0, canopy.lai_model, canopy)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
