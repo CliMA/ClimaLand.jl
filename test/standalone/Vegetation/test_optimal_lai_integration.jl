@@ -2,6 +2,9 @@
 Integration test for the OptimalLAI callback in a minimal ClimaLand simulation.
 This test creates a simple canopy model with controlled forcing and verifies
 that LAI updates correctly over time.
+
+Water limitation is now handled through the soil moisture stress factor (β) in the
+daily potential GPP computation, rather than through a water-limited LAI_max.
 """
 
 using Test
@@ -113,7 +116,7 @@ import ClimaLand.Parameters as LP
     # Energy model
     energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
 
-    # No moisture stress
+    # No moisture stress (β = 1 always)
     soil_moisture_stress = Canopy.NoMoistureStressModel{FT}()
 
     # Combine into canopy model
@@ -159,6 +162,7 @@ import ClimaLand.Parameters as LP
     println("A0_daily = $(parent(p.canopy.lai_model.A0_daily))")
     println("A0_annual = $(parent(p.canopy.lai_model.A0_annual))")
     println("A0_daily_acc = $(parent(p.canopy.lai_model.A0_daily_acc))")
+    println("A0_annual_daily_acc = $(parent(p.canopy.lai_model.A0_annual_daily_acc))")
 
     # Now manually set LAI to a low value to test recovery
     p.canopy.lai_model.LAI .= FT(0.1)
@@ -170,10 +174,8 @@ import ClimaLand.Parameters as LP
     local_noon = seconds_in_day * (FT(0.5) - long / 360)
     println("\nLocal noon (seconds UTC): $local_noon")
 
-    # P_annual, D_growing, GSL from defaults
-    P_annual = FT(60000.0)
-    D_growing = FT(1000.0)
-    GSL = FT(180.0)
+    # GSL from defaults
+    GSL = FT(240.0)
 
     # Create local_noon field
     local_noon_field = ClimaCore.Fields.ones(domain.space.surface) .* local_noon
@@ -199,8 +201,6 @@ import ClimaLand.Parameters as LP
                 canopy = canopy,
                 dt = dt,
                 local_noon = local_noon_field,
-                P_annual = P_annual,
-                D_growing = D_growing,
                 GSL = GSL,
             )
 
@@ -211,6 +211,7 @@ import ClimaLand.Parameters as LP
                 println("  LAI = $(parent(p.canopy.lai_model.LAI))")
                 println("  A0_daily = $(parent(p.canopy.lai_model.A0_daily))")
                 println("  A0_daily_acc = $(parent(p.canopy.lai_model.A0_daily_acc))")
+                println("  A0_annual_daily_acc = $(parent(p.canopy.lai_model.A0_annual_daily_acc))")
                 println("  last_day_of_year = $(parent(p.canopy.lai_model.last_day_of_year))")
             end
         end
@@ -226,19 +227,17 @@ import ClimaLand.Parameters as LP
     println("A0_annual = $final_A0_annual")
 
     # Compute expected L_steady for current conditions
+    # Water limitation is now through β in daily A0, not in LAI_max
     k = FT(0.5)
     z = FT(12.227)
-    chi = FT(0.7)
-    f0 = FT(0.62)
     sigma = FT(0.771)
-    alpha = FT(0.067)
-    ca = FT(40.0)
+    alpha = FT(0.067)  # ~15 days memory
 
-    LAI_max = Canopy.compute_L_max(final_A0_annual, P_annual, D_growing, k, z, ca, chi, f0)
+    LAI_max = Canopy.compute_L_max(final_A0_annual, k, z)
     m = Canopy.compute_m(GSL, LAI_max, final_A0_annual, sigma, k)
     L_steady = Canopy.compute_steady_state_LAI(final_A0_daily, m, k, LAI_max)
     println("\nExpected values:")
-    println("LAI_max = $LAI_max")
+    println("LAI_max = $LAI_max (energy-limited only)")
     println("m = $m")
     println("L_steady = $L_steady")
     println("Threshold A0_daily = $(1/(m*k))")

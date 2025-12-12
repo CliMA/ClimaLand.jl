@@ -17,18 +17,14 @@ import ClimaParams
 
             @test params.k isa FT
             @test params.z isa FT
-            @test params.chi isa FT
-            @test params.f0 isa FT
             @test params.sigma isa FT
             @test params.alpha isa FT
 
             # Check expected values from default_parameters.toml
             @test params.k ≈ FT(0.5)
             @test params.z ≈ FT(12.227)
-            @test params.chi ≈ FT(0.7)
-            @test params.f0 ≈ FT(0.62)
-            @test params.sigma ≈ FT(0.771)
-            @test params.alpha ≈ FT(0.067)
+            @test params.sigma ≈ FT(1.1)
+            @test params.alpha ≈ FT(0.067)  # ~15 days of memory
 
             @test eltype(params) == FT
         end
@@ -47,68 +43,36 @@ import ClimaParams
                 :A0_annual,
                 :A0_daily_acc,
                 :A0_annual_acc,
+                :A0_annual_daily_acc,
                 :last_day_of_year,
             )
-            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT)
+            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT, FT)
             @test Canopy.auxiliary_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface, :surface, :surface)
+                  (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
         end
 
-        @testset "compute_L_max function for FT = $FT" begin
-            # Test with typical temperate forest conditions
+        @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
+            # Test with typical conditions
             Ao_annual = FT(100.0)   # mol m⁻² yr⁻¹
-            P_annual = FT(60000.0)  # mol m⁻² yr⁻¹ (~1080 mm)
-            D_growing = FT(1000.0)  # Pa
             k = FT(0.5)
             z = FT(12.227)
-            ca = FT(40.0)           # Pa (~400 ppm)
-            chi = FT(0.7)
-            f0 = FT(0.62)
 
-            LAI_max = Canopy.compute_L_max(
-                Ao_annual,
-                P_annual,
-                D_growing,
-                k,
-                z,
-                ca,
-                chi,
-                f0,
-            )
+            LAI_max = Canopy.compute_L_max(Ao_annual, k, z)
 
             @test LAI_max isa FT
             @test LAI_max >= FT(0.0)  # LAI should be non-negative
             @test LAI_max < FT(20.0)  # LAI should be reasonable (< 20)
 
-            # Test water-limited vs energy-limited scenarios
-            # Very wet conditions - should be energy limited
-            P_wet = FT(200000.0)  # Very high precipitation
-            LAI_wet = Canopy.compute_L_max(
-                Ao_annual,
-                P_wet,
-                D_growing,
-                k,
-                z,
-                ca,
-                chi,
-                f0,
-            )
+            # Test that higher A0_annual gives higher LAI_max
+            LAI_high_gpp = Canopy.compute_L_max(FT(300.0), k, z)
+            LAI_low_gpp = Canopy.compute_L_max(FT(50.0), k, z)
+            @test LAI_high_gpp > LAI_low_gpp
 
-            # Dry conditions - should be water limited
-            P_dry = FT(20000.0)  # Low precipitation
-            LAI_dry = Canopy.compute_L_max(
-                Ao_annual,
-                P_dry,
-                D_growing,
-                k,
-                z,
-                ca,
-                chi,
-                f0,
-            )
-
-            # TODO: Re-enable this test once the function correctly handles wet vs dry conditions
-            # @test LAI_wet > LAI_dry  # Wetter conditions should support higher LAI
+            # Test energy limitation formula
+            fAPAR_energy = FT(1) - z / (k * Ao_annual)
+            fAPAR_max = max(FT(0), min(FT(1), fAPAR_energy))
+            LAI_max_manual = -(FT(1) / k) * log(FT(1) - fAPAR_max)
+            @test LAI_max ≈ LAI_max_manual
         end
 
         @testset "compute_m function for FT = $FT" begin
@@ -232,7 +196,7 @@ import ClimaParams
 
         @testset "update_optimal_LAI integration test for FT = $FT" begin
             local_noon_mask = FT(1.0)
-            A0_daily = FT(0.5)  # mol CO₂ m⁻² day⁻¹
+            A0_daily = FT(0.5)  # mol CO₂ m⁻² day⁻¹ (with actual β)
             L = FT(2.0)   # m² m⁻²
 
             L_new = Canopy.update_optimal_LAI(
@@ -240,16 +204,11 @@ import ClimaParams
                 A0_daily,
                 L,
                 FT(0.5),       # k
-                FT(100.0),     # A0_annual
-                FT(60000.0),   # P_annual
-                FT(1000.0),    # D_growing
+                FT(100.0),     # A0_annual (with β=1)
                 FT(12.227),    # z
-                FT(40.0),      # ca
-                FT(0.7),       # chi
-                FT(0.62),      # f0
                 FT(180.0),     # GSL
                 FT(0.771),     # sigma
-                FT(0.067),     # alpha
+                FT(0.017),     # alpha
             )
 
             @test L_new isa FT
@@ -263,15 +222,10 @@ import ClimaParams
                 L,
                 FT(0.5),       # k
                 FT(100.0),     # A0_annual
-                FT(60000.0),   # P_annual
-                FT(1000.0),    # D_growing
                 FT(12.227),    # z
-                FT(40.0),      # ca
-                FT(0.7),       # chi
-                FT(0.62),      # f0
                 FT(180.0),     # GSL
                 FT(0.771),     # sigma
-                FT(0.067),     # alpha
+                FT(0.017),     # alpha
             )
             @test L_no_update == L
         end
@@ -280,71 +234,60 @@ import ClimaParams
             # Test accumulation at local noon
             A0_daily = FT(0.5)
             A0_annual = FT(100.0)
-            A0_daily_acc = FT(0.6)  # Accumulated during the day
-            A0_annual_acc = FT(50.0)  # Accumulated during the year
+            A0_daily_acc = FT(0.6)  # Accumulated during the day (with actual β)
+            A0_annual_acc = FT(50.0)  # Accumulated during the year (with β=1)
+            A0_annual_daily_acc = FT(0.7)  # Daily accumulator for β=1 GPP
             last_doy = FT(100.0)
             current_doy = FT(101.0)
             L = FT(2.0)
 
             # Optimal LAI parameters
             k = FT(0.5)
-            P_annual = FT(60000.0)
-            D_growing = FT(1000.0)
             z = FT(12.227)
-            ca = FT(40.0)
-            chi = FT(0.7)
-            f0 = FT(0.62)
             GSL = FT(180.0)
             sigma = FT(0.771)
             alpha = FT(0.067)
 
             # At local noon, should finalize daily A0 and accumulate to annual
-            new_daily, new_annual, new_daily_acc, new_annual_acc, new_last_doy, new_L =
+            new_daily, new_annual, new_daily_acc, new_annual_acc, new_annual_daily_acc, new_last_doy, new_L =
                 Canopy.update_A0_and_LAI_at_noon(
                     FT(1.0),  # local noon mask
                     A0_daily,
                     A0_annual,
                     A0_daily_acc,
                     A0_annual_acc,
+                    A0_annual_daily_acc,
                     last_doy,
                     current_doy,
                     L,
                     k,
-                    P_annual,
-                    D_growing,
                     z,
-                    ca,
-                    chi,
-                    f0,
                     GSL,
                     sigma,
                     alpha,
                 )
 
-            @test new_daily ≈ A0_daily_acc  # Daily A0 is finalized from accumulator
-            @test new_daily_acc ≈ FT(0.0)   # Accumulator reset
-            @test new_annual_acc ≈ A0_annual_acc + new_daily  # Annual accumulator updated
+            @test new_daily ≈ A0_daily_acc  # Daily A0 (with β) is finalized from accumulator
+            @test new_daily_acc ≈ FT(0.0)   # Daily accumulator reset
+            @test new_annual_daily_acc ≈ FT(0.0)  # Annual daily accumulator reset
+            @test new_annual_acc ≈ A0_annual_acc + A0_annual_daily_acc  # Annual accumulator updated with β=1 daily
             @test new_last_doy ≈ current_doy
             @test new_L isa FT  # LAI is updated
 
             # Test year change detection (day of year decreased)
-            _, new_annual_year_change, _, _, _, _ =
+            _, new_annual_year_change, _, _, _, _, _ =
                 Canopy.update_A0_and_LAI_at_noon(
                     FT(1.0),
                     A0_daily,
                     A0_annual,
                     A0_daily_acc,
                     A0_annual_acc,
+                    A0_annual_daily_acc,
                     FT(365.0),  # last day of year
                     FT(1.0),    # first day of new year
                     L,
                     k,
-                    P_annual,
-                    D_growing,
                     z,
-                    ca,
-                    chi,
-                    f0,
                     GSL,
                     sigma,
                     alpha,
@@ -353,23 +296,19 @@ import ClimaParams
             @test new_annual_year_change ≈ A0_annual_acc  # Annual finalized before new year
 
             # Test no update when not at noon
-            same_daily, same_annual, same_daily_acc, same_annual_acc, same_last_doy, same_L =
+            same_daily, same_annual, same_daily_acc, same_annual_acc, same_annual_daily_acc, same_last_doy, same_L =
                 Canopy.update_A0_and_LAI_at_noon(
                     FT(0.0),  # not at noon
                     A0_daily,
                     A0_annual,
                     A0_daily_acc,
                     A0_annual_acc,
+                    A0_annual_daily_acc,
                     last_doy,
                     current_doy,
                     L,
                     k,
-                    P_annual,
-                    D_growing,
                     z,
-                    ca,
-                    chi,
-                    f0,
                     GSL,
                     sigma,
                     alpha,
@@ -379,31 +318,25 @@ import ClimaParams
             @test same_annual == A0_annual
             @test same_daily_acc == A0_daily_acc
             @test same_annual_acc == A0_annual_acc
+            @test same_annual_daily_acc == A0_annual_daily_acc
             @test same_L == L  # LAI unchanged when not at noon
         end
 
         @testset "Full LAI computation trace with Ozark-like parameters for FT = $FT" begin
             # Parameters matching Ozark site conditions
-            A0_annual = FT(258.0)   # mol CO₂ m⁻² yr⁻¹ (from simulation)
-            P_annual = FT(60000.0)  # mol H₂O m⁻² yr⁻¹ (~1080 mm)
-            D_growing = FT(1000.0)  # Pa
+            A0_annual = FT(258.0)   # mol CO₂ m⁻² yr⁻¹ (with β=1)
             k = FT(0.5)
             z = FT(12.227)          # mol m⁻² yr⁻¹
-            ca = FT(40.0)           # Pa (~400 ppm)
-            chi = FT(0.7)
-            f0 = FT(0.62)
             GSL = FT(180.0)         # days
             sigma = FT(0.771)
-            alpha = FT(0.067)
+            alpha = FT(0.067)       # ~15 days memory
 
-            # Step 1: Compute LAI_max
+            # Step 1: Compute LAI_max (energy-limited only)
             fAPAR_energy = FT(1) - z / (k * A0_annual)
-            fAPAR_water = (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) * (f0 * P_annual / A0_annual)
-            fAPAR_max = min(fAPAR_energy, fAPAR_water)
-            fAPAR_max = max(FT(0), min(FT(1), fAPAR_max))
+            fAPAR_max = max(FT(0), min(FT(1), fAPAR_energy))
             LAI_max_manual = -(FT(1) / k) * log(FT(1) - fAPAR_max)
 
-            LAI_max_func = Canopy.compute_L_max(A0_annual, P_annual, D_growing, k, z, ca, chi, f0)
+            LAI_max_func = Canopy.compute_L_max(A0_annual, k, z)
 
             @test LAI_max_manual ≈ LAI_max_func
             @test LAI_max_func > FT(4.0)  # Ozark should support LAI > 4
@@ -419,7 +352,7 @@ import ClimaParams
             @test m_func > FT(2.0)  # Should be reasonable positive value
             @test m_func < FT(5.0)
 
-            # Step 3: Compute L_steady for a summer day with A0_daily = 1.5
+            # Step 3: Compute L_steady for a summer day with A0_daily = 1.5 (with actual β)
             A0_daily_summer = FT(1.5)  # mol CO₂ m⁻² day⁻¹
             mu = m_func * A0_daily_summer
             arg = -k * mu * exp(-k * mu)
@@ -442,12 +375,7 @@ import ClimaParams
                 L_prev,
                 k,
                 A0_annual,
-                P_annual,
-                D_growing,
                 z,
-                ca,
-                chi,
-                f0,
                 GSL,
                 sigma,
                 alpha,
@@ -459,20 +387,16 @@ import ClimaParams
             @test L_new > L_prev  # LAI should increase toward summer steady state
 
             # Step 5: Test that after many iterations, LAI converges to L_steady
+            # With alpha = 0.067 (~15 days), converges in ~100 days
             L_current = FT(1.0)
-            for _ in 1:100  # 100 days of updates
+            for _ in 1:100  # 100 days of updates for convergence
                 L_current = Canopy.update_optimal_LAI(
                     FT(1.0),
                     A0_daily_summer,
                     L_current,
                     k,
                     A0_annual,
-                    P_annual,
-                    D_growing,
                     z,
-                    ca,
-                    chi,
-                    f0,
                     GSL,
                     sigma,
                     alpha,
@@ -480,14 +404,62 @@ import ClimaParams
             end
             @test L_current ≈ L_steady_func atol = FT(0.1)  # Should converge to steady state
 
-            # Step 6: Test with winter-like A0_daily = 0.2
+            # Step 6: Test with winter-like A0_daily = 0.2 (low β due to cold/dry)
             A0_daily_winter = FT(0.2)
             L_steady_winter = Canopy.compute_steady_state_LAI(A0_daily_winter, m_func, k, LAI_max_func)
             @test L_steady_winter < FT(1.0)  # Winter should have low steady-state LAI
             @test L_steady_winter >= FT(0.0)
 
             # Print diagnostic values for debugging
-            @info "Ozark-like LAI computation trace" LAI_max=LAI_max_func m=m_func L_steady_summer=L_steady_func L_steady_winter=L_steady_winter fAPAR_energy=fAPAR_energy fAPAR_water=fAPAR_water
+            @info "Ozark-like LAI computation trace" LAI_max=LAI_max_func m=m_func L_steady_summer=L_steady_func L_steady_winter=L_steady_winter fAPAR_energy=fAPAR_energy
+        end
+
+        @testset "Water limitation through daily β test for FT = $FT" begin
+            # Test that varying β in daily A0 affects LAI dynamics
+            # This demonstrates the new water limitation mechanism
+
+            A0_annual = FT(200.0)  # High potential GPP (with β=1)
+            k = FT(0.5)
+            z = FT(12.227)
+            GSL = FT(180.0)
+            sigma = FT(0.771)
+            alpha = FT(0.067)
+
+            LAI_max = Canopy.compute_L_max(A0_annual, k, z)
+            m = Canopy.compute_m(GSL, LAI_max, A0_annual, sigma, k)
+
+            # Wet conditions: high β → high daily A0
+            A0_daily_wet = FT(1.0)  # mol CO₂ m⁻² day⁻¹
+            L_steady_wet = Canopy.compute_steady_state_LAI(A0_daily_wet, m, k, LAI_max)
+
+            # Dry conditions: low β → low daily A0
+            A0_daily_dry = FT(0.3)  # mol CO₂ m⁻² day⁻¹
+            L_steady_dry = Canopy.compute_steady_state_LAI(A0_daily_dry, m, k, LAI_max)
+
+            # Wet conditions should support higher steady-state LAI
+            @test L_steady_wet > L_steady_dry
+
+            # Simulate a "flushing event" - dry conditions followed by wet
+            L_current = FT(0.5)  # Low initial LAI from dry period
+
+            # 30 days of dry conditions
+            for _ in 1:30
+                L_current = Canopy.update_optimal_LAI(
+                    FT(1.0), A0_daily_dry, L_current, k, A0_annual, z, GSL, sigma, alpha)
+            end
+            L_after_dry = L_current
+
+            # Then 60 days of wet conditions (flushing event)
+            for _ in 1:60
+                L_current = Canopy.update_optimal_LAI(
+                    FT(1.0), A0_daily_wet, L_current, k, A0_annual, z, GSL, sigma, alpha)
+            end
+            L_after_wet = L_current
+
+            # LAI should increase significantly after wet period
+            @test L_after_wet > L_after_dry
+
+            @info "Flushing event test" L_steady_dry=L_steady_dry L_steady_wet=L_steady_wet L_after_dry=L_after_dry L_after_wet=L_after_wet
         end
     end
 end
