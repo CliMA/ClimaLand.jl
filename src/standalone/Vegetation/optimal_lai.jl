@@ -20,6 +20,10 @@ abstract type AbstractLAIModel{FT <: AbstractFloat} <:
 
 The required parameters for the optimal LAI model based on Zhou et al. (2025).
 
+Water limitation is handled through the soil moisture stress factor (β) in the daily
+potential GPP computation, rather than through a water-limited LAI_max. This allows
+the model to respond to interannual precipitation variability and flushing events.
+
 # References
 Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
 Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
@@ -31,10 +35,6 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     k::FT
     """Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹), globally fitted as 12.227 mol m⁻² yr⁻¹"""
     z::FT
-    """Ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless), typically from the P-model"""
-    chi::FT
-    """Fraction of annual precipitation used by plants (dimensionless), varies with aridity index"""
-    f0::FT
     """Dimensionless parameter representing departure from square-wave LAI dynamics, globally fitted as 0.771"""
     sigma::FT
     """Smoothing factor for exponential moving average (dimensionless, 0-1). Set to 0.067 for ~15 days of memory"""
@@ -55,8 +55,6 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     return OptimalLAIParameters{FT}(
         k = FT(toml_dict["optimal_lai_k"]),
         z = FT(toml_dict["optimal_lai_z"]),
-        chi = FT(toml_dict["optimal_lai_chi"]),
-        f0 = FT(toml_dict["optimal_lai_f0"]),
         sigma = FT(toml_dict["optimal_lai_sigma"]),
         alpha = FT(toml_dict["optimal_lai_alpha"]),
     )
@@ -100,18 +98,19 @@ end
 
 Defines the auxiliary variables for the OptimalLAIModel:
 - `LAI`: leaf area index (m² m⁻²)
-- `A0_daily`: daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹)
-- `A0_annual`: annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹)
-- `A0_daily_acc`: accumulator for current day's potential GPP (mol CO₂ m⁻² day⁻¹)
-- `A0_annual_acc`: accumulator for current year's potential GPP (mol CO₂ m⁻² yr⁻¹)
+- `A0_daily`: daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹), with actual β
+- `A0_annual`: annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹), with β=1
+- `A0_daily_acc`: accumulator for current day's potential GPP with actual β (mol CO₂ m⁻² day⁻¹)
+- `A0_annual_acc`: accumulator for current year's potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹)
+- `A0_annual_daily_acc`: accumulator for current day's potential GPP with β=1 (mol CO₂ m⁻² day⁻¹)
 - `last_day_of_year`: day of year of last update (for detecting year change)
 """
 ClimaLand.auxiliary_vars(model::OptimalLAIModel) =
-    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :last_day_of_year)
+    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :A0_annual_daily_acc, :last_day_of_year)
 ClimaLand.auxiliary_types(model::OptimalLAIModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::OptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 ClimaLand.name(::AbstractLAIModel) = :lai_model
 
@@ -140,23 +139,21 @@ function initialize_LAI!(
     p.canopy.lai_model.A0_annual .= initial_A0_annual
     p.canopy.lai_model.A0_daily_acc .= FT(0)
     p.canopy.lai_model.A0_annual_acc .= FT(0)
+    p.canopy.lai_model.A0_annual_daily_acc .= FT(0)
     p.canopy.lai_model.last_day_of_year .= FT(0)
 end
 
 """
-    set_historical_cache!(p, Y0, model::OptimalLAIModel, canopy; A0_annual, A0_daily, P_annual, D_growing, ca, GSL)
+    set_historical_cache!(p, Y0, model::OptimalLAIModel, canopy; A0_annual, A0_daily, GSL)
 
 The optimal LAI model requires initialization of LAI and A0 values before the simulation.
 This method assumes that the LAI is initially in equilibrium with the initial conditions
 of the simulation.
 
 # Arguments
-- `A0_annual`: Initial annual potential GPP (mol CO₂ m⁻² yr⁻¹), default 258.0
-- `A0_daily`: Initial daily potential GPP (mol CO₂ m⁻² day⁻¹), default 0.5
-- `P_annual`: Annual precipitation (mol H₂O m⁻² yr⁻¹), default 60000.0 (~1080 mm)
-- `D_growing`: Mean VPD during growing season (Pa), default 1000.0
-- `ca`: Ambient CO₂ partial pressure (Pa), default 40.0 (~400 ppm)
-- `GSL`: Growing season length (days), default 180.0
+- `A0_annual`: Initial annual potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹), default 258.0
+- `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5
+- `GSL`: Growing season length (days), default 240.0
 
 An alternative to this approach is to initialize the initial values to some reasonable values
 based on a spun-up simulation or observational data.
@@ -168,9 +165,6 @@ function set_historical_cache!(
     canopy;
     A0_annual = eltype(model.parameters)(258.0),
     A0_daily = eltype(model.parameters)(0.5),
-    P_annual = eltype(model.parameters)(60000.0),
-    D_growing = eltype(model.parameters)(1000.0),
-    ca = eltype(model.parameters)(40.0),
     GSL = eltype(model.parameters)(240.0),
 )
     parameters = model.parameters
@@ -186,25 +180,20 @@ function set_historical_cache!(
     fill!(p.canopy.lai_model.A0_annual, A0_annual)
     fill!(p.canopy.lai_model.A0_daily_acc, FT(0))
     fill!(p.canopy.lai_model.A0_annual_acc, FT(0))
+    fill!(p.canopy.lai_model.A0_annual_daily_acc, FT(0))
     fill!(p.canopy.lai_model.last_day_of_year, FT(0))
 
     # Set local_noon_mask to 1 to force update for initialization
     local_noon_mask = FT(1)
 
     # Compute initial LAI based on initial conditions
-    # Note: ca here is already in Pa (as expected by the optimal LAI model)
     @. L = update_optimal_LAI(
         local_noon_mask,
         A0_daily,
         L,
         parameters.k,
         A0_annual,
-        P_annual,
-        D_growing,
         parameters.z,
-        ca,
-        parameters.chi,
-        parameters.f0,
         GSL,
         parameters.sigma,
         parameters.alpha,
@@ -212,88 +201,55 @@ function set_historical_cache!(
 end
 
 """
-    compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
+    compute_L_max(Ao_annual, k, z)
 
-Compute seasonal maximum leaf area index (LAI_max) based on energy and water limitations.
+Compute seasonal maximum leaf area index (LAI_max) based on energy limitation only.
 
-This implements Equations 11-12 from Zhou et al. (2025), which predicts LAI_max as the
-minimum of an energy-limited rate (maximizing GPP) and a water-limited rate (maximizing
-the use of available precipitation).
+This is a modified version of Equations 11-12 from Zhou et al. (2025), using only the
+energy-limited rate (maximizing GPP). Water limitation is handled separately through
+the soil moisture stress factor (β) in the daily potential GPP computation, allowing
+the model to capture interannual variability and flushing events in water-limited
+ecosystems.
 
 # Arguments
 - `Ao_annual::FT`: Annual total potential GPP (mol m⁻² yr⁻¹). This is the integral of daily
-  A₀ over the year. A₀ is the GPP that would be achieved if fAPAR = 1.
-- `P_annual::FT`: Annual total precipitation (mol m⁻² yr⁻¹). Note: 1 mol H₂O ≈ 18 g
-- `D_growing::FT`: Mean vapor pressure deficit during the growing season when T > 0°C (Pa)
+  A₀ over the year. A₀ is the GPP that would be achieved if fAPAR = 1 and β = 1.
 - `k::FT`: Light extinction coefficient (dimensionless), typically 0.5
 - `z::FT`: Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹), globally fitted
   as 12.227 mol m⁻² yr⁻¹
-- `ca::FT`: Ambient CO₂ partial pressure (Pa)
-- `chi::FT`: Ratio of leaf-internal to ambient CO₂ partial pressure (dimensionless),
-  typically from the P-model
-- `f0::FT`: Fraction of annual precipitation used by plants (dimensionless), varies with
-  aridity index (Equation 6)
 
 # Returns
 - `LAI_max::FT`: Seasonal maximum leaf area index (m² m⁻², dimensionless)
 
 # Example values
 ```julia
-# IMPORTANT NOTE: This equation as published produces LAI values that are typically
-# much smaller than observed forest LAI when calculated for individual sites.
-# The paper (Zhou et al. 2025) reports good global-scale agreement with satellite data,
-# but there may be discrepancies at local scales. The equation is implemented exactly
-# as specified in Equations 11-12 of the paper.
-
-# Example 1: Dry temperate conditions
 Ao_annual = 100.0   # mol m⁻² yr⁻¹ (typical temperate forest)
-P_annual = 30000.0    # mol m⁻² yr⁻¹ (~540 mm precipitation)
-D_growing = 2500.0     # Pa (mean VPD during growing season)
-k = 0.5               # dimensionless
-z = 12.227            # mol m⁻² yr⁻¹
-ca = 40.0             # Pa (~400 ppm)
-chi = 0.7             # dimensionless
-f0 = 0.62             # dimensionless
+k = 0.5             # dimensionless
+z = 12.227          # mol m⁻² yr⁻¹
 
-LAI_max = compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
-# Returns: 1.6 m² m⁻² (strongly water-limited)
-
-# Example 2: Wet temperate conditions
-P_annual = 150000.0   # mol m⁻² yr⁻¹ (~2700 mm precipitation)
-D_growing = 600.0     # Pa (low VPD, humid)
-chi = 0.78            # dimensionless
-f0 = 0.75             # dimensionless
-
-LAI_max = compute_L_max(Ao_annual, P_annual, D_growing, k, z, ca, chi, f0)
-# Returns: 2.8 m² m⁻² (water-limited)
+LAI_max = compute_L_max(Ao_annual, k, z)
+# Returns: ~3.5 m² m⁻² (energy-limited only)
 ```
 
+# Notes
+Water limitation is not included in LAI_max. Instead, moisture stress enters through
+the daily potential GPP (A0_daily) which uses the actual soil moisture stress factor (β).
+This allows the model to respond dynamically to precipitation events rather than being
+constrained by long-term average precipitation.
+
 # References
-Zhou et al. (2025) Global Change Biology, Equations 11-12
+Zhou et al. (2025) Global Change Biology, Equations 11-12 (modified)
 """
 function compute_L_max(
     Ao_annual::FT,  # mol m⁻² yr⁻¹
-    P_annual::FT,   # mol m⁻² yr⁻¹
-    D_growing::FT,  # Pa
     k::FT,          # dimensionless
     z::FT,          # mol m⁻² yr⁻¹
-    ca::FT,         # Pa
-    chi::FT,        # dimensionless
-    f0::FT,         # dimensionless
 ) where {FT}
     # Energy-limited fAPAR (Equation 11, first part)
     fAPAR_energy = FT(1) - z / (k * Ao_annual)
 
-    # Water-limited fAPAR (Equation 11, second part)
-    fAPAR_water =
-        (ca * (FT(1) - chi) / (FT(1.6) * D_growing)) *
-        (f0 * P_annual / Ao_annual)
-
-    # Take minimum of energy and water limitations (Equation 11)
-    fAPAR_max = min(fAPAR_energy, fAPAR_water)
-
     # Ensure fAPAR is in valid range [0, 1]
-    fAPAR_max = max(FT(0), min(FT(1), fAPAR_max))
+    fAPAR_max = max(FT(0), min(FT(1), fAPAR_energy))
 
     # Convert fAPAR to LAI using Beer's law (Equation 12)
     # LAI_max = -(1/k) * ln(1 - fAPAR_max)
@@ -586,38 +542,41 @@ function update_LAI!(
 end
 
 """
-    update_optimal_LAI(local_noon_mask, A0_daily, L, k, A0_annual, P_annual, D_growing, z, ca, chi, f0, GSL, sigma, alpha)
+    update_optimal_LAI(local_noon_mask, A0_daily, L, k, A0_annual, z, GSL, sigma, alpha)
 
 Update LAI using the optimal LAI model with precomputed daily and annual potential GPP.
 
 # Arguments
 - `local_noon_mask::FT`: Mask (0 or 1) indicating if it's local noon
-- `A0_daily::FT`: Daily potential GPP (mol CO₂ m⁻² day⁻¹)
+- `A0_daily::FT`: Daily potential GPP (mol CO₂ m⁻² day⁻¹), computed with actual soil moisture stress (β)
 - `L::FT`: Current LAI (m² m⁻²)
 - `k::FT`: Light extinction coefficient
-- `A0_annual::FT`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
-- Other parameters as in compute_L_max and compute_m
+- `A0_annual::FT`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹), computed with β = 1 (no moisture stress)
+- `z::FT`: Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)
+- `GSL::FT`: Growing season length (days)
+- `sigma::FT`: Dimensionless parameter for LAI dynamics
+- `alpha::FT`: Smoothing factor for exponential moving average (~15-day memory with 0.067)
 
 # Returns
 Updated LAI value.
+
+# Notes
+Water limitation is captured through the daily A0 (which uses actual β from soil moisture stress),
+not through LAI_max. This allows the model to respond to interannual precipitation variability
+and flushing events in water-limited ecosystems.
 """
 function update_optimal_LAI(
     local_noon_mask::FT,
     A0_daily::FT,
     L::FT, # m2 m-2
     k::FT,
-    A0_annual::FT, # mol CO2 m-2 y-1
-    P_annual::FT, # mol H2O m-2 y-1
-    D_growing::FT, # Pa, mean VPD during growing season
+    A0_annual::FT, # mol CO2 m-2 y-1, computed with β = 1
     z::FT, # mol m-2 yr-1, leaf construction cost
-    ca::FT, # Pa, CO2 partial pressure
-    chi::FT, # dimensionless, ci/ca ratio
-    f0::FT, # dimensionless, precip fraction
     GSL::FT, # days, growing season length
     sigma::FT, # dimensionless
-    alpha::FT, # dimensionless (15-day memory)
+    alpha::FT, # dimensionless (~15-day memory)
 ) where {FT}
-    LAI_max = compute_L_max(A0_annual, P_annual, D_growing, k, z, ca, chi, f0)
+    LAI_max = compute_L_max(A0_annual, k, z)
     m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
     L_steady = compute_steady_state_LAI(A0_daily, m, k, LAI_max)
     L = update_LAI!(L, L_steady, alpha, local_noon_mask)
@@ -642,16 +601,20 @@ function compute_PPFD(
 end
 
 """
-    call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon, P_annual, D_growing, GSL)
+    call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon, GSL)
 
 Updates LAI and accumulates A0 at each timestep. At local noon, finalizes daily A0
 and updates LAI. On year change (Jan 1), finalizes annual A0.
 
 The function:
-1. Computes instantaneous A0 using the P-model with fAPAR=1, β=1
-2. Accumulates A0 to daily accumulator (converted to mol CO₂ m⁻² per timestep)
-3. At local noon: finalizes daily A0, adds to annual accumulator, updates LAI
-4. On Jan 1: finalizes annual A0
+1. Computes instantaneous A0_daily using the P-model with fAPAR=1 and actual β (soil moisture stress)
+2. Computes instantaneous A0_annual using the P-model with fAPAR=1 and β=1 (no moisture stress)
+3. Accumulates A0_daily and A0_annual to their respective accumulators
+4. At local noon: finalizes daily A0, adds A0_annual to annual accumulator, updates LAI
+5. On Jan 1: finalizes annual A0
+
+Water limitation is captured through the daily A0 (which uses actual β), not through LAI_max.
+This allows the model to respond to interannual precipitation variability and flushing events.
 """
 function call_update_optimal_LAI(
     p,
@@ -661,8 +624,6 @@ function call_update_optimal_LAI(
     canopy,
     dt,
     local_noon,
-    P_annual,
-    D_growing,
     GSL,
 )
     FT = eltype(canopy.lai_model.parameters)
@@ -680,6 +641,9 @@ function call_update_optimal_LAI(
     P_air = p.drivers.P
     ca = p.drivers.c_co2  # mol/mol
     earth_param_set = canopy.earth_param_set
+
+    # Get soil moisture stress factor (β)
+    βm = p.canopy.soil_moisture_stress.βm
 
     # Compute VPD (clipped to avoid numerical issues)
     VPD = @. lazy(
@@ -707,8 +671,25 @@ function call_update_optimal_LAI(
         ),
     )
 
-    # Compute instantaneous A0 (kg C m⁻² s⁻¹)
-    A0_inst = @. lazy(
+    # Compute instantaneous A0_daily with actual β (kg C m⁻² s⁻¹)
+    # This captures soil moisture stress for daily GPP driving LAI dynamics
+    A0_daily_inst = @. lazy(
+        compute_A0_daily(
+            is_c3,
+            pmodel_parameters,
+            pmodel_constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            PPFD,
+            βm,
+        ),
+    )
+
+    # Compute instantaneous A0_annual with β=1 (kg C m⁻² s⁻¹)
+    # This is the potential GPP without moisture stress, used for LAI_max computation
+    A0_annual_inst = @. lazy(
         compute_A0_potential(
             is_c3,
             pmodel_parameters,
@@ -725,10 +706,14 @@ function call_update_optimal_LAI(
     # Mc = 0.0120107 kg/mol C
     dt_seconds = FT(float(dt))
     Mc = pmodel_constants.Mc
-    A0_per_timestep = @. lazy(A0_inst * dt_seconds / Mc)
+    A0_daily_per_timestep = @. lazy(A0_daily_inst * dt_seconds / Mc)
+    A0_annual_per_timestep = @. lazy(A0_annual_inst * dt_seconds / Mc)
 
-    # Accumulate to daily A0
-    @. p.canopy.lai_model.A0_daily_acc += A0_per_timestep
+    # Accumulate to daily A0 (with actual β) - drives L_steady
+    @. p.canopy.lai_model.A0_daily_acc += A0_daily_per_timestep
+
+    # Accumulate to daily A0_annual (with β=1) - will be added to annual accumulator at noon
+    @. p.canopy.lai_model.A0_annual_daily_acc += A0_annual_per_timestep
 
     # Get parameters from the LAI model
     parameters = canopy.lai_model.parameters
@@ -736,13 +721,11 @@ function call_update_optimal_LAI(
     # Current day of year (scalar)
     current_doy = FT(Dates.dayofyear(current_date))
 
-    # Convert ca from mol/mol to Pa for LAI computation
-    ca_Pa = @. lazy(ca * P_air)
-
     # At local noon: finalize daily A0, update annual accumulator, update LAI
     # Inline the update logic to avoid tuple broadcasting issues.
     # Compute finalized A0 values before any resets.
     A0_daily_final = @. p.canopy.lai_model.A0_daily_acc
+    A0_annual_daily_final = @. p.canopy.lai_model.A0_annual_daily_acc
     A0_annual_final = @. ifelse(
         local_noon_mask == FT(1) &&
         current_doy < p.canopy.lai_model.last_day_of_year,
@@ -759,12 +742,7 @@ function call_update_optimal_LAI(
             p.canopy.lai_model.LAI,
             parameters.k,
             A0_annual_final, # already accounts for year change
-            P_annual,
-            D_growing,
             parameters.z,
-            ca_Pa,
-            parameters.chi,
-            parameters.f0,
             GSL,
             parameters.sigma,
             parameters.alpha,
@@ -780,21 +758,21 @@ function call_update_optimal_LAI(
         p.canopy.lai_model.A0_annual,
     )
 
-    # Update A0_daily at noon
+    # Update A0_daily at noon (this stores the daily value with actual β)
     @. p.canopy.lai_model.A0_daily = ifelse(
         local_noon_mask == FT(1),
         A0_daily_final,
         p.canopy.lai_model.A0_daily,
     )
 
-    # Reset A0_annual_acc if year changed, otherwise add new daily value at noon
+    # Reset A0_annual_acc if year changed, otherwise add new daily A0_annual (β=1) value at noon
     @. p.canopy.lai_model.A0_annual_acc = ifelse(
         local_noon_mask == FT(1) &&
         current_doy < p.canopy.lai_model.last_day_of_year,
         FT(0),
         ifelse(
             local_noon_mask == FT(1),
-            p.canopy.lai_model.A0_annual_acc + A0_daily_final,
+            p.canopy.lai_model.A0_annual_acc + A0_annual_daily_final,
             p.canopy.lai_model.A0_annual_acc,
         ),
     )
@@ -806,6 +784,13 @@ function call_update_optimal_LAI(
         p.canopy.lai_model.A0_daily_acc,
     )
 
+    # Reset A0_annual_daily_acc at noon
+    @. p.canopy.lai_model.A0_annual_daily_acc = ifelse(
+        local_noon_mask == FT(1),
+        FT(0),
+        p.canopy.lai_model.A0_annual_daily_acc,
+    )
+
     # Update last_day_of_year at noon
     @. p.canopy.lai_model.last_day_of_year = ifelse(
         local_noon_mask == FT(1),
@@ -815,12 +800,15 @@ function call_update_optimal_LAI(
 end
 
 """
-    update_A0_and_LAI_at_noon(local_noon_mask, A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, last_doy, current_doy, L, k, P_annual, D_growing, z, ca, chi, f0, GSL, sigma, alpha)
+    update_A0_and_LAI_at_noon(local_noon_mask, A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, last_doy, current_doy, L, k, z, GSL, sigma, alpha)
 
 At local noon: finalize daily A0, add to annual, reset daily accumulator, and update LAI.
 On year change (current_doy < last_doy, indicating Jan 1): finalize annual A0.
 
-Returns tuple: (A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, last_doy, L)
+Note: A0_daily_acc contains daily GPP with actual β (soil moisture stress).
+      A0_annual_daily_acc contains daily GPP with β=1 (for LAI_max computation).
+
+Returns tuple: (A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, last_doy, L)
 """
 function update_A0_and_LAI_at_noon(
     local_noon_mask::FT,
@@ -828,16 +816,12 @@ function update_A0_and_LAI_at_noon(
     A0_annual::FT,
     A0_daily_acc::FT,
     A0_annual_acc::FT,
+    A0_annual_daily_acc::FT,
     last_doy::FT,
     current_doy::FT,
     L::FT,
     k::FT,
-    P_annual::FT,
-    D_growing::FT,
     z::FT,
-    ca::FT,
-    chi::FT,
-    f0::FT,
     GSL::FT,
     sigma::FT,
     alpha::FT,
@@ -852,12 +836,13 @@ function update_A0_and_LAI_at_noon(
             A0_annual_acc = FT(0)
         end
 
-        # Finalize daily A0
+        # Finalize daily A0 (with actual β)
         A0_daily = A0_daily_acc
         A0_daily_acc = FT(0)
 
-        # Add today's A0 to annual accumulator
-        A0_annual_acc += A0_daily
+        # Add today's A0_annual (with β=1) to annual accumulator
+        A0_annual_acc += A0_annual_daily_acc
+        A0_annual_daily_acc = FT(0)
 
         # Update last day of year
         last_doy = current_doy
@@ -869,25 +854,20 @@ function update_A0_and_LAI_at_noon(
             L,
             k,
             A0_annual,
-            P_annual,
-            D_growing,
             z,
-            ca,
-            chi,
-            f0,
             GSL,
             sigma,
             alpha,
         )
 
-        return A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, last_doy, L
+        return A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, last_doy, L
     else
-        return A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, last_doy, L
+        return A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, last_doy, L
     end
 end
 
 """
-    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy; P_annual, D_growing, GSL, longitude) where {FT <: AbstractFloat}
+    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy; GSL, longitude) where {FT <: AbstractFloat}
 
 This constructs an IntervalBasedCallback for the optimal LAI model that:
 1. Computes and accumulates potential GPP (A₀) at each timestep
@@ -903,14 +883,14 @@ it is constant throughout the year.
 - `t0`: ITime, with epoch in UTC.
 - `dt`: timestep
 - `canopy`: the canopy object containing the optimal LAI model parameters.
-- `P_annual`: Annual total precipitation (mol H₂O m⁻² yr⁻¹), default FT(60000.0) (~1080 mm)
-- `D_growing`: Mean vapor pressure deficit during the growing season (Pa), default FT(1000.0)
-- `GSL`: Growing season length (days), default FT(180.0)
+- `GSL`: Growing season length (days), default FT(240.0)
 - `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
     that it will be inferred from the canopy domain).
 
 # Notes
-- A₀ (potential GPP) is computed dynamically using the P-model with fAPAR=1 and β=1
+- Daily A₀ is computed with fAPAR=1 and actual β (soil moisture stress) - drives L_steady
+- Annual A₀ is computed with fAPAR=1 and β=1 (no moisture stress) - used for LAI_max
+- Water limitation is captured through daily β, allowing response to precipitation events
 - Daily A₀ is accumulated over each day and finalized at local noon
 - Annual A₀ is accumulated and reset on January 1
 """
@@ -919,8 +899,6 @@ function make_OptimalLAI_callback(
     t0,
     dt,
     canopy;
-    P_annual = FT(60000.0),
-    D_growing = FT(1000.0),
     GSL = FT(240.0),
     longitude = nothing,
 ) where {FT <: AbstractFloat}
@@ -965,8 +943,6 @@ function make_OptimalLAI_callback(
                 canopy = canopy,
                 dt = dt,
                 local_noon = local_noon,
-                P_annual = P_annual,
-                D_growing = D_growing,
                 GSL = GSL,
             )
         end
@@ -980,23 +956,23 @@ function make_OptimalLAI_callback(
 end
 
 """
-    get_model_callbacks(component::OptimalLAIModel, canopy; t0, Δt, P_annual, D_growing, GSL)
+    get_model_callbacks(component::OptimalLAIModel, canopy; t0, Δt, GSL)
 
 Creates the optimal LAI callback and returns it as a single element tuple of model callbacks.
 
-The additional parameters (P_annual, D_growing, GSL) can be provided
-as keyword arguments. If not provided, default values will be used.
+The GSL parameter can be provided as keyword argument. If not provided, default value will be used.
 
-Note: A₀ (potential GPP) is now computed dynamically from the P-model with fAPAR=1 and β=1,
-so no Ao_annual parameter is needed.
+# Notes
+- Daily A₀ is computed with actual β (soil moisture stress) from the soil moisture stress model
+- Annual A₀ is computed with β=1 (no moisture stress) for LAI_max computation
+- Water limitation enters through daily β, not through LAI_max, allowing the model to
+  respond to interannual precipitation variability and flushing events
 """
 function get_model_callbacks(
     component::OptimalLAIModel{FT},
     canopy;
     t0,
     Δt,
-    P_annual = FT(60000.0),
-    D_growing = FT(1000.0),
     GSL = FT(240.0),
 ) where {FT}
     lai_cb = make_OptimalLAI_callback(
@@ -1004,8 +980,6 @@ function get_model_callbacks(
         t0,
         Δt,
         canopy;
-        P_annual = P_annual,
-        D_growing = D_growing,
         GSL = GSL,
     )
     return (lai_cb,)
