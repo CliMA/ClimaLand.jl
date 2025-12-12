@@ -49,11 +49,11 @@ function set_soil_initial_conditions!(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
-    Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
-    Y.soil.ϑ_l .= enforce_porosity_constraint.(Y.soil.ϑ_l, ν)
-    Y.soil.θ_i .=
-        enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
-    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
+#    Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
+#    Y.soil.ϑ_l .= enforce_porosity_constraint.(Y.soil.ϑ_l, ν)
+#    Y.soil.θ_i .=
+#        enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
+#    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
     ρc_s =
         ClimaLand.Soil.volumetric_heat_capacity.(
             Y.soil.ϑ_l,
@@ -68,21 +68,21 @@ function set_soil_initial_conditions!(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    T =
-        ClimaLand.Soil.temperature_from_ρe_int.(
-            Y.soil.ρe_int,
-            Y.soil.θ_i,
-            ρc_s,
-            soil.parameters.earth_param_set,
-        )
-    T .= clip_to_bounds.(T, T_bounds[1], T_bounds[2])
-    Y.soil.ρe_int .=
-        ClimaLand.Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil.parameters.earth_param_set,
-        )
+#    T =
+#        ClimaLand.Soil.temperature_from_ρe_int.(
+#            Y.soil.ρe_int,
+#            Y.soil.θ_i,
+#            ρc_s,
+#            soil.parameters.earth_param_set,
+#        )
+#    T .= clip_to_bounds.(T, T_bounds[1], T_bounds[2])
+#    Y.soil.ρe_int .=
+#        ClimaLand.Soil.volumetric_internal_energy.(
+#            Y.soil.θ_i,
+#            ρc_s,
+#            T,
+#            soil.parameters.earth_param_set,
+#        )
     return nothing
 end
 
@@ -247,20 +247,12 @@ function make_set_initial_state_from_file(
         # to soil potential (soil moisture), averaged over the soil layers,
         # which would correspond to approximate steady state
         if land.canopy.hydraulics isa ClimaLand.Canopy.PlantHydraulicsModel
-            @. p.soil.ψ = ClimaLand.Soil.pressure_head(
-                land.soil.parameters.hydrology_cm,
-                land.soil.parameters.θ_r,
-                Y.soil.ϑ_l,
-                land.soil.parameters.ν - Y.soil.θ_i,
-                land.soil.parameters.S_s,
-            )
-            ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l.:1))
-            z = land.soil.domain.fields.z
-            tmp = @. ClimaLand.Canopy.root_distribution(
-                z,
-                land.canopy.biomass.rooting_depth,
-            ) * p.soil.ψ / land.soil.domain.fields.depth
-            ClimaCore.Operators.column_integral_definite!(ψ_roots, tmp)
+            ψ_roots = SpaceVaryingInput(
+                ic_path,
+                "lwp",
+                land.snow.domain.space.surface;
+                regridder_type,
+                regridder_kwargs = (; extrapolation_bc, interpolation_method))
             Y.canopy.hydraulics.ϑ_l.:1 .=
                 ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
                     land.canopy.hydraulics.parameters.retention_model,

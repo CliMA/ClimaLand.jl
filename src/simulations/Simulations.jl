@@ -70,7 +70,7 @@ end
         model;
         outdir = ".",
         set_ic! = make_set_initial_state_from_file(
-            ClimaLand.Artifacts.soil_ic_2008_50m_path(;
+            ClimaLand.Artifacts.saturated_land_ic_path(;
                 context = ClimaComms.context(model),
             ),
             model,
@@ -116,7 +116,7 @@ function LandSimulation(
     model;
     outdir = ".",
     set_ic! = make_set_initial_state_from_file(
-        ClimaLand.Artifacts.soil_ic_2008_50m_path(;
+        ClimaLand.Artifacts.saturated_land_ic_path(;
             context = ClimaComms.context(model),
         ),
         model,

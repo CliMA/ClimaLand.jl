@@ -9,7 +9,7 @@ import ClimaLand
         sample_date_ranges::Vector{NTuple{2, DATE}}
         extend::EXTEND
         spinup::SPINUP
-        nelements::Tuple{Int64, Int64}
+        nelements::Union{Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64}}
         output_dir::String
         rng_seed::Int64
     end
@@ -43,7 +43,7 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
 
     "The number of horizontal and vertical elements of the model. Used for the
     simulation and determining the ocean mask"
-    nelements::Tuple{Int64, Int64}
+    nelements::Union{Tuple{Int64, Int64, Int64}, Tuple{Int64, Int64}}
 
     "The directory to store the iterations and members of the calibration."
     output_dir::String

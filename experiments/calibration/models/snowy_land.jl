@@ -63,8 +63,24 @@ function setup_model(
         scf,
     )
 
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    canopy_forcing = (; atmos, radiation, ground)
+    photosynthesis = PModel{FT}(domain, toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
+    soil_moisture_stress =
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+    )
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
     return land
 end
 
