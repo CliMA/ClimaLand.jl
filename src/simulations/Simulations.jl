@@ -140,7 +140,7 @@ function LandSimulation(
         ClimaLand.ReportCallback(div((tf - t0), 10), t0),
     ),
     diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
-    updateat = ITime(3600 * 3),
+    updateat = ITime(Δt),
     solver_kwargs = (;),
 )
     # Enforce `h_atmos >= h_canopy` for models with canopy
