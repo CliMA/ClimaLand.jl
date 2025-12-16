@@ -342,9 +342,9 @@ function make_update_boundary_fluxes(
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
-    # update root extraction
+        # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
-
+        
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -422,7 +422,7 @@ function make_update_implicit_cache(
     end
     return update_implicit_cache!
 end
-=#
+
 
 """
     lsm_radiant_energy_fluxes!(p,land::LandModel{FT},
@@ -550,7 +550,7 @@ function soil_boundary_fluxes!(
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
-    liquid_influx =
+    liquid_influx = 
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)
     # This partitions the influx into runoff and infiltration
     Soil.update_infiltration_water_flux!(
@@ -588,8 +588,8 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
-        p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        #p.excess_heat_flux +
+        #p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
 
     return nothing

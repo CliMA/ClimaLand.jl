@@ -40,8 +40,7 @@ abstract type AbstractModel{FT <: AbstractFloat} end
 """
     AbstractImExModel{FT} <: AbstractModel{FT}
 
-An abstract type for models which must be treated implicitly (and which may
-also have tendency terms that can be treated explicitly).
+An abstract type for models which have both implicit and explicitly stepped variables
 This inherits all the default function definitions from AbstractModel, as well
 as `make_imp_tendency` and `make_compute_imp_tendency` defaults.
 """
@@ -50,7 +49,7 @@ abstract type AbstractImExModel{FT} <: AbstractModel{FT} end
 """
     AbstractExpModel{FT} <: AbstractModel{FT}
 
-An abstract type for models which must be treated explicitly.
+An abstract type for models with only explicitly stepped variables.
 This inherits all the default function definitions from AbstractModel, as well
 as a `make_imp_tendency` default.
 """
@@ -234,7 +233,7 @@ end
     make_imp_tendency(model::AbstractModel)
 
 Returns an `imp_tendency` that does nothing. This model type is not
-stepped explicity.
+stepped implicitly.
 """
 function make_imp_tendency(model::AbstractModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
