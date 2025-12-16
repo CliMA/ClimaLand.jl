@@ -290,7 +290,6 @@ function make_update_boundary_fluxes(model::EnergyHydrology)
 end
 
 
-
 """
     make_compute_exp_tendency(model::EnergyHydrology)
 
@@ -415,7 +414,32 @@ function ClimaLand.make_compute_imp_tendency(
     end
     return compute_imp_tendency!
 end
-
+function make_jacobian(model::EnergyHydrology)
+    update_aux! = make_update_imp_aux(model)
+    update_bf! = make_update_boundary_fluxes(model)
+    compute_jacobian! = make_compute_jacobian(model)
+    function jacobian!(W, Y, p, dtγ, t)
+        update_aux!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            update_bf!(p,Y,t)
+        end
+        compute_jacobian!(W, Y, p, dtγ, t)
+    end
+    return jacobian!
+end
+function make_imp_tendency(model::EnergyHydrology)
+    compute_imp_tendency! = make_compute_imp_tendency(model)
+    update_bf! = make_update_boundary_fluxes(model)
+    update_aux! = make_update_imp_aux(model)
+    function imp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            update_bf!(p,Y,t)
+        end
+        compute_imp_tendency!(dY, Y, p, t)
+    end
+    return imp_tendency!
+end
 """
     ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
 
@@ -750,13 +774,40 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             )
         @. p.soil.ψ =
             pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+    end
+    return update_aux!
+end
+
+function ClimaLand.make_update_imp_aux(model::EnergyHydrology)
+    function update_aux!(p, Y, t)
+        (;
+            ν,
+            hydrology_cm,
+            S_s,
+            θ_r,
+            earth_param_set,
+        ) = model.parameters
+
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                p.soil.θ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
 
         total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
         total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
     return update_aux!
 end
-
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
@@ -858,7 +909,7 @@ of `ClimaLand.source!` for soil sublimation; treated implicitly
 in ϑ_l, ρe_int but explicitly in θ_i.
 """
 @kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 """
     source!(dY::ClimaCore.Fields.FieldVector,

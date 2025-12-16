@@ -457,7 +457,7 @@ in ϑ_l, ρe_int but explicitly in θ_i.
 """
 @kwdef struct SoilSublimationwithSnow{FT} <:
               ClimaLand.Soil.AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 
 """

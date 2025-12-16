@@ -374,11 +374,45 @@ function ClimaLand.make_update_aux(model::RichardsModel)
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
         @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+    end
+    return update_aux!
+end
+
+function ClimaLand.make_update_imp_aux(model::RichardsModel)
+    function update_aux!(p, Y, t)
+        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
         total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
     end
     return update_aux!
 end
 
+function make_jacobian(model::RichardsModel)
+    update_aux! = make_update_imp_aux(model)
+    update_bf! = make_update_boundary_fluxes(model)
+    compute_jacobian! = make_compute_jacobian(model)
+    function jacobian!(W, Y, p, dtγ, t)
+        update_aux!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            update_bf!(p,Y,t)
+        end
+        compute_jacobian!(W, Y, p, dtγ, t)
+    end
+    return jacobian!
+end
+function make_imp_tendency(model::RichardsModel)
+    compute_imp_tendency! = make_compute_imp_tendency(model)
+    update_bf! = make_update_boundary_fluxes(model)
+    update_aux! = make_update_imp_aux(model)
+    function imp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            update_bf!(p,Y,t)
+        end
+        compute_imp_tendency!(dY, Y, p, t)
+    end
+    return imp_tendency!
+end
 """
     ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
 

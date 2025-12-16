@@ -74,8 +74,11 @@ import ClimaLand.Domains: Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,
     make_update_aux,
+    make_update_imp_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
+    make_exp_tendency,
+    make_imp_tendency,
     make_update_boundary_fluxes,
     make_compute_jacobian,
     prognostic_vars,

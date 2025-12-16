@@ -6,6 +6,7 @@ export AbstractModel,
     make_compute_imp_tendency,
     make_compute_exp_tendency,
     make_update_aux,
+    make_update_imp_aux,
     initialize_prognostic,
     initialize_auxiliary,
     make_update_boundary_fluxes,
@@ -158,6 +159,11 @@ function make_update_aux(model::AbstractModel)
     return update_aux!
 end
 
+function make_update_imp_aux(model::AbstractModel)
+    function update_aux!(p, Y, t) end
+    return update_aux!
+end
+
 """
     make_update_boundary_fluxes(model::AbstractModel)
 
@@ -183,10 +189,12 @@ function make_update_cache(model::AbstractModel)
     drivers = get_drivers(model)
     update_drivers! = make_update_drivers(drivers)
     update_aux! = make_update_aux(model)
+    update_imp_aux! = make_update_imp_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function update_cache!(p, Y, t)
         update_drivers!(p, t)
         update_aux!(p, Y, t)
+        update_imp_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
     end
     return update_cache!
