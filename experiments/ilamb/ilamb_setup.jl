@@ -30,6 +30,9 @@ function setup_run_for_ilamb(
     commit_id::String,
     num_models_to_keep::Integer,
 )
+    ilamb_diagnostics_dir = abspath(ilamb_diagnostics_dir)
+    ilamb_models_parent_dir = abspath(ilamb_models_parent_dir)
+    ilamb_build_dir = abspath(ilamb_build_dir)
     # Verify directories exist
     isdir(ilamb_diagnostics_dir) ||
         error("$ilamb_diagnostics_dir is not a directory")
@@ -73,7 +76,7 @@ end
 Create symbolic links in `model_dir` that point to the diagnostics produced
 from the long runs in `ilamb_diagnostics_dir`.
 
-Creating symbolic links is preferred over copy files to avoid unnecessary data
+Creating symbolic links is preferred over copying files to avoid unnecessary data
 duplication.
 """
 function create_symlinks(ilamb_diagnostics_dir::String, model_dir::String)
@@ -107,7 +110,7 @@ function create_symlinks(ilamb_diagnostics_dir::String, model_dir::String)
 end
 
 """
-    validate_symlinks(model_dir::String)
+    validate_symlinks(MODELS_dir::String)
 
 Validate the symbolic links in `MODELS` directory.
 
@@ -119,9 +122,9 @@ are deleted, then the symbolic links will be invalid.
 Note that this does not remove the directory if all the symlinks associated with
 a particular run is deleted.
 """
-function validate_symlinks(model_dir::String)
+function validate_symlinks(MODELS_dir::String)
     model_dirs = String[]
-    for maybe_dir in readdir(model_dir, join = true)
+    for maybe_dir in readdir(MODELS_dir, join = true)
         isdir(maybe_dir) && push!(model_dirs, maybe_dir)
     end
 
