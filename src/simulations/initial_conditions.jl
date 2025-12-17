@@ -198,11 +198,11 @@ end
 Enforces the constraint that T < 273.15 if S > 0.
 """
 function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
-    if S > sqrt(eps(FT)) # if snow is on the ground
-        return min(T, FT(273))
-    else
-        return T
-    end
+if S > eps(FT)
+        return min(T, FT(273.16))
+	else
+	return FT(273.16)
+	end
 end
 
 """
@@ -262,7 +262,7 @@ function make_set_initial_state_from_file(
 	# Snow IC
 	ρc_s =
             ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
+            p.soil.θ_l,
             Y.soil.θ_i,
             land.soil.parameters.ρc_ds,
             land.soil.parameters.earth_param_set,
