@@ -397,10 +397,29 @@ function make_update_implicit_cache(
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
 }
-    update_soil_ic! = make_update_implicit_cache(land.soil)
-    update_canopy_ic! = make_update_implicit_cache(land.canopy)
 
     function update_implicit_cache!(p, Y, t)
+         (;ν,
+         hydrology_cm,
+         S_s,
+         θ_r,
+         ρc_ds,
+         earth_param_set,
+         ) = land.soil.parameters
+        
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                p.soil.θ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -417,8 +436,17 @@ function make_update_implicit_cache(
         )
 
         # Update canopy
-        update_canopy_ic!(p, Y, t)
-        update_soil_ic!(p, Y, t)
+        canopy = land.canopy
+        bc = canopy.boundary_conditions
+        radiation = bc.radiation
+        atmos = bc.atmos
+        ground=bc.ground
+        canopy_tf = p.canopy.turbulent_fluxes
+        sf_parameterization = bc.turbulent_flux_parameterization
+
+        # Compute transpiration, SHF, LHF
+        ClimaLand.turbulent_fluxes!(canopy_tf, atmos, sf_parameterization, canopy, Y, p, t)
+      
     end
     return update_implicit_cache!
 end
