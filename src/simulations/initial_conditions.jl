@@ -218,21 +218,14 @@ function make_set_initial_state_from_file(
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
-        # Snow IC
-        evaluate!(p.snow.T, atmos.T, t0)
-        set_snow_initial_conditions!(
-            Y,
-            p,
-            land.snow.domain.space.surface,
-            ic_path,
-            land.snow.parameters,
-        )
+        evaluate!(p.drivers.T, atmos.T, t0)
+
         # SoilCO2 IC
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
         Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
         # Soil IC
-        T_bounds = extrema(p.snow.T)
+        T_bounds = extrema(p.drivers.T)
         set_soil_initial_conditions!(
             Y,
             land.soil.parameters.ν,
@@ -242,6 +235,28 @@ function make_set_initial_state_from_file(
             land.soil,
             T_bounds,
         )
+	# Snow IC
+	ρc_s =
+            ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            land.soil.parameters.ρc_ds,
+            land.soil.parameters.earth_param_set,
+	)
+        p.soil.T .= ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            ρc_s,
+            land.soil.parameters.earth_param_set,
+        )
+	p.snow.T .= ClimaLand.Domains.top_center_to_surface(p.soil.T)
+        set_snow_initial_conditions!(
+            Y,
+            p,
+            land.snow.domain.space.surface,
+            ic_path,
+            land.snow.parameters,
+	)
         # Canopy IC
         # Set canopy moisture variable by setting canopy potential(moisture) equal 
         # to soil potential (soil moisture), averaged over the soil layers,
