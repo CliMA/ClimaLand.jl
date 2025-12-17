@@ -127,6 +127,9 @@ for FT in (Float32, Float64)
         @test isnothing(model.soilco2)
         @test model.canopy == canopy
         @test model.snow == snow
+        Y, p, cds = initialize(model)
+        @test !hasproperty(Y, :soilco2)
+        @test ClimaLand.land_components(model) == (:soil, :snow, :canopy)
     end
 end
 
@@ -255,7 +258,14 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
     stop_date,
 );
 
-land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+land = LandModel{FT}(
+    forcing,
+    LAI,
+    toml_dict,
+    domain,
+    Δt;
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+);
 
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()

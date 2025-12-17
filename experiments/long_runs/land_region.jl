@@ -66,6 +66,7 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
         context,
     )
     forcing = (; atmos, radiation)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
     # Read in LAI from MODIS data
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
@@ -83,12 +84,20 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
         forcing,
         toml_dict,
         Δt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components,
         α_snow,
     )
 
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow)
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+        snow,
+    )
     return land
 end
 

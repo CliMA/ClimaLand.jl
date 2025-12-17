@@ -66,20 +66,14 @@ struct LandModel{
                 prognostic_land_components
         @assert snow_bc.prognostic_land_components == prognostic_land_components
 
-        isnothing(soilco2) || @assert top_soil_bc.atmos == soilco2.drivers.atmos
         @assert top_soil_bc.atmos == canopy_bc.atmos
         @assert top_soil_bc.radiation == canopy_bc.radiation
         @assert top_soil_bc.atmos == snow_bc.atmos
         @assert top_soil_bc.radiation == snow_bc.radiation
 
         @assert Domains.obtain_surface_domain(soil.domain) == canopy.domain
-        isnothing(soilco2) ||
-            @assert Domains.obtain_surface_domain(soilco2.domain) ==
-                    canopy.domain
         @assert snow.domain == canopy.domain
 
-        isnothing(soilco2) || @assert soil.parameters.earth_param_set ==
-                soilco2.parameters.earth_param_set
         @assert soil.parameters.earth_param_set == canopy.earth_param_set
         @assert soil.parameters.earth_param_set ==
                 snow.parameters.earth_param_set
@@ -102,10 +96,16 @@ struct LandModel{
         @assert RootExtraction{FT}() in soil.sources
         @assert Soil.PhaseChange{FT}() in soil.sources
         @assert canopy_bc.ground isa PrognosticGroundConditions{FT}
-        isnothing(soilco2) || @assert soilco2.drivers.met isa PrognosticMet
         comparison = PrognosticMet(soil.parameters)
-        # check_land_equality allocates, and should only be used in initialization
+        # soilco2 checks, if present
         if !isnothing(soilco2)
+            @assert top_soil_bc.atmos == soilco2.drivers.atmos
+            @assert Domains.obtain_surface_domain(soilco2.domain) ==
+                    canopy.domain
+            @assert soilco2.drivers.met isa PrognosticMet
+            @assert soil.parameters.earth_param_set ==
+                    soilco2.parameters.earth_param_set
+            # check_land_equality allocates, and should only be used in initialization
             for property in propertynames(soilco2.drivers.met)
                 check_land_equality(
                     getproperty(soilco2.drivers.met, property),
@@ -128,7 +128,7 @@ end
             ClimaLand.Domains.HybridBox,
         },
         Δt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components = (:canopy, :snow, :soil),
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -174,6 +174,8 @@ of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
 as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
 Finally, since the snow model requires the timestep, that is a required argument as well.
+By default, no soilco2 model is included; to include one, include `:soilco2` in the
+`prognostic_land_components` keyword argument.
 """
 function LandModel{FT}(
     forcing,
@@ -185,7 +187,7 @@ function LandModel{FT}(
         ClimaLand.Domains.HybridBox,
     },
     Δt;
-    prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+    prognostic_land_components = (:canopy, :snow, :soil),
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -238,9 +240,11 @@ the components returned by `land_components!`.
 
 This needs to be fixed.
 """
-ClimaLand.land_components(land::LandModel) = (:soil, :snow, :soilco2, :canopy)
-ClimaLand.land_components(land::LandModel{FT, Nothing}) where {FT} =
-    (:soil, :snow, :canopy)
+function ClimaLand.land_components(land::LM) where {LM <: LandModel}
+    isnothing(land.soilco2) ? (:soil, :snow, :canopy) :
+    (:soil, :snow, :soilco2, :canopy)
+end
+
 """
     lsm_aux_vars(m::LandModel)
 

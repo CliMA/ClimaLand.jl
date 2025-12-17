@@ -58,7 +58,7 @@ function setup_model(
         forcing,
         toml_dict,
         Δt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components = (:canopy, :snow, :soil),
         α_snow,
         scf,
     )
@@ -74,7 +74,7 @@ function setup_model(
         canopy_forcing,
         LAI,
         toml_dict;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components = (:canopy, :snow, :soil),
         photosynthesis,
         conductance,
         soil_moisture_stress,
