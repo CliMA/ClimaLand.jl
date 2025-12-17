@@ -77,7 +77,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing=true
     )
     forcing = (; atmos, radiation)
 
@@ -144,7 +143,6 @@ domain =
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
-#=
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
@@ -164,4 +162,3 @@ if LONGER_RUN
         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end
-=#
