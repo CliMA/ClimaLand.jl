@@ -1,3 +1,10 @@
+[saturated_land_ic]
+git-tree-sha1 = "cc2888b590f5158113b54c75eee3e2f797be8956"
+
+    [[saturated_land_ic.download]]
+    sha256 = "d73ec9bf8a20f1c63a0133d483a08e801db9125fda43ab51d080bc0192343f84"
+    url = "https://caltech.box.com/shared/static/99j3juuj3vnnzy16ye31dsfcx25s71z6.gz"
+
 [landsea_mask_30arcseconds]
 git-tree-sha1 = "517c925535981f9d17ac9e7a65e2c35c3ce9597d"
 
