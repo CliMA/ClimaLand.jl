@@ -521,7 +521,7 @@ function HybridBox(;
     end
     vert_center_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
-
+    context = ClimaComms.context(device)
     horzdomain = Plane(;
         xlim = xlim,
         ylim = ylim,
@@ -529,6 +529,7 @@ function HybridBox(;
         nelements = nelements[1:2],
         periodic = periodic,
         npolynomial = npolynomial,
+        context,
     )
     horzspace = horzdomain.space.surface
 
@@ -1247,8 +1248,8 @@ end
         apply_mask = true,
         mask_threshold = 0.5,
         nelements = (101, 15),
-        dz_tuple = (10.0, 0.05),
-        depth = 50.0,
+        dz_tuple = (3.0, 0.05),
+        depth = 15.0,
         npolynomial = 0,
         context = ClimaComms.context(),
         filepath = landseamask_file_path(;context),
@@ -1401,7 +1402,7 @@ function global_box_domain(
     ylim = FT.((π / 2 * radius_earth, π / 2 * radius_earth))
     longlat = FT.((-0.5, -0.5))
     dz_tuple = FT.(dz_tuple)
-    device = ClimaComms.device()
+    device = ClimaComms.device(context)
     domain = HybridBox(;
         xlim,
         ylim,

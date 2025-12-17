@@ -15,6 +15,7 @@ using ClimaLand.Canopy
 using ClimaLand.Snow
 import ClimaLand.Parameters as LP
 using ClimaCore
+using ClimaUtilities.TimeManager: ITime
 
 for FT in (Float32, Float64)
     @testset "Default LandModel constructor, FT=$FT" begin
@@ -210,6 +211,57 @@ land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 @test ClimaComms.context(land) == ClimaComms.context()
 @test ClimaComms.device(land) == ClimaComms.device()
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
+@testset "Initial condition functions" begin
+    Y, p, cds = initialize(land)
+    t0 = ITime(0, Second(1), start_date)
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+        ic_path,
+        land;
+        enforce_constraints = true,
+    )
+    set_ic!(Y, p, t0, land)
+
+    soil = land.soil
+    evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
+    binary_mask = parent(soil.domain.space.surface.grid.mask.is_active)[:]
+    T_bounds = extrema(parent(p.drivers.T)[1, 1, 1, Array(binary_mask)])
+
+    @test all(
+        parent(Y.soil.ϑ_l .- soil.parameters.θ_r)[
+            :,
+            1,
+            1,
+            1,
+            Array(binary_mask),
+        ] .> 0,
+    )
+    @test all(
+        parent(Y.soil.ϑ_l .+ Y.soil.θ_i .- soil.parameters.ν)[
+            :,
+            1,
+            1,
+            1,
+            Array(binary_mask),
+        ] .< 0,
+    )
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+    T =
+        ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            ρc_s,
+            soil.parameters.earth_param_set,
+        )
+    @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
+    @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
+end
 
 @testset "Total energy and water" begin
     Y, p, cds = initialize(land)
