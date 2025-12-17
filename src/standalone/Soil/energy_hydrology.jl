@@ -757,6 +757,51 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
     return update_aux!
 end
 
+
+function ClimaLand.make_update_imp_aux(model::EnergyHydrology)
+    function update_aux!(p, Y, t)
+        (;
+            ν,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
+            Ω,
+            γ,
+            α,
+            β,
+            ν_ss_om,
+            ν_ss_gravel,
+            ν_ss_quartz,
+            γT_ref,
+            κ_sat_frozen,
+            κ_sat_unfrozen,
+            ρc_ds,
+            earth_param_set,
+            albedo,
+        ) = model.parameters
+
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                p.soil.θ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+
+        total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
+        total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
+    end
+    return update_aux!
+end
+
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
@@ -1319,9 +1364,10 @@ function ClimaLand.total_liq_water_vol_per_area!(
     earth_param_set = model.parameters.earth_param_set
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+    tmp = @. lazy(Y.soil.ϑ_l + Y.soil.θ_i * _ρ_ice / _ρ_liq)
     ClimaCore.Operators.column_integral_definite!(
         surface_field,
-        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # this line allocates
+        tmp,
     )
     return nothing
 end

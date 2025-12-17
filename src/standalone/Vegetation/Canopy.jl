@@ -27,6 +27,7 @@ import ClimaLand:
     initialize_auxiliary,
     make_update_boundary_fluxes,
     make_update_aux,
+    make_update_imp_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
     make_compute_jacobian,
@@ -1067,6 +1068,11 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
             canopy,
         )
     end
+    return update_aux!
+end
+
+function ClimaLand.make_update_imp_aux(canopy::CanopyModel)
+    update_aux!(p, Y, t) = nothing
     return update_aux!
 end
 

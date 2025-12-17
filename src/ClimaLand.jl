@@ -156,7 +156,7 @@ function make_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
-    update_aux! = make_update_aux(land)
+    update_aux! = make_update_imp_aux(land)
     update_boundary_fluxes! = make_update_boundary_fluxes(land)
     function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)

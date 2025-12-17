@@ -21,7 +21,7 @@ Note that the returned function `jacobian!` should be
 used as `Wfact!` in `ClimaTimeSteppers.jl` and `SciMLBase.jl`.
 """
 function make_jacobian(model::AbstractModel)
-    update_aux! = make_update_aux(model)
+    update_aux! = make_update_imp_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     compute_jacobian! = make_compute_jacobian(model)
     function jacobian!(W, Y, p, dtγ, t)

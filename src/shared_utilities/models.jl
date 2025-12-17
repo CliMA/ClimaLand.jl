@@ -5,6 +5,7 @@ export AbstractModel,
     make_exp_tendency,
     make_compute_imp_tendency,
     make_compute_exp_tendency,
+    make_update_imp_aux,
     make_update_aux,
     initialize_prognostic,
     initialize_auxiliary,
@@ -159,6 +160,26 @@ function make_update_aux(model::AbstractModel)
 end
 
 """
+    make_update_aux(model::AbstractImExModel)
+
+Return an `update_aux!` function that updates auxiliary parameters `p`.
+"""
+function make_update_imp_aux(model::AbstractImExModel)
+    update_aux! = make_update_aux(model)
+    return update_aux!
+end
+
+"""
+    make_update_aux(model::AbstractModel)
+
+Return an `update_aux!` function that updates auxiliary parameters `p`.
+"""
+function make_update_imp_aux(model::AbstractModel)
+    function update_aux!(p, Y, t) end
+    return update_aux!
+end
+
+"""
     make_update_boundary_fluxes(model::AbstractModel)
 
 Return an `update_boundary_fluxes!` function that updates the auxiliary parameters in `p`
@@ -211,7 +232,7 @@ updates the prognostic state of variables that are stepped implicitly.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
-    update_aux! = make_update_aux(model)
+    update_aux! = make_update_imp_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
