@@ -315,7 +315,8 @@ solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
+    #joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
+    "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/FirstTries/ozark_pft/US-MOz/pft/out"
 mkpath(savedir)
 LandSimVis.make_diurnal_timeseries(
     land_domain,
