@@ -332,7 +332,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil"],
+    short_names = ["swc", "tsoil", "gpp","swu"],
     spinup_date = start_date + Day(20),
     comparison_data,
 )
