@@ -104,13 +104,14 @@ Defines the auxiliary variables for the OptimalLAIModel:
 - `A0_annual_acc`: accumulator for current year's potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹)
 - `A0_annual_daily_acc`: accumulator for current day's potential GPP with β=1 (mol CO₂ m⁻² day⁻¹)
 - `last_day_of_year`: day of year of last update (for detecting year change)
+- `GSL`: growing season length (days), spatially varying
 """
 ClimaLand.auxiliary_vars(model::OptimalLAIModel) =
-    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :A0_annual_daily_acc, :last_day_of_year)
+    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :A0_annual_daily_acc, :last_day_of_year, :GSL)
 ClimaLand.auxiliary_types(model::OptimalLAIModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::OptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 ClimaLand.name(::AbstractLAIModel) = :lai_model
 
@@ -151,12 +152,26 @@ This method assumes that the LAI is initially in equilibrium with the initial co
 of the simulation.
 
 # Arguments
-- `A0_annual`: Initial annual potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹), default 258.0
-- `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5
-- `GSL`: Growing season length (days), default 240.0
+- `A0_annual`: Initial annual potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹), default 258.0.
+  Can be a scalar or a spatially varying Field.
+- `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5.
+  Can be a scalar or a spatially varying Field.
+- `GSL`: Growing season length (days), default 240.0.
+  Can be a scalar or a spatially varying Field.
 
-An alternative to this approach is to initialize the initial values to some reasonable values
-based on a spun-up simulation or observational data.
+For spatially varying initialization, use `optimal_lai_initial_conditions` to load
+GSL and A0_annual from a NetCDF file:
+
+```julia
+initial_conditions = ClimaLand.Canopy.optimal_lai_initial_conditions(
+    surface_space,
+    "path/to/gsl_a0_annual.nc",
+)
+set_historical_cache!(p, Y0, model, canopy;
+    A0_annual = initial_conditions.A0_annual,
+    GSL = initial_conditions.GSL,
+)
+```
 """
 function set_historical_cache!(
     p,
@@ -173,28 +188,32 @@ function set_historical_cache!(
     L = p.canopy.lai_model.LAI
 
     # Initialize LAI with dummy value which will be overwritten
-    fill!(L, FT(1.0))
+    L .= FT(1.0)
 
-    # Initialize A0 variables
-    fill!(p.canopy.lai_model.A0_daily, A0_daily)
-    fill!(p.canopy.lai_model.A0_annual, A0_annual)
-    fill!(p.canopy.lai_model.A0_daily_acc, FT(0))
-    fill!(p.canopy.lai_model.A0_annual_acc, FT(0))
-    fill!(p.canopy.lai_model.A0_annual_daily_acc, FT(0))
-    fill!(p.canopy.lai_model.last_day_of_year, FT(0))
+    # Initialize A0 variables (supports both scalar and Field inputs via .=)
+    p.canopy.lai_model.A0_daily .= A0_daily
+    p.canopy.lai_model.A0_annual .= A0_annual
+    p.canopy.lai_model.A0_daily_acc .= FT(0)
+    p.canopy.lai_model.A0_annual_acc .= FT(0)
+    p.canopy.lai_model.A0_annual_daily_acc .= FT(0)
+    p.canopy.lai_model.last_day_of_year .= FT(0)
+
+    # Store GSL in the cache (supports both scalar and Field inputs)
+    p.canopy.lai_model.GSL .= GSL
 
     # Set local_noon_mask to 1 to force update for initialization
     local_noon_mask = FT(1)
 
     # Compute initial LAI based on initial conditions
+    # Use the GSL stored in the cache for consistency
     @. L = update_optimal_LAI(
         local_noon_mask,
-        A0_daily,
+        p.canopy.lai_model.A0_daily,
         L,
         parameters.k,
-        A0_annual,
+        p.canopy.lai_model.A0_annual,
         parameters.z,
-        GSL,
+        p.canopy.lai_model.GSL,
         parameters.sigma,
         parameters.alpha,
     )
@@ -601,7 +620,7 @@ function compute_PPFD(
 end
 
 """
-    call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon, GSL)
+    call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
 
 Updates LAI and accumulates A0 at each timestep. At local noon, finalizes daily A0
 and updates LAI. On year change (Jan 1), finalizes annual A0.
@@ -615,6 +634,9 @@ The function:
 
 Water limitation is captured through the daily A0 (which uses actual β), not through LAI_max.
 This allows the model to respond to interannual precipitation variability and flushing events.
+
+GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
+varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
 """
 function call_update_optimal_LAI(
     p,
@@ -624,7 +646,6 @@ function call_update_optimal_LAI(
     canopy,
     dt,
     local_noon,
-    GSL,
 )
     FT = eltype(canopy.lai_model.parameters)
 
@@ -734,6 +755,7 @@ function call_update_optimal_LAI(
     )
 
     # Update LAI at noon using the finalized values
+    # GSL is read from the cache (supports spatially varying values)
     @. p.canopy.lai_model.LAI = ifelse(
         local_noon_mask == FT(1),
         update_optimal_LAI(
@@ -743,7 +765,7 @@ function call_update_optimal_LAI(
             parameters.k,
             A0_annual_final, # already accounts for year change
             parameters.z,
-            GSL,
+            p.canopy.lai_model.GSL,
             parameters.sigma,
             parameters.alpha,
         ),
@@ -867,7 +889,7 @@ function update_A0_and_LAI_at_noon(
 end
 
 """
-    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy; GSL, longitude) where {FT <: AbstractFloat}
+    make_OptimalLAI_callback(::Type{FT}, t0::ITime, dt, canopy; longitude) where {FT <: AbstractFloat}
 
 This constructs an IntervalBasedCallback for the optimal LAI model that:
 1. Computes and accumulates potential GPP (A₀) at each timestep
@@ -883,7 +905,6 @@ it is constant throughout the year.
 - `t0`: ITime, with epoch in UTC.
 - `dt`: timestep
 - `canopy`: the canopy object containing the optimal LAI model parameters.
-- `GSL`: Growing season length (days), default FT(240.0)
 - `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`, which means
     that it will be inferred from the canopy domain).
 
@@ -893,13 +914,14 @@ it is constant throughout the year.
 - Water limitation is captured through daily β, allowing response to precipitation events
 - Daily A₀ is accumulated over each day and finalized at local noon
 - Annual A₀ is accumulated and reset on January 1
+- GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
+  varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
 """
 function make_OptimalLAI_callback(
     ::Type{FT},
     t0,
     dt,
     canopy;
-    GSL = FT(240.0),
     longitude = nothing,
 ) where {FT <: AbstractFloat}
     function seconds_after_midnight(d)
@@ -943,7 +965,6 @@ function make_OptimalLAI_callback(
                 canopy = canopy,
                 dt = dt,
                 local_noon = local_noon,
-                GSL = GSL,
             )
         end
 
@@ -956,31 +977,29 @@ function make_OptimalLAI_callback(
 end
 
 """
-    get_model_callbacks(component::OptimalLAIModel, canopy; t0, Δt, GSL)
+    get_model_callbacks(component::OptimalLAIModel, canopy; t0, Δt)
 
 Creates the optimal LAI callback and returns it as a single element tuple of model callbacks.
-
-The GSL parameter can be provided as keyword argument. If not provided, default value will be used.
 
 # Notes
 - Daily A₀ is computed with actual β (soil moisture stress) from the soil moisture stress model
 - Annual A₀ is computed with β=1 (no moisture stress) for LAI_max computation
 - Water limitation enters through daily β, not through LAI_max, allowing the model to
   respond to interannual precipitation variability and flushing events
+- GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
+  varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
 """
 function get_model_callbacks(
     component::OptimalLAIModel{FT},
     canopy;
     t0,
     Δt,
-    GSL = FT(240.0),
 ) where {FT}
     lai_cb = make_OptimalLAI_callback(
         FT,
         t0,
         Δt,
-        canopy;
-        GSL = GSL,
+        canopy,
     )
     return (lai_cb,)
 end

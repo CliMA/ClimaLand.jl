@@ -174,8 +174,11 @@ import ClimaLand.Parameters as LP
     local_noon = seconds_in_day * (FT(0.5) - long / 360)
     println("\nLocal noon (seconds UTC): $local_noon")
 
-    # GSL from defaults
+    # GSL is now stored in the cache (set by set_historical_cache! with default value)
+    # We can verify/override it here if needed:
     GSL = FT(240.0)
+    p.canopy.lai_model.GSL .= GSL
+    println("GSL = $(parent(p.canopy.lai_model.GSL))")
 
     # Create local_noon field
     local_noon_field = ClimaCore.Fields.ones(domain.space.surface) .* local_noon
@@ -195,13 +198,12 @@ import ClimaLand.Parameters as LP
             # Current date
             current_date = start_date + Dates.Second(Int(current_t))
 
-            # Call LAI update
+            # Call LAI update (GSL is read from p.canopy.lai_model.GSL)
             Canopy.call_update_optimal_LAI(
                 p, Y, t_in_day, current_date;
                 canopy = canopy,
                 dt = dt,
                 local_noon = local_noon_field,
-                GSL = GSL,
             )
 
             # Check if noon
