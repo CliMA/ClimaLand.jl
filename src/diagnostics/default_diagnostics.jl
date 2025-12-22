@@ -613,7 +613,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    return ["gpp", "ct", "lai", "lai_pred", "trans", "er", "sif"]
+    return ["gpp", "ct", "lai", "lai_pred", "a0_annual", "trans", "er", "sif"]
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)
