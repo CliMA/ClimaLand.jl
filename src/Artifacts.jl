@@ -317,6 +317,10 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
     return data_path
 end
 
+function fluxnet2015_data_path(; context = nothing)
+    return @clima_artifact("fluxnet2015", context)
+end
+
 """
     esm_snowmip_data_path(; context = nothing)
 
