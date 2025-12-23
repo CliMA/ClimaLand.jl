@@ -310,7 +310,7 @@ end
 """
     optimal_lai_initial_conditions(
         surface_space,
-        data_path;
+        data_path = Artifacts.optimal_lai_gsl_a0_data_path(; context = ClimaComms.context(surface_space));
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
             Interpolations.Periodic(),
@@ -319,11 +319,11 @@ end
         interpolation_method = Interpolations.Linear(),
     )
 
-Reads spatially varying initial conditions for the optimal LAI model from a NetCDF file,
+Reads spatially varying GSL and A0_annual data for the optimal LAI model from a NetCDF file,
 and regrids them to the grid defined by the `surface_space` of the Clima simulation.
-Returns a NamedTuple of ClimaCore Fields.
+Returns a NamedTuple of ClimaCore Fields suitable for passing to `OptimalLAIModel`.
 
-In particular, this file returns fields for:
+This function returns fields for:
 - `GSL`: Growing season length (days)
 - `A0_annual`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
 
@@ -340,21 +340,21 @@ The NetCDF file should contain variables `gsl` and `a0_annual` on a (lon, lat) g
 
 # Example
 ```julia
-initial_conditions = optimal_lai_initial_conditions(
+gsl_a0_data = optimal_lai_initial_conditions(
     surface_space,
     "path/to/gsl_a0_annual.nc",
 )
-# Returns: (; GSL = <Field>, A0_annual = <Field>)
+lai_model = OptimalLAIModel{FT}(parameters, gsl_a0_data)
 ```
 
 # Notes
 - The file is expected to have lon and lat coordinates with variables `gsl` and `a0_annual`
-- NaN values are replaced with default values (GSL=240 days, A0_annual=258 mol CO₂ m⁻² yr⁻¹)
-- This function is intended for initializing the OptimalLAIModel with spatially varying fields
 """
 function optimal_lai_initial_conditions(
     surface_space,
-    data_path::String;
+    data_path::AbstractString = Artifacts.optimal_lai_gsl_a0_data_path(;
+        context = ClimaComms.context(surface_space),
+    );
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
         Interpolations.Periodic(),
@@ -362,21 +362,12 @@ function optimal_lai_initial_conditions(
     ),
     interpolation_method = Interpolations.Linear(),
 )
-    # Default values for NaN replacement
-    default_gsl = 240.0
-    default_a0_annual = 258.0
-
-    # Preprocess functions to handle NaN values
-    gsl_preprocess(data) = map(x -> isnan(x) ? default_gsl : x, data)
-    a0_preprocess(data) = map(x -> isnan(x) ? default_a0_annual : x, data)
-
     GSL = SpaceVaryingInput(
         data_path,
         "gsl",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        file_reader_kwargs = (; preprocess_func = gsl_preprocess,),
     )
 
     A0_annual = SpaceVaryingInput(
@@ -385,7 +376,6 @@ function optimal_lai_initial_conditions(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        file_reader_kwargs = (; preprocess_func = a0_preprocess,),
     )
 
     return (; GSL = GSL, A0_annual = A0_annual)
