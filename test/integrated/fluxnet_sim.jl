@@ -5,11 +5,26 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 using ClimaLand.Canopy
 using ClimaLand.PlantHydraulics
+using ClimaLand.Domains
+using ClimaLand.Soil
 
 const FT = Float64
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
+
+"""
+    create_site_column(FT, lat, long)
+
+Creates and returns a Column domain for user-given latitude and longitude coordinates.
+"""
+function create_site_column(FT, lat, long, dz_tuple, nelements, zmin, zmax)
+
+    zlim = (zmin, zmax)
+    longlat = (long, lat)
+
+    return Domains.Column(; zlim, nelements, longlat, dz_tuple)
+end
 
 @testset "US-Ha1 domain info + parameters" begin
     site_ID = FluxnetSimulations.replace_hyphen("US-Ha1")
@@ -24,14 +39,12 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test zmax == FT(0)
 
     # geographical info
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == -5
+    @test time_offset == 5
     @test lat == FT(42.5378)
     @test long == FT(-72.1715)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(30)
 
     # parameters
@@ -39,8 +52,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -48,8 +60,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -85,8 +96,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test soil_ν == FT(0.5)
     @test soil_K_sat == FT(4e-7)
     @test soil_S_s == FT(1e-3)
-    @test soil_vg_n == FT(2.05)
-    @test soil_vg_α == FT(0.04)
     @test θ_r == FT(0.067)
     @test ν_ss_quartz == FT(0.1)
     @test ν_ss_om == FT(0.1)
@@ -94,8 +103,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test z_0m_soil == FT(0.01)
     @test z_0b_soil == FT(0.001)
     @test soil_ϵ == FT(0.98)
-    @test soil_α_PAR == FT(0.2)
-    @test soil_α_NIR == FT(0.2)
     @test Ω == FT(0.69)
     @test χl == FT(0.5)
     @test G_Function == ConstantGFunction(χl)
@@ -142,13 +149,11 @@ end
     @test zmax == FT(0)
 
     # geographical info
-    (; time_offset, lat, long) =
-        FluxnetSimulations.get_location(FT, Val(site_ID))
-    @test time_offset == -6
+    (; time_offset, lat, long, atmos_h) =
+        FluxnetSimulations.get_location(FT, Val(site_ID), time_offset = 5)
+    @test time_offset == 5
     @test lat == FT(38.7441)
     @test long == FT(-92.2000)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(32)
 
     # parameters
@@ -156,8 +161,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -165,8 +169,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -223,14 +226,12 @@ end
     @test zmin == FT(-10)
     @test zmax == FT(0)
 
-    (; time_offset, lat, long) =
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
 
-    @test time_offset == -7
+    @test time_offset == 7
     @test lat == FT(40.0329)
     @test long == FT(-105.5464)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(21.5)
 
     # parameters
@@ -238,8 +239,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -247,8 +247,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -300,18 +299,17 @@ end
     (; dz_tuple, nelements, zmin, zmax) =
         FluxnetSimulations.get_domain_info(FT, Val(site_ID))
 
-    @test dz_tuple == FT.((0.05, 0.02))
-    @test nelements == 24
+    @test dz_tuple == nothing
+    @test nelements == 14
     @test zmin == FT(-0.5)
     @test zmax == FT(0)
 
-    (; time_offset, lat, long) =
+
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID))
-    @test time_offset == -8
+    @test time_offset == 8
     @test lat == FT(38.4133)
     @test long == FT(-120.9508)
-
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID))
     @test atmos_h == FT(2)
 
     # parameters
@@ -319,8 +317,7 @@ end
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -328,8 +325,7 @@ end
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -363,12 +359,13 @@ end
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
 
     # selected parameters from each "model group" for testing
-    @test soil_ν == FT(0.5)
+    @test soil_ν == FT(0.45)
     @test soil_ϵ == FT(0.98)
-    @test Ω == FT(0.75)
+    @test Ω == FT(1.0)
     @test ac_canopy == FT(745)
     @test g0 == FT(5e-4)
-    @test Vcmax25 == FT(2.5e-5)
+    @test Vcmax25 == FT(2 * 4.225e-5)
     @test SAI == FT(0)
     @test h_stem == FT(0)
 end
+nothing

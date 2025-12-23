@@ -37,17 +37,14 @@ for float_type in (Float32, Float64)
     # Use finer dz_top for conservation test
     dz_top = FT(0.025)
     (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulations.get_domain_info(FT, Val(site_ID_val); dz_top)
-    (; time_offset, lat, long) =
+        FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+    (; time_offset, lat, long, atmos_h) =
         FluxnetSimulations.get_location(FT, Val(site_ID_val))
-    (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
-
     (;
         soil_ν,
         soil_K_sat,
         soil_S_s,
-        soil_vg_n,
-        soil_vg_α,
+        soil_hydrology_cm,
         θ_r,
         ν_ss_quartz,
         ν_ss_om,
@@ -55,8 +52,7 @@ for float_type in (Float32, Float64)
         z_0m_soil,
         z_0b_soil,
         soil_ϵ,
-        soil_α_PAR,
-        soil_α_NIR,
+        soil_albedo,
         Ω,
         χl,
         G_Function,
@@ -140,15 +136,11 @@ for float_type in (Float32, Float64)
     )
 
     # Soil model
-    soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-        PAR_albedo = soil_α_PAR,
-        NIR_albedo = soil_α_NIR,
-    )
     retention_parameters = (;
         ν = soil_ν,
         θ_r,
         K_sat = soil_K_sat,
-        hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
+        hydrology_cm = soil_hydrology_cm,
     )
     composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
     soil_forcing = (; atmos, radiation)

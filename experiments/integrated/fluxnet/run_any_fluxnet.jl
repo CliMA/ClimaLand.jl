@@ -33,13 +33,20 @@ if length(ARGS) < 1
 end
 
 site_ID = ARGS[1]
-site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
-# Get the default values for this site's domain, location, and parameters
-(; dz_tuple, nelements, zmin, zmax) =
-    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; time_offset, lat, long, atmos_h) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; dz_tuple, nelements, zmin, zmax) = FluxnetSimulations.get_domain_info(FT)
+(; time_offset, lat, long, atmos_h) = FluxnetSimulations.get_location(site_ID)
+
+
+# Construct the ClimaLand domain to run the simulation on
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)
+surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+
 (;
     soil_ν,
     soil_K_sat,
@@ -83,20 +90,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     h_leaf,
     h_stem,
     h_canopy,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
-
-# Construct the ClimaLand domain to run the simulation on
-land_domain = Column(;
-    zlim = (zmin, zmax),
-    nelements = nelements,
-    dz_tuple = dz_tuple,
-    longlat = (long, lat),
-)
-surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
+) = FluxnetSimulations.get_parameters(FT, site_ID, land_domain)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
-
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 (start_date, stop_date) =
@@ -128,7 +125,6 @@ end
     FT,
 )
 
-
 # Now we set up the model. For the soil model, we pick
 # a model type and package up parameters.
 soil_domain = land_domain
@@ -155,8 +151,14 @@ soil = Soil.EnergyHydrology{FT}(
 )
 
 # Soil microbes model
+soil_organic_carbon =
+    ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
+drivers = Soil.Biogeochemistry.SoilDrivers(
+    co2_prognostic_soil,
+    soil_organic_carbon,
+    atmos,
+)
 soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
 
 # Now we set up the canopy model, one component at a time.
@@ -213,6 +215,7 @@ energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
+
 # Combine the components into a CanopyModel
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
