@@ -6,7 +6,11 @@ using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
-    AbstractSoilSource, AbstractSoilModel, RichardsModel, EnergyHydrology
+    AbstractSoilSource,
+    AbstractSoilModel,
+    RichardsModel,
+    EnergyHydrology,
+    volumetric_internal_energy_liq
 import ClimaLand.Parameters as LP
 import ClimaParams as CP
 export TOPMODELRunoff,
@@ -282,7 +286,7 @@ model_agnostic_volumetric_ice_content(Y, FT) =
         src::TOPMODELSubsurfaceRunoff,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        model::AbstractSoilModel{FT},
+        model::RichardsModel{FT},
     ) where {FT}
 
 Adjusts dY.soil.ϑ_l in place to account for the loss of
@@ -299,13 +303,52 @@ function ClimaLand.source!(
     src::TOPMODELSubsurfaceRunoff{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    model::AbstractSoilModel{FT},
+    model::RichardsModel{FT},
 ) where {FT}
     ϑ_l = Y.soil.ϑ_l
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
+end
+
+"""
+    ClimaLand.source!(
+        dY::ClimaCore.Fields.FieldVector,
+        src::TOPMODELSubsurfaceRunoff,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        model::EnergyHydrology{FT},
+    ) where {FT}
+
+Adjusts dY.soil.ϑ_l and dY.soil.ρe_int in place 
+to account for the loss of water, and of internal energy,
+ due to subsurface runoff.
+"""
+function ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::TOPMODELSubsurfaceRunoff{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::EnergyHydrology{FT},
+) where {FT}
+    ϑ_l = Y.soil.ϑ_l
+    h∇ = p.soil.h∇
+    ϵ = eps(FT)
+    earth_param_set = model.parameters.earth_param_set
+    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
+
+    subsurface_field = p.soil.subsfc_scratch
+    @. subsurface_field =
+        (p.soil.R_ss / max(h∇, ϵ)) *
+        p.soil.is_saturated *
+        volumetric_internal_energy_liq(p.soil.T, earth_param_set)
+    @. dY.soil.ρe_int -= subsurface_field
+    surface_field = p.soil.sfc_scratch
+    column_integral_definite!(surface_field, subsurface_field)
+    @. dY.soil.∫F_vol_e_dt -= surface_field
+
 end
 
 """
