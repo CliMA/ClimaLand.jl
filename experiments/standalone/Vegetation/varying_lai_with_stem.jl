@@ -100,6 +100,9 @@ height = h_leaf + h_stem
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(land_domain, toml_dict)
+
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
@@ -107,6 +110,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     toml_dict;
     hydraulics = plant_hydraulics,
     biomass,
+    lai_model,
 );
 
 

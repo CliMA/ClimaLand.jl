@@ -305,3 +305,78 @@ function clm_medlyn_g1(
     )
     return g1
 end
+
+
+"""
+    optimal_lai_initial_conditions(
+        surface_space,
+        data_path = Artifacts.optimal_lai_gsl_a0_data_path(; context = ClimaComms.context(surface_space));
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+    )
+
+Reads spatially varying GSL and A0_annual data for the optimal LAI model from a NetCDF file,
+and regrids them to the grid defined by the `surface_space` of the Clima simulation.
+Returns a NamedTuple of ClimaCore Fields suitable for passing to `OptimalLAIModel`.
+
+This function returns fields for:
+- `GSL`: Growing season length (days)
+- `A0_annual`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
+
+The NetCDF file should contain variables `gsl` and `a0_annual` on a (lon, lat) grid.
+
+# Arguments
+- `surface_space`: The ClimaCore surface space to regrid to
+- `data_path`: Path to the NetCDF file containing GSL and A0_annual
+
+# Keyword Arguments
+- `regridder_type`: Type of regridder to use (default: `:InterpolationsRegridder`)
+- `extrapolation_bc`: Boundary conditions for extrapolation (default: Periodic in lon, Flat in lat)
+- `interpolation_method`: Interpolation method (default: `Interpolations.Linear()`)
+
+# Example
+```julia
+gsl_a0_data = optimal_lai_initial_conditions(
+    surface_space,
+    "path/to/gsl_a0_annual.nc",
+)
+lai_model = OptimalLAIModel{FT}(parameters, gsl_a0_data)
+```
+
+# Notes
+- The file is expected to have lon and lat coordinates with variables `gsl` and `a0_annual`
+"""
+function optimal_lai_initial_conditions(
+    surface_space,
+    data_path::AbstractString = Artifacts.optimal_lai_gsl_a0_data_path(;
+        context = ClimaComms.context(surface_space),
+    );
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+)
+    GSL = SpaceVaryingInput(
+        data_path,
+        "gsl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    A0_annual = SpaceVaryingInput(
+        data_path,
+        "a0_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (; GSL = GSL, A0_annual = A0_annual)
+end

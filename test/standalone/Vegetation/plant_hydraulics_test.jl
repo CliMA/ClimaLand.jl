@@ -207,6 +207,13 @@ for FT in (Float32, Float64)
             compartment_midpoints,
         )
 
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         model = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
@@ -214,6 +221,7 @@ for FT in (Float32, Float64)
             radiative_transfer = rt_model,
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
+            lai_model,
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             biomass,

@@ -50,12 +50,21 @@ for FT in (Float32, Float64)
         LAI = TimeVaryingInput((t) -> FT(1.0))
         ground = ClimaLand.PrognosticGroundConditions{FT}()
         canopy_forcing = (; atmos, radiation, ground)
+
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         canopy = Canopy.CanopyModel{FT}(
             surface_domain,
             canopy_forcing,
             LAI,
             toml_dict;
             prognostic_land_components,
+            lai_model,
         )
 
         # Snow model

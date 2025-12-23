@@ -104,6 +104,14 @@ import ClimaParams
         # Set up canopy model with all the components
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
+
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
             forcing,
@@ -113,6 +121,7 @@ import ClimaParams
             radiative_transfer = rt_model,
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
+            lai_model,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
             hydraulics,
             energy = energy_model,
@@ -151,6 +160,7 @@ import ClimaParams
             :autotrophic_respiration,
             :energy,
             :sif,
+            :lai_model,
             :soil_moisture_stress,
             :biomass,
             :turbulent_fluxes,
@@ -534,6 +544,14 @@ end
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         sf_parameterization =
             ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
+
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
             domain,
@@ -541,6 +559,7 @@ end
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
             autotrophic_respiration = autotrophic_respiration_model,
+            lai_model,
             energy = energy_model,
             hydraulics = plant_hydraulics,
             soil_moisture_stress = Canopy.NoMoistureStressModel{FT}(),
@@ -725,12 +744,21 @@ end
         forcing = (; atmos, radiation, ground)
 
         hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(domain, toml_dict)
+
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
             forcing,
             LAI,
             toml_dict;
             hydraulics,
+            lai_model,
         )
 
         Y, p, coords = ClimaLand.initialize(canopy)
@@ -791,6 +819,12 @@ end
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
 
         # Use simple analytic forcing for atmosphere and radiation
         atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
@@ -816,6 +850,7 @@ end
                 hydraulics,
                 energy,
                 sif,
+                lai_model,
                 biomass,
                 boundary_conditions,
                 earth_param_set,
@@ -839,6 +874,7 @@ end
             @test canopy.energy == energy
             @test canopy.soil_moisture_stress == soil_moisture_stress
             @test canopy.sif == sif
+            @test canopy.lai_model == lai_model
             @test canopy.boundary_conditions == boundary_conditions
             @test canopy.earth_param_set == earth_param_set
             @test canopy.domain == domain
@@ -872,6 +908,7 @@ end
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :lai_model,
                 :soil_moisture_stress,
                 :biomass,
                 :turbulent_fluxes,
@@ -915,7 +952,15 @@ end
         forcing = (; atmos, radiation, ground)
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
-        canopy = Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict)
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+        lai_model = Canopy.OptimalLAIModel{FT}(
+            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
+        )
+
+        canopy =
+            Canopy.CanopyModel{FT}(domain, forcing, LAI, toml_dict; lai_model)
 
         # Check that the canopy model was created correctly
         @test ClimaComms.context(canopy) == ClimaComms.context()
@@ -949,6 +994,7 @@ end
             :autotrophic_respiration,
             :energy,
             :sif,
+            :lai_model,
             :soil_moisture_stress,
             :biomass,
             :turbulent_fluxes,
