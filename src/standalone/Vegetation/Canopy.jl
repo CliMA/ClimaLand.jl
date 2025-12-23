@@ -26,7 +26,10 @@ import ClimaLand:
     initialize_prognostic,
     initialize_auxiliary,
     make_update_boundary_fluxes,
+    make_update_implicit_aux,
+    make_update_implicit_boundary_fluxes,
     make_update_aux,
+    make_set_initial_cache,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
     make_compute_jacobian,
@@ -1090,6 +1093,37 @@ function make_compute_exp_tendency(canopy::CanopyModel)
     return compute_exp_tendency!
 end
 
+function make_update_implicit_aux(canopy::CanopyModel)
+    components = canopy_components(canopy)
+    update_implicit_aux_list = map(
+        x -> make_update_implicit_aux(getproperty(canopy, x), canopy),
+        components,
+    )
+    function update_implicit_aux!(p, Y, t)
+        for f! in update_implicit_aux_list
+            f!(p, Y, t)
+        end
+    end
+    return update_implicit_aux!
+end
+
+function make_update_implicit_boundary_fluxes(canopy::CanopyModel)
+    components = canopy_components(canopy)
+    update_implicit_boundary_fluxes_list = map(
+        x -> make_update_implicit_boundary_fluxes(
+            getproperty(canopy, x),
+            canopy,
+        ),
+        components,
+    )
+    function update_implicit_boundary_fluxes!(p, Y, t)
+        for f! in update_implicit_boundary_fluxes_list
+            f!(p, Y, t)
+        end
+    end
+    return update_implicit_boundary_fluxes!
+end
+
 """
     make_compute_imp_tendency(canopy::CanopyModel)
 
@@ -1202,8 +1236,11 @@ is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` 
 sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
