@@ -134,9 +134,8 @@ radiative_transfer_parameters = Canopy.BeerLambertParameters(
 );
 radiative_transfer = Canopy.BeerLambertModel(radiative_transfer_parameters);
 
-# Set up optimal LAI model
-lai_model =
-    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict));
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict);
 
 # Now we can create the `CanopyModel` model with the specified radiative transfer
 # parameterizations passed as [keyword arguments](@extref Julia Keyword-Arguments).

@@ -168,9 +168,8 @@ function model(Vcmax25, g1)
     conductance =
         Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
 
-    #md # Set up optimal LAI model
-    lai_model =
-        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+    #md # Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
 
     #md # Create canopy model
     canopy = Canopy.CanopyModel{FT}(

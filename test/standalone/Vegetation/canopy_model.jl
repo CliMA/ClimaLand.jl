@@ -105,9 +105,11 @@ import ClimaParams
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
 
-        # Set up optimal LAI model
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
@@ -441,9 +443,11 @@ end
         sf_parameterization =
             ClimaLand.Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
 
-        # Set up optimal LAI model
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
@@ -591,9 +595,11 @@ end
 
         hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(domain, toml_dict)
 
-        # Set up optimal LAI model
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
@@ -661,8 +667,11 @@ end
         energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
         sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         # Use simple analytic forcing for atmosphere and radiation
@@ -791,9 +800,11 @@ end
         forcing = (; atmos, radiation, ground)
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
 
-        # Set up optimal LAI model
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         canopy =

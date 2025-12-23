@@ -553,16 +553,29 @@ end
 
 ## LAI models
 """
-    OptimalLAIModel{FT}(toml_dict::CP.ParamDict,
-                       ) where {FT <: AbstractFloat}
+    OptimalLAIModel{FT}(domain, toml_dict::CP.ParamDict; gsl_a0_data) where {FT <: AbstractFloat}
 
-Create an `OptimalLAIModel` using `toml_dict` of type `FT`.
+Create an `OptimalLAIModel` using `toml_dict` of type `FT` with spatially varying
+GSL and A0_annual data.
+
+By default, `gsl_a0_data` is loaded from the dataset returned by
+`ClimaLand.Artifacts.optimal_lai_gsl_a0_data_path` using
+`optimal_lai_initial_conditions`, which reads spatially varying GSL (growing season
+length) and A0_annual (annual potential GPP) fields.
+
+# Arguments
+- `domain`: The domain (used to get surface_space for loading spatially varying data)
+- `toml_dict`: Parameter dictionary
+- `gsl_a0_data`: NamedTuple with spatially varying GSL and A0_annual fields.
+  Defaults to loading from `ClimaLand.Artifacts.optimal_lai_gsl_a0_data_path`.
 """
 function OptimalLAIModel{FT}(
-    toml_dict::CP.ParamDict,
+    domain,
+    toml_dict::CP.ParamDict;
+    gsl_a0_data = optimal_lai_initial_conditions(domain.space.surface),
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
-    return OptimalLAIModel{FT, typeof(parameters)}(parameters)
+    return OptimalLAIModel{FT}(parameters, gsl_a0_data)
 end
 
 
@@ -793,7 +806,7 @@ function CanopyModel{FT}(
         toml_dict["canopy_height"],
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
-    lai_model = OptimalLAIModel{FT}(toml_dict),
+    lai_model,
 ) where {FT}
     (; atmos, radiation, ground) = forcing
 

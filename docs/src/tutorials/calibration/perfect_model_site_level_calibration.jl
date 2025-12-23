@@ -147,9 +147,8 @@ function model(Vcmax25)
         g1 = FT(141),
     )
 
-    #md # Set up optimal LAI model
-    lai_model =
-        Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+    #md # Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(canopy_domain, toml_dict)
 
     #md # Create canopy model
     canopy = ClimaLand.Canopy.CanopyModel{FT}(

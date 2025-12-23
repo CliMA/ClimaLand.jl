@@ -246,9 +246,8 @@ photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
-# Set up optimal LAI model
-lai_model =
-    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(canopy_domain, toml_dict)
 
 # Conductance model
 g1 = FT(141)

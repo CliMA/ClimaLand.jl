@@ -31,9 +31,12 @@ import ClimaParams
 
         @testset "OptimalLAIModel construction for FT = $FT" begin
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
-            model = Canopy.OptimalLAIModel{FT}(params)
+            # For unit tests, use scalar values for GSL and A0_annual
+            gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+            model = Canopy.OptimalLAIModel{FT}(params, gsl_a0_data)
 
             @test model.parameters === params
+            @test model.gsl_a0_data === gsl_a0_data
             @test eltype(model) == FT
 
             # Test auxiliary variables (LAI + A0 tracking variables + GSL)

@@ -98,8 +98,8 @@ import ClimaLand.Parameters as LP
     # PModel conductance
     conductance = Canopy.PModelConductance{FT}(toml_dict)
 
-    # Optimal LAI model
-    lai_model = Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+    # Optimal LAI model (loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(domain, toml_dict)
 
     # Plant hydraulics
     hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)

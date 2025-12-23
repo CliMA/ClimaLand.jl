@@ -207,9 +207,11 @@ for FT in (Float32, Float64)
             compartment_midpoints,
         )
 
-        # Set up optimal LAI model
+        # Set up optimal LAI model with scalar GSL and A0_annual for testing
+        gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
         lai_model = Canopy.OptimalLAIModel{FT}(
             Canopy.OptimalLAIParameters{FT}(toml_dict),
+            gsl_a0_data,
         )
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
