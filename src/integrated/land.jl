@@ -144,11 +144,8 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
-            lai_model = Canopy.OptimalLAIModel{FT}(
-                Canopy.OptimalLAIParameters{FT}(toml_dict),
-            ),
         ),
-       snow = Snow.SnowModel(
+        snow = Snow.SnowModel(
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
             forcing,
@@ -203,7 +200,8 @@ function LandModel{FT}(
         toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         lai_model = Canopy.OptimalLAIModel{FT}(
-            Canopy.OptimalLAIParameters{FT}(toml_dict),
+            Domains.obtain_surface_domain(domain),
+            toml_dict,
         ),
     ),
     snow = Snow.SnowModel(

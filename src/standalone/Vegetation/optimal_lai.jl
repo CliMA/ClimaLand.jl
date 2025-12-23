@@ -61,34 +61,51 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
 end
 
 """
-    OptimalLAIModel{FT, OLPT <: OptimalLAIParameters{FT}} <: AbstractLAIModel{FT}
+    OptimalLAIModel{FT, OLPT <: OptimalLAIParameters{FT}, GD} <: AbstractLAIModel{FT}
 
 An implementation of the optimal LAI model from Zhou et al. (2025).
 
 This model predicts seasonal to decadal dynamics of leaf area index based on
 optimality principles, balancing energy and water constraints.
 
+# Fields
+- `parameters`: Required parameters for the optimal LAI model
+- `gsl_a0_data`: NamedTuple with spatially varying GSL (growing season length in days)
+  and A0_annual (annual potential GPP in mol CO₂ m⁻² yr⁻¹) fields, typically created
+  using `optimal_lai_initial_conditions`.
+
 # References
 Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
 Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 """
-struct OptimalLAIModel{FT, OLPT <: OptimalLAIParameters{FT}} <:
+struct OptimalLAIModel{FT, OLPT <: OptimalLAIParameters{FT}, GD} <:
        AbstractLAIModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
+    "Spatially varying GSL and A0_annual data"
+    gsl_a0_data::GD
 end
 
-Base.eltype(::OptimalLAIModel{FT, OLPT}) where {FT, OLPT} = FT
+Base.eltype(::OptimalLAIModel{FT, OLPT, GD}) where {FT, OLPT, GD} = FT
 
 """
-    OptimalLAIModel{FT}(parameters::OptimalLAIParameters{FT})
+    OptimalLAIModel{FT}(parameters::OptimalLAIParameters{FT}, gsl_a0_data)
 
 Outer constructor for the OptimalLAIModel struct.
+
+# Arguments
+- `parameters`: OptimalLAIParameters for the model
+- `gsl_a0_data`: NamedTuple with spatially varying GSL and A0_annual fields,
+  typically created using `optimal_lai_initial_conditions`.
 """
 function OptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT},
+    gsl_a0_data,
 ) where {FT <: AbstractFloat}
-    return OptimalLAIModel{FT, typeof(parameters)}(parameters)
+    return OptimalLAIModel{FT, typeof(parameters), typeof(gsl_a0_data)}(
+        parameters,
+        gsl_a0_data,
+    )
 end
 
 """
@@ -145,45 +162,32 @@ function initialize_LAI!(
 end
 
 """
-    set_historical_cache!(p, Y0, model::OptimalLAIModel, canopy; A0_annual, A0_daily, GSL)
+    set_historical_cache!(p, Y0, model::OptimalLAIModel, canopy; A0_daily)
 
 The optimal LAI model requires initialization of LAI and A0 values before the simulation.
 This method assumes that the LAI is initially in equilibrium with the initial conditions
 of the simulation.
 
+GSL and A0_annual are taken from `model.gsl_a0_data`, which contains spatially
+varying fields typically created using `optimal_lai_initial_conditions`.
+
 # Arguments
-- `A0_annual`: Initial annual potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹), default 258.0.
-  Can be a scalar or a spatially varying Field.
 - `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5.
-  Can be a scalar or a spatially varying Field.
-- `GSL`: Growing season length (days), default 240.0.
-  Can be a scalar or a spatially varying Field.
-
-For spatially varying initialization, use `optimal_lai_initial_conditions` to load
-GSL and A0_annual from a NetCDF file:
-
-```julia
-initial_conditions = ClimaLand.Canopy.optimal_lai_initial_conditions(
-    surface_space,
-    "path/to/gsl_a0_annual.nc",
-)
-set_historical_cache!(p, Y0, model, canopy;
-    A0_annual = initial_conditions.A0_annual,
-    GSL = initial_conditions.GSL,
-)
-```
 """
 function set_historical_cache!(
     p,
     Y0,
     model::OptimalLAIModel,
     canopy;
-    A0_annual = eltype(model.parameters)(258.0),
     A0_daily = eltype(model.parameters)(0.5),
-    GSL = eltype(model.parameters)(240.0),
 )
     parameters = model.parameters
+    gsl_a0_data = model.gsl_a0_data
     FT = eltype(parameters)
+
+    # Get spatially varying GSL and A0_annual from gsl_a0_data
+    GSL = gsl_a0_data.GSL
+    A0_annual = gsl_a0_data.A0_annual
 
     L = p.canopy.lai_model.LAI
 
@@ -198,7 +202,7 @@ function set_historical_cache!(
     p.canopy.lai_model.A0_annual_daily_acc .= FT(0)
     p.canopy.lai_model.last_day_of_year .= FT(0)
 
-    # Store GSL in the cache (supports both scalar and Field inputs)
+    # Store GSL in the cache (spatially varying field)
     p.canopy.lai_model.GSL .= GSL
 
     # Set local_noon_mask to 1 to force update for initialization

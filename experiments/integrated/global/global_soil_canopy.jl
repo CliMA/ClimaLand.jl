@@ -87,9 +87,8 @@ canopy_forcing = (; atmos, radiation, ground)
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
-# Set up optimal LAI model
-lai_model =
-    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(canopy_domain, toml_dict)
 
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,

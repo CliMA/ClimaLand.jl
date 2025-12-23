@@ -9,8 +9,8 @@ CurrentModule = ClimaLand.Canopy
 ```@docs
 ClimaLand.Canopy.AbstractLAIModel
 ClimaLand.Canopy.OptimalLAIModel
-ClimaLand.Canopy.OptimalLAIModel{FT}(parameters::OptimalLAIParameters{FT}) where {FT <: AbstractFloat}
-ClimaLand.Canopy.OptimalLAIModel{FT}(toml_dict::CP.ParamDict) where {FT <: AbstractFloat}
+ClimaLand.Canopy.OptimalLAIModel{FT}(parameters::OptimalLAIParameters{FT}, gsl_a0_data) where {FT <: AbstractFloat}
+ClimaLand.Canopy.OptimalLAIModel{FT}(domain, toml_dict::CP.ParamDict; gsl_a0_data) where {FT <: AbstractFloat}
 ClimaLand.Canopy.OptimalLAIParameters
 ClimaLand.Canopy.OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
 ```

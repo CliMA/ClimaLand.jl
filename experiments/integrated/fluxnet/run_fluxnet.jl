@@ -178,15 +178,14 @@ photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
 
-# Set up optimal LAI model
-lai_model =
-    Canopy.OptimalLAIModel{FT}(Canopy.OptimalLAIParameters{FT}(toml_dict))
-
 # Set up plant hydraulics
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
 LAI =
     ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
 RAI = maxLAI * f_root_to_shoot
