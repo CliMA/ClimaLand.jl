@@ -49,11 +49,8 @@ function setup_model(
 end
 
 function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
-    output_dir = CALIBRATE_CONFIG.output_dir
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
-    nelements = CALIBRATE_CONFIG.nelements
-    spinup = CALIBRATE_CONFIG.spinup
-    extend = CALIBRATE_CONFIG.extend
+    (; output_dir, sample_date_ranges, nelements, spinup, extend) =
+        CALIBRATE_CONFIG
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -152,6 +149,9 @@ function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
         toml_dict,
         joinpath(ensemble_member_path, "log_params_$member.toml"),
     )
+    params = keys(TOML.parsefile(calibrate_params_path))
+    strict = true
+    CP.check_override_parameter_usage(toml_dict, params, strict)
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end
