@@ -465,5 +465,52 @@ import ClimaParams
 
             @info "Flushing event test" L_steady_dry=L_steady_dry L_steady_wet=L_steady_wet L_after_dry=L_after_dry L_after_wet=L_after_wet
         end
+
+        @testset "Polar edge case: very low A0_annual (NaN prevention) for FT = $FT" begin
+            # Test that very low A0_annual (below threshold z/k ≈ 24.5) doesn't cause NaN
+            # This can happen at polar regions with very little sunlight
+            k = FT(0.5)
+            z = FT(12.227)
+
+            # Test with A0_annual below threshold (should give LAI_max ≈ 0)
+            LAI_max_small = Canopy.compute_L_max(FT(10.0), k, z)
+            @test isfinite(LAI_max_small)
+            @test LAI_max_small >= FT(0.0)
+
+            # Test with zero A0_annual (extreme case)
+            LAI_max_zero = Canopy.compute_L_max(FT(0.0), k, z)
+            @test isfinite(LAI_max_zero)
+
+            # Test that compute_m returns finite value when LAI_max ≈ 0
+            # (This was previously causing NaN due to division by zero)
+            GSL = FT(180.0)
+            Ao_annual = FT(10.0)
+            sigma = FT(0.771)
+            LAI_max = Canopy.compute_L_max(Ao_annual, k, z)
+            m = Canopy.compute_m(GSL, LAI_max, Ao_annual, sigma, k)
+            @test isfinite(m)
+            @test m >= FT(0.0)
+
+            # Test full update_optimal_LAI with polar-like conditions
+            A0_annual_polar = FT(5.0)  # Very low
+            A0_daily = FT(0.1)
+            L = FT(0.5)
+            GSL_polar = FT(60.0)  # Short growing season
+            alpha = FT(0.067)
+
+            L_new = Canopy.update_optimal_LAI(
+                FT(1.0),
+                A0_daily,
+                L,
+                k,
+                A0_annual_polar,
+                z,
+                GSL_polar,
+                sigma,
+                alpha,
+            )
+            @test isfinite(L_new)
+            @test L_new >= FT(0.0)
+        end
     end
 end
