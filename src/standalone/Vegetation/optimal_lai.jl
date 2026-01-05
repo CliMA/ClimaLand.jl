@@ -268,8 +268,13 @@ function compute_L_max(
     k::FT,          # dimensionless
     z::FT,          # mol m⁻² yr⁻¹
 ) where {FT}
+    # Handle edge case: very small or zero Ao_annual (e.g., polar regions)
+    # When Ao_annual ≈ 0, z / (k * Ao_annual) → ∞, causing numerical issues.
+    # Use ifelse for GPU compatibility.
+    Ao_annual_safe = ifelse(Ao_annual < eps(FT), eps(FT), Ao_annual)
+
     # Energy-limited fAPAR (Equation 11, first part)
-    fAPAR_energy = FT(1) - z / (k * Ao_annual)
+    fAPAR_energy = FT(1) - z / (k * Ao_annual_safe)
 
     # Ensure fAPAR is in valid range [0, 1]
     fAPAR_max = max(FT(0), min(FT(1), fAPAR_energy))
@@ -331,7 +336,17 @@ function compute_m(
 ) where {FT}
     # Equation 20: m = (σ × GSL × LAI_max) / (A₀_sum × fAPAR_max)
     fAPAR_max = fAPAR_max_fun(k, LAI_max)
-    m = (sigma * GSL * LAI_max) / (Ao_annual * fAPAR_max)
+
+    # Handle edge case: when LAI_max ≈ 0 (very low productivity regions like poles),
+    # fAPAR_max = 1 - exp(-k*0) = 0, causing division by zero → NaN.
+    # In this case, return m = 0 since there's no vegetation to support.
+    # Use ifelse for GPU compatibility (no branching).
+    denominator = Ao_annual * fAPAR_max
+    m = ifelse(
+        denominator < eps(FT),
+        zero(FT),
+        (sigma * GSL * LAI_max) / denominator,
+    )
     return m
 end
 
