@@ -80,6 +80,12 @@ function make_ocean_mask(nelements)
     interpolated_mask =
         Array(ClimaCore.Remapping.interpolate(mask; target_hcoords))
 
+    all(0 .<= interpolated_mask .<= 1) ||
+        error("Interpolated mask contains values outside the range [0, 1]")
+    # Interpolating using ClimaCore does not guarantee that the values are
+    # exactly zeroes and ones
+    @. interpolated_mask = round(interpolated_mask)
+
     # Make a OutputVar to make a mask from
     # TODO: This touches on the internals of ClimaAnalysis which should not be
     # done.
