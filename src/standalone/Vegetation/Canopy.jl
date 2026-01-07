@@ -42,7 +42,9 @@ import ClimaLand:
     surface_roughness_inputs,
     get_update_surface_temperature_function,
     get_update_surface_humidity_function,
-    surface_displacement_height
+    surface_displacement_height,
+    get_∂q_sfc∂T_function,
+    get_∂T_sfc∂T_function
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export CanopyModel

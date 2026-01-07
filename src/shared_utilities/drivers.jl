@@ -390,6 +390,8 @@ function turbulent_fluxes!(
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     displ = surface_displacement_height(model, Y, p)
+    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model,Y,p)
+    update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     dest .=
@@ -407,6 +409,8 @@ function turbulent_fluxes!(
             update_q_sfc,
             h_sfc,
             displ,
+            update_∂T_sfc∂T,
+            update_∂q_sfc∂T,
             earth_param_set,
         )
     return nothing
@@ -422,7 +426,7 @@ The function `compute_turbulent_fluxes_at_a_point` does the actual flux computat
 The `return_extra_fluxes` argument indicates whether to return momentum fluxes (`ρτxz`, `ρτyz`).
 """
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, _, _) =
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T,_, _) =
         compute_turbulent_fluxes_at_a_point(args...)
     return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T)
 end
@@ -445,6 +449,9 @@ end
         update_T_sfc,
         update_q_vap_sfc,
         h_sfc::FT,
+        displ::FT,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -475,7 +482,9 @@ function compute_turbulent_fluxes_at_a_point(
     update_T_sfc,
     update_q_vap_sfc,
     h_sfc::FT,
-    displ,
+    displ::FT,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
     earth_param_set,
 ) where {FT}
 
@@ -528,20 +537,18 @@ function compute_turbulent_fluxes_at_a_point(
     )
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
     _T_freeze = LP.T_freeze(earth_param_set)
-
+    _LH_v0 = LP.LH_v0(earth_param_set)
     E = output.evaporation
     # vapor flux in volume of liquid water
     Ẽ = E / _ρ_liq
 
-    # Approximate derivatives of fluxes with respect to T_sfc
-    # use new T_sfc!
-    ∂q∂T = partial_q_sat_partial_T(P_atmos, T_sfc_guess - _T_freeze)
+    # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
     g_h = output.Ch * sqrt(u[1]^2 + u[2]^2)
+    u_star = output.ustar
     ρ_sfc = ρ_atmos
-    ∂lhf∂q = ρ_atmos * g_h
+    ∂lhf∂T = ρ_sfc * g_h * _LH_v0 * update_∂q_sfc∂T(u_star,g_h, T_sfc_guess, P_atmos, earth_param_set)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d
-    ∂lhf∂T = ∂lhf∂q * ∂q∂T
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star,g_h, earth_param_set)
     return (
         output.lhf,
         output.shf,
@@ -551,90 +558,6 @@ function compute_turbulent_fluxes_at_a_point(
         output.ρτxz,
         output.ρτyz,
     )
-end
-
-
-"""
-    partial_q_sat_partial(P::FT, T::FT) where {FT}
-
-Computes the quantity ∂q_sat∂T at temperature T and pressure P.
- The temperature must be in Celsius.
-
-Uses the polynomial approximation from Flatau et al. (1992).
-"""
-function partial_q_sat_partial_T(P::FT, T::FT) where {FT}
-    if T > eps(FT)
-        return partial_q_sat_partial_T_liq(P, T)
-    else
-        return partial_q_sat_partial_T_ice(P, T)
-    end
-end
-
-"""
-    partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-
-Computes the quantity ∂q_sat∂T at temperature T and pressure P,
-over liquid water. The temperature must be in Celsius.
-
-Uses the polynomial approximation from Flatau et al. (1992).
-"""
-function partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-    esat = FT(
-        6.11213476e2 +
-        4.44007856e1 * T +
-        1.43064234 * T^2 +
-        2.64461437e-2 * T^3 +
-        3.05903558e-4 * T^4 +
-        1.96237241e-6 * T^5 +
-        8.92344772e-9 * T^6 - 3.73208410e-11 * T^7 + 2.09339997e-14 * T^8,
-    )
-    desatdT = FT(
-        4.44017302e1 +
-        2.86064092 * T +
-        7.94683137e-2 * T^2 +
-        1.21211669e-3 * T^3 +
-        1.03354611e-5 * T^4 +
-        4.04125005e-8 * T^5 - 7.88037859e-11 * T^6 - 1.14596802e-12 * T^7 +
-        3.81294516e-15 * T^8,
-    )
-
-    return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
-end
-
-"""
-    partial_q_sat_partial_T_ice(P::FT, T::FT) where {FT}
-
-Computes the quantity ∂q_sat∂T at temperature T and pressure P,
-over ice. The temperature must be in Celsius.
-
-Uses the polynomial approximation from Flatau et al. (1992).
-"""
-function partial_q_sat_partial_T_ice(P::FT, T::FT) where {FT}
-    T_celsius = T
-    esat = FT(
-        6.11123516e2 +
-        5.03109514e1 .* T_celsius +
-        1.88369801 * T_celsius^2 +
-        4.20547422e-2 * T_celsius^3 +
-        6.14396778e-4 * T_celsius^4 +
-        6.02780717e-6 * T_celsius^5 +
-        3.87940929e-8 * T_celsius^6 +
-        1.49436277e-10 * T_celsius^7 +
-        2.62655803e-13 * T_celsius^8,
-    )
-    desatdT = FT(
-        5.03277922e1 +
-        3.77289173 * T_celsius +
-        1.26801703e-1 * T_celsius^2 +
-        2.49468427e-3 * T_celsius^3 +
-        3.13703411e-5 * T_celsius^4 +
-        2.57180651e-7 * T_celsius^5 +
-        1.33268878e-9 * T_celsius^6 +
-        3.94116744e-12 * T_celsius^7 +
-        4.98070196e-15 * T_celsius^8,
-    )
-
-    return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
 end
 
 """
@@ -788,7 +711,36 @@ function surface_displacement_height(model::AbstractModel, Y, p)
 end
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
 function get_update_surface_humidity_function(model::AbstractModel, Y, p) end
+function get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
+    function update_∂T_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        earth_param_set,
+    )
+        FT = eltype(earth_param_set)
+        return FT(1)
+    end
+    return update_∂T_sfc∂T_at_a_point
+end
+function get_∂q_sfc∂T_function(
+    model::AbstractModel,
+    Y,
+    p,
+)
 
+    function update_∂q_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        T_sfc,
+        P_sfc,
+        earth_param_set,
+    )
+        FT = eltype(earth_param_set)
+        _T_freeze = LP.T_freeze(earth_param_set)
+        return ClimaLand.partial_q_sat_partial_T(P_sfc, T_sfc - _T_freeze)
+    end
+    return update_∂q_sfc∂T_at_a_point
+end
 """
     surface_height(model::AbstractModel, Y, p)
 

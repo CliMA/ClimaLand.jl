@@ -340,8 +340,8 @@ function ClimaLand.get_update_surface_temperature_function(
             z_0b,
             scheme,
         )
-        u = max(u_star, 1)
-        g_land = leaf_Cd * u * AI
+        #u = max(u_star, 1)
+        g_land = leaf_Cd * u_star * AI
         ΔΦ = Φ_int - Φ_sfc
         cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
         T_sfc =
@@ -352,6 +352,70 @@ function ClimaLand.get_update_surface_temperature_function(
     update_T_sfc_field(AI_val, leaf_Cd) =
         (args...) -> update_T_sfc_at_a_point(args..., leaf_Cd, AI_val)
     return @. lazy(update_T_sfc_field(AI, Cd))
+end
+
+
+
+function ClimaLand.get_∂q_sfc∂T_function(
+    model::CanopyModel,
+    Y,
+    p,
+)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    LAI = p.canopy.biomass.area_index.leaf
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    function update_∂q_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        T_sfc,
+        P_sfc,
+        earth_param_set,
+        leaf_Cd,
+        LAI,
+        r_stomata_canopy,
+    )
+        FT = eltype(earth_param_set)
+        _T_freeze = LP.T_freeze(earth_param_set)
+        u_star_safe = max(u_star, FT(1e-2))
+        r_land =
+            1 / (leaf_Cd * u_star_safe) / max(LAI, eps(FT)) + r_stomata_canopy
+        ∂q_sfc∂q = 1 / (1 + g_h * r_land)
+        return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
+    end
+    # Closure
+    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
+        (args...) ->
+            update_∂q_sfc∂T_at_a_point(args..., leaf_Cd, LAI_val, r_val)
+    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
+end
+
+function ClimaLand.get_∂T_sfc∂T_function(
+    model::CanopyModel,
+    Y,
+    p,
+)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    AI = @. lazy(
+        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+    )
+    function update_∂T_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        earth_param_set,
+        leaf_Cd,
+        AI,
+    )
+        g_land = leaf_Cd * u_star * AI
+        ∂T_sfc∂T =
+            (g_land / g_h) / (1 + g_land / g_h)
+        return ∂T_sfc∂T
+    end
+    # Closure
+    update_∂T_sfc∂T_field(AI_val, leaf_Cd) =
+        (args...) -> update_∂T_sfc∂T_at_a_point(args..., leaf_Cd, AI_val)
+    return @. lazy(update_∂T_sfc∂T_field(AI, Cd))
 end
 
 """
@@ -367,7 +431,7 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
+            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T,),
             Tuple{FT, FT, FT, FT, FT},
         },
     )
@@ -398,7 +462,7 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T, :ρτxz, :ρτyz),
+        (:lhf, :shf, :vapor_flux, :∂lhf∂qT, :∂shf∂T, :ρτxz, :ρτyz),
         Tuple{FT, FT, FT, FT, FT, FT, FT},
     },
 )

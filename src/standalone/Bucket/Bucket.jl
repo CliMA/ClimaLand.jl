@@ -387,7 +387,7 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     NamedTuple{
         (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-        Tuple{FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT,},
     },
     FT,
     FT,

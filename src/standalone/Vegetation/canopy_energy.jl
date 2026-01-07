@@ -20,9 +20,9 @@ ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
     (:fa_energy_roots, :∂LW_n∂T)
 ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
-    (FT, FT)
+    (FT, FT,)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface)
+    (:surface, :surface,)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}
@@ -203,7 +203,6 @@ function ClimaLand.make_compute_jacobian(
         area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.earth_param_set
-        _T_freeze = LP.T_freeze(earth_param_set)
         _σ = LP.Stefan(earth_param_set)
         @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
