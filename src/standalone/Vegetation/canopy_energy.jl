@@ -18,11 +18,11 @@ ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 
 
 ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
-    (:fa_energy_roots, :∂LW_n∂Tc, :∂qc∂Tc)
+    (:fa_energy_roots, :∂LW_n∂T)
 ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
-    (FT, FT, FT)
+    (FT, FT,)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface, :surface)
+    (:surface, :surface,)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}
@@ -196,59 +196,22 @@ function ClimaLand.make_compute_jacobian(
 
         # The derivative of the residual with respect to the prognostic variable
         ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
-        ∂LHF∂qc = p.canopy.turbulent_fluxes.∂LHF∂qc
-        ∂SHF∂Tc = p.canopy.turbulent_fluxes.∂SHF∂Tc
-        ∂LW_n∂Tc = p.canopy.energy.∂LW_n∂Tc
-        ∂qc∂Tc = p.canopy.energy.∂qc∂Tc
+        ∂lhf∂T = p.canopy.turbulent_fluxes.∂lhf∂T
+        ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
+        ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
         ϵ_c = p.canopy.radiative_transfer.ϵ
         area_index = p.canopy.biomass.area_index
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.earth_param_set
-        _T_freeze = LP.T_freeze(earth_param_set)
         _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
-        @. ∂qc∂Tc = partial_q_sat_partial_T_liq(
-            p.drivers.P,
-            Y.canopy.energy.T - _T_freeze,
-        )# use atmos air pressure as approximation for surface air pressure
+        @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (∂LW_n∂Tc - ∂SHF∂Tc - ∂LHF∂qc * ∂qc∂Tc) /
+                (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
     end
     return compute_jacobian!
-end
-
-"""
-    partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-
-Computes the quantity ∂q_sat∂T at temperature T and pressure P,
-over liquid water. The temperature must be in Celsius.
-
-Uses the polynomial approximation from Flatau et al. (1992).
-"""
-function partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-    esat = FT(
-        6.11213476e2 +
-        4.44007856e1 * T +
-        1.43064234 * T^2 +
-        2.64461437e-2 * T^3 +
-        3.05903558e-4 * T^4 +
-        1.96237241e-6 * T^5 +
-        8.92344772e-9 * T^6 - 3.73208410e-11 * T^7 + 2.09339997e-14 * T^8,
-    )
-    desatdT = FT(
-        4.44017302e1 +
-        2.86064092 * T +
-        7.94683137e-2 * T^2 +
-        1.21211669e-3 * T^3 +
-        1.03354611e-5 * T^4 +
-        4.04125005e-8 * T^5 - 7.88037859e-11 * T^6 - 1.14596802e-12 * T^7 +
-        3.81294516e-15 * T^8,
-    )
-
-    return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
 end
 
 """

@@ -123,16 +123,14 @@ import ClimaLand.Parameters as LP
         2 * p.snow.z_snow ./ FT(0.1) / (p.snow.z_snow ./ FT(0.1) + 1),
         FT(1),
     )
-    ρ_sfc = ClimaLand.surface_air_density(
-        model.boundary_conditions.atmos,
-        model,
-        Y,
-        p,
-        t0,
-        p.snow.T_sfc,
-    )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
+
+    ρ_sfc = @. ClimaLand.compute_ρ_sfc(
+        thermo_params,
+        p.drivers.thermal_state,
+        p.snow.T_sfc,
+    )
     q_sfc = @. (1 - p.snow.q_l) * Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         p.snow.T_sfc,
