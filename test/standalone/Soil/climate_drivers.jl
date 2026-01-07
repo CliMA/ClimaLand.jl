@@ -139,7 +139,7 @@ for FT in (Float32, Float64)
                 :frac_diff,
             )
             @test propertynames(p.soil.turbulent_fluxes) ==
-                  (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice)
+                  (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice)
             @test propertynames(p.soil) == (
                 :total_water,
                 :total_energy,
@@ -211,13 +211,12 @@ for FT in (Float32, Float64)
             )
             T_sfc = ClimaCore.Fields.zeros(surface_space) .+ FT(280.0)
             @test ClimaLand.surface_emissivity(model, Y, p) == emissivity
-            @test ClimaLand.surface_height(model, Y, p) == z_sfc
             PAR_albedo = p.soil.PAR_albedo
             NIR_albedo = p.soil.NIR_albedo
             @test Base.Broadcast.materialize(
                 ClimaLand.surface_albedo(model, Y, p),
             ) == PAR_albedo ./ 2 .+ NIR_albedo ./ 2
-            @test ClimaLand.surface_temperature(model, Y, p, t) == T_sfc
+            @test ClimaLand.component_temperature(model, Y, p) == T_sfc
 
             conditions = copy(p.soil.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(

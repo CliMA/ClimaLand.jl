@@ -1,6 +1,7 @@
 module Bucket
 import ClimaParams as CP
 using DocStringExtensions
+using LazyBroadcast: lazy
 using Thermodynamics
 using Dates
 using NCDatasets
@@ -18,6 +19,7 @@ using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
 using ClimaCore.Geometry: WVector
 using ClimaComms
+using SurfaceFluxes
 
 using ClimaLand
 import ..Parameters as LP
@@ -26,7 +28,6 @@ import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    turbulent_fluxes!,
     net_radiation!,
     AbstractExpModel,
     heaviside,
@@ -45,13 +46,14 @@ import ClimaLand:
     initialize_vars,
     initialize,
     initialize_auxiliary,
-    surface_temperature,
-    surface_air_density,
-    surface_evaporative_scaling,
+    component_temperature,
     surface_albedo,
     surface_emissivity,
-    surface_height,
-    get_drivers
+    surface_roughness_model,
+    component_specific_humidity,
+    get_update_surface_humidity_function,
+    get_drivers,
+    compute_ρ_sfc
 export BucketModelParameters,
     BucketModel,
     PrescribedBaregroundAlbedo,
@@ -380,27 +382,58 @@ prognostic_vars(::BucketModel) = (:W, :T, :Ws, :σS)
 prognostic_domain_names(::BucketModel) =
     (:surface, :subsurface, :surface, :surface)
 
-auxiliary_types(::BucketModel{FT}) where {FT} = (
-    FT,
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    NamedTuple{(:F_melt, :F_into_snow, :G_under_snow), Tuple{FT, FT, FT}},
-    FT,
-    FT,
-    FT,
-    ClimaCore.Geometry.WVector{FT},
-    FT,
-    FT,
-)
+function auxiliary_types(model::BucketModel{FT}) where {FT}
+    turb_flux_type = nothing
+    if model.atmos isa ClimaLand.CoupledAtmosphere
+        turb_flux_type = NamedTuple{
+            (
+                :lhf,
+                :shf,
+                :vapor_flux,
+                :∂lhf∂T,
+                :∂shf∂T,
+                :ρτxz,
+                :ρτyz,
+                :buoyancy_flux,
+            ),
+            Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        }
+    elseif model.atmos isa ClimaLand.PrescribedAtmosphere
+        turb_flux_type = NamedTuple{
+            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
+            Tuple{FT, FT, FT, FT, FT},
+        }
+    end
+
+    return (
+        FT,
+        turb_flux_type,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        FT,
+        NamedTuple{(:F_melt, :F_into_snow, :G_under_snow), Tuple{FT, FT, FT}},
+        FT,
+        FT,
+        FT,
+        ClimaCore.Geometry.WVector{FT},
+        FT,
+        FT,
+    )
+end
+
 auxiliary_vars(::BucketModel) = (
     :q_sfc,
     :turbulent_fluxes,
     :R_n,
+    :scratch1,
+    :scratch2,
+    :scratch3,
     :T_sfc,
     :α_sfc,
     :ρ_sfc,
@@ -415,6 +448,9 @@ auxiliary_vars(::BucketModel) = (
     :total_water,
 )
 auxiliary_domain_names(::BucketModel) = (
+    :surface,
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -484,9 +520,14 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
+        thermo_params =
+            LP.thermodynamic_parameters(model.parameters.earth_param_set)
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
-        p.bucket.ρ_sfc .=
-            surface_air_density(model.atmos, model, Y, p, t, p.bucket.T_sfc)
+        @. p.bucket.ρ_sfc = compute_ρ_sfc(
+            thermo_params,
+            p.drivers.thermal_state,
+            p.bucket.T_sfc,
+        )
 
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
@@ -587,33 +628,6 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         )
     end
     return update_aux!
-end
-
-"""
-    turbulent_fluxes!(dest,
-                    atmos::CoupledAtmosphere,
-                    model::BucketModel,
-                    Y,
-                    p,
-                    t)
-
-Computes the turbulent surface fluxes terms at the ground for a coupled bucket.
-In this case, the coupler has already computed turbulent fluxes and updated
-them in each of the component models, so this function does nothing.
-
-Note that this function is not used for the full land model; in that case,
-the turbulent fluxes are computed by the full land model during each step.
-"""
-function ClimaLand.turbulent_fluxes!(
-    dest,
-    atmos::CoupledAtmosphere,
-    model::BucketModel,
-    Y,
-    p,
-    t,
-)
-    # coupler has done its thing behind the scenes already
-    return nothing
 end
 
 """

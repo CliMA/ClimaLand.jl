@@ -5,6 +5,7 @@ import ...Parameters as LP
 using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
+using SurfaceFluxes
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -26,11 +27,12 @@ import ClimaLand:
     prognostic_domain_names,
     auxiliary_types,
     auxiliary_domain_names,
-    surface_temperature,
-    surface_specific_humidity,
+    component_temperature,
+    component_specific_humidity,
     surface_height,
     surface_albedo,
     surface_emissivity,
+    surface_roughness_model,
     get_drivers,
     total_energy_per_area!,
     total_liq_water_vol_per_area!
