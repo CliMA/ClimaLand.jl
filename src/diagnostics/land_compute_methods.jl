@@ -202,10 +202,10 @@ function compute_canopy_transpiration!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
+        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
         return out
     else
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
+        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
     end
 end
 
@@ -696,7 +696,7 @@ function compute_evapotranspiration!(
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration
+                p.canopy.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
         return out
     else
@@ -704,7 +704,7 @@ function compute_evapotranspiration!(
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
-                p.canopy.turbulent_fluxes.transpiration
+                p.canopy.turbulent_fluxes.vapor_flux
             ) .* 1000 # density of liquid water (1000kg/m^3)
     end
 end
@@ -725,7 +725,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 (1 - p.snow.snow_cover_fraction) *
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration +
+                p.canopy.turbulent_fluxes.vapor_flux +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
         return out
@@ -736,12 +736,12 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 (1 - p.snow.snow_cover_fraction) *
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration +
+                p.canopy.turbulent_fluxes.vapor_flux +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
     end
 end
-@diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.transpiration
+@diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.vapor_flux
 
 function compute_total_respiration!(
     out,

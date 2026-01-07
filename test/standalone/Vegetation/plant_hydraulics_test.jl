@@ -307,7 +307,7 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         # overwrite transpiration with the prescribed value we want to test steady state with
-        p.canopy.turbulent_fluxes.transpiration .= T0A
+        p.canopy.turbulent_fluxes.vapor_flux .= T0A
         canopy_exp_tendency! = make_compute_exp_tendency(model)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
@@ -323,7 +323,7 @@ for FT in (Float32, Float64)
             standalone_dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
         end
         set_initial_cache!(p, Y, 0.0)
-        p.canopy.turbulent_fluxes.transpiration .= T0A
+        p.canopy.turbulent_fluxes.vapor_flux .= T0A
         standalone_exp_tendency! =
             make_compute_exp_tendency(model.hydraulics, model)
         standalone_exp_tendency!(standalone_dY, Y, p, 0.0)

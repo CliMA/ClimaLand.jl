@@ -500,7 +500,7 @@ function make_compute_exp_tendency(
             dz = model.compartment_surfaces[2] - model.compartment_surfaces[1] # currently this is a scalar. in the future, this will be a field.
             @. dY.canopy.hydraulics.ϑ_l.:1 =
                 1 / max(AI * dz, eps(FT)) *
-                (fa_roots - p.canopy.turbulent_fluxes.transpiration)
+                (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
         else # multiple layers
             fa = p.canopy.hydraulics.fa
             @inbounds for i in 1:(n_stem + n_leaf)
@@ -517,7 +517,7 @@ function make_compute_exp_tendency(
                 elseif i == i_end
                     @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                         1 / max(AI * dz, eps(FT)) *
-                        (fa.:($$im1) - p.canopy.turbulent_fluxes.transpiration)
+                        (fa.:($$im1) - p.canopy.turbulent_fluxes.vapor_flux)
                 else
                     @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                         1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
