@@ -24,7 +24,7 @@ end
 a helper function which returns the surface temperature for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_temperature(model::BucketModel, Y, p, t)
+function ClimaLand.surface_temperature(model::BucketModel, Y, p)
     return p.bucket.T_sfc
 end
 
@@ -34,36 +34,67 @@ end
 a helper function which returns the surface specific humidity for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
     return p.bucket.q_sfc
 end
 
 """
-    ClimaLand.surface_height(model::BucketModel, Y, p)
+    ClimaLand.surface_roughness_model(model::BucketModel, Y, p)
 
-a helper function which returns the surface height for the bucket
-model, which is zero currently.
+a helper function which returns the surface roughness model for the bucket
+model.
 """
-function ClimaLand.surface_height(model::BucketModel{FT}, Y, p) where {FT}
-    return FT(0)
+function ClimaLand.surface_roughness_model(
+    model::BucketModel{FT},
+    Y,
+    p,
+) where {FT}
+    return SurfaceFluxes.ConstantRoughnessParams{FT}(
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+    )
 end
-
 """
-    ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
+    ClimaLand.get_update_surface_humidity_function(model::BucketModel, Y, p)
 
-a helper function which computes and returns the surface evaporative scaling
- factor for the bucket model.
+a helper function which modifies q_sfc given the evaporative scaling factor β
+and the air humidity.
 """
-function ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
-    beta =
-        beta_factor.(
+function ClimaLand.get_update_surface_humidity_function(
+    model::BucketModel,
+    Y,
+    p,
+)
+    β = @. lazy(
+        beta_factor(
             Y.bucket.W,
             Y.bucket.σS,
             model.parameters.f_bucket * model.parameters.W_f,
             model.parameters.f_snow * model.parameters.σS_c,
             model.parameters.p,
-        )
-    return beta
+        ),
+    )
+
+    function update_q_vap_sfc_at_a_point(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        T_sfc,
+        u_star,
+        z_0m,
+        z_0b,
+        β_val,
+    )
+        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q = β_val * inputs.q_vap_sfc_guess + (1 - β_val) * q_vap_int # q_vap_sfc_guess is already the saturated value
+        return q
+    end
+    # Closure
+    update_q_vap_sfc_field(β_val) =
+        (args...) -> update_q_vap_sfc_at_a_point(args..., β_val)
+    return @. lazy(update_q_vap_sfc_field(β))
 end
 
 """

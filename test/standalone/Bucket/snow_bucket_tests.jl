@@ -130,6 +130,7 @@ for FT in (Float32, Float64)
             ),
         )
         # Test that evaporation is zero
+        @show p.bucket.turbulent_fluxes.vapor_flux
         @test all(parent(p.bucket.turbulent_fluxes.vapor_flux) .== FT(0.0))
         # Test that q_sfc is computed as if there was zero snow
         @test p.bucket.q_sfc ==

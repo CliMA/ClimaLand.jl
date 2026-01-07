@@ -120,13 +120,13 @@ end
 a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_temperature(model::SnowModel, Y, p, t)
+function ClimaLand.surface_temperature(model::SnowModel, Y, p)
     return p.snow.T_sfc
 end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
@@ -134,7 +134,7 @@ water.
 
 This asumes the atmospheric surface state is stored in p.drivers.
 """
-function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
@@ -145,6 +145,22 @@ function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
     return p.snow.q_sfc
 end
 
+"""
+    ClimaLand.surface_roughness_model(model::SnowModel, Y, p)
+
+a helper function which returns the surface roughness model for the bucket
+model.
+"""
+function ClimaLand.surface_roughness_model(
+    model::SnowModel{FT},
+    Y,
+    p,
+) where {FT}
+    return SurfaceFluxes.ConstantRoughnessParams{FT}(
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+    )
+end
 
 """
     snow_surface_specific_humidity(T_sfc::FT, q_l::FT, atmos_ts, parameters) where {FT}

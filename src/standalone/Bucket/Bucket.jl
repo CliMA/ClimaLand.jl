@@ -1,6 +1,7 @@
 module Bucket
 import ClimaParams as CP
 using DocStringExtensions
+using LazyBroadcast: lazy
 using Thermodynamics
 using Dates
 using NCDatasets
@@ -18,6 +19,7 @@ using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
 using ClimaCore.Geometry: WVector
 using ClimaComms
+using SurfaceFluxes
 
 using ClimaLand
 import ..Parameters as LP
@@ -46,12 +48,13 @@ import ClimaLand:
     initialize,
     initialize_auxiliary,
     surface_temperature,
-    surface_air_density,
-    surface_evaporative_scaling,
     surface_albedo,
     surface_emissivity,
-    surface_height,
-    get_drivers
+    surface_roughness_model,
+    surface_specific_humidity,
+    get_update_surface_humidity_function,
+    get_drivers,
+    compute_ρ_sfc
 export BucketModelParameters,
     BucketModel,
     PrescribedBaregroundAlbedo,
@@ -382,7 +385,10 @@ prognostic_domain_names(::BucketModel) =
 
 auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    NamedTuple{
+        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
+        Tuple{FT, FT, FT, FT, FT,},
+    },
     FT,
     FT,
     FT,
@@ -484,9 +490,14 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
+        thermo_params =
+            LP.thermodynamic_parameters(model.parameters.earth_param_set)
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
-        p.bucket.ρ_sfc .=
-            surface_air_density(model.atmos, model, Y, p, t, p.bucket.T_sfc)
+        @. p.bucket.ρ_sfc = compute_ρ_sfc(
+            thermo_params,
+            p.drivers.thermal_state,
+            p.bucket.T_sfc,
+        )
 
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside

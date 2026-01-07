@@ -30,7 +30,6 @@ export AbstractAtmosphericDrivers,
     net_radiation!,
     turbulent_fluxes_at_a_point,
     vapor_pressure_deficit,
-    displacement_height,
     make_update_drivers,
     prescribed_forcing_era5,
     prescribed_perturbed_temperature_era5,
@@ -373,9 +372,6 @@ Positive fluxes indicate flow from the ground to the atmosphere.
 
 It solves for these given atmospheric conditions,
 model parameters, and the surface conditions.
-
-To maintain backwards capability with ClimaLandv1.0.1, we also provide
-a method which does nothing when called with a CoupledAtmosphere.
 """
 function turbulent_fluxes!(
     dest,
@@ -385,37 +381,36 @@ function turbulent_fluxes!(
     p,
     t,
 )
-    @static if pkgversion(ClimaLand) < v"1.1" &&
-               typeof(atmos) <: CoupledAtmosphere
-        return nothing # Coupler has already computed the fluxes and updated `dest` in place
-    end
 
-    T_sfc = surface_temperature(model, Y, p, t)
-    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
-    β_sfc = surface_evaporative_scaling(model, Y, p)
+    T_sfc = surface_temperature(model, Y, p) # guess
+    q_sfc = surface_specific_humidity(model, Y, p) # guess
+    roughness_model = surface_roughness_model(model, Y, p)
+    update_T_sfc = get_update_surface_temperature_function(model, Y, p)
+    update_q_sfc = get_update_surface_humidity_function(model, Y, p)
     h_sfc = surface_height(model, Y, p)
-    r_sfc = surface_resistance(model, Y, p, t)
-    d_sfc = displacement_height(model, Y, p)
-
+    displ = surface_displacement_height(model, Y, p)
+    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model,Y,p)
+    update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
+    earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
     dest .=
         turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
-            T_sfc,
-            q_sfc,
-            ρ_sfc,
-            β_sfc,
-            h_sfc,
-            r_sfc,
-            d_sfc,
-            p.drivers.thermal_state,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q, # q_tot
             p.drivers.u,
             atmos.h,
-            atmos.gustiness,
-            model.parameters.z_0m,
-            model.parameters.z_0b,
-            model.parameters.earth_param_set,
+            T_sfc,
+            q_sfc,
+            roughness_model,
+            update_T_sfc,
+            update_q_sfc,
+            h_sfc,
+            displ,
+            update_∂T_sfc∂T,
+            update_∂q_sfc∂T,
+            earth_param_set,
         )
     return nothing
 end
@@ -427,44 +422,36 @@ as we compute the turbulent fluxes pointwise. This is needed because space for t
 extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
 The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
 
-The `return_extra_fluxes` argument indicates whether to return the following:
-- momentum fluxes (`ρτxz`, `ρτyz`)
-- buoyancy flux (`buoy_flux`)
+The `return_extra_fluxes` argument indicates whether to return momentum fluxes (`ρτxz`, `ρτyz`).
 """
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (LH, SH, Ẽ, r_ae, _, _, _) = compute_turbulent_fluxes_at_a_point(args...)
-    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T,_, _) =
+        compute_turbulent_fluxes_at_a_point(args...)
+    return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T)
 end
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (LH, SH, Ẽ, r_ae, ρτxz, ρτyz, buoy_flux) =
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux = Ẽ,
-        r_ae = r_ae,
-        ρτxz = ρτxz,
-        ρτyz = ρτyz,
-        buoy_flux = buoy_flux,
-    )
+    return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz)
 end
 
 """
-    compute_turbulent_fluxes_at_a_point(T_sfc::FT,
-                                q_sfc::FT,
-                                ρ_sfc::FT,
-                                β_sfc::FT,
-                                h_sfc::FT,
-                                r_sfc::FT,
-                                d_sfc::FT,
-                                ts_in,
-                                u::FT,
-                                h::FT,
-                                gustiness::FT,
-                                z_0m::FT,
-                                z_0b::FT,
-                                earth_param_set::EP;
-                               ) where {FT <: AbstractFloat, P}
+    compute_turbulent_fluxes_at_a_point(
+        P_atmos::FT,
+        T_atmos::FT,
+        q_tot_atmos::FT,
+        u_atmos,
+        h_atmos::FT,
+        T_sfc_guess::FT,
+        q_vap_sfc_guess::FT,
+        roughness_model,
+        update_T_sfc,
+        update_q_vap_sfc,
+        h_sfc::FT,
+        displ::FT,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature (T_sfc), specific humidity (q_sfc),
@@ -475,100 +462,101 @@ Computes turbulent surface fluxes at a point on a surface given
     in more complex land models), and the topographical height of the surface (h_sfc)
 (3) the roughness lengths `z_0m, z_0b`, and the Earth parameter set for the model
     `earth_params`.
-(4) the prescribed atmospheric state, `ts_in`, u, h the height
+(4) the prescribed atmospheric conditions, `T_atmos`, `q_atmos`, u, h the height
     at which these measurements are made, and the gustiness parameter (m/s).
 (5) the displacement height for the model d_sfc
 
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
-
-Please note that this function, if r_sfc is set to zero, makes no alteration
-to the output of the `SurfaceFluxes.surface_conditions` call, aside
-from unit conversion of evaporation from a mass to a liquid water volume
-flux. When r_sfc is nonzero, an additional resistance is applied in series
-to the vapor flux (and hence also the latent heat flux).
 """
 function compute_turbulent_fluxes_at_a_point(
-    T_sfc::FT,
-    q_sfc::FT,
-    ρ_sfc::FT,
-    β_sfc::FT,
+    P_atmos::FT,
+    T_atmos::FT,
+    q_tot_atmos::FT,
+    u_atmos,
+    h_atmos::FT,
+    T_sfc_guess::FT,
+    q_vap_sfc_guess::FT,
+    roughness_model::SurfaceFluxes.AbstractRoughnessParams,
+    update_T_sfc,
+    update_q_vap_sfc,
     h_sfc::FT,
-    r_sfc::FT,
-    d_sfc::FT,
-    ts_in,
-    u::Union{FT, SVector{2, FT}},
-    h::FT,
-    gustiness::FT,
-    z_0m::FT,
-    z_0b::FT,
-    earth_param_set::EP,
-) where {FT <: AbstractFloat, EP}
+    displ::FT,
+    update_∂T_sfc∂T,
+    update_∂q_sfc∂T,
+    earth_param_set,
+) where {FT}
+
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
-
-    # SurfaceFluxes.jl expects a relative difference between where u = 0
-    # and the atmosphere height. Here, we assume h and h_sfc are measured
-    # relative to a common reference. Then d_sfc + h_sfc + z_0m is the apparent
-    # source of momentum, and
-    # Δh ≈ h - d_sfc - h_sfc is the relative height difference between the
-    # apparent source of momentum and the atmosphere height.
-
-    # In this we have neglected z_0m and z_0b (i.e. assumed they are small
-    # compared to Δh).
-    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
-    if u isa FT
-        u = SVector{2, FT}(u, 0)
-    end
-    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
-    # The following line wont work on GPU
-    #    h - d_sfc - h_sfc < 0 &&
-    #        @error("Surface height is larger than atmos height in surface fluxes")
-    # State containers
-    states = SurfaceFluxes.ValuesOnly(
-        state_in,
-        state_sfc,
-        z_0m,
-        z_0b;
-        beta = β_sfc,
-        gustiness = gustiness,
-    )
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    scheme = SurfaceFluxes.PointValueScheme()
-    conditions =
-        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
-    _LH_v0::FT = LP.LH_v0(earth_param_set)
-    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    _grav = LP.grav(earth_param_set) # used to compute surface potential
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
 
-    # aerodynamic resistance
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
-
-    # latent heat flux
-    E0::FT =
-        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch) # mass flux at potential evaporation rate
-    E = E0 * r_ae / (r_sfc + r_ae) # mass flux accounting for additional surface resistance
-    LH = _LH_v0 * E # Latent heat flux
-
-    # sensible heat flux
-    SH = SurfaceFluxes.sensible_heat_flux(
-        surface_flux_params,
-        conditions.Ch,
-        states,
-        scheme,
+    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    positional_default_args = (
+        scheme = SurfaceFluxes.PointValueScheme(),
+        solver_opts = nothing,
+        flux_specs = nothing,
     )
-
-    # vapor flux in volume of liquid water with density 1000kg/m^3
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u_atmos isa FT
+        u = (u_atmos, FT(0))
+    end
+    phase_partition_atmos = Thermodynamics.PhasePartition_equil_given_p(
+        thermo_params,
+        T_atmos,
+        P_atmos,
+        q_tot_atmos,
+        Thermodynamics.PhaseEquil,
+    )
+    ρ_atmos = Thermodynamics.air_density(
+        thermo_params,
+        T_atmos,
+        P_atmos,
+        phase_partition_atmos,
+    )
+    output = SurfaceFluxes.surface_fluxes(
+        surface_flux_params,
+        T_atmos,
+        q_tot_atmos,
+        FT(0),#phase_partition_atmos.liq, 
+        FT(0),#,phase_partition_atmos.ice,
+        ρ_atmos,
+        T_sfc_guess,
+        q_vap_sfc_guess,
+        _grav * h_sfc,
+        h_atmos - h_sfc,
+        displ,
+        u,
+        (FT(0), FT(0)), # u_sfc
+        nothing, # roughness inputs
+        config,
+        positional_default_args...,
+        update_T_sfc,
+        update_q_vap_sfc,
+    )
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    _LH_v0 = LP.LH_v0(earth_param_set)
+    E = output.evaporation
+    # vapor flux in volume of liquid water
     Ẽ = E / _ρ_liq
 
+    # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
+    g_h = output.Ch * max(sqrt(u[1]^2 + u[2]^2), gustiness.value)
+    u_star = output.ustar
+    ρ_sfc = ρ_atmos
+    ∂lhf∂T = ρ_sfc * g_h * _LH_v0 * update_∂q_sfc∂T(u_star,g_h, T_sfc_guess, P_atmos, earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star,g_h, earth_param_set)
     return (
-        LH,
-        SH,
+        output.lhf,
+        output.shf,
         Ẽ,
-        r_ae,
-        conditions.ρτxz,
-        conditions.ρτyz,
-        conditions.buoy_flux,
+        ∂lhf∂T,
+        ∂shf∂T,
+        output.ρτxz,
+        output.ρτyz,
     )
 end
 
@@ -653,7 +641,7 @@ function net_radiation!(
     SW_d = p.drivers.SW_d
     earth_param_set = model.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
-    T_sfc = surface_temperature(model, Y, p, t)
+    T_sfc = surface_temperature(model, Y, p)
     α_sfc = surface_albedo(model, Y, p)
     ϵ_sfc = surface_emissivity(model, Y, p)
     # Recall that the user passed the LW and SW downwelling radiation,
@@ -691,7 +679,7 @@ function ClimaLand.net_radiation!(
 end
 
 """
-    surface_temperature(model::AbstractModel, Y, p, t)
+    surface_temperature(model::AbstractModel, Y, p)
 
 A helper function which returns the surface temperature for a given
 model, needed because different models compute and store surface temperature in
@@ -701,56 +689,10 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_temperature(model::AbstractModel, Y, p, t) end
+function surface_temperature(model::AbstractModel, Y, p) end
 
 """
-    surface_resistance(model::AbstractModel, Y, p, t)
-
-A helper function which returns the surface resistance for a given
-model, needed because different models compute and store surface resistance in
-different ways and places.
-
-Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
-
-The default is 0, which is no additional resistance aside from the usual
-aerodynamic resistance from MOST.
-"""
-function surface_resistance(model::AbstractModel{FT}, Y, p, t) where {FT}
-    return FT(0)
-end
-
-
-"""
-    surface_air_density(
-                        atmos::AbstractAtmosphericDrivers,
-                        model::AbstractModel,
-                        Y,
-                        p,
-                        t,
-                        T_sfc,
-                        )
-
-A helper function which returns the surface air density.
-
-This assumes the atmospheric thermal state is stored in p.drivers.
-"""
-function surface_air_density(
-    atmos::AbstractAtmosphericDrivers,
-    model::AbstractModel,
-    Y,
-    p,
-    t,
-    T_sfc,
-)
-    eps = get_earth_param_set(model)
-    thermo_params = LP.thermodynamic_parameters(eps)
-    return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
-end
-
-"""
-    surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)
+    surface_specific_humidity(model::AbstractModel, Y, p)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
@@ -760,22 +702,59 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
+function surface_specific_humidity(model::AbstractModel, Y, p) end
 
+function surface_roughness_model(model::AbstractModel, Y, p) end
+function surface_displacement_height(model::AbstractModel, Y, p)
+    FT = FTfromY(Y)
+    return FT(0)
+end
+function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
+function get_update_surface_humidity_function(model::AbstractModel, Y, p) end
+function get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
+    function update_∂T_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        earth_param_set,
+    )
+        FT = eltype(earth_param_set)
+        return FT(1)
+    end
+    return update_∂T_sfc∂T_at_a_point
+end
+function get_∂q_sfc∂T_function(
+    model::AbstractModel,
+    Y,
+    p,
+)
+
+    function update_∂q_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        T_sfc,
+        P_sfc,
+        earth_param_set,
+    )
+        FT = eltype(earth_param_set)
+        _T_freeze = LP.T_freeze(earth_param_set)
+        return ClimaLand.partial_q_sat_partial_T(P_sfc, T_sfc - _T_freeze)
+    end
+    return update_∂q_sfc∂T_at_a_point
+end
 """
-    surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
+    surface_height(model::AbstractModel, Y, p)
 
-A helper function which returns the surface evaporative scaling factor
- for a given model, needed because different models compute and store β_sfc in
-different ways and places. Currently, this factor is 1 for all models
-besides the bucket model, so we have chosen a default of 1.
+A helper function which returns the surface height (canopy height+elevation)
+ for a given model, needed because different models compute and store h_sfc in
+different ways and places.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
-    return FT(1)
+function surface_height(model::AbstractModel, Y, p)
+    FT = FTfromY(Y)
+    return FT(0)
 end
 
 
@@ -804,34 +783,6 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_emissivity(model::AbstractModel, Y, p) end
-
-
-"""
-    surface_height(model::AbstractModel, Y, p)
-
-A helper function which returns the surface height (canopy height+elevation)
- for a given model, needed because different models compute and store h_sfc in
-different ways and places.
-
-Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
-"""
-function surface_height(model::AbstractModel, Y, p) end
-
-"""
-    displacement_height(model::AbstractModel, Y, p)
-
-A helper function which returns the displacement height
- for a given model; the default is zero.
-
-Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
-"""
-function displacement_height(model::AbstractModel{FT}, Y, p) where {FT}
-    return FT(0)
-end
 
 """
     vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)

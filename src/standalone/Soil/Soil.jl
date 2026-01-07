@@ -91,8 +91,6 @@ import ClimaLand:
     surface_temperature,
     surface_albedo,
     surface_emissivity,
-    surface_height,
-    surface_resistance,
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,

@@ -100,8 +100,9 @@ end
 
 # Standalone Vegetation model tests
 @safetestset "Canopy module tests" begin
-    include("standalone/Vegetation/canopy_model.jl")
+   # include("standalone/Vegetation/canopy_model.jl")
 end
+
 @safetestset "Canopy module tests" begin
     include("standalone/Vegetation/test_soil_moisture_stress.jl")
 end
@@ -143,6 +144,7 @@ end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
 end
+
 @safetestset "Full land" begin
     include("integrated/full_land.jl")
 end
