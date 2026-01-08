@@ -565,9 +565,9 @@ description = "Unit cost of constructing and maintaining leaves (mol m⁻² yr�
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 1.1
+value = 0.771
 type = "float"
-description = "Dimensionless parameter representing departure from square-wave LAI dynamics"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]

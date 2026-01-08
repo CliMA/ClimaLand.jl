@@ -98,7 +98,7 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 
 ## Model Assumptions
 
-1. **No soil moisture stress on potential GPP**: The potential GPP ($A_0$) assumes no soil moisture limitation (β = 1). The actual GPP includes soil moisture stress.
+1. **Water limitation through soil moisture stress**: Both daily and annual potential GPP ($A_0$) include soil moisture stress (β). This allows vegetation structure (LAI$_{max}$, via $A_{0,annual}$) to adapt to water availability on annual timescales, while daily LAI dynamics respond to shorter-term moisture variability. This enables response to climate change and flushing events (with ~1 year lag for structural adaptation).
 2. **Beer-Lambert light extinction**: Light absorption follows an exponential decay through the canopy.
 3. **Optimal stomatal behavior**: The model assumes plants optimize their stomatal conductance following the P-model framework, giving the $\chi$ parameter.
 4. **Growing season inputs are provided, not diagnosed**: The model takes growing season length (GSL) and growing-season VPD as inputs; it does not currently diagnose season onset/offset from temperature. Defaults assume a 240-day GSL.
@@ -119,8 +119,8 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 
 | Driver | Symbol | Unit | Description |
 | :--- | :---: | :---: | :--- |
-| Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1 and β = 1 |
-| Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of daily $A_0$ |
+| Daily potential GPP | $A_{0,daily}$ | mol CO₂ m⁻² day⁻¹ | GPP assuming fAPAR = 1 with actual β |
+| Annual potential GPP | $A_{0,annual}$ | mol CO₂ m⁻² yr⁻¹ | Yearly integral of daily $A_0$ with actual β |
 | Annual precipitation | $P_{annual}$ | mol H₂O m⁻² yr⁻¹ | Total yearly precipitation (1 mm ≈ 55.5 mol m⁻²) |
 | Growing season VPD | $D_{growing}$ | Pa | Mean VPD during growing season (T > 0°C) |
 | Growing season length | GSL | days | Length of continuous period with T > 0°C; default 240 days |
@@ -136,15 +136,17 @@ where $\alpha$ is a smoothing factor (dimensionless, 0-1). The effective memory 
 
 ### Potential GPP Calculation
 
-The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1 and β = 1:
+The implementation computes potential GPP ($A_0$) directly from the P-model with fAPAR = 1 and actual β (soil moisture stress):
 
 ```math
-A_0 = \text{PPFD} \times \text{LUE}_{potential}
+A_0 = \text{PPFD} \times \text{LUE}
 ```
 
 where:
 - PPFD is the total photosynthetic photon flux density (mol photons m⁻² s⁻¹), computed from downwelling PAR
-- LUE$_{potential}$ is the light use efficiency with β = 1 (no soil moisture stress)
+- LUE is the light use efficiency with actual β (soil moisture stress)
+
+This differs from Zhou et al. (2025) who use β = 1 for potential GPP. Our implementation uses actual β to allow vegetation structure (LAI$_{max}$) to respond to water availability on annual timescales, enabling response to climate change and interannual variability (e.g., flushing events with ~1 year lag).
 
 The P-model intermediate values (ϕ₀, Γ*, η*, K$_{mm}$, ξ, c$_i$, m$_j$, m') are computed using the same formulations as in `pmodel.jl`.
 
@@ -159,10 +161,10 @@ This approach ensures proper integration of A₀ over time rather than relying o
 
 The model maintains the following state in `p.canopy.lai_model`:
 - `LAI`: Current leaf area index (m² m⁻²)
-- `A0_daily`: Daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹)
-- `A0_annual`: Annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹)
-- `A0_daily_acc`: Accumulator for current day's potential GPP
-- `A0_annual_acc`: Accumulator for current year's potential GPP
+- `A0_daily`: Daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹), with actual β
+- `A0_annual`: Annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹), with actual β
+- `A0_daily_acc`: Accumulator for current day's potential GPP (with actual β)
+- `A0_annual_acc`: Accumulator for current year's potential GPP (with actual β)
 
 ### Unit Conversions
 
