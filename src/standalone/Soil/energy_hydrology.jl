@@ -1194,7 +1194,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
             ρ_sfc,
             Thermodynamics.Ice(),
         )
-        if q_air < q_sat_ice
+        if q_air < q_sfc
             β *= (θ_i_sfc / ν_sfc)^4
         end
     end
