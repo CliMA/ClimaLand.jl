@@ -193,3 +193,17 @@ steps:
         - slurm_time: "2:00:00"
       concurrency: 1
       concurrency_group: "ilamb-run"
+
+    - wait
+
+    - label: "Deploy ILAMB leaderboard to gh-pages"
+      command:
+        - mkdir -p ILAMB
+        - tar xzf $$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz -C ILAMB --strip-components=1
+        - git clone --depth 1 --branch gh-pages https://github.com/CliMA/ClimaLand.jl.git gh-pages-repo
+        - rm -rf gh-pages-repo/dev/ILAMB
+        - mkdir -p gh-pages-repo/dev
+        - cp -r ILAMB gh-pages-repo/dev/
+        - cd gh-pages-repo && git add dev/ILAMB && git commit -m "Update ILAMB leaderboard from build $BUILDKITE_BUILD_NUMBER" && git push origin gh-pages
+      env:
+        ILAMB_ROOT: "/net/sampo/data1/ilamb"
