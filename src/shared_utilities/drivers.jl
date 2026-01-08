@@ -384,7 +384,7 @@ function turbulent_fluxes!(
 
     T_sfc = surface_temperature(model, Y, p) # guess
     q_sfc = surface_specific_humidity(model, Y, p) # guess
-    roughness_inputs = surface_roughness_inputs(model, Y, p)
+    roughness_model = surface_roughness_model(model, Y, p)
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
     h_sfc = surface_height(model, Y, p)
@@ -403,7 +403,7 @@ function turbulent_fluxes!(
             atmos.h,
             T_sfc,
             q_sfc,
-            roughness_inputs,
+            roughness_model,
             update_T_sfc,
             update_q_sfc,
             h_sfc,
@@ -444,7 +444,7 @@ end
         h_atmos::FT,
         T_sfc_guess::FT,
         q_vap_sfc_guess::FT,
-        roughness_inputs,
+        roughness_model,
         update_T_sfc,
         update_q_vap_sfc,
         h_sfc::FT,
@@ -477,7 +477,7 @@ function compute_turbulent_fluxes_at_a_point(
     h_atmos::FT,
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    roughness_inputs,
+    roughness_model::SurfaceFluxes.AbstractRoughnessParams,
     update_T_sfc,
     update_q_vap_sfc,
     h_sfc::FT,
@@ -490,10 +490,10 @@ function compute_turbulent_fluxes_at_a_point(
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set) # used to compute surface potential
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+
+    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     positional_default_args = (
-        conf = SurfaceFluxes.default_surface_flux_config(
-            eltype(surface_flux_params),
-        ),
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
         flux_specs = nothing,
@@ -529,7 +529,8 @@ function compute_turbulent_fluxes_at_a_point(
         displ,
         u,
         (FT(0), FT(0)), # u_sfc
-        roughness_inputs,
+        nothing, # roughness inputs
+        config,
         positional_default_args...,
         update_T_sfc,
         update_q_vap_sfc,
@@ -542,7 +543,7 @@ function compute_turbulent_fluxes_at_a_point(
     Ẽ = E / _ρ_liq
 
     # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
-    g_h = output.Ch * sqrt(u[1]^2 + u[2]^2)
+    g_h = output.Ch * max(sqrt(u[1]^2 + u[2]^2), gustiness.value)
     u_star = output.ustar
     ρ_sfc = ρ_atmos
     ∂lhf∂T = ρ_sfc * g_h * _LH_v0 * update_∂q_sfc∂T(u_star,g_h, T_sfc_guess, P_atmos, earth_param_set)
@@ -703,7 +704,7 @@ the functions in this file.
 """
 function surface_specific_humidity(model::AbstractModel, Y, p) end
 
-function surface_roughness_inputs(model::AbstractModel, Y, p) end
+function surface_roughness_model(model::AbstractModel, Y, p) end
 function surface_displacement_height(model::AbstractModel, Y, p)
     FT = FTfromY(Y)
     return FT(0)

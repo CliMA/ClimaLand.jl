@@ -216,7 +216,7 @@ function ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
 end
 
 """
-    ClimaLand.surface_roughness_inputs(model::CanopyModel, Y, p)
+    ClimaLand.surface_roughness_model(model::CanopyModel, Y, p)
 
 a helper function which returns the surface roughness inputs for the canopy
 model.
@@ -230,7 +230,7 @@ function ClimaLand.surface_displacement_height(
     return sfp.displ
 end
 
-function ClimaLand.surface_roughness_inputs(
+function ClimaLand.surface_roughness_model(
     model::CanopyModel{FT},
     Y,
     p,
@@ -271,9 +271,8 @@ function ClimaLand.get_update_surface_humidity_function(
         r_stomata_canopy,
     )
         FT = eltype(param_set)
-        u_star_safe = max(u_star, FT(1e-2))
         r_land =
-            1 / (leaf_Cd * u_star_safe) / max(LAI, eps(FT)) + r_stomata_canopy
+            1 / max(leaf_Cd * max(u_star, FT(1))*LAI, eps(FT)) + r_stomata_canopy
 
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
@@ -327,6 +326,7 @@ function ClimaLand.get_update_surface_temperature_function(
         leaf_Cd,
         AI,
     )
+        FT = eltype(param_set)
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
@@ -340,8 +340,8 @@ function ClimaLand.get_update_surface_temperature_function(
             z_0b,
             scheme,
         )
-        #u = max(u_star, 1)
-        g_land = leaf_Cd * u_star * AI
+        ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI
         ΔΦ = Φ_int - Φ_sfc
         cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
         T_sfc =
@@ -377,7 +377,7 @@ function ClimaLand.get_∂q_sfc∂T_function(
     )
         FT = eltype(earth_param_set)
         _T_freeze = LP.T_freeze(earth_param_set)
-        u_star_safe = max(u_star, FT(1e-2))
+        u_star_safe = max(u_star, FT(1))
         r_land =
             1 / (leaf_Cd * u_star_safe) / max(LAI, eps(FT)) + r_stomata_canopy
         ∂q_sfc∂q = 1 / (1 + g_h * r_land)
@@ -407,7 +407,8 @@ function ClimaLand.get_∂T_sfc∂T_function(
         leaf_Cd,
         AI,
     )
-        g_land = leaf_Cd * u_star * AI
+        FT = eltype(earth_param_set)
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI
         ∂T_sfc∂T =
             (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T

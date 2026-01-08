@@ -50,7 +50,7 @@ import ClimaLand:
     surface_temperature,
     surface_albedo,
     surface_emissivity,
-    surface_roughness_inputs,
+    surface_roughness_model,
     surface_specific_humidity,
     get_update_surface_humidity_function,
     get_drivers,

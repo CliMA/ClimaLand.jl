@@ -39,12 +39,12 @@ function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
 end
 
 """
-    ClimaLand.surface_roughness_inputs(model::BucketModel, Y, p)
+    ClimaLand.surface_roughness_model(model::BucketModel, Y, p)
 
-a helper function which returns the surface roughness inputs for the bucket
+a helper function which returns the surface roughness model for the bucket
 model.
 """
-function ClimaLand.surface_roughness_inputs(
+function ClimaLand.surface_roughness_model(
     model::BucketModel{FT},
     Y,
     p,

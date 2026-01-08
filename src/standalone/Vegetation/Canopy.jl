@@ -39,7 +39,7 @@ import ClimaLand:
     return_momentum_fluxes,
     surface_temperature,
     surface_specific_humidity,
-    surface_roughness_inputs,
+    surface_roughness_model,
     get_update_surface_temperature_function,
     get_update_surface_humidity_function,
     surface_displacement_height,

@@ -958,7 +958,7 @@ model.
 #end
 
 
-#function ClimaLand.surface_roughness_inputs(model::EnergyHydrology{FT}, Y, p) where {FT}
+#function ClimaLand.surface_roughness_model(model::EnergyHydrology{FT}, Y, p) where {FT}
 #    sfp = model.boundary_conditions.turbulent_flux_parameterization
 #    return @. lazy(SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b))
 #end
@@ -1135,7 +1135,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
     γT_ref::FT,
     earth_param_set::P,
 ) where {FT <: AbstractFloat, P}
-    roughness_inputs = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
     # Limit these to physical values
     # In particular, the linear interpolation to get θ_l_sfc
     # may not respect the residual fraction limit
@@ -1234,7 +1234,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         d_sfc,
         u_air,
         (FT(0), FT(0)),
-        roughness_inputs,
+        roughness_model,
         positional_default_args...,
     )
 

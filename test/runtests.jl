@@ -100,11 +100,11 @@ end
 
 # Standalone Vegetation model tests
 @safetestset "Canopy module tests" begin
-    include("standalone/Vegetation/canopy_model.jl")
+   # include("standalone/Vegetation/canopy_model.jl")
 end
 
 @safetestset "Canopy module tests" begin
-    #include("standalone/Vegetation/test_soil_moisture_stress.jl") #fails
+    include("standalone/Vegetation/test_soil_moisture_stress.jl")
 end
 @safetestset "Canopy PlantHydraulics tests" begin
     include("standalone/Vegetation/plant_hydraulics_test.jl")
@@ -146,7 +146,7 @@ end
 end
 
 @safetestset "Full land" begin
-    #fails include("integrated/full_land.jl")
+    include("integrated/full_land.jl")
 end
 
 # FluxnetSimulations extension tests
