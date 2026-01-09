@@ -104,6 +104,8 @@ function snow_boundary_fluxes!(
 ) where {FT}
     bc = model.boundary_conditions
 
+    update_surf_temp!(model, Y, p, t)
+
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.snow.R_n, bc.radiation, model, Y, p, t)
 
@@ -130,6 +132,7 @@ function snow_boundary_fluxes!(
     @. p.snow.total_energy_flux =
         e_flux_falling_snow +
         (
+            p.snow.surf_residual_flux +
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff + e_flux_falling_rain
