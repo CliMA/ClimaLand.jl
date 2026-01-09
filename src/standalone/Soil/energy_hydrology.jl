@@ -1212,14 +1212,13 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # In this we have neglected z_0m and z_0b (i.e. assumed they are small
     # compared to Δh).
     positional_default_args = (
-        conf = SurfaceFluxes.default_surface_flux_config(
-            eltype(surface_flux_params),
-        ),
         scheme = SurfaceFluxes.PointValueScheme(),
         solver_opts = nothing,
         flux_specs = nothing,
-        update_T_sfc = nothing,
     )
+        gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+
+    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_air,
@@ -1234,7 +1233,8 @@ function soil_compute_turbulent_fluxes_at_a_point(
         d_sfc,
         u_air,
         (FT(0), FT(0)),
-        roughness_model,
+        nothing,
+        config,
         positional_default_args...,
     )
 

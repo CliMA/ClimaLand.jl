@@ -68,7 +68,6 @@ get_soil(m::EnergyHydrology) = m
 ### BucketModel ###
 
 # variables stored in p (diagnostics variables stored in the cache)
-@diagnostic_compute "aerodynamic_resistance" BucketModel p.bucket.turbulent_fluxes.r_ae
 @diagnostic_compute "sw_albedo" BucketModel p.bucket.α_sfc
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n

@@ -528,7 +528,6 @@ function get_possible_diagnostics(model::BucketModel)
         "tsfc",
         "qsfc",
         "lhf",
-        "rae",
         "shf",
         "swu",
         "lwu",

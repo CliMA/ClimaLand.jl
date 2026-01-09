@@ -255,7 +255,6 @@ function ClimaLand.get_update_surface_humidity_function(
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
-    q_canopy = canopy_temperature(model.energy, model, Y, p)
     function update_q_vap_sfc_at_a_point(
         ζ,
         param_set,
