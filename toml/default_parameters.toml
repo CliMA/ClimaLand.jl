@@ -549,8 +549,8 @@ description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
 
 # Optimal LAI Model parameters (Zhou et al. 2025)
-# Water limitation is handled through β (soil moisture stress) in daily GPP,
-# not through LAI_max, allowing response to precipitation events.
+# Water limitation enters LAI_max through the f₀×P/A₀ term (Equation 11),
+# where P is annual precipitation and A₀ is annual potential GPP with β=1.
 
 ["optimal_lai_k"]
 value = 0.5
@@ -574,4 +574,10 @@ tag = "OptimalLAIModel"
 value = 0.067
 type = "float"
 description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0"]
+value = 0.65
+type = "float"
+description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f₀ = 0.65 at the energy-water limitation transition. Water-limited fAPAR = f₀ × P / A₀."
 tag = "OptimalLAIModel"
