@@ -5,6 +5,7 @@ import ...Parameters as LP
 using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
+using RootSolvers
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -577,6 +578,7 @@ include
 - the net radiation (`R_n, J/m^2/s)`,
 - the energy flux in liquid water runoff (`energy_runoff`, J/m^2/s),
 - the water volume in runoff (`water_runoff`, m/s),
+- the residual surface energy flux ("surf_residual_flux", J/m^2/s), if the surface balance implies a surface temperature above freezing,
 and the total energy and water fluxes applied to the snowpack.
 
 Since the snow can melt completely in one timestep, we clip the water and energy fluxes
@@ -597,6 +599,7 @@ auxiliary_vars(snow::SnowModel) = (
     :phase_change_flux,
     :energy_runoff,
     :water_runoff,
+    :surf_residual_flux,
     :liquid_water_flux,
     :total_energy_flux,
     :total_water_flux,
@@ -625,6 +628,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     boundary_var_types(
         snow,
         snow.boundary_conditions,
@@ -633,6 +637,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -688,8 +693,6 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.T =
             snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
-
-        @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
 
         @. p.snow.water_runoff = compute_water_runoff(
             Y.snow.S,

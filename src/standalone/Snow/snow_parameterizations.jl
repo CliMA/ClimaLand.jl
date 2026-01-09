@@ -177,14 +177,6 @@ function snow_surface_specific_humidity(
     return qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end
 
-"""
-    snow_surface_temperature(T::FT) where {FT}
-
-Returns the snow surface temperature assuming it is the same
-as the bulk temperature T.
-"""
-snow_surface_temperature(T::FT) where {FT} = T
-
 
 """
     specific_heat_capacity(q_l::FT,
@@ -234,6 +226,38 @@ function snow_thermal_conductivity(
     return _κ_air +
            (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
            (κ_ice - _κ_air)
+end
+
+"""
+    diurnal_damping_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+
+Provides the characteristic depth for diurnal variations in temperature in snow, used in the
+calculation of the surface tempearture. Formula is replicated from the Utah Energy Balance (UEB) model.
+"""
+function diurnal_damping_depth(
+    κ::FT,
+    ρ::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
+    _DT_ = FT(86400) #how do we want to handle this? do we want to use CP to add toml_dict["day"] to SnowParameters when we already have Δt?
+    return sqrt(κ * _DT_ / (pi * _cp_i * ρ))
+end
+
+"""
+    surface_temp_scaling_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+
+Provides the scaling length scale for calculation of the surface tempearture which is stable
+in the small-snowpack limit.
+"""
+function surface_temp_scaling_length(
+    κ::FT,
+    ρ::FT,
+    z::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    d0 = diurnal_damping_depth(κ, ρ, parameters)
+    return d0*FT(1 - exp(-z/d0))
 end
 
 """
@@ -522,4 +546,187 @@ function update_density_prog!(
     p,
 )
     return nothing
+end
+
+#### NEED TO ADD ALL THE DESCRIPTIONS!
+
+function flux_balance(
+    T_sfc_guess::FT,
+    T_bulk::FT,
+    z::FT,
+    κ::FT,
+    ρ::FT,
+    α_snow::FT,
+    ϵ_snow::FT,
+    SW_d::FT,
+    LW_d::FT,
+    q_l::FT,
+    β_sfc::FT,
+    h_sfc::FT,
+    r_sfc::FT,
+    d_sfc::FT,
+    thermal_state,
+    u::FT,
+    atmos_h::FT,
+    atmos_gustiness::FT,
+    parameters::SnowParameters{FT},
+    return_as_flux::Bool,
+)::FT where {FT}
+
+    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
+    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state, T_sfc_guess)
+    q_sfc = snow_surface_specific_humidity(T_sfc_guess, q_l, thermal_state, parameters)
+
+    latent_flux, sensible_flux, _, _, _, _, _ = ClimaLand.compute_turbulent_fluxes_at_a_point(  
+        T_sfc_guess,
+        q_sfc, #while sent from outside in drivers.jl, computed internally here because of T_sfc changing
+        ρ_sfc, #while sent from outside in drivers.jl, computed internally here because of T_sfc changing
+        β_sfc, #these are sent from outside, is it possible they could be T_sfc dependent someday? no SnowModel specific version implemented
+        h_sfc, #these are sent from outside, no SnowModel specific version implemented
+        r_sfc, #these are sent from outside, is it possible they could be T_sfc dependent someday? no SnowModel specific version implemented
+        d_sfc, #these are sent from outside no SnowModel specific version implemented
+        thermal_state,
+        u,
+        atmos_h,
+        atmos_gustiness,
+        parameters.z_0m,
+        parameters.z_0b,
+        parameters.earth_param_set,
+    )
+
+    _σ = LP.Stefan(parameters.earth_param_set)
+    sw_net = -(1 - α_snow)*SW_d #match sign convention in drivers.jl
+    lw_net = -ϵ_snow*(LW_d - _σ*T_sfc_guess^4) #match sign convention in drivers.jl
+
+    d = surface_temp_scaling_length(κ, ρ, z, parameters)
+
+    if return_as_flux
+        #feeling iffy about this when it gets added to total_energy_flux (that's why I added negative sign), check on this 
+        return -FT((sw_net + lw_net + latent_flux + sensible_flux) - κ(T_sfc_guess - T_bulk)/max(d, eps(FT)))
+    else
+        #For numerical stability, the scaling length of conductive flux
+        #is multiplied on the LHS, instead of dividing the temperature difference:
+        return FT(d*(sw_net + lw_net + latent_flux + sensible_flux) - κ(T_sfc_guess - T_bulk)) #is this the right sign convention for the residual?
+    end
+end
+
+function solve_for_surface_temp_at_a_point(
+    T_bulk::FT,
+    z::FT,
+    κ::FT,
+    ρ::FT,
+    α_snow::FT,
+    ϵ_snow::FT,
+    SW_d::FT,
+    LW_d::FT,
+    q_l::FT,
+    β_sfc::FT,
+    h_sfc::FT,
+    r_sfc::FT,
+    d_sfc::FT,
+    thermal_state,
+    u::FT,
+    atmos_h::FT,
+    atmos_gustiness::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    if T_bulk == _T_freeze
+        #if the average is _T_freeze, impossible for surf temp to be anything else, save resources:
+        return _T_freeze
+    end
+
+    flux_balance_closure(T_sfc_guess::FT) = flux_balance(
+        T_sfc_guess,
+        T_bulk,
+        z,
+        κ,
+        ρ,
+        α_snow,
+        ϵ_snow,
+        SW_d,
+        LW_d,
+        q_l,
+        β_sfc,
+        h_sfc,
+        r_sfc,
+        d_sfc,
+        thermal_state,
+        u,
+        atmos_h,
+        atmos_gustiness,
+        parameters,
+        false
+    )
+
+    max_temp = 350 #how do we want to specify this one? could use freezing temp, but then we wont get useful convergence info for debugging purposes
+    method = BrentsMethod(FT(0), FT(max_temp))
+    sol = RootSolvers.find_zero(
+        x -> flux_balance_closure(T),
+        method,
+        CompactSolution())
+
+    if sol.converged
+        return min(sol.root, _T_freeze)
+    else
+        error("T_sfc root-solve not converged\n")
+    end
+end
+
+
+function update_surf_temp!(model, Y, p, t)
+    bc = model.boundary_conditions
+
+    #will these need to move further into solve_for_surf_temp at some point? Or are they safe here into perpetuity?
+    #does this allocate?
+    β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    r_sfc = surface_resistance(model, Y, p, t)
+    d_sfc = displacement_height(model, Y, p)
+
+    p.snow.T_sfc .= solve_for_surface_temp_at_a_point.(
+        p.snow.T,
+        p.snow.z_snow,
+        p.snow.κ,
+        p.snow.ρ,
+        p.snow.α_snow,
+        p.snow.ϵ_snow,
+        p.drivers.SW_d,
+        p.drivers.LW_d,
+        p.snow.q_l,
+        β_sfc,
+        h_sfc,
+        r_sfc,
+        d_sfc,
+        p.drivers.thermal_state,
+        p.drivers.u,
+        bc.atmos.h,
+        bc.atmos.gustiness,
+        model.parameters
+    )
+
+    p.snow.surf_residual_flux .= flux_balance(
+        p.snow.T_sfc,
+        p.snow.T,
+        p.snow.z_snow,
+        p.snow.κ,
+        p.snow.ρ,
+        p.snow.α_snow,
+        p.snow.ϵ_snow,
+        p.drivers.SW_d,
+        p.drivers.LW_d,
+        p.snow.q_l,
+        β_sfc,
+        h_sfc,
+        r_sfc,
+        d_sfc,
+        p.drivers.thermal_state,
+        p.drivers.u,
+        bc.atmos.h,
+        bc.atmos.gustiness,
+        model.parameters,
+        true
+    )
+
 end
