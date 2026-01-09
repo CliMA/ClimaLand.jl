@@ -407,7 +407,7 @@ function make_update_implicit_cache(
     land::LandModel{FT, MM, SM, RM, SnM},
 ) where {
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},

@@ -280,7 +280,7 @@ function make_update_implicit_cache(
     land::SoilCanopyModel{FT, MM, SM, RM},
 ) where {
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
 }
