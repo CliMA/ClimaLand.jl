@@ -104,6 +104,8 @@ function snow_boundary_fluxes!(
 ) where {FT}
     bc = model.boundary_conditions
 
+    update_surf_temp!(model, Y, p, t)
+
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.snow.R_n, bc.radiation, model, Y, p, t)
 
@@ -132,7 +134,8 @@ function snow_boundary_fluxes!(
         (
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
-            p.snow.R_n - p.snow.energy_runoff + e_flux_falling_rain
+            p.snow.R_n - p.snow.energy_runoff + e_flux_falling_rain + 
+            p.snow.surf_residual_flux #is this within the *snow_cover_fraction portion? isn't this term just doubling/deleting this portion of the total_energy_flux when T_bulk = T_sfc = T_freeze?
         ) * p.snow.snow_cover_fraction
     return nothing
 
