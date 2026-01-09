@@ -32,6 +32,13 @@ for FT in (Float32, Float64)
     LAI = TimeVaryingInput(t -> FT(1))
     forcing = (; atmos, radiation, ground)
 
+    # Set up optimal LAI model with scalar GSL and A0_annual for testing
+    gsl_a0_data = (; GSL = FT(240.0), A0_annual = FT(258.0))
+    lai_model = Canopy.OptimalLAIModel{FT}(
+        Canopy.OptimalLAIParameters{FT}(toml_dict),
+        gsl_a0_data,
+    )
+
     for (sms_model, name) in
         zip(soil_moisture_stress_models, soil_moisture_stress_names)
         canopy = Canopy.CanopyModel{FT}(
@@ -40,6 +47,7 @@ for FT in (Float32, Float64)
             LAI,
             toml_dict;
             soil_moisture_stress = sms_model,
+            lai_model,
         )
         @testset "Initialize canopy with type $name for float type $FT" begin
             Y, p, coords = initialize(canopy)

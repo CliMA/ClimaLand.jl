@@ -198,6 +198,23 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
 end
 
 """
+    optimal_lai_gsl_a0_data_path(; context = nothing)
+
+Return the path to the NetCDF file containing spatially varying growing season
+length (GSL) and annual potential GPP (A0_annual) used by the prognostic optimal
+LAI model.
+
+This dataset is currently shipped in-repo under `data_laiopt/gsl_a0_annual.nc`,
+but is expected to become a ClimaArtifact in the future.
+"""
+function optimal_lai_gsl_a0_data_path(; context = nothing)
+    path = normpath(joinpath(@__DIR__, "..", "data_laiopt", "gsl_a0_annual.nc"))
+    isfile(path) ||
+        error("Optimal-LAI GSL/A0 input file not found at `$path`.")
+    return path
+end
+
+"""
     clm_data__folder_path(; context, lowres = false)
 
 Return the path to the folder that contains the clm data. If the lowres flag is set to true,
