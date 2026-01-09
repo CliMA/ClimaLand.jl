@@ -117,10 +117,10 @@ end
 Defines the auxiliary variables for the OptimalLAIModel:
 - `LAI`: leaf area index (m² m⁻²)
 - `A0_daily`: daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹), with actual β
-- `A0_annual`: annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹), with actual β
+- `A0_annual`: annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹), with β=1 (no moisture stress)
 - `A0_daily_acc`: accumulator for current day's potential GPP with actual β (mol CO₂ m⁻² day⁻¹)
-- `A0_annual_acc`: accumulator for current year's potential GPP with actual β (mol CO₂ m⁻² yr⁻¹)
-- `A0_annual_daily_acc`: accumulator for current day's potential GPP with actual β (mol CO₂ m⁻² day⁻¹)
+- `A0_annual_acc`: accumulator for current year's potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹)
+- `A0_annual_daily_acc`: accumulator for current day's potential GPP with β=1 (mol CO₂ m⁻² day⁻¹)
 - `last_day_of_year`: day of year of last update (for detecting year change)
 - `GSL`: growing season length (days), spatially varying
 """
@@ -229,15 +229,13 @@ end
 
 Compute seasonal maximum leaf area index (LAI_max) based on annual potential GPP.
 
-This is a modified version of Equations 11-12 from Zhou et al. (2025). Water limitation
-is captured through the soil moisture stress factor (β) in the A0_annual computation,
-allowing vegetation structure (LAI_max) to adapt to water availability on annual
-timescales while still responding to climate change and interannual variability
-(e.g., flushing events with ~1 year lag).
+Following Zhou et al. (2025) Equations 11-12, A0_annual is computed with β=1 (no moisture
+stress). Water limitation will enter LAI_max through the f₀×P/A₀ term using annual
+precipitation and VPD (to be implemented).
 
 # Arguments
 - `Ao_annual::FT`: Annual total potential GPP (mol m⁻² yr⁻¹). This is the integral of daily
-  A₀ over the year. A₀ is the GPP that would be achieved if fAPAR = 1, with actual β.
+  A₀ over the year. A₀ is the GPP that would be achieved if fAPAR = 1, with β=1.
 - `k::FT`: Light extinction coefficient (dimensionless), typically 0.5
 - `z::FT`: Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹), globally fitted
   as 12.227 mol m⁻² yr⁻¹
@@ -256,10 +254,9 @@ LAI_max = compute_L_max(Ao_annual, k, z)
 ```
 
 # Notes
-Water limitation enters LAI_max through A0_annual, which is computed with actual β
-(soil moisture stress). This allows vegetation structure to adapt to water availability
-on annual timescales, while still responding to climate change and interannual
-variability (e.g., flushing events with ~1 year lag for structural adaptation).
+Following Zhou et al. (2025), A0_annual is computed with β=1 (no moisture stress).
+Water limitation will enter LAI_max through the f₀×P/A₀ term using annual precipitation
+and VPD (to be implemented).
 
 # References
 Zhou et al. (2025) Global Change Biology, Equations 11-12 (modified)
@@ -590,7 +587,7 @@ Update LAI using the optimal LAI model with precomputed daily and annual potenti
 - `A0_daily::FT`: Daily potential GPP (mol CO₂ m⁻² day⁻¹), computed with actual soil moisture stress (β)
 - `L::FT`: Current LAI (m² m⁻²)
 - `k::FT`: Light extinction coefficient
-- `A0_annual::FT`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹), computed with actual β (soil moisture stress)
+- `A0_annual::FT`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹), computed with β=1 (no moisture stress)
 - `z::FT`: Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)
 - `GSL::FT`: Growing season length (days)
 - `sigma::FT`: Dimensionless parameter for LAI dynamics
@@ -600,16 +597,16 @@ Update LAI using the optimal LAI model with precomputed daily and annual potenti
 Updated LAI value.
 
 # Notes
-Water limitation is captured through both A0_daily and A0_annual (both use actual β).
-This allows vegetation structure (LAI_max, via A0_annual) to adapt to water availability on
-annual timescales, while daily LAI dynamics respond to shorter-term moisture variability.
+A0_daily uses actual β (soil moisture stress) to drive daily LAI dynamics.
+A0_annual uses β=1 (no moisture stress); water limitation enters LAI_max through
+the f₀×P/A₀ term using annual precipitation and VPD (following Zhou et al. 2025).
 """
 function update_optimal_LAI(
     local_noon_mask::FT,
     A0_daily::FT,
     L::FT, # m2 m-2
     k::FT,
-    A0_annual::FT, # mol CO2 m-2 y-1, computed with actual β
+    A0_annual::FT, # mol CO2 m-2 y-1, computed with β=1
     z::FT, # mol m-2 yr-1, leaf construction cost
     GSL::FT, # days, growing season length
     sigma::FT, # dimensionless
@@ -647,16 +644,14 @@ and updates LAI. On year change (Jan 1), finalizes annual A0.
 
 The function:
 1. Computes instantaneous A0_daily using the P-model with fAPAR=1 and actual β (soil moisture stress)
-2. Computes instantaneous A0_annual using the P-model with fAPAR=1 and actual β (soil moisture stress)
+2. Computes instantaneous A0_annual using the P-model with fAPAR=1 and β=1 (no moisture stress)
 3. Accumulates A0_daily and A0_annual to their respective accumulators
 4. At local noon: finalizes daily A0, adds A0_annual to annual accumulator, updates LAI
 5. On Jan 1: finalizes annual A0
 
-Water limitation is captured through both A0_daily and A0_annual (both use actual β).
-This allows vegetation structure (LAI_max, via A0_annual) to adapt to water availability on
-annual timescales, while daily LAI responds to shorter-term moisture variability. This approach
-enables response to climate change and interannual variability (e.g., flushing events with
-~1 year lag for structural adaptation).
+A0_daily uses actual β to drive daily LAI dynamics. A0_annual uses β=1 following Zhou et al.
+(2025); water limitation enters LAI_max through the f₀×P/A₀ term using annual precipitation
+and VPD (to be implemented).
 
 GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
 varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
@@ -731,12 +726,11 @@ function call_update_optimal_LAI(
         ),
     )
 
-    # Compute instantaneous A0_annual with actual β (kg C m⁻² s⁻¹)
-    # This captures water limitation in LAI_max, allowing vegetation structure
-    # to adapt to water availability on annual timescales while still responding
-    # to climate change and interannual variability (e.g., flushing events).
+    # Compute instantaneous A0_annual with β=1 (no moisture stress) (kg C m⁻² s⁻¹)
+    # Following Zhou et al. (2025), water limitation enters LAI_max through
+    # the f₀×P/A₀ term (using annual precipitation and VPD), not through β.
     A0_annual_inst = @. lazy(
-        compute_A0_daily(
+        compute_A0_potential(
             is_c3,
             pmodel_parameters,
             pmodel_constants,
@@ -745,7 +739,6 @@ function call_update_optimal_LAI(
             VPD,
             ca,
             PPFD,
-            βm,
         ),
     )
 
@@ -854,7 +847,7 @@ At local noon: finalize daily A0, add to annual, reset daily accumulator, and up
 On year change (current_doy < last_doy, indicating Jan 1): finalize annual A0.
 
 Note: A0_daily_acc contains daily GPP with actual β (soil moisture stress).
-      A0_annual_daily_acc contains daily GPP with actual β (for LAI_max computation).
+      A0_annual_daily_acc contains daily GPP with β=1 (for LAI_max computation).
 
 Returns tuple: (A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, last_doy, L)
 """
@@ -884,11 +877,11 @@ function update_A0_and_LAI_at_noon(
             A0_annual_acc = FT(0)
         end
 
-        # Finalize daily A0 (with actual β)
+        # Finalize daily A0 (with actual β for daily LAI dynamics)
         A0_daily = A0_daily_acc
         A0_daily_acc = FT(0)
 
-        # Add today's A0_annual (with β=1) to annual accumulator
+        # Add today's A0_annual (with β=1, for LAI_max) to annual accumulator
         A0_annual_acc += A0_annual_daily_acc
         A0_annual_daily_acc = FT(0)
 
