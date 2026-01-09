@@ -653,6 +653,17 @@ function define_diagnostics!(land_model)
             compute_wind_speed!(out, Y, p, t, land_model),
     )
 
+    # Vapor pressure deficit
+    add_diagnostic_variable!(
+        short_name = "vpd",
+        long_name = "Vapor Pressure Deficit",
+        standard_name = "vapor_pressure_deficit",
+        units = "Pa",
+        comments = "The difference between saturation vapor pressure and actual vapor pressure. Higher values indicate drier atmospheric conditions.",
+        compute! = (out, Y, p, t) ->
+            compute_vapor_pressure_deficit!(out, Y, p, t, land_model),
+    )
+
     ## Soil Module ##
     # Infiltration
     add_diagnostic_variable!(
