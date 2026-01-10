@@ -80,7 +80,9 @@ for FT in (Float32, Float64)
         # We do not set the initial aux state here because we want to test that it is updated correctly in the jacobian correctly.
         jacobian = ClimaLand.FieldMatrixWithSolver(Y)
         jac_tendency! = make_jacobian(soil)
+        update_cache! = make_update_cache(soil)
         dtγ = FT(1.0)
+        update_cache!(p, Y, FT(0))
         jac_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
 
