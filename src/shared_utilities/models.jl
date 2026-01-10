@@ -154,8 +154,9 @@ auxiliary_types(m::AbstractModel) = ()
     make_update_aux(model::AbstractModel)
 
 Return an `update_aux!` function that updates all of the auxiliary state
-stored in `p`. These must be update each step at least once, but possibly more
-if the model is timestepped implicitly.
+stored in `p`. These state variables must be updated each step at 
+least once, but a subset of them may be updated more if the model
+is timestepped implicitly.
 """
 function make_update_aux(model::AbstractModel)
     function update_aux!(p, Y, t) end
@@ -169,8 +170,8 @@ Return an `update_boundary_fluxes!` function that updates the state variables
  in `p` corresponding to boundary fluxes (with the atmosphere)
 or fluxes between component models.
 
-These must be update each step at least once, but possibly more
-if the model is timestepped implicitly.
+These must be updated each step at  least once, but a subset 
+of them may be updated more if the model is timestepped implicitly.
 """
 function make_update_boundary_fluxes(model::AbstractModel)
     function update_boundary_fluxes!(p, Y, t) end
@@ -197,9 +198,12 @@ end
 """
     make_update_implicit_aux(model::AbstractModel)
 
-Return an `update_aux!` function that updates all of the auxiliary state
-stored in `p`. These must be update each step at least once, but possibly more
-if the model is timestepped implicitly.
+Return an `update_aux!` function that updates state variables
+stored in `p` to be correspond to their values at the next timestep 
+(i.e., treated implicitly).
+
+The default behavior is to treat all state variables implicitly; most
+ImEx models require special methods.
 """
 function make_update_implicit_aux(model::AbstractImExModel)
     update_aux! = make_update_aux(model)
@@ -211,10 +215,11 @@ end
 
 Return an `update_boundary_fluxes!` function that updates the state variables
  in `p` corresponding to boundary fluxes (with the atmosphere)
-or fluxes between component models.
+or fluxes between component models  to correspond to their values at the 
+next timestep  (i.e., treated implicitly).
 
-These must be update each step at least once, but possibly more
-if the model is timestepped implicitly.
+The default behavior is to treat all state variables implicitly; most
+ImEx models require special methods.
 """
 function make_update_implicit_boundary_fluxes(model::AbstractImExModel)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
@@ -224,12 +229,12 @@ end
 """
      make_update_implicit_cache(model::AbstractImExModel)
 
-A helper function which updates the cache variables of a model
-with must be updated with their values at the next step, i.e.
+A helper function which updates the cache variables of a model,
+which must be updated with their values at the next step, i.e.
 treated implicitly.
 
-The default is to update all cache variables using the values
-of the state Y at the next step.
+This function is composed of updating cache state variables followed by
+updating fluxes using these state variables and Y.
 """
 function make_update_implicit_cache(model::AbstractImExModel)
     update_aux! = make_update_implicit_aux(model)
@@ -241,6 +246,15 @@ function make_update_implicit_cache(model::AbstractImExModel)
     return update_implicit_cache!
 end
 
+"""
+     make_update_implicit_cache(model::AbstractModel)
+
+A helper function which updates the cache variables of a model,
+which must be updated with their values at the next step, i.e.
+treated implicitly.
+
+For general models this should do nothing. AbstractImExModels have their own methods.
+"""
 function make_update_implicit_cache(model::AbstractModel)
     function update_implicit_cache!(p, Y, t) end
     return update_implicit_cache!

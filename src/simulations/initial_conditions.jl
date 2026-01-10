@@ -289,7 +289,7 @@ function make_set_initial_state_from_file(
             land.snow.parameters,
         )
 
-        
+
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.

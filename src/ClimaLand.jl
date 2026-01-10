@@ -218,8 +218,10 @@ end
 
 function make_update_implicit_boundary_fluxes(land::AbstractLandModel)
     components = land_components(land)
-    update_fluxes_function_list =
-        map(x -> make_update_implicit_boundary_fluxes(getproperty(land, x)), components)
+    update_fluxes_function_list = map(
+        x -> make_update_implicit_boundary_fluxes(getproperty(land, x)),
+        components,
+    )
     function update_implicit_boundary_fluxes!(p, Y, t)
         for f! in update_fluxes_function_list
             f!(p, Y, t)
