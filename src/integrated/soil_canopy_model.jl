@@ -267,11 +267,6 @@ function make_update_boundary_fluxes(
             Y,
             t,
         )
-        # Effective (radiative) land properties
-        set_eff_land_radiation_properties!(
-            p,
-            land.soil.parameters.earth_param_set,
-        )
 
         update_soil_bf!(p, Y, t)
         update_canopy_bf!(p, Y, t)
@@ -280,6 +275,40 @@ function make_update_boundary_fluxes(
     return update_boundary_fluxes!
 end
 
+
+function make_update_implicit_cache(
+    land::SoilCanopyModel{FT, MM, SM, RM},
+) where {
+    FT,
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+}
+    update_imp_aux_soil! = make_update_implicit_aux(land.soil)
+    update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
+    update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
+    update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
+    function update_implicit_cache!(p, Y, t)
+        update_imp_aux_soil!(p, Y, t)
+        update_imp_aux_canopy!(p, Y, t)
+        # Radiation - updates Rn for soil and snow also
+        lsm_radiant_energy_fluxes!(
+            p,
+            land,
+            land.canopy.radiative_transfer,
+            Y,
+            t,
+        )
+        # Effective (radiative) land properties
+        set_eff_land_radiation_properties!(
+            p,
+            land.soil.parameters.earth_param_set,
+        )
+        update_imp_bf_soil!(p, Y, t)
+        update_imp_bf_canopy!(p, Y, t)
+    end
+    return update_implicit_cache!
+end
 
 """
     lsm_radiant_energy_fluxes!(p, land::SoilCanopyModel{FT},

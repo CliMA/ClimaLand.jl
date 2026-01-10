@@ -680,8 +680,8 @@ end
     FT = Float32
     d = global_box_domain(FT)
     @test d.longlat == FT.((-0.5, -0.5))
-    @test d.dz_tuple == FT.((10.0, 0.05))
-    @test d.zlim == FT.((-50, 0))
+    @test d.dz_tuple == FT.((3.0, 0.05))
+    @test d.zlim == FT.((-15, 0))
     @test d.nelements == (180, 360, 15)
     @test d.npolynomial == 0
     @test d.periodic == (false, false)
