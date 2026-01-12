@@ -57,8 +57,8 @@ end
 """
     ClimaLand.get_update_surface_humidity_function(model::BucketModel, Y, p)
 
-a helper function which modifies q_sfc given the evaporative scaling factor β
-and the air humidity.
+a helper function which creates and returns a function which modifies q_sfc 
+given the evaporative scaling factor β and the air humidity.
 """
 function ClimaLand.get_update_surface_humidity_function(
     model::BucketModel,
