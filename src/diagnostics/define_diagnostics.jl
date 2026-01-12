@@ -76,11 +76,11 @@ function define_diagnostics!(land_model)
     add_diagnostic_variable!(
         short_name = "tsfc",
         long_name = "Bucket Surface Temperature",
-        standard_name = "component_temperature",
+        standard_name = "surface_temperature",
         units = "K",
         comments = "Temperature of the bucket-land surface.",
         compute! = (out, Y, p, t) ->
-            compute_component_temperature!(out, Y, p, t, land_model),
+            compute_surface_temperature!(out, Y, p, t, land_model),
     )
 
     # Latent heat flux
@@ -624,11 +624,11 @@ function define_diagnostics!(land_model)
     add_diagnostic_variable!(
         short_name = "qsfc",
         long_name = "Surface Specific Humidity",
-        standard_name = "component_specific_humidity",
+        standard_name = "surface_specific_humidity",
         units = "",
         comments = "Ratio of water vapor mass to total moist air parcel mass.",
         compute! = (out, Y, p, t) ->
-            compute_specific_humidity!(out, Y, p, t, land_model),
+            compute_surface_humidity!(out, Y, p, t, land_model),
     )
 
     # Wind speed
