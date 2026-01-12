@@ -426,23 +426,14 @@ The `return_extra_fluxes` argument indicates whether to return momentum fluxes (
 and the bouyancy flux.
 """
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, _, _) =
+    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, _, _, _) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T)
+    return (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)
 end
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
+    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf,
-        shf,
-        vapor_flux = Ẽ,
-        ∂lhf∂T,
-        ∂shf∂T,
-        ρτxz,
-        ρτyz,
-        buoyancy_flux,
-    )
+    return (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux)
 end
 
 """
@@ -569,21 +560,7 @@ function compute_turbulent_fluxes_at_a_point(
         update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    #  return SurfaceFluxConditions(
-    shf,
-    lhf,
-    E,
-    ρτxz,
-    ρτyz,
-    u_star_curr,
-    ζ_final,
-    Cd,
-    Ch,
-    T_sfc_val,
-    q_vap_sfc_val,
-    L_MO,
-    converged,
-    # Buoyancy flux
+    # Buoyancy Flux
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,

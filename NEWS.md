@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- ![breaking change][badge-💥breaking] update ClimaLand to work with the new SurfaceFluxes package release PR[#1591](https://github.com/CliMA/ClimaLand.jl/pull/1591)
 
 v1.3.0
 ------
