@@ -382,14 +382,14 @@ function turbulent_fluxes!(
     t,
 )
 
-    T_sfc = surface_temperature(model, Y, p) # guess
-    q_sfc = surface_specific_humidity(model, Y, p) # guess
+    T_sfc = component_temperature(model, Y, p) # guess
+    q_sfc = component_specific_humidity(model, Y, p) # guess
     roughness_model = surface_roughness_model(model, Y, p)
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     displ = surface_displacement_height(model, Y, p)
-    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model,Y,p)
+    update_∂T_sfc∂T = get_∂T_sfc∂T_function(model, Y, p)
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
@@ -422,17 +422,27 @@ as we compute the turbulent fluxes pointwise. This is needed because space for t
 extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
 The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
 
-The `return_extra_fluxes` argument indicates whether to return momentum fluxes (`ρτxz`, `ρτyz`).
+The `return_extra_fluxes` argument indicates whether to return momentum fluxes (`ρτxz`, `ρτyz`)
+and the bouyancy flux.
 """
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T,_, _) =
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, _, _) =
         compute_turbulent_fluxes_at_a_point(args...)
     return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T)
 end
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz) =
+    (lhf, shf, Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (lhf, shf, vapor_flux = Ẽ, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz)
+    return (
+        lhf,
+        shf,
+        vapor_flux = Ẽ,
+        ∂lhf∂T,
+        ∂shf∂T,
+        ρτxz,
+        ρτyz,
+        buoyancy_flux,
+    )
 end
 
 """
@@ -444,9 +454,9 @@ end
         h_atmos::FT,
         T_sfc_guess::FT,
         q_vap_sfc_guess::FT,
-        roughness_model,
         update_T_sfc,
         update_q_vap_sfc,
+        roughness_model,
         h_sfc::FT,
         displ::FT,
         update_∂T_sfc∂T,
@@ -454,20 +464,26 @@ end
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
-(1) the surface temperature (T_sfc), specific humidity (q_sfc),
-    and air density (ρ_sfc),
-(2) Other surface properties, such as the factor
-    β_sfc  which scales the evaporation from the potential rate
-    (used in bucket models), and the surface resistance r_sfc (used
-    in more complex land models), and the topographical height of the surface (h_sfc)
-(3) the roughness lengths `z_0m, z_0b`, and the Earth parameter set for the model
-    `earth_params`.
-(4) the prescribed atmospheric conditions, `T_atmos`, `q_atmos`, u, h the height
-    at which these measurements are made, and the gustiness parameter (m/s).
-(5) the displacement height for the model d_sfc
+(1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`, 
+    `u_atmos`, and `h_atmos` the absolute height at which these measurements are made.
+    `u_atmos` is a can be a scalar if only the horizontal wind speed is known,
+    otherwise a tuple can be passed with the (u,v) components of the wind.
+(2) the surface temperature (`T_sfc_guess`), specific humidity (`q_vap_sfc_guess`).
+    If no `update_T_sfc` and `update_q_val_sfc` functions are passed, these ``guesses"
+    are the values used in the solve. Otherwise, the update functions are used to 
+    modify the ``guess" values to the actual surface values.
+(3) Other surface properties, such the roughness model (see SurfaceFluxes.jl
+    for possible types), the surface height, relative to the same references as `h_atmos`,
+    the displacement height.
+(4) functions for computing the partial derivatives of `T_sfc` and `q_vap_sfc` with respect
+    to the actual temperature (of the leaves, soil, or snow). These functions are component
+    specific.
+(5) the parameter set.
 
 This returns an energy flux and a liquid water volume flux, stored in
-a tuple with self explanatory keys.
+a tuple with self explanatory keys, as well as the derivative of the fluxes
+with respect to the component temperature. It also returns momentum flux
+components in the horizontal directions, and the buoyancy flux.
 """
 function compute_turbulent_fluxes_at_a_point(
     P_atmos::FT,
@@ -546,9 +562,49 @@ function compute_turbulent_fluxes_at_a_point(
     g_h = output.Ch * max(sqrt(u[1]^2 + u[2]^2), gustiness.value)
     u_star = output.ustar
     ρ_sfc = ρ_atmos
-    ∂lhf∂T = ρ_sfc * g_h * _LH_v0 * update_∂q_sfc∂T(u_star,g_h, T_sfc_guess, P_atmos, earth_param_set)
+    ∂lhf∂T =
+        ρ_sfc *
+        g_h *
+        _LH_v0 *
+        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star,g_h, earth_param_set)
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    #  return SurfaceFluxConditions(
+    shf,
+    lhf,
+    E,
+    ρτxz,
+    ρτyz,
+    u_star_curr,
+    ζ_final,
+    Cd,
+    Ch,
+    T_sfc_val,
+    q_vap_sfc_val,
+    L_MO,
+    converged,
+    # Buoyancy flux
+    ρ_sfc = SurfaceFluxes.surface_density(
+        surface_flux_params,
+        T_atmos,
+        ρ_atmos,
+        output.T_sfc,
+        h_atmos - h_sfc,
+        q_tot_atmos,
+        FT(0),
+        FT(0),
+        output.q_vap_sfc,
+    )
+    buoyancy_flux = SurfaceFluxes.buoyancy_flux(
+        surface_flux_params,
+        output.shf,
+        output.lhf,
+        output.T_sfc,
+        ρ_sfc,
+        output.q_vap_sfc,
+        FT(0),
+        FT(0),
+    )
     return (
         output.lhf,
         output.shf,
@@ -557,6 +613,7 @@ function compute_turbulent_fluxes_at_a_point(
         ∂shf∂T,
         output.ρτxz,
         output.ρτyz,
+        buoyancy_flux,
     )
 end
 
@@ -641,7 +698,7 @@ function net_radiation!(
     SW_d = p.drivers.SW_d
     earth_param_set = model.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
-    T_sfc = surface_temperature(model, Y, p)
+    T_sfc = component_temperature(model, Y, p)
     α_sfc = surface_albedo(model, Y, p)
     ϵ_sfc = surface_emissivity(model, Y, p)
     # Recall that the user passed the LW and SW downwelling radiation,
@@ -679,54 +736,119 @@ function ClimaLand.net_radiation!(
 end
 
 """
-    surface_temperature(model::AbstractModel, Y, p)
+    component_temperature(model::AbstractModel, Y, p)
 
-A helper function which returns the surface temperature for a given
-model, needed because different models compute and store surface temperature in
-different ways and places.
+A helper function which returns the component temperature for a given
+model. This is used in the turbulent_fluxes! function as the value of
+surface temperature and used to compute long wave radiative fluxes.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
+the functions in this file. If your model uses different temperatures to
+compute turbulent fluxes vs long wave radiative fluxes, please see
+the documentation for an update function in the `turbulent_fluxes!` call.
 """
-function surface_temperature(model::AbstractModel, Y, p) end
+function component_temperature(model::AbstractModel, Y, p) end
 
 """
-    surface_specific_humidity(model::AbstractModel, Y, p)
+    component_specific_humidity(model::AbstractModel, Y, p)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
 different ways and places.
 
 Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
+compute surface fluxes using the functions in this file. Please see
+the documentation for an update function in the `turbulent_fluxes!` call.
 """
-function surface_specific_humidity(model::AbstractModel, Y, p) end
+function component_specific_humidity(model::AbstractModel, Y, p) end
 
+"""
+    surface_roughness_model(model::AbstractModel, Y, p)
+
+Returns the SurfaceFluxes roughness model for `model`.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
 function surface_roughness_model(model::AbstractModel, Y, p) end
+
+"""
+    surface_roughness_model(model::AbstractModel, Y, p)
+
+Returns the displacement height for `model`.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
 function surface_displacement_height(model::AbstractModel, Y, p)
     FT = FTfromY(Y)
     return FT(0)
 end
+
+"""
+    get_update_surface_temperature_function(model::AbstractModel, Y, p)
+
+Returns the SurfaceFluxes `update_T_sfc` function for `model`.
+
+This is only required if the output of `component_temperature` does not coincide
+with the temperature that should be used to compute turbulent fluxes.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
 function get_update_surface_temperature_function(model::AbstractModel, Y, p) end
+
+"""
+    get_update_surface_specific_humidity_function(model::AbstractModel, Y, p)
+
+Returns the SurfaceFluxes `update_T_sfc` function for `model`.
+
+This is only required if the output of `component_temperature` does not coincide
+with the temperature that should be used to compute turbulent fluxes.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
 function get_update_surface_humidity_function(model::AbstractModel, Y, p) end
+
+"""
+    get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
+
+Returns a function which computes the partial derivative of the surface temperature
+using in turbulent_fluxes! with respect to the component temperature. The expected
+arguments are (u_star, g_h, earth_param_set).
+
+This is only required if the output of `component_temperature` does not coincide
+with the temperature that should be used to compute turbulent fluxes, and if your
+model requires derivatives of the fluxes with respect to the component temperature.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
 function get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
-    function update_∂T_sfc∂T_at_a_point(
-        u_star,
-        g_h,
-        earth_param_set,
-    )
+    function update_∂T_sfc∂T_at_a_point(u_star, g_h, earth_param_set)
         FT = eltype(earth_param_set)
         return FT(1)
     end
     return update_∂T_sfc∂T_at_a_point
 end
-function get_∂q_sfc∂T_function(
-    model::AbstractModel,
-    Y,
-    p,
-)
+
+"""
+    get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
+
+Returns a function which computes the partial derivative of the surface humidity
+using in turbulent_fluxes! with respect to the component temperature. The expected
+arguments are (u_star, g_h, T_sfc, P_sfc, earth_param_set).
+
+This is only required if the output of `component_specific_humidity` does not coincide
+with the humidity that should be used to compute turbulent fluxes, and if your
+model requires derivatives of the fluxes with respect to the component temperature.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes using the functions in this file.
+"""
+function get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
 
     function update_∂q_sfc∂T_at_a_point(
         u_star,

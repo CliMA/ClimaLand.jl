@@ -216,7 +216,7 @@ for FT in (Float32, Float64)
             @test Base.Broadcast.materialize(
                 ClimaLand.surface_albedo(model, Y, p),
             ) == PAR_albedo ./ 2 .+ NIR_albedo ./ 2
-            @test ClimaLand.surface_temperature(model, Y, p) == T_sfc
+            @test ClimaLand.component_temperature(model, Y, p) == T_sfc
 
             conditions = copy(p.soil.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(

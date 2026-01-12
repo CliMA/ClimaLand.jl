@@ -19,22 +19,22 @@ function ClimaLand.surface_emissivity(model::BucketModel{FT}, Y, p) where {FT}
 end
 
 """
-    ClimaLand.surface_temperature(model::BucketModel, Y, p)
+    ClimaLand.component_temperature(model::BucketModel, Y, p)
 
 a helper function which returns the surface temperature for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_temperature(model::BucketModel, Y, p)
+function ClimaLand.component_temperature(model::BucketModel, Y, p)
     return p.bucket.T_sfc
 end
 
 """
-    ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
+    ClimaLand.component_specific_humidity(model::BucketModel, Y, p)
 
 a helper function which returns the surface specific humidity for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
+function ClimaLand.component_specific_humidity(model::BucketModel, Y, p)
     return p.bucket.q_sfc
 end
 

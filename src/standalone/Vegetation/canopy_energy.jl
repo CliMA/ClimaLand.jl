@@ -20,9 +20,9 @@ ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
     (:fa_energy_roots, :∂LW_n∂T)
 ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
-    (FT, FT,)
+    (FT, FT)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface,)
+    (:surface, :surface)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}
@@ -140,7 +140,7 @@ function make_compute_imp_tendency(
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
             ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
-#        @show dY.canopy.energy.T, p.canopy.radiative_transfer.LW_n, p.canopy.radiative_transfer.SW_n, p.canopy.turbulent_fluxes.shf , p.canopy.turbulent_fluxes.lhf , p.canopy.energy.fa_energy_roots,Y.canopy.energy.T
+        #        @show dY.canopy.energy.T, p.canopy.radiative_transfer.LW_n, p.canopy.radiative_transfer.SW_n, p.canopy.turbulent_fluxes.shf , p.canopy.turbulent_fluxes.lhf , p.canopy.energy.fa_energy_roots,Y.canopy.energy.T
     end
     return compute_imp_tendency!
 end

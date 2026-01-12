@@ -897,7 +897,7 @@ end
 ## as well as evaporation.
 
 """
-    ClimaLand.surface_temperature(
+    ClimaLand.component_temperature(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -910,7 +910,7 @@ The assumption is that the soil surface temperature
 is the same as the temperature at the center of the
 first soil layer.
 """
-function ClimaLand.surface_temperature(
+function ClimaLand.component_temperature(
     model::EnergyHydrology{FT},
     Y,
     p,
@@ -937,15 +937,15 @@ function ClimaLand.surface_emissivity(
 end
 
 """
-    ClimaLand.surface_specific_humidity(model::EnergyHydrology, Y, p)
+    ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
 
 a helper function which returns the surface specific humidity for the canopy
 model.
 """
-#function ClimaLand.surface_specific_humidity(model::EnergyHydrology, Y, p)
+#function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
 #    earth_param_set = get_earth_param_set(model)
 #    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-#    T_sfc = surface_temperature(model, Y, p)
+#    T_sfc = component_temperature(model, Y, p)
 #    ρ_sfc = @. lazy(ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc))
 #    
 #    q_sfc = @. lazy(Thermodynamics.q_vap_saturation_generic(
@@ -986,7 +986,7 @@ function turbulent_fluxes!(
     t,
 ) where {FT}
     # Obtain surface quantities needed for computation; these should not allocate
-    T_sfc = ClimaLand.surface_temperature(model, Y, p)
+    T_sfc = ClimaLand.component_temperature(model, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
     d_sfc = ClimaLand.surface_displacement_height(model, Y, p)
     (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =

@@ -466,9 +466,9 @@ end
         T_sfc = Y.canopy.energy.T
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
-        jac = ClimaLand.FieldMatrixWithSolver(Y);
-        jacobian!(jac, Y, p, FT(1), t0);
-        jac_value = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)];
+        jac = ClimaLand.FieldMatrixWithSolver(Y)
+        jacobian!(jac, Y, p, FT(1), t0)
+        jac_value = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
         ΔT = FT(0.01)
 
         Y_2 = deepcopy(Y)
@@ -512,9 +512,11 @@ end
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
         ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
         @test abs.(
-            Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT) -
-            ∂Ṫ∂T,
-        ) / ∂Ṫ∂T)[1] < 0.05 # Error propagates here from ∂LHF∂T
+            Array(
+                parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT) -
+                ∂Ṫ∂T,
+            ) / ∂Ṫ∂T
+        )[1] < 0.05 # Error propagates here from ∂LHF∂T
     end
 end
 
@@ -598,8 +600,13 @@ end
 
         @test all(Array(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1)))
         @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
-        @test all(abs.(Array(parent(p.canopy.turbulent_fluxes.shf))) .< eps(FT)*1e4) 
-        @test all(abs.(Array(parent(p.canopy.turbulent_fluxes.vapor_flux)./1000)) .< eps(FT)) # evap returned by SF.jl
+        @test all(
+            abs.(Array(parent(p.canopy.turbulent_fluxes.shf))) .< eps(FT) * 1e4,
+        )
+        @test all(
+            abs.(Array(parent(p.canopy.turbulent_fluxes.vapor_flux) ./ 1000)) .<
+            eps(FT),
+        ) # evap returned by SF.jl
         @test all(Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))

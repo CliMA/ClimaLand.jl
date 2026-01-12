@@ -819,8 +819,17 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT, FT},
+        (
+            :lhf,
+            :shf,
+            :vapor_flux_liq,
+            :r_ae,
+            :vapor_flux_ice,
+            :ρτxz,
+            :ρτyz,
+            :buoyancy_flux,
+        ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},

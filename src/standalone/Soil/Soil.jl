@@ -88,7 +88,7 @@ import ClimaLand:
     AbstractSource,
     source!,
     heaviside,
-    surface_temperature,
+    component_temperature,
     surface_albedo,
     surface_emissivity,
     turbulent_fluxes!,

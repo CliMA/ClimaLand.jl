@@ -100,7 +100,7 @@ end
 
 # Standalone Vegetation model tests
 @safetestset "Canopy module tests" begin
-   # include("standalone/Vegetation/canopy_model.jl")
+    # include("standalone/Vegetation/canopy_model.jl")
 end
 
 @safetestset "Canopy module tests" begin

@@ -47,11 +47,11 @@ import ClimaLand:
     initialize_vars,
     initialize,
     initialize_auxiliary,
-    surface_temperature,
+    component_temperature,
     surface_albedo,
     surface_emissivity,
     surface_roughness_model,
-    surface_specific_humidity,
+    component_specific_humidity,
     get_update_surface_humidity_function,
     get_drivers,
     compute_ρ_sfc
@@ -387,7 +387,7 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     NamedTuple{
         (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-        Tuple{FT, FT, FT, FT, FT,},
+        Tuple{FT, FT, FT, FT, FT},
     },
     FT,
     FT,

@@ -74,7 +74,7 @@ get_soil(m::EnergyHydrology) = m
 @diagnostic_compute "sensible_heat_flux" BucketModel p.bucket.turbulent_fluxes.shf
 @diagnostic_compute "surface_air_density" BucketModel p.bucket.ρ_sfc
 @diagnostic_compute "specific_humidity" BucketModel p.bucket.q_sfc
-@diagnostic_compute "surface_temperature" BucketModel p.bucket.T_sfc
+@diagnostic_compute "component_temperature" BucketModel p.bucket.T_sfc
 @diagnostic_compute "vapor_flux" BucketModel p.bucket.turbulent_fluxes.vapor_flux
 
 # variables stored in Y (prognostic or state variables)
@@ -575,7 +575,7 @@ function compute_lw_up!(out, Y, p, t, land_model::BucketModel)
     LW_d = p.drivers.LW_d
     earth_param_set = land_model.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
-    T_sfc = ClimaLand.surface_temperature(land_model, Y, p, t)
+    T_sfc = ClimaLand.component_temperature(land_model, Y, p, t)
     ϵ_sfc = ClimaLand.surface_emissivity(land_model, Y, p)
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates

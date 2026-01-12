@@ -182,25 +182,25 @@ function canopy_boundary_fluxes!(
 end
 
 """
-    ClimaLand.surface_temperature(model::CanopyModel, Y, p)
+    ClimaLand.component_temperature(model::CanopyModel, Y, p)
 
-a helper function which returns the surface temperature for the canopy
+a helper function which returns the component temperature for the canopy
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_temperature(model::CanopyModel, Y, p)
+function ClimaLand.component_temperature(model::CanopyModel, Y, p)
     return canopy_temperature(model.energy, model, Y, p)
 end
 
 """
-    ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
+    ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
 
 a helper function which returns the surface specific humidity for the canopy
 model.
 """
-function ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
+function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    T_sfc = surface_temperature(model, Y, p)
+    T_sfc = component_temperature(model, Y, p)
     ρ_sfc = @. lazy(
         ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc),
     )
@@ -216,9 +216,9 @@ function ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
 end
 
 """
-    ClimaLand.surface_roughness_model(model::CanopyModel, Y, p)
+    ClimaLand.surface_displacement_height(model::CanopyModel, Y, p)
 
-a helper function which returns the surface roughness inputs for the canopy
+a helper function which returns the displacement height for the canopy
 model.
 """
 function ClimaLand.surface_displacement_height(
@@ -230,6 +230,12 @@ function ClimaLand.surface_displacement_height(
     return sfp.displ
 end
 
+"""
+    ClimaLand.surface_roughness_model(model::CanopyModel, Y, p)
+
+a helper function which returns the surface roughness model for the canopy
+model.
+"""
 function ClimaLand.surface_roughness_model(
     model::CanopyModel{FT},
     Y,
@@ -240,11 +246,12 @@ function ClimaLand.surface_roughness_model(
         SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
     )
 end
-"""
-    ClimaLand.surface_evaporative_scaling(model::CanopyModel, Y, p)
 
-a helper function which computes and returns the surface evaporative scaling
- factor for the bucket model.
+"""
+    ClimaLand.get_update_surface_humidity_function(model::CanopyModel, Y, p)
+
+a helper function which computes and returns the function which updates the guess 
+for surface specific humidity to the actual value, for the canopy model.
 """
 function ClimaLand.get_update_surface_humidity_function(
     model::CanopyModel,
@@ -271,7 +278,8 @@ function ClimaLand.get_update_surface_humidity_function(
     )
         FT = eltype(param_set)
         r_land =
-            1 / max(leaf_Cd * max(u_star, FT(1))*LAI, eps(FT)) + r_stomata_canopy
+            1 / max(leaf_Cd * max(u_star, FT(1)) * LAI, eps(FT)) +
+            r_stomata_canopy
 
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
@@ -303,6 +311,12 @@ function ClimaLand.get_update_surface_humidity_function(
     return @. lazy(update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd))
 end
 
+"""
+    ClimaLand.get_update_surface_temperature_function(model::CanopyModel, Y, p)
+
+a helper function which computes and returns the function which updates the guess 
+for surface temperature to the actual value, for the canopy model.
+"""
 function ClimaLand.get_update_surface_temperature_function(
     model::CanopyModel,
     Y,
@@ -353,13 +367,14 @@ function ClimaLand.get_update_surface_temperature_function(
     return @. lazy(update_T_sfc_field(AI, Cd))
 end
 
+"""
+    ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
 
-
-function ClimaLand.get_∂q_sfc∂T_function(
-    model::CanopyModel,
-    Y,
-    p,
-)
+a helper function which creates and returns the function which computes
+the partial derivative of the surface specific humididity with respect to
+the canopy temperature.
+"""
+function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
@@ -380,7 +395,8 @@ function ClimaLand.get_∂q_sfc∂T_function(
         r_land =
             1 / (leaf_Cd * u_star_safe) / max(LAI, eps(FT)) + r_stomata_canopy
         ∂q_sfc∂q = 1 / (1 + g_h * r_land)
-        return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
+        return ∂q_sfc∂q *
+               ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
     end
     # Closure
     update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
@@ -389,11 +405,14 @@ function ClimaLand.get_∂q_sfc∂T_function(
     return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
 end
 
-function ClimaLand.get_∂T_sfc∂T_function(
-    model::CanopyModel,
-    Y,
-    p,
-)
+"""
+    ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
+
+a helper function which creates and returns the function which computes
+the partial derivative of the surface temperature with respect to
+the canopy temperature.
+"""
+function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
     AI = @. lazy(
@@ -408,8 +427,7 @@ function ClimaLand.get_∂T_sfc∂T_function(
     )
         FT = eltype(earth_param_set)
         g_land = leaf_Cd * max(u_star, FT(1)) * AI
-        ∂T_sfc∂T =
-            (g_land / g_h) / (1 + g_land / g_h)
+        ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T
     end
     # Closure
@@ -431,7 +449,7 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T,),
+            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
             Tuple{FT, FT, FT, FT, FT},
         },
     )
@@ -462,7 +480,16 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂qT, :∂shf∂T, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT, FT},
+        (
+            :lhf,
+            :shf,
+            :vapor_flux,
+            :∂lhf∂qT,
+            :∂shf∂T,
+            :ρτxz,
+            :ρτyz,
+            :buoyancy_flux,
+        ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )

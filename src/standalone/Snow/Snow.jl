@@ -27,8 +27,8 @@ import ClimaLand:
     prognostic_domain_names,
     auxiliary_types,
     auxiliary_domain_names,
-    surface_temperature,
-    surface_specific_humidity,
+    component_temperature,
+    component_specific_humidity,
     surface_height,
     surface_albedo,
     surface_emissivity,
@@ -691,7 +691,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
         @. p.snow.T =
             snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
 
-        @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
+        @. p.snow.T_sfc = snow_component_temperature(p.snow.T)
 
         @. p.snow.water_runoff = compute_water_runoff(
             Y.snow.S,

@@ -1,4 +1,4 @@
-export snow_surface_temperature,
+export snow_component_temperature,
     specific_heat_capacity,
     snow_thermal_conductivity,
     snow_bulk_temperature,
@@ -115,18 +115,18 @@ function ClimaLand.surface_emissivity(model::SnowModel, _...)
 end
 
 """
-    ClimaLand.surface_temperature(model::SnowModel, Y, p)
+    ClimaLand.component_temperature(model::SnowModel, Y, p)
 
 a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_temperature(model::SnowModel, Y, p)
+function ClimaLand.component_temperature(model::SnowModel, Y, p)
     return p.snow.T_sfc
 end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
+    ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
@@ -134,7 +134,7 @@ water.
 
 This asumes the atmospheric surface state is stored in p.drivers.
 """
-function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
+function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
@@ -148,7 +148,7 @@ end
 """
     ClimaLand.surface_roughness_model(model::SnowModel, Y, p)
 
-a helper function which returns the surface roughness model for the bucket
+a helper function which returns the surface roughness model for the snow
 model.
 """
 function ClimaLand.surface_roughness_model(
@@ -194,12 +194,12 @@ function snow_surface_specific_humidity(
 end
 
 """
-    snow_surface_temperature(T::FT) where {FT}
+    snow_component_temperature(T::FT) where {FT}
 
 Returns the snow surface temperature assuming it is the same
 as the bulk temperature T.
 """
-snow_surface_temperature(T::FT) where {FT} = T
+snow_component_temperature(T::FT) where {FT} = T
 
 
 """
