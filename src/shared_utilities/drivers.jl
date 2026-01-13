@@ -905,7 +905,7 @@ function specific_humidity_from_dewpoint(
         sim_FT(P_air),
         sim_FT(T_air),
         rh,
-        Thermodynamics.Liquid()
+        Thermodynamics.Liquid(),
     )
     return q
 end
@@ -1131,10 +1131,7 @@ function ClimaLand.initialize_drivers(
     coords,
 ) where {FT}
     keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u)
-    types = (
-        [FT for k in 1:(length(keys) - 1)]...,
-        SVector{2, FT},
-    )
+    types = ([FT for k in 1:(length(keys) - 1)]..., SVector{2, FT})
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
@@ -1660,7 +1657,14 @@ function empirical_diffuse_fraction(
         DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
     end
     # Pass explicit zero liquid/ice fractions to avoid Thermodynamics.jl MethodError with default Integer arguments
-    RH = Thermodynamics.relative_humidity(thermo_params, T, P, q, zero(FT), zero(FT)) # Note: This used RH over liquid before; not it's RH over ice when below freezing
+    RH = Thermodynamics.relative_humidity(
+        thermo_params,
+        T,
+        P,
+        q,
+        zero(FT),
+        zero(FT),
+    ) # Note: This used RH over liquid before; not it's RH over ice when below freezing
     # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
     # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
