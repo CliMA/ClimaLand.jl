@@ -310,7 +310,7 @@ end
 """
     optimal_lai_initial_conditions(
         surface_space,
-        data_path = Artifacts.optimal_lai_gsl_a0_data_path(; context = ClimaComms.context(surface_space));
+        data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
             Interpolations.Periodic(),
@@ -319,7 +319,7 @@ end
         interpolation_method = Interpolations.Linear(),
     )
 
-Reads spatially varying data for the optimal LAI model from a NetCDF file,
+Reads spatially varying initial conditions for the optimal LAI model from a NetCDF file,
 and regrids them to the grid defined by the `surface_space` of the Clima simulation.
 Returns a NamedTuple of ClimaCore Fields suitable for passing to `OptimalLAIModel`.
 
@@ -328,9 +328,10 @@ This function returns fields for:
 - `A0_annual`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
 - `precip_annual`: Mean annual precipitation (mm yr⁻¹)
 - `vpd_gs`: Average VPD during growing season (Pa)
+- `lai_init`: Initial LAI from MODIS (m² m⁻²)
 
-The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, and `vpd_gs`
-on a (lon, lat) grid.
+The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
+and `lai_init` on a (lon, lat) grid.
 
 # Arguments
 - `surface_space`: The ClimaCore surface space to regrid to
@@ -343,21 +344,21 @@ on a (lon, lat) grid.
 
 # Example
 ```julia
-gsl_a0_data = optimal_lai_initial_conditions(
+ic_data = optimal_lai_initial_conditions(
     surface_space,
-    "path/to/gsl_a0_annual.nc",
+    "path/to/initial_conditions.nc",
 )
-lai_model = OptimalLAIModel{FT}(parameters, gsl_a0_data)
+lai_model = OptimalLAIModel{FT}(parameters, ic_data)
 ```
 
 # Notes
 - The file is expected to have lon and lat coordinates
-- Variables `gsl` and `a0_annual` are required
-- Variables `precip_annual` and `vpd_gs` are required for water limitation (Zhou et al. 2025)
+- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init) are required
+- lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
 """
 function optimal_lai_initial_conditions(
     surface_space,
-    data_path::AbstractString = Artifacts.optimal_lai_gsl_a0_data_path(;
+    data_path::AbstractString = Artifacts.optimal_lai_initial_conditions_path(;
         context = ClimaComms.context(surface_space),
     );
     regridder_type = :InterpolationsRegridder,
@@ -399,5 +400,13 @@ function optimal_lai_initial_conditions(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
-    return (; GSL = GSL, A0_annual = A0_annual, precip_annual = precip_annual, vpd_gs = vpd_gs)
+    lai_init = SpaceVaryingInput(
+        data_path,
+        "lai_init",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (; GSL = GSL, A0_annual = A0_annual, precip_annual = precip_annual, vpd_gs = vpd_gs, lai_init = lai_init)
 end

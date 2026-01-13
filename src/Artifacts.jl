@@ -198,21 +198,28 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
 end
 
 """
-    optimal_lai_gsl_a0_data_path(; context = nothing)
+    optimal_lai_initial_conditions_path(; context = nothing)
 
-Return the path to the NetCDF file containing spatially varying growing season
-length (GSL) and annual potential GPP (A0_annual) used by the prognostic optimal
-LAI model.
+Return the path to the NetCDF file containing spatially varying initial conditions
+for the prognostic optimal LAI model:
+- GSL: Growing season length (days)
+- A0_annual: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
+- precip_annual: Mean annual precipitation (mm yr⁻¹)
+- vpd_gs: Growing season VPD (Pa)
+- lai_init: Initial LAI from MODIS (m² m⁻²)
 
-This dataset is currently shipped in-repo under `data_laiopt/gsl_a0_annual.nc`,
+This dataset is currently shipped in-repo under `data_laiopt/initial_conditions.nc`,
 but is expected to become a ClimaArtifact in the future.
 """
-function optimal_lai_gsl_a0_data_path(; context = nothing)
-    path = normpath(joinpath(@__DIR__, "..", "data_laiopt", "gsl_a0_annual.nc"))
+function optimal_lai_initial_conditions_path(; context = nothing)
+    path = normpath(joinpath(@__DIR__, "..", "data_laiopt", "initial_conditions.nc"))
     isfile(path) ||
-        error("Optimal-LAI GSL/A0 input file not found at `$path`.")
+        error("Optimal-LAI initial conditions file not found at `$path`.")
     return path
 end
+
+# Backwards compatibility alias
+optimal_lai_gsl_a0_data_path(; context = nothing) = optimal_lai_initial_conditions_path(; context)
 
 """
     clm_data__folder_path(; context, lowres = false)

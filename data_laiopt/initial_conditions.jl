@@ -1,6 +1,12 @@
 """
-Compute Growing Season Length (GSL) from LAI and temperature, plus extract annual potential GPP,
-mean annual precipitation, and growing season VPD.
+Compute initial conditions for the optimal LAI model.
+
+This script generates spatially varying initial conditions:
+- GSL: Growing season length (days) - hybrid LAI/temperature approach following Zhou et al. (2025)
+- A0_annual: Annual potential GPP (mol CO₂ m⁻² yr⁻¹) from P-model simulation
+- precip_annual: Mean annual precipitation (mm yr⁻¹)
+- vpd_gs: Average VPD during growing season (Pa)
+- lai_init: Initial LAI from MODIS (m² m⁻²) - first timestep of satellite data
 
 GSL computation follows Zhou et al. (2025) definition with hybrid approach:
 - For regions with clear LAI seasonality: GSL from LAI dynamics
@@ -8,14 +14,9 @@ GSL computation follows Zhou et al. (2025) definition with hybrid approach:
 
 This avoids GSL = 0 which would break the optimal LAI model equations.
 
-Additional variables for water limitation in the optimal LAI model:
-- precip_annual: Mean annual precipitation (mm yr⁻¹)
-- vpd_gs: Average VPD during growing season (Pa)
+The f₀×P/A₀ water limitation term in LAI_max follows Zhou et al. (2025, Eq. 11).
 
-These are needed for the f₀×P/A₀ water limitation term in LAI_max (Zhou et al. 2025, Eq. 11).
-
-Output: NetCDF file with GSL (days), A0_annual (mol CO2 m^-2 yr^-1), precip_annual (mm yr^-1),
-        and vpd_gs (Pa) on (lon, lat) grid.
+Output: NetCDF file with all initial condition variables on (lon, lat) grid.
 """
 
 using NCDatasets
@@ -27,7 +28,7 @@ A0_FILE = joinpath(@__DIR__, "a0_annual_1M_average.nc")
 TAIR_FILE = joinpath(@__DIR__, "tair_1M_average.nc")
 PRECIP_FILE = joinpath(@__DIR__, "precip_1M_average.nc")
 VPD_FILE = joinpath(@__DIR__, "vpd_1M_average.nc")
-OUTPUT_FILE = joinpath(@__DIR__, "gsl_a0_annual.nc")
+OUTPUT_FILE = joinpath(@__DIR__, "initial_conditions.nc")
 
 # GSL parameters
 LAI_THRESHOLD_FRACTION = 0.2  # LAI must be above 20% of annual max to count as "growing"
@@ -317,6 +318,10 @@ function main()
     ntime = size(lai, 1)
     println("Grid size: $nlon x $nlat, $ntime time steps")
 
+    # Extract initial LAI from first timestep of MODIS data
+    lai_init = lai[1, :, :]  # First timestep
+    println("Initial LAI (MODIS first timestep) extracted")
+
     # Allocate output arrays
     gsl = fill(NaN, nlon, nlat)
     a0_out = fill(NaN, nlon, nlat)
@@ -396,6 +401,12 @@ function main()
     println("  Range: $(round(minimum(valid_vpd), digits=1)) - $(round(maximum(valid_vpd), digits=1)) Pa")
     println("  Mean: $(round(mean(valid_vpd), digits=1)) Pa")
 
+    valid_lai_init = filter(!isnan, vec(lai_init))
+    println("\nLAI_init (MODIS first timestep) statistics:")
+    println("  Valid points: $(length(valid_lai_init))")
+    println("  Range: $(round(minimum(valid_lai_init), digits=2)) - $(round(maximum(valid_lai_init), digits=2)) m² m⁻²")
+    println("  Mean: $(round(mean(valid_lai_init), digits=2)) m² m⁻²")
+
     # Write output NetCDF
     println("\nWriting output to: $OUTPUT_FILE")
     ds_out = NCDataset(OUTPUT_FILE, "c")
@@ -440,10 +451,16 @@ function main()
     vpd_var.attrib["description"] = "Average VPD during growing season months. Growing season is determined using the same hybrid LAI/temperature criterion as GSL. Used for water limitation term in LAI_max calculation following Zhou et al. (2025)."
     vpd_var[:, :] = vpd_gs
 
+    lai_init_var = defVar(ds_out, "lai_init", Float64, ("lon", "lat"))
+    lai_init_var.attrib["units"] = "m^2 m^-2"
+    lai_init_var.attrib["long_name"] = "Initial Leaf Area Index"
+    lai_init_var.attrib["description"] = "Initial LAI from MODIS satellite data (first timestep). Used to initialize the optimal LAI model instead of uniform value, reducing spin-up time."
+    lai_init_var[:, :] = lai_init
+
     # Global attributes
-    ds_out.attrib["title"] = "Growing Season Length, Annual Potential GPP, Precipitation, and VPD for Optimal LAI Model"
-    ds_out.attrib["source"] = "Computed from ClimaLand.jl optimal LAI simulation and ERA5 climate data"
-    ds_out.attrib["history"] = "Created by compute_gsl_a0.jl with hybrid GSL method"
+    ds_out.attrib["title"] = "Initial Conditions for Optimal LAI Model"
+    ds_out.attrib["source"] = "Computed from ClimaLand.jl optimal LAI simulation, ERA5 climate data, and MODIS LAI"
+    ds_out.attrib["history"] = "Created by initial_conditions.jl"
     ds_out.attrib["references"] = "Zhou et al. (2025) Global Change Biology - GSL defined as days with T > 0C, water limitation via f0*P/A0 term"
 
     close(ds_out)

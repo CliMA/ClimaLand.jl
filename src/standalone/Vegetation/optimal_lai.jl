@@ -176,11 +176,13 @@ const MM_TO_MOL_H2O = 1000.0 / 18.015
     set_historical_cache!(p, Y0, model::OptimalLAIModel, canopy; A0_daily)
 
 The optimal LAI model requires initialization of LAI and A0 values before the simulation.
-This method assumes that the LAI is initially in equilibrium with the initial conditions
-of the simulation.
 
-GSL, A0_annual, and precip_annual are taken from `model.gsl_a0_data`, which contains
-spatially varying fields typically created using `optimal_lai_initial_conditions`.
+GSL, A0_annual, precip_annual, and lai_init are taken from `model.gsl_a0_data`, which
+contains spatially varying fields typically created using `optimal_lai_initial_conditions`.
+
+LAI is initialized from MODIS satellite observations (`lai_init`) rather than computing
+equilibrium from model equations. This provides a realistic starting point that reduces
+spin-up time and matches observed vegetation patterns.
 
 # Arguments
 - `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5.
@@ -188,6 +190,7 @@ spatially varying fields typically created using `optimal_lai_initial_conditions
 # Notes
 - precip_annual is converted from mm yr⁻¹ (input) to mol H₂O m⁻² yr⁻¹ (internal units)
   to match Zhou et al. (2025) formulation for water limitation.
+- lai_init comes from MODIS first timestep, providing spatially-varying initial conditions.
 """
 function set_historical_cache!(
     p,
@@ -204,11 +207,13 @@ function set_historical_cache!(
     GSL = gsl_a0_data.GSL
     A0_annual = gsl_a0_data.A0_annual
     precip_annual_mm = gsl_a0_data.precip_annual  # in mm yr⁻¹
+    lai_init = gsl_a0_data.lai_init  # MODIS first timestep
 
     L = p.canopy.lai_model.LAI
 
-    # Initialize LAI with dummy value which will be overwritten
-    L .= FT(1.0)
+    # Initialize LAI from MODIS satellite observations
+    # This provides realistic spatially-varying initial conditions that reduce spin-up time
+    L .= lai_init
 
     # Initialize A0 variables (supports both scalar and Field inputs via .=)
     p.canopy.lai_model.A0_daily .= A0_daily
@@ -224,25 +229,6 @@ function set_historical_cache!(
     # Store precip_annual converted to mol H₂O m⁻² yr⁻¹
     # (input is in mm yr⁻¹, Zhou et al. uses mol m⁻² yr⁻¹)
     @. p.canopy.lai_model.precip_annual = precip_annual_mm * FT(MM_TO_MOL_H2O)
-
-    # Set local_noon_mask to 1 to force update for initialization
-    local_noon_mask = FT(1)
-
-    # Compute initial LAI based on initial conditions
-    # Use the GSL and precip_annual stored in the cache for consistency
-    @. L = update_optimal_LAI(
-        local_noon_mask,
-        p.canopy.lai_model.A0_daily,
-        L,
-        parameters.k,
-        p.canopy.lai_model.A0_annual,
-        parameters.z,
-        p.canopy.lai_model.GSL,
-        parameters.sigma,
-        parameters.alpha,
-        p.canopy.lai_model.precip_annual,
-        parameters.f0,
-    )
 end
 
 """
