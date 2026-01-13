@@ -511,7 +511,6 @@ function get_possible_diagnostics(model::CanopyModel)
         "snow",
         "lwd",
         "swd",
-        "qsfc",
     ]
 
     # Add conditional diagnostics based on atmosphere type
@@ -526,13 +525,11 @@ function get_possible_diagnostics(model::BucketModel)
         "swa",
         "rn",
         "tsfc",
-        "qsfc",
         "lhf",
         "shf",
         "swu",
         "lwu",
         "vflux",
-        "rhosfc",
         "tsoil",
         "wsoil",
         "wsfc",

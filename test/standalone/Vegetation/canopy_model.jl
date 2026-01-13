@@ -602,9 +602,7 @@ end
         @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0))
-        @test all(
-            Array(parent(p.canopy.turbulent_fluxes.vapor_flux)) .== FT(0),
-        )
+        @test all(Array(parent(p.canopy.turbulent_fluxes.vapor_flux)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))

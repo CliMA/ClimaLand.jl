@@ -1268,7 +1268,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
             Ẽ_l *= x / (Ẽ_pot + x)
         end
     else # sublimation, set evaporation to zero
-        Ẽ_i = Ẽ_pot*β
+        Ẽ_i = Ẽ_pot * β
         Ẽ_l = 0
     end
 
@@ -1286,7 +1286,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         output.q_vap_sfc,
     )
     SH::FT = output.shf
-            
+
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,
