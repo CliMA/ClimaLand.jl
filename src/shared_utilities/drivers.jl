@@ -25,11 +25,9 @@ export AbstractAtmosphericDrivers,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
-    set_atmos_ts!,
     turbulent_fluxes!,
     net_radiation!,
     turbulent_fluxes_at_a_point,
-    vapor_pressure_deficit,
     displacement_height,
     make_update_drivers,
     prescribed_forcing_era5,
@@ -319,39 +317,24 @@ struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
 end
 
 """
-    compute_ρ_sfc(thermo_params, ts_in, T_sfc)
+    compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
 
 Computes the density of air at the surface, given the temperature
-at the surface T_sfc, the thermodynamic state of the atmosphere,
-ts_in, and a set of Clima.Thermodynamics parameters thermo_params.
+at the surface T_sfc, the atmospheric temperature T_air, pressure P_air,
+and specific humidity q_air, using thermo_params.
 
 This assumes the ideal gas law and hydrostatic balance to
 extrapolate to the surface.
 
 """
-function compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+# TODO Replace by surface density calculation from SurfaceFluxes.jl
+function compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
+    Rm_int = Thermodynamics.gas_constant_air(thermo_params, q_air)
+    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+    cv_m = Thermodynamics.cv_m(thermo_params, q_air)
     T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
-    ρ_sfc =
-        ρ_air *
-        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int)
+    ρ_sfc = ρ_air * (T_sfc / T_air)^(cv_m / Rm_int)
     return ρ_sfc
-end
-
-"""
-    set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p)
-
-Fill the pre-allocated ts_in `Field` with a thermodynamic state computed from the
-atmosphere.
-"""
-function set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p) where {FT}
-    P = p.drivers.P
-    T = p.drivers.T
-    q = p.drivers.q
-    ts_in .= Thermodynamics.PhaseEquil_pTq.(atmos.thermo_params, P, T, q)
-    return nothing
 end
 
 return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
@@ -409,7 +392,9 @@ function turbulent_fluxes!(
             h_sfc,
             r_sfc,
             d_sfc,
-            p.drivers.thermal_state,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
             p.drivers.u,
             atmos.h,
             atmos.gustiness,
@@ -457,14 +442,16 @@ end
                                 h_sfc::FT,
                                 r_sfc::FT,
                                 d_sfc::FT,
-                                ts_in,
+                                T_air::FT,
+                                P_air::FT,
+                                q_air::FT,
                                 u::FT,
                                 h::FT,
                                 gustiness::FT,
                                 z_0m::FT,
                                 z_0b::FT,
                                 earth_param_set::EP;
-                               ) where {FT <: AbstractFloat, P}
+                               ) where {FT <: AbstractFloat, EP}
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature (T_sfc), specific humidity (q_sfc),
@@ -475,7 +462,7 @@ Computes turbulent surface fluxes at a point on a surface given
     in more complex land models), and the topographical height of the surface (h_sfc)
 (3) the roughness lengths `z_0m, z_0b`, and the Earth parameter set for the model
     `earth_params`.
-(4) the prescribed atmospheric state, `ts_in`, u, h the height
+(4) the prescribed atmospheric state (T_air, P_air, q_air), u, h the height
     at which these measurements are made, and the gustiness parameter (m/s).
 (5) the displacement height for the model d_sfc
 
@@ -496,7 +483,9 @@ function compute_turbulent_fluxes_at_a_point(
     h_sfc::FT,
     r_sfc::FT,
     d_sfc::FT,
-    ts_in,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
     u::Union{FT, SVector{2, FT}},
     h::FT,
     gustiness::FT,
@@ -505,7 +494,10 @@ function compute_turbulent_fluxes_at_a_point(
     earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    # Construct PhaseEquil states for SurfaceFluxes.jl API (temporary until SurfaceFluxes supports functional API)
+    # TODO Remove in update to new SurfaceFluxes.jl API
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
+    ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P_air, T_air, q_air)
 
     # SurfaceFluxes.jl expects a relative difference between where u = 0
     # and the atmosphere height. Here, we assume h and h_sfc are measured
@@ -734,7 +726,7 @@ end
 
 A helper function which returns the surface air density.
 
-This assumes the atmospheric thermal state is stored in p.drivers.
+This uses the atmospheric T, P, q from p.drivers.
 """
 function surface_air_density(
     atmos::AbstractAtmosphericDrivers,
@@ -746,7 +738,7 @@ function surface_air_density(
 )
     eps = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(eps)
-    return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
+    return compute_ρ_sfc.(thermo_params, p.drivers.T, p.drivers.P, p.drivers.q, T_sfc)
 end
 
 """
@@ -834,53 +826,6 @@ function displacement_height(model::AbstractModel{FT}, Y, p) where {FT}
 end
 
 """
-    vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-
-Computes the vapor pressure deficit for air with temperature T_air,
-pressure P_air, and specific humidity q_air, using thermo_params,
-a Thermodynamics.jl param set.
-"""
-function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-    es = Thermodynamics.saturation_vapor_pressure(
-        thermo_params,
-        T_air,
-        Thermodynamics.Liquid(),
-    )
-    ea = Thermodynamics.partial_pressure_vapor(
-        thermo_params,
-        P_air,
-        Thermodynamics.PhasePartition(q_air),
-    )
-    return es - ea
-end
-
-"""
-    relative_humidity(T_air, P_air, q_air, thermo_params)
-
-Computes the vapor pressure deficit for air with temperature T_air,
-pressure P_air, and specific humidity q_air, using thermo_params,
-a Thermodynamics.jl param set.
-"""
-function relative_humidity(
-    T_air::FT,
-    P_air::FT,
-    q_air::FT,
-    thermo_params,
-) where {FT}
-    es = Thermodynamics.saturation_vapor_pressure(
-        thermo_params,
-        T_air,
-        Thermodynamics.Liquid(),
-    )
-    ea = Thermodynamics.partial_pressure_vapor(
-        thermo_params,
-        P_air,
-        Thermodynamics.PhasePartition(q_air),
-    )
-    return es / ea
-end
-
-"""
     specific_humidity_from_dewpoint(dewpoint_temperature, temperature, air_pressure, earth_param_set)
 
 Estimates the specific humidity given the dewpoint temperature, temperature of the air
@@ -910,11 +855,12 @@ function specific_humidity_from_dewpoint(
         sim_FT(T_dew_air) - _T_freeze,
         sim_FT(T_air) - _T_freeze,
     )
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air),
         rh,
+        Thermodynamics.Liquid()
     )
     return q
 end
@@ -1074,9 +1020,8 @@ horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
-    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
-    # The thermal state is a different type
-    types = ([FT for k in keys[1:(end - 1)]]..., Thermodynamics.PhaseEquil{FT})
+    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+    types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
@@ -1132,7 +1077,7 @@ end
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
-with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q, `u`, and `thermal_state`.
+with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q`, and `u`.
 
 This is intended to be used in coupled simulations with ClimaCoupler.jl.
 """
@@ -1140,11 +1085,10 @@ function ClimaLand.initialize_drivers(
     a::CoupledAtmosphere{FT},
     coords,
 ) where {FT}
-    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u, :thermal_state)
+    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u)
     types = (
-        [FT for k in 1:(length(keys) - 2)]...,
+        [FT for k in 1:(length(keys) - 1)]...,
         SVector{2, FT},
-        Thermodynamics.PhaseEquil{FT},
     )
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
@@ -1229,7 +1173,6 @@ function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
         evaluate!(p.drivers.u, a.u, t)
         evaluate!(p.drivers.q, a.q, t)
         evaluate!(p.drivers.c_co2, a.c_co2, t)
-        set_atmos_ts!(p.drivers.thermal_state, a, p)
     end
     return update_drivers!
 end
@@ -1671,7 +1614,10 @@ function empirical_diffuse_fraction(
     else
         DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
     end
-    RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
+    # Pass explicit zero liquid/ice fractions to avoid Thermodynamics.jl MethodError with default Integer arguments
+    RH = Thermodynamics.relative_humidity(thermo_params, T, P, q, zero(FT), zero(FT)) # Note: This used RH over liquid before; not it's RH over ice when below freezing
+    # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
+    # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
     kₜ = SW_d / k₀
     if kₜ ≤ 0.3

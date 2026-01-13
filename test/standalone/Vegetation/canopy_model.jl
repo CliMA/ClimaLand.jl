@@ -131,7 +131,6 @@ import ClimaParams
             :u,
             :q,
             :c_co2,
-            :thermal_state,
             :SW_d,
             :LW_d,
             :cosθs,
@@ -246,16 +245,13 @@ import ClimaParams
         Rn = FT(shortwave_radiation(t0))
         G = FT(0.0)
 
-        ts_in =
-            Thermodynamics.PhaseEquil_pTq.(
-                thermo_params,
-                p.drivers.P,
-                p.drivers.T,
-                p.drivers.q,
-            )
-        ρa = Thermodynamics.air_density.(thermo_params, ts_in)
-        cp =
-            FT(cp_m(thermo_params, Thermodynamics.PhasePartition.(q_atmos(t0))))
+        ρa = Thermodynamics.air_density.(
+            thermo_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+        )
+        cp = FT(Thermodynamics.cp_m(thermo_params, q_atmos(t0)))
 
         es =
             Thermodynamics.saturation_vapor_pressure.(
@@ -267,7 +263,7 @@ import ClimaParams
             Thermodynamics.partial_pressure_vapor.(
                 thermo_params,
                 FT(P_atmos(t0)),
-                Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
+                FT(q_atmos(t0)),
             )
 
         VPD = es .- ea
@@ -575,7 +571,7 @@ end
             T_sfc,
         )
         q_sfc =
-            Thermodynamics.q_vap_saturation_generic.(
+            Thermodynamics.q_vap_saturation.(
                 thermo_params,
                 T_sfc,
                 ρ_sfc,
@@ -602,7 +598,7 @@ end
             T_sfc2,
         )
         q_sfc2 =
-            Thermodynamics.q_vap_saturation_generic.(
+            Thermodynamics.q_vap_saturation.(
                 thermo_params,
                 T_sfc2,
                 ρ_sfc2,
@@ -852,7 +848,6 @@ end
                 :u,
                 :q,
                 :c_co2,
-                :thermal_state,
                 :SW_d,
                 :LW_d,
                 :cosθs,
@@ -930,7 +925,6 @@ end
             :u,
             :q,
             :c_co2,
-            :thermal_state,
             :SW_d,
             :LW_d,
             :cosθs,

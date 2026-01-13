@@ -226,7 +226,9 @@ function ClimaLand.turbulent_fluxes!(
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
-            p.drivers.thermal_state,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
             p.drivers.u,
             atmos.h,
             atmos.gustiness,
@@ -293,7 +295,9 @@ end
 
 """
     function canopy_compute_turbulent_fluxes_at_a_point(
-        ts_in,
+        T_air::FT,
+        P_air::FT,
+        q_air::FT,
         u::Union{FT, SVector{2, FT}},
         h::FT,    
         gustiness::FT,
@@ -306,7 +310,7 @@ end
         LAI::FT,
         SAI::FT,
         earth_param_set::EP;
-    ) where {FT <: AbstractFloat, EP, F}
+    ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
 and returns the fluxes in a named tuple.
@@ -316,7 +320,9 @@ evaporation and sensible heat flux, and this modifies the output
 of `SurfaceFluxes.surface_conditions`.
 """
 function canopy_compute_turbulent_fluxes_at_a_point(
-    ts_in,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
     u::Union{FT, SVector{2, FT}},
     h::FT,
     gustiness::FT,
@@ -334,10 +340,12 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     if u isa FT
         u = SVector{2, FT}(u, 0)
     end
+    # Construct PhaseEquil states for SurfaceFluxes.jl API (temporary until SurfaceFluxes supports functional API)
+    ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P_air, T_air, q_air)
     state_in = SurfaceFluxes.StateValues(h - d_sfc, u, ts_in)
     T_sfc = T_sfc < 0 ? FT(NaN) : T_sfc
-    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-    q_sfc = Thermodynamics.q_vap_saturation_generic(
+    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
+    q_sfc = Thermodynamics.q_vap_saturation(
         thermo_params,
         T_sfc,
         ρ_sfc,
@@ -361,13 +369,13 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     _LH_v0::FT = LP.LH_v0(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, ts_sfc)
+    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, q_sfc)
     r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
     ustar::FT = conditions.ustar
-    ρ_sfc = Thermodynamics.air_density(thermo_params, ts_sfc)
-    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+    ρ_sfc = Thermodynamics.air_density(thermo_params, T_sfc, P_air, q_sfc)
+    Rm_int = Thermodynamics.gas_constant_air(thermo_params, q_air)
+    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+    cv_m = Thermodynamics.cv_m(thermo_params, q_air)
     r_b_leaf::FT = 1 / (Cd * max(ustar, gustiness))
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
@@ -375,7 +383,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     E0::FT =
         SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)
     E = E0 * r_ae / (r_b_canopy_lai + r_stomata_canopy + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
-    Ẽ = E / _ρ_liq
+    Ẽ = E / _ρ_liq
 
     SH =
         SurfaceFluxes.sensible_heat_flux(
@@ -389,11 +397,12 @@ function canopy_compute_turbulent_fluxes_at_a_point(
 
     # Derivatives
     # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
+    # TODO Update after transition to new SurfaceFluxes.jl API
     ∂ρsfc∂Tc =
         ρ_air *
-        (Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int) *
-        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int - 1) /
-        T_int
+        (cv_m / Rm_int) *
+        (T_sfc / T_air)^(cv_m / Rm_int - 1) /
+        T_air
     ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
 
     ∂LHF∂qc =
@@ -408,7 +417,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     return (
         lhf = LH,
         shf = SH,
-        transpiration = Ẽ,
+        transpiration = Ẽ,
         r_ae = r_ae,
         ∂LHF∂qc = ∂LHF∂qc,
         ∂SHF∂Tc = ∂SHF∂Tc,
