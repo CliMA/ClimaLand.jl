@@ -1005,7 +1005,7 @@ function turbulent_fluxes!(
     )
 
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
-
+    gustiness = atmos.gustiness
     dest .=
         soil_turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
@@ -1048,7 +1048,7 @@ function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _) =
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _, _) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -1062,16 +1062,17 @@ function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz) =
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz, buoyancy_flux) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
         shf = SH,
         vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
+        r_ae,
         vapor_flux_ice = Ẽ_i,
-        ρτxz = ρτxz,
-        ρτyz = ρτyz,
+        ρτxz,
+        ρτyz,
+        buoyancy_flux,
     )
 end
 
@@ -1216,7 +1217,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         solver_opts = nothing,
         flux_specs = nothing,
     )
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(gustiness)
 
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     output = SurfaceFluxes.surface_fluxes(
@@ -1238,7 +1239,6 @@ function soil_compute_turbulent_fluxes_at_a_point(
         positional_default_args...,
     )
 
-    SH = output.shf
     r_ae::FT = 1 / (output.Ch * sqrt(u_air[1]^2 + u_air[2]^2))
     E_pot::FT = output.evaporation
     Ẽ_pot::FT = E_pot / _ρ_liq # volume flux of liquid water
@@ -1268,14 +1268,36 @@ function soil_compute_turbulent_fluxes_at_a_point(
             Ẽ_l *= x / (Ẽ_pot + x)
         end
     else # sublimation, set evaporation to zero
-        Ẽ_i = Ẽ_pot
+        Ẽ_i = Ẽ_pot*β
         Ẽ_l = 0
     end
 
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
-
-    return (LH, SH, Ẽ_l, r_ae, Ẽ_i, output.ρτxz, output.ρτyz)
+    ρ_sfc = SurfaceFluxes.surface_density(
+        surface_flux_params,
+        T_air,
+        ρ_air,
+        output.T_sfc,
+        h_air - h_sfc,
+        q_air,
+        FT(0),
+        FT(0),
+        output.q_vap_sfc,
+    )
+    SH::FT = output.shf
+            
+    buoyancy_flux = SurfaceFluxes.buoyancy_flux(
+        surface_flux_params,
+        output.shf,
+        output.lhf,
+        output.T_sfc,
+        ρ_sfc,
+        output.q_vap_sfc,
+        FT(0),
+        FT(0),
+    )
+    return (LH, SH, Ẽ_l, r_ae, Ẽ_i, output.ρτxz, output.ρτyz, buoyancy_flux)
 end
 
 """
