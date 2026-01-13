@@ -1662,8 +1662,6 @@ function empirical_diffuse_fraction(
         T,
         P,
         q,
-        zero(FT),
-        zero(FT),
     ) # Note: This used RH over liquid before; not it's RH over ice when below freezing
     # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
     # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
