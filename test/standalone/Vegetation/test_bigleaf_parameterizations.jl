@@ -44,8 +44,10 @@ for FT in (Float32, Float64)
         T = FT(290) # K
         P = FT(101250) #Pa
         q = FT(0.02)
-        VPD =
-            max(Thermodynamics.vapor_pressure_deficit(thermo_params, T, P, q), FT(0)) #Pa
+        VPD = max(
+            Thermodynamics.vapor_pressure_deficit(thermo_params, T, P, q),
+            FT(0),
+        ) #Pa
         p_l = FT(-2e6) # Pa
         ca = FT(4.11e-4) # mol/mol
         R = FT(LP.gas_constant(earth_param_set))

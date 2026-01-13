@@ -399,10 +399,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
     # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
     # TODO Update after transition to new SurfaceFluxes.jl API
     ∂ρsfc∂Tc =
-        ρ_air *
-        (cv_m / Rm_int) *
-        (T_sfc / T_air)^(cv_m / Rm_int - 1) /
-        T_air
+        ρ_air * (cv_m / Rm_int) * (T_sfc / T_air)^(cv_m / Rm_int - 1) / T_air
     ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
 
     ∂LHF∂qc =

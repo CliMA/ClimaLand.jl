@@ -1155,7 +1155,8 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # Atmos air state - construct PhaseEquil for SurfaceFluxes.jl API (temporary until SurfaceFluxes supports functional API)
     # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     # TODO Remove in update to new SurfaceFluxes.jl API
-    thermal_state_air = Thermodynamics.PhaseEquil_pTq(thermo_params, P_air, T_air, q_air)
+    thermal_state_air =
+        Thermodynamics.PhaseEquil_pTq(thermo_params, P_air, T_air, q_air)
     state_air = SurfaceFluxes.StateValues(
         h_air - d_sfc - h_sfc,
         u_air,
@@ -1163,7 +1164,8 @@ function soil_compute_turbulent_fluxes_at_a_point(
     )
 
     # Estimate surface air density from the atmos state using T_sfc
-    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
+    ρ_sfc::FT =
+        ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
 
     # Get the freezing point of the soil to determine if the water is sublimating or evaporating
     θtot_sfc = min(_ρ_ice / _ρ_liq * θ_i_sfc + θ_l_sfc, ν_sfc)

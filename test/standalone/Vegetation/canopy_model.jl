@@ -245,12 +245,13 @@ import ClimaParams
         Rn = FT(shortwave_radiation(t0))
         G = FT(0.0)
 
-        ρa = Thermodynamics.air_density.(
-            thermo_params,
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-        )
+        ρa =
+            Thermodynamics.air_density.(
+                thermo_params,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+            )
         cp = FT(Thermodynamics.cp_m(thermo_params, q_atmos(t0)))
 
         es =
