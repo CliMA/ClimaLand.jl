@@ -374,13 +374,6 @@ function make_update_boundary_fluxes(
             Y,
             t,
         )
-
-        # Effective (radiative) land properties
-        set_eff_land_radiation_properties!(
-            p,
-            land.soil.parameters.earth_param_set,
-        )
-
         # Compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
@@ -409,6 +402,42 @@ function make_update_boundary_fluxes(
     end
     return update_boundary_fluxes!
 end
+
+function make_update_implicit_cache(
+    land::LandModel{FT, MM, SM, RM, SnM},
+) where {
+    FT,
+    MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+    SnM <: Snow.SnowModel{FT},
+}
+    update_imp_aux_soil! = make_update_implicit_aux(land.soil)
+    update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
+    update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
+    update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
+    function update_implicit_cache!(p, Y, t)
+        update_imp_aux_soil!(p, Y, t)
+        update_imp_aux_canopy!(p, Y, t)
+        # Radiation - updates Rn for soil and snow also
+        lsm_radiant_energy_fluxes!(
+            p,
+            land,
+            land.canopy.radiative_transfer,
+            Y,
+            t,
+        )
+        # Effective (radiative) land properties
+        set_eff_land_radiation_properties!(
+            p,
+            land.soil.parameters.earth_param_set,
+        )
+        update_imp_bf_soil!(p, Y, t)
+        update_imp_bf_canopy!(p, Y, t)
+    end
+    return update_implicit_cache!
+end
+
 
 """
     lsm_radiant_energy_fluxes!(p,land::LandModel{FT},
@@ -741,9 +770,12 @@ the method for the CanopyModel, except unpacking `model.canopy` rather
 than using `model` directly.
 """
 function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
     update_cache! = make_update_cache(model)
     canopy = model.canopy
     function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
