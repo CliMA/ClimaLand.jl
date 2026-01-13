@@ -3,6 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams as CP
 using ClimaLand.Canopy
+using Thermodynamics
 
 import ClimaLand
 import ClimaLand.Parameters as LP
