@@ -39,7 +39,7 @@ import ClimaParams
             @test model.gsl_a0_data === gsl_a0_data
             @test eltype(model) == FT
 
-            # Test auxiliary variables (LAI + A0 tracking variables + GSL)
+            # Test auxiliary variables (LAI + A0 tracking variables + GSL + precip_annual + vpd_gs)
             @test Canopy.auxiliary_vars(model) == (
                 :LAI,
                 :A0_daily,
@@ -47,12 +47,14 @@ import ClimaParams
                 :A0_daily_acc,
                 :A0_annual_acc,
                 :A0_annual_daily_acc,
-                :last_day_of_year,
+                :days_since_reset,
                 :GSL,
+                :precip_annual,
+                :vpd_gs,
             )
-            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT, FT, FT)
+            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
             @test Canopy.auxiliary_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
+                  (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -60,19 +62,25 @@ import ClimaParams
             Ao_annual = FT(100.0)   # mol m⁻² yr⁻¹
             k = FT(0.5)
             z = FT(12.227)
+            # Use high precip and low VPD to ensure energy-limited
+            precip_annual = FT(100000.0)  # mol H₂O m⁻² yr⁻¹ (very high)
+            f0 = FT(0.65)
+            ca_pa = FT(40.0)  # Pa
+            chi = FT(0.77)  # typical tropical value
+            vpd_gs = FT(1000.0)  # Pa
 
-            LAI_max = Canopy.compute_L_max(Ao_annual, k, z)
+            LAI_max = Canopy.compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
 
             @test LAI_max isa FT
             @test LAI_max >= FT(0.0)  # LAI should be non-negative
             @test LAI_max < FT(20.0)  # LAI should be reasonable (< 20)
 
             # Test that higher A0_annual gives higher LAI_max
-            LAI_high_gpp = Canopy.compute_L_max(FT(300.0), k, z)
-            LAI_low_gpp = Canopy.compute_L_max(FT(50.0), k, z)
+            LAI_high_gpp = Canopy.compute_L_max(FT(300.0), k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
+            LAI_low_gpp = Canopy.compute_L_max(FT(50.0), k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
             @test LAI_high_gpp > LAI_low_gpp
 
-            # Test energy limitation formula
+            # Test energy limitation formula (with high precip, should be energy-limited)
             fAPAR_energy = FT(1) - z / (k * Ao_annual)
             fAPAR_max = max(FT(0), min(FT(1), fAPAR_energy))
             LAI_max_manual = -(FT(1) / k) * log(FT(1) - fAPAR_max)

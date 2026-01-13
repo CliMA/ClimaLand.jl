@@ -214,7 +214,7 @@ import ClimaLand.Parameters as LP
                 println("  A0_daily = $(parent(p.canopy.lai_model.A0_daily))")
                 println("  A0_daily_acc = $(parent(p.canopy.lai_model.A0_daily_acc))")
                 println("  A0_annual_daily_acc = $(parent(p.canopy.lai_model.A0_annual_daily_acc))")
-                println("  last_day_of_year = $(parent(p.canopy.lai_model.last_day_of_year))")
+                println("  days_since_reset = $(parent(p.canopy.lai_model.days_since_reset))")
             end
         end
     end
