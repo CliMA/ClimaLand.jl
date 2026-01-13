@@ -211,17 +211,15 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     T_sfc = component_temperature(model, Y, p)
-    ρ_sfc = @. lazy(
-        ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc),
-    )
-    q_sfc = @. lazy(
-        Thermodynamics.q_vap_saturation_generic(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Liquid(),
-        ),
-    )
+    T_air = p.drivers.T
+    P_air = p.drivers.P
+    q_air = p.drivers.q
+    ρ_sfc = @. lazy(ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc))
+    q_sfc = @. lazy(Thermodynamics.q_vap_saturation(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid()))
     return q_sfc
 end
 
@@ -376,6 +374,7 @@ function ClimaLand.get_update_surface_temperature_function(
         (args...) -> update_T_sfc_at_a_point(args..., leaf_Cd, AI_val)
     return @. lazy(update_T_sfc_field(AI, Cd))
 end
+
 
 """
     ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)

@@ -1019,7 +1019,9 @@ function turbulent_fluxes!(
             ν_sfc,
             θ_r_sfc,
             K_sat_sfc,
-            p.drivers.thermal_state,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
             p.drivers.u,
             atmos.h,
             atmos.gustiness,
@@ -1081,7 +1083,9 @@ end
                                 ν_sfc::FT,
                                 θ_r_sfc::FT,
                                 K_sat_sfc::FT,
-                                thermal_state_air::Thermodynamics.PhaseEquil{FT},
+                                T_air::FT,
+                                P_air::FT,
+                                q_air::FT,
                                 u_air::FT,
                                 h_air::FT,
                                 gustiness::FT,
@@ -1098,7 +1102,7 @@ Computes turbulent surface fluxes for soil at a point on a surface given
 (2) Surface properties, such as the topographical height of the surface (`h_sfc`),
     the displacement height (`d_sfc`), hydraulic parameters (`hydrology_cm_sfc`,
     `ν_sfc, `θ_r_sfc`, `K_sat_sfc`)
-(4) Atmospheric state conditions (`thermal_state_air`, `u_air`)
+(4) Atmospheric state conditions (`T_air`, `P_air`, `q_air`, `u_air`)
 (5) Height corresponding to where atmospheric state is measured (`h_air`)
 (6) Parameters: `gustiness`, roughness lengths `z_0m`, `z_0b`, several
     required to compute the soil conductivity `Ω`, γ`, γT_ref`, and the
@@ -1119,7 +1123,9 @@ function soil_compute_turbulent_fluxes_at_a_point(
     ν_sfc::FT,
     θ_r_sfc::FT,
     K_sat_sfc::FT,
-    thermal_state_air::Thermodynamics.PhaseEquil{FT},
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
     u_air::Union{FT, SVector{2, FT}},
     h_air::FT,
     gustiness::FT,
@@ -1146,17 +1152,11 @@ function soil_compute_turbulent_fluxes_at_a_point(
     _T_freeze::FT = LP.T_freeze(earth_param_set)
     _grav::FT = LP.grav(earth_param_set)
 
-    # Atmos air state
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     if u_air isa FT
         u_air = SVector{2, FT}(u_air, 0)
     end
-    q_air::FT =
-        Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
-    T_air::FT = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, thermal_state_air)
     # Estimate surface air density from the atmos state using T_sfc
-    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
+    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
     # Get the freezing point of the soil to determine if the water is sublimating or evaporating
     θtot_sfc = min(_ρ_ice / _ρ_liq * θ_i_sfc + θ_l_sfc, ν_sfc)
     # This is consistent with Equation (22) of Dall'Amico
@@ -1175,7 +1175,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
-        q_sfc = Thermodynamics.q_vap_saturation_generic(
+        q_sat_liq::FT = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,
@@ -1183,7 +1183,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         )
     else
         liquid_evaporation = false
-        q_sfc = Thermodynamics.q_vap_saturation_generic(
+        q_sat_ice::FT = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,

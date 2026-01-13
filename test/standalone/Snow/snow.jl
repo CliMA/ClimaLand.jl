@@ -125,19 +125,14 @@ import ClimaLand.Parameters as LP
     )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-
-    ρ_sfc = @. ClimaLand.compute_ρ_sfc(
-        thermo_params,
-        p.drivers.thermal_state,
-        p.snow.T_sfc,
-    )
-    q_sfc = @. (1 - p.snow.q_l) * Thermodynamics.q_vap_saturation_generic(
+    ρ_sfc = @. ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.T, p.drivers.P, p.drivers.q, p.snow.T_sfc)
+    q_sfc = @. (1 - p.snow.q_l) * Thermodynamics.q_vap_saturation(
         thermo_params,
         p.snow.T_sfc,
         ρ_sfc,
         Thermodynamics.Ice(),
     ) +
-       p.snow.q_l * Thermodynamics.q_vap_saturation_generic(
+       p.snow.q_l * Thermodynamics.q_vap_saturation(
         thermo_params,
         p.snow.T_sfc,
         ρ_sfc,

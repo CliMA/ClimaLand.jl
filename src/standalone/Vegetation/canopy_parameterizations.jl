@@ -51,7 +51,7 @@ function medlyn_term(
     thermo_params,
 ) where {FT}
     VPD = max(
-        ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params),
+        Thermodynamics.vapor_pressure_deficit(thermo_params, T_air, P_air, q_air),
         FT(0),
     ) # clip negative values of VPD to zero
     return 1 + g1 / sqrt(VPD + sqrt(eps(FT))) # regularize values of VPD which are smaller than sqrt(eps(FT))

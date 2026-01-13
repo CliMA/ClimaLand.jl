@@ -45,7 +45,6 @@ for FT in (Float32, Float64)
             :u,
             :q,
             :c_co2,
-            :thermal_state,
             :SW_d,
             :LW_d,
             :cosθs,

@@ -235,7 +235,9 @@ function update_density_prog!(
         density.α .* (
             Thermodynamics.relative_humidity.(
                 model.boundary_conditions.atmos.thermo_params,
-                p.drivers.thermal_state,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
             ) .- Y.snow.Qrel_avg
         )
     @. dY.snow.u_avg = density.α * (p.drivers.u - Y.snow.u_avg)

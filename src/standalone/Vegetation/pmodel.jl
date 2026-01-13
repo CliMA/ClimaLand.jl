@@ -641,11 +641,11 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
-            ClimaLand.vapor_pressure_deficit(
+            Thermodynamics.vapor_pressure_deficit(
+                LP.thermodynamic_parameters(canopy.earth_param_set),
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(canopy.earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
@@ -726,11 +726,11 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
-            ClimaLand.vapor_pressure_deficit(
+            Thermodynamics.vapor_pressure_deficit(
+                LP.thermodynamic_parameters(earth_param_set),
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
@@ -863,11 +863,11 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
-            ClimaLand.vapor_pressure_deficit(
+            Thermodynamics.vapor_pressure_deficit(
+                LP.thermodynamic_parameters(canopy.earth_param_set),
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(canopy.earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
