@@ -56,7 +56,8 @@ tutorials_jl = flatten_to_array_of_strings(get_second(tutorials))
 println("Building literate tutorials...")
 tutorials_dir = joinpath(@__DIR__, "src", "tutorials")
 tutorials_jl = map(x -> joinpath(tutorials_dir, x), tutorials_jl)
-pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
+# pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
+map(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
 
 # update list of rendered markdown tutorial output for mkdocs
 ext_jl2md(x) = joinpath(basename(GENERATED_DIR), replace(x, ".jl" => ".md"))
