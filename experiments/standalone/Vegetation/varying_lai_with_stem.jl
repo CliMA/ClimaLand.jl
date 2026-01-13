@@ -187,7 +187,7 @@ R = [
 R_stem_leaf =
     [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
 Tr = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
+    parent(sv.saveval[k].canopy.turbulent_fluxes.vapor_flux)[1] for
     k in 1:length(sol.t)
 ]
 times = float.(sol.t) ./ 24 ./ 3600

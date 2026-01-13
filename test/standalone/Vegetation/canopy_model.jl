@@ -600,13 +600,11 @@ end
 
         @test all(Array(parent(p.canopy.soil_moisture_stress.βm) .≈ FT(1)))
         @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
+        @test all(Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0))
+        @test all(Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0))
         @test all(
-            abs.(Array(parent(p.canopy.turbulent_fluxes.shf))) .< eps(FT) * 1e4,
+            Array(parent(p.canopy.turbulent_fluxes.vapor_flux)) .== FT(0),
         )
-        @test all(
-            abs.(Array(parent(p.canopy.turbulent_fluxes.vapor_flux) ./ 1000)) .<
-            eps(FT),
-        ) # evap returned by SF.jl
         @test all(Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))
@@ -616,7 +614,7 @@ end
 
         exp_tend! = make_exp_tendency(canopy)
         exp_tend!(dY, Y, p, FT(0))
-        @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l.:1)) .< eps(FT))
+        @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
     end
 end
 

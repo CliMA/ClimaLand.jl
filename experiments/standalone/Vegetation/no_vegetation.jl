@@ -20,7 +20,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
-const FT = Float32;
+const FT = Float64;
 toml_dict = LP.create_toml_dict(FT);
 
 time_offset = -6
@@ -142,7 +142,7 @@ R = [
     parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
 ]
 Tr = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
+    parent(sv.saveval[k].canopy.turbulent_fluxes.vapor_flux)[1] for
     k in 1:length(sol.t)
 ]
 times = FT.(sol.t) ./ 24 ./ 3600

@@ -158,6 +158,10 @@ function canopy_boundary_fluxes!(
         p,
         t,
     )
+    # Due to roundoff problem when multiplying and dividing by cp_d, set
+    # SHF to zero if LAI < 0.01
+    clip_flux_zero_lai(shf::FT, lai::FT) where{FT} =  lai < FT(0.01) ? FT(0) : shf
+    @. p.canopy.turbulent_fluxes.shf = clip_flux_zero_lai(p.canopy.turbulent_fluxes.shf, p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem)
 
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
@@ -277,10 +281,9 @@ function ClimaLand.get_update_surface_humidity_function(
         r_stomata_canopy,
     )
         FT = eltype(param_set)
-        r_land =
-            1 / max(leaf_Cd * max(u_star, FT(1)) * LAI, eps(FT)) +
-            r_stomata_canopy
-
+        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI
+        g_stomata = 1/r_stomata_canopy
+        g_land = g_stomata*g_leaf/(g_leaf+g_stomata)
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
@@ -301,7 +304,7 @@ function ClimaLand.get_update_surface_humidity_function(
         # q_sfc * (g_h + 1/r_land) = q_canopy/r_land + g_h * q_atm
         # q_sfc = (q_canopy + g_h * r_land * q_atm) / (1 + g_h * r_land)
 
-        q_new = (q_canopy + g_h * r_land * q_vap_int) / (1 + g_h * r_land)
+        q_new = (g_land/g_h* q_canopy + q_vap_int) / (1 + g_land /g_h)
         return q_new
     end
     # Closure
@@ -355,11 +358,23 @@ function ClimaLand.get_update_surface_temperature_function(
         )
         ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
         g_land = leaf_Cd * max(u_star, FT(1)) * AI
+
         ΔΦ = Φ_int - Φ_sfc
         cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+        cp_d = cp_d
+        
+#        T_0 = Thermodynamics.Parameters.T_0(thermo_params)
+#        DSE_int = Thermodynamics.dry_static_energy(thermo_params, T_int, Φ_int)
+ #       DSE_sfc = Thermodynamics.dry_static_energy(thermo_params, T_int + ΔΦ / cp_d, Φ_sfc)
+ #       ΔDSE = DSE_int - DSE_sfc
+ #       @show ΔDSE
+
+ #       DSE_int2 = cp_d*(T_int-T_0) + Φ_int
+ #       DSE_sfc2 = cp_d*(T_int+ - T_0)+ (Φ_int - Φ_sfc) + Φ_sfc
+ #       @show DSE_int2 - DSE_sfc2
         T_sfc =
             (T_int + T_canopy * g_land / g_h + ΔΦ / cp_d) / (1 + g_land / g_h)
-        return T_sfc
+        return FT(T_sfc)
     end
     # Closure
     update_T_sfc_field(AI_val, leaf_Cd) =
