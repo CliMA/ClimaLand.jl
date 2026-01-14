@@ -31,11 +31,12 @@ function perturbed_temp_specific_humidity_from_dewpoint(
         sim_FT(T_dew_air) - _T_freeze,
         sim_FT(T_air) - _T_freeze,
     )
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air + ΔT),
         rh,
+        Thermodynamics.Liquid(),
     )
     return q
 end
@@ -72,11 +73,12 @@ function perturbed_rh_specific_humidity_from_dewpoint(
         sim_FT(T_air) - _T_freeze,
     )
     rh = min(max(rh_true + Δrh, sqrt(eps(sim_FT))), sim_FT(1))
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air),
         rh,
+        Thermodynamics.Liquid(),
     )
     return q
 end
