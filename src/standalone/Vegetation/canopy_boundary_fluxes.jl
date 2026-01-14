@@ -213,7 +213,7 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
         ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc),
     )
     q_sfc = @. lazy(
-        Thermodynamics.q_vap_saturation_generic(
+        Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,
@@ -285,7 +285,7 @@ function ClimaLand.get_update_surface_humidity_function(
         r_stomata_canopy,
     )
         FT = eltype(param_set)
-        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI
+        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         g_h = SurfaceFluxes.heat_conductance(
@@ -361,24 +361,13 @@ function ClimaLand.get_update_surface_temperature_function(
             scheme,
         )
         ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
-        g_land = leaf_Cd * max(u_star, FT(1)) * AI
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
 
         ΔΦ = Φ_int - Φ_sfc
         cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-        cp_d = cp_d
-
-        #        T_0 = Thermodynamics.Parameters.T_0(thermo_params)
-        #        DSE_int = Thermodynamics.dry_static_energy(thermo_params, T_int, Φ_int)
-        #       DSE_sfc = Thermodynamics.dry_static_energy(thermo_params, T_int + ΔΦ / cp_d, Φ_sfc)
-        #       ΔDSE = DSE_int - DSE_sfc
-        #       @show ΔDSE
-
-        #       DSE_int2 = cp_d*(T_int-T_0) + Φ_int
-        #       DSE_sfc2 = cp_d*(T_int+ - T_0)+ (Φ_int - Φ_sfc) + Φ_sfc
-        #       @show DSE_int2 - DSE_sfc2
         T_sfc =
             (T_int + T_canopy * g_land / g_h + ΔΦ / cp_d) / (1 + g_land / g_h)
-        return FT(T_sfc)
+        return T_sfc
     end
     # Closure
     update_T_sfc_field(AI_val, leaf_Cd) =
@@ -410,10 +399,10 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     )
         FT = eltype(earth_param_set)
         _T_freeze = LP.T_freeze(earth_param_set)
-        u_star_safe = max(u_star, FT(1))
-        r_land =
-            1 / (leaf_Cd * u_star_safe) / max(LAI, eps(FT)) + r_stomata_canopy
-        ∂q_sfc∂q = 1 / (1 + g_h * r_land)
+        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
+        g_stomata = 1 / r_stomata_canopy
+        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
         return ∂q_sfc∂q *
                ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
     end
@@ -445,7 +434,7 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
         AI,
     )
         FT = eltype(earth_param_set)
-        g_land = leaf_Cd * max(u_star, FT(1)) * AI
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
         ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T
     end

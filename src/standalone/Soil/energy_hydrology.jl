@@ -936,34 +936,6 @@ function ClimaLand.surface_emissivity(
     return model.parameters.emissivity
 end
 
-"""
-    ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
-
-a helper function which returns the surface specific humidity for the canopy
-model.
-"""
-#function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
-#    earth_param_set = get_earth_param_set(model)
-#    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-#    T_sfc = component_temperature(model, Y, p)
-#    ρ_sfc = @. lazy(ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc))
-#    
-#    q_sfc = @. lazy(Thermodynamics.q_vap_saturation_generic(
-#        thermo_params,
-#        T_sfc,
-#        ρ_sfc,
-#        Thermodynamics.Liquid(),
-#    ))
-#    return q_sfc
-#end
-
-
-#function ClimaLand.surface_roughness_model(model::EnergyHydrology{FT}, Y, p) where {FT}
-#    sfp = model.boundary_conditions.turbulent_flux_parameterization
-#    return @. lazy(SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b))
-#end
-
-
 function ClimaLand.get_drivers(model::EnergyHydrology)
     bc = model.boundary_conditions.top
     if typeof(bc) <: AtmosDrivenFluxBC{
@@ -1005,7 +977,6 @@ function turbulent_fluxes!(
     )
 
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
-    gustiness = atmos.gustiness
     dest .=
         soil_turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
@@ -1048,27 +1019,20 @@ function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _, _) =
+    (LH, SH, Ẽ_l, Ẽ_i, _, _, _) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
-        vapor_flux_ice = Ẽ_i,
-    )
+    return (lhf = LH, shf = SH, vapor_flux_liq = Ẽ_l, vapor_flux_ice = Ẽ_i)
 end
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz, buoyancy_flux) =
+    (LH, SH, Ẽ_l, Ẽ_i, ρτxz, ρτyz, buoyancy_flux) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
         shf = SH,
         vapor_flux_liq = Ẽ_l,
-        r_ae,
         vapor_flux_ice = Ẽ_i,
         ρτxz,
         ρτyz,
@@ -1181,7 +1145,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
-        q_sfc = Thermodynamics.q_vap_saturation_generic(
+        q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,
@@ -1189,7 +1153,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         )
     else
         liquid_evaporation = false
-        q_sfc = Thermodynamics.q_vap_saturation_generic(
+        q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,
@@ -1239,7 +1203,6 @@ function soil_compute_turbulent_fluxes_at_a_point(
         positional_default_args...,
     )
 
-    r_ae::FT = 1 / (output.Ch * sqrt(u_air[1]^2 + u_air[2]^2))
     E_pot::FT = output.evaporation
     Ẽ_pot::FT = E_pot / _ρ_liq # volume flux of liquid water
 
@@ -1297,7 +1260,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         FT(0),
         FT(0),
     )
-    return (LH, SH, Ẽ_l, r_ae, Ẽ_i, output.ρτxz, output.ρτyz, buoyancy_flux)
+    return (LH, SH, Ẽ_l, Ẽ_i, output.ρτxz, output.ρτyz, buoyancy_flux)
 end
 
 """

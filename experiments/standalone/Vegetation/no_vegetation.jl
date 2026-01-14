@@ -20,7 +20,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 
-const FT = Float64;
+const FT = Float32;
 toml_dict = LP.create_toml_dict(FT);
 
 time_offset = -6
