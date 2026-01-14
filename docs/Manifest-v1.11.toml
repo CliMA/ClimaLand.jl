@@ -3246,10 +3246,10 @@ uuid = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 version = "1.0.0"
 
 [[deps.Thermodynamics]]
-deps = ["DocStringExtensions", "ForwardDiff", "KernelAbstractions", "Random", "RootSolvers"]
-git-tree-sha1 = "b8203ebbcf1dd74ee13d84c52819fb159ac44b93"
+deps = ["ForwardDiff", "Random", "RootSolvers"]
+git-tree-sha1 = "ed3bda4ef913084e1e028d4fb05e26f1b69356f6"
 uuid = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
-version = "0.15.2"
+version = "0.15.4"
 weakdeps = ["ClimaParams"]
 
     [deps.Thermodynamics.extensions]
