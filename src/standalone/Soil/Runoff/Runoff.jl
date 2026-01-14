@@ -347,7 +347,7 @@ function ClimaLand.source!(
     @. dY.soil.ρe_int -= subsurface_field
     surface_field = p.soil.sfc_scratch
     column_integral_definite!(surface_field, subsurface_field)
-    @. dY.soil.∫F_vol_e_dt -= surface_field
+    @. dY.soil.∫F_e_dt -= surface_field
 
 end
 

@@ -8,7 +8,7 @@ using Test
 using Dates
 using ClimaCore, NCDatasets
 import ClimaLand.Parameters as LP
-FT = Float32
+FT = Float64
 @testset "Base runoff functionality, FT = $FT" begin
     runoff = Runoff.NoRunoff()
     @test Runoff.runoff_vars(runoff) == (:infiltration,)
@@ -296,7 +296,7 @@ end
     )
     model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
     Y, p, cds = initialize(model)
-    Y.soil.ϑ_l .= model.parameters.ν .* FT(1.00001) # wont pass with 1.01
+    Y.soil.ϑ_l .= model.parameters.ν .* FT(1.1)
     Y.soil.θ_i .= 0
     T = FT(290)
     earth_param_set = model.parameters.earth_param_set
@@ -327,10 +327,11 @@ end
         )) .≈ 0,
     ) # column entirely saturated
     @test dY.soil.∫F_vol_liq_water_dt == -1 .* p.soil.R_ss
-    @test dY.soil.∫F_vol_e_dt ==
+    @test dY.soil.∫F_e_dt ==
           -1 .* p.soil.R_ss .*
           ClimaLand.Soil.volumetric_internal_energy_liq(T, earth_param_set)
     # explicit step
+    Δt = 450.0
     Y.soil.ρe_int .+= dY.soil.ρe_int .* Δt
     Y.soil.ϑ_l .+= dY.soil.ϑ_l .* Δt
 
@@ -339,7 +340,7 @@ end
         Y.soil.ρe_int,
         Y.soil.θ_i,
         ClimaLand.Soil.volumetric_heat_capacity(
-            Y.soil.ϑ_l,
+            p.soil.θ_l,
             Y.soil.θ_i,
             model.parameters.ρc_ds,
             earth_param_set,
