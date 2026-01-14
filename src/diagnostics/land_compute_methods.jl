@@ -104,6 +104,24 @@ get_soil(m::EnergyHydrology) = m
     CanopyModel,
 } p.canopy.autotrophic_respiration.Ra
 
+# Net Ecosystem Exchange (NEE = ER - GPP)
+function compute_net_ecosystem_exchange!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    # Compute ER first
+    er = compute_total_respiration!(nothing, Y, p, t, land_model)
+    if isnothing(out)
+        out = zeros(land_model.soil.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    @. out = er - p.canopy.photosynthesis.GPP
+    return out
+end
+
 # Canopy - Conductance
 function compute_stomatal_conductance!(
     out,
@@ -887,18 +905,16 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            PAI,
+        )
         return out
     else
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            PAI,
+        )
     end
 end
 function compute_canopy_temperature!(
@@ -912,18 +928,16 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.energy, land_model, Y, p),
+            PAI,
+        )
         return out
     else
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= nan_if_no_canopy.(
+            canopy_temperature(land_model.energy, land_model, Y, p),
+            PAI,
+        )
     end
 end
 
