@@ -76,6 +76,7 @@ pages = Any[
     "Calibration and benchmark" => [
         "Calibrating model parameters" => "calibration.md",
         "Model Benchmark" => "leaderboard/leaderboard.md",
+        "ILAMB Leaderboard" => "ILAMB/index.html",
     ],
     "Running on GPU or with MPI" => "architectures.md",
     "Additional resources" => [
