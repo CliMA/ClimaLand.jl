@@ -321,11 +321,12 @@ end
 fAPAR_max_fun(k::FT, LAI_max::FT) where {FT} = FT(1) - exp(-k * LAI_max)
 
 """
-    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    compute_chi(is_c3, pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
 
 Compute the optimal ratio of intercellular to ambient CO₂ (χ = ci/ca) using P-model.
 
 # Arguments
+- `is_c3`: Photosynthesis mechanism (1 for C3, 0 for C4)
 - `pmodel_parameters`: P-model parameters (including β)
 - `pmodel_constants`: P-model constants (including Γstar25, Kc25, Ko25, etc.)
 - `T::FT`: Temperature (K)
@@ -334,9 +335,27 @@ Compute the optimal ratio of intercellular to ambient CO₂ (χ = ci/ca) using P
 - `ca::FT`: Ambient CO₂ mixing ratio (mol/mol)
 
 # Returns
-- `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85
+- `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85 for C3, ~0.4 for C4
 """
 function compute_chi(
+    is_c3::AbstractFloat,
+    pmodel_parameters,
+    pmodel_constants,
+    T::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+) where {FT}
+    return is_c3 > 0.5 ? c3_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca) :
+                         c4_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+end
+
+"""
+    c3_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+
+Compute the optimal ratio of intercellular to ambient CO₂ (χ = ci/ca) for C3 plants using P-model.
+"""
+function c3_compute_chi(
     pmodel_parameters,
     pmodel_constants,
     T::FT,
@@ -366,6 +385,27 @@ function compute_chi(
 
     # Clamp chi to valid range [0, 1]
     return clamp(chi, FT(0), FT(1))
+end
+
+"""
+    c4_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+
+Compute the optimal ratio of intercellular to ambient CO₂ (χ = ci/ca) for C4 plants.
+
+For C4 plants, chi is typically around 0.3-0.4 due to the CO2-concentrating mechanism.
+This uses an empirical value based on literature (Ehleringer & Cerling).
+"""
+function c4_compute_chi(
+    pmodel_parameters,
+    pmodel_constants,
+    T::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+) where {FT}
+    # C4 plants typically have ci/ca around 0.4, relatively constant
+    # compared to C3 plants which vary from 0.7-0.85
+    return FT(0.4)
 end
 
 """
@@ -869,6 +909,7 @@ function call_update_optimal_LAI(
     ca_pa = @. lazy(ca * P_air)  # Convert mol/mol to Pa
     chi = @. lazy(
         compute_chi(
+            is_c3,
             pmodel_parameters,
             pmodel_constants,
             T_canopy,
