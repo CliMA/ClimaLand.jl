@@ -905,16 +905,18 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .= nan_if_no_canopy.(
-            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-            PAI,
-        )
+        out .=
+            nan_if_no_canopy.(
+                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+                PAI,
+            )
         return out
     else
-        out .= nan_if_no_canopy.(
-            canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-            PAI,
-        )
+        out .=
+            nan_if_no_canopy.(
+                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+                PAI,
+            )
     end
 end
 function compute_canopy_temperature!(
@@ -928,16 +930,18 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .= nan_if_no_canopy.(
-            canopy_temperature(land_model.energy, land_model, Y, p),
-            PAI,
-        )
+        out .=
+            nan_if_no_canopy.(
+                canopy_temperature(land_model.energy, land_model, Y, p),
+                PAI,
+            )
         return out
     else
-        out .= nan_if_no_canopy.(
-            canopy_temperature(land_model.energy, land_model, Y, p),
-            PAI,
-        )
+        out .=
+            nan_if_no_canopy.(
+                canopy_temperature(land_model.energy, land_model, Y, p),
+                PAI,
+            )
     end
 end
 
