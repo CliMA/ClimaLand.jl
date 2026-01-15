@@ -18,7 +18,7 @@ function FluxnetSimulations.get_domain_info(
     FT,
     ::Val{:US_Var};
     dz_tuple = nothing,
-    nelements = 14,
+    nelements = 24,
     zmin = FT(-0.5),
     zmax = FT(0),
 )

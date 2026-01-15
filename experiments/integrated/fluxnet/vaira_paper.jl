@@ -100,8 +100,8 @@ orig_date0 = start_date
 orig_datef = stop_date
 
 # Clamp to available data range [2000, 2020]
-start_date = clamp(orig_date0, Date(2000, 1, 1), Date(2020, 12, 31))
-stop_date = clamp(orig_datef, Date(2000, 1, 1), Date(2020, 12, 31))
+start_date = clamp(orig_date0, DateTime(2000, 1, 1), DateTime(2020, 12, 31))
+stop_date = clamp(orig_datef, DateTime(2000, 1, 1), DateTime(2020, 12, 31))
 
 # Warn if any adjustment happened
 if start_date != orig_date0 || stop_date != orig_datef

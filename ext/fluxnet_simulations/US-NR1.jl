@@ -17,7 +17,7 @@ function FluxnetSimulations.get_domain_info(
     ::Val{:US_NR1};
     dz_bottom = FT(1.25),
     dz_top = FT(0.05),
-    nelements = 20,
+    nelements = 24,
     zmin = FT(-10),
     zmax = FT(0),
 )

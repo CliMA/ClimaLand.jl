@@ -14,7 +14,7 @@ function FluxnetSimulations.get_domain_info(
     FT;
     dz_bottom = FT(1.5),
     dz_top = FT(0.1),
-    nelements = 20,
+    nelements = 24,
     zmin = FT(-10),
     zmax = FT(0),
 )
