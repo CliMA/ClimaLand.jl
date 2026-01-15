@@ -46,12 +46,9 @@ toml_dict = LP.create_toml_dict(FT);
 site_ID = "US-MOz";
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 # Get the latitude and longitude in degrees, as well as the
-# time offset in hours of local time from UTC
-(; time_offset, lat, long) =
+# time offset in hours of local time from UTC and height of sensors in m
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val));
-# Get the height of the sensors in m
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
-
 # Setup the domain for the model. This corresponds to
 # a column of 2m in depth, with 10 equally spaced layers.
 # The lat and long are provided so that we can look up default parameters

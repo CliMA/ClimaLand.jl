@@ -66,9 +66,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 
 # Get site-specific information: location coordinates, time offset, and sensor
 # height.
-(; time_offset, lat, long) =
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
 
 # Get simulation start and stop dates in UTC; these must be included in the forcing data range
 # Here we calibrate with only two months of data.

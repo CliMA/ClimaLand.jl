@@ -32,15 +32,13 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 # Get the default values for this site's domain, location, and parameters
 (; dz_tuple, nelements, zmin, zmax) =
     FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; time_offset, lat, long) =
+(; time_offset, lat, long, atmos_h) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 (;
     soil_ν,
     soil_K_sat,
     soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
+    soil_hydrology_cm,
     θ_r,
     ν_ss_quartz,
     ν_ss_om,
@@ -48,10 +46,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     z_0m_soil,
     z_0b_soil,
     soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
+    soil_albedo,
     Ω,
     χl,
+    G_Function,
     α_PAR_leaf,
     λ_γ_PAR,
     τ_PAR_leaf,
@@ -74,7 +72,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     plant_ν,
     plant_S_s,
     rooting_depth,
-    G_Function,
     n_stem,
     n_leaf,
     h_leaf,
@@ -98,6 +95,22 @@ dt = Float64(450) # 7.5 minutes
 # the atmospheric and radiative driver structs for the model
 (start_date, _) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
 stop_date = start_date + Year(1)
+
+orig_date0 = start_date
+orig_datef = stop_date
+
+# Clamp to available data range [2000, 2020]
+start_date = clamp(orig_date0, DateTime(2000, 1, 1), DateTime(2020, 12, 31))
+stop_date = clamp(orig_datef, DateTime(2000, 1, 1), DateTime(2020, 12, 31))
+
+# Warn if any adjustment happened
+if start_date != orig_date0 || stop_date != orig_datef
+    @warn(
+        "MODIS LAI data is only available from 2000 to 2020. " *
+        "Adjusted start year from $orig_date0 to $start_date and end year from $orig_datef to $stop_date.",
+    )
+end
+
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -113,18 +126,10 @@ stop_date = start_date + Year(1)
 # Now we set up the model. For the soil model, we pick
 # a model type and package up parameters.
 soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
 
 forcing = (; atmos, radiation)
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-)
+retention_parameters =
+    (; ν = soil_ν, θ_r, K_sat = soil_K_sat, hydrology_cm = soil_hydrology_cm)
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
 
 soil = Soil.EnergyHydrology{FT}(
@@ -321,7 +326,7 @@ GPP_data = comparison_data.gpp[data_id_post_spinup] .* 1e6
 GPP_model_monthly = compute_monthly_avg(GPP, model_dates)
 GPP_data_monthly = compute_monthly_avg(GPP_data, data_dates)
 
-# 
+#
 SW_u_model_monthly = compute_monthly_avg(SW_u, model_dates)
 SW_u_data = comparison_data.swu[data_id_post_spinup]
 SW_u_data_monthly = compute_monthly_avg(SW_u_data, model_dates)
