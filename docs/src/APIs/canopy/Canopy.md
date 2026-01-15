@@ -19,6 +19,7 @@ ClimaLand.Canopy.CanopyModel{FT}(
     toml_dict::CP.ParamDict,
 ) where {FT}
 ClimaLand.Canopy.AbstractCanopyComponent
+ClimaLand.Canopy.clm_canopy_height
 ```
 
 ## Canopy Model Boundary Fluxes
