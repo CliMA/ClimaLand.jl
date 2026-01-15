@@ -1079,23 +1079,24 @@ end
 Computes the intrinsic quantum yield of photosystem II.
 """
 function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
-    if is_c3 > 0.5
-        parameters.temperature_dep_yield ?
+    # Compute C3 quantum yield
+    ϕ0_c3 = parameters.temperature_dep_yield ?
         quadratic_intrinsic_quantum_yield(
             T,
             parameters.ϕa0_c3,
             parameters.ϕa1_c3,
             parameters.ϕa2_c3,
         ) : parameters.ϕ0_c3
-    else
-        parameters.temperature_dep_yield ?
+    # Compute C4 quantum yield
+    ϕ0_c4 = parameters.temperature_dep_yield ?
         quadratic_intrinsic_quantum_yield(
             T,
             parameters.ϕa0_c4,
             parameters.ϕa1_c4,
             parameters.ϕa2_c4,
         ) : parameters.ϕ0_c4
-    end
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return ϕ0_c3 * is_c3 + ϕ0_c4 * (FT(1) - is_c3)
 end
 
 """
@@ -1632,9 +1633,13 @@ end
 
 Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants)
 and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj.
+Blends C3 and C4 values based on continuous c3_proportion (is_c3).
 """
 function compute_mj(is_c3::AbstractFloat, args...)
-    return is_c3 > 0.5 ? c3_compute_mj(args...) : c4_compute_mj(args...)
+    mj_c3 = c3_compute_mj(args...)
+    mj_c4 = c4_compute_mj(args...)
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return mj_c3 * is_c3 + mj_c4 * (1 - is_c3)
 end
 
 
@@ -1652,10 +1657,14 @@ end
         is_c3::FT, T::FT, parameters) where {FT}
 
 Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
-and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
+and `mc = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
+Blends C3 and C4 values based on continuous c3_proportion (is_c3).
 """
 function compute_mc(is_c3::AbstractFloat, args...)
-    return is_c3 > 0.5 ? c3_compute_mc(args...) : c4_compute_mc(args...)
+    mc_c3 = c3_compute_mc(args...)
+    mc_c4 = c4_compute_mc(args...)
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return mc_c3 * is_c3 + mc_c4 * (1 - is_c3)
 end
 
 function c3_compute_mc(

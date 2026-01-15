@@ -346,8 +346,11 @@ function compute_chi(
     VPD::FT,
     ca::FT,
 ) where {FT}
-    return is_c3 > 0.5 ? c3_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca) :
-                         c4_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    # Compute C3 and C4 chi values
+    chi_c3 = c3_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    chi_c4 = c4_compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    # Blend based on C3 proportion (is_c3 is continuous 0-1)
+    return chi_c3 * FT(is_c3) + chi_c4 * (FT(1) - FT(is_c3))
 end
 
 """

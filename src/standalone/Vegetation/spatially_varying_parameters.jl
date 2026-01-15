@@ -176,10 +176,11 @@ function clm_photosynthesis_parameters(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
-    # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
+    # photosynthesis mechanism: continuous C3 proportion (0-1) for blending C3/C4 pathways
+    # 1.0 = pure C3, 0.0 = pure C4, intermediate values = mixed vegetation
     is_c3 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "c3_dominant",
+        "c3_proportion",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),

@@ -183,9 +183,9 @@ description = "Constant intrinsic quantum yield. Skillman (2008)."
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c4"]
-value = 0.057
+value = 0.040
 type = "float"
-description = "Constant intrinsic quantum yield. Skillman (2008)."
+description = "Constant intrinsic quantum yield for C4 plants. Lower than C3 due to energy cost of CO2-concentrating mechanism."
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c3"]
@@ -207,21 +207,21 @@ description = "Second order term in quadratic intrinsic quantum yield (Stocker 2
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c4"]
-value = 0.030624
+value = 0.021437
 type = "float"
-description = "Constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by 0.352 * 0.087."
+description = "Constant term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70 to account for CO2-concentrating mechanism energy cost."
 tag = "PModelParameters"
 
 ["pmodel_ϕa1_c4"]
-value = 0.001914
+value = 0.001340
 type = "float"
-description = "First order term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by 0.022 * 0.087."
+description = "First order term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70."
 tag = "PModelParameters"
 
 ["pmodel_ϕa2_c4"]
-value = -0.00002958
+value = -0.000020706
 type = "float"
-description = "Second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by -0.00034 * 0.087."
+description = "Second order term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70."
 tag = "PModelParameters"
 
 ["pmodel_α"]
