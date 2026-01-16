@@ -120,9 +120,9 @@ end
 
 Defines the auxiliary variables for the OptimalLAIModel:
 - `LAI`: leaf area index (m² m⁻²)
-- `A0_daily`: daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹), with actual β
+- `A0_daily`: daily potential GPP from previous day (mol CO₂ m⁻² day⁻¹), with β=1 (no moisture stress)
 - `A0_annual`: annual potential GPP from previous year (mol CO₂ m⁻² yr⁻¹), with β=1 (no moisture stress)
-- `A0_daily_acc`: accumulator for current day's potential GPP with actual β (mol CO₂ m⁻² day⁻¹)
+- `A0_daily_acc`: accumulator for current day's potential GPP with β=1 (mol CO₂ m⁻² day⁻¹)
 - `A0_annual_acc`: accumulator for current year's potential GPP with β=1 (mol CO₂ m⁻² yr⁻¹)
 - `A0_annual_daily_acc`: accumulator for current day's potential GPP with β=1 (mol CO₂ m⁻² day⁻¹)
 - `days_since_reset`: counter for days since last A0_annual reset (0-365, resets when reaching 365)
@@ -186,7 +186,7 @@ equilibrium from model equations. This provides a realistic starting point that 
 spin-up time and matches observed vegetation patterns.
 
 # Arguments
-- `A0_daily`: Initial daily potential GPP with actual β (mol CO₂ m⁻² day⁻¹), default 0.5.
+- `A0_daily`: Initial daily potential GPP with β=1 (mol CO₂ m⁻² day⁻¹), default 0.5.
 
 # Notes
 - precip_annual is converted from mm yr⁻¹ (input) to mol H₂O m⁻² yr⁻¹ (internal units)
@@ -709,7 +709,7 @@ Update LAI using the optimal LAI model with precomputed daily and annual potenti
 
 # Arguments
 - `local_noon_mask::FT`: Mask (0 or 1) indicating if it's local noon
-- `A0_daily::FT`: Daily potential GPP (mol CO₂ m⁻² day⁻¹), with actual β
+- `A0_daily::FT`: Daily potential GPP (mol CO₂ m⁻² day⁻¹), with β=1 (no moisture stress)
 - `L::FT`: Current LAI (m² m⁻²)
 - `k::FT`: Light extinction coefficient
 - `A0_annual::FT`: Annual potential GPP (mol CO₂ m⁻² yr⁻¹), with β=1 (no moisture stress)
@@ -728,7 +728,7 @@ Updated LAI value.
 
 # Notes
 Following Zhou et al. (2025):
-- A0_daily uses actual β (soil moisture stress) to drive daily LAI dynamics
+- A0_daily uses β=1 (no moisture stress) to drive daily LAI dynamics
 - A0_annual uses β=1 (no moisture stress) for LAI_max computation
 - Water limitation enters LAI_max through the f₀×P/A₀ × (cₐ(1-χ))/(1.6×D) term (Equation 11)
 """
@@ -779,15 +779,14 @@ Updates LAI and accumulates A0 at each timestep. At local noon, finalizes daily 
 and updates LAI. On year change (Jan 1), finalizes annual A0.
 
 The function:
-1. Computes instantaneous A0_daily using the P-model with fAPAR=1 and actual β (soil moisture stress)
+1. Computes instantaneous A0_daily using the P-model with fAPAR=1 and β=1 (no moisture stress)
 2. Computes instantaneous A0_annual using the P-model with fAPAR=1 and β=1 (no moisture stress)
 3. Accumulates A0_daily and A0_annual to their respective accumulators
 4. At local noon: finalizes daily A0, adds A0_annual to annual accumulator, updates LAI
 5. On Jan 1: finalizes annual A0
 
-A0_daily uses actual β to drive daily LAI dynamics. A0_annual uses β=1 following Zhou et al.
-(2025); water limitation enters LAI_max through the f₀×P/A₀ term using annual precipitation
-and VPD (to be implemented).
+Both A0_daily and A0_annual use β=1 following Zhou et al. (2025); water limitation enters
+LAI_max through the f₀×P/A₀ term using annual precipitation and VPD.
 
 GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
 varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
@@ -817,7 +816,8 @@ function call_update_optimal_LAI(
     ca = p.drivers.c_co2  # mol/mol
     earth_param_set = canopy.earth_param_set
 
-    # Get soil moisture stress factor (β)
+    # Get soil moisture stress factor (β) - currently unused as we use β=1,
+    # but kept for potential future use with actual soil moisture stress
     βm = p.canopy.soil_moisture_stress.βm
 
     # Compute VPD (clipped to avoid numerical issues)
@@ -846,8 +846,9 @@ function call_update_optimal_LAI(
         ),
     )
 
-    # Compute instantaneous A0_daily with actual β (kg C m⁻² s⁻¹)
-    # This captures soil moisture stress for daily GPP driving LAI dynamics
+    # Compute instantaneous A0_daily with β=1 (no soil moisture stress) (kg C m⁻² s⁻¹)
+    # Following Zhou et al. (2025), water limitation enters through the f₀×P/A₀ term
+    # using annual precipitation and VPD, not through daily β.
     A0_daily_inst = @. lazy(
         compute_A0_daily(
             is_c3,
@@ -858,7 +859,7 @@ function call_update_optimal_LAI(
             VPD,
             ca,
             PPFD,
-            βm,
+            FT(1),  # β=1, no soil moisture stress for daily potential GPP
         ),
     )
 
@@ -885,7 +886,7 @@ function call_update_optimal_LAI(
     A0_daily_per_timestep = @. lazy(A0_daily_inst * dt_seconds / Mc)
     A0_annual_per_timestep = @. lazy(A0_annual_inst * dt_seconds / Mc)
 
-    # Accumulate to daily A0 (with actual β) - drives L_steady
+    # Accumulate to daily A0 (with β=1) - drives L_steady
     @. p.canopy.lai_model.A0_daily_acc += A0_daily_per_timestep
 
     # Accumulate to daily A0_annual (with β=1) - will be added to annual accumulator at noon
@@ -953,7 +954,7 @@ function call_update_optimal_LAI(
         p.canopy.lai_model.A0_annual,
     )
 
-    # Update A0_daily at noon (this stores the daily value with actual β)
+    # Update A0_daily at noon (this stores the daily value with β=1)
     @. p.canopy.lai_model.A0_daily = ifelse(
         local_noon_mask == FT(1),
         A0_daily_final,
@@ -1008,7 +1009,7 @@ end
 At local noon: finalize daily A0, add to annual, reset daily accumulator, and update LAI.
 On year reset (days_since_reset >= 365): finalize annual A0.
 
-Note: A0_daily_acc contains daily GPP with actual β (soil moisture stress).
+Note: A0_daily_acc contains daily GPP with β=1 (no soil moisture stress).
       A0_annual_daily_acc contains daily GPP with β=1 (for LAI_max computation).
 
 Returns tuple: (A0_daily, A0_annual, A0_daily_acc, A0_annual_acc, A0_annual_daily_acc, days_since_reset, L)
@@ -1042,7 +1043,7 @@ function update_A0_and_LAI_at_noon(
             A0_annual = A0_annual_acc
         end
 
-        # Finalize daily A0 (with actual β for daily LAI dynamics)
+        # Finalize daily A0 (with β=1 for daily LAI dynamics)
         A0_daily = A0_daily_acc
         A0_daily_acc = FT(0)
 
@@ -1102,10 +1103,9 @@ it is constant throughout the year.
     that it will be inferred from the canopy domain).
 
 # Notes
-- Daily A₀ is computed with fAPAR=1 and actual β (soil moisture stress) - drives L_steady
-- Annual A₀ is computed with fAPAR=1 and actual β (soil moisture stress) - used for LAI_max
-- Water limitation is captured through β in both daily and annual A₀, allowing vegetation
-  structure to adapt on annual timescales while responding to climate change and flushing events
+- Daily A₀ is computed with fAPAR=1 and β=1 (no moisture stress) - drives L_steady
+- Annual A₀ is computed with fAPAR=1 and β=1 (no moisture stress) - used for LAI_max
+- Water limitation enters LAI_max through the f₀×P/A₀ × (cₐ(1-χ))/(1.6×D) term (Equation 11)
 - Daily A₀ is accumulated over each day and finalized at local noon
 - Annual A₀ is accumulated and reset on January 1
 - GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
@@ -1176,10 +1176,9 @@ end
 Creates the optimal LAI callback and returns it as a single element tuple of model callbacks.
 
 # Notes
-- Daily A₀ is computed with actual β (soil moisture stress) from the soil moisture stress model
-- Annual A₀ is computed with actual β (soil moisture stress) for LAI_max computation
-- Water limitation enters through β in both daily and annual A₀, allowing vegetation structure
-  to adapt on annual timescales while responding to climate change and flushing events
+- Daily A₀ is computed with β=1 (no soil moisture stress) - drives L_steady
+- Annual A₀ is computed with β=1 (no soil moisture stress) - used for LAI_max
+- Water limitation enters LAI_max through the f₀×P/A₀ × (cₐ(1-χ))/(1.6×D) term (Equation 11)
 - GSL (Growing Season Length) is read from p.canopy.lai_model.GSL, which supports spatially
   varying values initialized via set_historical_cache! or optimal_lai_initial_conditions.
 """
