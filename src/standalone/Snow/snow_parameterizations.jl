@@ -603,13 +603,9 @@ function flux_balance(
     parameters::SnowParameters{FT},
 )::FT where {FT}
 
-    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)    
-    thermal_state = Thermodynamics.PhaseEquil_pTq(
-            thermo_params,
-            P_atmos,
-            T_atmos,
-            q_atmos,
-        )
+    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
+    thermal_state =
+        Thermodynamics.PhaseEquil_pTq(thermo_params, P_atmos, T_atmos, q_atmos)
 
     q_sfc = snow_surface_specific_humidity(
         T_sfc_guess,
@@ -638,7 +634,7 @@ function flux_balance(
             displ,
             blank_deriv,
             blank_deriv,
-            parameters.earth_param_set
+            parameters.earth_param_set,
         )
 
     _σ = LP.Stefan(parameters.earth_param_set)

@@ -531,7 +531,7 @@ function lsm_radiant_energy_fluxes!(
     h_sfc = ClimaLand.surface_height(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
-    
+
     #get surf_temp values, even if they are > T_freeze:
     T_snow .=
         Snow.solve_for_surface_temp_at_a_point.(

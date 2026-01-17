@@ -240,8 +240,8 @@ import ClimaLand.Parameters as LP
     @test dY.snow.S == net_water_fluxes
     @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
     @test dY.snow.U == @.(
-        -p.snow.surf_residual_flux -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
-        p.snow.R_n + p.snow.energy_runoff
+        -p.snow.surf_residual_flux - p.snow.turbulent_fluxes.shf -
+        p.snow.turbulent_fluxes.lhf - p.snow.R_n + p.snow.energy_runoff
     )
     @test isnothing(
         Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
