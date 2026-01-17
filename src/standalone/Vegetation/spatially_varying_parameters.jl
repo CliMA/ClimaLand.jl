@@ -330,9 +330,10 @@ This function returns fields for:
 - `precip_annual`: Mean annual precipitation (mm yr⁻¹)
 - `vpd_gs`: Average VPD during growing season (Pa)
 - `lai_init`: Initial LAI from MODIS (m² m⁻²)
+- `f0`: Spatially varying fraction of precipitation for transpiration (dimensionless)
 
 The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
-and `lai_init` on a (lon, lat) grid.
+`lai_init`, and `f0` on a (lon, lat) grid.
 
 # Arguments
 - `surface_space`: The ClimaCore surface space to regrid to
@@ -354,8 +355,9 @@ lai_model = OptimalLAIModel{FT}(parameters, ic_data)
 
 # Notes
 - The file is expected to have lon and lat coordinates
-- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init) are required
+- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init, f0) are required
 - lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
+- f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
 """
 function optimal_lai_initial_conditions(
     surface_space,
@@ -409,5 +411,13 @@ function optimal_lai_initial_conditions(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
-    return (; GSL = GSL, A0_annual = A0_annual, precip_annual = precip_annual, vpd_gs = vpd_gs, lai_init = lai_init)
+    f0 = SpaceVaryingInput(
+        data_path,
+        "f0",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (; GSL = GSL, A0_annual = A0_annual, precip_annual = precip_annual, vpd_gs = vpd_gs, lai_init = lai_init, f0 = f0)
 end

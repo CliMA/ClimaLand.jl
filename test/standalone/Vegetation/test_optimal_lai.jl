@@ -39,7 +39,7 @@ import ClimaParams
             @test model.gsl_a0_data === gsl_a0_data
             @test eltype(model) == FT
 
-            # Test auxiliary variables (LAI + A0 tracking variables + GSL + precip_annual + vpd_gs)
+            # Test auxiliary variables (LAI + A0 tracking variables + GSL + precip_annual + vpd_gs + f0)
             @test Canopy.auxiliary_vars(model) == (
                 :LAI,
                 :A0_daily,
@@ -51,10 +51,11 @@ import ClimaParams
                 :GSL,
                 :precip_annual,
                 :vpd_gs,
+                :f0,
             )
-            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+            @test Canopy.auxiliary_types(model) == (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
             @test Canopy.auxiliary_domain_names(model) ==
-                  (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
+                  (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin

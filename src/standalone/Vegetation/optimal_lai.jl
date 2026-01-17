@@ -129,13 +129,14 @@ Defines the auxiliary variables for the OptimalLAIModel:
 - `GSL`: growing season length (days), spatially varying
 - `precip_annual`: mean annual precipitation (mol H₂O m⁻² yr⁻¹), for water limitation in LAI_max
 - `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
+- `f0`: spatially varying fraction of precipitation for transpiration (dimensionless), from Zhou et al.
 """
 ClimaLand.auxiliary_vars(model::OptimalLAIModel) =
-    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :A0_annual_daily_acc, :days_since_reset, :GSL, :precip_annual, :vpd_gs)
+    (:LAI, :A0_daily, :A0_annual, :A0_daily_acc, :A0_annual_acc, :A0_annual_daily_acc, :days_since_reset, :GSL, :precip_annual, :vpd_gs, :f0)
 ClimaLand.auxiliary_types(model::OptimalLAIModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::OptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 ClimaLand.name(::AbstractLAIModel) = :lai_model
 
@@ -178,7 +179,7 @@ const MM_TO_MOL_H2O = 1000.0 / 18.015
 
 The optimal LAI model requires initialization of LAI and A0 values before the simulation.
 
-GSL, A0_annual, precip_annual, vpd_gs, and lai_init are taken from `model.gsl_a0_data`, which
+GSL, A0_annual, precip_annual, vpd_gs, lai_init, and f0 are taken from `model.gsl_a0_data`, which
 contains spatially varying fields typically created using `optimal_lai_initial_conditions`.
 
 LAI is initialized from MODIS satellite observations (`lai_init`) rather than computing
@@ -193,6 +194,7 @@ spin-up time and matches observed vegetation patterns.
   to match Zhou et al. (2025) formulation for water limitation.
 - vpd_gs is the mean VPD during growing season (Pa), used in the WUE factor for water limitation.
 - lai_init comes from MODIS first timestep, providing spatially-varying initial conditions.
+- f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
 """
 function set_historical_cache!(
     p,
@@ -211,6 +213,7 @@ function set_historical_cache!(
     precip_annual_mm = gsl_a0_data.precip_annual  # in mm yr⁻¹
     vpd_gs = gsl_a0_data.vpd_gs  # in Pa
     lai_init = gsl_a0_data.lai_init  # MODIS first timestep
+    f0 = gsl_a0_data.f0  # spatially varying f0 from Zhou et al.
 
     L = p.canopy.lai_model.LAI
 
@@ -235,6 +238,9 @@ function set_historical_cache!(
 
     # Store vpd_gs (already in Pa)
     p.canopy.lai_model.vpd_gs .= vpd_gs
+
+    # Store f0 (spatially varying fraction of precipitation for transpiration)
+    p.canopy.lai_model.f0 .= f0
 end
 
 """
@@ -938,7 +944,7 @@ function call_update_optimal_LAI(
             parameters.sigma,
             parameters.alpha,
             p.canopy.lai_model.precip_annual,
-            parameters.f0,
+            p.canopy.lai_model.f0,
             ca_pa,
             chi,
             p.canopy.lai_model.vpd_gs,

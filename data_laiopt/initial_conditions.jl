@@ -7,6 +7,7 @@ This script generates spatially varying initial conditions:
 - precip_annual: Mean annual precipitation (mm yr⁻¹)
 - vpd_gs: Average VPD during growing season (Pa)
 - lai_init: Initial LAI from MODIS (m² m⁻²) - first timestep of satellite data
+- f0: Spatially varying fraction of precipitation for transpiration (dimensionless) from Zhou et al.
 
 GSL computation follows Zhou et al. (2025) definition with hybrid approach:
 - For regions with clear LAI seasonality: GSL from LAI dynamics
@@ -28,6 +29,7 @@ A0_FILE = joinpath(@__DIR__, "a0_annual_1M_average.nc")
 TAIR_FILE = joinpath(@__DIR__, "tair_1M_average.nc")
 PRECIP_FILE = joinpath(@__DIR__, "precip_1M_average.nc")
 VPD_FILE = joinpath(@__DIR__, "vpd_1M_average.nc")
+F0_FILE = joinpath(@__DIR__, "f0.nc")  # Zhou et al. spatially varying f0
 OUTPUT_FILE = joinpath(@__DIR__, "initial_conditions.nc")
 
 # GSL parameters
@@ -286,6 +288,56 @@ function compute_vpd_growing_season(vpd_timeseries::Vector{T}, lai_ts::Vector{T}
     return mean(gs_vpd)
 end
 
+function load_and_regrid_f0(f0_file::String, target_lon::Vector, target_lat::Vector)
+    """
+    Load f0 from Zhou et al. NetCDF file and regrid to target 1° grid.
+
+    f0.nc is at 0.5° resolution (720 × 360), needs to be regridded to 1° (360 × 180).
+    Uses simple area-averaging (2x2 box averaging).
+
+    Returns:
+        f0_regridded: Matrix of f0 values on target grid (nlon × nlat)
+    """
+    ds = NCDataset(f0_file)
+    f0_raw = ds["f0"][:, :, 1]  # 720 × 360 (lon × lat)
+    f0_lon = ds["lon"][:]
+    f0_lat = ds["lat"][:]
+    close(ds)
+
+    # Convert missing to NaN
+    f0_data = Float64.(replace(f0_raw, missing => NaN))
+
+    nlon_target = length(target_lon)
+    nlat_target = length(target_lat)
+    f0_regridded = fill(NaN, nlon_target, nlat_target)
+
+    # Simple 2x2 box averaging (0.5° → 1°)
+    # f0.nc: lon from -180 to 180 (0.5° spacing), lat from -90 to 90 (0.5° spacing)
+    # target: lon from -180 to 179 (1° spacing), lat from -90 to 89 (1° spacing)
+    for i in 1:nlon_target
+        for j in 1:nlat_target
+            # Find the 2x2 box of source cells that correspond to this target cell
+            # Source indices: 2*(i-1)+1 and 2*(i-1)+2 for lon, same for lat
+            i_src1 = 2 * (i - 1) + 1
+            i_src2 = min(i_src1 + 1, 720)
+            j_src1 = 2 * (j - 1) + 1
+            j_src2 = min(j_src1 + 1, 360)
+
+            # Get 2x2 box values
+            vals = [f0_data[i_src1, j_src1], f0_data[i_src2, j_src1],
+                    f0_data[i_src1, j_src2], f0_data[i_src2, j_src2]]
+
+            # Average valid values
+            valid_vals = filter(!isnan, vals)
+            if !isempty(valid_vals)
+                f0_regridded[i, j] = mean(valid_vals)
+            end
+        end
+    end
+
+    return f0_regridded
+end
+
 function main()
     println("Loading LAI data from: $LAI_FILE")
     ds_lai = NCDataset(LAI_FILE)
@@ -313,6 +365,10 @@ function main()
     ds_vpd = NCDataset(VPD_FILE)
     vpd = ds_vpd["vpd"][:, :, :]  # (time, lon, lat) in Pa
     close(ds_vpd)
+
+    println("Loading and regridding f0 data from: $F0_FILE")
+    f0 = load_and_regrid_f0(F0_FILE, lon, lat)
+    println("f0 regridded to target grid")
 
     nlon, nlat = length(lon), length(lat)
     ntime = size(lai, 1)
@@ -407,6 +463,12 @@ function main()
     println("  Range: $(round(minimum(valid_lai_init), digits=2)) - $(round(maximum(valid_lai_init), digits=2)) m² m⁻²")
     println("  Mean: $(round(mean(valid_lai_init), digits=2)) m² m⁻²")
 
+    valid_f0 = filter(!isnan, vec(f0))
+    println("\nf0 (Zhou et al. spatially varying) statistics:")
+    println("  Valid points: $(length(valid_f0))")
+    println("  Range: $(round(minimum(valid_f0), digits=3)) - $(round(maximum(valid_f0), digits=3))")
+    println("  Mean: $(round(mean(valid_f0), digits=3))")
+
     # Write output NetCDF
     println("\nWriting output to: $OUTPUT_FILE")
     ds_out = NCDataset(OUTPUT_FILE, "c")
@@ -456,6 +518,12 @@ function main()
     lai_init_var.attrib["long_name"] = "Initial Leaf Area Index"
     lai_init_var.attrib["description"] = "Initial LAI from MODIS satellite data (first timestep). Used to initialize the optimal LAI model instead of uniform value, reducing spin-up time."
     lai_init_var[:, :] = lai_init
+
+    f0_var = defVar(ds_out, "f0", Float64, ("lon", "lat"))
+    f0_var.attrib["units"] = "1"
+    f0_var.attrib["long_name"] = "Fraction of precipitation for transpiration"
+    f0_var.attrib["description"] = "Spatially varying f0 from Zhou et al. (2025). f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index. Maximum value is 0.65. Used in water-limited fAPAR calculation for LAI_max."
+    f0_var[:, :] = f0
 
     # Global attributes
     ds_out.attrib["title"] = "Initial Conditions for Optimal LAI Model"
