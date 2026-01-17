@@ -118,7 +118,7 @@ import ClimaLand.Parameters as LP
         p.snow.q_l,
         model.parameters,
     )
-    @test p.snow.T_sfc == @. snow_component_temperature(p.snow.T)
+    @test p.snow.T_sfc == @. snow_surface_temperature(p.snow.T)
     @test p.snow.snow_cover_fraction == @. min(
         2 * p.snow.z_snow ./ FT(0.1) / (p.snow.z_snow ./ FT(0.1) + 1),
         FT(1),

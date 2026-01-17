@@ -76,7 +76,7 @@ for FT in (Float32, Float64)
 
 
         T = FT.([275.0, 272, _T_freeze])
-        @test snow_component_temperature.(T) ≈ T
+        @test snow_surface_temperature.(T) ≈ T
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
         @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
         ρ_snow = ρ_min
