@@ -484,6 +484,9 @@ function get_possible_diagnostics(model::CanopyModel)
         # "fa", # return a Tuple
         "far",
         "lai",
+        "lai_pred",
+        "a0_daily",
+        "a0_annual",
         "msf",
         "rai",
         "sai",
@@ -511,6 +514,8 @@ function get_possible_diagnostics(model::CanopyModel)
         "snow",
         "lwd",
         "swd",
+        "qsfc",
+        "vpd",
     ]
 
     # Add conditional diagnostics based on atmosphere type
@@ -610,7 +615,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    return ["gpp", "ct", "lai", "trans", "er", "sif"]
+    return ["gpp", "ct", "lai", "lai_pred", "a0_annual", "trans", "er", "sif", "vpd"]
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)
