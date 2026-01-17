@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- ![breaking change][badge-💥breaking] update ClimaLand to work with the new SurfaceFluxes package release PR[#1591](https://github.com/CliMA/ClimaLand.jl/pull/1591)
+- Reduce duplicate cache updates and treat soil and snow boundary fluxes explicitly PR[#1559](https://github.com/CliMA/ClimaLand.jl/pull/1559)
 
 v1.3.0
 ------

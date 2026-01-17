@@ -52,5 +52,5 @@ ClimaDiagnostics = "0.3.0"
 ClimaTimeSteppers = "0.7, 0.8"
 EnsembleKalmanProcesses = "2.5.0"
 Flux = "0.15"
-GeoMakie = "< 0.7.13" # v0.7.13 causes infinite recursion with GridPositions
+GeoMakie = "< 0.7.13"
 Statistics = "1"

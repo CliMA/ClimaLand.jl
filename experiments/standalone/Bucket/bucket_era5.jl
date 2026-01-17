@@ -195,7 +195,7 @@ sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
 
 
 simdir = ClimaAnalysis.SimDir(output_dir)
-short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
+short_names = ["rn", "tsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
 for short_name in short_names
     var = get(simdir; short_name)
     t = ClimaAnalysis.times(var)[end]

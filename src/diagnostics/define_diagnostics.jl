@@ -127,17 +127,6 @@ function define_diagnostics!(land_model)
             compute_vapor_flux!(out, Y, p, t, land_model),
     )
 
-    # Surface air density
-    add_diagnostic_variable!(
-        short_name = "rhosfc",
-        long_name = "Surface Air Density",
-        standard_name = "surface_air_density",
-        units = "kg m^−3",
-        comments = "Density of air at the land-atmosphere interface.",
-        compute! = (out, Y, p, t) ->
-            compute_surface_air_density!(out, Y, p, t, land_model),
-    )
-
     ## Stored in Y (prognostic or state variables) ##
 
     # Soil temperature (3D) at depth
@@ -620,16 +609,6 @@ function define_diagnostics!(land_model)
         compute! = (out, Y, p, t) -> compute_tair!(out, Y, p, t, land_model),
     )
 
-    # Specific humidity
-    add_diagnostic_variable!(
-        short_name = "qsfc",
-        long_name = "Surface Specific Humidity",
-        standard_name = "surface_specific_humidity",
-        units = "",
-        comments = "Ratio of water vapor mass to total moist air parcel mass.",
-        compute! = (out, Y, p, t) ->
-            compute_specific_humidity!(out, Y, p, t, land_model),
-    )
 
     # Wind speed
     add_diagnostic_variable!(
