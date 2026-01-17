@@ -564,17 +564,17 @@ end
         κ::FT,
         ρ_snow::FT,
         ϵ_snow::FT,
-        SW_d::FT,
+        SW_net::FT,
         LW_d::FT,
         q_l::FT,
-        β_sfc::FT,
         h_sfc::FT,
-        r_sfc::FT,
-        d_sfc::FT,
-        thermal_state,
-        u::FT,
+        displ::FT,
+        P_atmos::FT,
+        T_atmos::FT,
+        q_atmos::FT,
+        u_atmos,
+        roughness_model,
         atmos_h::FT,
-        atmos_gustiness::FT,
         parameters::SnowParameters{FT},
     )
 
@@ -592,19 +592,25 @@ function flux_balance(
     SW_net::FT,
     LW_d::FT,
     q_l::FT,
-    β_sfc::FT,
     h_sfc::FT,
-    r_sfc::FT,
-    d_sfc::FT,
-    thermal_state,
-    u,
+    displ::FT,
+    P_atmos::FT,
+    T_atmos::FT,
+    q_atmos::FT,
+    u_atmos,
+    roughness_model,
     atmos_h::FT,
-    atmos_gustiness::FT,
     parameters::SnowParameters{FT},
 )::FT where {FT}
 
-    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
-    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state, T_sfc_guess)
+    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)    
+    thermal_state = Thermodynamics.PhaseEquil_pTq(
+            thermo_params,
+            P_atmos,
+            T_atmos,
+            q_atmos,
+        )
+
     q_sfc = snow_surface_specific_humidity(
         T_sfc_guess,
         q_l,
@@ -612,22 +618,27 @@ function flux_balance(
         parameters,
     )
 
+    #we only need the lhf, shf, so the derivative functions
+    #can be specified as a simple computation:
+    blank_deriv(args...) = FT(1)
+
     latent_flux, sensible_flux, _, _, _, _, _ =
         ClimaLand.compute_turbulent_fluxes_at_a_point(
-            T_sfc_guess,
-            q_sfc, #while passed from outside in ./shared_utilities/drivers.jl, it is instead computed internally here because of T_sfc changing
-            ρ_sfc, #while passed from outside in ./shared_utilities/drivers.jl, it is instead computed internally here because of T_sfc changing
-            β_sfc, #these are passed from outside, is it possible they could be T_sfc dependent someday? no SnowModel specific version implemented
-            h_sfc, #these are passed from outside, no SnowModel specific version implemented
-            r_sfc, #these are passed from outside, is it possible they could be T_sfc dependent someday? no SnowModel specific version implemented
-            d_sfc, #these are passed from outside no SnowModel specific version implemented
-            thermal_state,
-            u,
+            P_atmos,
+            T_atmos,
+            q_atmos,
+            u_atmos,
             atmos_h,
-            atmos_gustiness,
-            parameters.z_0m,
-            parameters.z_0b,
-            parameters.earth_param_set,
+            T_sfc_guess,
+            q_sfc,
+            roughness_model,
+            nothing,
+            nothing,
+            h_sfc,
+            displ,
+            blank_deriv,
+            blank_deriv,
+            parameters.earth_param_set
         )
 
     _σ = LP.Stefan(parameters.earth_param_set)
@@ -646,21 +657,21 @@ end
 """
     solve_for_surface_temp_at_a_point(
         T_bulk::FT,
-        z::FT,
-        κ::FT,
+        z_snow::FT,
+        κ_snow::FT,
         ρ_snow::FT,
         ϵ_snow::FT,
         SW_net::FT,
         LW_d::FT,
         q_l::FT,
-        β_sfc::FT,
         h_sfc::FT,
-        r_sfc::FT,
-        d_sfc::FT,
-        thermal_state,
-        u,
+        displ::FT,
+        P_atmos::FT,
+        T_atmos::FT,
+        q_atmos::FT,
+        u_atmos,
+        roughness_model,
         atmos_h::FT,
-        atmos_gustiness::FT,
         parameters::SnowParameters{FT},
     )
 
@@ -669,42 +680,42 @@ Makes use of a root-solving algorithm (BrentsMethod), which is broadcasted over 
 """
 function solve_for_surface_temp_at_a_point(
     T_bulk::FT,
-    z::FT,
-    κ::FT,
-    ρ::FT,
+    z_snow::FT,
+    κ_snow::FT,
+    ρ_snow::FT,
     ϵ_snow::FT,
     SW_net::FT,
     LW_d::FT,
     q_l::FT,
-    β_sfc::FT,
     h_sfc::FT,
-    r_sfc::FT,
-    d_sfc::FT,
-    thermal_state,
-    u,
+    displ::FT,
+    P_atmos::FT,
+    T_atmos::FT,
+    q_atmos::FT,
+    u_atmos,
+    roughness_model,
     atmos_h::FT,
-    atmos_gustiness::FT,
     parameters::SnowParameters{FT},
 )::FT where {FT}
 
     flux_balance_closure(T_sfc_guess::FT) = flux_balance(
         T_sfc_guess,
         T_bulk,
-        z,
-        κ,
-        ρ,
+        z_snow,
+        κ_snow,
+        ρ_snow,
         ϵ_snow,
         SW_net,
         LW_d,
         q_l,
-        β_sfc,
         h_sfc,
-        r_sfc,
-        d_sfc,
-        thermal_state,
-        u,
+        displ,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        u_atmos,
+        roughness_model,
         atmos_h,
-        atmos_gustiness,
         parameters,
     )
 
@@ -763,10 +774,9 @@ function update_surf_temp!(model::SnowModel, Y, p, t)
 
     #will these need to be moved further into solve_for_surf_temp at some point? Or are they safe here into perpetuity?
     #doesn't this allocate? Should I just invoke them inside the function call below instead?
-    β_sfc = ClimaLand.surface_evaporative_scaling(model, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    r_sfc = ClimaLand.surface_resistance(model, Y, p, t)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
 
     #Can use p.snow.R_n as a holder variable for just the net shortwave, since it gets reset with net_radiation!()
     #right after this function (and isn't used again before it is reset)
@@ -780,17 +790,17 @@ function update_surf_temp!(model::SnowModel, Y, p, t)
             p.snow.κ,
             p.snow.ρ_snow,
             model.parameters.ϵ_snow,
-            p.snow.R_n, #the net SW_down
+            p.snow.R_n, #The net SW_down
             p.drivers.LW_d,
             p.snow.q_l,
-            β_sfc,
             h_sfc,
-            r_sfc,
-            d_sfc,
-            p.drivers.thermal_state,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
             p.drivers.u,
+            roughness_model,
             bc.atmos.h,
-            bc.atmos.gustiness,
             model.parameters,
         )
 

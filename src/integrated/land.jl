@@ -528,11 +528,10 @@ function lsm_radiant_energy_fluxes!(
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
 
     #now solve for the snow surface temperature:
-    β_sfc = ClimaLand.surface_evaporative_scaling(snow, Y, p)
-    h_sfc = ClimaLand.surface_height(snow, Y, p)
-    r_sfc = ClimaLand.surface_resistance(snow, Y, p, t)
-    d_sfc = ClimaLand.displacement_height(snow, Y, p)
-
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
+    
     #get surf_temp values, even if they are > T_freeze:
     T_snow .=
         Snow.solve_for_surface_temp_at_a_point.(
@@ -544,14 +543,14 @@ function lsm_radiant_energy_fluxes!(
             R_net_snow, #SW_net snow
             LW_d_canopy, #LW to snow from canopy
             p.snow.q_l,
-            β_sfc,
             h_sfc,
-            r_sfc,
-            d_sfc,
-            p.drivers.thermal_state,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
             p.drivers.u,
+            roughness_model,
             snow_bc.atmos.h,
-            snow_bc.atmos.gustiness,
             snow.parameters,
         )
 

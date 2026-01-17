@@ -126,14 +126,14 @@ import ClimaLand.Parameters as LP
     # test this by storing a known shift in the surface temperature for a
     # known shift in the radiation, but this will need to be changed/checked
     # whenever affiliated terms are changed.
-    β_sfc = ClimaLand.surface_evaporative_scaling(model, Y, p)
+    roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    r_sfc = ClimaLand.surface_resistance(model, Y, p, t0)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
     tsfc_original = copy(p.snow.T_sfc)
-    SW_d_shift = FT(300)
+    SW_d_shift = FT(200)
     SW_net_shift = (p.snow.α_snow .- FT(1)) .* (p.drivers.SW_d .+ SW_d_shift)
-    T_sfc_shift = FT(0.770844)
+    leftover_flux = FT(-0.6881623996905946)
+    T_sfc_shift = FT(0.8480274219556918)
     tsfc_1 = copy(p.snow.T_sfc)
     tsfc_1 .=
         ClimaLand.Snow.solve_for_surface_temp_at_a_point.(
@@ -145,21 +145,21 @@ import ClimaLand.Parameters as LP
             SW_net_shift,
             p.drivers.LW_d,
             p.snow.q_l,
-            β_sfc,
             h_sfc,
-            r_sfc,
-            d_sfc,
-            p.drivers.thermal_state,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
             p.drivers.u,
+            roughness_model,
             model.boundary_conditions.atmos.h,
-            model.boundary_conditions.atmos.gustiness,
             model.parameters,
         )
     #no update should occur from update_surf_temp!:
     ClimaLand.Snow.update_surf_temp!(model, Y, p, t0)
     @test p.snow.T_sfc == tsfc_original
-    #no residual flux, since diagnosed surf temp is realistic
-    @test all(parent(p.snow.surf_residual_flux) .== FT(0))
+    #There is some leftover residual flux, since diagnosed surf temp was forced to T_freeze:
+    @test all(parent(p.snow.surf_residual_flux) .≈ FT(leftover_flux))
     #test the shift
     @test tsfc_1 ≈ tsfc_original .+ T_sfc_shift
 
@@ -240,7 +240,7 @@ import ClimaLand.Parameters as LP
     @test dY.snow.S == net_water_fluxes
     @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
     @test dY.snow.U == @.(
-        -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
+        -p.snow.surf_residual_flux -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
         p.snow.R_n + p.snow.energy_runoff
     )
     @test isnothing(

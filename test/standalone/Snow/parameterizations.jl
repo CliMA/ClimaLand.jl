@@ -4,7 +4,7 @@ using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
 import Random
-using Thermodynamics
+using Thermodynamics, SurfaceFluxes
 
 Random.seed!(1234)
 
@@ -76,6 +76,10 @@ for FT in (Float32, Float64)
         @test parameters.κ_ice == κ_ice
         @test typeof(parameters.κ_ice) == FT
 
+        roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(
+            parameters.z_0m,
+            parameters.z_0b,
+        )
 
         T = FT.([275.0, 272, _T_freeze])
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
@@ -154,19 +158,19 @@ for FT in (Float32, Float64)
             (parameters.α_snow.α - FT(1)) .* FT(20), #SW_net,
             FT(20), #LW_d,
             FT(0), #q_l,
-            FT(1), #β_sfc
             FT(0), #h_sfc,
-            FT(0), #r_sfc,
-            FT(0), #d_sfc,
-            thermal_state,
+            FT(0), #displ
+            FT(101325), #P
+            FT(290), #T
+            FT(0.0003), #q
             FT(0), #u
+            roughness_model,
             FT(1), #atmos_h,
-            FT(1), #atmos_gustiness,
             parameters,
         )
         @test flux_test_no_snow == κ_surf_test * (T_sfc_test - T_bulk_test)
         #Test with snow - more complex output
-        test_output_check = FT(13144.966358153233)
+        test_output_check = FT(13144.766821078052)
         flux_test_with_snow = Snow.flux_balance(
             T_sfc_test, #T_sfc_guess
             T_bulk_test, #T_bulk
@@ -177,14 +181,14 @@ for FT in (Float32, Float64)
             (parameters.α_snow.α - FT(1)) .* FT(20), #SW_net,
             FT(20), #LW_d,
             FT(0), #q_l,
-            FT(1), #β_sfc
             FT(0), #h_sfc,
-            FT(0), #r_sfc,
-            FT(0), #d_sfc,
-            thermal_state,
+            FT(0), #displ
+            FT(101325), #P
+            FT(290), #T
+            FT(0.0003), #q
             FT(0), #u
+            roughness_model,
             FT(1), #atmos_h,
-            FT(1), #atmos_gustiness,
             parameters,
         )
         @test flux_test_with_snow ≈ test_output_check
