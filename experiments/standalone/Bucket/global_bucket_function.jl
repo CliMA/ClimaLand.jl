@@ -191,17 +191,8 @@ ClimaLand.Diagnostics.close_output_writers(diags)
 
 # all
 simdir = ClimaAnalysis.SimDir(output_dir)
-short_names_2D = [
-    "swa",
-    "rn",
-    "tsfc",
-    "lhf",
-    "shf",
-    "vflux",
-    "wsoil",
-    "wsfc",
-    "ssfc",
-]
+short_names_2D =
+    ["swa", "rn", "tsfc", "lhf", "shf", "vflux", "wsoil", "wsfc", "ssfc"]
 short_names_3D = ["tsoil"]
 for short_name in vcat(short_names_2D..., short_names_3D...)
     var = get(simdir; short_name)
