@@ -728,7 +728,9 @@ function solve_for_surface_temp_at_a_point(
         return sol.root
     else
         #how do you want to handle this?
-        error("T_sfc root-solve not converged\n")
+        error(
+            "Snow T_sfc: root-solve in `Snow.solve_for_surface_temp_at_a_point()` not converged\n",
+        )
     end
 end
 
@@ -769,7 +771,6 @@ function update_surf_temp!(model::SnowModel, Y, p, t)
     _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
 
     #will these need to be moved further into solve_for_surf_temp at some point? Or are they safe here into perpetuity?
-    #doesn't this allocate? Should I just invoke them inside the function call below instead?
     h_sfc = ClimaLand.surface_height(model, Y, p)
     roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
     displ = ClimaLand.surface_displacement_height(model, Y, p)
