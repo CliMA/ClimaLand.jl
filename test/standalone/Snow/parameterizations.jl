@@ -4,6 +4,7 @@ using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
 import Random
+using Thermodynamics, SurfaceFluxes
 
 Random.seed!(1234)
 
@@ -11,6 +12,7 @@ for FT in (Float32, Float64)
     toml_dict = LP.create_toml_dict(FT)
     @testset "Snow Parameterizations, FT = $FT" begin
         param_set = LP.LandParameters(toml_dict)
+        thermo_params = LP.thermodynamic_parameters(param_set)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -74,9 +76,12 @@ for FT in (Float32, Float64)
         @test parameters.κ_ice == κ_ice
         @test typeof(parameters.κ_ice) == FT
 
+        roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(
+            parameters.z_0m,
+            parameters.z_0b,
+        )
 
         T = FT.([275.0, 272, _T_freeze])
-        @test snow_surface_temperature.(T) ≈ T
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
         @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
         ρ_snow = ρ_min
@@ -105,6 +110,89 @@ for FT in (Float32, Float64)
         U = energy_from_T_and_swe.(FT(1), FT.([272, 274]), parameters)
         T = snow_bulk_temperature.(U, FT(1), FT.([0.0, 1.0]), parameters)
         @test all(T .≈ FT.([272, 274]))
+
+        #Tests for surface_temp use unphysical args for straightforward formula checks:
+        κ_surf_test = FT(pi * _cp_i)
+        ρ_surf_test = FT(86400)
+        d0 = Snow.diurnal_damping_depth(κ_surf_test, ρ_surf_test, parameters)
+        @test d0 ≈ FT(1)
+        d1 = Snow.surface_temp_scaling_length(
+            κ_surf_test,
+            ρ_surf_test,
+            FT(log(2)),
+            parameters,
+        )
+        @test d1 ≈ FT(0.5)
+        resid_flux_1 = Snow.surface_residual_flux(
+            FT(250),
+            κ_surf_test,
+            ρ_surf_test,
+            FT(log(2)),
+            parameters,
+        )
+        @test resid_flux_1 == FT(0)
+        resid_flux_2 = Snow.surface_residual_flux(
+            _T_freeze + FT(2),
+            κ_surf_test,
+            ρ_surf_test,
+            FT(log(2)),
+            parameters,
+        )
+        @test resid_flux_2 ≈ FT(-4 * κ_surf_test)
+        thermal_state = Thermodynamics.PhaseEquil_pTq(
+            thermo_params,
+            FT(101325), #P
+            FT(290), #T
+            FT(0.0003), #q
+        )
+        T_sfc_test = FT(272)
+        T_bulk_test = FT(270)
+        #No snow - should immediately yield κ*(T_sfc_guess - T_bulk):
+        flux_test_no_snow = Snow.flux_balance(
+            T_sfc_test, #T_sfc_guess
+            T_bulk_test, #T_bulk
+            FT(0.0), #z
+            κ_surf_test,
+            ρ_surf_test,
+            ϵ_snow,
+            (parameters.α_snow.α - FT(1)) .* FT(20), #SW_net,
+            FT(20), #LW_d,
+            FT(0), #q_l,
+            FT(0), #h_sfc,
+            FT(0), #displ
+            FT(101325), #P
+            FT(290), #T
+            FT(0.0003), #q
+            FT(0), #u
+            roughness_model,
+            FT(1), #atmos_h,
+            parameters,
+        )
+        @test flux_test_no_snow == κ_surf_test * (T_sfc_test - T_bulk_test)
+        #Test with snow - more complex output
+        test_output_check = FT(13144.766821078052)
+        flux_test_with_snow = Snow.flux_balance(
+            T_sfc_test, #T_sfc_guess
+            T_bulk_test, #T_bulk
+            FT(log(2)), #z
+            κ_surf_test,
+            ρ_surf_test,
+            ϵ_snow,
+            (parameters.α_snow.α - FT(1)) .* FT(20), #SW_net,
+            FT(20), #LW_d,
+            FT(0), #q_l,
+            FT(0), #h_sfc,
+            FT(0), #displ
+            FT(101325), #P
+            FT(290), #T
+            FT(0.0003), #q
+            FT(0), #u
+            roughness_model,
+            FT(1), #atmos_h,
+            parameters,
+        )
+        @test flux_test_with_snow ≈ test_output_check
+
     end
     @testset "Alternative parameterizations, FT = $FT" begin
         param_set = LP.LandParameters(toml_dict)

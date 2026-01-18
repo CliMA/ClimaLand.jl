@@ -465,9 +465,12 @@ function lsm_radiant_energy_fluxes!(
 ) where {FT}
     canopy = land.canopy
     canopy_bc = canopy.boundary_conditions
+    snow = land.snow
+    snow_bc = snow.boundary_conditions
     radiation = canopy_bc.radiation
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
 
@@ -517,12 +520,53 @@ function lsm_radiant_energy_fluxes!(
     @. R_net_snow .= -(
         f_trans_nir * nir_d * (1 - α_snow_NIR) +
         f_trans_par * par_d * (1 - α_snow_PAR)
-    )
+    ) #at this point, R_net_snow equals the SW_net for evaluating the snow surface temperature
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+
+    #now solve for the snow surface temperature:
+    h_sfc = ClimaLand.surface_height(snow, Y, p)
+    roughness_model = ClimaLand.surface_roughness_model(snow, Y, p)
+    displ = ClimaLand.surface_displacement_height(snow, Y, p)
+
+    #get surf_temp values, even if they are > T_freeze:
+    T_snow .=
+        Snow.solve_for_surface_temp_at_a_point.(
+            p.snow.T,
+            p.snow.z_snow,
+            p.snow.κ,
+            p.snow.ρ_snow,
+            snow.parameters.ϵ_snow,
+            R_net_snow, #SW_net snow
+            LW_d_canopy, #LW to snow from canopy
+            p.snow.q_l,
+            h_sfc,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
+            p.drivers.u,
+            roughness_model,
+            snow_bc.atmos.h,
+            snow.parameters,
+        )
+
+    #set residual flux using values if T_sfc > T_freeze:
+    p.snow.surf_residual_flux .=
+        Snow.surface_residual_flux.(
+            T_snow,
+            p.snow.κ,
+            p.snow.ρ_snow,
+            p.snow.z_snow,
+            snow.parameters,
+        )
+
+    #reset T_sfc accordingly:
+    T_snow .= min.(_T_freeze, p.snow.T_sfc)
+
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
@@ -691,6 +735,10 @@ function snow_boundary_fluxes!(
     p,
     t,
 ) where {FT}
+
+    #In this integrated version, the surface temperature is instead
+    #set in the previous function call, in lsm_radiant_energy_fluxes!().
+
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
@@ -716,6 +764,7 @@ function snow_boundary_fluxes!(
     @. p.snow.total_energy_flux =
         e_flux_falling_snow +
         (
+            p.snow.surf_residual_flux +
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
