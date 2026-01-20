@@ -565,7 +565,7 @@ description = "Unit cost of constructing and maintaining leaves (mol m⁻² yr�
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 1.0
+value = 0.771
 type = "float"
 description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025). Set to 1.0 to match Zhou global code behavior (paper Eq. 20 uses 0.771)."
 tag = "OptimalLAIModel"
