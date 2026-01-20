@@ -268,10 +268,15 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
-
-    folder_path = @clima_artifact("fluxnet_sites", context)
-    data_path = joinpath(folder_path, "$(site_ID).csv")
+    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1","NEON-cper")
+    if occursin("NEON", site_ID)
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_CPER_201701_201712.csv"
+        data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_CPER_201701_201712.csv"
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/fluxnet_site_data/US-MOz.csv"
+    else
+        folder_path = @clima_artifact("fluxnet_sites", context)
+        data_path = joinpath(folder_path, "$(site_ID).csv")
+    end
     return data_path
 end
 

@@ -8,6 +8,8 @@ experiments/integrated/fluxnet/out/*
 experiments/integrated/fluxnet/US-*/out/*
 *_longrun_*/
 *.nc
+*.toml
+.gitignore
 *.png
 *.mp4
 *.hdf5
