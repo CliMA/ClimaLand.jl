@@ -318,28 +318,6 @@ struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
 end
 
 """
-    compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-
-Computes the density of air at the surface, given the temperature
-at the surface T_sfc, the thermodynamic state of the atmosphere,
-ts_in, and a set of Clima.Thermodynamics parameters thermo_params.
-
-This assumes the ideal gas law and hydrostatic balance to
-extrapolate to the surface.
-
-"""
-function compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
-    ρ_sfc =
-        ρ_air *
-        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int)
-    return ρ_sfc
-end
-
-"""
     set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p)
 
 Fill the pre-allocated ts_in `Field` with a thermodynamic state computed from the
@@ -555,15 +533,6 @@ function compute_turbulent_fluxes_at_a_point(
     # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
     g_h = output.g_h
     u_star = output.ustar
-    ρ_sfc = ρ_atmos
-    ∂lhf∂T =
-        ρ_sfc *
-        g_h *
-        _LH_v0 *
-        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    # Buoyancy Flux
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,
@@ -575,6 +544,13 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
+    ∂lhf∂T =
+        ρ_sfc *
+        g_h *
+        _LH_v0 *
+        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,
@@ -715,6 +691,35 @@ function ClimaLand.net_radiation!(
     return nothing
 end
 
+"""
+    surface_air_density(model::AbstractModel, Y, p)
+
+"""
+function surface_air_density(model::AbstractModel, Y, p)
+    earth_param_set = get_earth_param_set(model)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    T_atmos = p.drivers.T
+    q_tot_atmos = p.drivers.q
+    P_atmos = p.drivers.P
+    ρ_atmos = @. lazy(Thermodynamics.air_density(
+        thermo_params,
+        T_atmos,
+        P_atmos,
+        Thermodynamics.PhasePartition_equil_given_p(
+            thermo_params,
+            T_atmos,
+            P_atmos,
+            q_tot_atmos,
+            Thermodynamics.PhaseEquil)
+    ))
+    T_sfc = component_temperature(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    ρ_sfc = @. lazy(SurfaceFluxes.surface_density(surface_flux_params, T_atmos, ρ_atmos, T_sfc, atmos.h - h_sfc, q_tot_atmos))
+    return ρ_sfc
+end
+
+                    
 """
     component_temperature(model::AbstractModel, Y, p)
 

@@ -52,8 +52,7 @@ import ClimaLand:
     surface_roughness_model,
     component_specific_humidity,
     get_update_surface_humidity_function,
-    get_drivers,
-    compute_ρ_sfc
+    get_drivers
 export BucketModelParameters,
     BucketModel,
     PrescribedBaregroundAlbedo,
@@ -523,11 +522,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         thermo_params =
             LP.thermodynamic_parameters(model.parameters.earth_param_set)
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
-        @. p.bucket.ρ_sfc = compute_ρ_sfc(
-            thermo_params,
-            p.drivers.thermal_state,
-            p.bucket.T_sfc,
-        )
+        p.bucket.ρ_sfc .= ClimaLand.surface_air_density(model, Y, p)
 
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside

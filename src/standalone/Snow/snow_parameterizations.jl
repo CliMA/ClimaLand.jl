@@ -131,14 +131,13 @@ end
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
-
-This asumes the atmospheric surface state is stored in p.drivers.
 """
 function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
+    ρ_sfc = ClimaLand.surface_air_density(model, Y, p) # lazy
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
+        ρ_sfc,
         p.snow.q_l,
-        p.drivers.thermal_state,
         model.parameters,
     )
 
@@ -163,21 +162,19 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, atmos_ts, parameters) where {FT}
+    snow_surface_specific_humidity(T_sfc::FT, ρ_sfc::FT, q_l::FT, parameters) where {FT}
 
-Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
-of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
-
-This approximates the surface air density using an adiabatic approximation and the current atmospheric state.
+Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction q_l)
+of the saturated specific humidity over ice and over liquid, at temperature T_sfc and
+surface air density ρ_sfc.
 """
 function snow_surface_specific_humidity(
     T_sfc::FT,
+    ρ_sfc::FT,
     q_l::FT,
-    atmos_ts,
     parameters,
 ) where {FT}
     thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
-    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, atmos_ts, T_sfc)
     qsat_over_ice = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T_sfc,
