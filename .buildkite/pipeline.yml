@@ -79,6 +79,10 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
 
+      - label: "emerald_test"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_any_fluxnet.jl AU-Emr"
+        artifact_paths: "experiments/integrated/fluxnet/AU-Emr/out/*png"
+
       - label: "niwot_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
         artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
