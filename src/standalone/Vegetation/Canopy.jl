@@ -71,7 +71,6 @@ include("./spatially_varying_parameters.jl")
 include("./canopy_turbulent_fluxes.jl")
 
 
-
 ########################################################
 # Convenience constructors for Canopy model components
 ########################################################
