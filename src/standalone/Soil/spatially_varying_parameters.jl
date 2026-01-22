@@ -180,6 +180,9 @@ function soil_vangenuchten_parameters(
     vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
     μ = FT(1.74)
     vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
+    n_min = FT(1) + sqrt(eps(FT))
+    vg_n .= ifelse.(isfinite.(vg_n), vg_n, μ)
+    vg_n .= max.(vg_n, n_min)
 
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
         ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
