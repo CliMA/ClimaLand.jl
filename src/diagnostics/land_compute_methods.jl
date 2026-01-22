@@ -113,12 +113,12 @@ function compute_net_ecosystem_exchange!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     # Compute ER first
-    er = compute_total_respiration!(nothing, Y, p, t, land_model)
     if isnothing(out)
         out = zeros(land_model.soil.domain.space.surface)
         fill!(field_values(out), NaN)
     end
-    @. out = er - p.canopy.photosynthesis.GPP
+    compute_total_respiration!(out, Y, p, t, land_model)
+    @. out -= p.canopy.photosynthesis.GPP
     return out
 end
 
