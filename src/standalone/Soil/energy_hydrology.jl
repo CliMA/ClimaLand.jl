@@ -1183,7 +1183,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
-        q_sat_liq::FT = Thermodynamics.q_vap_saturation(
+        q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,
@@ -1191,7 +1191,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         )
     else
         liquid_evaporation = false
-        q_sat_ice::FT = Thermodynamics.q_vap_saturation(
+        q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
             ρ_sfc,

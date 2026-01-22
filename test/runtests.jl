@@ -1,7 +1,7 @@
 using SafeTestsets
 
 import ClimaComms
-#=
+
 # Performance and code quality tests
 @safetestset "Aqua tests" begin
     include("aqua.jl")
@@ -102,7 +102,7 @@ end
 @safetestset "Canopy module tests" begin
     include("standalone/Vegetation/canopy_model.jl")
 end
-=#
+
 @safetestset "Canopy module tests" begin
     include("standalone/Vegetation/test_soil_moisture_stress.jl")
 end
