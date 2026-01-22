@@ -57,6 +57,7 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
 
       - label: ":snow_capped_mountain: Snowy Land + P Model"
+        key: "snowy_land_pmodel_run"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
@@ -67,6 +68,12 @@ steps:
           slurm_time: 3:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
+
+      - label: "Send simulation output to Azure VM for visualization"
+        depends_on:
+          - "snowy_land_pmodel_run"
+        command:
+          - rsync -avz "/scratch/clima/slurm-buildkite/climaland-long-runs/$BUILDKITE_BUILD_NUMBER/climaland-long-runs/snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/" azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
 
       - label: ":sunglasses: California regional simulation"
         command:
@@ -130,7 +137,6 @@ steps:
     if: build.env("LONGER_RUN") != null
     steps:
       - label: "Snowy Land, 19 years"
-        key: "snowy_land_pmodel_run"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
         artifact_paths:
@@ -141,12 +147,6 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
-
-      - label: "Send simulation output to Azure VM for visualization"
-        depends_on:
-          - "snowy_land_pmodel_run"
-        command:
-          - rsync -avz "/scratch/clima/slurm-buildkite/climaland-long-runs/$BUILDKITE_BUILD_NUMBER/climaland-long-runs/snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/" azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
 
       - label: "Soil, 20 years"
         command:
