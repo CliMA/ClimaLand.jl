@@ -28,10 +28,14 @@ function microbe_source(
     (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) = params
     R = FT(LP.gas_constant(earth_param_set))
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
-    Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
+    # Clamp Csom and O2_avail to non-negative to prevent negative respiration
+    # when prognostic variables slightly undershoot zero
+    Csom_clamped = max(Csom, FT(0))
+    O2_avail_clamped = max(O2_avail, FT(0))
+    Sx = p_sx * Csom_clamped * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
     # Use pre-computed O2 availability (includes tortuosity effects)
-    MM_o2 = O2_avail / (kM_o2 + O2_avail) # Oxygen limitation factor, 0-1
+    MM_o2 = O2_avail_clamped / (kM_o2 + O2_avail_clamped) # Oxygen limitation factor, 0-1
     R_sm = Vmax * MM_sx * MM_o2 # Respiration, kg C m⁻³ s⁻¹
     return R_sm
 end
@@ -130,8 +134,12 @@ where:
 This is used in Michaelis-Menten kinetics for microbial respiration.
 """
 function o2_availability(O2_f::FT, θ_a::FT, D_oa::FT) where {FT}
+    # Clamp inputs to non-negative to prevent NaN from fractional exponent
+    # when prognostic variables slightly undershoot zero
+    O2_f_clamped = max(O2_f, FT(0))
+    θ_a_clamped = max(θ_a, FT(0))
     # Dimensionless O2 availability with tortuosity
-    O2_avail = D_oa * O2_f * θ_a^(FT(4 / 3))
+    O2_avail = D_oa * O2_f_clamped * θ_a_clamped^(FT(4 / 3))
     return O2_avail
 end
 
@@ -187,9 +195,12 @@ function co2_diffusivity(
     P_ref = FT(LP.P_ref(earth_param_set))
     θ_a = volumetric_air_content(θ_w, ν)
     D0 = D_ref * max((T_soil / T_ref), 0)^FT(1.75) * (P_ref / P_sfc)
+    # Clamp the ratio to non-negative to prevent NaN from fractional exponent
+    # when θ_a is very small or θ_a100 has numerical issues
+    θ_a_ratio = max(θ_a / max(θ_a100, eps(FT)), FT(0))
     D =
         D0 *
         (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) *
-        (θ_a / θ_a100)^(FT(2) + FT(3) / b)
+        θ_a_ratio^(FT(2) + FT(3) / b)
     return D
 end
