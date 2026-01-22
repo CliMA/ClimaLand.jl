@@ -49,9 +49,9 @@ subsurface_space = domain.space.subsurface
 # Set up dates and times for the simulation
 # Note that the P Model takes a few weeks to spin up, so this short of a run
 # really only tests software functionality.
-start_date = DateTime(2008);
+start_date = DateTime(2008)
 dt = 450.0
-stop_date = start_date + Dates.Second(3600)
+stop_date = start_date + Dates.Day(7)
 
 # Forcing data - this is run on Caltech central,
 # which only has low resolution forcing data
