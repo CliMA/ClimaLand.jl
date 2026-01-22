@@ -379,6 +379,8 @@ function turbulent_fluxes!(
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
+
     dest .=
         turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
@@ -396,6 +398,7 @@ function turbulent_fluxes!(
             displ,
             update_∂T_sfc∂T,
             update_∂q_sfc∂T,
+            gustiness,
             earth_param_set,
         )
     return nothing
@@ -438,6 +441,7 @@ end
         displ::FT,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
+        gustiness,
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -477,13 +481,13 @@ function compute_turbulent_fluxes_at_a_point(
     displ::FT,
     update_∂T_sfc∂T,
     update_∂q_sfc∂T,
+    gustiness,
     earth_param_set,
 ) where {FT}
 
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set) # used to compute surface potential
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
 
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     positional_default_args = (

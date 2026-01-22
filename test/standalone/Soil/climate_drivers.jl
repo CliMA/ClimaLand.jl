@@ -147,6 +147,7 @@ for FT in (Float32, Float64)
                 :θ_l,
                 :T,
                 :κ,
+                :Tf_depressed,
                 :bidiag_matrix_scratch,
                 :full_bidiag_matrix_scratch,
                 :turbulent_fluxes,
