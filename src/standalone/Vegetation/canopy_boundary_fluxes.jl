@@ -216,19 +216,15 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     P_air = p.drivers.P
     q_air = p.drivers.q
     h_sfc = ClimaLand.surface_height(model, Y, p)
+    # Below we approximate the surface air density with the
+    # atmospheric density to make it independent of T
+    # This makes our estimate of the derivatives more exact later on
     atmos = model.boundary_conditions.atmos
     q_sfc = @. lazy(
         Thermodynamics.q_vap_saturation(
             thermo_params,
             T_sfc,
-            ClimaLand.compute_ρ_sfc(
-                surface_flux_params,
-                T_air,
-                P_air,
-                q_air,
-                atmos.h - h_sfc,
-                T_sfc,
-            ),
+            Thermodynamics.air_density(thermo_params, T_air, P_air, q_air),
             Thermodynamics.Liquid(),
         ),
     )
@@ -403,21 +399,26 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
+        q_sat,
         T_sfc,
-        P_sfc,
         earth_param_set,
         leaf_Cd,
         LAI,
         r_stomata_canopy,
     )
         FT = eltype(earth_param_set)
-        _T_freeze = LP.T_freeze(earth_param_set)
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
-        return ∂q_sfc∂q *
-               ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
+        return ∂q_sfc∂q * Thermodynamics.∂q_vap_sat_∂T(
+            thermo_params,
+            nothing,
+            T_sfc,
+            q_sat,
+            Thermodynamics.latent_heat_vapor(thermo_params, T_sfc),
+        )
     end
     # Closure
     update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =

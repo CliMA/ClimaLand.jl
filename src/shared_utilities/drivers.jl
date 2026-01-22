@@ -527,7 +527,7 @@ function compute_turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water
     Ẽ = E / _ρ_liq
 
-    # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
+    # Approximate derivatives of fluxes with respect to T_sfc
     g_h = output.g_h
     u_star = output.ustar
     ρ_sfc = SurfaceFluxes.surface_density(
@@ -541,11 +541,18 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
+    # This assumes that q_vap_sfc_guess is the saturated value
     ∂lhf∂T =
         ρ_sfc *
         g_h *
         _LH_v0 *
-        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
+        update_∂q_sfc∂T(
+            u_star,
+            g_h,
+            q_vap_sfc_guess,
+            T_sfc_guess,
+            earth_param_set,
+        )
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
     # Buoyancy Flux
@@ -807,13 +814,11 @@ function get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
+        q_sat,
         T_sfc,
-        P_sfc,
         earth_param_set,
     )
-        FT = eltype(earth_param_set)
-        _T_freeze = LP.T_freeze(earth_param_set)
-        return ClimaLand.partial_q_sat_partial_T(P_sfc, T_sfc - _T_freeze)
+        return ClimaLand.partial_q_sat_partial_T(q_sat, T_sfc, earth_param_set)
     end
     return update_∂q_sfc∂T_at_a_point
 end

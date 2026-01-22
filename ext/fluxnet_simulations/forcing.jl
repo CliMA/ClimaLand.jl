@@ -398,8 +398,9 @@ these units are what Fluxnet sites report the data
 in.
 """
 function compute_q(P, VPD, T; thermo_params)
+    _T_freeze = Thermodynamics.Parameters.T_freeze(thermo_params)
     # Convert units
-    T = T + 273.15  # C to K
+    T = T + _T_freeze  # C to K
     VPD = VPD * 100.0 # hPa to Pa
     P = P * 1000.0 # kPa to Pa
     # Compute q
@@ -409,7 +410,8 @@ function compute_q(P, VPD, T; thermo_params)
         Thermodynamics.Liquid(),
     )
     e = esat - VPD
-    q = 0.622 * e / (P - 0.378 * e)
+    ρ = Thermodynamics.air_density(thermo_params, T, P) # dry
+    q = Thermodynamics.q_vap_from_p_vap(thermo_params, T, ρ, e)
     return q
 end
 
