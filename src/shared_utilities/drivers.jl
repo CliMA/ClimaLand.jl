@@ -28,7 +28,6 @@ export AbstractAtmosphericDrivers,
     turbulent_fluxes!,
     net_radiation!,
     turbulent_fluxes_at_a_point,
-    displacement_height,
     make_update_drivers,
     prescribed_forcing_era5,
     prescribed_perturbed_temperature_era5,
@@ -317,23 +316,26 @@ struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
 end
 
 """
-    compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
+    compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
 
 Computes the density of air at the surface, given the temperature
 at the surface T_sfc, the atmospheric temperature T_air, pressure P_air,
-and specific humidity q_air, using thermo_params.
-
-This assumes the ideal gas law and hydrostatic balance to
-extrapolate to the surface.
-
+specific humidity q_air, , and height difference between the atmos level
+and surface level, using surface_flux_params.
 """
-# TODO Replace by surface density calculation from SurfaceFluxes.jl
-function compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, q_air)
-    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
-    cv_m = Thermodynamics.cv_m(thermo_params, q_air)
+function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
     T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
-    ρ_sfc = ρ_air * (T_sfc / T_air)^(cv_m / Rm_int)
+    thermo_params =
+        SurfaceFluxes.Parameters.thermodynamics_params(surface_flux_params)
+    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+    return SurfaceFluxes.surface_density(
+        surface_flux_params,
+        T_air,
+        ρ_air,
+        T_sfc,
+        Δh,
+        q_air,
+    )
     return ρ_sfc
 end
 
@@ -495,19 +497,8 @@ function compute_turbulent_fluxes_at_a_point(
     else
         u = u_atmos
     end
-    phase_partition_atmos = Thermodynamics.PhasePartition_equil_given_p(
-        thermo_params,
-        T_atmos,
-        P_atmos,
-        q_tot_atmos,
-        Thermodynamics.PhaseEquil,
-    )
-    ρ_atmos = Thermodynamics.air_density(
-        thermo_params,
-        T_atmos,
-        P_atmos,
-        phase_partition_atmos,
-    )
+    ρ_atmos =
+        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
     output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
@@ -539,15 +530,6 @@ function compute_turbulent_fluxes_at_a_point(
     # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
     g_h = output.g_h
     u_star = output.ustar
-    ρ_sfc = ρ_atmos
-    ∂lhf∂T =
-        ρ_sfc *
-        g_h *
-        _LH_v0 *
-        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    # Buoyancy Flux
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,
@@ -559,6 +541,14 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
+    ∂lhf∂T =
+        ρ_sfc *
+        g_h *
+        _LH_v0 *
+        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    # Buoyancy Flux
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,

@@ -52,8 +52,7 @@ import ClimaLand:
     surface_roughness_model,
     component_specific_humidity,
     get_update_surface_humidity_function,
-    get_drivers,
-    compute_ρ_sfc
+    get_drivers
 export BucketModelParameters,
     BucketModel,
     PrescribedBaregroundAlbedo,
@@ -522,10 +521,18 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         thermo_params =
             LP.thermodynamic_parameters(model.parameters.earth_param_set)
+        surface_flux_params =
+            LP.surface_fluxes_parameters(model.parameters.earth_param_set)
+
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
-        @. p.bucket.ρ_sfc = compute_ρ_sfc(
-            thermo_params,
-            p.drivers.thermal_state,
+        h_sfc = ClimaLand.surface_height(model, Y, p)
+        atmos = model.atmos
+        @. p.bucket.ρ_sfc = ClimaLand.compute_ρ_sfc(
+            surface_flux_params,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            atmos.h - h_sfc,
             p.bucket.T_sfc,
         )
 

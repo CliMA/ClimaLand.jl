@@ -1156,7 +1156,15 @@ function soil_compute_turbulent_fluxes_at_a_point(
         u_air = SVector{2, FT}(u_air, 0)
     end
     # Estimate surface air density from the atmos state using T_sfc
-    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, T_air, P_air, q_air, T_sfc)
+    Δh = h_air - h_sfc
+    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(
+        surface_flux_params,
+        T_air,
+        P_air,
+        q_air,
+        Δh,
+        T_sfc,
+    )
     # Get the freezing point of the soil to determine if the water is sublimating or evaporating
     θtot_sfc = min(_ρ_ice / _ρ_liq * θ_i_sfc + θ_l_sfc, ν_sfc)
     # This is consistent with Equation (22) of Dall'Amico
@@ -1212,7 +1220,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
         flux_specs = nothing,
     )
     gustiness = SurfaceFluxes.ConstantGustinessSpec(gustiness)
-
+    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
