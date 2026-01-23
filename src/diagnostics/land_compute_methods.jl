@@ -963,6 +963,34 @@ end
     EnergyHydrology,
 } Y.soil.ρe_int
 
+# Soil CO2 in ppm (for comparison with NEON observations)
+# Converts air-equivalent CO2 concentration to ppm using ideal gas law:
+# ppm = (n_CO2 / n_air) × 10^6 = CO2_air_eq * R * T / (M_C * P) × 10^6
+function compute_soilco2_ppm!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    params = land_model.soilco2.parameters
+    M_C = FT(params.M_C)
+    R = FT(LP.gas_constant(params.earth_param_set))
+
+    CO2_air_eq = p.soilco2.CO2_air_eq  # kg C / m³ air-equivalent
+    T_soil = p.soilco2.T               # K
+    P_sfc = p.drivers.P                # Pa
+
+    if isnothing(out)
+        out = zeros(axes(CO2_air_eq))
+        fill!(field_values(out), NaN)
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+        return out
+    else
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+    end
+end
+
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction

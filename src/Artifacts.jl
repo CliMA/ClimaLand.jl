@@ -10,7 +10,7 @@ import LazyArtifacts
      saturated_land_ic_path(; context = nothing)
 
 Returns the path to the spun-up land initial conditions created with zero
-flux at the bottom of the soil domain, which extends 15 m in vertical 
+flux at the bottom of the soil domain, which extends 15 m in vertical
 extent; these boundary conditions allow for a water table to form.
 
 This file contains the following variables:
@@ -20,11 +20,11 @@ This file contains the following variables:
 - leaf water potential
 - snow water equivalent
 
-Spun-up initial conditions similar to these can be created by 
+Spun-up initial conditions similar to these can be created by
 running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
 using the default global_box_domain, with a soil model with no flux
 at the bottom boundary,
-and then running the ClimaArtifacts script 
+and then running the ClimaArtifacts script
 `saturated_soil_ic/create_artifacts.jl` with a command line argument
 pointing to the correct path, as documented in that file.
 """
@@ -49,11 +49,11 @@ This file contains the following variables:
 - soil ρe_int
 - snow water equivalent
 
-Spun-up initial conditions similar to these can be created by 
+Spun-up initial conditions similar to these can be created by
 running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
 using the default global domain (not box), changing the soil boundary
 condition to free drainage at the bottom of the domain,
-and then running the ClimaArtifacts script 
+and then running the ClimaArtifacts script
 `soil_ic_2008_50m/create_artifacts.jl` with a command line argument
 pointing to the correct path, as documented in that file.
 """
@@ -310,10 +310,17 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
-
-    folder_path = @clima_artifact("fluxnet_sites", context)
-    data_path = joinpath(folder_path, "$(site_ID).csv")
+    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1","NEON-cper")
+    if occursin("NEON", site_ID)
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_CPER_201701_201712.csv"
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/USVal_param_adaptSlayer_1f8b301b70dc015194659380910d1147f81efba6/input/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201705_201709.csv"
+        data_path = "/home/alexisr/GitHub/ClimaLand.jl/experiments/integrated/fluxnet/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/fluxnet_site_data/US-MOz.csv"
+    else
+        folder_path = @clima_artifact("fluxnet_sites", context)
+        data_path = joinpath(folder_path, "$(site_ID).csv")
+    end
     return data_path
 end
 
