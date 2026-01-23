@@ -24,6 +24,7 @@ import ClimaLand.Parameters as LP
 using ClimaDiagnostics
 using ClimaUtilities
 
+
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
@@ -320,7 +321,9 @@ simulation = LandSimulation(
     diagnostics = diags,
 )
 solve!(simulation)
-#=using Logging
+
+#=
+using Logging
 
 io = open("logfile3.txt", "w")
 logger = ConsoleLogger(io)
