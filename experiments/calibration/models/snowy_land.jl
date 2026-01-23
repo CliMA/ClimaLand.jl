@@ -58,13 +58,29 @@ function setup_model(
         forcing,
         toml_dict,
         Δt;
-        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        prognostic_land_components = (:canopy, :snow, :soil),
         α_snow,
         scf,
     )
 
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    canopy_forcing = (; atmos, radiation, ground)
+    photosynthesis = PModel{FT}(domain, toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
+    soil_moisture_stress =
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        prognostic_land_components = (:canopy, :snow, :soil),
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+    )
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow)
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy)
     return land
 end
 
@@ -73,11 +89,8 @@ function ClimaCalibrate.forward_model(
     member,
     ::Type{ClimaLand.LandModel},
 )
-    output_dir = CALIBRATE_CONFIG.output_dir
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
-    nelements = CALIBRATE_CONFIG.nelements
-    spinup = CALIBRATE_CONFIG.spinup
-    extend = CALIBRATE_CONFIG.extend
+    (; output_dir, sample_date_ranges, nelements, spinup, extend) =
+        CALIBRATE_CONFIG
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -155,6 +168,9 @@ function ClimaCalibrate.forward_model(
         toml_dict,
         joinpath(ensemble_member_path, "log_params_$member.toml"),
     )
+    params = keys(TOML.parsefile(calibrate_params_path))
+    strict = true
+    CP.check_override_parameter_usage(toml_dict, params, strict)
     ClimaLand.Simulations.solve!(simulation)
     return nothing
 end

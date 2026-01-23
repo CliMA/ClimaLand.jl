@@ -108,14 +108,3 @@
 # Please note that the behavior in the LandModel is different. In that case,
 # the land model computes its fluxes in its step, regardless of if the simulation
 # is coupled or standalone. We will unify this behavior in the future.
-
-# # Surface air density
-# Within the right hand side/ODE function calls for the bucket model, we need both the
-# surface air density (for computing specific humidity at the surface). In standalone runs,
-# we call the function [`surface_air_density`](@ref ClimaLand.surface_air_density),
-# This function uses the atmospheric state and surface
-# temperature to estimate the surface air density assuming an ideal gas and hydrostatic balance
-# and by extrapolating from the air density at the lowest level of the atmosphere.
-
-# Again, this functions is called in the ODE function of the bucket model *after* the coupler
-# has updated the values of `p` with the correct values at that timestep.

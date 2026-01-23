@@ -78,6 +78,8 @@ import ClimaLand:
     make_compute_imp_tendency,
     make_update_boundary_fluxes,
     make_compute_jacobian,
+    make_update_implicit_aux,
+    make_update_implicit_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
     prognostic_domain_names,
@@ -88,11 +90,9 @@ import ClimaLand:
     AbstractSource,
     source!,
     heaviside,
-    surface_temperature,
+    component_temperature,
     surface_albedo,
     surface_emissivity,
-    surface_height,
-    surface_resistance,
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,
@@ -207,6 +207,8 @@ using .Biogeochemistry
                          z_0b = toml_dict["soil_scalar_roughness_length"],
                          emissivity = toml_dict["emissivity_bare_soil"],
                          additional_sources = (),
+                         bottom_bc =
+                             WaterHeatBC(; water = WaterFluxBC((p, t) -> 0.0), heat = HeatFluxBC((p, t) -> 0.0)),
                          ) where {FT <: AbstractFloat}
 
 Creates a EnergyHydrology model with the given float type `FT`, `domain`,
@@ -243,6 +245,9 @@ component models.
 
 Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
 by kwarg; otherwise the default values are used.
+
+This sets the bottom boundary conditions to be no flux by default, but these can be changed using the 
+`bottom_bc` kwarg.
 """
 function EnergyHydrology{FT}(
     domain,
@@ -269,6 +274,10 @@ function EnergyHydrology{FT}(
     z_0b = toml_dict["soil_scalar_roughness_length"],
     emissivity = toml_dict["emissivity_bare_soil"],
     additional_sources = (),
+    bottom_bc = WaterHeatBC(;
+        water = WaterFluxBC((p, t) -> 0.0),
+        heat = HeatFluxBC((p, t) -> 0.0),
+    ),
 ) where {FT <: AbstractFloat}
     # TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
     #  roughness, and emissivity.
@@ -278,7 +287,6 @@ function EnergyHydrology{FT}(
         runoff;
         prognostic_land_components,
     )
-    bottom_bc = EnergyWaterFreeDrainage()
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
     sources = (additional_sources..., PhaseChange{FT}())

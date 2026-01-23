@@ -150,7 +150,16 @@ canopy = Canopy.CanopyModel{FT}(
 # defaults for the soil model, we don't need to provide anything for it.
 # For the canopy and snow models, we'll provide the models we just set up.
 
-land_model = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy);
+land_model = LandModel{FT}(
+    forcing,
+    LAI,
+    toml_dict,
+    domain,
+    Δt;
+    prognostic_land_components,
+    snow,
+    canopy,
+);
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,

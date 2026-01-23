@@ -416,6 +416,36 @@ function ClimaLand.make_compute_imp_tendency(
     return compute_imp_tendency!
 end
 
+function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
+    function update_imp_aux!(p, Y, t)
+        (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(
+                min(ν - Y.soil.θ_i, Y.soil.ϑ_l), # compute θ_l
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            ),
+            earth_param_set,
+        )
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+    end
+    return update_imp_aux!
+end
+
+function ClimaLand.make_update_implicit_boundary_fluxes(model::EnergyHydrology)
+    ubf! = make_update_boundary_fluxes(model)
+    function update_imp_bf!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            ubf!(p, Y, t)
+        end
+    end
+    return update_imp_bf!
+end
+
 """
     ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
 
@@ -897,11 +927,10 @@ end
 ## as well as evaporation.
 
 """
-    ClimaLand.surface_temperature(
+    ClimaLand.component_temperature(
         model::EnergyHydrology{FT},
         Y,
         p,
-        t,
     ) where {FT}
 
 Returns the surface temperature field of the
@@ -911,11 +940,10 @@ The assumption is that the soil surface temperature
 is the same as the temperature at the center of the
 first soil layer.
 """
-function ClimaLand.surface_temperature(
+function ClimaLand.component_temperature(
     model::EnergyHydrology{FT},
     Y,
     p,
-    t,
 ) where {FT}
     return ClimaLand.Domains.top_center_to_surface(p.soil.T)
 end
@@ -936,20 +964,6 @@ function ClimaLand.surface_emissivity(
     p,
 ) where {FT}
     return model.parameters.emissivity
-end
-
-
-"""
-    ClimaLand.surface_height(
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-    ) where {FT}
-
-Returns the surface height of the `EnergyHydrology` model.
-"""
-function ClimaLand.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return model.domain.fields.z_sfc
 end
 
 function ClimaLand.get_drivers(model::EnergyHydrology)
@@ -973,14 +987,10 @@ function turbulent_fluxes!(
     p::NamedTuple,
     t,
 ) where {FT}
-    @static if pkgversion(ClimaLand) < v"1.1" &&
-               typeof(atmos) <: CoupledAtmosphere
-        return nothing # Coupler has already computed the fluxes and updated `dest` in place
-    end
     # Obtain surface quantities needed for computation; these should not allocate
-    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    T_sfc = ClimaLand.component_temperature(model, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    d_sfc = ClimaLand.surface_displacement_height(model, Y, p)
     (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
         model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
@@ -997,7 +1007,6 @@ function turbulent_fluxes!(
     )
 
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
-
     dest .=
         soil_turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
@@ -1040,31 +1049,24 @@ function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _, _) =
+    (LH, SH, Ẽ_l, Ẽ_i, _, _, _) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
-        vapor_flux_ice = Ẽ_i,
-    )
+    return (lhf = LH, shf = SH, vapor_flux_liq = Ẽ_l, vapor_flux_ice = Ẽ_i)
 end
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz, buoy_flux) =
+    (LH, SH, Ẽ_l, Ẽ_i, ρτxz, ρτyz, buoyancy_flux) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
         shf = SH,
         vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
         vapor_flux_ice = Ẽ_i,
-        ρτxz = ρτxz,
-        ρτyz = ρτyz,
-        buoy_flux = buoy_flux,
+        ρτxz,
+        ρτyz,
+        buoyancy_flux,
     )
 end
 
@@ -1128,6 +1130,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
     γT_ref::FT,
     earth_param_set::P,
 ) where {FT <: AbstractFloat, P}
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
     # Limit these to physical values
     # In particular, the linear interpolation to get θ_l_sfc
     # may not respect the residual fraction limit
@@ -1148,17 +1151,12 @@ function soil_compute_turbulent_fluxes_at_a_point(
     if u_air isa FT
         u_air = SVector{2, FT}(u_air, 0)
     end
-    state_air = SurfaceFluxes.StateValues(
-        h_air - d_sfc - h_sfc,
-        u_air,
-        thermal_state_air,
-    )
     q_air::FT =
         Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
-
+    T_air::FT = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
+    ρ_air::FT = Thermodynamics.air_density(thermo_params, thermal_state_air)
     # Estimate surface air density from the atmos state using T_sfc
     ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
-
     # Get the freezing point of the soil to determine if the water is sublimating or evaporating
     θtot_sfc = min(_ρ_ice / _ρ_liq * θ_i_sfc + θ_l_sfc, ν_sfc)
     # This is consistent with Equation (22) of Dall'Amico
@@ -1172,39 +1170,26 @@ function soil_compute_turbulent_fluxes_at_a_point(
     β::FT = 1
     Ẽ_i::FT = 0 # vapor flux of liquid water, in units of volume flux of liquid water
     Ẽ_l::FT = 0 # vapor flux of frozen water, in units of volume flux of liquid water
-
+    q_sfc::FT = 0
     # Compute q_soil using ice or liquid as appropriate, and create the thermal state of the soil
     # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
-        q_sat_liq::FT = Thermodynamics.q_vap_saturation_generic(
+        q_sfc = Thermodynamics.q_vap_saturation_generic(
             thermo_params,
             T_sfc,
             ρ_sfc,
             Thermodynamics.Liquid(),
         )
-        thermal_state_sfc::Thermodynamics.PhaseEquil{FT} =
-            Thermodynamics.PhaseEquil_ρTq(
-                thermo_params,
-                ρ_sfc,
-                T_sfc,
-                q_sat_liq,
-            )
     else
         liquid_evaporation = false
-        q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
+        q_sfc = Thermodynamics.q_vap_saturation_generic(
             thermo_params,
             T_sfc,
             ρ_sfc,
             Thermodynamics.Ice(),
         )
-        thermal_state_sfc = Thermodynamics.PhaseEquil_ρTq(
-            thermo_params,
-            ρ_sfc,
-            T_sfc,
-            q_sat_ice,
-        )
-        if q_air < q_sat_ice
+        if q_air < q_sfc
             β *= (θ_i_sfc / ν_sfc)^4
         end
     end
@@ -1221,40 +1206,41 @@ function soil_compute_turbulent_fluxes_at_a_point(
 
     # In this we have neglected z_0m and z_0b (i.e. assumed they are small
     # compared to Δh).
-    state_sfc = SurfaceFluxes.StateValues(
-        FT(0),
-        SVector{2, FT}(0, 0),
-        thermal_state_sfc,
+    positional_default_args = (
+        scheme = SurfaceFluxes.PointValueScheme(),
+        solver_opts = nothing,
+        flux_specs = nothing,
     )
-    # State containers
-    states = SurfaceFluxes.ValuesOnly(
-        state_air,
-        state_sfc,
-        z_0m,
-        z_0b,
-        gustiness = gustiness,
-        beta = β,
-    )
-    scheme = SurfaceFluxes.PointValueScheme()
-    conditions =
-        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(gustiness)
 
-    SH::FT = SurfaceFluxes.sensible_heat_flux(
+    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
+    output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
-        conditions.Ch,
-        states,
-        scheme,
+        T_air,
+        q_air,
+        FT(0),
+        FT(0),
+        ρ_air,
+        T_sfc,
+        q_sfc,
+        _grav * h_sfc,
+        h_air - h_sfc,
+        d_sfc,
+        u_air,
+        (FT(0), FT(0)),
+        nothing,
+        config,
+        positional_default_args...,
     )
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
-    E_pot::FT =
-        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# potential evaporation rate, mass flux
+
+    E_pot::FT = output.evaporation
     Ẽ_pot::FT = E_pot / _ρ_liq # volume flux of liquid water
 
     # Adjust fluxes as needed for soil resistance; split between ice and liquid water loss
     if liquid_evaporation     # adjust the vapor loss to account for soil resistance, set sublimation to zero
         Ẽ_i = 0
         Ẽ_l = Ẽ_pot
-        if q_air < q_sat_liq # adjust potential evaporation rate to account for soil resistance
+        if q_air < q_sfc # adjust potential evaporation rate to account for soil resistance
             K_sfc::FT =
                 impedance_factor(θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc), Ω) *
                 viscosity_factor(T_sfc, γ, γT_ref) *
@@ -1275,23 +1261,36 @@ function soil_compute_turbulent_fluxes_at_a_point(
             Ẽ_l *= x / (Ẽ_pot + x)
         end
     else # sublimation, set evaporation to zero
-        Ẽ_i = Ẽ_pot
+        Ẽ_i = Ẽ_pot * β
         Ẽ_l = 0
     end
 
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
-
-    return (
-        LH,
-        SH,
-        Ẽ_l,
-        r_ae,
-        Ẽ_i,
-        conditions.ρτxz,
-        conditions.ρτyz,
-        conditions.buoy_flux,
+    ρ_sfc = SurfaceFluxes.surface_density(
+        surface_flux_params,
+        T_air,
+        ρ_air,
+        output.T_sfc,
+        h_air - h_sfc,
+        q_air,
+        FT(0),
+        FT(0),
+        output.q_vap_sfc,
     )
+    SH::FT = output.shf
+
+    buoyancy_flux = SurfaceFluxes.buoyancy_flux(
+        surface_flux_params,
+        output.shf,
+        output.lhf,
+        output.T_sfc,
+        ρ_sfc,
+        output.q_vap_sfc,
+        FT(0),
+        FT(0),
+    )
+    return (LH, SH, Ẽ_l, Ẽ_i, output.ρτxz, output.ρτyz, buoyancy_flux)
 end
 
 """

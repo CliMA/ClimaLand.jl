@@ -68,7 +68,6 @@ get_soil(m::EnergyHydrology) = m
 ### BucketModel ###
 
 # variables stored in p (diagnostics variables stored in the cache)
-@diagnostic_compute "aerodynamic_resistance" BucketModel p.bucket.turbulent_fluxes.r_ae
 @diagnostic_compute "sw_albedo" BucketModel p.bucket.α_sfc
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n
@@ -202,10 +201,10 @@ function compute_canopy_transpiration!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
+        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
         return out
     else
-        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
+        @. out = p.canopy.turbulent_fluxes.vapor_flux * 1000
     end
 end
 
@@ -576,7 +575,7 @@ function compute_lw_up!(out, Y, p, t, land_model::BucketModel)
     LW_d = p.drivers.LW_d
     earth_param_set = land_model.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
-    T_sfc = ClimaLand.surface_temperature(land_model, Y, p, t)
+    T_sfc = ClimaLand.component_temperature(land_model, Y, p)
     ϵ_sfc = ClimaLand.surface_emissivity(land_model, Y, p)
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
@@ -696,7 +695,7 @@ function compute_evapotranspiration!(
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration
+                p.canopy.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
         return out
     else
@@ -704,7 +703,7 @@ function compute_evapotranspiration!(
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
-                p.canopy.turbulent_fluxes.transpiration
+                p.canopy.turbulent_fluxes.vapor_flux
             ) .* 1000 # density of liquid water (1000kg/m^3)
     end
 end
@@ -725,7 +724,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 (1 - p.snow.snow_cover_fraction) *
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration +
+                p.canopy.turbulent_fluxes.vapor_flux +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
         return out
@@ -736,12 +735,12 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 (1 - p.snow.snow_cover_fraction) *
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.transpiration +
+                p.canopy.turbulent_fluxes.vapor_flux +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
     end
 end
-@diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.transpiration
+@diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.vapor_flux
 
 function compute_total_respiration!(
     out,
@@ -753,12 +752,23 @@ function compute_total_respiration!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            p.soilco2.top_bc * FT(83.26) + p.canopy.autotrophic_respiration.Ra # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+        if isnothing(land_model.soilco2)
+            @. out = p.canopy.autotrophic_respiration.Ra
+        else
+            @. out =
+                p.soilco2.top_bc * FT(83.26) +
+                p.canopy.autotrophic_respiration.Ra # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+        end
         return out
     else
-        out .=
-            p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
+        if isnothing(land_model.soilco2)
+            @. out = p.canopy.autotrophic_respiration.Ra
+
+        else
+            out .=
+                p.soilco2.top_bc .* FT(83.26) .+
+                p.canopy.autotrophic_respiration.Ra
+        end
     end
 end
 @diagnostic_compute "total_respiration" CanopyModel p.canopy.autotrophic_respiration.Ra

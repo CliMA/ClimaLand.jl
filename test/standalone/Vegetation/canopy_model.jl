@@ -192,22 +192,12 @@ import ClimaParams
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
         turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
-        sf_parameterization =
-            canopy.boundary_conditions.turbulent_flux_parameterization
-        ClimaLand.turbulent_fluxes!(
-            turb_fluxes_copy,
-            atmos,
-            sf_parameterization,
-            canopy,
-            Y,
-            p,
-            t0,
-        )
+        ClimaLand.turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0)
 
         @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
         @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
-        @test p.canopy.turbulent_fluxes.transpiration ==
-              turb_fluxes_copy.transpiration
+        @test p.canopy.turbulent_fluxes.vapor_flux ==
+              turb_fluxes_copy.vapor_flux
         _σ = FT(LP.Stefan(earth_param_set))
         f_abs_par = p.canopy.radiative_transfer.par.abs
         f_abs_nir = p.canopy.radiative_transfer.nir.abs
@@ -240,98 +230,6 @@ import ClimaParams
                 ),
             ) .== FT(289),
         )
-
-        # Penman-monteith
-        Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))
-        Rn = FT(shortwave_radiation(t0))
-        G = FT(0.0)
-
-        ts_in =
-            Thermodynamics.PhaseEquil_pTq.(
-                thermo_params,
-                p.drivers.P,
-                p.drivers.T,
-                p.drivers.q,
-            )
-        ρa = Thermodynamics.air_density.(thermo_params, ts_in)
-        cp =
-            FT(cp_m(thermo_params, Thermodynamics.PhasePartition.(q_atmos(t0))))
-
-        es =
-            Thermodynamics.saturation_vapor_pressure.(
-                thermo_params,
-                FT.(T_atmos(t0)),
-                Ref(Thermodynamics.Liquid()),
-            )
-        ea =
-            Thermodynamics.partial_pressure_vapor.(
-                thermo_params,
-                FT(P_atmos(t0)),
-                Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
-            )
-
-        VPD = es .- ea
-
-        turbulent_fluxes!(
-            turb_fluxes_copy,
-            atmos,
-            sf_parameterization,
-            canopy,
-            Y,
-            p,
-            t0,
-        ) #Per unit m^2 of leaf
-        r_ae = Array(parent(turb_fluxes_copy.r_ae))[1] # s/m
-        ga = 1 / r_ae
-        γ = FT(66)
-        R = FT(LP.gas_constant(earth_param_set))
-        (; g1, g0, Drel) = canopy.conductance.parameters
-        medlyn_factor =
-            medlyn_term.(
-                g1,
-                FT.(T_atmos(t0)),
-                FT.(P_atmos(t0)),
-                FT.(q_atmos(t0)),
-                thermo_params,
-            )
-        An = p.canopy.photosynthesis.An
-        gcanopy = Array(
-            parent(
-                LAI_fun(t0) .*
-                ClimaLand.Canopy.conductance_molar_flux_to_m_per_s.(
-                    medlyn_conductance.(
-                        g0,
-                        Drel,
-                        medlyn_factor,
-                        An,
-                        FT.(c_atmos(t0)),
-                    ),
-                    FT.(T_atmos(t0)),
-                    R,
-                    FT.(P_atmos(t0)),
-                ),
-            ),
-        )[1]
-        Lv = FT(2453e6) #J/m^3
-
-        ET = penman_monteith.(
-            Δ, # Rate of change of saturation specific humidity with air temperature. (Pa K−1)
-            Rn, # Net irradiance (W m−2), the external source of energy flux
-            G, # Ground heat flux (W m−2)
-            ρa, # Dry air density (kg m−3)
-            cp, # Specific heat capacity of air (J kg−1 K−1)
-            VPD, # vapor pressure deficit (Pa)
-            ga, # Conductivity of air, atmospheric conductance (m s−1)
-            γ, # Psychrometric constant (γ ≈ 66 Pa K−1)
-            gcanopy, # Conductivity of stoma, surface or stomatal conductance (m s−1)
-            Lv, # Volumetric latent heat of vaporization. Energy required per water volume vaporized. (Lv = 2453 MJ m−3)
-        )
-
-        @test abs(
-            (Array(parent(turb_fluxes_copy.transpiration .- ET))[1]) /
-            Array(parent(turb_fluxes_copy.transpiration))[1],
-        ) < 0.5
-        @test ClimaLand.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
     end
 end
 
@@ -566,21 +464,6 @@ end
 
         set_initial_cache!(p, Y, t0)
         T_sfc = Y.canopy.energy.T
-        ρ_sfc = ClimaLand.surface_air_density(
-            canopy.boundary_conditions.atmos,
-            canopy,
-            Y,
-            p,
-            t0,
-            T_sfc,
-        )
-        q_sfc =
-            Thermodynamics.q_vap_saturation_generic.(
-                thermo_params,
-                T_sfc,
-                ρ_sfc,
-                Thermodynamics.Liquid(),
-            )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         jac = ClimaLand.FieldMatrixWithSolver(Y)
@@ -593,21 +476,6 @@ end
         p_2 = deepcopy(p)
         set_initial_cache!(p_2, Y_2, t0)
         T_sfc2 = Y_2.canopy.energy.T
-        ρ_sfc2 = ClimaLand.surface_air_density(
-            canopy.boundary_conditions.atmos,
-            canopy,
-            Y_2,
-            p_2,
-            t0,
-            T_sfc2,
-        )
-        q_sfc2 =
-            Thermodynamics.q_vap_saturation_generic.(
-                thermo_params,
-                T_sfc2,
-                ρ_sfc2,
-                Thermodynamics.Liquid(),
-            )
         dY_2 = similar(Y_2)
         imp_tendency!(dY_2, Y_2, p_2, t0)
 
@@ -616,7 +484,7 @@ end
                 p_2.canopy.radiative_transfer.LW_n .-
                 p.canopy.radiative_transfer.LW_n
             ) ./ ΔT
-        estimated_LW = p.canopy.energy.∂LW_n∂Tc
+        estimated_LW = p.canopy.energy.∂LW_n∂T
         @test Array(
             parent(abs.(finitediff_LW .- estimated_LW) ./ finitediff_LW),
         )[1] < 0.01
@@ -626,45 +494,27 @@ end
                 p_2.canopy.turbulent_fluxes.shf .-
                 p.canopy.turbulent_fluxes.shf
             ) ./ ΔT
-        estimated_SHF = p.canopy.turbulent_fluxes.∂SHF∂Tc
+        estimated_SHF = p.canopy.turbulent_fluxes.∂shf∂T
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
-        )[1] < 0.15
+        )[1] < 0.02
 
         finitediff_LHF =
             (
                 p_2.canopy.turbulent_fluxes.lhf .-
                 p.canopy.turbulent_fluxes.lhf
             ) ./ ΔT
-        estimated_LHF =
-            p.canopy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
+        estimated_LHF = p.canopy.turbulent_fluxes.∂lhf∂T
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
-        )[1] < 0.3
-
-        # Error in `q` derivative is large
-        finitediff_q = (q_sfc2 .- q_sfc) ./ ΔT
-        estimated_q = p.canopy.energy.∂qc∂Tc
-        @test Array(
-            parent(abs.(finitediff_q .- estimated_q) ./ finitediff_q),
-        )[1] < 0.25
-
-        # Im not sure why this is not smaller! There must be an error in ∂LHF∂qc also.
-        estimated_LHF_with_correct_q =
-            p.canopy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
-        @test Array(
-            parent(
-                abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
-                finitediff_LHF,
-            ),
-        )[1] < 0.5
+        )[1] < 0.11
 
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
-        ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
-        @test (abs.(
-            Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT)) -
-            ∂Ṫ∂T,
-        ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
+        ∂Ṫ∂T = Array(parent(jac_value))[1] .+ 1
+        @test abs.(
+            Array(parent(dY_2.canopy.energy.T .- dY.canopy.energy.T))[1] ./ ΔT -
+            ∂Ṫ∂T
+        ) / ∂Ṫ∂T < 0.05 # Error propagates here from ∂LHF∂T
     end
 end
 
@@ -750,9 +600,7 @@ end
         @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0))
         @test all(Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0))
-        @test all(
-            Array(parent(p.canopy.turbulent_fluxes.transpiration)) .== FT(0),
-        )
+        @test all(Array(parent(p.canopy.turbulent_fluxes.vapor_flux)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0))
         @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))

@@ -9,7 +9,6 @@ function get_earth_param_set(model::CanopyModel)
     return model.earth_param_set
 end
 
-
 """
     AbstractCanopyBC <: ClimaLand.AbstractBC
 
@@ -154,13 +153,22 @@ function canopy_boundary_fluxes!(
     ClimaLand.turbulent_fluxes!(
         p.canopy.turbulent_fluxes,
         bc.atmos,
-        bc.turbulent_flux_parameterization,
         canopy,
         Y,
         p,
         t,
     )
-
+    # Due to roundoff problem when multiplying and dividing by cp_d, set
+    # SHF to zero if LAI < 0.01
+    zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
+    @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
+        p.canopy.turbulent_fluxes.shf,
+        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+    )
+    @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
+        p.canopy.turbulent_fluxes.∂shf∂T,
+        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+    )
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
         p.canopy.hydraulics.fa_roots,
@@ -184,238 +192,258 @@ function canopy_boundary_fluxes!(
 end
 
 """
-    function ClimaLand.turbulent_fluxes!(
-        dest,
-        atmos::AbstractAtmosphericDrivers,
-        sf_parameterization::MoninObukhovCanopyFluxes,
-        model::CanopyModel,
-        Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
-        t,
-    )
+    ClimaLand.component_temperature(model::CanopyModel, Y, p)
 
-A canopy specific function for compute turbulent fluxes with the atmosphere;
-returns the latent heat flux, sensible heat flux, vapor flux, and aerodynamic resistance.
-
-We cannot use the default version in src/shared_utilities/drivers.jl
-because the canopy requires a different resistance for vapor and sensible heat
-fluxes, and the resistances depend on ustar, which we must compute using
-SurfaceFluxes before adjusting to account for these resistances.
+a helper function which returns the component temperature for the canopy
+model, which is stored in the aux state.
 """
-function ClimaLand.turbulent_fluxes!(
-    dest,
-    atmos::AbstractAtmosphericDrivers,
-    sf_parameterization::MoninObukhovCanopyFluxes,
-    model::CanopyModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    @static if pkgversion(ClimaLand) < v"1.1" &&
-               typeof(atmos) <: CoupledAtmosphere
-        return nothing # Coupler has already computed the fluxes and updated `dest` in place
-    end
-    T_sfc = canopy_temperature(model.energy, model, Y, p)
-    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
-    d_sfc = sf_parameterization.displ
-    z_0m = sf_parameterization.z_0m
-    z_0b = sf_parameterization.z_0b
-    Cd = sf_parameterization.Cd
-
-    momentum_fluxes = Val(return_momentum_fluxes(atmos))
-    dest .=
-        canopy_turbulent_fluxes_at_a_point.(
-            momentum_fluxes, # return_extra_fluxes
-            p.drivers.thermal_state,
-            p.drivers.u,
-            atmos.h,
-            atmos.gustiness,
-            T_sfc,
-            r_stomata_canopy,
-            d_sfc,
-            z_0m,
-            z_0b,
-            Cd,
-            p.canopy.biomass.area_index.leaf,
-            p.canopy.biomass.area_index.stem,
-            Ref(model.earth_param_set),
-        )
-    return nothing
+function ClimaLand.component_temperature(model::CanopyModel, Y, p)
+    return canopy_temperature(model.energy, model, Y, p)
 end
 
-
 """
-    canopy_turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
+    ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
 
-This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
-as we compute the canopy turbulent fluxes pointwise. This is needed because space for the
-extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
-The function `canopy_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
-
-The `return_extra_fluxes` argument indicates whether to return the following:
-- momentum fluxes (`ρτxz`, `ρτyz`)
-- buoyancy flux (`buoy_flux`)
+a helper function which returns the surface specific humidity for the canopy
+model.
 """
-function canopy_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{false},
-    args...,
-)
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _, _) =
-        canopy_compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf = LH,
-        shf = SH,
-        transpiration = Ẽ,
-        r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
-        ∂SHF∂Tc = ∂SHF∂Tc,
-    )
-end
-function canopy_turbulent_fluxes_at_a_point(
-    return_extra_fluxes::Val{true},
-    args...,
-)
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, ρτxz, ρτyz, buoy_flux) =
-        canopy_compute_turbulent_fluxes_at_a_point(args...)
-    return (
-        lhf = LH,
-        shf = SH,
-        transpiration = Ẽ,
-        r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
-        ∂SHF∂Tc = ∂SHF∂Tc,
-        ρτxz = ρτxz,
-        ρτyz = ρτyz,
-        buoy_flux = buoy_flux,
-    )
-end
-
-
-"""
-    function canopy_compute_turbulent_fluxes_at_a_point(
-        ts_in,
-        u::Union{FT, SVector{2, FT}},
-        h::FT,    
-        gustiness::FT,
-        T_sfc::FT,
-        r_stomata_canopy::FT,
-        d_sfc::FT,
-        z_0m::FT,
-        z_0b::FT,
-        Cd::FT,
-        LAI::FT,
-        SAI::FT,
-        earth_param_set::EP;
-    ) where {FT <: AbstractFloat, EP, F}
-
-Computes the turbulent surface fluxes for the canopy at a point
-and returns the fluxes in a named tuple.
-
-Note that an additiontal resistance is used in computing both
-evaporation and sensible heat flux, and this modifies the output
-of `SurfaceFluxes.surface_conditions`.
-"""
-function canopy_compute_turbulent_fluxes_at_a_point(
-    ts_in,
-    u::Union{FT, SVector{2, FT}},
-    h::FT,
-    gustiness::FT,
-    T_sfc::FT,
-    r_stomata_canopy::FT,
-    d_sfc::FT,
-    z_0m::FT,
-    z_0b::FT,
-    Cd::FT,
-    LAI::FT,
-    SAI::FT,
-    earth_param_set::EP;
-) where {FT <: AbstractFloat, EP}
+function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
+    earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    if u isa FT
-        u = SVector{2, FT}(u, 0)
-    end
-    state_in = SurfaceFluxes.StateValues(h - d_sfc, u, ts_in)
-    T_sfc = T_sfc < 0 ? FT(NaN) : T_sfc
-    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-    q_sfc = Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
+    T_sfc = component_temperature(model, Y, p)
+    ρ_sfc = @. lazy(
+        ClimaLand.compute_ρ_sfc(thermo_params, p.drivers.thermal_state, T_sfc),
     )
-    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
-    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
+    q_sfc = @. lazy(
+        Thermodynamics.q_vap_saturation_generic(
+            thermo_params,
+            T_sfc,
+            ρ_sfc,
+            Thermodynamics.Liquid(),
+        ),
+    )
+    return q_sfc
+end
 
-    # State containers
-    states = SurfaceFluxes.ValuesOnly(
-        state_in,
-        state_sfc,
+"""
+    ClimaLand.surface_displacement_height(model::CanopyModel, Y, p)
+
+a helper function which returns the displacement height for the canopy
+model.
+"""
+function ClimaLand.surface_displacement_height(
+    model::CanopyModel{FT},
+    Y,
+    p,
+) where {FT}
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    return sfp.displ
+end
+
+"""
+    ClimaLand.surface_roughness_model(model::CanopyModel, Y, p)
+
+a helper function which returns the surface roughness model for the canopy
+model.
+"""
+function ClimaLand.surface_roughness_model(
+    model::CanopyModel{FT},
+    Y,
+    p,
+) where {FT}
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    return @. lazy(
+        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
+    )
+end
+
+"""
+    ClimaLand.get_update_surface_humidity_function(model::CanopyModel, Y, p)
+
+a helper function which computes and returns the function which updates the guess 
+for surface specific humidity to the actual value, for the canopy model.
+"""
+function ClimaLand.get_update_surface_humidity_function(
+    model::CanopyModel,
+    Y,
+    p,
+)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    LAI = p.canopy.biomass.area_index.leaf
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    function update_q_vap_sfc_at_a_point(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        T_sfc,
+        u_star,
         z_0m,
         z_0b,
-        beta = FT(1),
-        gustiness = gustiness,
+        leaf_Cd,
+        LAI,
+        r_stomata_canopy,
     )
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    scheme = SurfaceFluxes.PointValueScheme()
-    conditions =
-        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
-    _LH_v0::FT = LP.LH_v0(earth_param_set)
-    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, ts_sfc)
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
-    ustar::FT = conditions.ustar
-    ρ_sfc = Thermodynamics.air_density(thermo_params, ts_sfc)
-    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
-    r_b_leaf::FT = 1 / (Cd * max(ustar, gustiness))
-    r_b_canopy_lai = r_b_leaf / LAI
-    r_b_canopy_total = r_b_leaf / (LAI + SAI)
-
-    E0::FT =
-        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)
-    E = E0 * r_ae / (r_b_canopy_lai + r_stomata_canopy + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
-    Ẽ = E / _ρ_liq
-
-    SH =
-        SurfaceFluxes.sensible_heat_flux(
-            surface_flux_params,
-            conditions.Ch,
-            states,
+        FT = eltype(param_set)
+        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
+        g_stomata = 1 / r_stomata_canopy
+        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        g_h = SurfaceFluxes.heat_conductance(
+            param_set,
+            ζ,
+            u_star,
+            inputs,
+            z_0m,
+            z_0b,
             scheme,
-        ) * r_ae / (r_b_canopy_total + r_ae)
-    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy.
-    LH = _LH_v0 * E
+        )
 
-    # Derivatives
-    # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
-    ∂ρsfc∂Tc =
-        ρ_air *
-        (Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int) *
-        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int - 1) /
-        T_int
-    ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
+        q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
+        q_canopy = inputs.q_vap_sfc_guess
 
-    ∂LHF∂qc =
-        ρ_sfc * _LH_v0 / (r_b_canopy_lai + r_stomata_canopy + r_ae) +
-        LH / ρ_sfc * ∂ρsfc∂Tc
+        # Solve for q_sfc analytically to satisfy balance of fluxes:
+        # Flux_aero = ρ * g_h * (q_sfc - q_atm)
+        # Flux_stom = ρ * (q_canopy - q_sfc) / r_land
+        # Equating fluxes: g_h * (q_sfc - q_atm) = (q_canopy - q_sfc) / r_land
+        # q_sfc * (g_h + 1/r_land) = q_canopy/r_land + g_h * q_atm
+        # q_sfc = (q_canopy + g_h * r_land * q_atm) / (1 + g_h * r_land)
 
-    ∂SHF∂Tc =
-        ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
-        SH / ρ_sfc * ∂ρsfc∂Tc +
-        SH / cp_m_sfc * ∂cp_m_sfc∂Tc
+        q_new = (g_land / g_h * q_canopy + q_vap_int) / (1 + g_land / g_h)
+        return q_new
+    end
+    # Closure
+    update_q_vap_sfc_field(LAI_val, r_val, leaf_Cd) =
+        (args...) ->
+            update_q_vap_sfc_at_a_point(args..., leaf_Cd, LAI_val, r_val)
+    return @. lazy(update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd))
+end
 
-    return (
-        lhf = LH,
-        shf = SH,
-        transpiration = Ẽ,
-        r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
-        ∂SHF∂Tc = ∂SHF∂Tc,
-        ρτxz = conditions.ρτxz,
-        ρτyz = conditions.ρτyz,
-        conditions.buoy_flux,
+"""
+    ClimaLand.get_update_surface_temperature_function(model::CanopyModel, Y, p)
+
+a helper function which computes and returns the function which updates the guess 
+for surface temperature to the actual value, for the canopy model.
+"""
+function ClimaLand.get_update_surface_temperature_function(
+    model::CanopyModel,
+    Y,
+    p,
+)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    AI = @. lazy(
+        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
     )
+    function update_T_sfc_at_a_point(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        u_star,
+        z_0m,
+        z_0b,
+        leaf_Cd,
+        AI,
+    )
+        FT = eltype(param_set)
+        Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
+        Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
+        T_int = inputs.T_int
+        T_canopy = inputs.T_sfc_guess
+        g_h = SurfaceFluxes.heat_conductance(
+            param_set,
+            ζ,
+            u_star,
+            inputs,
+            z_0m,
+            z_0b,
+            scheme,
+        )
+        ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
+
+        ΔΦ = Φ_int - Φ_sfc
+        cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+        T_sfc =
+            (T_int + T_canopy * g_land / g_h + ΔΦ / cp_d) / (1 + g_land / g_h)
+        return T_sfc
+    end
+    # Closure
+    update_T_sfc_field(AI_val, leaf_Cd) =
+        (args...) -> update_T_sfc_at_a_point(args..., leaf_Cd, AI_val)
+    return @. lazy(update_T_sfc_field(AI, Cd))
+end
+
+"""
+    ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
+
+a helper function which creates and returns the function which computes
+the partial derivative of the surface specific humididity with respect to
+the canopy temperature.
+"""
+function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    LAI = p.canopy.biomass.area_index.leaf
+    r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    function update_∂q_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        T_sfc,
+        P_sfc,
+        earth_param_set,
+        leaf_Cd,
+        LAI,
+        r_stomata_canopy,
+    )
+        FT = eltype(earth_param_set)
+        _T_freeze = LP.T_freeze(earth_param_set)
+        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
+        g_stomata = 1 / r_stomata_canopy
+        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
+        return ∂q_sfc∂q *
+               ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze)
+    end
+    # Closure
+    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
+        (args...) ->
+            update_∂q_sfc∂T_at_a_point(args..., leaf_Cd, LAI_val, r_val)
+    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
+end
+
+"""
+    ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
+
+a helper function which creates and returns the function which computes
+the partial derivative of the surface temperature with respect to
+the canopy temperature.
+"""
+function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
+    sfp = model.boundary_conditions.turbulent_flux_parameterization
+    Cd = sfp.Cd
+    AI = @. lazy(
+        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+    )
+    function update_∂T_sfc∂T_at_a_point(
+        u_star,
+        g_h,
+        earth_param_set,
+        leaf_Cd,
+        AI,
+    )
+        FT = eltype(earth_param_set)
+        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
+        ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
+        return ∂T_sfc∂T
+    end
+    # Closure
+    update_∂T_sfc∂T_field(AI_val, leaf_Cd) =
+        (args...) -> update_∂T_sfc∂T_at_a_point(args..., leaf_Cd, AI_val)
+    return @. lazy(update_∂T_sfc∂T_field(AI, Cd))
 end
 
 """
@@ -431,8 +459,8 @@ boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
     (
         NamedTuple{
-            (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
-            Tuple{FT, FT, FT, FT, FT, FT},
+            (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
+            Tuple{FT, FT, FT, FT, FT},
         },
     )
 
@@ -465,14 +493,13 @@ boundary_var_types(
         (
             :lhf,
             :shf,
-            :transpiration,
-            :r_ae,
-            :∂LHF∂qc,
-            :∂SHF∂Tc,
+            :vapor_flux,
+            :∂lhf∂T,
+            :∂shf∂T,
             :ρτxz,
             :ρτyz,
-            :buoy_flux,
+            :buoyancy_flux,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )

@@ -458,6 +458,16 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
     return compute_jacobian!
 end
 
+function ClimaLand.make_update_implicit_boundary_fluxes(model::RichardsModel)
+    ubf! = make_update_boundary_fluxes(model)
+    function update_imp_bf!(p, Y, t)
+        if haskey(p.soil, :dfluxBCdY)
+            ubf!(p, Y, t)
+        end
+    end
+    return update_imp_bf!
+end
+
 """
     ClimaLand.get_drivers(model::RichardsModel)
 

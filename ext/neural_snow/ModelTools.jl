@@ -1,6 +1,7 @@
 module ModelTools
 using Flux, LinearAlgebra
 using DataFrames, Dates
+using StaticArrays
 export make_model,
     get_model_ps,
     settimescale!,
@@ -31,7 +32,7 @@ function Flux.loadmodel!(
 end
 
 """
-    make_model(nfeatures, n, z_idx, p_idx; in_scale, dtype)
+    make_model(::Type{FT}, nfeatures, n, z_idx, p_idx; in_scale,)
 
 Create the neural network to be trained, with initial scaling weights.
 
@@ -44,19 +45,19 @@ Create the neural network to be trained, with initial scaling weights.
 - `dtype::Type`: Sets type of output model. Default is `Float32`.
 """
 function make_model(
+    ::Type{FT},
     nfeatures::Int,
     n::Int,
     z_idx::Int,
     p_idx::Int;
     in_scale::Union{Vector{<:Real}, Nothing} = nothing,
-    dtype::Type = Float32,
-)
+) where {FT}
     in_scales =
-        (isnothing(in_scale)) ? Matrix{dtype}(diagm(ones(nfeatures))) :
-        Matrix{dtype}(diagm((1.0 ./ in_scale)))
-    get_relus = Matrix{dtype}([1 0 0; 0 1 0; 1 0 -1])
-    get_min = Matrix{dtype}([1 1 -1; 0 1 0])
-    get_max = Matrix{dtype}([1 -1])
+        (isnothing(in_scale)) ? Matrix{FT}(diagm(ones(nfeatures))) :
+        Matrix{FT}(diagm((1.0 ./ in_scale)))
+    get_relus = Matrix{FT}([1 0 0; 0 1 0; 1 0 -1])
+    get_min = Matrix{FT}([1 1 -1; 0 1 0])
+    get_max = Matrix{FT}([1 -1])
     model = Chain(
         pred = SkipConnection(
             Chain(
@@ -69,12 +70,18 @@ function make_model(
         ),
         get_boundaries = Parallel(
             vcat,
-            up_bound = x -> relu.(x[1, :])' .* (x[p_idx + 1, :] .> 0)', # = upper = relu(upper)
-            low_bound = x -> x[z_idx + 1, :]', # = z = relu(z)
-            output_pos = x -> x[1, :]',
+            up_bound = let p_idx = p_idx
+                x -> SVector(relu(x[1]) * (x[p_idx + 1] > 0))
+            end, # = upper = relu(upper)
+            low_bound = let z_idx = z_idx
+                x -> SVector(x[z_idx + 1])
+            end, # = z = relu(z)
+            output_pos = let z_idx = z_idx
+                x -> SVector(x[1])
+            end,
         ),
         final_scale = Dense(
-            Matrix{dtype}(diagm([1.0, 1.0, 1.0])),
+            Matrix{FT}(diagm([1.0, 1.0, 1.0])),
             false,
             identity,
         ),

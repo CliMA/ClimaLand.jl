@@ -54,6 +54,10 @@ ClimaCalibrate = "0.1.4"
 ClimaDiagnostics = "0.3.0"
 ClimaTimeSteppers = "0.7, 0.8"
 EnsembleKalmanProcesses = "2.5.0"
+<<<<<<< HEAD
 Flux = "0.15"
+=======
+Flux = "0.15, 0.16"
+>>>>>>> main
 GeoMakie = "< 0.7.13"
 Statistics = "1"

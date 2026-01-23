@@ -15,6 +15,7 @@ using ClimaLand.Canopy
 using ClimaLand.Snow
 import ClimaLand.Parameters as LP
 using ClimaCore
+using ClimaUtilities.TimeManager: ITime
 
 for FT in (Float32, Float64)
     @testset "Default LandModel constructor, FT=$FT" begin
@@ -76,6 +77,59 @@ for FT in (Float32, Float64)
         @test model.soilco2 == soilco2
         @test model.canopy == canopy
         @test model.snow == snow
+    end
+
+    @testset "LandModel with no soilco2 model constructor, FT=$FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Domains.global_domain(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
+        forcing = (; atmos, radiation)
+        prognostic_land_components = (:canopy, :snow, :soil)
+
+        # Soil model
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+
+        # Canopy model
+        surface_domain = Domains.obtain_surface_domain(domain)
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
+        canopy_forcing = (; atmos, radiation, ground)
+        canopy = Canopy.CanopyModel{FT}(
+            surface_domain,
+            canopy_forcing,
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+        )
+
+        # Snow model
+        dt = FT(180)
+        snow = SnowModel(
+            FT,
+            surface_domain,
+            forcing,
+            toml_dict,
+            dt;
+            prognostic_land_components,
+        )
+        soilco2 = nothing
+        model = LandModel{FT}(canopy, snow, soil, soilco2)
+
+        # The constructor has many asserts that check the model
+        # components, so we don't need to check them again here.
+        @test model.soil == soil
+        @test isnothing(model.soilco2)
+        @test model.canopy == canopy
+        @test model.snow == snow
+        Y, p, cds = initialize(model)
+        @test !hasproperty(Y, :soilco2)
+        @test ClimaLand.land_components(model) == (:soil, :snow, :canopy)
     end
 end
 
@@ -204,12 +258,70 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
     stop_date,
 );
 
-land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+land = LandModel{FT}(
+    forcing,
+    LAI,
+    toml_dict,
+    domain,
+    Δt;
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+);
 
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()
 @test ClimaComms.device(land) == ClimaComms.device()
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
+@testset "Initial condition functions" begin
+    Y, p, cds = initialize(land)
+    t0 = ITime(0, Second(1), start_date)
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+        ic_path,
+        land;
+        enforce_constraints = true,
+    )
+    set_ic!(Y, p, t0, land)
+
+    soil = land.soil
+    evaluate!(p.drivers.T, soil.boundary_conditions.top.atmos.T, t0)
+    binary_mask = parent(soil.domain.space.surface.grid.mask.is_active)[:]
+    T_bounds = extrema(parent(p.drivers.T)[1, 1, 1, Array(binary_mask)])
+
+    @test all(
+        parent(Y.soil.ϑ_l .- soil.parameters.θ_r)[
+            :,
+            1,
+            1,
+            1,
+            Array(binary_mask),
+        ] .> 0,
+    )
+    @test all(
+        parent(Y.soil.ϑ_l .+ Y.soil.θ_i .- soil.parameters.ν)[
+            :,
+            1,
+            1,
+            1,
+            Array(binary_mask),
+        ] .< 0,
+    )
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+    T =
+        ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            ρc_s,
+            soil.parameters.earth_param_set,
+        )
+    @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
+    @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
+end
 
 @testset "Total energy and water" begin
     Y, p, cds = initialize(land)
