@@ -5,6 +5,7 @@ defined by plant functional types instead of fully site-specific parameters.
 
 import ClimaLand
 
+import SciMLBase
 using ClimaCore
 import ClimaComms
 import ClimaParams as CP
@@ -16,20 +17,22 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaDiagnostics
 using ClimaUtilities
 
+
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 climaland_dir = pkgdir(ClimaLand)
-site_ID = "US-MOz"
+site_ID = "NEON-cper"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
 
@@ -78,8 +81,16 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
     plant_ν,
     plant_S_s,
     rooting_depth,
+    n_stem,
+    n_leaf,
+    h_leaf,
+    h_stem,
     h_canopy,
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
+
+compartment_midpoints =
+    n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;
@@ -104,14 +115,14 @@ pft_pcts = [
     0.0, # BET_Trop
     0.0, # BET_Temp
     0.0, # BDT_Trop
-    1.0, # BDT_Temp
+    0.0, # BDT_Temp
     0.0, # BDT_Bor
     0.0, # BES_Temp
     0.0, # BDS_Temp
     0.0, # BDT_Bor
     0.0, # C3G_A
     0.0, # C3G_NA
-    0.0, # C4G
+    1.0, # C4G
 ]
 
 # Load the PFT parameters into the namespace
@@ -206,7 +217,7 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Set up photosynthesis
-photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25)
+photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
@@ -222,12 +233,16 @@ RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
     toml_dict;
+    n_stem,
+    n_leaf,
+    h_stem,
+    h_leaf,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
     retention_model,
 )
-height = h_canopy
+height = h_stem + h_leaf
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
@@ -277,7 +292,7 @@ short_names_1D = [
     "lhf",
     "rn",
 ]
-short_names_2D = ["swc", "tsoil", "si"]
+short_names_2D = ["swc", "tsoil", "si", "sco2", "soc", "so2"]
 output_vars = [short_names_1D..., short_names_2D...]
 
 diags = ClimaLand.default_diagnostics(
@@ -287,6 +302,14 @@ diags = ClimaLand.default_diagnostics(
     output_vars,
     reduction_period = :halfhourly,
 )
+
+#diags = ClimaLand.default_diagnostics(
+#    land,
+#    start_date;
+#    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260126_bugfix_wholeYear_e409553ceb97104002d6163ccc3d6de19a29532b/output/"),
+#    output_vars,
+#    reduction_period = :halfhourly,
+#);
 
 simulation = LandSimulation(
     start_date,
@@ -298,12 +321,25 @@ simulation = LandSimulation(
     diagnostics = diags,
 )
 solve!(simulation)
+#=
+
+using Logging
+
+io = open("logfile5.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     #joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
-    "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/FirstTries/ozark_pft/US-MOz/pft/out"
+    "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/FirstTries/NEON_cper_pft/NEON-cper-withERA/pft/"
 mkpath(savedir)
+
 LandSimVis.make_diurnal_timeseries(
     land_domain,
     diags,
@@ -318,7 +354,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "gpp","swu"],
+    short_names = ["swc", "tsoil", "gpp","swu","sco2"],
     spinup_date = start_date + Day(20),
     comparison_data,
-)
+)=#
