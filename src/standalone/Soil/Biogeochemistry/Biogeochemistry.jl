@@ -581,7 +581,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
 
         FT = eltype(Y.soilco2.CO2)
-        @. p.soilco2.θ_a = max(ν - θ_l, FT(0))
+        @. p.soilco2.θ_a = max(ν - θ_l, FT(0.001)) # to avoid divided by 0 or very small number
 
         @. p.soilco2.O2 =
             o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)

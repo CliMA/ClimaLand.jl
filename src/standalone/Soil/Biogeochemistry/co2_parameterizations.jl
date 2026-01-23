@@ -146,7 +146,7 @@ which is related to the total soil porosity (`ν`) and
 volumetric soil water content (`θ_w = θ_l+θ_i`).
 """
 function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
-    θ_a = max(ν - θ_w, FT(0))
+    θ_a = max(ν - θ_w, FT(0.001)) # to avoid dividing by 0 or very small number
     return θ_a
 end
 
