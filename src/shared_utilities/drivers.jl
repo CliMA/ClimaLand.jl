@@ -541,9 +541,6 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
-    @show output
-    @show output.lhf
-    @show -1 * ρ_sfc * g_h * _LH_v0 * (q_tot_atmos - output.q_vap_sfc)
     # This assumes that q_vap_sfc_guess is the saturated value
     ∂lhf∂T =
         ρ_sfc *
@@ -556,7 +553,6 @@ function compute_turbulent_fluxes_at_a_point(
             T_sfc_guess,
             earth_param_set,
         )
-    @show ∂lhf∂T
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
     # Buoyancy Flux
