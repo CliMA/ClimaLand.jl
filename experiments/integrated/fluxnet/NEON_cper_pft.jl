@@ -305,7 +305,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/USVal_param_adaptSlayer_nonNan_3dfaac0f9065df57c77d3096e59eb94742cc00b4/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260123_USVal_param_adaptSlayer_nonNan2_d6e9fa6a68400f213f7adf6252e1b6e5e02b13be/output/"),
     output_vars,
     reduction_period = :halfhourly,
 );
