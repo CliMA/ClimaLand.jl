@@ -288,6 +288,7 @@ function compute_seasonal_leaderboard(
     diagnostics_folder_path,
     data_source,
 )
+    @info "YOOO3"
     # Get everything we need from data_sources.jl
     sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
     obs_var_dict = get_obs_var_dict(data_source)
@@ -307,9 +308,10 @@ function compute_seasonal_leaderboard(
     sim_obs_season_comparsion_dict = Dict()
     # Map short name to time series of time averages for each season
     sim_obs_time_avg_over_seasons_comparsion_dict = Dict()
-    seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
+    seasons = ["ANN"]
 
     spin_up_months = 12
+    short_names = collect(short_names)[1:1]
     for short_name in short_names
         @info short_name
         # Simulation data
@@ -321,46 +323,8 @@ function compute_seasonal_leaderboard(
         # Make masking function
         mask_fn_dict[short_name] = mask_dict[short_name](sim_var, obs_var)
 
-        # Remove first spin_up_months from simulation if possible
-        spinup_cutoff = spin_up_months * 31 * 86400.0
-        ClimaAnalysis.times(sim_var)[end] >= spinup_cutoff && (
-            sim_var =
-                ClimaAnalysis.window(sim_var, "time", left = spinup_cutoff)
-        )
-
-        # Determine which times can be used
-        sim_times = ClimaAnalysis.times(sim_var)
-        obs_times = ClimaAnalysis.times(obs_var)
-        min_time = maximum(first.((sim_times, obs_times)))
-        max_time = minimum(last.((sim_times, obs_times)))
-
-        # Window sim_var and obs_var
-        sim_var = ClimaAnalysis.window(
-            sim_var,
-            "time",
-            left = min_time,
-            right = max_time,
-        )
-        obs_var = ClimaAnalysis.window(
-            obs_var,
-            "time",
-            left = min_time,
-            right = max_time,
-        )
-
-        # Resample
-        obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
-        obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
-        sim_var_seasons = (sim_var, ClimaAnalysis.split_by_season(sim_var)...)
-        obs_var_seasons = (obs_var, ClimaAnalysis.split_by_season(obs_var)...)
-
-        # Take time average
-        sim_var_seasons = (
-            !isempty(sim_var) ? ClimaAnalysis.average_time(sim_var) : sim_var for sim_var in sim_var_seasons
-        )
-        obs_var_seasons = (
-            !isempty(obs_var) ? ClimaAnalysis.average_time(obs_var) : obs_var for obs_var in obs_var_seasons
-        )
+        sim_var_seasons =ClimaAnalysis.average_time.([sim_var])
+        obs_var_seasons = ClimaAnalysis.average_time.([obs_var])
 
         # Save observation and simulation data
         sim_obs_season_comparsion_dict[short_name] = Dict(
@@ -368,87 +332,13 @@ function compute_seasonal_leaderboard(
             (season, sim_var_s, obs_var_s) in
             zip(seasons, sim_var_seasons, obs_var_seasons)
         )
-
-        # Compute time averages across seasons
-        obs_var_seasons_over_time =
-            ClimaAnalysis.split_by_season_across_time(obs_var)
-        sim_var_seasons_over_time =
-            ClimaAnalysis.split_by_season_across_time(sim_var)
-
-        # Take time average of each season, it is reasonable to assume that
-        # there is no missing months between the first and last points in time
-        time_averages_sim_var =
-            ClimaAnalysis.average_time.(sim_var_seasons_over_time)
-        time_averages_obs_var =
-            ClimaAnalysis.average_time.(obs_var_seasons_over_time)
-
-        sim_obs_time_avg_over_seasons_comparsion_dict[short_name] =
-            (time_averages_sim_var, time_averages_obs_var)
     end
 
-    # Make global seasonal averages over all years (after removing spinup)
-    # Rows correspond to short names
-    # Cols correspond to seasons
-    groups = ["ANN", "MAM", "JJA", "SON", "DJF"]
-    fig_bias = CairoMakie.Figure(;
-        size = (600 * length(groups), 400 * length(short_names)),
-    )
-    for (row_idx, short_name) in enumerate(short_names)
-        CairoMakie.Label(
-            fig_bias[row_idx, 0],
-            short_name,
-            tellheight = false,
-            fontsize = 30,
-        )
-        for (col_idx, group) in enumerate(groups)
-            sim_var, obs_var = sim_obs_season_comparsion_dict[short_name][group]
-            isempty(sim_var) && break
-            layout = fig_bias[row_idx, col_idx] = CairoMakie.GridLayout()
-            sim_var.attributes["short_name"] = "mean $(ClimaAnalysis.short_name(sim_var))"
-            ClimaAnalysis.Visualize.plot_bias_on_globe!(
-                layout,
-                sim_var,
-                obs_var,
-                cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                mask = mask_fn_dict[short_name],
-            )
-        end
-    end
-
-    # Plot the labels for the short names
-    for (col_idx, group) in enumerate(groups)
-        CairoMakie.Label(
-            fig_bias[0, col_idx],
-            group,
-            tellwidth = false,
-            fontsize = 30,
-        )
-    end
-
-    # Add a title
-    titlelayout = CairoMakie.GridLayout(
-        fig_bias[-1, 1:length(groups)],
-        halign = :center,
-        tellwidth = false,
-    )
-    CairoMakie.Label(
-        titlelayout[1, 1],
-        "Annual and seasonal biases over all years excluding spin up ($spin_up_months months)",
-        fontsize = 40,
-    )
-    CairoMakie.save(
-        joinpath(
-            leaderboard_base_path,
-            "$(data_source)_seasonal_avg_over_all_years.png",
-        ),
-        fig_bias,
-    )
-
-
-    # Add plot of time average for simulation and bias data excluding spin up
-    # Rows correspond to short names
-    # Cols correspond to "SIM" and "ANN"
-    groups = ["SIM", "ANN"]
+    # # Add plot of time average for simulation and bias data excluding spin up
+    # # Rows correspond to short names
+    # # Cols correspond to "SIM" and "ANN"
+    # groups = ["SIM", "ANN"]
+    groups = ["SIM"]
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),
     )
@@ -459,29 +349,15 @@ function compute_seasonal_leaderboard(
             tellheight = false,
             fontsize = 30,
         )
-        for (col_idx, group) in enumerate(groups)
-            if group == "SIM"
+        for col_idx in eachindex(groups)
                 sim_var, _ = sim_obs_season_comparsion_dict[short_name]["ANN"]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                ClimaAnalysis.Visualize.contour2D_on_globe!(
+                sim_var = ClimaAnalysis.apply_oceanmask(sim_var)
+                _geomakie_plot_on_globe!(
                     layout,
                     sim_var,
-                    mask = mask_fn_dict[short_name],
                 )
-            else
-                sim_var, obs_var =
-                    sim_obs_season_comparsion_dict[short_name][group]
-                isempty(sim_var) && break
-                layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                ClimaAnalysis.Visualize.plot_bias_on_globe!(
-                    layout,
-                    sim_var,
-                    obs_var,
-                    cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                    mask = mask_fn_dict[short_name],
-                )
-            end
         end
     end
 
@@ -494,140 +370,77 @@ function compute_seasonal_leaderboard(
             fontsize = 30,
         )
     end
+end
 
-    # Add a title
-    titlelayout = CairoMakie.GridLayout(
-        fig_sim_ann[-1, 1:length(groups)],
-        halign = :center,
-        tellwidth = false,
-    )
-    CairoMakie.Label(
-        titlelayout[1, 1],
-        "Time average for simulation and bias data\nexcluding spin up ($spin_up_months months)",
-        fontsize = 40,
-    )
+function _geomakie_plot_on_globe!(
+    place,
+    var::ClimaAnalysis.OutputVar;
+    p_loc = (1, 1),
+    plot_coastline = true,
+    plot_colorbar = true,
+    mask = nothing,
+    more_kwargs = Dict(
+        :plot => Dict(),
+        :cb => Dict(),
+        :axis => Dict(),
+        :coast => Dict(:color => :black),
+        :mask => Dict(),
+    ),
+    plot_fn = Makie.contourf!,
+)
+    length(var.dims) == 2 || error("Can only plot 2D variables")
 
-    CairoMakie.save(
-        joinpath(
-            leaderboard_base_path,
-            "$(data_source)_sim_annual_time_avg_over_all_years.png",
-        ),
-        fig_sim_ann,
-    )
+    # viz_mask, apply_mask = _find_mask_to_apply(mask)
+    # !isnothing(apply_mask) && (var = apply_mask(var))
 
-    # Make plot with seasons on x-axis and RMSE and bias on the y-axis
-    # Rows correspond to short names
-    # Cols correspond to SIM and ANN
-    # Set up figure to plot on
-    fig = CairoMakie.Figure(size = (450 * length(short_names), 900))
-    fig_rmse_bias = fig[1, 1] = CairoMakie.GridLayout()
+    lon_name = ""
+    lat_name = ""
 
-
-    # Loop over sim_obs_season_over_time_comparsion_dict
-    for (col, short_name) in enumerate(short_names)
-        sim_vars, obs_vars =
-            sim_obs_time_avg_over_seasons_comparsion_dict[short_name]
-        mask = mask_fn_dict[short_name]
-
-        # Get season and compute global bias and global rmse
-        seasons = [sim_var.attributes["season"] for sim_var in sim_vars]
-        sim_vec = [
-            ClimaAnalysis.weighted_average_lonlat(
-                ClimaAnalysis.apply_oceanmask(sim_var),
-            ).data[] for sim_var in sim_vars
-        ]
-        rmse_vec = [
-            ClimaAnalysis.global_rmse(sim_var, obs_var, mask = mask) for
-            (sim_var, obs_var) in zip(sim_vars, obs_vars)
-        ]
-        bias_vec = [
-            ClimaAnalysis.global_bias(sim_var, obs_var, mask = mask) for
-            (sim_var, obs_var) in zip(sim_vars, obs_vars)
-        ]
-
-        # Partition by seasons
-        # Map each season to a number for plotting
-        season_to_num = Dict("MAM" => 1, "JJA" => 2, "SON" => 3, "DJF" => 4)
-        seasons = [season_to_num[season] for season in seasons]
-        seasons_split, sim_vec_split, bias_vec_split, rmse_vec_split =
-            partition_by_val(4, seasons, sim_vec, bias_vec, rmse_vec)
-
-        # Set up three axes
-        ax_sim = CairoMakie.Axis(
-            fig_rmse_bias[1, col],
-            title = "Global sim lonlat averages for $short_name",
-            xlabel = "Season",
-            ylabel = "Global lonlat averages ($(ClimaAnalysis.units(first(sim_vars))))",
-            xticks = (1:4, ["MAM", "JJA", "SON", "DJF"]),
-        )
-        ax_rmse = CairoMakie.Axis(
-            fig_rmse_bias[2, col],
-            title = "Global RMSE for $short_name",
-            xlabel = "Season",
-            ylabel = "Global RMSE ($(ClimaAnalysis.units(first(sim_vars))))",
-            xticks = (1:4, ["MAM", "JJA", "SON", "DJF"]),
-        )
-        ax_bias = CairoMakie.Axis(
-            fig_rmse_bias[3, col],
-            title = "Global bias for $short_name",
-            xlabel = "Season",
-            ylabel = "Global bias ($(ClimaAnalysis.units(first(sim_vars))))",
-            xticks = (1:4, ["MAM", "JJA", "SON", "DJF"]),
-        )
-
-        # Plot on axes
-        axes = (ax_sim, ax_rmse, ax_bias)
-        num_years = length(seasons_split)
-        for (curr_year, (seasons, sim_vec, rmse_vec, bias_vec)) in enumerate(
-            zip(seasons_split, sim_vec_split, rmse_vec_split, bias_vec_split),
-        )
-            alpha = curr_year / num_years
-            data_vecs = [sim_vec, rmse_vec, bias_vec]
-
-            for (ax, data_vec) in zip(axes, data_vecs)
-                CairoMakie.lines!(
-                    ax,
-                    seasons,
-                    data_vec,
-                    alpha = alpha,
-                    color = :blue,
-                )
-            end
-        end
-
-        # Compute the average over each of the seasons
-        num_years = length(sim_vec_split)
-        average_per_seasons = (
-            begin
-                season_to_avg = compute_group_averages(seasons, data_vec)
-                [get(season_to_avg, season, NaN) for season in 1:4]
-            end for data_vec in (sim_vec, rmse_vec, bias_vec)
-        )
-
-        for (ax, data_vec) in zip(axes, average_per_seasons)
-            CairoMakie.lines!(ax, 1:4, data_vec, color = :orange)
+    for dim in var.index2dim
+        if dim in ClimaAnalysis.Var.LONGITUDE_NAMES
+            lon_name = dim
+        elseif dim in ClimaAnalysis.Var.LATITUDE_NAMES
+            lat_name = dim
+        else
+            error("$dim is neither longitude nor latitude")
         end
     end
 
-    # Add a legend for the meaning of the black line
-    blue_line = CairoMakie.LineElement(color = :blue)
-    orange_line = CairoMakie.LineElement(color = :orange)
-    CairoMakie.Legend(
-        fig[1, 2],
-        [blue_line, orange_line],
-        [
-            "More transparent - earlier years\nLess transparent - later years",
-            "Average over each season",
-        ],
-    )
+    lon = var.dims[lon_name]
+    lat = var.dims[lat_name]
 
-    CairoMakie.save(
-        joinpath(
-            leaderboard_base_path,
-            "$(data_source)_seasonal_global_rmse_and_bias_graphs.png",
-        ),
-        fig,
-    )
+    units = ClimaAnalysis.units(var)
+    short_name = var.attributes["short_name"]
+    colorbar_label = "$short_name [$units]"
+
+    axis_kwargs = get(more_kwargs, :axis, Dict())
+    plot_kwargs = get(more_kwargs, :plot, Dict())
+    cb_kwargs = get(more_kwargs, :cb, Dict())
+    coast_kwargs = get(more_kwargs, :coast, Dict(:color => :black))
+    mask_kwargs = get(more_kwargs, :mask, Dict(:color => :white))
+
+    # plot_mask = !isnothing(viz_mask)
+
+    var.attributes["long_name"] =
+        ClimaAnalysis.Utils.warp_string(var.attributes["long_name"])
+
+    title = get(axis_kwargs, :title, var.attributes["long_name"])
+
+    ax = GeoMakie.GeoAxis(place[p_loc...]; title, axis_kwargs...)
+
+    plot = plot_fn(ax, lon, lat, var.data; plot_kwargs...)
+    # plot_mask && Makie.poly!(ax, viz_mask; mask_kwargs...)
+    plot_coastline && Makie.lines!(ax, GeoMakie.coastlines(); coast_kwargs...)
+
+    if plot_colorbar
+        p_loc_cb = Tuple([p_loc[1], p_loc[2] + 1])
+        Makie.Colorbar(
+            place[p_loc_cb...],
+            plot,
+            label = colorbar_label;
+            cb_kwargs...,
+        )
+    end
 end
 
 """
