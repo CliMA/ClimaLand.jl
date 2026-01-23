@@ -32,7 +32,7 @@ function partial_q_sat_partial_T(
         Thermodynamics.latent_heat_vapor(thermo_params, T),
         Thermodynamics.latent_heat_sublim(thermo_params, T),
     )
-    return Thermodynamics.∂q_vap_sat_∂T(thermo_params, nothing, T, q_sat, L)
+    return Thermodynamics.∂q_vap_sat_∂T_from_L(thermo_params, q_sat, L, T)
 end
 
 """
