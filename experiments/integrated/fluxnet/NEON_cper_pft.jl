@@ -305,7 +305,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/USVal_param_adaptSlayer_nonNan_f87b62a1e5e8b9726f72551a4f19a53830e07af8/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/USVal_param_adaptSlayer_nonNan_3dfaac0f9065df57c77d3096e59eb94742cc00b4/output/"),
     output_vars,
     reduction_period = :halfhourly,
 );
@@ -319,8 +319,8 @@ simulation = LandSimulation(
     updateat = Second(dt), # How often we want to update the drivers
     diagnostics = diags,
 )
-#solve!(simulation)
-using Logging
+solve!(simulation)
+#=using Logging
 
 io = open("logfile3.txt", "w")
 logger = ConsoleLogger(io)
@@ -330,7 +330,7 @@ with_logger(logger) do
 end
 
 close(io)
-#=
+
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     #joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
