@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- ![breaking change][badge-💥breaking] Remove thermal state from ClimaLand, use latest Thermodynamics package [#1594](https://github.com/CliMA/ClimaLand.jl/pull/1594)
 
 v1.4.0
 ------
