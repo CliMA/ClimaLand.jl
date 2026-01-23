@@ -420,7 +420,7 @@ import .Soil:
     sublimation_source,
     compute_liquid_influx,
     compute_infiltration_energy_flux
-import .Soil.Biogeochemistry: soil_temperature, soil_moisture
+import .Soil.Biogeochemistry: soil_temperature, soil_moisture, soil_ice
 include("standalone/Snow/Snow.jl")
 using .Snow
 import .Snow: snow_boundary_fluxes!
