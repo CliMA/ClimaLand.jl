@@ -363,13 +363,16 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
 
         # O₂ diffusion: compute ∇·[D_O2 * θ_a * ∇ρ_O2] on mass concentration,
         # then convert to O2_f tendency by multiplying by R*T/(θ_a*P*M_O2)
+        # When θ_a → 0 (saturated soil), there's no air space for O2 diffusion.
+        # Use a minimum threshold to prevent numerical instability.
+        θ_a_min = FT(1e-4)  # minimum air-filled porosity for stable O2 dynamics
         @. dY.soilco2.O2_f =
             -divf2c_O2(
                 -interpc2f(p.soilco2.D_o2 * p.soilco2.θ_a) *
                 gradc2f_O2(p.soilco2.O2),
             ) *
             R *
-            T_soil / max(p.soilco2.θ_a * P_sfc * M_O2, eps(FT))
+            T_soil / max(p.soilco2.θ_a * P_sfc * M_O2, θ_a_min * P_sfc * M_O2)
 
         # SOC has no diffusion, only source/sink from microbial activity
         @. dY.soilco2.SOC = 0.0
@@ -445,8 +448,10 @@ function ClimaLand.source!(
 
     # O2 consumption with soft positivity factor
     # Scale consumption to zero as O2_f approaches zero
+    # Use minimum θ_a threshold to prevent numerical instability when soil is saturated
+    θ_a_min = FT(1e-4)
     @. dY.soilco2.O2_f -=
-        (R * T_soil) / max(M_C * θ_a * P_sfc, eps(FT)) *
+        (R * T_soil) / max(M_C * θ_a * P_sfc, M_C * θ_a_min * P_sfc) *
         p.soilco2.Sm *
         max(Y.soilco2.O2_f, FT(0)) / (max(Y.soilco2.O2_f, FT(0)) + ε_o2)
 
