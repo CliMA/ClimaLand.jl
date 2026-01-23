@@ -541,6 +541,9 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
+    @show output
+    @show output.lhf
+    @show -1 * ρ_sfc * g_h * _LH_v0 * (q_tot_atmos - output.q_vap_sfc)
     # This assumes that q_vap_sfc_guess is the saturated value
     ∂lhf∂T =
         ρ_sfc *
@@ -553,6 +556,7 @@ function compute_turbulent_fluxes_at_a_point(
             T_sfc_guess,
             earth_param_set,
         )
+    @show ∂lhf∂T
     cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
     ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
     # Buoyancy Flux
@@ -818,7 +822,18 @@ function get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
         T_sfc,
         earth_param_set,
     )
-        return ClimaLand.partial_q_sat_partial_T(q_sat, T_sfc, earth_param_set)
+        _T_freeze = LP.T_freeze(earth_param_set)
+        phase = ifelse(
+            T_sfc > _T_freeze,
+            Thermodynamics.Liquid(),
+            Thermodynamics.Ice(),
+        )
+        return ClimaLand.partial_q_sat_partial_T(
+            q_sat,
+            T_sfc,
+            phase,
+            earth_param_set,
+        )
     end
     return update_∂q_sfc∂T_at_a_point
 end

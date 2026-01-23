@@ -412,12 +412,11 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
-        return ∂q_sfc∂q * Thermodynamics.∂q_vap_sat_∂T(
-            thermo_params,
-            nothing,
-            T_sfc,
+        return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(
             q_sat,
-            Thermodynamics.latent_heat_vapor(thermo_params, T_sfc),
+            T_sfc,
+            Thermodynamics.Liquid(),
+            earth_param_set,
         )
     end
     # Closure

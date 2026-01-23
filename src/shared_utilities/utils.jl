@@ -15,30 +15,24 @@ import ClimaUtilities.TimeManager: ITime, date
 export FTfromY
 
 """
-    partial_q_sat_partial(q_sat::FT, T::FT, earth_param_set) where {FT}
+    partial_q_sat_partial(q_sat::FT, T::FT, phase, earth_param_set) where {FT}
 
-Computes the quantity ∂q_sat∂T at temperature T.
+Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been 
+computed from T and ρ over the correct phase `phase`.. 
 """
-function partial_q_sat_partial_T(q_sat::FT, T::FT, earth_param_set) where {FT}
-    _T_freeze = LP.T_freeze(earth_param_set)
+function partial_q_sat_partial_T(
+    q_sat::FT,
+    T::FT,
+    phase,
+    earth_param_set,
+) where {FT}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    if T > _T_freeze
-        return Thermodynamics.∂q_vap_sat_∂T(
-            thermo_params,
-            nothing,
-            T,
-            q_sat,
-            Thermodynamics.latent_heat_vapor(thermo_params, T),
-        )
-    else
-        return Thermodynamics.∂q_vap_sat_∂T(
-            thermo_params,
-            nothing,
-            T,
-            q_sat,
-            latent_heat_sublim(thermo_params, T),
-        )
-    end
+    L = ifelse(
+        phase isa Thermodynamics.Liquid,
+        Thermodynamics.latent_heat_vapor(thermo_params, T),
+        Thermodynamics.latent_heat_sublim(thermo_params, T),
+    )
+    return Thermodynamics.∂q_vap_sat_∂T(thermo_params, nothing, T, q_sat, L)
 end
 
 """

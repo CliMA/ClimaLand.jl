@@ -410,7 +410,7 @@ function compute_q(P, VPD, T; thermo_params)
         Thermodynamics.Liquid(),
     )
     e = esat - VPD
-    ρ = Thermodynamics.air_density(thermo_params, T, P) # dry
+    ρ = Thermodynamics.air_density(thermo_params, T, P) # this assumes the gas constant for dry air, which induces a small error
     q = Thermodynamics.q_vap_from_p_vap(thermo_params, T, ρ, e)
     return q
 end
