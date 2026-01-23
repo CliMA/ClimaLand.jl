@@ -288,7 +288,8 @@ function compute_seasonal_leaderboard(
     diagnostics_folder_path,
     data_source,
 )
-    @info "YOOO3"
+    @info Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
+    @info "YOOO"
     # Get everything we need from data_sources.jl
     sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
     obs_var_dict = get_obs_var_dict(data_source)
@@ -323,7 +324,7 @@ function compute_seasonal_leaderboard(
         # Make masking function
         mask_fn_dict[short_name] = mask_dict[short_name](sim_var, obs_var)
 
-        sim_var_seasons =ClimaAnalysis.average_time.([sim_var])
+        sim_var_seasons = ClimaAnalysis.average_time.([sim_var])
         obs_var_seasons = ClimaAnalysis.average_time.([obs_var])
 
         # Save observation and simulation data
@@ -342,104 +343,40 @@ function compute_seasonal_leaderboard(
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),
     )
-    for (row_idx, short_name) in enumerate(short_names)
-        CairoMakie.Label(
-            fig_sim_ann[row_idx, 0],
-            short_name,
-            tellheight = false,
-            fontsize = 30,
-        )
-        for col_idx in eachindex(groups)
-                sim_var, _ = sim_obs_season_comparsion_dict[short_name]["ANN"]
-                isempty(sim_var) && break
-                layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                sim_var = ClimaAnalysis.apply_oceanmask(sim_var)
-                _geomakie_plot_on_globe!(
-                    layout,
-                    sim_var,
-                )
-        end
-    end
+    CairoMakie.Label(
+        fig_sim_ann[1, 0],
+        "shf",
+        tellheight = false,
+        fontsize = 30,
+    )
+    sim_var, _ = sim_obs_season_comparsion_dict["shf"]["ANN"]
+    layout = fig_sim_ann[1, 1] = CairoMakie.GridLayout()
+    sim_var = ClimaAnalysis.apply_oceanmask(sim_var)
+    data = sim_var.data
+    _geomakie_plot_on_globe!(layout, data)
 
     # Plot the labels for the short names
-    for (col_idx, group) in enumerate(groups)
-        CairoMakie.Label(
-            fig_sim_ann[0, col_idx],
-            group,
-            tellwidth = false,
-            fontsize = 30,
-        )
-    end
+    Main.@infiltrate
+    CairoMakie.Label(fig_sim_ann[0, 1], "ANN", tellwidth = false, fontsize = 30)
 end
 
 function _geomakie_plot_on_globe!(
     place,
-    var::ClimaAnalysis.OutputVar;
-    p_loc = (1, 1),
-    plot_coastline = true,
+    data;
     plot_colorbar = true,
-    mask = nothing,
-    more_kwargs = Dict(
-        :plot => Dict(),
-        :cb => Dict(),
-        :axis => Dict(),
-        :coast => Dict(:color => :black),
-        :mask => Dict(),
-    ),
     plot_fn = Makie.contourf!,
 )
-    length(var.dims) == 2 || error("Can only plot 2D variables")
+    lon = range(-180.0, 180.0, 404) |> collect
+    lat = range(-90.0, 90.0, 202) |> collect
+    colorbar_label = "shf [W m^-2]"
 
-    # viz_mask, apply_mask = _find_mask_to_apply(mask)
-    # !isnothing(apply_mask) && (var = apply_mask(var))
-
-    lon_name = ""
-    lat_name = ""
-
-    for dim in var.index2dim
-        if dim in ClimaAnalysis.Var.LONGITUDE_NAMES
-            lon_name = dim
-        elseif dim in ClimaAnalysis.Var.LATITUDE_NAMES
-            lat_name = dim
-        else
-            error("$dim is neither longitude nor latitude")
-        end
-    end
-
-    lon = var.dims[lon_name]
-    lat = var.dims[lat_name]
-
-    units = ClimaAnalysis.units(var)
-    short_name = var.attributes["short_name"]
-    colorbar_label = "$short_name [$units]"
-
-    axis_kwargs = get(more_kwargs, :axis, Dict())
-    plot_kwargs = get(more_kwargs, :plot, Dict())
-    cb_kwargs = get(more_kwargs, :cb, Dict())
-    coast_kwargs = get(more_kwargs, :coast, Dict(:color => :black))
-    mask_kwargs = get(more_kwargs, :mask, Dict(:color => :white))
-
-    # plot_mask = !isnothing(viz_mask)
-
-    var.attributes["long_name"] =
-        ClimaAnalysis.Utils.warp_string(var.attributes["long_name"])
-
-    title = get(axis_kwargs, :title, var.attributes["long_name"])
-
-    ax = GeoMakie.GeoAxis(place[p_loc...]; title, axis_kwargs...)
-
-    plot = plot_fn(ax, lon, lat, var.data; plot_kwargs...)
-    # plot_mask && Makie.poly!(ax, viz_mask; mask_kwargs...)
-    plot_coastline && Makie.lines!(ax, GeoMakie.coastlines(); coast_kwargs...)
-
+    title = "Sensible Heat Flux, average within 1 Month averaged over time\n(2.6784e6 to 5.995296e8s)"
+    ax = GeoMakie.GeoAxis(place[1, 1]; title)
+    # data = var.data
+    plot = plot_fn(ax, lon, lat, data)
     if plot_colorbar
-        p_loc_cb = Tuple([p_loc[1], p_loc[2] + 1])
-        Makie.Colorbar(
-            place[p_loc_cb...],
-            plot,
-            label = colorbar_label;
-            cb_kwargs...,
-        )
+        p_loc_cb = Tuple([1, 2])
+        Makie.Colorbar(place[p_loc_cb...], plot, label = colorbar_label;)
     end
 end
 
