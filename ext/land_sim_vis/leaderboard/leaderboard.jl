@@ -289,7 +289,7 @@ function compute_seasonal_leaderboard(
     data_source,
 )
     @info Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
-    @info "YOOO"
+    @info "YOOO111"
     # Get everything we need from data_sources.jl
     sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
     obs_var_dict = get_obs_var_dict(data_source)
@@ -339,9 +339,8 @@ function compute_seasonal_leaderboard(
     # # Rows correspond to short names
     # # Cols correspond to "SIM" and "ANN"
     # groups = ["SIM", "ANN"]
-    groups = ["SIM"]
     fig_sim_ann = CairoMakie.Figure(;
-        size = (600 * length(groups), 400 * length(short_names)),
+        size = (600, 400),
     )
     CairoMakie.Label(
         fig_sim_ann[1, 0],
@@ -368,16 +367,10 @@ function _geomakie_plot_on_globe!(
 )
     lon = range(-180.0, 180.0, 404) |> collect
     lat = range(-90.0, 90.0, 202) |> collect
-    colorbar_label = "shf [W m^-2]"
 
     title = "Sensible Heat Flux, average within 1 Month averaged over time\n(2.6784e6 to 5.995296e8s)"
     ax = GeoMakie.GeoAxis(place[1, 1]; title)
-    # data = var.data
     plot = plot_fn(ax, lon, lat, data)
-    if plot_colorbar
-        p_loc_cb = Tuple([1, 2])
-        Makie.Colorbar(place[p_loc_cb...], plot, label = colorbar_label;)
-    end
 end
 
 """
