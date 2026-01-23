@@ -422,39 +422,20 @@ function ClimaLand.source!(
     p::NamedTuple,
     params,
 )
-    FT = eltype(p.soilco2.Sm)
-
-    # Soft positivity factors: scale sink terms to zero as prognostic variables approach zero
-    # This prevents numerical overshoot from driving variables negative.
-    # Factor = x / (x + ε) where ε is a small threshold:
-    #   - When x >> ε: factor ≈ 1 (normal operation)
-    #   - When x → 0: factor → 0 (sink vanishes)
-    # Using ε = 1e-12 as a small but safe threshold for kg C m⁻³ and volumetric fractions
-    ε_soc = FT(1e-12)  # threshold for SOC (kg C m⁻³)
-    ε_o2 = FT(1e-12)   # threshold for O2_f (volumetric fraction)
-
-    # CO2 production is always positive (source), no clamping needed
     dY.soilco2.CO2 .+= p.soilco2.Sm
 
-    M_C = FT(params.M_C)
-    R = FT(LP.gas_constant(params.earth_param_set))
+    M_C = eltype(p.soilco2.Sm)(params.M_C)
+    R = eltype(p.soilco2.Sm)(LP.gas_constant(params.earth_param_set))
     T_soil = p.soilco2.T  # soil temperature (K)
     P_sfc = p.drivers.P   # atmospheric pressure (Pa)
 
     θ_a = p.soilco2.θ_a
 
-    # O2 consumption with soft positivity factor
-    # Scale consumption to zero as O2_f approaches zero
     @. dY.soilco2.O2_f -=
-        (R * T_soil) / max(M_C * θ_a * P_sfc, eps(FT)) *
-        p.soilco2.Sm *
-        max(Y.soilco2.O2_f, FT(0)) / (max(Y.soilco2.O2_f, FT(0)) + ε_o2)
+        (R * T_soil) / max(M_C * θ_a * P_sfc, eps(eltype(p.soilco2.Sm))) *
+        p.soilco2.Sm
 
-    # SOC consumption with soft positivity factor
-    # Scale consumption to zero as SOC approaches zero
-    @. dY.soilco2.SOC -=
-        p.soilco2.Sm *
-        max(Y.soilco2.SOC, FT(0)) / (max(Y.soilco2.SOC, FT(0)) + ε_soc)
+    @. dY.soilco2.SOC -= p.soilco2.Sm
 end
 
 """
