@@ -961,6 +961,15 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.To,
             constants.aRd,
             constants.bRd,
+        ) ./ inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Vcmax,
+            constants.Hd_Vcmax,
+            constants.aS_Vcmax,
+            constants.bS_Vcmax,
+            constants.R,
         )
 
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
@@ -1452,10 +1461,7 @@ Uses the log-quadratic functional form of Heskel et al. (2016)
 https://www.pnas.org/doi/full/10.1073/pnas.1520282113
 """
 function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
-    return exp(
-        aRd * (T_canopy - To) +
-        bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2),
-    )
+    return exp(aRd * (T_canopy - To) + bRd * (T_canopy^2 - To^2))
 end
 
 """
