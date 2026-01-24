@@ -1119,8 +1119,12 @@ function quadratic_intrinsic_quantum_yield(
 ) where {FT}
     # convert to C
     T = T - FT(273.15)
-    ϕ = ϕa0 + ϕa1 * T + ϕa2 * T^2
-    return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
+    if T < FT(0)
+        return FT(0)
+    else
+        ϕ = ϕa0 + ϕa1 * T + ϕa2 * T^2
+        return min(max(ϕ, FT(0)), FT(1)) # Clip to [0,1]
+    end
 end
 
 
@@ -1450,6 +1454,9 @@ coefficient `aRd`, and the second order coefficient `bRd`.
 
 Uses the log-quadratic functional form of Heskel et al. (2016)
 https://www.pnas.org/doi/full/10.1073/pnas.1520282113
+which expects T to be in Celsius:
+lnR = constant + aT + bT^2, or
+ln(R/R25) = a(T-To) + b(T^2-To^2)
 """
 function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
     return exp(
