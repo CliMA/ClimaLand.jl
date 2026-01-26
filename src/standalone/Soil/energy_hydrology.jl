@@ -1200,7 +1200,7 @@ function turbulent_fluxes!(
     dest .=
         soil_turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
-            ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc),
+            ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc), # is_liquid
             p.drivers.P,
             p.drivers.T,
             p.drivers.q, # q_tot
@@ -1222,7 +1222,7 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, args...;)
+    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, is_liquid, args...;)
 
 This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
 as we compute the soil turbulent fluxes pointwise. This is needed because space for the
@@ -1232,10 +1232,13 @@ The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux com
 The `return_extra_fluxes` argument indicates whether to return the following:
 - momentum fluxes (`ρτxz`, `ρτyz`)
 - buoyancy flux (`buoy_flux`)
+
+The field `is_liquid` indicates if the vapor flux is attributed to liquid water evaporating
+or due to ice sublimating.
 """
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
-    evap,
+    is_liquid,
     args...,
 )
     (lhf, shf, vapor_flux, _, _, _, _, _) =
@@ -1243,13 +1246,13 @@ function soil_turbulent_fluxes_at_a_point(
     return (;
         lhf,
         shf,
-        vapor_flux_liq = vapor_flux * evap,
-        vapor_flux_ice = vapor_flux * (1 - evap),
+        vapor_flux_liq = vapor_flux * is_liquid,
+        vapor_flux_ice = vapor_flux * (1 - is_liquid),
     )
 end
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
-    evap,
+    is_liquid,
     args...,
 )
     (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
@@ -1257,8 +1260,8 @@ function soil_turbulent_fluxes_at_a_point(
     return (;
         lhf,
         shf,
-        vapor_flux_liq = vapor_flux * evap,
-        vapor_flux_ice = vapor_flux * (1 - evap),
+        vapor_flux_liq = vapor_flux * is_liquid,
+        vapor_flux_ice = vapor_flux * (1 - is_liquid),
         ρτxz,
         ρτyz,
         buoyancy_flux,
