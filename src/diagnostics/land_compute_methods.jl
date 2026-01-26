@@ -103,6 +103,24 @@ get_soil(m::EnergyHydrology) = m
     CanopyModel,
 } p.canopy.autotrophic_respiration.Ra
 
+# Net Ecosystem Exchange (NEE = ER - GPP)
+function compute_net_ecosystem_exchange!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    # Compute ER first
+    if isnothing(out)
+        out = zeros(land_model.soil.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    compute_total_respiration!(out, Y, p, t, land_model)
+    @. out -= p.canopy.photosynthesis.GPP
+    return out
+end
+
 # Canopy - Conductance
 function compute_stomatal_conductance!(
     out,

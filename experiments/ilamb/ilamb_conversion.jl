@@ -53,6 +53,20 @@ const ILAMB_VARIABLES = Dict(
         "kg m-2 s-1", # kg C
         "mol CO2 m^-2 s^-1",
     ),
+    "nee" => ILAMBMapping(
+        "nee",
+        "Net Ecosystem Exchange",
+        0.01201,
+        "kg m-2 s-1", # kg C
+        "mol CO2 m^-2 s^-1",
+    ),
+    "er" => ILAMBMapping(
+        "reco",
+        "Ecosystem Respiration",
+        0.01201,
+        "kg m-2 s-1", # kg C
+        "mol CO2 m^-2 s^-1",
+    ),
     "et" => ILAMBMapping(
         "evspsbl",
         "Evapotranspiration",
