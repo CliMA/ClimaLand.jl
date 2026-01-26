@@ -457,7 +457,7 @@ tag = "SIFParameters"
 
 # Canopy roughness
 ["canopy_z_0min"]
-value = 0.013
+value = 0.01
 type = "float"
 description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
