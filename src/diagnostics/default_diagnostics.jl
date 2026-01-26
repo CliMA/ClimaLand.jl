@@ -607,7 +607,7 @@ function get_short_diagnostics(model::EnergyHydrology)
     return ["swc", "si", "sie", "tsoil", "et"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2"]
+    return ["sco2", "so2", "soc"]
 end
 function get_short_diagnostics(model::CanopyModel)
     return ["gpp", "ct", "lai", "trans", "er", "sif"]

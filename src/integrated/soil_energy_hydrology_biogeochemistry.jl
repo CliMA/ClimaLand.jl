@@ -156,6 +156,15 @@ function soil_moisture(driver::PrognosticMet, p, Y, t, z)
     return p.soil.θ_l
 end
 
+"""
+    soil_ice(driver::PrognosticMet, p, Y, t, z)
+
+Returns the prognostic ice content from coupled soil model.
+"""
+function soil_ice(driver::PrognosticMet, p, Y, t, z)
+    return Y.soil.θ_i
+end
+
 
 function ClimaLand.get_drivers(model::LandSoilBiogeochemistry)
     bc = model.soil.boundary_conditions.top
