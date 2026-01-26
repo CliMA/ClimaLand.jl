@@ -69,7 +69,15 @@ function setup_model(
     conductance = PModelConductance{FT}(toml_dict)
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict; height = ClimaLand.Canopy.clm_canopy_height(surface_space; max_height = atmos.h*FT(0.9)))
+    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        toml_dict;
+        height = ClimaLand.Canopy.clm_canopy_height(
+            surface_space;
+            max_height = atmos.h * FT(0.9),
+        ),
+    )
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -79,11 +87,20 @@ function setup_model(
         photosynthesis,
         conductance,
         soil_moisture_stress,
-        biomass
+        biomass,
     )
-    
+
     # Construct the land model with all default components except for snow
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; snow, canopy, prognostic_land_components)
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        snow,
+        canopy,
+        prognostic_land_components,
+    )
     return land
 end
 
