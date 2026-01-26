@@ -3,7 +3,10 @@ export volumetric_air_content,
     microbe_source,
     o2_concentration,
     o2_fraction_from_concentration,
-    o2_availability
+    o2_availability,
+    henry_constant,
+    beta_gas,
+    effective_porosity
 
 
 """
@@ -137,6 +140,64 @@ end
 
 
 """
+    henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT) where {FT}
+
+Compute temperature-dependent Henry's law constant using van 't Hoff equation.
+Returns K_H in mol/(m³·Pa).
+
+The temperature dependence follows:
+    K_H(T) = K_H(T_ref) * exp[dln_K_H_dT * (1/T - 1/T_ref)]
+
+where T_ref = 298.15 K and dln_K_H_dT is the temperature coefficient.
+
+Reference: Sander (2015), Atmos. Chem. Phys., 15, 4399-4981.
+"""
+function henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT) where {FT}
+    T_ref = FT(298.15)
+    return K_H_298 * exp(dln_K_H_dT * (FT(1) / T - FT(1) / T_ref))
+end
+
+
+"""
+    beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+
+Compute dimensionless Henry's law factor β = K_H * R * T.
+
+This converts liquid water storage to air-equivalent storage capacity.
+For CO2 at 20-25°C: β ≈ 0.7-0.9 (significant buffering)
+For O2 at 20°C: β ≈ 0.03 (less buffering, but still helps)
+
+Arguments:
+- K_H: Henry's law constant (mol/(m³·Pa))
+- R: Universal gas constant (J/(mol·K))
+- T: Temperature (K)
+"""
+function beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+    return K_H * R * T
+end
+
+
+"""
+    effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+
+Compute effective porosity accounting for gas and dissolved storage.
+
+    θ_eff = θ_a + β * θ_l
+
+When θ_a → 0 (saturated soil) but θ_l > 0, θ_eff remains finite,
+preventing blow-up in concentration calculations.
+
+Arguments:
+- θ_a: Volumetric air content (m³/m³)
+- θ_l: Volumetric liquid water content (m³/m³)
+- β: Dimensionless Henry's law factor
+"""
+function effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+    return θ_a + β * θ_l
+end
+
+
+"""
     volumetric_air_content(θ_w::FT,
                            ν::FT,
                            ) where {FT}
@@ -144,9 +205,12 @@ end
 Computes the volumetric air content (`θ_a`) in the soil,
 which is related to the total soil porosity (`ν`) and
 volumetric soil water content (`θ_w = θ_l+θ_i`).
+
+Note: The effective_porosity function provides numerical stability
+when θ_a approaches zero by accounting for dissolved gas in liquid water.
 """
 function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
-    θ_a = max(ν - θ_w, FT(0.001)) # to avoid dividing by 0 or very small number
+    θ_a = max(ν - θ_w, FT(0))  # Physical floor only
     return θ_a
 end
 
