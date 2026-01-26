@@ -13,27 +13,27 @@ include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["lwu", "shf", "lhf"],
     minibatch_size = 1,
-    n_iterations = 10,
+    n_iterations = 12,
     sample_date_ranges = [
-        ("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9
+        ("$(2000 + 1*i)-12-1", "$(2001 + 1*i)-9-1") for i in 0:12
     ], # 2000 to 2020
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (180, 360, 15),
-    output_dir = "/glade/derecho/scratch/kdeck/recalibrate_saturated",
+    output_dir = "/glade/derecho/scratch/kdeck/recalibrate_saturated_K_lw_year",
     rng_seed = 42,
-    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    obs_vec_filepath = "experiments/calibration/land_observation_vector_year.jld2",
     model_type = ClimaLand.LandModel,
 )
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
     priors = [
-        EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
+        EKP.constrained_gaussian("moisture_stress_c", 0.5, 0.1, 0, 2),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
         EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
-        EKP.constrained_gaussian("leaf_Cd", 0.01, 0.05, 0, Inf),
-        EKP.constrained_gaussian("ac_canopy", 3.5e4, 2e4, 2.5e3, 2.5e5),
+        EKP.constrained_gaussian("leaf_Cd", 0.01, 0.005, 0, Inf),
+        EKP.constrained_gaussian("canopy_K_lw", 0.5, 0.25, 0, Inf),
     ]
     prior = EKP.combine_distributions(priors)
 

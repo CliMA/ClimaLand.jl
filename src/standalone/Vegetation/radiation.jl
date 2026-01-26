@@ -67,6 +67,8 @@ Base.@kwdef struct BeerLambertParameters{
     α_NIR_leaf::F
     "Emissivity of the canopy"
     ϵ_canopy::FT
+    "Extinction coefficient for longwave"
+    K_lw::FT
     "Clumping index following Braghiere (2021) (unitless)"
     Ω::FF
     "Typical wavelength per PAR photon (m)"
@@ -109,6 +111,8 @@ Base.@kwdef struct TwoStreamParameters{
     τ_NIR_leaf::F
     "Emissivity of the canopy"
     ϵ_canopy::FT
+    "Extinction coefficient for longwave"
+    K_lw::FT
     "Clumping index following Braghiere 2021 (unitless)"
     Ω::F
     "Typical wavelength per PAR photon (m)"
@@ -294,6 +298,7 @@ end
         Ω,
         n_layers = UInt64(20),
         ϵ_canopy = toml_dict["canopy_emissivity"],
+	K_lw = toml_dict["canopy_K_lw"]
     )
 
 TOML dict based constructor supplying default values for the
@@ -309,6 +314,7 @@ function TwoStreamParameters(
     Ω,
     n_layers = UInt64(20),
     ϵ_canopy = toml_dict["canopy_emissivity"],
+    K_lw = toml_dict["canopy_K_lw"]
 )
     FT = CP.float_type(toml_dict)
     λ_γ_PAR = toml_dict["wavelength_per_PAR_photon"]
@@ -327,6 +333,7 @@ function TwoStreamParameters(
         Ω,
         n_layers,
         ϵ_canopy,
+	K_lw,
         λ_γ_PAR,
     )
 end
@@ -339,6 +346,7 @@ end
         α_NIR_leaf,
         Ω,
         ϵ_canopy = toml_dict["canopy_emissivity"],
+	K_lw = toml_dict["canopy_K_lw"]
     )
 
 TOML dict based constructor supplying default values for the
@@ -352,6 +360,7 @@ function BeerLambertParameters(
     α_NIR_leaf,
     Ω,
     ϵ_canopy = toml_dict["canopy_emissivity"],
+    K_lw = toml_dict["canopy_K_lw"]
 )
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
@@ -371,6 +380,7 @@ function BeerLambertParameters(
         α_NIR_leaf,
         Ω,
         ϵ_canopy,
+	K_lw,
         λ_γ_PAR,
     )
 end
@@ -783,9 +793,9 @@ function update_radiative_transfer!(
     bc = canopy.boundary_conditions
 
     # update radiative transfer
-    (; G_Function, Ω, λ_γ_PAR) = radiative_transfer.parameters
+    (; G_Function, Ω, λ_γ_PAR, K_lw) = radiative_transfer.parameters
     @. p.canopy.radiative_transfer.ϵ =
-        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-K_lw*(LAI + SAI))) # Bonan 14.137
     compute_PAR!(par_d, radiative_transfer, bc.radiation, p, t)
     compute_NIR!(nir_d, radiative_transfer, bc.radiation, p, t)
 

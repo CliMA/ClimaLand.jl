@@ -86,6 +86,12 @@ type = "float"
 description = "The constant canopy height (m)"
 tag = "PrescribedBiomassModel"
 
+[canopy_K_lw]
+value = 1.0
+type = "float"
+description = "The long wave extinction coeff"
+tag = "AbstractRadiationModel"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]
