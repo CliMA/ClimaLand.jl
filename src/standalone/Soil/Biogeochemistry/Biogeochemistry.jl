@@ -170,7 +170,7 @@ Defaults are provided for the parameters and sources.
 These can be overridden by providing the appropriate keyword arguments.
 
 Boundary conditions are set automatically:
-- Top: AtmosCO2StateBC() for CO2, AtmosO2StateBC(earth_param_set, M_O2, O2_f_atm) for O2
+- Top: AtmosCO2StateBC(earth_param_set, M_C) for CO2, AtmosO2StateBC(earth_param_set, M_O2, O2_f_atm) for O2
 - Bottom: Zero flux for both CO2 and O2
 """
 function SoilCO2Model{FT}(
@@ -182,7 +182,10 @@ function SoilCO2Model{FT}(
 ) where {FT, DT}
     boundary_conditions = (
         top = (
-            co2 = AtmosCO2StateBC(),
+            co2 = AtmosCO2StateBC(
+                parameters.earth_param_set,
+                parameters.M_C,
+            ),
             o2 = AtmosO2StateBC(
                 parameters.earth_param_set,
                 parameters.M_O2,
@@ -677,7 +680,7 @@ end
     )
 
 A method of ClimaLand.boundary_flux which updates the soilco2
-flux (kg CO2 /m^2/s) in the case of a prescribed flux BC at either the top
+flux (kg C m⁻² s⁻¹) in the case of a prescribed flux BC at either the top
 or bottom of the domain.
 """
 function ClimaLand.boundary_flux!(
@@ -696,7 +699,7 @@ end
 """
     SoilCO2StateBC <: ClimaLand.AbstractBC
 
-A container holding the CO2 state boundary condition (kg CO2 m−3),
+A container holding the CO2 state boundary condition (kg C m⁻³ air-equivalent),
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
@@ -716,7 +719,10 @@ end
 
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
- top of the domain.
+top of the domain.
+
+The prescribed state should be the air-equivalent CO2 concentration
+(kg C/m³ air), consistent with the diffused variable.
 """
 function ClimaLand.boundary_flux!(
     bc_field,
@@ -732,7 +738,7 @@ function ClimaLand.boundary_flux!(
     # We need to project center values onto the face space
     D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
     θ_a_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
-    C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.CO2)
+    C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
     # Multiply D by θ_a because diffusion only occurs through air-filled pores
     @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_bc, C_c, Δz)
@@ -751,6 +757,9 @@ end
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
 bottom of the domain.
+
+The prescribed state should be the air-equivalent CO2 concentration
+(kg C/m³ air), consistent with the diffused variable.
 """
 function ClimaLand.boundary_flux!(
     bc_field,
@@ -763,17 +772,37 @@ function ClimaLand.boundary_flux!(
 )
     FT = eltype(Δz)
     D_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.D)
-    C_c = ClimaLand.Domains.bottom_center_to_surface(Y.soilco2.CO2)
+    θ_a_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.θ_a)
+    C_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
-    @. bc_field = ClimaLand.diffusive_flux(D_c, C_c, C_bc, Δz)
+    # Multiply D by θ_a because diffusion only occurs through air-filled pores
+    @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_c, C_bc, Δz)
 end
 
 """
     AtmosCO2StateBC <: ClimaLand.AbstractBC
 
 Set the CO2 concentration to the atmospheric one.
+Stores physical constants needed for the boundary flux calculation.
+
+$(DocStringExtensions.FIELDS)
 """
-struct AtmosCO2StateBC <: ClimaLand.AbstractBC end
+struct AtmosCO2StateBC{FT <: AbstractFloat} <: ClimaLand.AbstractBC
+    "Universal gas constant (J/(mol·K))"
+    R::FT
+    "Molar mass of carbon (kg/mol)"
+    M_C::FT
+end
+
+"""
+    AtmosCO2StateBC(earth_param_set, M_C::FT) where {FT}
+
+Constructor for AtmosCO2StateBC that gets parameters from LandParameters and model parameters.
+"""
+function AtmosCO2StateBC(earth_param_set, M_C::FT) where {FT}
+    R = FT(LP.gas_constant(earth_param_set))
+    return AtmosCO2StateBC{FT}(R, M_C)
+end
 
 """
     ClimaLand.boundary_flux!(bc_field,
@@ -798,10 +827,14 @@ function ClimaLand.boundary_flux!(
     p::NamedTuple,
     t,
 )
-    D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
     θ_a_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
+    D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
     C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
-    C_bc = p.drivers.c_co2
+    T_soil_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.T)
+    P_sfc = p.drivers.P
+    R = bc.R
+    M_C = bc.M_C
+    C_bc = @. p.drivers.c_co2 * P_sfc * M_C / (R * T_soil_top)
     # Multiply D by θ_a because diffusion only occurs through air-filled pores
     @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_bc, C_c, Δz)
 end
