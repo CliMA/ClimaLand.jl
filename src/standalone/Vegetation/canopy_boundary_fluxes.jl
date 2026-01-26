@@ -228,7 +228,8 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
                 p.drivers.q,
                 atmos.h - h_sfc,
                 T_sfc,
-            )Thermodynamics.Liquid(),
+            ),
+	    Thermodynamics.Liquid(),
         ),
     )
     return q_sfc
