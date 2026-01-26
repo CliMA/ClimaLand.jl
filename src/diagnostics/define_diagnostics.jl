@@ -881,8 +881,8 @@ function define_diagnostics!(land_model)
         short_name = "sco2",
         long_name = "Soil CO2",
         standard_name = "soil_co2",
-        units = "kg C m^3",
-        comments = "Concentration of CO2 in the porous air space of the soil. (depth resolved)",
+        units = "kg C m^-3",
+        comments = "Soil CO2 carbon mass per soil volume (air + dissolved) (depth resolved).",
         compute! = (out, Y, p, t) -> compute_soilco2!(out, Y, p, t, land_model),
     )
 
@@ -901,8 +901,8 @@ function define_diagnostics!(land_model)
         short_name = "soc",
         long_name = "Soil Organic Carbon",
         standard_name = "soil_organic_carbon",
-        units = "kg C m^3",
-        comments = "Concentration of soil organic carbon. (depth resolved)",
+        units = "kg C m^-3",
+        comments = "Soil organic carbon mass per soil volume (depth resolved).",
         compute! = (out, Y, p, t) -> compute_soc!(out, Y, p, t, land_model),
     )
 
