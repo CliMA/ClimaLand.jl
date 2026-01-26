@@ -14,6 +14,44 @@ export volumetric_internal_energy,
     phase_change_source
 
 """
+    soil_Tf_depressed(
+        θ_l::FT,
+        θ_i::FT,
+        ν::FT,
+        θ_r::FT,
+        hydrology_cm,
+        _ρ_ice::FT,
+        _ρ_liq::FT,
+        _T_freeze::FT,
+        _grav::FT,
+        _LH_f0::FT,
+    ) where {FT}
+
+Computes the depressed freezing temperature for liquid water in soil,
+as a function of the volumetric fractions of water and ice (θ_l, θ_i),
+the porosity ν, the residual water fraction θ_r, the hydrology closure
+model (`hydrology_cm`), and various physical constants.
+"""
+function soil_Tf_depressed(
+    θ_l::FT,
+    θ_i::FT,
+    ν::FT,
+    θ_r::FT,
+    hydrology_cm,
+    _ρ_ice::FT,
+    _ρ_liq::FT,
+    _T_freeze::FT,
+    _grav::FT,
+    _LH_f0::FT,
+) where {FT}
+    θtot = min(_ρ_ice / _ρ_liq * θ_i + θ_l, ν)
+    # This is consistent with Equation (22) of Dall'Amico
+    ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
+    Tf_depressed = max(_T_freeze * exp(_grav * ψw0 / _LH_f0), FT(0))
+    return Tf_depressed
+end
+
+"""
     thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
 
 Returns the thermal timescale for temperature differences across
@@ -62,14 +100,22 @@ function phase_change_source(
     _T_freeze::FT,
     _grav::FT,
 ) where {FT, CM}
-    # According to Dall'Amico (text above equation 1), ψw0 corresponds
-    # to the matric potential corresponding to the total water content (liquid and ice).
+    Tf_depressed = soil_Tf_depressed(
+        θ_l,
+        θ_i,
+        ν,
+        θ_r,
+        hydrology_cm,
+        _ρ_i,
+        _ρ_l,
+        _T_freeze,
+        _grav,
+        _LH_f0,
+    )
+    ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
-    Tf_depressed = max(_T_freeze * exp(_grav * ψw0 / _LH_f0), FT(1)) # Clip this to prevent Tf_depressed == 0
-
-    ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     # Equation (23) of Dall'Amico
     θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
     return (θ_l - θstar) / τ
