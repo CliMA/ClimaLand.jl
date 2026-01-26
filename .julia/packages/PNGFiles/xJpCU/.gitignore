@@ -1,0 +1,11 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+.DS_Store
+Manifest.toml
+/dev/
+/test/temp
+/test/_debugfile.jl
+*.png
+!test/test_images/*.png
+test/_debugfile.jmd

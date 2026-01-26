@@ -1,0 +1,8 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+RootSolvers = "7181ea78-2dcb-4de3-ab41-2b8ab5a31e74"
+
+[sources]
+RootSolvers = { path = ".." }
+

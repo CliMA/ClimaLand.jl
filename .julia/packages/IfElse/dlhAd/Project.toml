@@ -1,0 +1,13 @@
+name = "IfElse"
+uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com> and contributors"]
+version = "0.1.1"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

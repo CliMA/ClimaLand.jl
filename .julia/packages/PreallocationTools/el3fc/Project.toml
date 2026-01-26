@@ -1,0 +1,64 @@
+name = "PreallocationTools"
+uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com>"]
+version = "0.4.34"
+
+[deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+
+[weakdeps]
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+
+[extensions]
+PreallocationToolsForwardDiffExt = "ForwardDiff"
+PreallocationToolsReverseDiffExt = "ReverseDiff"
+PreallocationToolsSparseConnectivityTracerExt = "SparseConnectivityTracer"
+
+[compat]
+ADTypes = "1.16"
+Adapt = "4.3.0"
+Aqua = "0.8.11"
+ArrayInterface = "7.19.0"
+ForwardDiff = "0.10.38, 1.0.1"
+LabelledArrays = "1.16.0"
+LinearAlgebra = "1.10"
+Optimization = "4.1.1"
+OptimizationOptimJL = "0.4.1"
+OrdinaryDiffEq = "6.98.0"
+Pkg = "1.10"
+PrecompileTools = "1.2.1"
+Random = "1.10.8"
+RecursiveArrayTools = "3.29.0"
+ReverseDiff = "1.16"
+SafeTestsets = "0.1"
+SparseArrays = "1.10"
+SparseConnectivityTracer = "1"
+Symbolics = "6.29.0"
+Test = "1.10"
+julia = "1.10"
+
+[extras]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+LabelledArrays = "2ee39098-c373-598a-b85f-a56591580800"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "ADTypes", "ForwardDiff", "Random", "LabelledArrays", "LinearAlgebra", "OrdinaryDiffEq", "Test", "RecursiveArrayTools", "Pkg", "SafeTestsets", "Optimization", "OptimizationOptimJL", "SparseArrays", "Symbolics", "SparseConnectivityTracer"]

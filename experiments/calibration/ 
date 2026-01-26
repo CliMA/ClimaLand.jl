@@ -1,0 +1,31 @@
+#!/bin/bash
+#PBS -N derecho_calibration
+#PBS -o output.txt
+#PBS -e error.txt
+#PBS -l walltime=12:00:00
+#PBS -l select=1:ncpus=4:ngpus=1:mem=32GB
+
+## Account number for CliMA
+#PBS -A UCIT0011
+#PBS -q main
+
+export PBS_ACCOUNT="UCIT0011"
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+
+export CLIMACOMMS_DEVICE="CUDA"
+export CLIMACOMMS_CONTEXT="SINGLETON"
+
+echo "======================================"
+echo "Job started at: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Running in: $(pwd)"
+echo "======================================"
+
+echo "Instantiating Julia environment..."
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+echo "Generating observations..."
+julia --project=.buildkite/ experiments/calibration/generate_observations.jl
+echo "Starting calibration..."
+julia --project=.buildkite/ experiments/calibration/run_uspac_calibration.jl
+

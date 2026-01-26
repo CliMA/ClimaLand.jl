@@ -1,0 +1,11 @@
+name = "CRlibm"
+uuid = "96374032-68de-5a5b-8d9e-752f78720389"
+repo = "https://github.com/JuliaIntervals/CRlibm.jl.git"
+version = "1.0.2"
+
+[deps]
+CRlibm_jll = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
+
+[compat]
+CRlibm_jll = "1"
+julia = "1.3"

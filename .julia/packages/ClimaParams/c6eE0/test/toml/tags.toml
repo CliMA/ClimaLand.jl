@@ -1,0 +1,66 @@
+# Used in test_tags.jl
+[prandtl_number_0_beljaars]
+value = 1.0
+type = "float"
+description = "Pr_0 for Beljaars universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_a_m_beljaars]
+value = 1.0
+type = "float"
+description = "a_m for Beljaars momentum universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_a_h_beljaars]
+value = 1.0
+type = "float"
+description = "a_h for Beljaars heat universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_b_m_beljaars]
+value = 0.667
+type = "float"
+description = "b_m for Beljaars momentum universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_b_h_beljaars]
+value = 0.667
+type = "float"
+description = "b_h for Beljaars heat universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_c_m_beljaars]
+value = 5.0
+type = "float"
+description = "c_m for Beljaars momentum universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_c_h_beljaars]
+value = 5.0
+type = "float"
+description = "c_h for Beljaars heat universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_d_m_beljaars]
+value = 0.35
+type = "float"
+description = "d_m for Beljaars momentum universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[coefficient_d_h_beljaars]
+value = 0.35
+type = "float"
+description = "d_h for Beljaars heat universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[most_stability_parameter_beljaars]
+value = 3.4
+type = "float"
+description = "ζ_a for Beljaars universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]
+
+[most_stability_exponent_beljaars]
+value = 2.04
+type = "float"
+description = "γ for Beljaars universal functions. From Beljaars et al, 1991. DOI: 10.1175/1520-0450(1991)030<0327:FPOLSF>2.0.CO;2"
+tag = ["Beljaars"]

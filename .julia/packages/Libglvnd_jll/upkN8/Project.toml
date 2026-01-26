@@ -1,0 +1,16 @@
+name = "Libglvnd_jll"
+uuid = "7e76a0d4-f3c7-5321-8279-8d96eeed0f29"
+version = "1.7.1+1"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+Xorg_libXext_jll = "1082639a-0dae-5f34-9b06-72781eeb8cb3"
+Xorg_libX11_jll = "4f6342f7-b3d2-589e-9d20-edeb45f2b2bc"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.6"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

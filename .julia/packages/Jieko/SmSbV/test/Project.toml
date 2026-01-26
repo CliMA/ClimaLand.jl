@@ -1,0 +1,9 @@
+[deps]
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+ExproniconLite = "55351af7-c7e9-48d6-89ff-24e801d99491"
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+DocStringExtensions = "0.9"
+ExproniconLite = "0.10.6"

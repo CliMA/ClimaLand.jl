@@ -1,0 +1,22 @@
+{
+	"creators": [
+		{
+			"name": "VandenHeuvel, Daniel John",
+			"orcid": "0000-0001-6462-0135"
+		}
+	],
+	"description": "DelaunayTriangulation.jl: Delaunay triangulation and Voronoi tessellations in two dimensions.",
+	"keywords": [
+		"triangulation",
+		"tessellation",
+		"delaunay-triangulation",
+		"geometry",
+		"voronoi-diagram",
+		"voronoi",
+		"computational-geometry"
+	],
+	"license": "MIT",
+	"title": "DelaunayTriangulation.jl: A Julia package for Delaunay triangulations and Voronoi tessellations in the plane",
+	"upload_type": "software",
+	"language": "eng"
+}

@@ -1,0 +1,25 @@
+name = "CPUSummary"
+uuid = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
+authors = ["chriselrod <elrodc@gmail.com> and contributors"]
+version = "0.2.7"
+
+[deps]
+CpuId = "adafc99b-e345-5852-983c-f28acb93d879"
+IfElse = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+Preferences = "21216c6a-2e73-6563-6e65-726566657250"
+Static = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
+
+[compat]
+CpuId = "0.3"
+IfElse = "0.1"
+Preferences = "1"
+PrecompileTools = "1.1"
+Static = "1"
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

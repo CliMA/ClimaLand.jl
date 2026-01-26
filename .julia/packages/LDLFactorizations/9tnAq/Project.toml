@@ -1,0 +1,13 @@
+name = "LDLFactorizations"
+uuid = "40e66cde-538c-5869-a4ad-c39174c6795b"
+version = "0.10.1"
+
+[deps]
+AMD = "14f7f29c-3bd6-536c-9a0b-7339e30b5a3e"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+AMD = "0.5.3"
+julia = "^1.6.0"

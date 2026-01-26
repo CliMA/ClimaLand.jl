@@ -1,0 +1,3 @@
+[deps]
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+JpegTurbo_jll = "aacddb02-875f-59d6-b918-886e6ef4fbf8"

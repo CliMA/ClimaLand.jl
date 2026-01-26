@@ -1,0 +1,39 @@
+{
+  "description": "A Julia interface to the AMD library of Amestoy, Davis and Duff",
+  "title": "AMD.jl",
+  "upload_type": "software",
+  "publication_date": "2019-02-07",
+  "creators": [
+    {
+      "affiliation": "École Polytechnique/GERAD - Montréal",
+      "name": "Dominique Orban"
+    }
+  ],
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "scheme": "url",
+      "identifier": "https://github.com/JuliaSmoothOptimizers/AMD.jl/releases/latest",
+      "relation": "isSupplementTo"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Abel Soares Siqueira",
+      "type": "Researcher"
+    },
+    {
+      "name": "Elliot Saba",
+      "type": "Other"
+    },
+    {
+      "name": "Tony Kelman",
+      "type": "Other"
+    },
+    {
+      "name": "Yutaka Masuda",
+      "type": "Other"
+    }
+  ],
+  "license": "MPL-2.0"
+}

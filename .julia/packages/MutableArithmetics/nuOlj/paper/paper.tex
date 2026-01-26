@@ -1,0 +1,489 @@
+\documentclass{juliacon}
+\setcounter{page}{1}
+
+\usepackage{amsmath}
+\usepackage{cleveref}
+\crefformat{footnote}{#2\footnotemark[#1]#3}
+
+\newcommand{\ma}{MutableArithmetics}
+
+\addlitjlmacros{@rewrite}{@rewrite}{8}
+
+\hyphenation{Mutable-Arithmetics}
+
+\begin{document}
+
+\input{header}
+
+\maketitle
+
+\begin{abstract}
+
+Arithmetic operations defined in Julia do not modify their arguments.
+However, in many situations, a variable represents an accumulator that can be modified in-place to contain the result, e.g., when summing the elements of an array.
+Moreover, for types that support mutation, mutating the value may have a significant performance benefit over creating a new instance.
+This paper presents an interface that allows algorithms to exploit mutability in arithmetic operations in a generic manner.
+
+\end{abstract}
+
+\section{Introduction}
+
+Julia enables developers to write generic algorithms that work with arbitrary number types, as long as the types implement the needed operations
+such as \lstinline|+|, \lstinline|*|, \lstinline|-|, \lstinline|zero|, \lstinline|one|, ...
+The implementations of these arithmetic operations in Julia do not modify their arguments. Instead, they return a new instance of the type as the result.
+However, in many situations, a variable represents an accumulator that can be mutated\footnote{\label{foot:mutate}In this paper, the terminology ``mutate $x$ to $y$'' means modifying $x$ in-place in such a way that its value after the modification is equal to $y$.} to the result, e.g.,
+when summing the elements of an array of \lstinline|BigInt| or when implementing array multiplication.
+Moreover, for types that support mutation, mutating the value may have a significant performance benefit over creating a new instance.
+Examples of types that implement arithmetic operations and support mutation include \lstinline|Array|s, multiple-precision numbers, JuMP~\cite{dunning2017jump} expressions, MathOptInterface (MOI)~\cite{legat2021mathoptinterface} functions, and polynomials (univariate~\cite{verzani2021polynomials} or multivariate~\cite{legat2023multivariate}).
+
+This paper introduces an interface called \ma{}.
+It allows mutable types to implement an arithmetic exploiting their mutability, and for algorithms to
+exploit their mutability while remaining completely generic.
+Moreover, it provides the following additional features:
+\begin{enumerate}
+  \item
+    \label{item:reimplement}
+    MutableArithmetics re-implements part of the Julia standard library on top of the API to allow mutable types to use a more efficient version than the default one.
+  \item
+    \label{item:rewrite}
+    MutableArithmetics defines a \lstinline|@rewrite| macro that rewrites an expression using the standard operations (e.g., \lstinline|+|, \lstinline|*|, ...) into an expression that exploits the mutability of the intermediate values created when evaluating the expression.
+\end{enumerate}
+
+JuMP~\cite{dunning2017jump} used to have its own API for mutable operations on JuMP expressions and
+its own JuMP-specific implementation of \eqref{item:reimplement} and \eqref{item:rewrite}.
+These two features are one of the key reasons why JuMP is competitive in performance with commercial algebraic modeling languages~\cite[Section~3--4]{dunning2017jump}.
+These features were refactored into \ma{}, generalizing them to arbitrary mutable types.
+Starting from JuMP v0.21, JuMP expressions and MOI functions implement the \ma{} API, and
+the JuMP-specific implementations of \eqref{item:reimplement} and \eqref{item:rewrite} were
+replaced by the generic versions implemented in \ma{}.
+
+\section{Design consideration}
+This section provides concrete examples that motivated the design of \ma{}.
+The section is organized into four subsections that describe the need of four key features of \ma{}'s API.
+
+\subsection{May mutate}
+\label{sec:may_mutate}
+Consider the task of summing the elements of a vector.
+By default, Julia's \lstinline|sum| function will compute the sum with a method equivalent to the following:
+\jlinputlisting{code/sum.jl}
+If the type of the elements of \lstinline|x| is \lstinline|BigInt|, it is more efficient to replace the line
+\lstinline|acc = acc + el| by the line
+\lstinline|Base.GMP.MPZ.add!(acc, el)|.
+Indeed, as the operation \lstinline|+| cannot modify its arguments,
+it will need to allocate a new instance of \lstinline|BigInt| to contain the result.
+On the other hand, \lstinline|Base.GMP.MPZ.add!| mutates\cref{foot:mutate} \lstinline|acc| to the result.
+
+Even if using \lstinline|Base.GMP.MPZ.add!| provides a significant performance improvement,
+the time complexity order is identical: $\Theta(nm)$ in both cases,
+where $n$ is the number of elements and $m$ is the number of bits of an element.
+
+We now consider a mutable element type for which exploiting mutability affects the time complexity.
+Consider a type \lstinline|SymbolicVariable| representing a symbolic variable
+and the following types representing linear combinations of these variables with coefficients of type \lstinline|T|.
+This example encapsulates for instance JuMP affine expressions~\cite{dunning2017jump}, MOI affine functions~\cite{legat2021mathoptinterface}, polynomials (univariate~\cite{verzani2021polynomials} or multivariate~\cite{legat2023multivariate}) or symbolic sums~\cite{gowda2021high}.
+\jlinputlisting{code/term.jl}
+Calling \lstinline|sum| on a vector of $n$ \lstinline|Term{T}| has a time complexity $\Theta(n^2)$.
+Indeed, when calling \lstinline|acc + el| where \lstinline|acc| contains the sum of the first \lstinline|k| terms and \lstinline|el| is the $(k+1)$th term,
+the result cannot mutate \lstinline|acc.terms| and the copy of \lstinline|acc.terms| has time complexity $\Theta(k)$.
+
+A possible mutable interface would be to define an \lstinline|add!!| function
+that is similar to \lstinline|+| with the only difference being that it
+is allowed to modify its first argument.
+By default, \lstinline|add!!| would fall back to calling \lstinline|+|
+so that a method calling \lstinline|add!!| would both exploit the mutability
+of mutable types but would also work for non-mutable types.
+For our example, an implementation could be:
+\jlinputlisting{code/termsum.jl}
+Note that the time complexity of the sum of $n$ \lstinline|Term| is now $\Theta(n)$.
+
+Julia implements a specialized method for computing the sum of \lstinline|BigInt|s that uses \lstinline|Base.GMP.MPZ.add!|.
+Similarly, before its version v0.21, JuMP used to implement a specialized method for the sum of JuMP expressions.
+The advantage of having a standardized API for mutable addition is that
+only one implementation of \lstinline|sum| is needed.
+This approach of API based on a function that may mutate its first argument in order to allow the same code to work both for mutable and non-mutable type is
+used by the \lstinline|!!| convention in BangBang~\cite{takafumi2021bangbang},
+the mutable API in AbstractAlgebra~\cite{AbstractAlgebra.jl-2017},
+as well as the \lstinline|destructive_add!| function in JuMP v0.20.
+
+\subsection{Should mutate}
+In situations where the correctness of code depends on
+the mutation of the first argument of an operation,
+an API that allows an implementation to silently return the
+result without modifying the first argument is not appropriate.
+
+To motivate this, consider the \lstinline|Rational| Julia type:
+\jlinputlisting{code/rational.jl}
+Suppose we want to mutate\cref{foot:mutate} some rational \lstinline|a::Rational| to the
+product of \lstinline|a::Rational| and some other rational \lstinline|b::Rational|
+(ignoring the simplification with \lstinline|gcd| for simplicity).
+
+Using \lstinline|a.num = mul!!(a.num, b.num); a.den = mul!!(a.den, b.den)|
+(where \lstinline|mul!!| follows BangBang's convention)
+is not an option since
+the \lstinline|Rational| struct is not mutable.
+
+For this reason, there are also mutable operations that should mutate the first argument.
+This is the approach used by the \lstinline|!| convention in Julia
+as well as the \lstinline|add_to_expression!| function in JuMP.
+
+\subsection{Mutability}
+A third useful feature for users of a mutable API is the ability to
+determine whether objects of a given type can be mutated\cref{foot:mutate} to the result of a mutable operation.
+To motivate this, consider again the multiplication of rational numbers introduced in the previous section.
+An implementation \lstinline|mul!!| (where \lstinline|mul!!| \emph{may} mutate its first argument and \lstinline|mul!| \emph{should} mutate its first argument)
+for rational numbers could be:
+\begin{jllisting}
+function mul!!(a::Rational{S}, b::Rational{T}) where {S,T}
+    if # `S` can be mutated to `*(::S, ::T)`
+        mul!(a.num, b.num)
+        mul!(a.den, b.den)
+        return a
+    else
+        return a * b
+    end
+end
+\end{jllisting}
+This third feature would be needed to implement this \lstinline|if| clause.
+
+\subsection{Promotion}
+Algorithms that can exploit mutability often start by creating an accumulator of
+an appropriate type.
+%Consider again the example introduced in \cref{sec:may_mutate}.
+%In that example we defined \lstinline|Base.zero(::Type{Term{T}})|
+%to return a \lstinline|Sum{T}|.
+%Base.zero(::Type{Term{T}}) where {T} = Sum(Term{T}[])
+%Suppose we want to sum a vector of \lstinline|SymbolicVariable|.
+%For the generic sum implementation to work,
+%\lstinline|zero(::Type{SymbolicVariable})| may return \lstinline|zero(Sum{Int})|.
+
+Consider the following matrix-vector multiplication implementation
+where \lstinline|mul_to!| mutates\cref{foot:mutate} \lstinline|c| to \lstinline|A * b|.
+\jlinputlisting{code/matmul.jl}
+What should be the element type \lstinline|U| of the accumulator \lstinline|c| ?
+For instance, if \lstinline|S| is \lstinline|Float64|
+and \lstinline|T| is \lstinline|SymbolicVariable|
+then \lstinline|U| should be \lstinline|Sum{Float64}|.
+LinearAlgebra uses \lstinline|Base.promote_op| for this which relies on Julia's inference
+to determine the type of the sum of products of elements of type \lstinline|S| and \lstinline|T|.
+
+In the summing example introduced in \cref{sec:may_mutate},
+the type of the accumulator should also be determined as the type of the sum of elements of the vector.
+For the \lstinline|sum| function, Julia uses \lstinline|zero| as it is defined as
+the additive identity element.
+
+\section{Implementing the interface}
+\label{sec:impl}
+
+\ma{} defines the following four functions that provides the features motivated in the corresponding four subsections of the previous section.
+\begin{enumerate}
+  \item \lstinline|operate!!(op::Function, args...)| (resp. \lstinline|operate_to!!(output, op::Function, args...)|) returns the result of \lstinline|op(args...)| and may mutate \lstinline|args[1]| (resp. \lstinline|output|).
+  \item \lstinline|operate!(op::Function, args...)| (resp. \lstinline|operate_to!(output, op::Function, args...)|) mutates\cref{foot:mutate} \lstinline|args[1]| (resp. \lstinline|output|) to the result of \lstinline|op(args...)| and returns it.
+  \item \lstinline|mutability(T::Type, op::Function, args::Type...)| is a trait returning \lstinline|IsMutable()| if objects of type \lstinline|T| can be mutated\cref{foot:mutate} to the result of \lstinline|op(::args[1], ::args[2], ...)| and \lstinline|IsNotMutable()| otherwise.
+  \item \lstinline|promote_operation(op::Function, args::Type...)| returns the return type of \lstinline|op(::args...)|.
+\end{enumerate}
+
+As we detailed in the previous section, this API covers many use cases.
+The downside of such a varied API is that it seems to be a lot of work to implement it for a mutable type.
+We show in the remainder of this section how the \ma{} API remains simple to implement nevertheless.
+
+\subsection{Promotion fallback}
+First, \lstinline|promote_operation| can have a default fallback.
+For instance, \lstinline|promote_operation(+, ::Type{S}, ::Type{T})|
+defaults to \lstinline|typeof(zero(S) + zero(T))| which is correct if \lstinline|+(::S, ::T)| is type-stable.
+
+There are two cases for which this default implementation of \lstinline|promote_operation| is not sufficient.
+First, as we will see below, \lstinline|promote_operation| is at the core of many operations, so it is important that it is efficient.
+Julia may be able to compute the result of \lstinline|typeof(zero(S) + zero(T))| at compile time.
+However, if the body of \lstinline|promote_operation| is not evaluated at compile-time, this can cause performance issues.
+This is amplified for mutable types as \lstinline|zero(S) + zero(T)| may allocate.
+Second, if \lstinline|zero(S) + zero(T)| ends up calling \lstinline|promote_operation(+, S, T)|, this default implementation will not terminate.
+In both of these cases, \lstinline|promote_operation| should have a specialized implementation, e.g., by hardcoding the result for each pair of concrete types \lstinline|S| and \lstinline|T|.
+
+Note that implementing \lstinline|promote_operation| should be significantly easier than implementing the actual operation where the actual value of the result needs to be computed, not just its type.
+Hence this should not constitute a burden for the implementation.
+
+\subsection{May mutate fallback}
+We have the following default implementations of \lstinline|operate!!| and \lstinline|operate_to!!|.
+\jlinputlisting{code/axiom.jl}
+Note that this default implementation should have optimal performance in case \lstinline|mutability| is evaluated at compile-time and the \lstinline|if| statement is optimized out by the compiler.
+Indeed, suppose that
+another implementation is faster than this default one.
+If \lstinline|mutability(O, op, T...)| is an instance of \lstinline|IsMutable| (resp. \lstinline|IsNotMutable|)
+then this faster implementation can be reduced to a faster implementation for \lstinline|operate_to!(output, op, args...)| (resp. \lstinline|op|)
+so that the same performance is obtained with the default implementation of \lstinline|operate_to!!|.
+
+\subsection{Mutability fallback}
+It turns out that all types considered at the moment fall into two categories.
+The first category is made of the types \lstinline|T| for which
+\lstinline|mutability(T, ...)| always returns \lstinline|IsNotMutable()|.
+These are typically the non-mutable types, e.g., \lstinline|Int|, \lstinline|Float64|, \lstinline|Rational{Int}|, ...
+In the second category are the types \lstinline|T| for which
+\lstinline|mutability(T, op, args...)| returns \lstinline|IsMutable()|
+if and only if \lstinline|T == promote_operation(op, args...)|.
+Based on this observation, we define \lstinline|mutability(T::Type)| which
+returns \lstinline|IsMutable()| if \lstinline|T| is in the first category
+and \lstinline|IsNotMutable()| if \lstinline|T| is in the second category.
+Then we have the following fallback for \lstinline|mutability|:
+\begin{jllisting}
+mutability(::Type) = IsNotMutable()
+function mutability(T::Type, op::Function, args::Type...)
+    if mutability(T) isa IsMutable &&
+        T == promote_operation(op, args...)
+        return IsMutable()
+    else
+        return IsNotMutable()
+    end
+end
+\end{jllisting}
+
+\subsection{Minimal interface}
+In summary, for a type \lstinline|Foo| to implement the interface,
+the following line should be implemented:
+\begin{jllisting}
+mutability(::Type{Foo}) = IsMutable()
+\end{jllisting}
+as well as the following lines for each operation
+(we assume the operation is \lstinline|+|
+and the result type is \lstinline|Foo|),
+\begin{jllisting}
+promote_operation(::typeof(+), ::Type{Foo}, ::Type{Foo}) =
+    Foo
+function operate!(::typeof(+), a::Foo, b::Foo)
+    # ...
+    return a
+end
+function operate_to!(
+    output::Foo,
+    ::typeof(+),
+    a::Foo,
+    b::Foo,
+)
+    # ...
+    return output
+end
+\end{jllisting}
+Then
+\begin{unnumlist}
+  \item \lstinline|mutability(::Foo, +, Foo, Foo)|,
+  \item \lstinline|operate!!(+, ::Foo, ::Foo)|,
+  \item \lstinline|operate_to!!(::Foo, +, ::Foo, ::Foo)|,
+  \item \lstinline|add!!(::Foo, ::Foo)| and
+  \item \lstinline|add_to!!(::Foo, ::Foo, ::Foo)|
+\end{unnumlist}
+will be available as well for the user thanks to the default fallbacks.
+
+\section{Rewriting macro}
+
+As mentioned in the introduction, \ma{} implements a \lstinline|@rewrite| macro that rewrites:
+\begin{minipage}{\linewidth}
+\begin{jllisting}
+@rewrite(a * b + c * d - e * f * g - sum(i * y[i] for i in 2:n))
+\end{jllisting}
+\end{minipage}
+into
+\begin{jllisting}
+acc0 = Zero()
+acc1 = add_mul!!(acc0, a, b)
+acc2 = add_mul!!(acc1, c, d)
+acc3 = sub_mul!!(acc2, e, f, g)
+for i in 2:n
+  acc3 = sub_mul!!(acc3, i, y[i])
+end
+acc3
+\end{jllisting}
+where
+\begin{jllisting}
+add_mul(x, args...) = x + *(args...)
+sub_mul(x, args...) = x - *(args...)
+\end{jllisting}
+
+The code produced by the \lstinline|@rewrite| macro does not assume
+that any of the objects \lstinline|a|, \lstinline|b|, ... can be mutated.
+However, it exploits the mutability of the intermediate expressions
+\lstinline|acc0|, \lstinline|acc1|, \lstinline|acc2| and \lstinline|acc3|.
+Note that different accumulator variables are used because the type of the accumulator may change.
+
+\section{Benchmarks and buffers}
+In this section, we provide a benchmark and illustrate
+how \ma{} allows to preallocate buffers needed by low-level operations.
+
+\subsection{Matrix-vector product}
+Consider the product between a matrix and a vector of \lstinline|BigInt|s.
+\lstinline|LinearAlgebra.mul!| uses a generic implementation that does not exploit the mutability of \lstinline|BigInt|s.
+We can see in the following benchmark~\cite{BenchmarkTools.jl-2016} that more than 3 MB are allocated.
+\begin{jllisting}
+n = 200
+l = big(10)
+A = rand(-l:l, n, n)
+b = rand(-l:l, n)
+c = zeros(BigInt, n)
+
+using BenchmarkTools
+import LinearAlgebra
+@benchmark LinearAlgebra.mul!($c, $A, $b)
+
+# output
+
+ Time  (median):      5.900 ms
+ Time  (mean):       12.286 ms
+ Memory: 3.66 MiB, allocs: 197732.
+\end{jllisting}
+
+The generic implementation in \ma{} exploits the mutability of the elements of \lstinline|c|.
+This provides a significant speedup and a drastic reduction of memory usage:
+\begin{jllisting}
+@benchmark add_mul!!($c, $A, $b)
+
+# output
+
+ Time  (median):       1.001 ms
+ Time  (mean):         1.021 ms
+ Memory: 48 bytes, allocs: 3.
+\end{jllisting}
+
+In fact, it also exploits the mutability of the intermediate terms.
+If the generic implementation was calling
+\begin{jllisting}
+operate!(add_mul, c[i], A[i, j], b[j])
+\end{jllisting}
+it would allocate a \lstinline|BigInt| to hold an intermediate value as in:
+\begin{jllisting}
+tmp = A[i, j] * b[j]
+operate!(+, c[i], tmp)
+\end{jllisting}
+In order to avoid allocating $n^2$ new \lstinline|BigInt|s,
+\ma{} enables operations to communicate the buffers they need to allocate through the \lstinline|buffer_for| function.
+The buffer can then be reused between multiple occurrences of the same operation with \lstinline|buffered_operate!|.
+By default, \lstinline|buffer_for| returns \lstinline|nothing|
+and \lstinline|buffered_operate!| has the following fallback (where \lstinline|MA| is a shortcut for \lstinline|MutableArithmetics|):
+\begin{jllisting}
+MA.buffered_operate!(::Nothing, args...) = operate!(args...)
+\end{jllisting}
+The implementation of the following two methods in MutableArithmetics
+allows the buffer to be created and reused by a generic method that is not
+specific to \lstinline|BigInt|:
+\begin{jllisting}
+function MA.buffer_for(
+    ::typeof(add_mul),
+    ::Type{BigInt}...,
+)
+    return BigInt()
+end
+function MA.buffered_operate!(
+    buffer::BigInt,
+    ::typeof(add_mul),
+    a::BigInt,
+    x::BigInt,
+    y::BigInt,
+)
+    operate_to!(buffer, *, x, y)
+    return operate!(+, a, buffer)
+end
+\end{jllisting}
+This is used by the implementation of matrix-vector
+multiplication in MutableArithmetics to create the
+buffer once with
+\begin{jllisting}
+buf = buffer_for(add_mul, eltype(c), eltype(A), eltype(b))
+\end{jllisting}
+and then reuse it with
+\begin{jllisting}
+buffered_operate!(buf, add_mul, c[i], A[i, j], b[j])
+\end{jllisting}
+This explains why there are only 48 bytes allocated in the benchmark result above,
+which corresponds to the allocation of a single \lstinline|BigInt()|.
+
+In fact, a buffer needed for a low-level operation can even be communicated
+at the level of higher-level operations.
+This allows for instance to allocate the buffer only once even if
+several matrix products are computed:
+
+%\begin{minipage}{\linewidth}
+\begin{jllisting}
+buf = buffer_for(
+    add_mul,
+    typeof(c),
+    typeof(A),
+    typeof(b),
+)
+@ballocated buffered_operate!($buf, add_mul, $c, $A, $b)
+
+# output
+
+0
+\end{jllisting}
+%\end{minipage}
+
+\subsection{Mutability layers}
+Mutable states in objects can form a hierarchy of mutable layers.
+It is paramount for a mutability API to allow the user to exploit
+the mutability from the top layer to the bottom layer.
+Consider the following example using Polynomials~\cite{verzani2021polynomials}.
+\begin{jllisting}
+using Polynomials
+m = 100
+n = 10
+p(d) = Polynomial(big.(1:d))
+z(d) = Polynomial([zero(BigInt) for i in 1:d])
+A = [p(d) for d in 1:m, _ in 1:n]
+b = [p(d) for d in 1:n]
+c = [z(2d - 1) for d in 1:m]
+\end{jllisting}
+The arrays contain 3 layers of mutability:
+\lstinline|Array|, \lstinline|Polynomial| and \lstinline|BigInt|.
+As shown in the benchmark below,
+impact on performance is amplified by the number of layers.
+\begin{jllisting}
+julia> @benchmark LinearAlgebra.mul!($c, $A, $b)
+ Time  (median):     18.132 ms
+ Time  (mean):       46.276 ms
+ Memory: 30.12 MiB, allocs: 1560450.
+
+julia> @benchmark add_mul!!($c, $A, $b)
+ Time  (median):     2.613 ms
+ Time  (mean):       2.789 ms
+ Memory: 48 bytes, allocs: 3.
+
+julia> buf = buffer_for(
+    add_mul, typeof(c), typeof(A), typeof(b))
+0
+
+julia> @ballocated buffered_operate!(
+           $buf, add_mul, $c, $A, $b)
+0
+\end{jllisting}
+
+As a matter of fact, one of the motivations for \ma{}
+was to improve the performance of SumOfSquares~\cite{weisser2019polynomial}.
+SumOfSquares is using multivariate polynomials with
+JuMP expressions or MOI functions as coefficients.
+JuMP had an interface for exploiting the mutability of its expressions,
+but MultivariatePolynomials was not exploiting it.
+MultivariatePolynomials now implements \ma{}
+and also exploits the mutability of its coefficients, whether they are \lstinline|BigInt|, JuMP expressions, MOI functions or any other types implementing \ma{}.
+
+\section{Conclusion}
+\ma{} provides an interface for mutable operations.
+As detailed in this paper, the design of the interface provides
+both an extensive set of features for the user without sacrificing
+the ease of implementing the interface.
+Moreover, it provides a zero-cost abstraction so that a single generic
+implementation can handle mutable and non-mutable inputs.
+As the same API is used for arrays, functions, numbers, ... multi-layered mutability can be exploited efficiently,
+and the intermediate allocations needed by inner layers can be
+preallocated from the outside layers using a buffer API.
+
+\section*{Acknowledgments}
+
+We would like to thank Gilles Peiffer and Sascha Timme for their help on the initial design of the interface as well as Oscar Dowson for his help on its further improvements.
+Moreover, we would like to thank the authors of JuMP: Iain Dunning, Joey Huchette and Miles Lubin for the implementations of the mutability code in JuMP from which MutableArithmetics was largely inspired.
+Finally, we would like to thank all others contributors to the packages for their valuable inputs\footnote{The full list of contributors is available \href{https://github.com/jump-dev/MutableArithmetics.jl/graphs/contributors}{on Github}.}.
+
+The author was supported by
+a Belgian American Educational Foundation (BAEF) postdoctoral fellowship,
+the National Science Foundation (NSF) under Grant No. OAC-1835443 and
+the European Commission (ERC Adv. Grant) under Grant 885682.
+
+\input{bib.tex}
+
+\end{document}

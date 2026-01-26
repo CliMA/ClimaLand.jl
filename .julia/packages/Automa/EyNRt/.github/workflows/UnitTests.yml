@@ -1,0 +1,51 @@
+name: Unit tests
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version:
+          - '1.6' # LTS
+          - '1'
+        julia-arch: [x86]
+        os: [ubuntu-latest, windows-latest]
+        experimental: [false]
+        include:
+          - julia-version: nightly
+            julia-arch: x86
+            os: ubuntu-latest
+            experimental: true
+          # MacOS Aarch64 reached Tier1 support of Julia in version 1.9
+          - julia-version: '1.9'
+            os: macOS-latest
+            experimental: false
+          - julia-version: '1'
+            os: macOS-latest
+            experimental: false
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Setup Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: Run Tests
+        uses: julia-actions/julia-runtest@latest
+      - name: Create CodeCov
+        uses: julia-actions/julia-processcoverage@v1
+      - name: Upload CodeCov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

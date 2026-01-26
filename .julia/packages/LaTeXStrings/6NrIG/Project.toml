@@ -1,0 +1,17 @@
+name = "LaTeXStrings"
+uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+version = "1.4.0"
+
+[compat]
+julia = "1"
+Aqua = "0.8"
+Documenter = "0.19,0.20,0.21,0.22,0.23,0.24,0.25,0.26,0.27, 1"
+Test = "<0.0.1, 1"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "Documenter", "Test"]

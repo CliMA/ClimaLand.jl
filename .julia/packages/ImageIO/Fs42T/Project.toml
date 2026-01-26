@@ -1,0 +1,41 @@
+name = "ImageIO"
+uuid = "82e4d734-157c-48bb-816b-45c225c6df19"
+authors = ["Ian Butterworth"]
+version = "0.6.9"
+
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+IndirectArrays = "9b13fd28-a010-5f03-acff-a1bbcff69959"
+JpegTurbo = "b835a17e-a41a-41e7-81f0-2f016b05efe0"
+LazyModules = "8cdb02fc-e678-4876-92c5-9defec4f444e"
+Netpbm = "f09324ee-3d7c-5217-9330-fc30815ba969"
+OpenEXR = "52e1d378-f018-4a11-a4be-720524705ac7"
+PNGFiles = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
+QOI = "4b34888f-f399-49d4-9bb3-47ed5cae4e65"
+Sixel = "45858cf5-a6b0-47a3-bbea-62219f50df47"
+TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+WebP = "e3aaa7dc-3e4b-44e0-be63-ffb868ccd7c1"
+
+[compat]
+FileIO = "1.2"
+ImageCore = "0.8.1, 0.9, 0.10"
+IndirectArrays = "0.5, 1"
+JpegTurbo = "0.1"
+LazyModules = "0.3"
+Netpbm = "1.0"
+OpenEXR = "0.3"
+PNGFiles = "0.3, 0.4"
+QOI = "1"
+Sixel = "0.1"
+TiffImages = "0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11"
+WebP = "0.1.2"
+julia = "1.6"
+
+[extras]
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+ImageQualityIndexes = "2996bd0c-7a13-11e9-2da2-2f5ce47296a9"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "ImageCore", "ImageQualityIndexes"]

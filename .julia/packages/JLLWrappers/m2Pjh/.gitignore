@@ -1,0 +1,6 @@
+.DS_Store
+/Manifest.toml
+/dev/
+.vscode/
+
+test/*_jll

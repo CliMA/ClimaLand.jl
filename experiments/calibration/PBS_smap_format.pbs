@@ -1,0 +1,39 @@
+#!/bin/bash
+#PBS -N smap_obs_generation
+#PBS -o output.txt
+#PBS -e error.txt
+#PBS -l walltime=2:00:00
+#PBS -l select=1:ncpus=1:mem=20GB
+
+## Account number for CliMA
+#PBS -A UCIT0011
+#PBS -q main
+
+export PBS_ACCOUNT="UCIT0011"
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+
+export CLIMACOMMS_DEVICE="CUDA"
+export CLIMACOMMS_CONTEXT="SINGLETON"
+
+## Set SMAP data directory for observation generation
+export SMAP_DATA_PATH="/glade/campaign/univ/ucit0011/smap/SMAP_L3_SM_P_E"
+
+echo "======================================"
+echo "Job started at: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Running in: $(pwd)"
+echo "======================================"
+
+echo "Instantiating Julia environment..."
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)' || { echo "Package instantiation failed"; exit 1; }
+
+echo "Installing Glob package for SMAP..."
+julia --project=.buildkite -e 'using Pkg; Pkg.add("Glob")' || { echo "Glob installation failed"; exit 1; }
+
+echo "Regridding SMAP soil moisture observations..."
+julia --project=.buildkite/ experiments/calibration/regrid_smap_to_model_grid.jl || { echo "SMAP regrid failed"; exit 1; }
+
+echo "Generating SMAP soil moisture observations..."
+julia --project=.buildkite/ experiments/calibration/generate_smap_observations_from_regridded.jl || { echo "SMAP observation generation failed"; exit 1; }
+

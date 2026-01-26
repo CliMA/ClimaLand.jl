@@ -1,0 +1,20 @@
+name: Aqua
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - name: Aqua.jl
+        run: |
+          PKG_SRC_PATH=`pwd`
+          PKG_SRC_NAME=`basename -s ".jl" $PKG_SRC_PATH`
+          julia --color=yes -e "using Pkg; Pkg.add(\"Aqua\"); Pkg.develop(path=\"$PKG_SRC_PATH\"); using Aqua, $PKG_SRC_NAME; Aqua.test_all($PKG_SRC_NAME)"

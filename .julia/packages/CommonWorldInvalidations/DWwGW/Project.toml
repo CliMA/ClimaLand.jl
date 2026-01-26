@@ -1,0 +1,15 @@
+name = "CommonWorldInvalidations"
+uuid = "f70d9fcc-98c5-4d4a-abd7-e4cdeebd8ca8"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com>"]
+version = "1.0.0"
+
+[deps]
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

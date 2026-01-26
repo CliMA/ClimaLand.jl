@@ -1,0 +1,35 @@
+name = "NCDatasets"
+uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+keywords = ["netcdf", "climate and forecast conventions", "oceanography", "meteorology", "climatology", "opendap"]
+license = "MIT"
+desc = "Load and create NetCDF files in Julia"
+version = "0.14.8"
+
+[deps]
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
+CommonDataModel = "1fbeeb36-5f17-413c-809b-666fb144f157"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DiskArrays = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
+NetCDF_jll = "7243133f-43d8-5620-bbf4-c2c921802cf3"
+NetworkOptions = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[compat]
+CFTime = "0.1.1, 0.2"
+CommonDataModel = "0.3.4"
+DataStructures = "0.17, 0.18"
+DiskArrays = "0.4.5"
+NetCDF_jll = "=400.701.400, =400.702.400, =400.902.5, =400.902.208, =400.902.209, =400.902.211, =401.900.300"
+NetworkOptions = "1.2"
+julia = "1.6"
+
+[extras]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Dates", "Test", "Random", "Printf", "IntervalSets"]

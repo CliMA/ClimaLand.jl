@@ -1,0 +1,7 @@
+name = "HashArrayMappedTries"
+uuid = "076d061b-32b6-4027-95e0-9a2c6f6d7e74"
+authors = ["Valentin Churavy <v.churavy@gmail.com>"]
+version = "0.2.0"
+
+[compat]
+julia = "1.8"

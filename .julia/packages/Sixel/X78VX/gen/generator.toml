@@ -1,0 +1,14 @@
+[general]
+library_name = "libsixel"
+output_file_path = "../src/libsixel/CModule.jl"
+module_name = "C"
+jll_pkg_name = "libsixel_jll"
+
+use_julia_native_enum_type = true
+use_deterministic_symbol = true
+auto_mutability = true
+
+[codegen.macro]
+macro_mode = "basic"
+
+

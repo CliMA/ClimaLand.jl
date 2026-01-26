@@ -1,0 +1,20 @@
+name = "libwebp_jll"
+uuid = "c5f90fcd-3b7e-5836-afba-fc50a0988cb2"
+version = "1.6.0+0"
+
+[deps]
+Libglvnd_jll = "7e76a0d4-f3c7-5321-8279-8d96eeed0f29"
+JpegTurbo_jll = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+libpng_jll = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
+Libtiff_jll = "89763e89-9b03-5906-acba-b20f662cd828"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+Giflib_jll = "59f7168a-df46-5410-90c8-f2779963d0ec"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.6"
+Libdl = "< 0.0.1, 1"
+Libtiff_jll = "4.7.1"
+Artifacts = "< 0.0.1, 1"

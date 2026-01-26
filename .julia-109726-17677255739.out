@@ -1,0 +1,1096 @@
+julia_worker:9884#10.169.152.35
+julia_worker:9539#10.169.152.63
+julia_worker:9585#10.169.152.61
+julia_worker:9312#10.169.152.33
+julia_worker:9829#10.169.152.57
+julia_worker:9217#10.169.152.59
+julia_worker:9053#10.169.152.47
+julia_worker:9022#10.169.152.45
+julia_worker:9108#10.169.152.43
+julia_worker:9202#10.169.152.68
+julia_worker:9264#10.169.152.41
+julia_worker:9681#10.169.152.37
+julia_worker:9980#10.169.152.39
+
+[21108] signal 15: Terminated
+
+[112264] signal 15: Terminated
+
+[114884] signal 15: Terminated
+
+[103217] signal 15: Terminated
+
+[110539] signal 15: Terminated
+
+[71202] signal 15: Terminated
+
+[69053] signal 15: Terminated
+
+[96681] signal 15: Terminated
+
+[87980] signal 15: Terminated
+
+[20022] signal 15: Terminated
+in expression starting at none:0
+
+[90829] signal 15: Terminated
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+
+[90585] signal 15: Terminated
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+in expression starting at none:0
+
+[44312] signal 15: Terminated
+in expression starting at none:0
+in expression starting at none:0
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x1464d9287c87)
+ioctl at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x152c3223c02e)
+__futex_abstimed_wait_common at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x1533e5e3c02e)
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+ioctl at /lib64/libc.so.6 (unknown line)
+__futex_abstimed_wait_common at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x1464d9291e5b)
+unknown function (ip: 0x1513fd687c87)
+__futex_abstimed_wait_common at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x154273687c87)
+unknown function (ip: 0x152c32d46717)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x15197124f893)
+unknown function (ip: 0x1529f3e87c87)
+unknown function (ip: 0x1533e6946717)
+unknown function (ip: 0x14c86a84f893)
+unknown function (ip: 0x151929687c87)
+unknown function (ip: 0x14e4b4287c87)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x1464d9275dab)
+unknown function (ip: 0x1513fd691e5b)
+pthread_cond_wait at /lib64/libc.so.6 (unknown line)
+unknown function (ip: 0x154273691e5b)
+unknown function (ip: 0x152c3211abdb)
+unknown function (ip: 0x15197124fde0)
+unknown function (ip: 0x1529f3e91e5b)
+unknown function (ip: 0x1533e5d1abdb)
+unknown function (ip: 0x14c86a84fde0)
+unknown function (ip: 0x151929691e5b)
+unknown function (ip: 0x14e4b4291e5b)
+unknown function (ip: 0x1464d929a483)
+unknown function (ip: 0x1513fd675dab)
+unknown function (ip: 0x154273675dab)
+unknown function (ip: 0x152c32288aa7)
+unknown function (ip: 0x1519710fedc7)
+unknown function (ip: 0x1529f3e75dab)
+unknown function (ip: 0x1533e5e88aa7)
+unknown function (ip: 0x14c86a6fedc7)
+unknown function (ip: 0x151929675dab)
+unknown function (ip: 0x14e4b4275dab)
+unknown function (ip: 0x1464d92193b9)
+unknown function (ip: 0x1513fd69a483)
+unknown function (ip: 0x15427369a483)
+unknown function (ip: 0x152c32289d11)
+unknown function (ip: 0x151971287e69)
+unknown function (ip: 0x1529f3e9a483)
+unknown function (ip: 0x1533e5e89d11)
+unknown function (ip: 0x14c86a887e69)
+unknown function (ip: 0x15192969a483)
+unknown function (ip: 0x14e4b429a483)
+unknown function (ip: 0x1464d921a7b3)
+unknown function (ip: 0x1513fd6193b9)
+unknown function (ip: 0x1542736193b9)
+unknown function (ip: 0x152c3221942d)
+unknown function (ip: 0x151971289843)
+unknown function (ip: 0x1529f3e193b9)
+unknown function (ip: 0x1533e5e1942d)
+unknown function (ip: 0x14c86a889843)
+unknown function (ip: 0x1519296193b9)
+unknown function (ip: 0x14e4b42193b9)
+unknown function (ip: 0x1464d921b35a)
+unknown function (ip: 0x1513fd61a7b3)
+unknown function (ip: 0x15427361a7b3)
+unknown function (ip: 0x152c3221a7b3)
+unknown function (ip: 0x1519712100c6)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+unknown function (ip: 0x1529f3e1a7b3)
+uv_cond_wait at /workspace/srcdir/libuv/src/unix/thread.c:822
+unknown function (ip: 0x1533e5e1a7b3)
+unknown function (ip: 0x14c86a8100c6)
+unknown function (ip: 0x15192961a7b3)
+unknown function (ip: 0x14e4b421a7b3)
+unknown function (ip: 0x1464d921d8fd)
+unknown function (ip: 0x1513fd61b35a)
+unknown function (ip: 0x15427361b35a)
+unknown function (ip: 0x152c3221b35a)
+unknown function (ip: 0x1519712186b9)
+ijl_task_get_next at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/scheduler.c:584
+ijl_task_get_next at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/scheduler.c:584
+unknown function (ip: 0x1529f3e1b35a)
+ijl_task_get_next at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/scheduler.c:584
+unknown function (ip: 0x1533e5e1b35a)
+unknown function (ip: 0x14c86a8186b9)
+unknown function (ip: 0x15192961b35a)
+unknown function (ip: 0x14e4b421b35a)
+unknown function (ip: 0x1464d921f2da)
+unknown function (ip: 0x1513fd61d8fd)
+unknown function (ip: 0x15427361d8fd)
+unknown function (ip: 0x152c3221d8fd)
+unknown function (ip: 0x15197121d435)
+unknown function (ip: 0x1529f3e1d8fd)
+unknown function (ip: 0x1533e5e1d8fd)
+unknown function (ip: 0x14c86a81d435)
+unknown function (ip: 0x15192961d8fd)
+unknown function (ip: 0x14e4b421d8fd)
+unknown function (ip: 0x1464d8fc4e4f)
+unknown function (ip: 0x1513fd61f2da)
+unknown function (ip: 0x15427361f2da)
+unknown function (ip: 0x152c3221f2da)
+unknown function (ip: 0x15197121cb96)
+unknown function (ip: 0x1529f3e1f2da)
+unknown function (ip: 0x1533e5e1f2da)
+unknown function (ip: 0x14c86a81cb96)
+unknown function (ip: 0x15192961f2da)
+unknown function (ip: 0x14e4b421f2da)
+unknown function (ip: 0x1464d913a56b)
+unknown function (ip: 0x1513fd3c4e4f)
+unknown function (ip: 0x1542733c4e4f)
+unknown function (ip: 0x152c31fc4e4f)
+unknown function (ip: 0x151970fc5872)
+unknown function (ip: 0x1529f3bc4e4f)
+unknown function (ip: 0x1533e5bc4e4f)
+unknown function (ip: 0x14c86a5c5872)
+unknown function (ip: 0x1519293c4e4f)
+unknown function (ip: 0x14e4b3fc4e4f)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+unknown function (ip: 0x1513fd53a56b)
+unknown function (ip: 0x15427353a56b)
+unknown function (ip: 0x152c3213a56b)
+unknown function (ip: 0x15197113ab66)
+unknown function (ip: 0x1529f3d3a56b)
+unknown function (ip: 0x1533e5d3a56b)
+unknown function (ip: 0x14c86a73ab66)
+unknown function (ip: 0x15192953a56b)
+unknown function (ip: 0x14e4b413a56b)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemFree_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemFree_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:194 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+#14 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:194 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+#14 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+cuMemFree_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+#free#966 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:89
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+cuMemFree_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:82 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+#free#966 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:89
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+#1136 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:722 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:82 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+#context!#1025 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/state.jl:168 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+#1136 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:722 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+context! at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/state.jl:163 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+#context!#1025 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/state.jl:168 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+_pool_free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:721 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+context! at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/state.jl:163 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+_pool_free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:721 [inlined]
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+pool_free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:695
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+poptask at ./task.jl:1012
+poptask at ./task.jl:1012
+poptask at ./task.jl:1012
+macro expansion at ./timing.jl:421 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+unknown function (ip: 0x1519af97edb2)
+macro expansion at ./timing.jl:421 [inlined]
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+macro expansion at ./timing.jl:421 [inlined]
+pool_free at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:695
+wait at ./task.jl:1021
+macro expansion at ./timing.jl:421 [inlined]
+wait at ./task.jl:1021
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+wait at ./task.jl:1021
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+unknown function (ip: 0x14c8a8f7be22)
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+release at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:42
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+#wait#731 at ./condition.jl:130
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+#wait#731 at ./condition.jl:130
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+#wait#731 at ./condition.jl:130
+unsafe_free! at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:100 [inlined]
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+release at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:42
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+wait at ./condition.jl:125 [inlined]
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+similar at ./abstractarray.jl:868 [inlined]
+wait at ./condition.jl:125 [inlined]
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+wait at ./condition.jl:125 [inlined]
+unsafe_free! at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:115
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+unsafe_free! at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:100 [inlined]
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+take! at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:53
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+similar at ./abstractarray.jl:868 [inlined]
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+take! at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:53
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+take! at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:53
+unknown function (ip: 0x1519aeddce12)
+similar at ./abstractarray.jl:868 [inlined]
+similar at ./abstractarray.jl:868 [inlined]
+unsafe_free! at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/abstractarray.jl:115
+similar at ./abstractarray.jl:868 [inlined]
+synchronization_worker at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:119
+similar at ./abstractarray.jl:868 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+similar at ./abstractarray.jl:868 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+synchronization_worker at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:119
+similar at ./abstractarray.jl:868 [inlined]
+synchronization_worker at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/synchronization.jl:119
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+unknown function (ip: 0x14c8a8f65e32)
+run_finalizer at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:299
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+unknown function (ip: 0x1518379f86d5)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+unknown function (ip: 0x14fea71f8a05)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+unknown function (ip: 0x14eeb25fe3e5)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:453 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+jl_gc_run_finalizers_in_list at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:389
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+run_finalizer at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:299
+jlcapi_synchronization_worker_13764 at /glade/u/home/reich/.julia/compiled/v1.11/CUDA/oWw5k_h77jG.so (unknown line)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:453 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:453 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:452 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+jlcapi_synchronization_worker_13764 at /glade/u/home/reich/.julia/compiled/v1.11/CUDA/oWw5k_h77jG.so (unknown line)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+run_finalizers at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:435
+jl_gc_run_finalizers_in_list at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:389
+jlcapi_synchronization_worker_13764 at /glade/u/home/reich/.julia/compiled/v1.11/CUDA/oWw5k_h77jG.so (unknown line)
+start_thread at /lib64/libc.so.6 (unknown line)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:452 [inlined]
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:452 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+start_thread at /lib64/libc.so.6 (unknown line)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+run_finalizers at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:416 [inlined]
+run_finalizers at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:435
+start_thread at /lib64/libc.so.6 (unknown line)
+__GI___clone3 at /lib64/libc.so.6 (unknown line)
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+materialize at ./broadcast.jl:872 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+__GI___clone3 at /lib64/libc.so.6 (unknown line)
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+ijl_gc_collect at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:3920
+run_finalizers at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:416 [inlined]
+unknown function (ip: (nil))
+__GI___clone3 at /lib64/libc.so.6 (unknown line)
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+materialize at ./broadcast.jl:872 [inlined]
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+materialize at ./broadcast.jl:872
+materialize at ./broadcast.jl:872 [inlined]
+unknown function (ip: (nil))
+materialize at ./broadcast.jl:872 [inlined]
+maybe_collect at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:922 [inlined]
+ijl_gc_collect at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:3920
+ioctl at /lib64/libc.so.6 (unknown line)
+unknown function (ip: (nil))
+materialize at ./broadcast.jl:872 [inlined]
+materialize at ./broadcast.jl:872 [inlined]
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+materialize at ./broadcast.jl:872 [inlined]
+unknown function (ip: 0x1514169fae96)
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+jl_valid_type_param at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:1530 [inlined]
+jl_gc_big_alloc_inner at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:1009 [inlined]
+maybe_collect at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:922 [inlined]
+unknown function (ip: 0x15182e23c02e)
+< at ./int.jl:83 [inlined]
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+pi_groups_from_calibrated_traits at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/uspacmodel.jl:392
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+surface_air_density at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/drivers.jl:839 [inlined]
+update_canopy_conductance! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/stomatalconductance.jl:395
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+jl_f_apply_type at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:1577
+ijl_gc_big_alloc_instrumented at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:1045
+jl_gc_pool_alloc_inner at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:1324
+unknown function (ip: 0x15182ed46717)
+> at ./operators.jl:379 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+unknown function (ip: 0x1533ff1d7508)
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:28 [inlined]
+turbulent_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/drivers.jl:403 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/Canopy.jl:1102
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+getproperty at ./Base.jl:49
+NamedTuple at ./boot.jl:727 [inlined]
+jl_gc_alloc_ at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia_internal.h:523 [inlined]
+unknown function (ip: 0x15182e11abdb)
+div at ./div.jl:366 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+update_canopy_conductance! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/stomatalconductance.jl:380
+imp_tendency! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:162
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+snow_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/integrated/land.jl:631
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+imp_tendency! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:162
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:28 [inlined]
+unknown function (ip: 0x15197f56654a)
+capture_status at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/graph.jl:175
+_new_genericmemory_ at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/genericmemory.c:56 [inlined]
+unknown function (ip: 0x15182e288aa7)
+cld at ./div.jl:322 [inlined]
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:28 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/Canopy.jl:1102
+ODEFunction at /glade/u/home/reich/.julia/packages/SciMLBase/rvXrA/src/scimlfunctions.jl:2580 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+snow_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Snow/boundary_fluxes.jl:71
+exp_tendency! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:178
+ODEFunction at /glade/u/home/reich/.julia/packages/SciMLBase/rvXrA/src/scimlfunctions.jl:2580 [inlined]
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+orchestrate_diagnostics at /glade/u/home/reich/.julia/packages/ClimaDiagnostics/3h9MG/src/clima_diagnostics.jl:273
+is_capturing at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/graph.jl:179 [inlined]
+jl_alloc_genericmemory at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/genericmemory.c:99
+unknown function (ip: 0x15182e289d11)
+linear_partition at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts_threadblock.jl:64 [inlined]
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+#95 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:135
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+update_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Snow/Snow.jl:720
+#95 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:135
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:153 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+sciml_callback at /glade/u/home/reich/.julia/packages/ClimaDiagnostics/3h9MG/src/clima_diagnostics.jl:369 [inlined]
+convert at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:545
+GenericMemory at ./boot.jl:516 [inlined]
+unknown function (ip: 0x15182e21942d)
+masked_partition at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts_threadblock.jl:43 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+exp_tendency! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:178
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:595 [inlined]
+update_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/integrated/land.jl:378
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:595 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:95 [inlined]
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:224 [inlined]
+unsafe_convert at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:466
+new_as_memoryref at ./boot.jl:535 [inlined]
+unknown function (ip: 0x15182e21a7b3)
+masked_partition at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts_threadblock.jl:32 [inlined]
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:153 [inlined]
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:29 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:229 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+#pointer#1158 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:424 [inlined]
+Array at ./boot.jl:582 [inlined]
+unknown function (ip: 0x15182e21b35a)
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts_copyto.jl:47
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:95 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:230 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+pointer at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:416 [inlined]
+Array at ./boot.jl:597
+unknown function (ip: 0x15182e21d8fd)
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/copyto.jl:17 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:230 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+pointer at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:416 [inlined]
+unknown function (ip: 0x14c8a8bb3df0)
+unknown function (ip: 0x15182e21f2da)
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:231 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:255
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+unsafe_convert at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:486 [inlined]
+unknown function (ip: 0x15182dfc4e4f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:231 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+adapt_storage at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/compiler/execution.jl:164 [inlined]
+unknown function (ip: 0x15182e13a56b)
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+materialize! at ./broadcast.jl:883 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+adapt_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:57 [inlined]
+cuMemAlloc_v2 at /usr/lib64/libcuda.so.1 (unknown line)
+create_outputarray at /glade/u/home/reich/.julia/packages/DiskArrays/cJ8RQ/src/indexing.jl:212 [inlined]
+materialize! at ./broadcast.jl:880 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:143 [inlined]
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/cJ8RQ/src/indexing.jl:101
+update_infiltration_water_flux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/Runoff/Runoff.jl:240
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+unknown function (ip: 0x15140b15ed22)
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+unknown function (ip: 0x15197ed4c182)
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+adapt_structure at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/DataLayouts.jl:1694 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:182 [inlined]
+unknown function (ip: 0x14c8a8bb3af7)
+soil_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/integrated/land.jl:526
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+#10 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:34 [inlined]
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/cJ8RQ/src/indexing.jl:69
+unknown function (ip: 0x14fea82b91b6)
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+unknown function (ip: 0x1533f39551b2)
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+unknown function (ip: 0x152c40159c42)
+unknown function (ip: 0x1514763bc7fc)
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+unknown function (ip: 0x1519e9fbc79c)
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+_adapt_tuple_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:17 [inlined]
+check at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/libcuda.jl:35 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/cJ8RQ/src/indexing.jl:58 [inlined]
+soil_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/boundary_conditions.jl:875
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x154281153e62)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+_adapt_tuple_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:14
+cuMemAlloc_v2 at /glade/u/home/reich/.julia/packages/GPUToolbox/XaIIx/src/ccalls.jl:33 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/cJ8RQ/src/indexing.jl:312
+update_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:269 [inlined]
+unknown function (ip: 0x14e4bdd53eb2)
+unknown function (ip: 0x15345e9757dc)
+unknown function (ip: 0x1464e6d5db02)
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+unknown function (ip: 0x152caabbc80c)
+unknown function (ip: 0x152a01951382)
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+adapt_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:9 [inlined]
+#alloc#965 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:76
+unknown function (ip: 0x14c8a8bb2165)
+update_boundary_fluxes! at /glade/derecho/scratch/reich/ClimaLand.jl/src/integrated/land.jl:388
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x1542ebfbc80c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/lib/cudadrv/memory.jl:61 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:29 [inlined]
+unknown function (ip: 0x14e52cdbc7dc)
+unknown function (ip: 0x146551f757ec)
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+unknown function (ip: 0x152a6c9bc7ec)
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+adapt_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:62 [inlined]
+#1132 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:657
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x15193715a7a2)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+retry_reclaim at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:434 [inlined]
+read at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/NCFileReaderExt.jl:259
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+_adapt_tuple_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:14
+_pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:652 [inlined]
+read! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/NCFileReaderExt.jl:310
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x1519a237557c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+adapt_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:9 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:623 [inlined]
+#18 at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/DataHandlingExt.jl:618
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+macro expansion at ./timing.jl:421 [inlined]
+get! at ./dict.jl:458
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+adapt_structure at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/base.jl:62 [inlined]
+pool_alloc at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/memory.jl:622 [inlined]
+get! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/DataStructures.jl:95 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+adapt at /glade/u/home/reich/.julia/packages/Adapt/2UZ81/src/Adapt.jl:40 [inlined]
+#1140 at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:92
+regridded_snapshot at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/DataHandlingExt.jl:604
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+cudaconvert at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/compiler/execution.jl:200 [inlined]
+cached_alloc at /glade/u/home/reich/.julia/packages/GPUArrays/0F4Dn/src/host/alloc_cache.jl:36
+regridded_snapshot! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/DataHandlingExt.jl:666
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+map at ./tuple.jl:358 [inlined]
+CuArray at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/array.jl:91
+#evaluate!#11 at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:416
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+map at ./tuple.jl:358 [inlined]
+similar at ./abstractarray.jl:868 [inlined]
+evaluate! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:376 [inlined]
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+macro expansion at /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/compiler/execution.jl:110 [inlined]
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts.jl:56 [inlined]
+#evaluate!#7 at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:221 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+threads_via_occupancy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/cuda_utils.jl:207
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:564 [inlined]
+evaluate! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:201 [inlined]
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+#invokelatest#2 at ./essentials.jl:1055
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/ext/cuda/data_layouts_copyto.jl:42
+#invokelatest#2 at ./essentials.jl:1055
+#invokelatest#2 at ./essentials.jl:1055
+#invokelatest#2 at ./essentials.jl:1055
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/broadcast.jl:547 [inlined]
+#evaluate!#9 at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:250 [inlined]
+#invokelatest#2 at ./essentials.jl:1055
+#invokelatest#2 at ./essentials.jl:1055
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/DataLayouts/copyto.jl:17 [inlined]
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+#invokelatest#2 at ./essentials.jl:1055
+similar at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:220 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+evaluate! at /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/ext/TimeVaryingInputsExt.jl:243 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x14fea75595b2)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+copyto! at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:231 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+update_drivers! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/drivers.jl:1374
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+copy at /glade/u/home/reich/.julia/packages/ClimaCore/xDlva/src/Fields/broadcast.jl:118
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+invokelatest at ./essentials.jl:1052
+invokelatest at ./essentials.jl:1052
+materialize at ./broadcast.jl:872 [inlined]
+update_drivers! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/drivers.jl:1341
+unknown function (ip: 0x14ff127bc7cc)
+materialize at ./broadcast.jl:872 [inlined]
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+total_liq_water_vol_per_area! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:1317 [inlined]
+invokelatest at ./essentials.jl:1052
+#6 at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/utils.jl:295 [inlined]
+invokelatest at ./essentials.jl:1052
+_VPD_field at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/stomatalconductance.jl:233 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+#invokelatest#2 at ./essentials.jl:1055
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Soil/energy_hydrology.jl:754
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:224 [inlined]
+update_canopy_conductance! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/stomatalconductance.jl:338
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:229 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/standalone/Vegetation/Canopy.jl:1102
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+jacobian! at /glade/derecho/scratch/reich/ClimaLand.jl/src/shared_utilities/implicit_timestepping.jl:28 [inlined]
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+unrolled_foreach at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:230 [inlined]
+update_aux! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:193
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+invokelatest at ./essentials.jl:1052
+unknown function (ip: 0x152caab4ac6b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x1542ebf4ac6b)
+unknown function (ip: 0x1519e9f4ac2b)
+#96 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:143 [inlined]
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:255
+imp_tendency! at /glade/derecho/scratch/reich/ClimaLand.jl/src/ClimaLand.jl:162
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x15147634ac6b)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+unknown function (ip: 0x14e52cd4ad6b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:593 [inlined]
+#invokelatest#2 at ./essentials.jl:1055
+unknown function (ip: 0x15345e903c5b)
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+ODEFunction at /glade/u/home/reich/.julia/packages/SciMLBase/rvXrA/src/scimlfunctions.jl:2580 [inlined]
+unknown function (ip: 0x146551f03c6b)
+unknown function (ip: 0x152a6c94ac6b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+#95 at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:135
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+unknown function (ip: 0x152caab4a79f)
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x1542ebf4a79f)
+unknown function (ip: 0x1519e9f4a75f)
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/nl_solvers/newtons_method.jl:595 [inlined]
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x15147634a79f)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14e52cd4a89f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x15345e90378f)
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+unknown function (ip: 0x14c87835a2b2)
+solve_newton! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+invokelatest at ./essentials.jl:1052
+unknown function (ip: 0x146551f0379f)
+unknown function (ip: 0x152a6c94a79f)
+unknown function (ip: 0x1519a23039fb)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:138 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+unknown function (ip: (nil))
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+unknown function (ip: 0x14c8e35bc7ec)
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:93 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 43418988840 (Pool: 43364716123; Big: 54272717); GC: 23916
+unknown function (ip: (nil))
+Allocations: 43418661410 (Pool: 43364389115; Big: 54272295); GC: 32091
+Allocations: 43430983093 (Pool: 43376710153; Big: 54272940); GC: 33590
+unknown function (ip: (nil))
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+update_stage! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:96 [inlined]
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+unknown function (ip: (nil))
+unknown function (ip: 0x1519a230352f)
+unknown function (ip: (nil))
+Allocations: 43425996581 (Pool: 43371725324; Big: 54271257); GC: 33611
+Allocations: 43429246068 (Pool: 43374973414; Big: 54272654); GC: 24469
+Allocations: 43417909465 (Pool: 43363638135; Big: 54271330); GC: 29688
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+step_u! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/solvers/imex_ark.jl:71
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+Allocations: 43417551919 (Pool: 43363281107; Big: 54270812); GC: 32787
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+Allocations: 43418511194 (Pool: 43364239102; Big: 54272092); GC: 23774
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:265 [inlined]
+unknown function (ip: 0x14ff1274ac3b)
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+step_u! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+unknown function (ip: (nil))
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+__step! at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:242
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+Allocations: 43423535510 (Pool: 43369264584; Big: 54270926); GC: 33328
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+macro expansion at /glade/u/home/reich/.julia/packages/ClimaTimeSteppers/o2zml/src/integrators.jl:187 [inlined]
+unknown function (ip: 0x14ff1274a76f)
+unknown function (ip: 0x151837d5a202)
+solve! at /glade/u/home/reich/.julia/packages/NVTX/F7ji4/src/macro.jl:194
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+solve! at /glade/derecho/scratch/reich/ClimaLand.jl/src/simulations/Simulations.jl:321
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: 0x1518a6f757dc)
+unknown function (ip: 0x14eeb295ed82)
+unknown function (ip: (nil))
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:325
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+Allocations: 43424150343 (Pool: 43369877700; Big: 54272643); GC: 33254
+unknown function (ip: 0x14ef1d9bc7ac)
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x1518a6f03c5b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x1518a6f0378f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+#invokelatest#2 at ./essentials.jl:1055
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+unknown function (ip: 0x14ef1d94ac5b)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+unknown function (ip: (nil))
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+Allocations: 43437702836 (Pool: 43383430786; Big: 54272050); GC: 23986
+unknown function (ip: 0x14ef1d94a78f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 43419067226 (Pool: 43364794491; Big: 54272735); GC: 23242
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14c8e354ac5b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x14c8e354a78f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 42021743621 (Pool: 41969243904; Big: 52499717); GC: 31538

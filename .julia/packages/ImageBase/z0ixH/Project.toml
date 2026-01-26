@@ -1,0 +1,27 @@
+name = "ImageBase"
+uuid = "c817782e-172a-44cc-b673-b171935fbb9e"
+version = "0.1.7"
+
+[deps]
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+
+[compat]
+ImageCore = "0.10"
+Reexport = "0.2, 1"
+julia = "1.6"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
+ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+StackViews = "cae243ae-269e-4f55-b966-ac2d0dc13c15"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestImages = "5e47fb64-e119-507b-a336-dd2b206d9990"
+
+[targets]
+test = ["Aqua", "Documenter", "Test", "ImageFiltering", "ImageIO", "ImageMagick", "OffsetArrays", "Statistics", "StackViews", "TestImages"]

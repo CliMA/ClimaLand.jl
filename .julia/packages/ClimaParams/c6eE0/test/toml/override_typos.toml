@@ -1,0 +1,7 @@
+[light_spede]
+value = 10.0
+type = "float"
+
+[light_speed]
+value = 10000.0
+type = "float"

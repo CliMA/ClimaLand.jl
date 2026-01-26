@@ -1,0 +1,38 @@
+name = "PNGFiles"
+uuid = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
+authors = ["Ian Butterworth", "Tomáš Drvoštěp"]
+version = "0.4.4"
+
+[deps]
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+IndirectArrays = "9b13fd28-a010-5f03-acff-a1bbcff69959"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+libpng_jll = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
+
+[compat]
+CEnum = "0.2, 0.3, 0.4, 0.5"
+ImageCore = "0.8, 0.9, 0.10"
+# TODO(johnnychen94): remove direct ImageMagick_jll dependency after https://github.com/JuliaIO/ImageMagick.jl/issues/206 is fixed
+ImageMagick_jll = "= 6.9.10"
+IndirectArrays = "0.5, 1.0"
+OffsetArrays = "1.0"
+julia = "1.6"
+libpng_jll = "1.6.37"
+
+[extras]
+AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+ImageMagick_jll = "c73af94c-d91f-53ed-93a7-00f77d67a9d7"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestImages = "5e47fb64-e119-507b-a336-dd2b206d9990"
+
+[targets]
+test = ["AxisArrays", "Downloads", "Glob", "ImageMagick", "ImageMagick_jll", "Logging", "PaddedViews", "Random", "Tar", "Test", "TestImages"]

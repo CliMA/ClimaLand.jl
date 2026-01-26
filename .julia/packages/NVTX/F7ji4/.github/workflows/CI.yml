@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+
+jobs:
+  Linux:
+    strategy:
+      matrix:
+        julia_version:
+          - "1.10"
+          - "1"
+          - "nightly"
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      # based on https://github.com/pytorch/TensorRT/blob/10b9ecd488c10a79a19466df8509e7059ce27f02/.github/workflows/docgen.yml#L48-L64
+    - name: Install Nsight Systems
+      run: |
+        sudo apt-get update
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin
+        sudo mv cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600
+        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A4B469963BF863CC
+        sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/ /"
+        sudo apt-get update
+        sudo apt-get install -y nsight-systems-2025.1.3
+    - uses: actions/checkout@v4
+    - uses: julia-actions/setup-julia@latest
+      with:
+        version: ${{ matrix.julia_version }}
+    - uses: julia-actions/cache@v2
+    - uses: julia-actions/julia-buildpkg@latest
+    - uses: julia-actions/julia-runtest@latest
+    - uses: actions/upload-artifact@v4
+      with:
+        name: nsys ${{ matrix.julia_version }}
+        path: output/

@@ -1,0 +1,29 @@
+name = "MultiBroadcastFusion"
+uuid = "c3c07f87-98de-43f2-a76f-835b330b2cbb"
+authors = ["CliMA Contributors <clima-software@caltech.edu>"]
+version = "0.3.3"
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+
+[extensions]
+MultiBroadcastFusionCUDAExt = ["CUDA", "Adapt"]
+
+[compat]
+julia = "^1.9"
+Adapt = "3, 4"
+CUDA = "5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+
+[targets]
+test = ["Test", "Dates", "PrettyTables", "CUDA", "Adapt", "SafeTestsets", "BenchmarkTools", "InteractiveUtils"]

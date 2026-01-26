@@ -1,0 +1,10 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+docs/*.dot
+docs/build/
+docs/site/
+.Rproj.user
+Manifest.toml
+todo.md
+/LocalPreferences.toml

@@ -1,0 +1,17 @@
+#Mac OS X
+*.DS_Store
+
+#VS Code
+/.vscode/
+
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/Manifest.toml
+/test/Manifest.toml
+/.envrc
+/deps/deps.jl
+/deps/build.log
+/deps/lib
+/deps/src
+/deps/usr

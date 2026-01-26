@@ -1,0 +1,4 @@
+[deps]
+Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
+AliasTables = "66dad0bd-aa9a-41b7-9441-69ab47430ed8"
+RegressionTests = "2cca1867-674a-4323-b559-fc77c0bbdb31"

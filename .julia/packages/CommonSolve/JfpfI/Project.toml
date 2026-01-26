@@ -1,0 +1,13 @@
+name = "CommonSolve"
+uuid = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com>"]
+version = "0.2.4"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

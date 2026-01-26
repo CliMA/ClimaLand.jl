@@ -1,0 +1,14 @@
+name = "CodecBzip2"
+uuid = "523fee87-0ab8-5b00-afb7-3ecf72e48cfd"
+license = "MIT"
+authors = ["Kenta Sato <bicycle1885@gmail.com>"]
+version = "0.8.5"
+
+[deps]
+Bzip2_jll = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
+TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+
+[compat]
+Bzip2_jll = "1.0.8"
+TranscodingStreams = "0.9, 0.10, 0.11"
+julia = "1.6"

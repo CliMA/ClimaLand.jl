@@ -1,0 +1,15 @@
+title: "MutableArithmetics: An API for mutable operations"
+keywords:
+  - Julia
+  - Optimization
+  - Performance
+  - Interface
+authors:
+  - name: Benoît Legat
+    orcid: 0000-0002-5921-368X
+    affiliation: 1
+affiliations:
+  - name: KU Leuven
+    index: 1
+date: 29 July 2021
+bibliography: ref.bib

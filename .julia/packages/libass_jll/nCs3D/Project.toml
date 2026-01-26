@@ -1,0 +1,22 @@
+name = "libass_jll"
+uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
+version = "0.17.4+0"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+Bzip2_jll = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
+Zlib_jll = "83775a58-1f1d-513f-b197-d71354ab007a"
+FreeType2_jll = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+HarfBuzz_jll = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+FriBidi_jll = "559328eb-81f9-559d-9380-de523a88c83c"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.6"
+Bzip2_jll = "1.0.9"
+FreeType2_jll = "2.13.4"
+Libdl = "< 0.0.1, 1"
+HarfBuzz_jll = "8.5.1"
+Artifacts = "< 0.0.1, 1"

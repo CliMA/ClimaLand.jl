@@ -1,0 +1,42 @@
+name = "ArrayLayouts"
+uuid = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
+authors = ["Sheehan Olver <solver@mac.com>"]
+version = "1.12.0"
+
+[deps]
+FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[weakdeps]
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[extensions]
+ArrayLayoutsSparseArraysExt = "SparseArrays"
+
+[compat]
+Aqua = "0.8"
+FillArrays = "1.2.1"
+Infinities = "0.1"
+JLArrays = "0.2"
+LinearAlgebra = "1"
+Quaternions = "0.7"
+Random = "1"
+SparseArrays = "1"
+StableRNGs = "1"
+StaticArrays = "1"
+Test = "1"
+julia = "1.10"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Infinities = "e1ba4f0e-776d-440f-acd9-e1d2e9742647"
+JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
+Quaternions = "94ee1d12-ae83-5a48-8b1c-48b8ff168ae0"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "Infinities", "JLArrays", "Quaternions", "Random", "StableRNGs", "SparseArrays", "Test"]

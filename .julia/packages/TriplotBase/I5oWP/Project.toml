@@ -1,0 +1,7 @@
+name = "TriplotBase"
+uuid = "981d1d27-644d-49a2-9326-4793e63143c3"
+authors = ["Will Pazner <will.e.p@gmail.com>"]
+version = "0.1.0"
+
+[compat]
+julia = "1"

@@ -1,0 +1,37 @@
+agents:
+  queue: new-central
+  slurm_mem: 8G
+  modules: climacommon/2025_03_18
+  slurm_time: '00:25:00'
+
+env:
+  OPENBLAS_NUM_THREADS: 1
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+
+steps:
+  - label: "init environment :computer:"
+    key: "init_env"
+    command:
+      - echo "--- Instantiate test env"
+      - julia --project=test -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true); Pkg.status()'
+    agents:
+      slurm_ntasks: 1
+      slurm_gpus: 1
+
+  - wait
+
+  - label: "CPU tests"
+    command:
+      - "julia --project=test test/runtests.jl"
+    agents:
+      slurm_ntasks: 1
+    timeout_in_minutes: 60
+
+  - label: "GPU tests"
+    command:
+      - "julia --project=test test/runtests.jl CuArray"
+    agents:
+      slurm_ntasks: 1
+      slurm_gpus: 1
+      slurm_mem: 16G
+    timeout_in_minutes: 60

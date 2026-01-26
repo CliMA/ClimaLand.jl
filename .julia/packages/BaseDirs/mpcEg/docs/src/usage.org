@@ -1,0 +1,218 @@
+#+title: Usage
+
+* Summary
+
+This library works by resolving a few key directories and saving the results to
+variables, namely:
++ Data, [[@ref BaseDirs.DATA_HOME][=DATA_HOME=]] and [[@ref BaseDirs.DATA_DIRS][=DATA_DIRS=]]
++ Config, with [[@ref CONFIG_HOME][=CONFIG_HOME=]] and [[@ref BaseDirs.CONFIG_DIRS][=CONFIG_DIRS=]]
++ Executables, with [[@ref BaseDirs.BIN_HOME][=BIN_HOME=]]
++ State data, with [[@ref BaseDirs.STATE_HOME][=STATE_HOME=]]
++ Cached data, with [[@ref BaseDirs.CACHE_HOME][=CACHE_HOME=]]
++ Runtime data, with [[@ref BaseDirs.RUNTIME_DIR][=RUNTIME_DIR=]]
+
+While it is possible to use these variables directly, it is recommended that you
+make use of the accessor functions instead, which all follow this pattern:
+
+#+begin_src julia
+accessor() # Give the base directory(ies)
+accessor(parts...) # Give the base directory(ies) joined with parts
+accessor(proj::Project) # Give the base directory(ies) for proj
+accessors(proj::Project, parts...) # proj directory(ies) joined with parts
+#+end_src
+
+Where ~accessor~ is a stand-in for the particular named directory being resolved.
+Two boolean keyword arguments are often supported:
++ =create=, to create the path when it does not exist. This is different to simply
+  piping the returned path into ~mkpath~ in that it:
+  a. Takes care to create the base directory with the appropriate mode (=700=)
+  b. Creates the directory component of the path with the default mode (usually =755=)
+  c. If the path is to a file (i.e. the path does not end with =/=), ~touch~​es the file.
++ =existent=, to filter the list of provided paths to ones that exist (when applicable)
+
+To give appropriate project-specific directories we can use a [[@ref][=BaseDirs.Project=]]:
+
+#+begin_src @docs
+BaseDirs.Project
+#+end_src
+
+The user and system forms of the various accessor functions are split into the
+ =User= and =System= modules, with combined accessors in the =XDG= namespace.
+ This essentially creates a tree of accessor functions:
+
++ User
+  - ~data~
+  - ~config~
+  - ~bin~
+  - ~state~
+  - ~cache~
+  - ~runtime~
+  - ~fonts~
+  - ~applications~
++ System
+  - ~data~
+  - ~config~
+  - ~fonts~
+  - ~applications~
++ ~data~
++ ~config~
++ ~fonts~
++ ~applications~
+
+The =User= submodule also provides a number of other "user folder" accessors, namely:
++ ~desktop~
++ ~downloads~
++ ~documents~
++ ~music~
++ ~pictures~
++ ~videos~
++ ~templates~
++ ~public~
+
+* Example usage
+
+#+begin_src julia-repl
+julia> using BaseDirs
+
+julia> BaseDirs.CONFIG_HOME
+"/home/tec/.config"
+
+julia> BaseDirs.User.config()
+"/home/tec/.config"
+
+julia> BaseDirs.User.config("sub", "dir/")
+"/home/tec/.config/sub/dir/"
+
+julia> BaseDirs.User.config(BaseDirs.Project("mything"), "config.conf", create=true)
+"/home/tec/.config/mything/config.conf"
+#+end_src
+
+* Variables
+
+#+begin_warning
+While listed for reference, these variables are not part of the public API.
+#+end_warning
+
+** Base directories
+
+#+begin_src @docs
+BaseDirs.DATA_HOME
+BaseDirs.DATA_DIRS
+BaseDirs.CONFIG_HOME
+BaseDirs.CONFIG_DIRS
+BaseDirs.BIN_HOME
+BaseDirs.STATE_HOME
+BaseDirs.CACHE_HOME
+BaseDirs.RUNTIME_DIR
+#+end_src
+
+** User directories
+
+#+begin_src @docs
+BaseDirs.DESKTOP_DIR
+BaseDirs.DOWNLOAD_DIR
+BaseDirs.DOCUMENTS_DIR
+BaseDirs.PICTURES_DIR
+BaseDirs.VIDEOS_DIR
+BaseDirs.TEMPLATES_DIR
+BaseDirs.PUBLICSHARE_DIR
+#+end_src
+
+** Other directories
+
+#+begin_src @docs
+BaseDirs.APPLICATIONS_DIRS
+BaseDirs.FONTS_DIRS
+#+end_src
+
+* Functions
+** User
+
+#+begin_src @docs
+BaseDirs.User
+BaseDirs.User.data
+BaseDirs.User.config
+BaseDirs.User.bin
+BaseDirs.User.state
+BaseDirs.User.cache
+BaseDirs.User.runtime
+#+end_src
+
+-----
+
+#+begin_src @docs
+BaseDirs.User.desktop
+BaseDirs.User.downloads
+BaseDirs.User.documents
+BaseDirs.User.music
+BaseDirs.User.pictures
+BaseDirs.User.videos
+BaseDirs.User.templates
+BaseDirs.User.public
+#+end_src
+
+-----
+
+#+begin_src @docs
+BaseDirs.User.fonts
+BaseDirs.User.applications
+#+end_src
+
+** System
+
+#+begin_src @docs
+BaseDirs.System
+BaseDirs.System.data
+BaseDirs.System.config
+BaseDirs.System.fonts
+BaseDirs.System.applications
+#+end_src
+
+** Combined
+
+#+begin_src @docs
+BaseDirs.data
+BaseDirs.config
+BaseDirs.fonts
+BaseDirs.applications
+#+end_src
+* Precompilation
+
+Since these directories are resolved using runtime information, as tempting and
+easy as it may be to include a snippet like this in your package:
+
+#+begin_src julia
+const MY_CACHE = BaseDirs.User.cache(BaseDirs.Project("MyPkg"))
+#+end_src
+
+When this is evaluated during precompilation, it "bakes in" the runtime
+environment at that particular point in time, making the result potentially
+invalid in the future (and no longer relocatable).
+
+In response to this risk, BaseDirs aggressively warns when calls that use
+runtime information are evaluated during precompilation. Excpect to see a
+message like this in response to any potential misuse:
+
+#+begin_src text
+┌ Warning: A base directory is being computed during precompilation.
+│ This is dangerous, as results depend on the live system configuration.
+│
+│ It is recommended that you invoke BaseDirs as required in
+│ function bodies, rather than at the top level. Calls are very
+│ cheap, and you can always pass the result of a live call around.
+│
+│ If you have verified that this call was not assigned to a global constant,
+│ you can silence this warning with BaseDirs.@promise_no_assign.
+└ @ BaseDirs ~/.julia/dev/MyPkg/src/MyPkg.jl:42
+#+end_src
+
+Note that the path displayed at the end of the warning
+(=~/.julia/dev/MyPkg/src/MyPkg.jl:42= in the example) identifies the suspicious
+callsite in =MyPkg=, rather than the line within BaseDirs that produces the
+warning. If you've checked how this call occurs and verified it's unfounded, you
+can suppress spurious warnings by wrapping the parent call in the precompilation
+workload with ~@promise_no_assign~.
+
+#+begin_src @docs
+BaseDirs.@promise_no_assign
+#+end_src

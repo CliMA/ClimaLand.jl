@@ -1,0 +1,51 @@
+#+title: BaseDirs
+
+This package exists to help you /put and look for files in the appropriate place(s)/.
+
+It is essentially an implementation of the XDG (Cross-Desktop Group) directory
+specifications, with analogues for Windows and MacOS for cross-platform. More
+specifically, this is a hybrid of:
++ The [[https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html][XDG base directory]] and the [[https://www.freedesktop.org/wiki/Software/xdg-user-dirs/][XDG user directory]] specifications on Linux
++ The [[https://msdn.microsoft.com/en-us/library/windows/desktop/dd378457.aspx][Known Folder]] API on Windows
++ The [[https://developer.apple.com/library/content/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW6][Standard Directories]] guidelines on macOS
+
+* Why should I care?
+
+It may be easy to treat file paths haphazardly, but for the user in particular
+abiding by the standards/conventions of the their platform has a number of major
+benefits, such as:
++ Improved ease of backups, since it is easier to make rules for which folders
+  need to be backed up.
++ Improved configuration portability, since it is easier to identify and share
+  the relevant configuration files.
++ Ease of isolating application state, by containing state to a single directory
+  it is easy to avoid sharing it.
++ Decreased reliance on hard-coded paths, improving flexibility and composability.
+
+It is worth noting that these considerations apply to /both/ graphical and
+command-line desktop applications.
+
+* Choosing the appropriate base directory
+
+[[file:xdg-flowchart.svg]]
+
+Alternatively, here's a series of criteria for each base directory:
++ *Runtime* data is /volatile/, and only relevant to the current user session.
+  It should be user-specific and non-essential. For example: sockets, named
+  pipes, or lockfiles.
++ *Cache* data is non-essential and can be recreated without data loss. For
+  example: thumbnails, compiled bytecode, font paths, or other cached data.
++ *State* data relates to application state, that should persist across sessions
+  but doesn't need to be backed up. For example: logs, recently opened files, or
+  other session data.
++ *Config* data is user-specific customisations to application behaviour. For
+  example: theme settings, custom keybindings, media preferences, or other
+  configuration.
++ *Data* content should be used for general application data. For example: saved
+  game progress, library metadata, templates, or other
+  user-specific/user-generated data.
++ *Bin* data is specifically executable files intended to be run by the user.
+
+Essential information (that you'd want to include in backups) should be split
+across *config* and *data*. Information in *state* may be nice to have, but is
+non-essential.

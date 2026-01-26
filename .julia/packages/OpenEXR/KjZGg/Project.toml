@@ -1,0 +1,15 @@
+name = "OpenEXR"
+uuid = "52e1d378-f018-4a11-a4be-720524705ac7"
+authors = ["Tracy Wadleigh <tracy.wadleigh@gmail.com>"]
+version = "0.3.3"
+
+[deps]
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+OpenEXR_jll = "18a262bb-aa17-5467-a713-aee519bc75cb"
+
+[compat]
+Colors = "0.10, 0.11, 0.12, 0.13"
+FileIO = "1"
+OpenEXR_jll = "3.1"
+julia = "1.3"

@@ -1,0 +1,803 @@
+julia_worker:9676#10.169.152.18
+julia_worker:9422#10.169.152.22
+julia_worker:9317#10.169.152.6
+julia_worker:9034#10.169.152.55
+julia_worker:9177#10.169.152.33
+julia_worker:9712#10.169.152.27
+julia_worker:9416#10.169.152.8
+julia_worker:9808#10.169.152.53
+julia_worker:9462#10.169.152.15
+julia_worker:9097#10.169.152.5
+julia_worker:9147#10.169.152.13
+julia_worker:9469#10.169.152.9
+julia_worker:9257#10.169.152.11
+julia_worker:9780#10.169.152.3
+julia_worker:9776#10.169.152.23
+julia_worker:9980#10.169.152.1
+julia_worker:9432#10.169.152.4
+=>> PBS: job killed: walltime 41416 exceeded limit 41400
+
+[121676] signal 15: Terminated
+in expression starting at none:0
+& at ./bool.jl:38 [inlined]
+< at ./float.jl:660 [inlined]
+> at ./operators.jl:379
+unknown function (ip: 0x145f644e25bd)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:126 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x145f644dc75f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 32687539420 (Pool: 32687535011; Big: 4409); GC: 17347
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41425 exceeded limit 41400
+
+[27422] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1455e98decc3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1455e98dc59f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 33386348308 (Pool: 33386343892; Big: 4416); GC: 17760
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41423 exceeded limit 41400
+
+[128034] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1479844deb13)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1479844dc50f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 35373206572 (Pool: 35373202159; Big: 4413); GC: 18784
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41444 exceeded limit 41400
+
+[105317] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1543172de983)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1543172dc2af)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 35662448780 (Pool: 35662444372; Big: 4408); GC: 19073
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41439 exceeded limit 41400
+
+[32177] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1501aeaded53)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1501aeadc62f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 35109954250 (Pool: 35109949835; Big: 4415); GC: 18679
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41433 exceeded limit 41400
+
+[13712] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x149ea6adeca3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x149ea6adc65f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 35868876218 (Pool: 35868871816; Big: 4402); GC: 18613
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41445 exceeded limit 41400
+
+[36416] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x14eb114dea33)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x14eb114dc36f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 35889198798 (Pool: 35889194389; Big: 4409); GC: 19019
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41439 exceeded limit 41400
+
+[31808] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x14b84ccde2c3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x14b84ccdbcaf)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36850977048 (Pool: 36850972637; Big: 4411); GC: 19395
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41430 exceeded limit 41400
+
+[66147] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x14a0aa8de923)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x14a0aa8dc2df)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36935763338 (Pool: 36935758930; Big: 4408); GC: 18518
+=>> PBS: job killed: walltime 41429 exceeded limit 41400
+
+[117780] signal 15: Terminated
+in expression starting at none:0
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x14f8a3adb9b3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x14f8a3ad93af)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 37119155355 (Pool: 37119150946; Big: 4409); GC: 19821
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41433 exceeded limit 41400
+
+[129469] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x151682191b03)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x15168218f4ff)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36746114306 (Pool: 36746109893; Big: 4413); GC: 19033
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41440 exceeded limit 41400
+
+[5776] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x149714cdeb33)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x149714cdc54f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36691294019 (Pool: 36691289612; Big: 4407); GC: 20008
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41443 exceeded limit 41400
+
+[56257] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1548794decc3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1548794dc67f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36990428826 (Pool: 36990424416; Big: 4410); GC: 20659
+=>> PBS: job killed: walltime 41443 exceeded limit 41400
+
+[101462] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1484e1b91d43)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1484e1b8f72f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 37063190660 (Pool: 37063186251; Big: 4409); GC: 19250
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41444 exceeded limit 41400
+
+[9097] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x150594591aa3)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:106 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x15059458f48f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36845059496 (Pool: 36845055089; Big: 4407); GC: 19383
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41443 exceeded limit 41400
+
+[82980] signal 15: Terminated
+in expression starting at none:0
+jl_gc_pool_alloc_inner at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/gc.c:1315
+jl_gc_alloc_ at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia_internal.h:523 [inlined]
+ijl_box_float32 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/datatype.c:1417
+unknown function (ip: 0x152cae6e18aa)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:117 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x152cae6dbc9f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 36416242538 (Pool: 36416238129; Big: 4409); GC: 19845
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+=>> PBS: job killed: walltime 41449 exceeded limit 41400
+
+[110432] signal 15: Terminated
+in expression starting at none:0
+__pread64 at /lib64/libc.so.6 (unknown line)
+H5FD__sec2_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5FD_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F__accum_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5PB_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5F_shared_block_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv_sieve_cb at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VM_opvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_readvv at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_io at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__select_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__contig_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL__native_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5VL_dataset_read at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5D__read_api_common.constprop.2 at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+H5Dread at /glade/u/home/reich/.julia/artifacts/9b09fc37349cf0740348c093643ead0b6346ae60/lib/libhdf5.so (unknown line)
+NC4_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+NC_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars at /glade/u/home/reich/.julia/artifacts/fe74c5e3593f8169484884c06d91da140792084f/lib/libnetcdf.so (unknown line)
+nc_get_vars! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/netcdf_c.jl:1048
+_read_data_from_nc! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:407
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock! at /glade/u/home/reich/.julia/packages/NCDatasets/xJGTj/src/variable.jl:395
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+readblock_checked! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:294
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+getindex_disk_nobatch! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:110
+getindex_disk! at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:69 [inlined]
+getindex_disk at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:58 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/DiskArrays/WgDSb/src/indexing.jl:312 [inlined]
+getindex at /glade/u/home/reich/.julia/packages/CommonDataModel/xg2OM/src/cfvariable.jl:452
+unknown function (ip: 0x1473720deb23)
+macro expansion at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/calculate_CWD.jl:105 [inlined]
+#131#threadsfor_fun#4 at ./threadingconstructs.jl:253
+#131#threadsfor_fun at ./threadingconstructs.jl:220 [inlined]
+#1 at ./threadingconstructs.jl:154
+unknown function (ip: 0x1473720dc4df)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+unknown function (ip: (nil))
+Allocations: 38236999403 (Pool: 38236994995; Big: 4408); GC: 17997
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.

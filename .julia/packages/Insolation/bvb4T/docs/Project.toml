@@ -1,0 +1,9 @@
+[deps]
+ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Formatting = "59287772-0a20-5a39-b81b-1366585eb4c0"
+Insolation = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"

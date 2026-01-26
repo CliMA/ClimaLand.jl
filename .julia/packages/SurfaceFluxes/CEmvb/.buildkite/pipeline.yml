@@ -1,0 +1,51 @@
+agents:
+  queue: new-central
+  slurm_mem: 8G
+  modules: climacommon/2024_10_09
+
+env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite"
+  OPENBLAS_NUM_THREADS: 1
+  JULIA_NVTX_CALLBACKS: gc
+  OMPI_MCA_opal_warn_on_missing_libcuda: 0
+
+steps:
+  - label: "init cpu env"
+    key: "init_cpu_env"
+    command:
+      - "echo $JULIA_DEPOT_PATH"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true); Pkg.precompile()'"
+      - "julia --project=test/ -e 'using Pkg; Pkg.develop(path=\".\"); Pkg.instantiate(;verbose=true); Pkg.precompile(); '"
+    agents:
+      partition: expansion
+      slurm_ntasks: 1
+
+  - label: "init gpu env"
+    key: "init_gpu_env"
+    command:
+      - "echo $JULIA_DEPOT_PATH"
+      - "julia --project=test/ -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test/ -e 'using Pkg; Pkg.develop(path=\".\"); Pkg.instantiate(;verbose=true); Pkg.precompile(); '"
+      - "julia --project=test/ -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia --project=test/ -e 'using Pkg; Pkg.status()'"
+    agents:
+      partition: gpu
+      slurm_ntasks: 1
+      slurm_gres: "gpu:1"
+
+  - wait
+
+  - label: "CPU tests"
+    command:
+      - "julia --project=test --color=yes test/runtests.jl"
+    agents:
+      partition: expansion
+      slurm_ntasks: 1
+
+  - label: "GPU tests"
+    command:
+      - "julia --project=test --color=yes test/runtests_gpu.jl"
+    agents:
+      partition: gpu
+      slurm_ntasks: 1
+      slurm_gres: "gpu:1"

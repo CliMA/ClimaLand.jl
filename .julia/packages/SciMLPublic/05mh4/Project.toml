@@ -1,0 +1,14 @@
+name = "SciMLPublic"
+uuid = "431bcebd-1456-4ced-9d72-93c2757fff0b"
+authors = ["The Julia Project", "contributors"]
+version = "1.0.0"
+
+[compat]
+Test = "<0.0.1, 1"
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

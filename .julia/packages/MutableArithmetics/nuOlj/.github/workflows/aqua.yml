@@ -1,0 +1,37 @@
+name: aqua-lint
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1'
+      - uses: actions/checkout@v3
+      - name: Aqua
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.add(PackageSpec(name="Aqua"))
+          Pkg.develop(PackageSpec(path=pwd()))
+          using MutableArithmetics, Aqua
+          # Skip ambiguity test for now
+          Aqua.test_all(
+            MutableArithmetics;
+            ambiguities = (
+              exclude = [
+                # TODO(odow): These ones are suspect, and may be bugs.
+                MutableArithmetics.LinearAlgebra.mul!,
+                # These ones are probably safe to ignore because there are
+                # only called internally.
+                MutableArithmetics.buffered_operate_fallback!,
+                MutableArithmetics.buffered_operate_to_fallback!,
+                MutableArithmetics.promote_operation_fallback,
+              ],
+            ),
+          )

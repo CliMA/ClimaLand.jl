@@ -1,0 +1,6 @@
+[deps]
+DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "0.25"

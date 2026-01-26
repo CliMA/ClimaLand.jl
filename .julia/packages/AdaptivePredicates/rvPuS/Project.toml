@@ -1,0 +1,10 @@
+name = "AdaptivePredicates"
+uuid = "35492f91-a3bd-45ad-95db-fcad7dcfedb7"
+authors = ["Valentin Churavy <v.churavy@gmail.com> and Daniel VandenHeuvel <danj.vandenheuvel@gmail.com"]
+version = "1.2.0"
+
+[compat]
+julia = "1.6"
+
+[workspace]
+projects = ["test"]

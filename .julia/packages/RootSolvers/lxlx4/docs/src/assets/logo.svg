@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <line x1="70" y1="80" x2="150" y2="80" stroke="black" stroke-width="8" stroke-linecap="round"/>
+  <line x1="70" y1="80" x2="50" y2="150" stroke="black" stroke-width="8" stroke-linecap="round"/>
+  <line x1="50" y1="150" x2="40" y2="120" stroke="black" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- Two Julia-colored circles inside the square root symbol -->
+  <circle cx="90" cy="130" r="12" fill="#4063D8" stroke="white" stroke-width="2"/>
+  <circle cx="120" cy="100" r="12" fill="#389826" stroke="white" stroke-width="2"/>
+  
+  <!-- One Julia-colored circle outside the square root symbol -->
+  <circle cx="50" cy="80" r="8" fill="#CB3C33" stroke="white" stroke-width="2"/>
+</svg> 

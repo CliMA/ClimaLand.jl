@@ -1,0 +1,46 @@
+name = "FastPower"
+uuid = "a4df4552-cc26-4903-aec0-212e50a0e84b"
+authors = ["Chris Rackauckas <accounts@chrisrackauckas.com>"]
+version = "1.1.3"
+
+[deps]
+
+[weakdeps]
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
+MonteCarloMeasurements = "0987c9cc-fe09-11e8-30f0-b96dd679fdca"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+
+[extensions]
+FastPowerEnzymeExt = "Enzyme"
+FastPowerForwardDiffExt = "ForwardDiff"
+FastPowerMeasurementsExt = "Measurements"
+FastPowerMonteCarloMeasurementsExt = "MonteCarloMeasurements"
+FastPowerMooncakeExt = "Mooncake"
+FastPowerReverseDiffExt = "ReverseDiff"
+FastPowerTrackerExt = "Tracker"
+
+[compat]
+Enzyme = "0.13"
+ForwardDiff = "0.10, 1"
+Measurements = "2"
+MonteCarloMeasurements = "1"
+Mooncake = "0.4"
+ReverseDiff = "1"
+Tracker = "0.2"
+julia = "1.10"
+
+[extras]
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+EnzymeTestUtils = "12d8515a-0907-448a-8884-5fe00fdf1c5a"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Enzyme", "EnzymeTestUtils", "ForwardDiff", "Mooncake", "ReverseDiff", "Tracker"]

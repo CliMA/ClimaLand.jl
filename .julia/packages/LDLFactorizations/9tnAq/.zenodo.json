@@ -1,0 +1,27 @@
+{
+  "description": "A translation of Tim Davis's concise LDL factorization",
+  "title": "LDLFactorizations.jl",
+  "upload_type": "software",
+  "publication_date": "2019-02-07",
+  "creators": [
+    {
+      "affiliation": "École Polytechnique/GERAD - Montréal",
+      "name": "Dominique Orban"
+    }
+  ],
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "scheme": "url",
+      "identifier": "https://github.com/JuliaSmoothOptimizers/LDLFactorizations.jl/releases/latest",
+      "relation": "isSupplementTo"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Abel Soares Siqueira",
+      "type": "Researcher"
+    }
+  ],
+  "license": "LGPL-3.0"
+}

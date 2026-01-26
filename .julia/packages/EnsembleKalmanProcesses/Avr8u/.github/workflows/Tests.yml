@@ -1,0 +1,48 @@
+name: Run Tests
+
+on:
+  pull_request:
+  push:
+    tags: '*'
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false #don't cancel all jobs if one fails
+      matrix:
+        version:
+          - 'lts' # Long-Term Support release
+          - '1' # Latest 1.x release of julia
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest
+    steps:
+      - uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - run: julia --project -e 'using Pkg; Pkg.update()' #windows in particular sometimes doesnt update packages
+      - uses: julia-actions/julia-buildpkg@v1
+        
+      - uses: julia-actions/julia-runtest@v1
+      - name: Generate coverage file
+        run: julia --project -e 'using Pkg; Pkg.add("Coverage");
+                                 using Coverage;
+                                 LCOV.writefile("coverage-lcov.info", Codecov.process_folder())'
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Submit coverage
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+
+  test_success:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - run: echo "All tests passed"

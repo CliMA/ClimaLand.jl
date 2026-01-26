@@ -1,0 +1,6 @@
+*.cov
+*.mem
+data/*.json
+Manifest.toml
+test/jsonchecker/**
+test/JSONTestSuite/**

@@ -1,0 +1,97 @@
+steps:
+  - label: "CUDA.jl {{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1.10"
+          - "1.11"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.version}}"
+    command: |
+      julia -e 'using Pkg
+
+                println("--- :julia: Instantiating environment")
+                Pkg.add("CUDA")
+                Pkg.develop(PackageSpec(name="Atomix", path="."))
+
+                println("+++ :julia: Running tests")
+                Pkg.test("Atomix", test_args=["--CUDA"])'
+    agents:
+      queue: "juliagpu"
+      cuda: "*"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 15
+
+  - label: "Metal.jl {{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1.10"
+          - "1.11"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.version}}"
+    command: |
+      julia -e 'using Pkg
+
+                println("--- :julia: Instantiating environment")
+                Pkg.add("Metal")
+                Pkg.develop(PackageSpec(name="Atomix", path="."))
+
+                println("+++ :julia: Running tests")
+                Pkg.test("Atomix", test_args=["--Metal"])'
+    agents:
+      queue: "juliaecosystem"
+      os: "macos"
+      arch: "aarch64"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 15
+
+  - label: "oneAPI.jl {{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1.10"
+          - "1.11"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.version}}"
+    command: |
+      julia -e 'using Pkg
+
+                println("--- :julia: Instantiating environment")
+                Pkg.add("oneAPI")
+                Pkg.develop(PackageSpec(name="Atomix", path="."))
+
+                println("+++ :julia: Running tests")
+                Pkg.test("Atomix", test_args=["--oneAPI"])'
+    agents:
+      queue: "juliagpu"
+      intel: "*"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 15
+
+  - label: "OpenCL.jl {{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1.10"
+          - "1.11"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.version}}"
+    command: |
+      julia -e 'using Pkg
+
+                println("--- :julia: Instantiating environment")
+                Pkg.add(["OpenCL", "pocl_jll"])
+                Pkg.develop(PackageSpec(name="Atomix", path="."))
+
+                println("+++ :julia: Running tests")
+                Pkg.test("Atomix", test_args=["--OpenCL"])'
+    agents:
+      queue: "juliagpu"
+      intel: "*"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 15

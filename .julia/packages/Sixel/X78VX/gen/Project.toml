@@ -1,0 +1,7 @@
+[deps]
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+libsixel_jll = "075b6546-f08a-558a-be8f-8157d0f608a5"
+
+[compat]
+Clang = "0.14"
+libsixel_jll = "1.8"

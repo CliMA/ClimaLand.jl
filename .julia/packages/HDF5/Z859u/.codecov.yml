@@ -1,0 +1,14 @@
+comment: false
+
+ignore:
+  - "src/api/functions.jl"
+
+coverage:
+  range: 0..100
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        threshold: 1%
+    patch: off  # off as it yells about everything

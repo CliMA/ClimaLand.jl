@@ -1,0 +1,6 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+*.ji
+benchmark/params.json
+Manifest.toml

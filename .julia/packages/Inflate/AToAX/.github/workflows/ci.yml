@@ -1,0 +1,51 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags: '*'
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.0' # Minimum Julia version.
+          - '1.6' # Julia LTS version.
+          - '1'   # Expands to latest 1.x.
+          - 'nightly'
+        os:
+          - ubuntu-latest
+          - macos-13
+          - windows-latest
+        arch:
+          - x64
+        include:
+          - os: ubuntu-latest
+            version: '1'
+            arch: x86
+          - os: macos-latest
+            version: '1'
+            arch: aarch64
+          - os: macos-latest
+            version: 'nightly'
+            arch: aarch64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v4
+        with:
+          file: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,0 +1,19 @@
+name = "ExproniconLite"
+uuid = "55351af7-c7e9-48d6-89ff-24e801d99491"
+authors = ["Roger-luo <rogerluo.rl18@gmail.com> and contributors"]
+version = "0.10.14"
+
+[deps]
+
+[compat]
+Aqua = "0.5"
+julia = "1.6"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+MLStyle = "d8e11817-5142-5d16-987a-aa16d5891078"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Documenter", "Aqua", "MLStyle"]

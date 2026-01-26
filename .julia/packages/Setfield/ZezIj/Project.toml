@@ -1,0 +1,28 @@
+name = "Setfield"
+uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+version = "1.1.2"
+
+[deps]
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+Future = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+
+[compat]
+ConstructionBase = "0.1, 1.0"
+StaticArraysCore = "1"
+MacroTools = "0.4.4, 0.5"
+julia = "1.6"
+
+[extras]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+PerformanceTestTools = "dc46b164-d16f-48ec-a853-60448fc869fe"
+QuickTypes = "ae2dfa86-617c-530c-b392-ef20fdad97bb"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StaticNumbers = "c5e4b96a-f99f-5557-8ed2-dc63ef9b5131"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Documenter", "PerformanceTestTools", "QuickTypes", "StaticArrays", "BenchmarkTools", "InteractiveUtils", "StaticNumbers"]

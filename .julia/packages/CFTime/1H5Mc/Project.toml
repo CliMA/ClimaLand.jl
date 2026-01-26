@@ -1,0 +1,15 @@
+name = "CFTime"
+uuid = "179af706-886a-5703-950a-314cd64e0468"
+keywords = ["time", "calendar", "netcdf", "climate and forecast conventions", "oceanography", "meteorology", "climatology", "opendap"]
+license = "MIT"
+desc = "Julia library for decoding time units conforming to the Climate and Forecasting (CF) netCDF conventions"
+version = "0.2.4"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[compat]
+Dates = "1"
+Printf = "1"
+julia = "1.6"

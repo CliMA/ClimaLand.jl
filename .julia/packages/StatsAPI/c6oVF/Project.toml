@@ -1,0 +1,16 @@
+name = "StatsAPI"
+uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
+authors = ["Milan Bouchet-Valat <nalimilan@club.fr"]
+version = "1.7.1"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

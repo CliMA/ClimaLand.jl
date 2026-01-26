@@ -1,0 +1,8 @@
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Jieko = "ae98c720-c025-4a4a-838c-29b094483192"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
+Moshi = "2e0e35c7-a2e4-4343-998d-7ef72827ed2d"
+
+[compat]
+Jieko = "0.2"

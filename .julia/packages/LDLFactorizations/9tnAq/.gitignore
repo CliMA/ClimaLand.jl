@@ -1,0 +1,4 @@
+benchmark/Manifest.toml
+.vs
+.vscode
+docs/build/

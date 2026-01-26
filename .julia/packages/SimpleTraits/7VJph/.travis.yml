@@ -1,0 +1,14 @@
+language: julia
+os:
+  - linux
+  - osx
+julia:
+  - 1.0
+  - nightly
+matrix:
+  allow_failures:
+    - julia: nightly
+notifications:
+  email: false
+script:
+  - julia -e 'using Pkg; Pkg.build(); Pkg.test(; coverage=false);'

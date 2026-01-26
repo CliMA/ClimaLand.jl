@@ -1,0 +1,49 @@
+agents:
+  queue: new-central
+  slurm_mem: 8G
+  modules: climacommon/2025_03_18
+
+env:
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  SLURM_KILL_BAD_EXIT: 1
+
+steps:
+  - label: "init :computer:"
+    key: "init_cpu_env"
+    command:
+      - "echo $$JULIA_DEPOT_PATH"
+
+      - echo "--- Instantiate project"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(; path = \".\")'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile()'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_cpus_per_task: 8
+      slurm_gpus: 1
+
+  - wait
+
+  - label: "Run tests on CPU"
+    key: "cpu_tests"
+    command:
+      - "julia --color=yes --project=.buildkite test/runtests.jl"
+
+  - label: "Run tests on GPU"
+    key: "gpu_tests"
+    command:
+      - "julia --color=yes --project=.buildkite test/runtests.jl"
+    env:
+      CLIMACOMMS_DEVICE: "CUDA"
+    agents:
+      slurm_gpus: 1
+
+  - label: "Run tests with MPI"
+    key: "mpi_tests"
+    command:
+      - "srun julia --color=yes --project=.buildkite test/integration_test.jl"
+    env:
+      CLIMACOMMS_CONTEXT: "MPI"
+    agents:
+      slurm_ntasks: 2
+    timeout_in_minutes: 20
