@@ -1,0 +1,12 @@
+name = "ScopedValues"
+uuid = "7e506255-f358-4e82-b7e4-beb19740aa63"
+authors = ["Valentin Churavy <v.churavy@gmail.com>"]
+version = "1.5.0"
+
+[deps]
+HashArrayMappedTries = "076d061b-32b6-4027-95e0-9a2c6f6d7e74"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[compat]
+julia = "1.8"
+HashArrayMappedTries = "0.2"

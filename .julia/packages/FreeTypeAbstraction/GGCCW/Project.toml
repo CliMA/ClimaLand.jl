@@ -1,0 +1,26 @@
+name = "FreeTypeAbstraction"
+uuid = "663a7486-cb36-511b-a19d-713bb74d65c9"
+version = "0.10.8"
+
+[deps]
+BaseDirs = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
+ColorVectorSpace = "c3611d14-8923-5661-9e6a-0046d554d3a4"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[compat]
+BaseDirs = "1"
+ColorVectorSpace = "0.8, 0.9, 0.10, 0.11"
+Colors = "0.11, 0.12, 0.13"
+FreeType = "4"
+GeometryBasics = "0.4.1, 0.5"
+Mmap = "1"
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

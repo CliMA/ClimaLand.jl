@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+	
+	<!-- Four horizontal lines in Julia colors -->
+	<!-- Purple line -->
+	<rect x="35" y="50" width="57" height="8" fill="#9558B2" rx="4"/>
+	<rect x="108" y="50" width="57" height="8" fill="#9558B2" rx="4"/>
+	<circle cx="100" cy="54" r="8" fill="none" stroke="#9558B2" stroke-width="4"/>
+	
+	<!-- Green line -->
+	<rect x="35" y="80" width="37" height="8" fill="#389826" rx="4"/>
+	<rect x="88" y="80" width="77" height="8" fill="#389826" rx="4"/>
+	<circle cx="80" cy="84" r="8" fill="none" stroke="#389826" stroke-width="4"/>
+	
+	<!-- Red line -->
+	<rect x="35" y="110" width="87" height="8" fill="#CB3C33" rx="4"/>
+	<rect x="138" y="110" width="27" height="8" fill="#CB3C33" rx="4"/>
+	<circle cx="130" cy="114" r="8" fill="none" stroke="#CB3C33" stroke-width="4"/>
+	
+	<!-- Blue line -->
+	<rect x="35" y="140" width="57" height="8" fill="#4063D8" rx="4"/>
+	<rect x="108" y="140" width="57" height="8" fill="#4063D8" rx="4"/>
+	<circle cx="100" cy="144" r="8" fill="none" stroke="#4063D8" stroke-width="4"/>
+	
+</svg>

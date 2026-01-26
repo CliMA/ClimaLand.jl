@@ -1,0 +1,75 @@
+println("Testing floating normal progress bar (offset 4)")
+function testfunc1(n, dt, tsleep, desc, barlen, offset)
+    p = Progress(n; dt=dt, desc=desc, barlen=barlen, offset=offset)
+    for i = 1:n
+        sleep(tsleep)
+        next!(p)
+    end
+    print("\n" ^ 5)
+end
+testfunc1(30, 0.1, 0.1, "progress  ", 70, 4)
+
+println("Testing floating normal progress bars with values and keep (2 levels)")
+function testfunc2(n, dt, tsleep, desc, barlen)
+    p1 = Progress(n; dt=dt, desc=desc, barlen=barlen, offset=0)
+    p2 = Progress(n; dt=dt, desc=desc, barlen=barlen, offset=5)
+    for i = 1:n
+        sleep(tsleep)
+        next!(p1; showvalues = [(:i, i),
+            (:constant, "foo"), (:isq, i^2), (:large, 2^i)], keep=false)
+        next!(p2; showvalues = [(:i, i),
+            (:constant, "foo"), (:isq, i^2), (:large, 2^i)])
+    end
+    print("\n" ^ 10)
+end
+testfunc2(50, 0.2, 0.2, "progress  ", 70)
+
+println("Testing floating normal progress bars with changing offset")
+function testfunc3(n, dt, tsleep, desc, barlen)
+    p1 = Progress(n; dt=dt, desc=desc, barlen=barlen, offset=0)
+    p2 = Progress(n; dt=dt, desc=desc, barlen=barlen, offset=1)
+    for i = 1:n
+        sleep(tsleep)
+        next!(p1; showvalues = [(:i, i) for _ in 1:i], keep=false)
+        next!(p2; showvalues = [(:i, i),
+            (:constant, "foo"), (:isq, i^2), (:large, 2^i)], offset = (p1.offset + p1.numprintedvalues))
+    end
+    print("\n" ^ (10 + 5))
+end
+testfunc3(10, 0.2, 0.5, "progress  ", 70)
+
+println("Testing floating thresh progress bar (offset 2)")
+function testfunc4(thresh, dt, tsleep, desc, offset)
+    prog = ProgressThresh(thresh; dt=dt, desc=desc, offset=offset)
+    for val in 10 .^ range(2, stop=-6, length=20)
+        update!(prog, val)
+        sleep(tsleep)
+    end
+    print("\n" ^ 3)
+end
+testfunc4(1e-5, 0.2, 0.2, "Minimizing: ", 2)
+
+println("Testing floating in @showprogress macro (3 levels)")
+function testfunc5(n, tsleep)
+    @showprogress desc="Level 0 " for i in 1:n
+        @showprogress desc=" Level 1 " offset=1 for i2 in 1:n
+            @showprogress desc="  Level 2 " offset=2 for i3 in 1:n
+                sleep(tsleep)
+            end
+        end
+    end
+    print("\n" ^ 2)
+end
+testfunc5(5, 0.1)
+
+println("Testing floating unknown progress bar (offset 2)")
+function testfunc6(desc, n, tsleep, offset)
+    p = ProgressUnknown(desc=desc, offset=offset)
+    for i = 1:n
+        sleep(tsleep)
+        next!(p)
+    end
+    finish!(p)
+    print("\n" ^ 3)
+end
+testfunc6("Computing... ", 100, 0.02, 2)

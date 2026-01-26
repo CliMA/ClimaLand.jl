@@ -1,0 +1,73 @@
+#+title: Defaults
+
+From our [[file:../others][survey of other simlar packages]], we've seen a range of approaches.
+Trying to take the best of those, these are the defaults that BaseDirs.jl uses.
+
+* Base directories
+
+| Common Name      | EnvVar              | Linux                        | MacOS                                            | Windows (KnownPath)                                 |
+|------------------+---------------------+------------------------------+--------------------------------------------------+-----------------------------------------------------|
+| User data        | =XDG_DATA_HOME=       | =~/.local/share=               | =~/Library/Application Support=                    | =RoamingAppData=                                      |
+| System data      | =XDG_DATA_DIRS=       | =/usr/local/share=, =/usr/share= | =/Library/Application Support=                     | =ProgramData=                                         |
+| User config      | =XDG_CONFIG_HOME=     | =~/.config=                    | =~/Library/Application Support=                    | =RoamingAppData=                                      |
+| System config    | =XDG_CONFIG_DIRS=     | =/etc/xdg=                     | =/Library/Application Support=                     | =ProgramData=                                         |
+| State            | =XDG_STATE_HOME=      | =~/.local/state=               | =~/Library/Application Support=                    | =LocalAppData=                                        |
+| User executables | =XDG_BIN_HOME= [fn:binhome] | =~/.local/bin=                 | =~/.local/bin= or =/opt/local/bin= or =/usr/local/bin= | =~\bin= or =RoamingAppData\bin= or =AppData\bin= or ~pwd()~ |
+| Cache            | =XDG_CACHE_HOME=      | =~/.cache=                     | =~/Library/Caches/=                                | =LocalAppData\cache=                                  |
+| Runtime          | =XDG_RUNTIME_DIR=     | =/run/user/$UID=               | =~/Library/Application Support=                    | =LocalAppData=                                        |
+
+[fn:binhome] While =XDG_BIN_HOME= is not yet standard, it seems like the most
+likely name to be given to =~/.local/bin= (see [[https://gitlab.freedesktop.org/xdg/xdg-specs/-/issues/14][this issue]]), and I think it is
+worth having something rather than nothing.
+
+* User directories
+
+| Common Name | EnvVar              | Linux[fn:xdg-user-dirs] | MacOS       | Windows (KnownPath) |
+|-------------+---------------------+-------------------------+-------------+---------------------|
+| Desktop     | =XDG_DESKTOP_DIR=     | =~/Desktop=               | =~/Desktop=   | =Desktop=             |
+| Download    | =XDG_DOWNLOAD_DIR=    | =~/Downloads=             | =~/Downloads= | =Downloads=           |
+| Documents   | =XDG_DOCUMENTS_DIR=   | =~/Documents=             | =~/Documents= | =Documents=           |
+| Music       | =XDG_MUSIC_DIR=       | =~/Music=                 | =~/Music=     | =Music=               |
+| Pictures    | =XDG_PICTURES_DIR=    | =~/Pictures=              | =~/Pictures=  | =Pictures=            |
+| Videos      | =XDG_VIDEOS_DIR=      | =~/Videos=                | =~/Movies=    | =Videos=              |
+| Templates   | =XDG_TEMPLATES_DIR=   | =~/Templates=             | =~/Templates= | =Templates=           |
+| Public      | =XDG_PUBLICSHARE_DIR= | =~/Public=                | =~/Public=    | =Public=              |
+
+[fn:xdg-user-dirs] In accordance with the [[https://www.freedesktop.org/wiki/Software/xdg-user-dirs/][xdg-user-dirs]] documentation, the
+system and user =user-dirs.dirs= files are checked before using the defaults.
+
+* Project directories
+
+** Project paths
+
+A project path string (henceforth given by the =Project= placeholder) is formatted
+according to the following bits of information:
++ Qualifier (only used on mac), which defaults to =org=
++ Organisation/Company, which defaults to =julia=
++ Application/Project name, which must be provided.
+
+The operating system specific project path is composed as follows:
+
+| System  | Project path format            | Example              |
+|---------+--------------------------------+----------------------|
+| Linux   | =$Name=                          | =contraption=          |
+| MacOS   | =$Qualifier.$Organisation.$Name= | =com.ACME.contraption= |
+| Windows | =$Organisation\$Name=            | =ACME\contraption=     |
+  
+** Project directory template
+
+| Common Name   | Linux                     | MacOS                     | Windows                          |
+|---------------+---------------------------+---------------------------+----------------------------------|
+| User data     | =$(User data)/$Project=     | =$(User data)/$Project=     | =$(User data)\$Project\data=       |
+| System data   | =$(System data)/$Project=   | =$(System data)/$Project=   | =$(System data)\$Project\data=     |
+| User config   | =$(User config)/$Project=   | =$(User config)/$Project=   | =$(User config)\$Project\config=   |
+| System config | =$(System config)/$Project= | =$(System config)/$Project= | =$(System config)\$Project\config= |
+| Cache         | =$(Cache)/$Project=         | =$(Cache)/$Project=         | =$(Cache)\$Project\cache=          |
+| State         | =$(State)/$Project=         | =$(State)/$Project=         | =$(State)\$Project\state=          |
+
+* Extra directories
+
+| Common name  | Linux                                                  | MacOS                                                                          | Windows                  |
+|--------------+--------------------------------------------------------+--------------------------------------------------------------------------------+--------------------------|
+| Fonts        | =$(User data)/fonts=, =~/.fonts=, =$(System data)/fonts=     | =~/Library/Fonts=, =/Library/Fonts=, =/System/Library/Fonts=, =/Network/Library/Fonts= | =Fonts=                    |
+| Applications | =$(User data)/applications=, =$(System data)/applications= | =/Applications=                                                                  | =Programs=, =CommonPrograms= |

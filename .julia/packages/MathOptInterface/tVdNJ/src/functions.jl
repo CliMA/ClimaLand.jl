@@ -1,0 +1,1417 @@
+# Copyright (c) 2017: Miles Lubin and contributors
+# Copyright (c) 2017: Google Inc.
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
+"""
+    output_dimension(f::AbstractFunction)
+
+Return 1 if `f` is an [`AbstractScalarFunction`](@ref), or the number of output
+components if `f` is an [`AbstractVectorFunction`](@ref).
+"""
+function output_dimension end
+
+output_dimension(::AbstractScalarFunction) = 1
+
+"""
+    constant(f::AbstractFunction[, ::Type{T}]) where {T}
+
+Returns the constant term of a scalar-valued function, or the constant vector of
+a vector-valued function.
+
+If `f` is untyped and `T` is provided, returns `zero(T)`.
+"""
+constant(f::AbstractFunction, ::Type{T}) where {T} = constant(f)
+
+"""
+    coefficient(t::ScalarAffineTerm)
+    coefficient(t::ScalarQuadraticTerm)
+    coefficient(t::VectorAffineTerm)
+    coefficient(t::VectorQuadraticTerm)
+
+Finds the coefficient stored in the term `t`.
+"""
+function coefficient end
+
+"""
+    term_indices(t::ScalarAffineTerm)
+    term_indices(t::ScalarQuadraticTerm)
+    term_indices(t::VectorAffineTerm)
+    term_indices(t::VectorQuadraticTerm)
+
+Returns the indices of the input term `t` as a tuple of `Int`s.
+
+* For `t::ScalarAffineTerm`, this is a 1-tuple of the variable index.
+* For `t::ScalarQuadraticTerm`, this is a 2-tuple of the variable indices
+  in non-decreasing order.
+* For `t::VectorAffineTerm`, this is a 2-tuple of the row/output and
+  variable indices.
+* For `t::VectorQuadraticTerm`, this is a 3-tuple of the row/output and
+  variable indices in non-decreasing order.
+"""
+function term_indices end
+
+"""
+    term_pair(t::ScalarAffineTerm)
+    term_pair(t::ScalarQuadraticTerm)
+    term_pair(t::VectorAffineTerm)
+    term_pair(t::VectorQuadraticTerm)
+
+Returns the pair [`term_indices`](@ref) `=>` [`coefficient`](@ref) of the term.
+"""
+function term_pair end
+
+# VariableIndex is defined in indextypes.jl
+
+constant(::VariableIndex, ::Type{T}) where {T} = zero(T)
+
+Base.copy(x::VariableIndex) = x
+
+Base.isapprox(x::VariableIndex, y::VariableIndex; kwargs...) = x == y
+
+"""
+    ScalarAffineTerm{T}(coefficient::T, variable::VariableIndex) where {T}
+
+Represents the scalar-valued term `coefficient * variable`.
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1)
+MOI.VariableIndex(1)
+
+julia> MOI.ScalarAffineTerm(2.0, x)
+MathOptInterface.ScalarAffineTerm{Float64}(2.0, MOI.VariableIndex(1))
+```
+"""
+struct ScalarAffineTerm{T}
+    coefficient::T
+    variable::VariableIndex
+end
+
+coefficient(t::ScalarAffineTerm) = t.coefficient
+
+term_indices(t::ScalarAffineTerm) = (t.variable.value,)
+
+term_pair(t::ScalarAffineTerm) = term_indices(t) => coefficient(t)
+
+# !!! developer note
+#
+#     ScalarAffineFunction is mutable because its `constant` field is likely of
+#     an immutable type, while its `terms` field is of a mutable type, meaning
+#     that creating a `ScalarAffineFunction` allocates, and it is desirable to
+#     provide a zero-allocation option for working with ScalarAffineFunctions.
+#
+#     See https://github.com/jump-dev/MathOptInterface.jl/pull/343.
+
+"""
+    ScalarAffineFunction{T}(
+        terms::Vector{ScalarAffineTerm{T}},
+        constant::T,
+    ) where {T}
+
+Represents the scalar-valued affine function ``a^\\top x + b``, where:
+
+ * ``a^\\top x`` is represented by the vector of [`ScalarAffineTerm`](@ref)s
+ * ``b`` is a scalar `constant::T`
+
+## Duplicates
+
+Duplicate variable indices in `terms` are accepted, and the corresponding
+coefficients are summed together.
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1)
+MOI.VariableIndex(1)
+
+julia> terms = [MOI.ScalarAffineTerm(2.0, x), MOI.ScalarAffineTerm(3.0, x)]
+2-element Vector{MathOptInterface.ScalarAffineTerm{Float64}}:
+ MathOptInterface.ScalarAffineTerm{Float64}(2.0, MOI.VariableIndex(1))
+ MathOptInterface.ScalarAffineTerm{Float64}(3.0, MOI.VariableIndex(1))
+
+julia> f = MOI.ScalarAffineFunction(terms, 4.0)
+4.0 + 2.0 MOI.VariableIndex(1) + 3.0 MOI.VariableIndex(1)
+```
+"""
+mutable struct ScalarAffineFunction{T} <: AbstractScalarFunction
+    terms::Vector{ScalarAffineTerm{T}}
+    constant::T
+end
+
+constant(f::ScalarAffineFunction) = f.constant
+
+function Base.copy(f::ScalarAffineFunction)
+    return ScalarAffineFunction(copy(f.terms), copy(f.constant))
+end
+
+function ScalarAffineFunction{T}(x::VariableIndex) where {T}
+    return ScalarAffineFunction([ScalarAffineTerm(one(T), x)], zero(T))
+end
+
+"""
+    ScalarQuadraticTerm{T}(
+        coefficient::T,
+        variable_1::VariableIndex,
+        variable_2::VariableIndex,
+    ) where {T}
+
+Represents the scalar-valued term ``c x_i x_j`` where ``c`` is `coefficient`,
+``x_i`` is `variable_1` and ``x_j`` is `variable_2`.
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1)
+MOI.VariableIndex(1)
+
+julia> MOI.ScalarQuadraticTerm(2.0, x, x)
+MathOptInterface.ScalarQuadraticTerm{Float64}(2.0, MOI.VariableIndex(1), MOI.VariableIndex(1))
+```
+"""
+struct ScalarQuadraticTerm{T}
+    coefficient::T
+    variable_1::VariableIndex
+    variable_2::VariableIndex
+end
+
+coefficient(t::ScalarQuadraticTerm) = t.coefficient
+
+function term_indices(t::ScalarQuadraticTerm)
+    return minmax(t.variable_1.value, t.variable_2.value)
+end
+
+term_pair(t::ScalarQuadraticTerm) = term_indices(t) => coefficient(t)
+
+# !!! developer note
+#
+#     ScalarQuadraticFunction is mutable because its `constant` field is likely
+#     of an immutable type, while its `terms` field is of a mutable type,
+#     meaning that creating a `ScalarQuadraticFunction` allocates, and it is
+#     desirable to provide a zero-allocation option for working with
+#     ScalarQuadraticFunctions.
+#
+#     See https://github.com/jump-dev/MathOptInterface.jl/pull/343.
+
+"""
+    ScalarQuadraticFunction{T}(
+        quadratic_terms::Vector{ScalarQuadraticTerm{T}},
+        affine_terms::Vector{ScalarAffineTerm{T}},
+        constant::T,
+    ) wher {T}
+
+The scalar-valued quadratic function ``\\frac{1}{2}x^\\top Q x + a^\\top x + b``,
+where:
+
+ * ``Q`` is the symmetric matrix given by the vector of [`ScalarQuadraticTerm`](@ref)s
+ * ``a^\\top x`` is a sparse vector given by the vector of [`ScalarAffineTerm`](@ref)s
+ * ``b`` is the scalar `constant::T`.
+
+## Duplicates
+
+Duplicate indices in `quadratic_terms` or `affine_terms` are accepted, and the
+corresponding coefficients are summed together.
+
+In `quadratic_terms`, "mirrored" indices, `(q, r)` and `(r, q)` where `r` and
+`q` are [`VariableIndex`](@ref)es, are considered duplicates; only one needs to
+be specified.
+
+## The 0.5 factor
+
+Coupled with the interpretation of mirrored indices, the `0.5` factor in front
+of the ``Q`` matrix is a common source of bugs.
+
+As a rule, to represent ``a * x^2 + b * x * y``:
+
+ * The coefficient ``a`` in front of squared variables (diagonal elements in
+   ``Q``) must be doubled when creating a [`ScalarQuadraticTerm`](@ref)
+ * The coefficient ``b`` in front of off-diagonal elements in ``Q`` should be
+   left as ``b``, be cause the mirrored index ``b * y * x`` will be implicitly
+   added.
+
+## Example
+
+To represent the function ``f(x, y) = 2 * x^2 + 3 * x * y + 4 * x + 5``, do:
+
+```jldoctest
+julia> x = MOI.VariableIndex(1);
+
+julia> y = MOI.VariableIndex(2);
+
+julia> constant = 5.0;
+
+julia> affine_terms = [MOI.ScalarAffineTerm(4.0, x)];
+
+julia> quadratic_terms = [
+           MOI.ScalarQuadraticTerm(4.0, x, x),  # Note the changed coefficient
+           MOI.ScalarQuadraticTerm(3.0, x, y),
+       ]
+2-element Vector{MathOptInterface.ScalarQuadraticTerm{Float64}}:
+ MathOptInterface.ScalarQuadraticTerm{Float64}(4.0, MOI.VariableIndex(1), MOI.VariableIndex(1))
+ MathOptInterface.ScalarQuadraticTerm{Float64}(3.0, MOI.VariableIndex(1), MOI.VariableIndex(2))
+
+julia> f = MOI.ScalarQuadraticFunction(quadratic_terms, affine_terms, constant)
+5.0 + 4.0 MOI.VariableIndex(1) + 2.0 MOI.VariableIndex(1)² + 3.0 MOI.VariableIndex(1)*MOI.VariableIndex(2)
+```
+
+"""
+mutable struct ScalarQuadraticFunction{T} <: AbstractScalarFunction
+    quadratic_terms::Vector{ScalarQuadraticTerm{T}}
+    affine_terms::Vector{ScalarAffineTerm{T}}
+    constant::T
+end
+
+constant(f::ScalarQuadraticFunction) = f.constant
+
+function Base.copy(f::ScalarQuadraticFunction)
+    return ScalarQuadraticFunction(
+        copy(f.quadratic_terms),
+        copy(f.affine_terms),
+        copy(f.constant),
+    )
+end
+
+"""
+    ScalarNonlinearFunction(head::Symbol, args::Vector{Any})
+
+The scalar-valued nonlinear function `head(args...)`, represented as a symbolic
+expression tree, with the call operator `head` and ordered arguments in `args`.
+
+## `head`
+
+The `head::Symbol` must be an operator supported by the model.
+
+The default list of supported univariate operators is given by:
+
+ * [`Nonlinear.DEFAULT_UNIVARIATE_OPERATORS`](@ref)
+
+and the default list of supported multivariate operators is given by:
+
+ * [`Nonlinear.DEFAULT_MULTIVARIATE_OPERATORS`](@ref)
+
+Additional operators can be registered by setting a [`UserDefinedFunction`](@ref)
+attribute.
+
+See the full list of operators supported by a [`ModelLike`](@ref) by querying
+[`ListOfSupportedNonlinearOperators`](@ref).
+
+## `args`
+
+The vector `args` contains the arguments to the nonlinear function. If the
+operator is univariate, it must contain one element. Otherwise, it may contain
+multiple elements.
+
+Each element must be one of the following:
+
+ * A constant value of type `T<:Real`
+ * A [`VariableIndex`](@ref)
+ * A [`ScalarAffineFunction`](@ref)
+ * A [`ScalarQuadraticFunction`](@ref)
+ * A [`ScalarNonlinearFunction`](@ref)
+
+## Unsupported operators
+
+If the optimizer does not support `head`, an [`UnsupportedNonlinearOperator`](@ref)
+error will be thrown.
+
+There is no guarantee about when this error will be thrown; it may be thrown
+when the function is first added to the model, or it may be thrown when
+[`optimize!`](@ref) is called.
+
+## Example
+
+To represent the function ``f(x) = sin(x)^2``, do:
+
+```jldoctest
+julia> x = MOI.VariableIndex(1)
+MOI.VariableIndex(1)
+
+julia> MOI.ScalarNonlinearFunction(
+           :^,
+           Any[MOI.ScalarNonlinearFunction(:sin, Any[x]), 2],
+       )
+^(sin(MOI.VariableIndex(1)), (2))
+```
+"""
+struct ScalarNonlinearFunction <: AbstractScalarFunction
+    head::Symbol
+    args::Vector{Any}
+
+    function ScalarNonlinearFunction(head::Symbol, args::AbstractVector)
+        # TODO(odow): should we do this?
+        # for arg in args
+        #     if !(arg isa Real || arg isa AbstractScalarFunction)
+        #         error("Unsupported object in nonlinear expression: $arg")
+        #     end
+        # end
+        return new(head, convert(Vector{Any}, args))
+    end
+end
+
+# copy() doesn't recursively copy the children, and deepcopy seems to have a
+# performance problem for deeply nested structs.
+function Base.copy(f::ScalarNonlinearFunction)
+    stack, result_stack = Any[f], Any[]
+    while !isempty(stack)
+        arg = pop!(stack)
+        if arg isa ScalarNonlinearFunction
+            # We need some sort of hint so that the next time we see this on the
+            # stack we evaluate it using the args in `result_stack`. One option
+            # would be a custom type. Or we can just wrap in (,) and then check
+            # for a Tuple, which isn't (curretly) a valid argument.
+            push!(stack, (arg,))
+            for child in arg.args
+                push!(stack, child)
+            end
+        elseif arg isa Tuple{<:ScalarNonlinearFunction}
+            result = only(arg)
+            args = Any[pop!(result_stack) for i in 1:length(result.args)]
+            push!(result_stack, ScalarNonlinearFunction(result.head, args))
+        else
+            push!(result_stack, copy(arg))
+        end
+    end
+    return only(result_stack)
+end
+
+constant(f::ScalarNonlinearFunction, ::Type{T} = Float64) where {T} = zero(T)
+
+"""
+    UnsupportedNonlinearOperator(head::Symbol[, message::String]) <: UnsupportedError
+
+An error thrown by optimizers if they do not support the operator `head` in a
+[`ScalarNonlinearFunction`](@ref).
+
+## Example
+
+```jldoctest
+julia> throw(MOI.UnsupportedNonlinearOperator(:black_box))
+ERROR: MathOptInterface.UnsupportedNonlinearOperator: The nonlinear operator `:black_box` is not supported by the model.
+Stacktrace:
+[...]
+```
+"""
+struct UnsupportedNonlinearOperator <: UnsupportedError
+    head::Symbol
+    message::String
+
+    function UnsupportedNonlinearOperator(head::Symbol, message::String = "")
+        return new(head, message)
+    end
+end
+
+function element_name(err::UnsupportedNonlinearOperator)
+    return "The nonlinear operator `:$(err.head)`"
+end
+
+"""
+    abstract type AbstractVectorFunction <: AbstractFunction
+
+Abstract supertype for vector-valued [`AbstractFunction`](@ref)s.
+
+## Required methods
+
+All subtypes of `AbstractVectorFunction` must implement:
+
+ * [`output_dimension`](@ref)
+"""
+abstract type AbstractVectorFunction <: AbstractFunction end
+
+"""
+    VectorOfVariables(variables::Vector{VariableIndex}) <: AbstractVectorFunction
+
+The vector-valued function `f(x) = variables`, where `variables` is a subset of
+[`VariableIndex`](@ref)es in the model.
+
+The list of `variables` may contain duplicates.
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex.(1:2)
+2-element Vector{MathOptInterface.VariableIndex}:
+ MOI.VariableIndex(1)
+ MOI.VariableIndex(2)
+
+julia> f = MOI.VectorOfVariables([x[1], x[2], x[1]])
+┌                    ┐
+│MOI.VariableIndex(1)│
+│MOI.VariableIndex(2)│
+│MOI.VariableIndex(1)│
+└                    ┘
+
+julia> MOI.output_dimension(f)
+3
+```
+"""
+struct VectorOfVariables <: AbstractVectorFunction
+    variables::Vector{VariableIndex}
+end
+
+output_dimension(f::VectorOfVariables) = length(f.variables)
+
+function constant(f::VectorOfVariables, ::Type{T}) where {T}
+    return zeros(T, output_dimension(f))
+end
+
+Base.copy(f::VectorOfVariables) = VectorOfVariables(copy(f.variables))
+
+function Base.:(==)(f::VectorOfVariables, g::VectorOfVariables)
+    return f.variables == g.variables
+end
+
+Base.isapprox(x::VectorOfVariables, y::VectorOfVariables; kwargs...) = x == y
+
+"""
+    VectorAffineTerm{T}(
+        output_index::Int64,
+        scalar_term::ScalarAffineTerm{T},
+    ) where {T}
+
+A `VectorAffineTerm` is a `scalar_term` that appears in the `output_index` row
+of the vector-valued [`VectorAffineFunction`](@ref) or
+[`VectorQuadraticFunction`](@ref).
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1);
+
+julia> MOI.VectorAffineTerm(Int64(2), MOI.ScalarAffineTerm(3.0, x))
+MathOptInterface.VectorAffineTerm{Float64}(2, MathOptInterface.ScalarAffineTerm{Float64}(3.0, MOI.VariableIndex(1)))
+```
+"""
+struct VectorAffineTerm{T}
+    output_index::Int64
+    scalar_term::ScalarAffineTerm{T}
+end
+
+function VectorAffineTerm(
+    output_index::Base.Integer,
+    scalar_term::ScalarAffineTerm,
+)
+    return VectorAffineTerm(convert(Int64, output_index), scalar_term)
+end
+
+coefficient(t::VectorAffineTerm) = t.scalar_term.coefficient
+
+function term_indices(t::VectorAffineTerm)
+    return (t.output_index, term_indices(t.scalar_term)...)
+end
+
+term_pair(t::VectorAffineTerm) = term_indices(t) => coefficient(t)
+
+"""
+    VectorAffineFunction{T}(
+        terms::Vector{VectorAffineTerm{T}},
+        constants::Vector{T},
+    ) where {T}
+
+The vector-valued affine function ``A x + b``, where:
+
+ * ``A x`` is the sparse matrix given by the vector of [`VectorAffineTerm`](@ref)s
+ * ``b`` is the vector `constants`
+
+## Duplicates
+
+Duplicate indices in the ``A`` are accepted, and the corresponding coefficients
+are summed together.
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1);
+
+julia> terms = [
+           MOI.VectorAffineTerm(Int64(1), MOI.ScalarAffineTerm(2.0, x)),
+           MOI.VectorAffineTerm(Int64(2), MOI.ScalarAffineTerm(3.0, x)),
+       ];
+
+julia> f = MOI.VectorAffineFunction(terms, [4.0, 5.0])
+┌                              ┐
+│4.0 + 2.0 MOI.VariableIndex(1)│
+│5.0 + 3.0 MOI.VariableIndex(1)│
+└                              ┘
+
+julia> MOI.output_dimension(f)
+2
+```
+"""
+struct VectorAffineFunction{T} <: AbstractVectorFunction
+    terms::Vector{VectorAffineTerm{T}}
+    constants::Vector{T}
+end
+
+output_dimension(f::VectorAffineFunction) = length(f.constants)
+
+constant(f::VectorAffineFunction) = f.constants
+
+function Base.copy(f::VectorAffineFunction)
+    return VectorAffineFunction(copy(f.terms), copy(f.constants))
+end
+
+function VectorAffineFunction{T}(f::VectorOfVariables) where {T}
+    terms = map(1:output_dimension(f)) do i
+        return VectorAffineTerm(i, ScalarAffineTerm(one(T), f.variables[i]))
+    end
+    constants = zeros(T, output_dimension(f))::Vector{T}
+    return VectorAffineFunction(terms, constants)
+end
+
+"""
+    VectorQuadraticTerm{T}(
+        output_index::Int64,
+        scalar_term::ScalarQuadraticTerm{T},
+    ) where {T}
+
+A `VectorQuadraticTerm` is a [`ScalarQuadraticTerm`](@ref) `scalar_term` that
+appears in the `output_index` row of the vector-valued
+[`VectorQuadraticFunction`](@ref).
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1);
+
+julia> MOI.VectorQuadraticTerm(Int64(2), MOI.ScalarQuadraticTerm(3.0, x, x))
+MathOptInterface.VectorQuadraticTerm{Float64}(2, MathOptInterface.ScalarQuadraticTerm{Float64}(3.0, MOI.VariableIndex(1), MOI.VariableIndex(1)))
+```
+"""
+struct VectorQuadraticTerm{T}
+    output_index::Int64
+    scalar_term::ScalarQuadraticTerm{T}
+end
+
+function VectorQuadraticTerm(
+    output_index::Base.Integer,
+    scalar_term::ScalarQuadraticTerm,
+)
+    return VectorQuadraticTerm(convert(Int64, output_index), scalar_term)
+end
+
+coefficient(t::VectorQuadraticTerm) = t.scalar_term.coefficient
+
+function term_indices(t::VectorQuadraticTerm)
+    return (t.output_index, term_indices(t.scalar_term)...)
+end
+
+term_pair(t::VectorQuadraticTerm) = term_indices(t) => coefficient(t)
+
+"""
+    VectorQuadraticFunction{T}(
+        quadratic_terms::Vector{VectorQuadraticTerm{T}},
+        affine_terms::Vector{VectorAffineTerm{T}},
+        constants::Vector{T},
+    ) where {T}
+
+The vector-valued quadratic function with i`th` component ("output index")
+defined as ``\\frac{1}{2}x^\\top Q_i x + a_i^\\top x + b_i``, where:
+
+ * ``\\frac{1}{2}x^\\top Q_i x`` is the symmetric matrix given by the
+   [`VectorQuadraticTerm`](@ref) elements in `quadratic_terms` with
+   `output_index == i`
+ * ``a_i^\\top x`` is the sparse vector given by the [`VectorAffineTerm`](@ref)
+   elements in `affine_terms` with `output_index == i`
+ * ``b_i`` is a scalar given by `constants[i]`
+
+## Duplicates
+
+Duplicate indices in `quadratic_terms` and `affine_terms` with the same
+`output_index` are handled in the same manner as duplicates in
+[`ScalarQuadraticFunction`](@ref).
+
+## Example
+
+```jldoctest
+julia> x = MOI.VariableIndex(1);
+
+julia> y = MOI.VariableIndex(2);
+
+julia> constants = [4.0, 5.0];
+
+julia> affine_terms = [
+           MOI.VectorAffineTerm(Int64(1), MOI.ScalarAffineTerm(2.0, x)),
+           MOI.VectorAffineTerm(Int64(2), MOI.ScalarAffineTerm(3.0, x)),
+       ];
+
+julia> quad_terms = [
+        MOI.VectorQuadraticTerm(Int64(1), MOI.ScalarQuadraticTerm(2.0, x, x)),
+        MOI.VectorQuadraticTerm(Int64(2), MOI.ScalarQuadraticTerm(3.0, x, y)),
+           ];
+
+julia> f = MOI.VectorQuadraticFunction(quad_terms, affine_terms, constants)
+┌                                                                              ┐
+│4.0 + 2.0 MOI.VariableIndex(1) + 1.0 MOI.VariableIndex(1)²                    │
+│5.0 + 3.0 MOI.VariableIndex(1) + 3.0 MOI.VariableIndex(1)*MOI.VariableIndex(2)│
+└                                                                              ┘
+
+julia> MOI.output_dimension(f)
+2
+```
+"""
+struct VectorQuadraticFunction{T} <: AbstractVectorFunction
+    quadratic_terms::Vector{VectorQuadraticTerm{T}}
+    affine_terms::Vector{VectorAffineTerm{T}}
+    constants::Vector{T}
+end
+
+output_dimension(f::VectorQuadraticFunction) = length(f.constants)
+
+constant(f::VectorQuadraticFunction) = f.constants
+
+function Base.copy(f::VectorQuadraticFunction)
+    return VectorQuadraticFunction(
+        copy(f.quadratic_terms),
+        copy(f.affine_terms),
+        copy(f.constants),
+    )
+end
+
+"""
+    VectorNonlinearFunction(args::Vector{ScalarNonlinearFunction})
+
+The vector-valued nonlinear function composed of a vector of
+[`ScalarNonlinearFunction`](@ref).
+
+## `args`
+
+The vector `args` contains the scalar elements of the nonlinear function. Each
+element must be a [`ScalarNonlinearFunction`](@ref), but if you pass a
+`Vector{Any}`, the elements can be automatically converted from one of the
+following:
+
+ * A constant value of type `T<:Real`
+ * A [`VariableIndex`](@ref)
+ * A [`ScalarAffineFunction`](@ref)
+ * A [`ScalarQuadraticFunction`](@ref)
+ * A [`ScalarNonlinearFunction`](@ref)
+
+## Example
+
+To represent the function ``f(x) = [sin(x)^2, x]``, do:
+
+```jldoctest
+julia> x = MOI.VariableIndex(1)
+MOI.VariableIndex(1)
+
+julia> g = MOI.ScalarNonlinearFunction(
+           :^,
+           Any[MOI.ScalarNonlinearFunction(:sin, Any[x]), 2.0],
+       )
+^(sin(MOI.VariableIndex(1)), 2.0)
+
+julia> MOI.VectorNonlinearFunction([g, x])
+┌                                 ┐
+│^(sin(MOI.VariableIndex(1)), 2.0)│
+│+(MOI.VariableIndex(1))          │
+└                                 ┘
+```
+
+Note the automatic conversion from `x` to `+(x)`.
+"""
+struct VectorNonlinearFunction <: AbstractVectorFunction
+    rows::Vector{ScalarNonlinearFunction}
+end
+
+output_dimension(f::VectorNonlinearFunction) = length(f.rows)
+
+function constant(f::VectorNonlinearFunction, ::Type{T}) where {T}
+    return zeros(T, output_dimension(f))
+end
+
+Base.copy(f::VectorNonlinearFunction) = VectorNonlinearFunction(copy(f.rows))
+
+function Base.:(==)(f::VectorNonlinearFunction, g::VectorNonlinearFunction)
+    return f.rows == g.rows
+end
+
+function Base.isapprox(
+    x::VectorNonlinearFunction,
+    y::VectorNonlinearFunction;
+    kwargs...,
+)
+    return all(isapprox(xi, yi; kwargs...) for (xi, yi) in zip(x.rows, y.rows))
+end
+
+# Function modifications
+
+"""
+    AbstractFunctionModification
+
+An abstract supertype for structs which specify partial modifications to
+functions, to be used for making small modifications instead of replacing the
+functions entirely.
+"""
+abstract type AbstractFunctionModification end
+
+"""
+    ScalarConstantChange{T}(new_constant::T)
+
+A struct used to request a change in the constant term of a scalar-valued
+function.
+
+Applicable to [`ScalarAffineFunction`](@ref) and [`ScalarQuadraticFunction`](@ref).
+"""
+struct ScalarConstantChange{T} <: AbstractFunctionModification
+    new_constant::T
+end
+
+"""
+    VectorConstantChange{T}(new_constant::Vector{T})
+
+A struct used to request a change in the constant vector of a vector-valued
+function.
+
+Applicable to [`VectorAffineFunction`](@ref) and [`VectorQuadraticFunction`](@ref).
+"""
+struct VectorConstantChange{T} <: AbstractFunctionModification
+    new_constant::Vector{T}
+end
+
+"""
+    ScalarCoefficientChange{T}(variable::VariableIndex, new_coefficient::T)
+
+A struct used to request a change in the linear coefficient of a single variable
+in a scalar-valued function.
+
+Applicable to [`ScalarAffineFunction`](@ref) and [`ScalarQuadraticFunction`](@ref).
+"""
+struct ScalarCoefficientChange{T} <: AbstractFunctionModification
+    variable::VariableIndex
+    new_coefficient::T
+end
+
+"""
+    ScalarQuadraticCoefficientChange{T}(
+        variable_1::VariableIndex,
+        variable_2::VariableIndex,
+        new_coefficient::T,
+    )
+
+A struct used to request a change in the quadratic coefficient of a
+[`ScalarQuadraticFunction`](@ref).
+
+## Scaling factors
+
+A [`ScalarQuadraticFunction`](@ref) has an implicit `0.5` scaling factor in
+front of the `Q` matrix. This modification applies to terms in the `Q` matrix.
+
+If `variable_1 == variable_2`, this modification sets the corresponding diagonal
+element of the `Q` matrix to `new_coefficient`.
+
+If `variable_1 != variable_2`, this modification is equivalent to setting both
+the corresponding upper- and lower-triangular elements of the `Q` matrix to
+`new_coefficient`.
+
+As a consequence:
+
+ * to modify the term `x^2` to become `2x^2`, `new_coefficient` must be `4`
+ * to modify the term `xy` to become `2xy`, `new_coefficient` must be `2`
+"""
+struct ScalarQuadraticCoefficientChange{T} <: AbstractFunctionModification
+    variable_1::VariableIndex
+    variable_2::VariableIndex
+    new_coefficient::T
+end
+
+# !!! developer note
+#     MultiRowChange is mutable because its `variable` field of an immutable
+#     type, while `new_coefficients` is of a mutable type, meaning that creating
+#     a `MultiRowChange` allocates, and it is desirable to provide a
+#     zero-allocation option for working with MultiRowChanges.
+#
+#     See https://github.com/jump-dev/MathOptInterface.jl/pull/343.
+
+"""
+    MultirowChange{T}(
+        variable::VariableIndex,
+        new_coefficients::Vector{Tuple{Int64,T}},
+    ) where {T}
+
+A struct used to request a change in the linear coefficients of a single
+variable in a vector-valued function.
+
+New coefficients are specified by `(output_index, coefficient)` tuples.
+
+Applicable to [`VectorAffineFunction`](@ref) and [`VectorQuadraticFunction`](@ref).
+"""
+mutable struct MultirowChange{T} <: AbstractFunctionModification
+    variable::VariableIndex
+    new_coefficients::Vector{Tuple{Int64,T}}
+end
+
+function MultirowChange(
+    variable::VariableIndex,
+    new_coefficients::Vector{Tuple{Ti,T}},
+) where {Ti<:Base.Integer,T}
+    return MultirowChange(
+        variable,
+        [(convert(Int64, i), j) for (i, j) in new_coefficients],
+    )
+end
+
+# isapprox
+
+# For affine and quadratic functions, terms are compressed in a dictionary using
+# `_dicts` and then the dictionaries are compared with `dict_compare`
+function dict_compare(d1::Dict, d2::Dict{<:Any,T}, compare::Function) where {T}
+    for key in union(keys(d1), keys(d2))
+        if !compare(Base.get(d1, key, zero(T)), Base.get(d2, key, zero(T)))
+            return false
+        end
+    end
+    return true
+end
+
+# Build a dictionary where the duplicate keys are summed
+function sum_dict(kvs::Vector{Pair{K,V}}) where {K,V}
+    d = Dict{K,V}()
+    for (key, value) in kvs
+        d[key] = value + Base.get(d, key, zero(V))
+    end
+    return d
+end
+
+function _dicts(f::Union{ScalarAffineFunction,VectorAffineFunction})
+    return (sum_dict(term_pair.(f.terms)),)
+end
+
+function _dicts(f::Union{ScalarQuadraticFunction,VectorQuadraticFunction})
+    return (
+        sum_dict(term_pair.(f.quadratic_terms)),
+        sum_dict(term_pair.(f.affine_terms)),
+    )
+end
+
+function Base.isapprox(
+    f::F,
+    g::G;
+    kwargs...,
+) where {
+    F<:Union{
+        ScalarAffineFunction,
+        ScalarQuadraticFunction,
+        VectorAffineFunction,
+        VectorQuadraticFunction,
+    },
+    G<:Union{
+        ScalarAffineFunction,
+        ScalarQuadraticFunction,
+        VectorAffineFunction,
+        VectorQuadraticFunction,
+    },
+}
+    return isapprox(constant(f), constant(g); kwargs...) && all(
+        dict_compare.(
+            _dicts(f),
+            _dicts(g),
+            (α, β) -> isapprox(α, β; kwargs...),
+        ),
+    )
+end
+
+# This method is used by CBF in testing.
+function Base.isapprox(f::VectorOfVariables, g::VectorAffineFunction; kwargs...)
+    return isapprox(convert(typeof(g), f), g; kwargs...)
+end
+
+_is_approx(x, y; kwargs...) = isapprox(x, y; kwargs...)
+
+function _is_approx(x::AbstractArray, y::AbstractArray; kwargs...)
+    return size(x) == size(y) &&
+           all(z -> _is_approx(z[1], z[2]; kwargs...), zip(x, y))
+end
+
+function Base.isapprox(
+    f::ScalarNonlinearFunction,
+    g::ScalarNonlinearFunction;
+    kwargs...,
+)
+    if f.head != g.head || length(f.args) != length(g.args)
+        return false
+    end
+    for (fi, gi) in zip(f.args, g.args)
+        if !_is_approx(fi, gi; kwargs...)
+            return false
+        end
+    end
+    return true
+end
+
+###
+### Base.convert
+###
+
+# VariableIndex
+
+function Base.convert(::Type{VariableIndex}, f::ScalarAffineFunction)
+    if !iszero(f.constant)
+        throw(InexactError(:convert, VariableIndex, f))
+    end
+    scalar_term = nothing
+    for term in f.terms
+        if isone(term.coefficient) && scalar_term === nothing
+            scalar_term = term
+        elseif !iszero(term.coefficient)
+            throw(InexactError(:convert, VariableIndex, f))
+        end
+    end
+    if scalar_term === nothing
+        throw(InexactError(:convert, VariableIndex, f))
+    end
+    return scalar_term.variable::VariableIndex
+end
+
+function Base.convert(
+    ::Type{VariableIndex},
+    f::ScalarQuadraticFunction{T},
+) where {T}
+    return convert(VariableIndex, convert(ScalarAffineFunction{T}, f))
+end
+
+# ScalarAffineFunction
+
+function Base.convert(::Type{ScalarAffineFunction{T}}, α::T) where {T}
+    return ScalarAffineFunction{T}(ScalarAffineTerm{T}[], α)
+end
+
+function Base.convert(
+    ::Type{ScalarAffineFunction{T}},
+    f::VariableIndex,
+) where {T}
+    return ScalarAffineFunction{T}(f)
+end
+
+function Base.convert(
+    ::Type{ScalarAffineTerm{T}},
+    t::ScalarAffineTerm,
+) where {T}
+    return ScalarAffineTerm{T}(t.coefficient, t.variable)
+end
+
+function Base.convert(
+    ::Type{ScalarAffineFunction{T}},
+    f::ScalarAffineFunction,
+) where {T}
+    return ScalarAffineFunction{T}(f.terms, f.constant)
+end
+
+function Base.convert(
+    ::Type{ScalarAffineFunction{T}},
+    f::ScalarQuadraticFunction{T},
+) where {T}
+    if !Base.isempty(f.quadratic_terms)
+        throw(InexactError(:convert, ScalarAffineFunction{T}, f))
+    end
+    return ScalarAffineFunction{T}(f.affine_terms, f.constant)
+end
+
+_order(x::Real, y::VariableIndex) = (x, y)
+_order(x::VariableIndex, y::Real) = (y, x)
+_order(x, y) = nothing
+
+function Base.convert(
+    ::Type{ScalarAffineTerm{T}},
+    f::ScalarNonlinearFunction,
+) where {T}
+    if f.head != :* || length(f.args) != 2
+        throw(InexactError(:convert, ScalarAffineTerm, f))
+    end
+    ret = _order(f.args[1], f.args[2])
+    if ret === nothing
+        throw(InexactError(:convert, ScalarAffineTerm, f))
+    end
+    return ScalarAffineTerm(convert(T, ret[1]), ret[2])
+end
+
+function _add_to_function(
+    f::ScalarAffineFunction{T},
+    arg::Union{Real,VariableIndex,ScalarAffineFunction},
+) where {T}
+    return Utilities.operate!(+, T, f, arg)
+end
+
+function _add_to_function(
+    f::ScalarAffineFunction{T},
+    arg::ScalarNonlinearFunction,
+) where {T}
+    if arg.head == :* && length(arg.args) == 2
+        push!(f.terms, convert(ScalarAffineTerm{T}, arg))
+    else
+        _add_to_function(f, convert(ScalarAffineFunction{T}, arg))
+    end
+    return f
+end
+
+_add_to_function(::ScalarAffineFunction, ::Any) = nothing
+
+# This is a very rough-and-ready conversion function that only works for very
+# basic expressions, such as those created by
+# `convert(ScalarNonlinearFunction, f)`.
+function Base.convert(
+    ::Type{ScalarAffineFunction{T}},
+    f::ScalarNonlinearFunction,
+) where {T}
+    if f.head == :* && length(f.args) == 2
+        term = convert(ScalarAffineTerm{T}, f)
+        return ScalarAffineFunction{T}([term], zero(T))
+    end
+    if f.head != :+
+        throw(InexactError(:convert, ScalarAffineFunction{T}, f))
+    end
+    output = ScalarAffineFunction{T}(ScalarAffineTerm{T}[], zero(T))
+    for arg in f.args
+        output = _add_to_function(output, arg)
+        if output === nothing
+            throw(InexactError(:convert, ScalarAffineFunction{T}, f))
+        end
+    end
+    return output
+end
+
+# ScalarQuadraticFunction
+
+function Base.convert(::Type{ScalarQuadraticFunction{T}}, α::T) where {T}
+    return ScalarQuadraticFunction{T}(
+        ScalarQuadraticTerm{T}[],
+        ScalarAffineTerm{T}[],
+        α,
+    )
+end
+
+function Base.convert(
+    ::Type{ScalarQuadraticFunction{T}},
+    f::VariableIndex,
+) where {T}
+    return convert(
+        ScalarQuadraticFunction{T},
+        convert(ScalarAffineFunction{T}, f),
+    )
+end
+
+function Base.convert(
+    ::Type{ScalarQuadraticFunction{T}},
+    f::ScalarAffineFunction{T},
+) where {T}
+    return ScalarQuadraticFunction{T}(
+        ScalarQuadraticTerm{T}[],
+        f.terms,
+        f.constant,
+    )
+end
+
+function Base.convert(
+    ::Type{ScalarQuadraticTerm{T}},
+    f::ScalarQuadraticTerm,
+) where {T}
+    return ScalarQuadraticTerm{T}(f.coefficient, f.variable_1, f.variable_2)
+end
+
+function Base.convert(
+    ::Type{ScalarQuadraticFunction{T}},
+    f::ScalarQuadraticFunction,
+) where {T}
+    return ScalarQuadraticFunction{T}(
+        f.quadratic_terms,
+        f.affine_terms,
+        f.constant,
+    )
+end
+
+_order(x::Real, y::VariableIndex, z::VariableIndex) = (x, y, z)
+_order(x::VariableIndex, y::Real, z::VariableIndex) = (y, x, z)
+_order(x::VariableIndex, y::VariableIndex, z::Real) = (z, x, y)
+_order(x, y, z) = nothing
+
+function Base.convert(
+    ::Type{ScalarQuadraticTerm{T}},
+    f::ScalarNonlinearFunction,
+) where {T}
+    if f.head != :* || length(f.args) != 3
+        throw(InexactError(:convert, ScalarQuadraticTerm, f))
+    end
+    ret = _order(f.args[1], f.args[2], f.args[3])
+    if ret === nothing
+        throw(InexactError(:convert, ScalarQuadraticTerm, f))
+    end
+    coef = convert(T, ret[1])
+    if ret[2] == ret[3]
+        coef *= 2
+    end
+    return ScalarQuadraticTerm(coef, ret[2], ret[3])
+end
+
+function _add_to_function(
+    f::ScalarQuadraticFunction{T},
+    arg::Union{Real,VariableIndex,ScalarAffineFunction,ScalarQuadraticFunction},
+) where {T}
+    return Utilities.operate!(+, T, f, arg)
+end
+
+function _add_to_function(
+    f::ScalarQuadraticFunction{T},
+    arg::ScalarNonlinearFunction,
+) where {T}
+    if arg.head == :* && length(arg.args) == 2
+        push!(f.affine_terms, convert(ScalarAffineTerm{T}, arg))
+    elseif arg.head == :* && length(arg.args) == 3
+        push!(f.quadratic_terms, convert(ScalarQuadraticTerm{T}, arg))
+    else
+        _add_to_function(f, convert(ScalarQuadraticFunction{T}, arg))
+    end
+    return f
+end
+
+# This is a very rough-and-ready conversion function that only works for very
+# basic expressions, such as those created by
+# `convert(ScalarNonlinearFunction, f)`.
+function Base.convert(
+    ::Type{ScalarQuadraticFunction{T}},
+    f::ScalarNonlinearFunction,
+) where {T}
+    if f.head == :*
+        if length(f.args) == 2
+            quad_terms = ScalarQuadraticTerm{T}[]
+            affine_terms = [convert(ScalarAffineTerm{T}, f)]
+            return ScalarQuadraticFunction{T}(quad_terms, affine_terms, zero(T))
+        elseif length(f.args) == 3
+            quad_terms = [convert(ScalarQuadraticTerm{T}, f)]
+            affine_terms = ScalarAffineTerm{T}[]
+            return ScalarQuadraticFunction{T}(quad_terms, affine_terms, zero(T))
+        end
+    elseif f.head == :^ && length(f.args) == 2 && f.args[2] == 2
+        return convert(
+            ScalarQuadraticFunction{T},
+            ScalarNonlinearFunction(:*, Any[one(T), f.args[1], f.args[1]]),
+        )
+    end
+    if f.head != :+
+        throw(InexactError(:convert, ScalarQuadraticFunction{T}, f))
+    end
+    output = ScalarQuadraticFunction(
+        ScalarQuadraticTerm{T}[],
+        ScalarAffineTerm{T}[],
+        zero(T),
+    )
+    for arg in f.args
+        # Unlike ScalarAffineFunction, _add_to_function cannot return ::Nothing
+        output = _add_to_function(output, arg)::ScalarQuadraticFunction{T}
+    end
+    return output
+end
+
+# ScalarNonlinearFunction
+
+function Base.convert(::Type{ScalarNonlinearFunction}, x::Real)
+    return ScalarNonlinearFunction(:+, Any[x])
+end
+
+function Base.convert(::Type{ScalarNonlinearFunction}, x::VariableIndex)
+    return ScalarNonlinearFunction(:+, Any[x])
+end
+
+function Base.convert(::Type{ScalarNonlinearFunction}, term::ScalarAffineTerm)
+    return ScalarNonlinearFunction(:*, Any[term.coefficient, term.variable])
+end
+
+function Base.convert(F::Type{ScalarNonlinearFunction}, f::ScalarAffineFunction)
+    args = Any[convert(ScalarNonlinearFunction, term) for term in f.terms]
+    if isempty(args) || !iszero(f.constant)
+        push!(args, f.constant)
+    end
+    return ScalarNonlinearFunction(:+, args)
+end
+
+function Base.convert(
+    ::Type{ScalarNonlinearFunction},
+    term::ScalarQuadraticTerm,
+)
+    coef = term.coefficient
+    if term.variable_1 == term.variable_2
+        coef /= 2
+    end
+    return ScalarNonlinearFunction(
+        :*,
+        Any[coef, term.variable_1, term.variable_2],
+    )
+end
+
+function Base.convert(
+    F::Type{ScalarNonlinearFunction},
+    f::ScalarQuadraticFunction,
+)
+    args = Any[convert(F, term) for term in f.quadratic_terms]
+    for term in f.affine_terms
+        push!(args, convert(F, term))
+    end
+    if isempty(args) || !iszero(f.constant)
+        push!(args, f.constant)
+    end
+    return ScalarNonlinearFunction(:+, args)
+end
+
+# VectorOfVariables
+
+function Base.convert(::Type{VectorOfVariables}, g::VariableIndex)
+    return VectorOfVariables([g])
+end
+
+function Base.convert(::Type{VectorOfVariables}, f::VectorAffineFunction)
+    variables = Vector{VariableIndex}(undef, length(f.constants))
+    assigned = fill(false, length(variables))
+    if any(!iszero, f.constants)
+        throw(InexactError(:convert, VectorOfVariables, f))
+    end
+    for term in f.terms
+        if assigned[term.output_index] || !isone(term.scalar_term.coefficient)
+            throw(InexactError(:convert, VectorOfVariables, f))
+        end
+        x = convert(VariableIndex, term.scalar_term.variable)
+        variables[term.output_index] = x
+        assigned[term.output_index] = true
+    end
+    if !all(assigned)
+        throw(InexactError(:convert, VectorOfVariables, f))
+    end
+    return VectorOfVariables(variables)
+end
+
+# VectorAffineFunction
+
+function Base.convert(
+    ::Type{VectorAffineFunction{T}},
+    g::VariableIndex,
+) where {T}
+    return VectorAffineFunction{T}(
+        [VectorAffineTerm(1, ScalarAffineTerm(one(T), g))],
+        [zero(T)],
+    )
+end
+
+function Base.convert(
+    ::Type{VectorAffineFunction{T}},
+    g::ScalarAffineFunction,
+) where {T}
+    return VectorAffineFunction{T}(
+        VectorAffineTerm{T}[VectorAffineTerm(1, term) for term in g.terms],
+        [g.constant],
+    )
+end
+
+function Base.convert(
+    ::Type{VectorAffineTerm{T}},
+    f::VectorAffineTerm,
+) where {T}
+    return VectorAffineTerm{T}(f.output_index, f.scalar_term)
+end
+
+function Base.convert(
+    ::Type{VectorAffineFunction{T}},
+    f::VectorAffineFunction,
+) where {T}
+    return VectorAffineFunction{T}(f.terms, f.constants)
+end
+
+function Base.convert(
+    ::Type{VectorAffineFunction{T}},
+    f::VectorOfVariables,
+) where {T}
+    terms = VectorAffineTerm{T}[
+        VectorAffineTerm{T}(i, ScalarAffineTerm{T}(one(T), x)) for
+        (i, x) in enumerate(f.variables)
+    ]
+    return VectorAffineFunction{T}(terms, zeros(T, length(terms)))
+end
+
+function Base.convert(
+    ::Type{VectorAffineFunction{T}},
+    f::VectorQuadraticFunction{T},
+) where {T}
+    if any(!iszero(t.scalar_term.coefficient) for t in f.quadratic_terms)
+        throw(InexactError(:convert, VectorAffineFunction{T}, f))
+    end
+    return VectorAffineFunction{T}(f.affine_terms, f.constants)
+end
+
+# VectorQuadraticFunction
+
+function Base.convert(
+    ::Type{VectorQuadraticFunction{T}},
+    g::VariableIndex,
+) where {T}
+    return VectorQuadraticFunction{T}(
+        VectorQuadraticTerm{T}[],
+        [VectorAffineTerm(1, ScalarAffineTerm(one(T), g))],
+        [zero(T)],
+    )
+end
+
+function Base.convert(
+    ::Type{VectorQuadraticFunction{T}},
+    g::ScalarAffineFunction,
+) where {T}
+    return VectorQuadraticFunction{T}(
+        VectorQuadraticTerm{T}[],
+        VectorAffineTerm{T}[VectorAffineTerm(1, term) for term in g.terms],
+        [g.constant],
+    )
+end
+
+function Base.convert(
+    ::Type{VectorQuadraticFunction{T}},
+    g::ScalarQuadraticFunction,
+) where {T}
+    return VectorQuadraticFunction{T}(
+        VectorQuadraticTerm{T}[
+            VectorQuadraticTerm(1, term) for term in g.quadratic_terms
+        ],
+        VectorAffineTerm{T}[
+            VectorAffineTerm(1, term) for term in g.affine_terms
+        ],
+        [g.constant],
+    )
+end
+
+function Base.convert(
+    ::Type{VectorQuadraticFunction{T}},
+    f::VectorAffineFunction{T},
+) where {T}
+    return VectorQuadraticFunction{T}(
+        VectorQuadraticTerm{T}[],
+        f.terms,
+        f.constants,
+    )
+end
+
+function Base.convert(
+    ::Type{VectorQuadraticTerm{T}},
+    f::VectorQuadraticTerm,
+) where {T}
+    return VectorQuadraticTerm{T}(f.output_index, f.scalar_term)
+end
+
+function Base.convert(
+    ::Type{VectorQuadraticFunction{T}},
+    f::VectorQuadraticFunction,
+) where {T}
+    return VectorQuadraticFunction{T}(
+        f.quadratic_terms,
+        f.affine_terms,
+        f.constants,
+    )
+end
+
+for f in (
+    :ScalarAffineTerm,
+    :ScalarAffineFunction,
+    :ScalarQuadraticTerm,
+    :ScalarQuadraticFunction,
+    :VectorAffineTerm,
+    :VectorAffineFunction,
+    :VectorQuadraticTerm,
+    :VectorQuadraticFunction,
+)
+    @eval Base.convert(::Type{$f{T}}, x::$f{T}) where {T} = x
+end

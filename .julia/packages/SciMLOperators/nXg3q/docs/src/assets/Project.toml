@@ -1,0 +1,7 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+SciMLOperators = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
+
+[compat]
+Documenter = "0.27"
+SciMLOperators = "0.2"

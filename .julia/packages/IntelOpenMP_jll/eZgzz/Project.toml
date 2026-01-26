@@ -1,0 +1,16 @@
+name = "IntelOpenMP_jll"
+uuid = "1d5cc7b8-4909-519e-a0f8-d0f5ad9712d0"
+version = "2025.2.0+0"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.6"
+LazyArtifacts = "< 0.0.1, 1"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

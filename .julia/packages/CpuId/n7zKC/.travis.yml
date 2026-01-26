@@ -1,0 +1,42 @@
+language: julia
+
+os:
+  - linux
+  - osx
+  - windows
+
+julia:
+  - "1.0"
+  - "1.1"
+  - "1.2"
+  - "1.3"
+  - "1.4"
+  - "1.5"
+  - "1.6"
+  - nightly
+
+notifications:
+  email: false
+
+matrix:
+  allow_failures:
+    - julia: nightly
+    - julia: 1.0
+    - julia: 1.1
+
+before_install:
+
+script:
+  - julia --project --check-bounds=yes -e 'import Pkg; Pkg.build(); Pkg.test("CpuId"; coverage=true)'
+
+after_success:
+  # Add required packages for Coverage and Documentation
+  - julia --project -e 'import Pkg; Pkg.add("Coverage");'
+  #- julia --project -e 'import Pkg; Pkg.add("Documenter"); Pkg.add("DocumenterTools");'
+
+  # Submit test coverage report
+  - julia --project -e 'using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  
+  # Build and deploy documentation
+  #- julia --project ./docs/make.jl
+

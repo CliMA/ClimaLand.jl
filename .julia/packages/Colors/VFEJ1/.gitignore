@@ -1,0 +1,7 @@
+*.jl.*.cov
+*.jl.mem
+docs/build/
+docs/site/
+.DS_Store
+/docs/Manifest.toml
+Manifest.toml

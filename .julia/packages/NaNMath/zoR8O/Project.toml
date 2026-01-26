@@ -1,0 +1,17 @@
+name = "NaNMath"
+uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+repo = "https://github.com/JuliaMath/NaNMath.jl.git"
+authors = ["Miles Lubin"]
+version = "1.1.3"
+
+[deps]
+OpenLibm_jll = "05823500-19ac-5b8b-9628-191a04bc5112"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

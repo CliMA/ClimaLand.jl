@@ -1,0 +1,26 @@
+name = "CubedSphere"
+uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
+authors = ["Climate Modeling Alliance and contributors"]
+version = "0.3.4"
+
+[deps]
+Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TaylorSeries = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
+
+[compat]
+Distances = "0.10.12"
+TaylorSeries = "0.10 - 0.20"
+julia = "1"
+
+[extras]
+Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Documenter", "Coverage", "Printf"]

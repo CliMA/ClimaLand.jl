@@ -1,0 +1,36 @@
+name = "ADTypes"
+uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+authors = ["Vaibhav Dixit <vaibhavyashdixit@gmail.com>, Guillaume Dalle and contributors"]
+version = "1.18.0"
+
+[deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+
+[weakdeps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+
+[extensions]
+ADTypesChainRulesCoreExt = "ChainRulesCore"
+ADTypesConstructionBaseExt = "ConstructionBase"
+ADTypesEnzymeCoreExt = "EnzymeCore"
+
+[compat]
+ChainRulesCore = "1.0.2"
+ConstructionBase = "1.5"
+EnzymeCore = "0.5.3,0.6,0.7,0.8"
+julia = "1.10"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "ChainRulesCore", "EnzymeCore", "JET", "Setfield", "Test"]

@@ -1,0 +1,9 @@
+[deps]
+ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
+SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+
+[compat]
+SymbolicUtils = "3.2"
+ModelingToolkit = "9.60"

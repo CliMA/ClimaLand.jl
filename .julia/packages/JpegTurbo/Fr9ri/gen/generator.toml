@@ -1,0 +1,35 @@
+[general]
+jll_pkg_name = "JpegTurbo_jll"
+library_name = "libjpeg"
+library_names = {"libjpeg.h" = "libjpeg", "turbojpeg.h" = "libturbojpeg"}
+module_name = "LibJpeg"
+output_file_path = "../lib/LibJpeg.jl"
+prologue_file_path = "./prologue.jl"
+epilogue_file_path = "./epilogue.jl"
+is_local_header_only = true
+
+use_deterministic_symbol = true
+
+auto_mutability = true
+auto_mutability_includelist = [
+    "jpeg_compress_struct",
+    "jpeg_decompress_struct",
+]
+
+output_ignorelist = [
+    "LIBJPEG_TURBO_VERSION",
+    "boolean"
+]
+
+[codegen]
+opaque_as_mutable_struct = false
+is_function_strictly_typed = false
+
+field_access_method_list = [
+    "jpeg_compress_struct",
+    "jpeg_decompress_struct",
+]
+
+[codegen.macro]
+macro_mode = "basic"
+ignore_pure_definition = false

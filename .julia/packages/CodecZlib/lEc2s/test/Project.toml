@@ -1,0 +1,9 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestsForCodecPackages = "c2e61002-3542-480d-8b3c-5f05cc4f8554"
+TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+
+[sources]
+CodecZlib = {path = ".."}

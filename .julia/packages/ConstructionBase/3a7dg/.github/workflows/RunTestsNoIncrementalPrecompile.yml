@@ -1,0 +1,32 @@
+name: NoCompModules
+on:
+  push:
+    branches:
+      - master
+  - pull_request
+defaults:
+  run:
+    shell: bash
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        version:
+          - '1'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-buildpkg@latest
+      - name: Run tests without incremental precompilation
+        run: julia --compiled-modules=no --project -e "using Pkg; Pkg.test()"

@@ -1,0 +1,16 @@
+name = "UnicodeFun"
+uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+authors = ["Simon Danisch"]
+version = "0.4.1"
+
+[deps]
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

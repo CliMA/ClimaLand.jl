@@ -1,0 +1,14 @@
+_predicates.c 
+libpredicates.so
+Manifest.toml
+orient_*
+output*
+.vscode
+libpredicates32.so
+libpredicates64.so
+__predicates.c 
+_predicates.c 
+_macro_defs.c 
+_macro_tests.exe 
+predicates64.exe 
+predicates32.exe

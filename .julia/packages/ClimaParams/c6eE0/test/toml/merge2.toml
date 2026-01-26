@@ -1,0 +1,7 @@
+[a]
+value = 2
+type = "integer"
+
+[b]
+value = 3
+type = "float"

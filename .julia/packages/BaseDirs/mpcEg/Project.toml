@@ -1,0 +1,13 @@
+name = "BaseDirs"
+uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
+version = "1.3.2"
+authors = ["TEC <git@tecosaur.net>"]
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

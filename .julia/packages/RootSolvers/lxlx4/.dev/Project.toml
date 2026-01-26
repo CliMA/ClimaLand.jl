@@ -1,0 +1,8 @@
+[deps]
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+RootSolvers = "7181ea78-2dcb-4de3-ab41-2b8ab5a31e74"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[compat]
+JuliaFormatter = "1"

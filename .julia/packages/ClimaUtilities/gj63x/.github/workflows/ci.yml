@@ -1,0 +1,46 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags: '*'
+
+# Needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/julia-processcoverage@latest
+      - uses: codecov/codecov-action@v5
+        if: ${{ matrix.version == '1.10' }} && ${{ matrix.os == 'ubuntu-latest' }}
+        with:
+          files: lcov.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

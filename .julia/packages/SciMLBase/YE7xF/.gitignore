@@ -1,0 +1,10 @@
+Manifest.toml
+.*.swp
+.DS_Store
+
+# vscode stuff
+.vscode
+.vscode/*
+
+# python extensions
+.CondaPkg

@@ -1,0 +1,6 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ThreadingUtilities = "8290d209-cae3-49c0-8002-c8c24d57dab5"

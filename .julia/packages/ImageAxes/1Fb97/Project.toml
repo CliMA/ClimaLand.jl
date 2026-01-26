@@ -1,0 +1,31 @@
+name = "ImageAxes"
+uuid = "2803e5a7-5153-5ecf-9a86-9b4c37f5f5ac"
+version = "0.6.12"
+
+[deps]
+AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
+ImageBase = "c817782e-172a-44cc-b673-b171935fbb9e"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+SimpleTraits = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
+
+[compat]
+AxisArrays = "0.3, 0.4"
+ImageBase = "0.1.7"
+ImageCore = "0.9, 0.10"
+Reexport = "0.2, 1.0"
+SimpleTraits = "0.8, 0.9"
+Documenter = "1"
+Aqua = "0.8"
+Test = "1"
+Unitful = "1" 
+julia = "1"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[targets]
+test = ["Aqua", "Documenter", "Unitful", "Test"]

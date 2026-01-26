@@ -1,0 +1,321 @@
+# Copyright (c) 2017: Miles Lubin and contributors
+# Copyright (c) 2017: Google Inc.
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
+###
+### Re-naming utilities
+###
+
+"""
+    create_unique_names(
+        model::MOI.ModelLike;
+        warn::Bool = false,
+        replacements::Vector{Function} = Function[],
+    )
+
+Rename variables in `model` to ensure that all variables and constraints have
+a unique name. In addition, loop through `replacements` and replace names with
+`f(name)`.
+
+If `warn`, print a warning if a variable or constraint is renamed.
+"""
+function create_unique_names(
+    model::MOI.ModelLike;
+    warn::Bool = false,
+    replacements::Vector{Function} = Function[],
+)
+    create_unique_variable_names(model, warn, replacements)
+    create_unique_constraint_names(model, warn, replacements)
+    return
+end
+
+"""
+    create_generic_names(model::MOI.ModelLike)
+
+Rename all variables and constraints in `model` to have generic names.
+
+This is helpful for users with proprietary models to avoid leaking information.
+"""
+function create_generic_names(model::MOI.ModelLike)
+    create_generic_variable_names(model)
+    create_generic_constraint_names(model)
+    return
+end
+
+function create_generic_variable_names(model::MOI.ModelLike)
+    for (i, x) in enumerate(MOI.get(model, MOI.ListOfVariableIndices()))
+        MOI.set(model, MOI.VariableName(), x, "C$i")
+    end
+    return
+end
+
+function create_generic_constraint_names(model::MOI.ModelLike)
+    i = 1
+    for (F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())
+        if F != MOI.VariableIndex
+            i = create_generic_constraint_names(model, F, S, i)
+        end
+    end
+    return
+end
+
+function create_generic_constraint_names(
+    model::MOI.ModelLike,
+    ::Type{F},
+    ::Type{S},
+    i::Int,
+) where {F,S}
+    for c in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+        MOI.set(model, MOI.ConstraintName(), c, "R$i")
+        i += 1
+    end
+    return i
+end
+
+function _replace(s::String, replacements::Vector{Function})
+    for f in replacements
+        s = f(s)
+    end
+    return s
+end
+
+function _create_unique_constraint_names_inner(
+    model,
+    warn,
+    replacements,
+    original_names,
+    added_names,
+    ::Type{MOI.VariableIndex},
+    ::Type{S},
+) where {S}
+    return  # VariableIndex constraints do not need a name.
+end
+
+function _create_unique_constraint_names_inner(
+    model,
+    warn,
+    replacements,
+    original_names,
+    added_names,
+    ::Type{F},
+    ::Type{S},
+) where {F,S}
+    for index in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+        original_name = MOI.get(model, MOI.ConstraintName(), index)
+        new_name = _replace(
+            original_name != "" ? original_name : "c$(index.value)",
+            replacements,
+        )
+        if new_name in added_names
+            # We found a duplicate name. We could just append a string like
+            # "_", but we're going to be clever and loop through the
+            # integers to name them appropriately. Thus, if we have three
+            # constraints named c, we'll end up with variables named c, c_1,
+            # and c_2.
+            i = 1
+            tmp_name = string(new_name, "_", i)
+            while tmp_name in added_names || tmp_name in original_names
+                i += 1
+                tmp_name = string(new_name, "_", i)
+            end
+            new_name = tmp_name
+        end
+        push!(added_names, new_name)
+        if new_name != original_name
+            if warn
+                if original_name == ""
+                    @warn(
+                        "Blank name detected for constraint $(index). " *
+                        "Renamed to $(new_name)."
+                    )
+                else
+                    @warn(
+                        "Duplicate name $(original_name) detected for " *
+                        "constraint $(index). Renamed to $(new_name)."
+                    )
+                end
+            end
+            MOI.set(model, MOI.ConstraintName(), index, new_name)
+        end
+    end
+    return
+end
+
+function _get_original_names_inner(
+    model,
+    replacements,
+    original_names,
+    ::Type{F},
+    ::Type{S},
+) where {F,S}
+    for index in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+        name = MOI.get(model, MOI.ConstraintName(), index)
+        push!(original_names, _replace(name, replacements))
+    end
+    return
+end
+
+function _get_original_names_inner(
+    model,
+    replacements,
+    original_names,
+    ::Type{MOI.VariableIndex},
+    ::Type{S},
+) where {S}
+    return  # VariableIndex constraints do not need a name.
+end
+
+function create_unique_constraint_names(
+    model::MOI.ModelLike,
+    warn::Bool,
+    replacements::Vector{Function},
+)
+    original_names = Set{String}()
+    for (F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())
+        _get_original_names_inner(model, replacements, original_names, F, S)
+    end
+    added_names = Set{String}()
+    for (F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())
+        _create_unique_constraint_names_inner(
+            model,
+            warn,
+            replacements,
+            original_names,
+            added_names,
+            F,
+            S,
+        )
+    end
+    return
+end
+
+function create_unique_variable_names(
+    model::MOI.ModelLike,
+    warn::Bool,
+    replacements::Vector{Function},
+)
+    variables = MOI.get(model, MOI.ListOfVariableIndices())
+    # This is a list of all of the names currently in the model. We're going to
+    # use this to make sure we don't rename a variable to a name that already
+    # exists.
+    original_names = Set{String}([
+        _replace(MOI.get(model, MOI.VariableName(), index), replacements)
+        for index in variables
+    ])
+    # This set of going to store all of the names in the model so that we don't
+    # add duplicates.
+    added_names = Set{String}()
+    for index in variables
+        original_name = MOI.get(model, MOI.VariableName(), index)
+        new_name = _replace(
+            original_name != "" ? original_name : "x$(index.value)",
+            replacements,
+        )
+        if new_name in added_names
+            # We found a duplicate name. We could just append a string like "_",
+            # but we're going to be clever and loop through the integers to name
+            # them appropriately. Thus, if we have three variables named x,
+            # we'll end up with variables named x, x_1, and x_2.
+            i = 1
+            tmp_name = string(new_name, "_", i)
+            while tmp_name in added_names || tmp_name in original_names
+                i += 1
+                tmp_name = string(new_name, "_", i)
+            end
+            new_name = tmp_name
+        end
+        push!(added_names, new_name)
+        if new_name != original_name
+            if warn
+                if original_name == ""
+                    @warn(
+                        "Blank name detected for variable $(index). Renamed to " *
+                        "$(new_name)."
+                    )
+                else
+                    @warn(
+                        "Duplicate name $(original_name) detected for variable " *
+                        "$(index). Renamed to $(new_name)."
+                    )
+                end
+            end
+            MOI.set(model, MOI.VariableName(), index, new_name)
+        end
+    end
+end
+
+###
+### Compression utilities
+###
+
+function error_mode(mode::String)
+    return throw(
+        ArgumentError("Compressed mode must be \"r\" or \"w\". Got: $mode."),
+    )
+end
+
+"""
+    abstract type AbstractCompressionScheme end
+
+Base type to implement a new compression scheme for MathOptFormat.
+
+To do so, create a concrete subtype (for example, named after the compression scheme)
+and implement:
+
+    extension(::Val{:your_scheme_extension}) = YourScheme()
+    compressed_open(f::Function, filename::String, mode::String, ::YourScheme)
+"""
+abstract type AbstractCompressionScheme end
+
+struct NoCompression <: AbstractCompressionScheme end
+
+extension(::Val) = NoCompression()
+
+function compressed_open(
+    f::Function,
+    filename::String,
+    mode::String,
+    ::NoCompression,
+)
+    return Base.open(f, filename, mode)
+end
+
+struct Gzip <: AbstractCompressionScheme end
+
+extension(::Val{:gz}) = Gzip()
+
+function compressed_open(f::Function, filename::String, mode::String, ::Gzip)
+    if mode == "w"
+        return Base.open(f, CodecZlib.GzipCompressorStream, filename, mode)
+    elseif mode == "r"
+        return Base.open(f, CodecZlib.GzipDecompressorStream, filename, mode)
+    end
+    return error_mode(mode)
+end
+
+struct Bzip2 <: AbstractCompressionScheme end
+
+extension(::Val{:bz2}) = Bzip2()
+
+function compressed_open(f::Function, filename::String, mode::String, ::Bzip2)
+    if mode == "w"
+        return Base.open(f, CodecBzip2.Bzip2CompressorStream, filename, mode)
+    elseif mode == "r"
+        return Base.open(f, CodecBzip2.Bzip2DecompressorStream, filename, mode)
+    end
+    return error_mode(mode)
+end
+
+struct AutomaticCompression <: AbstractCompressionScheme end
+
+function compressed_open(
+    f::F,
+    filename::String,
+    mode::String,
+    ::AutomaticCompression,
+) where {F<:Function}
+    ext = Symbol(split(filename, ".")[end])
+    return compressed_open(f, filename, mode, extension(Val{ext}()))
+end

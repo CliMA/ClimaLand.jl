@@ -1,0 +1,18 @@
+name = "SCS_jll"
+uuid = "f4f2fc5b-1d94-523c-97ea-2ab488bedf4b"
+version = "300.200.900+0"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+libblastrampoline_jll = "8e850b90-86db-534c-a0d3-1478176c7d93"
+CompilerSupportLibraries_jll = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+LLVMOpenMP_jll = "1d63c593-3942-5779-bab2-d838dc0a180e"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.10"
+libblastrampoline_jll = "5.4.0"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

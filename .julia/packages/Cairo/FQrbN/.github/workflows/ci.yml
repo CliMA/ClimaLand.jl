@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: "master"
+    tags: ["*"]
+  pull_request:
+  release:
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }} - ${{ matrix.julia-arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version:
+          - 'lts'
+          - '1'
+        os:
+          - ubuntu-latest
+          - windows-latest
+        julia-arch:
+          - x64
+        include:
+          - os: macOS-latest
+            julia-arch: aarch64
+            julia-version: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/julia-uploadcodecov@v0.1
+        continue-on-error: true
+      - uses: julia-actions/julia-uploadcoveralls@v0.1
+        continue-on-error: true

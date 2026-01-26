@@ -1,0 +1,16 @@
+name = "ChunkCodecLibZstd"
+uuid = "55437552-ac27-4d47-9aa3-63184e8fd398"
+authors = ["nhz2 <nhz2@cornell.edu>"]
+version = "1.0.0"
+
+[deps]
+ChunkCodecCore = "0b6fb165-00bc-4d37-ab8b-79f91016dbe1"
+Zstd_jll = "3161d3a3-bdf6-5164-811a-617609db77b4"
+
+[compat]
+ChunkCodecCore = "1"
+Zstd_jll = "1.5"
+julia = "1.6"
+
+[workspace]
+projects = ["test"]

@@ -1,0 +1,14 @@
+name = "Rmath_jll"
+uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
+version = "0.5.1+0"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[compat]
+JLLWrappers = "1.2.0"
+julia = "1.6"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

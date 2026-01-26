@@ -1,0 +1,8 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ExactPredicates = "429591f6-91af-11e9-00e2-59fbe8cec110"
+Supposition = "5a0628fe-1738-4658-9b6d-0b7605a9755b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+Aqua = "0.8.7"

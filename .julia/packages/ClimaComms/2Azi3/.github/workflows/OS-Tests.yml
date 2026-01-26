@@ -1,0 +1,68 @@
+name: OS Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-os:
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.4.0
+      with:
+        access_token: ${{ github.token }}
+
+    - name: Checkout
+      uses: actions/checkout@v2.2.0
+
+    # Setup a filter and only run if src/ test/ folder content changes
+    # or project depedencies
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          run_test:
+            - '.github/workflows/OS-Tests.yml'
+            - 'src/**'
+            - 'test/**'
+            - 'Project.toml'
+
+    - name: Set up Julia
+      uses: julia-actions/setup-julia@latest
+      if: steps.filter.outputs.run_test == 'true'
+      with:
+        version: '1.11'
+
+    - name: Cache artifacts
+      uses: actions/cache@v4
+      if: steps.filter.outputs.run_test == 'true'
+      env:
+        cache-name: cache-artifacts
+      with:
+        path: ~/.julia/artifacts
+        key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-test-${{ env.cache-name }}-
+          ${{ runner.os }}-test-
+          ${{ runner.os }}-
+
+    - name: Install Project Packages
+      if: steps.filter.outputs.run_test == 'true'
+      run: |
+        julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'
+        julia --color=yes --project -e 'using Pkg; Pkg.precompile(;strict=true)'
+        julia --color=yes --project -e 'using Pkg; Pkg.status()'
+
+    - name: Run MPI Unit Tests
+      if: steps.filter.outputs.run_test == 'true'
+      run: |
+        julia --color=yes --project -e 'using Pkg; Pkg.test()'

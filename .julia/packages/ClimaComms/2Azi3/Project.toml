@@ -1,0 +1,25 @@
+name = "ClimaComms"
+uuid = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
+authors = ["Kiran Pamnany <clima-software@caltech.edu>", "Simon Byrne <simonbyrne@caltech.edu>", "Charles Kawczynski <charliek@caltech.edu>", "Sriharsha Kandala <Sriharsha.kvs@gmail.com>", "Jake Bolewski <clima-software@caltech.edu>", "Gabriele Bozzola <gbozzola@caltech.edu>"]
+version = "0.6.9"
+
+[deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+
+[extensions]
+ClimaCommsCUDAExt = "CUDA"
+ClimaCommsMPIExt = "MPI"
+
+[compat]
+CUDA = "3, 4, 5"
+Adapt = "3, 4"
+Logging = "1.9.4"
+LoggingExtras = "1.1.0"
+MPI = "0.20.18"
+julia = "1.9"

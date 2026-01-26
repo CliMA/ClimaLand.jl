@@ -1,0 +1,282 @@
+#+title: A Survey of other XDG-y packages
+
+The entire point of this package is to handle locations in a fairly standardised
+way. With this in mind, it seems fairly sensible to survey other notable XDG-y
+packages and see how them behave. Specifically, we will be looking at the
+following:
++ (Go) [[https://github.com/adrg/xdg][xdg]]
++ (Rust) [[https://github.com/dirs-dev/directories-rs][directories-rs]]
++ (Python) [[https://github.com/platformdirs/platformdirs][platform-dirs]]
++ (Qt) [[https://doc.qt.io/qt-6.2/qstandardpaths.html][QStandardPaths]]
++ [[https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html][XDG Base Directory Specification]]
+
+* Base directories
+
+** Linux
+
+| Common Name      | EnvVar                    | XDG spec                     | QStandardPaths | Go XDG   | Rust directories-rs | Python platform-dirs |
+|------------------+---------------------------+------------------------------+----------------+----------+---------------------+----------------------|
+| User data        | =XDG_DATA_HOME=             | =~/.local/share=               | XDG spec       | XDG spec | XDG spec            | XDG spec             |
+| System data      | =XDG_DATA_DIRS=             | =/usr/local/share=, =/usr/share= | XDG spec       | XDG spec | =~/.local/share=      | XDG spec             |
+| User config      | =XDG_CONFIG_HOME=           | =~/.config=                    | XDG spec       | XDG spec | XDG spec            | XDG spec             |
+| System config    | =XDG_CONFIG_DIRS=           | =/etc/xdg=                     | XDG spec       | XDG spec | -                   | XDG spec             |
+| State            | =XDG_STATE_HOME=            | =~/.local/state=               | -              | XDG spec | XDG spec            | XDG spec             |
+| User executables | =XDG_BIN_HOME= [fn:binhome] | =~/.local/bin=                 | -              | -        | XDG spec            | -                    |
+| Cache            | =XDG_CACHE_HOME=            | =~/.cache=                     | XDG spec       | XDG spec | XDG spec            | XDG spec             |
+| Runtime          | =XDG_RUNTIME_DIR=           | =/run/user/$UID=               | XDG spec       | XDG spec | -                   | XDG spec             |
+
+[fn:binhome] While =XDG_BIN_HOME= is not yet standard, it seems like the most
+likely name to be given to =~/.local/bin= (see [[https://gitlab.freedesktop.org/xdg/xdg-specs/-/issues/14][this issue]]), and I think it is
+worth having something rather than nothing.
+
+** MacOS
+
+| Common Name      | EnvVar                    | QStandardPaths                      | Go XDG                                                                    | Rust directories-rs           | Python platform-dirs            |
+|------------------+---------------------------+-------------------------------------+---------------------------------------------------------------------------+-------------------------------+---------------------------------|
+| User data        | =XDG_DATA_HOME=             | =~/Library/Application Support=       | Qt                                                                        | Qt                            | Qt                              |
+| System data      | =XDG_DATA_DIRS=             | =/Library/Application Support=        | Qt                                                                        | =~/Library/Application Support= | Qt                              |
+| User config      | =XDG_CONFIG_HOME=           | =~/Library/Preferences=               | =~/Library/Application Support=                                             | Go XDG                        | Qt                              |
+| System config    | =XDG_CONFIG_DIRS=           | =~/Library/Preferences=               | =~/Library/Preferences=, =/Library/Application Support=, =/Library/Preferences= | -                             | -                               |
+| State            | =XDG_STATE_HOME=            | -                                   | =~/Library/Application Support=                                             | -                             | Go XDG                          |
+| User executables | =XDG_BIN_HOME= [fn:binhome] | -                                   | -                                                                         | -                             | -                               |
+| Cache            | =XDG_CACHE_HOME=            | =~/Library/Caches/= , =/Library/Caches= | Qt                                                                        | Qt                            | Qt                              |
+| Runtime          | =XDG_RUNTIME_DIR=           | =~/Library/Application Support=       | Qt                                                                        | -                             | =~/Library/Caches/TemporaryItems= |
+
+** Windows
+
+Here folder names not beginning with =~=  or =/= refer to [[https://docs.microsoft.com/en-us/windows/win32/shell/knownfolderid][Known Folders]].
+
+| Common Name      | EnvVar                    | QStandardPaths     | Go XDG                      | Rust directories-rs | Python platform-dirs           |
+|------------------+---------------------------+--------------------+-----------------------------+---------------------+--------------------------------|
+| User data        | =XDG_DATA_HOME=             | =LocalAppData=       | Qt                          | Qt                  | =LocalAppData= or =RoamingAppData= |
+| System data      | =XDG_DATA_DIRS=             | =ProgramData=        | =RoamingAppData=, =ProgramData= | =RoamingAppData=      | =ProgramData=                    |
+| User config      | =XDG_CONFIG_HOME=           | =LocalAppData=       | =LocalAppData=                | =RoamingAppData=      | =LocalAppData= or =RoamingAppData= |
+| System config    | =XDG_CONFIG_DIRS=           | =ProgramData=        | =ProgramData=, =RoamingAppData= | -                   | =ProgramData=                    |
+| State            | =XDG_STATE_HOME=            | -                  | =LocalAppData=                | -                   | =LocalAppData=                   |
+| User executables | =XDG_BIN_HOME= [fn:binhome] | -                  | -                           | -                   |                                |
+| Cache            | =XDG_CACHE_HOME=            | =LocalAppData\cache= | =LocalAppData\cache=          | =LocalAppData=        | =LocalAppData\Cache=             |
+| Runtime          | =XDG_RUNTIME_DIR=           | =~=                  | =LocalAppData=                | Go XDG              | =LocalAppData\Temp=              |
+
+* User directories
+
+** Linux
+
+| Common Name | EnvVar              | XDG spec    | QStandardPaths | Go XDG   | Rust directories-rs | Python platform-dirs |
+|-------------+---------------------+-------------+----------------+----------+---------------------+----------------------|
+| Desktop     | =XDG_DESKTOP_DIR=     | =~/Desktop=   | XDG spec       | XDG spec | -                   | -                    |
+| Download    | =XDG_DOWNLOAD_DIR=    | =~/Downloads= | XDG spec       | XDG spec | -                   | -                    |
+| Documents   | =XDG_DOCUMENTS_DIR=   | =~/Documents= | XDG spec       | XDG spec | -                   | XDG spec             |
+| Music       | =XDG_MUSIC_DIR=       | =~/Music=     | XDG spec       | XDG spec | -                   | -                    |
+| Pictures    | =XDG_PICTURES_DIR=    | =~/Pictures=  | XDG spec       | XDG spec | -                   | -                    |
+| Videos      | =XDG_VIDEOS_DIR=      | =~/Videos=    | XDG spec       | XDG spec | -                   | -                    |
+| Templates   | =XDG_TEMPLATES_DIR=   | =~/Templates= | -              | XDG spec | -                   | -                    |
+| Public      | =XDG_PUBLICSHARE_DIR= | =~/Public=    | -              | XDG spec | -                   | -                    |
+
+** MacOS
+
+| Common Name | EnvVar              | QStandardPaths | Go XDG     | Rust directories-rs | Python platform-dirs |
+|-------------+---------------------+----------------+------------+---------------------+----------------------|
+| Desktop     | =XDG_DESKTOP_DIR=     | =~/Desktop=      | Qt         | Qt                  | -                    |
+| Download    | =XDG_DOWNLOAD_DIR=    | =~/Downloads=    | Qt         | Qt                  | -                    |
+| Documents   | =XDG_DOCUMENTS_DIR=   | =~/Document=     | Qt         | Qt                  | Qt                   |
+| Music       | =XDG_MUSIC_DIR=       | =~/Music=        | Qt         | Qt                  | -                    |
+| Pictures    | =XDG_PICTURES_DIR=    | =~/Pictures=     | Qt         | Qt                  | -                    |
+| Videos      | =XDG_VIDEOS_DIR=      | =~/Movies=       | Qt         | Qt                  | -                    |
+| Templates   | =XDG_TEMPLATES_DIR=   | -              | =~/Template= | Go XDG              | -                    |
+| Public      | =XDG_PUBLICSHARE_DIR= | -              | =~/Public=   | Go XDG              | -                    |
+
+** Windows
+
+| Common Name | EnvVar              | Go XDG    | Rust directories-rs | Python platform-dirs |
+|-------------+---------------------+-----------+---------------------+----------------------|
+| Desktop     | =XDG_DESKTOP_DIR=     | =Desktop=   | Go XDG              | -                    |
+| Download    | =XDG_DOWNLOAD_DIR=    | =Downloads= | Go XDG              | -                    |
+| Documents   | =XDG_DOCUMENTS_DIR=   | =Documents= | Go XDG              | Go XDG               |
+| Music       | =XDG_MUSIC_DIR=       | =Music=     | Go XDG              | -                    |
+| Pictures    | =XDG_PICTURES_DIR=    | =Pictures=  | Go XDG              | -                    |
+| Videos      | =XDG_VIDEOS_DIR=      | =Videos=    | Go XDG              | -                    |
+| Templates   | =XDG_TEMPLATES_DIR=   | =Templates= | Go XDG              | -                    |
+| Public      | =XDG_PUBLICSHARE_DIR= | =Public=    | Go XDG              | -                    |
+
+* Project directories
+
+Here =$PP= will be a stand-in for the project path, according to the conventions
+of the OS.
+
+** Linux
+
+| Common Name   | QStandardPaths       | Rust directories-rs |
+|---------------+----------------------+---------------------|
+| User data     | =$(User data)/$PP=     | =$(User data)/$PP=    |
+| System data   | =$(System data)/$PP=   | =$(User data)/$PP=    |
+| User config   | =$(User config)/$PP=   | =$(User config)/$PP=  |
+| System config | =$(System config)/$PP= | -                   |
+| Cache         | =$(Cache)/$PP=         | =$(Cache)/$PP=        |
+| State         | -                    | =$(State)/$PP=        |
+
+** MacOS
+
+| Common Name   | QStandardPaths     | Rust directories-rs |
+|---------------+--------------------+---------------------|
+| User data     | =$(User data)/$PP=   | =$(User data)/$PP=    |
+| System data   | =$(System data)/$PP= | =$(User data)/$PP=    |
+| User config   | =$(User config)/$PP= | =$(User config)/$PP=  |
+| System config | -                  | -                   |
+| Cache         | =$(Cache)/$PP=       | =$(Cache)/$PP=        |
+| State         | -                  | -                   |
+
+** Windows
+
+| Common Name   | QStandardPaths       | Rust directories-rs       |
+|---------------+----------------------+---------------------------|
+| User data     | =$(User data)\$PP=     | =$(User data)\$PP\data=     |
+| System data   | =$(System data)\$PP=   | =$(User data)\$PP\data=     |
+| User config   | =$(User config)\$PP=   | =$(User config)\$PP\config= |
+| System config | =$(System config)\$PP= | -                         |
+| Cache         | =$(Cache)\$PP=         | =$(Cache)\$PP\cache=        |
+| State         | -                    | -                         |
+
+* Extra directories 
+
+** Linux
+
+| Common Name  | QStandardPaths                      | Go XDG | Rust directories-rs  | Python platform-dirs |
+|--------------+-------------------------------------+--------+----------------------+----------------------|
+| Fonts        | =~/.fonts=, =$(User/System data)/fonts= | Qt     | =~/.local/share/fonts= | -                    |
+| Applications | =$(User/System data)/applications=    | Qt     | -                    | -                    |
+
+** MacOS
+
+| Common Name  | QStandardPaths        | Go XDG                                                                         | Rust directories-rs | Python platform-dirs |
+|--------------+-----------------------+--------------------------------------------------------------------------------+---------------------+----------------------|
+| Fonts        | =/System/Library/Fonts= | =~/Library/Fonts=, =/Library/Fonts=, =/System/Library/Fonts=, =/Network/Library/Fonts= | =~/Library/Fonts=     | -                    |
+| Applications | =/Applications=         | Qt                                                                             | -                   | -                    |
+
+** Windows
+
+| Common Name  | QStandardPaths           | Go XDG                   | Rust directories-rs | Python platform-dirs |
+|--------------+--------------------------+--------------------------+---------------------+----------------------|
+| Fonts        | =Fonts=                    | Qt                       | -                   | -                    |
+| Applications | =RoamingAppData=, =Programs= | =Programs=, =CommonPrograms= | -                   | -                    |
+
+* Discrepancies
+** Base directories
+*** MacOS
+**** User configuration
+***** The conflict
+
+=directories-rs= uses =~/Library/Preferences= while all the other implementations
+use =~/Library/Application support=.
+
+***** Resolution
+
+Looking at [[https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW11][Table 1.3]] of Apple's Standard Directory Guidelines, it says of
+=~/Library/Preferences= that "You should not create files in this directory
+yourself. Instead, use the NSUserDefaults class or CFPreferences API to get and
+set preference values for your app." (wnich I interpret as "don't touch
+directly"), and of =~/Library/Application Support= that "Use this directory to
+store all app data files except those associated with the user’s documents".
+Given the intended use of this package is to procure the correct locations to
+read/write files to, =~/Library/Application Support= is thus the more appropriate
+choice.
+
+**** System configuration
+***** The conflict
+
+Qt uses =~/Library/Preferences=, while Go XDG uses =~/Library/Preferences=,
+=/Library/Application Support=, and =/Library/Preferences=. The other
+implementations do not declare a MacOS system configuration directory.
+
+***** Resolution
+
+For the aforementioned reasons with User configuration on MacOS, the =Preferences=
+folder does not seem appropriate, which leaves =/Library/Application Support=.
+
+**** User executables
+***** The conflict
+
+MacOS does not have a standard directory for user executables.
+
+***** Resolution
+
+Look for the common manually specified "local executable folder" paths
+(=~/.local/bin/=, =/opt/local/bin=) on the path, and if none of them are found fall
+back on the system executable folder =/usr/local/bin=.
+
+**** Runtime
+***** The conflict
+
+MacOS simply has no direct equivalent of the XDG runtime directory. Thus, we
+must choose which aspect of the runtime directory we think is more important:
+the transient-ness, or the association with the application. Qt and Go XDG pick
+the lattter, but Python's =platform-dirs= picks the latter.
+
+***** Resolution
+
+Since in the XDG spec the runtime directory is a collection of all application's
+runtime files which is held in-memory, a temporary directory seems to make the
+most sense in this regard. However, while the runtime directory's contents are
+transient, then might not be able to be safely deleted on a whim, which is one
+of the usual assumptions made about the contents of a temporary directory.
+
+There is no clear option here, but I will prioritise avoiding putting fragile
+files in a temporary directory, and so we will go with =~/Library/Application
+Support=.
+
+*** Windows
+**** Roaming vs Local app data
+***** The conflict
+
+Across the data and configuration folders, there is general contention around
+whether =RoamingAppData= or =AppData= should be used. The difference seems to
+relate to DomainController and ActiveDirectory --- simply put data in
+=RoamingAppData= will follow the user around, while =AppData= won't. The idea is
+that "less essential but potentially large" information goes in =AppData=.
+
+***** Resolution
+
+I think configuration should follow the user around, and if data can be stored
+locally because it's not essential, then that's what the cache is for. So,
+=RoamingAppData= will be used for everything but State, Cache, and Runtime.
+
+In there is demand in the future, a ~local::Bool~ keyword argument could be added
+to support both modes of operaton.
+
+**** Executable files
+***** The conflict
+
+Windows doesn't have anywhere that user executable files are supposed to go.
+
+***** Resolution
+
+Like with MacOS, check for locations that users seem to use for this purpose
+which are also on the path, namely =~\bin=, =RoamingAppData\bin=, and =AppData\bin=.
+If none of these exist, use the current working directory as at least that way
+the provided path [[https://learn.microsoft.com/en-gb/windows/win32/shell/app-registration#finding-an-application-executable][will be callable]] in the state at the time.
+
+** User directories
+
+No conflicts 🎉.
+
+** Project directories
+*** Windows AppData project suffixes
+**** The conflict
+
+Some projects just use =AppData\$Project= for the data, config, and cache folders,
+however =directories-rs= adds suffixes after the project.
+
+**** Resolution
+
+There's no formally specified structure, and conventions in usage are loose, so
+we may as well decide on a more structured approach, and use suffix directories.
+
+** Extra directories
+*** A collection of different directories
+**** The conflict
+
+Some packages only have one or two Application/Font directories, other have many.
+
+**** Resolution
+
+Since these will primarily be used for searching, it makes sense to include all
+valid paths.

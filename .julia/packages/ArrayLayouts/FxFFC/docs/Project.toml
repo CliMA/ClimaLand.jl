@@ -1,0 +1,7 @@
+[deps]
+ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+ArrayLayouts = "1"
+Documenter = "1"

@@ -1,0 +1,14 @@
+name = "FastClosures"
+uuid = "9aa1b823-49e4-5ca5-8b0f-3971ec8bab6a"
+version = "0.3.2"
+
+[deps]
+
+[compat]
+julia = "^1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

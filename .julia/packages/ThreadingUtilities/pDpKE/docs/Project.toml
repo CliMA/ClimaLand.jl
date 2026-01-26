@@ -1,0 +1,6 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+ThreadingUtilities = "8290d209-cae3-49c0-8002-c8c24d57dab5"
+
+[compat]
+Documenter = "1"

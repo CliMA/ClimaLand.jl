@@ -1,0 +1,92 @@
+---
+title: Benchmarks
+description: A comparison of performance of ADTs between Moshi and other packages
+---
+
+import { Image } from 'astro:assets';
+import RawCode from '@components/RawCode.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+We benchmark the performance of Moshi against other packages for the a typical use case
+from the README of `Unityper`. This benchmark has been the baseline benchmark for all
+the packages that we have compared against.
+
+
+## Results
+
+We see that Moshi is the fastest among all the packages that is almost equivalent to
+the baseline implementation (~1x comparing to baseline speed) in both allocation size and
+matching speed.
+
+<Tabs>
+<TabItem label="1.10">
+
+<Image src="/Moshi.jl/benchmark.svg" width="800" height="1000" alt="Benchmark" />
+
+</TabItem>
+<TabItem label="1.11">
+<Image src="/Moshi.jl/v1.11/benchmark.svg" width="800" height="1000" alt="Benchmark" />
+</TabItem>
+</Tabs>
+## Setup
+
+The benchmark was run on a machine with the following configuration:
+
+```julia
+julia> versioninfo()
+Julia Version 1.10.4
+Commit 48d4fd48430 (2024-06-04 10:41 UTC)
+Build Info:
+  Official https://julialang.org/ release
+Platform Info:
+  OS: macOS (arm64-apple-darwin22.4.0)
+  CPU: 10 × Apple M1 Pro
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-15.0.7 (ORCJIT, apple-m1)
+Threads: 8 default, 0 interactive, 4 GC (on 8 virtual cores)
+Environment:
+  JULIA_EDITOR = code
+```
+
+## Benchmarking Code
+
+The benchmarking code uses the same convention and are wrapped in
+a module. The detailed implementations are as follows:
+
+<Tabs>
+<TabItem label="match">
+This is with the normal `@match` macro.
+<RawCode path="../benchmark/moshi_match.jl" lang="julia"/>
+</TabItem>
+<TabItem label="reflection">
+This is using Moshi's reflections.
+
+<RawCode path="../benchmark/moshi.jl" lang="julia"/>
+
+</TabItem>
+<TabItem label="hacky">
+This is using Moshi's `variant_getfield` reflection, which is equivalent to the pattern matching.
+
+<RawCode path="../benchmark/moshi_hacky.jl" lang="julia"/>
+
+</TabItem>
+<TabItem label="Expronicon">
+
+<RawCode path="../benchmark/expronicon.jl" lang="julia"/>
+
+</TabItem>
+<TabItem label="SumTypes">
+
+<RawCode path="../benchmark/sumtypes.jl" lang="julia"/>
+
+</TabItem>
+
+<TabItem label="DynamicSumTypes">
+<RawCode path="../benchmark/lsumtypes.jl" lang="julia"/>
+</TabItem>
+
+<TabItem label="Unityper">
+<RawCode path="../benchmark/unityper.jl" lang="julia"/>
+</TabItem>
+</Tabs>

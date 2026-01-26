@@ -1,0 +1,21 @@
+language: julia
+os:
+  - linux
+julia:
+  - 1
+  - 1.4
+  - nightly
+notifications:
+  email: false
+branches:
+  only:
+    - master
+
+# uncomment the following lines to allow failures on nightly julia
+# (tests will run but not make your overall status red)
+matrix:
+ allow_failures:
+ - julia: nightly
+
+after_success:
+  - julia -e 'import Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'

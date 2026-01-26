@@ -1,0 +1,34 @@
+[general]
+library_name = "libfreetype"
+output_file_path = "../src/FreeType.jl"
+module_name = "FreeType"
+jll_pkg_name = "FreeType2_jll"
+export_symbol_prefixes = ["FREETYPE_", "FT_", "ft_", "TT_", "TTAG_", "CFF_", "T1_", "CID_", "PS_", "t1_"]
+prologue_file_path = "./prologue.jl"
+use_deterministic_symbol = true
+
+printer_blacklist = [
+    "ft_memchr", "ft_memcmp", "ft_memcpy", "ft_memmove", "ft_memset", "ft_strcat", "ft_strcmp", "ft_strcpy",
+    "ft_strlen", "ft_strncmp", "ft_strncpy", "ft_strrchr", "ft_strstr", "ft_fclose", "ft_fopen", "ft_fread",
+    "ft_fseek", "ft_ftell", "ft_sprintf", "ft_qsort", "ft_scalloc", "ft_sfree", "ft_smalloc", "ft_srealloc",
+    "ft_strtol", "ft_getenv", "ft_jmp_buf", "ft_longjmp",
+    "FT_OUTLINE_CONTOURS_MAX", "FT_OUTLINE_POINTS_MAX",
+    "FT_BEGIN_HEADER", "FT_END_HEADER",
+    "FT_BEGIN_STMNT", "FT_END_STMNT", "FT_DUMMY_STMNT",
+    "FT_CALLBACK_TABLE",
+    "FT_ERR_PREFIX", "FT_ERRORDEF_", "FT_NOERRORDEF_", "FT_ERRORDEF", "FT_MODERRDEF",
+    "FT_MODERR_START_LIST", "FT_MODERR_END_LIST",
+    "FT_ERROR_START_LIST", "FT_ERROR_END_LIST",
+]
+
+[codegen.macro]
+macro_mode = "basic"
+
+functionlike_macro_whitelist = [
+    "FT_LOAD_TARGET_",
+]
+
+ignore_header_guards = true
+ignore_header_guards_with_suffixes = ["_H_", "_H__"]
+
+ignore_pure_definition = false

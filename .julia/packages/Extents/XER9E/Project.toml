@@ -1,0 +1,16 @@
+name = "Extents"
+uuid = "411431e0-e8b7-467b-b5e0-f676ba4f2910"
+authors = ["Rafael Schouten <rafaelschouten@gmail.com>"]
+version = "0.1.6"
+
+[deps]
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[targets]
+test = ["Test", "Dates"]

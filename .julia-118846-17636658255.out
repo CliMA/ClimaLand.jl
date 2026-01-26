@@ -1,0 +1,441 @@
+julia_worker:9812#10.169.152.51
+julia_worker:9293#10.169.152.79
+julia_worker:9995#10.169.152.10
+julia_worker:9079#10.169.152.81
+julia_worker:9006#10.169.152.75
+julia_worker:9208#10.169.152.71
+julia_worker:9535#10.169.152.16
+julia_worker:9706#10.169.152.58
+julia_worker:9979#10.169.152.69
+julia_worker:9716#10.169.152.73
+julia_worker:9937#10.169.152.67
+julia_worker:9775#10.169.152.77
+julia_worker:9890#10.169.152.54
+julia_worker:9447#10.169.152.52
+julia_worker:9770#10.169.152.50
+julia_worker:9763#10.169.152.49
+julia_worker:9670#10.169.152.8
+
+[92535] signal 7 (2): Bus error
+in expression starting at none:0
+unsafe_store! at ./pointer.jl:180 [inlined]
+unsafe_store! at ./pointer.jl:180 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:55 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:29 [inlined]
+_write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/io/dataio.jl:46 [inlined]
+jlwrite at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:41 [inlined]
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:343
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x151cbfb253b6)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x151cbfad86f7)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x151d3d9c172c)
+
+[53775] signal 7 (2): Bus error
+in expression starting at none:0
+unsafe_store! at ./pointer.jl:180 [inlined]
+unsafe_store! at ./pointer.jl:180 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:55 [inlined]
+h5convert! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/data/writing_datatypes.jl:259
+jfptr_h5convertNOT._15609 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_data at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/io/dataio.jl:135
+unknown function (ip: 0x148c425de8a9)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:356
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:313
+jfptr_write_dataset_15127 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:392
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x148c425d7eb6)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x148c4258b117)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x148cc097a74c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x148cc090357b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x148cc09030af)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 177871572 (Pool: 177867035; Big: 4537); GC: 91
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x151d3d94a55b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x151d3d94a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 177872221 (Pool: 177867688; Big: 4533); GC: 91
+
+[92535] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x151cbfb253b6)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x151cbfad86f7)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x151d3d9c172c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x151d3d94a55b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x151d3d94a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 177872221 (Pool: 177867688; Big: 4533); GC: 91
+
+[92535] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x151cbfb253b6)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x151cbfad86f7)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x151d3d9c172c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x151d3d94a55b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x151d3d94a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 177872221 (Pool: 177867688; Big: 4533); GC: 91
+
+[24716] signal 7 (2): Bus error
+in expression starting at none:0
+
+[6670] signal 7 (2): Bus error
+in expression starting at none:0
+unsafe_store! at ./pointer.jl:180 [inlined]
+unsafe_store! at ./pointer.jl:180 [inlined]
+unsafe_store! at ./pointer.jl:180 [inlined]
+unsafe_store! at ./pointer.jl:180 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:55 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:55 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:29 [inlined]
+jlunsafe_store! at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:29 [inlined]
+_write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/io/dataio.jl:46 [inlined]
+_write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/io/dataio.jl:46 [inlined]
+jlwrite at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:41 [inlined]
+jlwrite at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/types.jl:41 [inlined]
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:343
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:343
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+unknown function (ip: 0x14cff5925546)
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+unknown function (ip: 0x14cff58d8817)
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x154cc99d8886)
+unknown function (ip: 0x14d07397a60c)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x154cc998bb17)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x154d47bc16bc)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x154d47b4a55b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x154d47b4a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17363375567 (Pool: 17342231662; Big: 21143905); GC: 1919
+
+[6670] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x154cc99d8886)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x154cc998bb17)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x154d47bc16bc)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14d07390354b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x14d07390307f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17369043304 (Pool: 17347899385; Big: 21143919); GC: 1965
+
+[24716] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+invokelatest at ./essentials.jl:1052
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x14cff5925546)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+unknown function (ip: 0x14cff58d8817)
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14d07397a60c)
+unknown function (ip: 0x154d47b4a55b)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x154d47b4a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17363375567 (Pool: 17342231662; Big: 21143905); GC: 1919
+
+[6670] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x154cc99d8886)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x154cc998bb17)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x154d47bc16bc)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#invokelatest#2 at ./essentials.jl:1055
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14d07390354b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x14d07390307f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17369043304 (Pool: 17347899385; Big: 21143919); GC: 1965
+
+[24716] signal 11 (1): Segmentation fault
+in expression starting at none:0
+write_size at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/misc.jl:53
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/datasets.jl:344
+jfptr_write_dataset_15027 at /glade/u/home/reich/.julia/compiled/v1.11/JLD2/O1EyT_h77jG.so (unknown line)
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:48
+write_dataset at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/inlineunion.jl:37 [inlined]
+#write#139 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:70
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:58 [inlined]
+#write#138 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+write at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/compression.jl:54 [inlined]
+#jldsave#115 at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:290
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283 [inlined]
+jldsave at /glade/u/home/reich/.julia/packages/JLD2/SgtOb/src/loadsave.jl:283
+unknown function (ip: 0x14cff5925546)
+setup_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:94
+unknown function (ip: 0x14cff58d8817)
+forward_model at /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+unknown function (ip: 0x14d07397a60c)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+jl_f__call_latest at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:875
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x154d47b4a55b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x154d47b4a08f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17363375567 (Pool: 17342231662; Big: 21143905); GC: 1919
+#invokelatest#2 at ./essentials.jl:1055
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+invokelatest at ./essentials.jl:1052
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+do_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/builtins.c:831
+#114 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:303
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:70
+unknown function (ip: 0x14d07390354b)
+run_work_thunk at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:79
+#100 at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/usr/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:88
+unknown function (ip: 0x14d07390307f)
+jl_apply at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/julia.h:2157 [inlined]
+start_task at /cache/build/builder-demeter6-3/julialang/julia-release-1-dot-11/src/task.c:1202
+Allocations: 17369043304 (Pool: 17347899385; Big: 21143919); GC: 1965
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.
+WARNING: using Interpolations.LinearInterpolation in module Main conflicts with an existing identifier.

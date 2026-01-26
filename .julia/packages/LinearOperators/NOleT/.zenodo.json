@@ -1,0 +1,51 @@
+{
+  "description": "A Julia Linear Operators Package",
+  "title": "LinearOperators.jl",
+  "upload_type": "software",
+  "publication_date": "2019-02-07",
+  "creators": [
+    {
+      "affiliation": "École Polytechnique/GERAD - Montréal",
+      "name": "Dominique Orban"
+    },
+    {
+      "affiliation": "Federal University of Paraná - UFPR",
+      "name": "Abel Soares Siqueira"
+    }
+  ],
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "scheme": "url",
+      "identifier": "https://github.com/JuliaSmoothOptimizers/LinearOperators.jl/releases/latest",
+      "relation": "isSupplementTo"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Austin Benson",
+      "type": "Other"
+    },
+    {
+      "name": "Elliot Saba",
+      "type": "Other"
+    },
+    {
+      "name": "Guillaume Mestdagh",
+      "type": "Researcher"
+    },
+    {
+      "name": "Lars Ruthotto",
+      "type": "Other"
+    },
+    {
+      "name": "Stefanos Carlström",
+      "type": "Other"
+    },
+    {
+      "name": "Tobias Knopp",
+      "type": "Other"
+    }
+  ],
+  "license": "MPL-2.0"
+}

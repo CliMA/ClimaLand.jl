@@ -1,0 +1,28 @@
+name = "ImageMetadata"
+uuid = "bc367c6b-8a6b-528e-b4bd-a4b897500b49"
+version = "0.9.10"
+
+[deps]
+AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
+ImageAxes = "2803e5a7-5153-5ecf-9a86-9b4c37f5f5ac"
+ImageBase = "c817782e-172a-44cc-b673-b171935fbb9e"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+
+[compat]
+AxisArrays = "0.3, 0.4"
+ImageAxes = "0.5, 0.6"
+ImageBase = "0.1.7"
+ImageCore = "0.9, 0.10"
+julia = "1"
+
+[extras]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+IndirectArrays = "9b13fd28-a010-5f03-acff-a1bbcff69959"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+SimpleTraits = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[targets]
+test = ["Test", "Statistics", "Dates", "IndirectArrays", "OffsetArrays", "SimpleTraits", "Unitful"]

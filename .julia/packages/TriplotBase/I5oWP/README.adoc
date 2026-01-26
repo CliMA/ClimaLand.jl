@@ -1,0 +1,8 @@
+= TriplotBase.jl
+
+This is a "backend" package that is used for computing contours, filled contours, and pseudocolor plots of data on unstructured triangular meshes.
+
+Users should generally use one of the frontend packages that integrate with packages in the Julia plotting ecosystem:
+
+* For use with Plots.jl, use https://github.com/pazner/TriplotRecipes.jl[TriplotRecipes.jl].
+* For use with GR, use https://github.com/pazner/TriplotGR.jl[TriplotGR.jl].

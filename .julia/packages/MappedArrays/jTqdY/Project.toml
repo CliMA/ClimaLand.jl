@@ -1,0 +1,16 @@
+name = "MappedArrays"
+uuid = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
+version = "0.4.2"
+
+[compat]
+FixedPointNumbers = "0.6.1, 0.7, 0.8"
+julia = "1"
+
+[extras]
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+FixedPointNumbers = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["OffsetArrays", "Colors", "Test", "FixedPointNumbers"]

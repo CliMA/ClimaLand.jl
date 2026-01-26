@@ -1,0 +1,25 @@
+name: "Tests"
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+jobs:
+  tests:
+    name: "Tests"
+    strategy:
+      matrix:
+        version:
+          - "1"
+          - "lts"
+          - "pre"
+        group:
+          - "Core"
+          - "Downstream"
+    uses: "SciML/.github/.github/workflows/tests.yml@v1"
+    with:
+      julia-version: "${{ matrix.version }}"
+      group: "${{ matrix.group }}"
+    secrets: "inherit"

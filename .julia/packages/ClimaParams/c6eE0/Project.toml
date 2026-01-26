@@ -1,0 +1,19 @@
+name = "ClimaParams"
+uuid = "5c42b081-d73a-476f-9059-fd94b934656c"
+authors = ["Climate Modeling Alliance"]
+version = "1.0.1"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[compat]
+TOML = "1"
+Test = "1"
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

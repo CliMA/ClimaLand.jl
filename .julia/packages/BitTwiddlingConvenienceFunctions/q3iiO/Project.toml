@@ -1,0 +1,17 @@
+name = "BitTwiddlingConvenienceFunctions"
+uuid = "62783981-4cbd-42fc-bca8-16325de8dc4b"
+authors = ["Julia Computing"]
+version = "0.1.6"
+
+[deps]
+Static = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
+
+[compat]
+Static = "0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1"
+julia = "1.5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

@@ -1,0 +1,19 @@
+name = "CloseOpenIntervals"
+uuid = "fb6a15b2-703c-40df-9091-08a04967cfa9"
+authors = ["chriselrod <elrodc@gmail.com> and contributors"]
+version = "0.1.13"
+
+[deps]
+Static = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
+StaticArrayInterface = "0d7ed370-da01-4f52-bd93-41d350b8b718"
+
+[compat]
+Static = "0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1"
+StaticArrayInterface = "1"
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

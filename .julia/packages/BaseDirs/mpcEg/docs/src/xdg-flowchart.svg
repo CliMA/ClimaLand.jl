@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="graph-div" style="max-width:100%" aria-roledescription="flowchart-v2" version="1.1" viewBox="-8 -8 570 622" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <marker id="TriangleStart" overflow="visible" markerHeight="6.155385" markerWidth="5.3244081" orient="auto-start-reverse" preserveAspectRatio="xMidYMid" viewBox="0 0 5.3244081 6.1553851">
+   <path transform="scale(.5)" d="m5.8 0-8.6 5v-10z" fill="context-stroke" fill-rule="evenodd" stroke="context-stroke" stroke-width="1pt"/>
+  </marker>
+ </defs>
+ <style>@import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css);</style>
+ <marker id="flowchart-pointEnd" class="marker flowchart" markerHeight="12" markerUnits="userSpaceOnUse" markerWidth="12" orient="auto" refX="10" refY="5" viewBox="0 0 10 10">
+  <path class="arrowMarkerPath" d="m0 0 10 5-10 5z" stroke-dasharray="1px, 0" stroke-width="1px"/>
+ </marker>
+ <marker id="flowchart-pointStart" class="marker flowchart" markerHeight="12" markerUnits="userSpaceOnUse" markerWidth="12" orient="auto" refY="5" viewBox="0 0 10 10">
+  <path class="arrowMarkerPath" d="m0 5 10 5V0z" stroke-dasharray="1px,0" stroke-width="1px"/>
+ </marker>
+ <marker id="flowchart-circleEnd" class="marker flowchart" markerHeight="11" markerUnits="userSpaceOnUse" markerWidth="11" orient="auto" refX="11" refY="5" viewBox="0 0 10 10">
+  <circle class="arrowMarkerPath" cx="5" cy="5" r="5" stroke-dasharray="1px,0" stroke-width="1px"/>
+ </marker>
+ <marker id="flowchart-circleStart" class="marker flowchart" markerHeight="11" markerUnits="userSpaceOnUse" markerWidth="11" orient="auto" refX="-1" refY="5" viewBox="0 0 10 10">
+  <circle class="arrowMarkerPath" cx="5" cy="5" r="5" stroke-dasharray="1px,0" stroke-width="1px"/>
+ </marker>
+ <marker id="flowchart-crossEnd" class="marker cross flowchart" markerHeight="11" markerUnits="userSpaceOnUse" markerWidth="11" orient="auto" refX="12" refY="5.2" viewBox="0 0 11 11">
+  <path class="arrowMarkerPath" d="m1 1 9 9m0-9-9 9" stroke-dasharray="1px,0" stroke-width="2px"/>
+ </marker>
+ <marker id="flowchart-crossStart" class="marker cross flowchart" markerHeight="11" markerUnits="userSpaceOnUse" markerWidth="11" orient="auto" refX="-1" refY="5.2" viewBox="0 0 11 11">
+  <path class="arrowMarkerPath" d="m1 1 9 9m0-9-9 9" stroke-dasharray="1px,0" stroke-width="2px"/>
+ </marker>
+ <g class="root">
+  <g class="edgePaths" fill="none" stroke="#626262" stroke-width="2">
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C1 LE-C5" d="m187 68c-20 23-70 33-71 57l0.084 6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C5 LE-N6" d="m68 223-6.8 5.8c-6.8 5.8-20 17-27 32s-6.8 24-6.8 33v8.6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C5 LE-C6" d="m164 223 6.6 5.8c6.6 5.8 20 17 27 29 6.7 12 6.9 16 6.9 22l0.083 6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C6 LE-N7" d="m159 362-7.8 5.8c-7.8 5.8-24 17-31 32-7.8 14-8.2 24-8.2 33v8.6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C6 LE-C2" d="m248 362 7.7 5.8c7.7 5.8 23 17 31 29s7.9 16 8 22l0.083 6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C2 LE-N2" d="m264 500-5.4 5.8c-5.4 5.8-16 17-22 29-5.4 12-5.4 17-5.4 22v5.9" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C2 LE-N3" d="m325 500 5.2 5.8c5.2 5.8 16 17 21 29 5.2 12 5.2 16 5.2 22v5.9" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C1 LE-C3" d="m355 68c21 18 94 23 95 57l0.084 6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C3 LE-N4" d="m417 223-4.9 5.8c-4.9 5.8-15 17-20 32-4.9 14-4.9 24-4.9 33v8.6" marker-end="url(#TriangleStart)"/>
+   <path class="edge-thickness-normal edge-pattern-solid flowchart-link LS-C3 LE-N5" d="m485 223 4.7 5.8c4.7 5.8 14 17 19 32 4.7 14 4.7 24 4.7 33v8.6" marker-end="url(#TriangleStart)"/>
+  </g>
+  <g class="edgeLabels">
+   <g class="edgeLabel" transform="translate(-13 .32)">
+    <g class="label" transform="translate(14 248)" fill="#389826">
+     <rect width="27" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#389826" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Yes</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(98 -177)">
+    <g class="label" transform="translate(14 248)" fill="#389826">
+     <rect width="27" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#389826" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Yes</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(16 .32)">
+    <g class="label" transform="translate(192 248)" fill="#cb3c33">
+     <rect width="22" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#cb3c33" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">No</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(107 139)">
+    <g class="label" transform="translate(192 248)" fill="#cb3c33">
+     <rect width="22" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#cb3c33" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">No</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(166 271)">
+    <g class="label" transform="translate(192 248)" fill="#cb3c33">
+     <rect width="22" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#cb3c33" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">No</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(71 139)">
+    <g class="label" transform="translate(14 248)" fill="#389826">
+     <rect width="27" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#389826" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Yes</tspan></text>
+    </g>
+   </g>
+   <g class="edgeLabel" transform="translate(191 271)">
+    <g class="label" transform="translate(14 248)" fill="#389826">
+     <rect width="27" height="21" rx="0" ry="0" opacity=".1"/>
+     <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#389826" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Yes</tspan></text>
+    </g>
+   </g>
+  </g>
+  <g class="nodes" transform="translate(.5 .5)">
+   <g fill="#4063d8" fill-opacity=".1">
+    <path class="label-container" d="m186 68h168l17-34-17-34h-168l-17 34z"/>
+    <path class="label-container" d="m52 222h128l21-42-21-42h-128l-21 42z"/>
+    <path class="label-container" d="m123 361h161l17-34-17-34h-161l-17 34z"/>
+    <path class="label-container" d="m228 500h133l17-34-17-34h-133l-17 34z"/>
+    <path class="label-container" d="m367 222h166l21-42-21-42h-166l-21 42z"/>
+   </g>
+   <g class="node default">
+    <path class="label-container" transform="translate(169 68)" d="m17 0h168l17-34-17-34h-168l-17 34z" fill="none" stroke="#4063d8"/>
+    <text x="193.8835" y="19.873528" fill="#4063d8" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal;line-height:1.25" xml:space="preserve"><tspan x="193.8835" y="19.873528">Could the absense</tspan><tspan x="193.8835" y="39.873528">of the content cause </tspan><tspan x="193.8835" y="59.873528">misbehaviour?</tspan></text>
+    <path class="label-container" transform="translate(31 222)" d="m21 0h128l21-42-21-42h-128l-21 42z" fill="none" stroke="#4063d8"/>
+    <text class="label" transform="translate(59 146)" fill="#4063d8" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Is the content</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">an executable</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">to be run by</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">the user?</tspan></text>
+   </g>
+   <rect class="basic label-container" x="64" y="448" width="97" height="36" rx="5" ry="5" fill="#9558b2" fill-opacity=".1"/>
+   <g class="node default" transform="translate(112 466)">
+    <rect class="basic label-container" x="-49" y="-18" width="97" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+    <text class="label" x="-33.894047" y="4.5829191" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="-33.894047" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Runtime</tspan></text>
+   </g>
+   <rect class="basic label-container" x="-1.3e-5" y="309" width="56" height="36" rx="5" ry="5" fill="#9558b2" fill-opacity=".1"/>
+   <rect class="basic label-container" x="1.8e-7" y="309" width="56" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+   <g fill="#9558b2">
+    <text class="label" x="13.653088" y="333.0752" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="13.653088" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Bin</tspan></text>
+    <g fill-opacity=".1">
+     <rect class="basic label-container" x="191" y="571" width="81" height="36" rx="5" ry="5"/>
+     <rect class="basic label-container" x="323" y="571" width="68" height="36" rx="5" ry="5"/>
+     <rect class="basic label-container" x="351" y="309" width="73" height="36" rx="5" ry="5"/>
+     <rect class="basic label-container" x="474" y="309" width="79" height="36" rx="5" ry="5"/>
+    </g>
+   </g>
+   <g class="node default">
+    <path class="label-container" transform="translate(106 361)" d="m17 0h161l17-34-17-34h-161l-17 34z" fill="none" stroke="#4063d8"/>
+    <text class="label" transform="translate(130 301)" fill="#4063d8" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Is the content</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">related to runtime</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">information?</tspan></text>
+    <path class="label-container" transform="translate(211 500)" d="m17 0h133l17-34-17-34h-133l-17 34z" fill="none" stroke="#4063d8"/>
+    <text class="label" transform="translate(235 440)" fill="#4063d8" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Is the content</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">related to user</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">configuration?</tspan></text>
+   </g>
+   <g class="node default" transform="translate(232 589)">
+    <rect class="basic label-container" x="-41" y="-18" width="81" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+    <text class="label" x="-25.222672" y="6.4091873" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="-25.222672" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Config</tspan></text>
+   </g>
+   <g class="node default" transform="translate(357 589)">
+    <rect class="basic label-container" x="-34" y="-18" width="68" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+    <text class="label" x="-19.015141" y="5.694828" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="-19.015141" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Data</tspan></text>
+   </g>
+   <g class="node default">
+    <path class="label-container" transform="translate(346 222)" d="m21 0h166l21-42-21-42h-166l-21 42z" fill="none" stroke="#4063d8"/>
+    <text class="label" transform="translate(375 146)" fill="#4063d8" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Will the user</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">notice the absense</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">of the content</tspan><tspan class="row" x="0" dy="1em" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">in any way?</tspan></text>
+   </g>
+   <g class="node default" transform="translate(387 327)">
+    <rect class="basic label-container" x="-36" y="-18" width="73" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+    <text class="label" x="-21.378912" y="5.5830002" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="-21.378912" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">State</tspan></text>
+   </g>
+   <g class="node default" transform="translate(513 327)">
+    <rect class="basic label-container" x="-39" y="-18" width="79" height="36" rx="5" ry="5" fill="none" stroke="#9558b2"/>
+    <text class="label" x="-24.445812" y="5.7392502" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="-24.445812" fill="#9558b2" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Cache</tspan></text>
+   </g>
+  </g>
+  <g class="edgeLabel" transform="translate(342 .2)">
+   <g class="label" transform="translate(14 248)" fill="#389826">
+    <rect width="27" height="21" rx="0" ry="0" opacity=".1"/>
+    <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#389826" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">Yes</tspan></text>
+   </g>
+  </g>
+  <g class="edgeLabel" transform="translate(325 .2)">
+   <g class="label" transform="translate(192 248)" fill="#cb3c33">
+    <rect width="22" height="21" rx="0" ry="0" opacity=".1"/>
+    <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#cb3c33" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">No</tspan></text>
+   </g>
+  </g>
+  <g class="edgeLabel" transform="translate(234 -177)">
+   <g class="label" transform="translate(192 248)" fill="#cb3c33">
+    <rect width="22" height="21" rx="0" ry="0" opacity=".1"/>
+    <text font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal"><tspan class="row" x="0" dy="1em" fill="#cb3c33" font-family="sans-serif" font-size="16px" style="font-variant-caps:normal;font-variant-east-asian:normal;font-variant-ligatures:normal;font-variant-numeric:normal" xml:space="preserve">No</tspan></text>
+   </g>
+  </g>
+ </g>
+</svg>

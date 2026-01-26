@@ -1,0 +1,9 @@
+Manifest.toml
+.*.swp
+
+# vscode stuff
+.vscode
+.vscode/*
+
+# julia stuff
+LocalPreferences.toml

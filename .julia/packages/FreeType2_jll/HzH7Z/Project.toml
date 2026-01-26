@@ -1,0 +1,18 @@
+name = "FreeType2_jll"
+uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
+version = "2.13.4+0"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+Bzip2_jll = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
+Zlib_jll = "83775a58-1f1d-513f-b197-d71354ab007a"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[compat]
+JLLWrappers = "1.7.0"
+julia = "1.6"
+Bzip2_jll = "1.0.9"
+Zlib_jll = "1.2.12"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

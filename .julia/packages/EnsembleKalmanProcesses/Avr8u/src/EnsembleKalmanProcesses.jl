@@ -1,0 +1,18 @@
+module EnsembleKalmanProcesses
+
+using Distributions, Statistics, LinearAlgebra, DocStringExtensions
+
+# auxiliary modules
+include("ParameterDistributions.jl")
+include("DataContainers.jl")
+include("Observations.jl")
+include("Localizers.jl")
+include("TOMLInterface.jl")
+include("UpdateGroup.jl")
+# algorithmic updates
+include("EnsembleKalmanProcess.jl")
+
+# Plot recipes
+include("PlotRecipes.jl")
+include("Visualize.jl")
+end # module

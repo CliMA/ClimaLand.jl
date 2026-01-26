@@ -1,0 +1,22 @@
+# ignore the following patterns
+*.jl.cov
+*.vtk
+*.dat
+*.csv
+*.vtu
+*.pvtu
+*.swp
+*.png
+!docs/src/assets/*.png
+*.DS_Store
+data/
+docs/build/
+docs/site/
+docs/src/literated
+coverage/
+*.jl.*.cov
+*.jl.mem
+deps/deps.jl
+Manifest.toml
+*.vscode*
+examples/Lorenz/output

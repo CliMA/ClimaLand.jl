@@ -1,0 +1,72 @@
+agents:
+  queue: new-central
+  slurm_mem: 8G
+  modules: climacommon/2024_05_27
+
+env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite"
+  JULIA_MAX_NUM_PRECOMPILE_FILES: 100
+  JULIA_CPU_TARGET: 'broadwell;skylake'
+  JULIA_NVTX_CALLBACKS: gc
+  OPENBLAS_NUM_THREADS: 1
+
+steps:
+  - label: "initialize"
+    key: "init_cpu_env"
+    command:
+      - |
+        if [ -n "$$CLEAR_DEPOT" ]; then
+          echo "--- Clearing depot"
+          rm -rf ${JULIA_DEPOT_PATH}
+        fi
+
+      - echo "--- Instantiate buildkite env"
+      - "julia --project=.buildkite --check-bounds=yes -e 'using Pkg; Pkg.develop(path=\".\"); Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true)'"
+      - "julia --project=.buildkite -e 'using CUDA; CUDA.precompile_runtime()'"
+
+    agents:
+      slurm_mem: 80G
+      slurm_gpus: 1
+      slurm_cpus_per_task: 12
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 12
+
+  - wait
+
+  - group: "Unit tests"
+    steps:
+
+      - label: "CPU tests"
+        key: tests_cpu
+        command: "julia --color=yes --check-bounds=yes --project=.buildkite test/runtests.jl"
+
+      - label: "CUDA tests"
+        key: tests_cuda
+        command:
+          - "julia --project=.buildkite -e 'using CUDA; CUDA.versioninfo()'"
+          - "julia --color=yes --check-bounds=yes --project=.buildkite test/runtests.jl"
+        env:
+          USE_CUDA: "true"
+        agents:
+          slurm_gpus: 1
+
+  - group: "Benchmarks"
+    steps:
+
+      - label: "CPU benchmarks"
+        key: bm_cpu
+        command: "julia --color=yes --project=.buildkite test/runtests.jl"
+        env:
+          PERFORM_BENCHMARK: "true"
+
+      - label: "CUDA benchmarks"
+        key: bm_cuda
+        command:
+          - "julia --project=.buildkite -e 'using CUDA; CUDA.versioninfo()'"
+          - "julia --color=yes --project=.buildkite test/runtests.jl"
+        env:
+          USE_CUDA: "true"
+          PERFORM_BENCHMARK: "true"
+        agents:
+          slurm_gpus: 1
+

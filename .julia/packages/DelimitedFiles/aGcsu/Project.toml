@@ -1,0 +1,16 @@
+name = "DelimitedFiles"
+uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+version = "1.9.1"
+
+[deps]
+Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Random"]

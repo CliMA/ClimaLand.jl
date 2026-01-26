@@ -1,0 +1,32 @@
+name: CodeCov
+
+on:
+  push:
+    branches:
+      - main
+    tags: '*'
+  pull_request:
+  merge_group:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Julia
+      uses: julia-actions/setup-julia@latest
+      with:
+        version: '1.10'
+
+    - name: Test with coverage
+      uses: julia-actions/cache@v2
+    - uses: julia-actions/julia-buildpkg@latest
+    - uses: julia-actions/julia-runtest@latest
+    - uses: julia-actions/julia-processcoverage@latest
+    - uses: codecov/codecov-action@v5
+      with:
+        files: lcov.info
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

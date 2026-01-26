@@ -1,0 +1,280 @@
+## Preparation
+
+struct SMCMixedModeSparseJacobianPrep{
+    SIG,
+    BSf<:DI.BatchSizeSettings,
+    BSr<:DI.BatchSizeSettings,
+    P<:AbstractMatrix,
+    C<:AbstractColoringResult{:nonsymmetric,:bidirectional},
+    Mf<:AbstractMatrix{<:Number},
+    Mr<:AbstractMatrix{<:Number},
+    Sfp<:NTuple,
+    Srp<:NTuple,
+    Sf<:Vector{<:NTuple},
+    Sr<:Vector{<:NTuple},
+    Rf<:Vector{<:NTuple},
+    Rr<:Vector{<:NTuple},
+    Ef<:DI.PushforwardPrep,
+    Er<:DI.PullbackPrep,
+} <: SMCSparseJacobianPrep{SIG}
+    _sig::Val{SIG}
+    batch_size_settings_forward::BSf
+    batch_size_settings_reverse::BSr
+    sparsity::P
+    coloring_result::C
+    compressed_matrix_forward::Mf
+    compressed_matrix_reverse::Mr
+    batched_seed_forward_prep::Sfp
+    batched_seed_reverse_prep::Srp
+    batched_seeds_forward::Sf
+    batched_seeds_reverse::Sr
+    batched_results_forward::Rf
+    batched_results_reverse::Rr
+    pushforward_prep::Ef
+    pullback_prep::Er
+end
+
+function DI.prepare_jacobian_nokwarg(
+    strict::Val,
+    f::F,
+    backend::AutoSparse{<:DI.MixedMode},
+    x,
+    contexts::Vararg{DI.Context,C};
+) where {F,C}
+    y = f(x, map(DI.unwrap, contexts)...)
+    return _prepare_mixed_sparse_jacobian_aux(strict, y, (f,), backend, x, contexts...)
+end
+
+function DI.prepare_jacobian_nokwarg(
+    strict::Val,
+    f!::F,
+    y,
+    backend::AutoSparse{<:DI.MixedMode},
+    x,
+    contexts::Vararg{DI.Context,C};
+) where {F,C}
+    return _prepare_mixed_sparse_jacobian_aux(strict, y, (f!, y), backend, x, contexts...)
+end
+
+function _prepare_mixed_sparse_jacobian_aux(
+    strict::Val,
+    y,
+    f_or_f!y::FY,
+    backend::AutoSparse{<:DI.MixedMode},
+    x,
+    contexts::Vararg{DI.Context,C};
+) where {FY,C}
+    dense_backend = dense_ad(backend)
+    sparsity = DI.jacobian_sparsity_with_contexts(
+        f_or_f!y..., sparsity_detector(backend), x, contexts...
+    )
+    problem = ColoringProblem{:nonsymmetric,:bidirectional}()
+    coloring_result = coloring(
+        sparsity,
+        problem,
+        coloring_algorithm(backend);
+        decompression_eltype=promote_type(eltype(x), eltype(y)),
+    )
+
+    Nf = length(column_groups(coloring_result))
+    Nr = length(row_groups(coloring_result))
+    batch_size_settings_forward = DI.pick_batchsize(DI.forward_backend(dense_backend), Nf)
+    batch_size_settings_reverse = DI.pick_batchsize(DI.reverse_backend(dense_backend), Nr)
+
+    return _prepare_mixed_sparse_jacobian_aux_aux(
+        strict,
+        batch_size_settings_forward,
+        batch_size_settings_reverse,
+        sparsity,
+        coloring_result,
+        y,
+        f_or_f!y,
+        backend,
+        x,
+        contexts...;
+    )
+end
+
+function _prepare_mixed_sparse_jacobian_aux_aux(
+    strict::Val,
+    batch_size_settings_forward::DI.BatchSizeSettings{Bf},
+    batch_size_settings_reverse::DI.BatchSizeSettings{Br},
+    sparsity::AbstractMatrix,
+    coloring_result::AbstractColoringResult{:nonsymmetric,:bidirectional},
+    y,
+    f_or_f!y::FY,
+    backend::AutoSparse{<:DI.MixedMode},
+    x,
+    contexts::Vararg{DI.Context,C};
+) where {Bf,Br,FY,C}
+    _sig = DI.signature(f_or_f!y..., backend, x, contexts...; strict)
+    Nf, Af = batch_size_settings_forward.N, batch_size_settings_forward.A
+    Nr, Ar = batch_size_settings_reverse.N, batch_size_settings_reverse.A
+
+    dense_backend = dense_ad(backend)
+
+    groups_forward = column_groups(coloring_result)
+    groups_reverse = row_groups(coloring_result)
+
+    seed_forward_prep = DI.multibasis(x, eachindex(x))
+    seed_reverse_prep = DI.multibasis(y, eachindex(y))
+    seeds_forward = [DI.multibasis(x, eachindex(x)[group]) for group in groups_forward]
+    seeds_reverse = [DI.multibasis(y, eachindex(y)[group]) for group in groups_reverse]
+
+    compressed_matrix_forward = if isempty(groups_forward)
+        similar(vec(y), length(y), 0)
+    else
+        stack(_ -> vec(similar(y)), groups_forward; dims=2)
+    end
+    compressed_matrix_reverse = if isempty(groups_reverse)
+        similar(vec(x), 0, length(x))
+    else
+        stack(_ -> vec(similar(x)), groups_reverse; dims=1)
+    end
+
+    batched_seed_forward_prep = ntuple(b -> copy(seed_forward_prep), Val(Bf))
+    batched_seed_reverse_prep = ntuple(b -> copy(seed_reverse_prep), Val(Br))
+    batched_seeds_forward = [
+        ntuple(b -> seeds_forward[1 + ((a - 1) * Bf + (b - 1)) % Nf], Val(Bf)) for a in 1:Af
+    ]
+    batched_seeds_reverse = [
+        ntuple(b -> seeds_reverse[1 + ((a - 1) * Br + (b - 1)) % Nr], Val(Br)) for a in 1:Ar
+    ]
+
+    batched_results_forward = [
+        ntuple(b -> similar(y), Val(Bf)) for _ in batched_seeds_forward
+    ]
+    batched_results_reverse = [
+        ntuple(b -> similar(x), Val(Br)) for _ in batched_seeds_reverse
+    ]
+
+    pushforward_prep = DI.prepare_pushforward_nokwarg(
+        strict,
+        f_or_f!y...,
+        DI.forward_backend(dense_backend),
+        x,
+        batched_seed_forward_prep,
+        contexts...;
+    )
+    pullback_prep = DI.prepare_pullback_nokwarg(
+        strict,
+        f_or_f!y...,
+        DI.reverse_backend(dense_backend),
+        x,
+        batched_seed_reverse_prep,
+        contexts...;
+    )
+
+    return SMCMixedModeSparseJacobianPrep(
+        _sig,
+        batch_size_settings_forward,
+        batch_size_settings_reverse,
+        sparsity,
+        coloring_result,
+        compressed_matrix_forward,
+        compressed_matrix_reverse,
+        batched_seed_forward_prep,
+        batched_seed_reverse_prep,
+        batched_seeds_forward,
+        batched_seeds_reverse,
+        batched_results_forward,
+        batched_results_reverse,
+        pushforward_prep,
+        pullback_prep,
+    )
+end
+
+## Common auxiliaries
+
+function _sparse_jacobian_aux!(
+    f_or_f!y::FY,
+    jac,
+    prep::SMCMixedModeSparseJacobianPrep{
+        SIG,<:DI.BatchSizeSettings{Bf},<:DI.BatchSizeSettings{Br}
+    },
+    backend::AutoSparse,
+    x,
+    contexts::Vararg{DI.Context,C},
+) where {FY,SIG,Bf,Br,C}
+    (;
+        batch_size_settings_forward,
+        batch_size_settings_reverse,
+        coloring_result,
+        compressed_matrix_forward,
+        compressed_matrix_reverse,
+        batched_seed_forward_prep,
+        batched_seed_reverse_prep,
+        batched_seeds_forward,
+        batched_seeds_reverse,
+        batched_results_forward,
+        batched_results_reverse,
+        pushforward_prep,
+        pullback_prep,
+    ) = prep
+
+    dense_backend = dense_ad(backend)
+    Nf = batch_size_settings_forward.N
+    Nr = batch_size_settings_reverse.N
+
+    pushforward_prep_same = DI.prepare_pushforward_same_point(
+        f_or_f!y...,
+        pushforward_prep,
+        DI.forward_backend(dense_backend),
+        x,
+        batched_seed_forward_prep,
+        contexts...,
+    )
+    pullback_prep_same = DI.prepare_pullback_same_point(
+        f_or_f!y...,
+        pullback_prep,
+        DI.reverse_backend(dense_backend),
+        x,
+        batched_seed_reverse_prep,
+        contexts...,
+    )
+
+    for a in eachindex(batched_seeds_forward, batched_results_forward)
+        DI.pushforward!(
+            f_or_f!y...,
+            batched_results_forward[a],
+            pushforward_prep_same,
+            DI.forward_backend(dense_backend),
+            x,
+            batched_seeds_forward[a],
+            contexts...,
+        )
+
+        for b in eachindex(batched_results_forward[a])
+            copyto!(
+                view(compressed_matrix_forward, :, 1 + ((a - 1) * Bf + (b - 1)) % Nf),
+                vec(batched_results_forward[a][b]),
+            )
+        end
+    end
+
+    for a in eachindex(batched_seeds_reverse, batched_results_reverse)
+        DI.pullback!(
+            f_or_f!y...,
+            batched_results_reverse[a],
+            pullback_prep_same,
+            DI.reverse_backend(dense_backend),
+            x,
+            batched_seeds_reverse[a],
+            contexts...,
+        )
+
+        for b in eachindex(batched_results_reverse[a])
+            if eltype(x) <: Complex
+                batched_results_reverse[a][b] .= conj.(batched_results_reverse[a][b])
+            end
+            copyto!(
+                view(compressed_matrix_reverse, 1 + ((a - 1) * Br + (b - 1)) % Nr, :),
+                vec(batched_results_reverse[a][b]),
+            )
+        end
+    end
+
+    decompress!(jac, compressed_matrix_reverse, compressed_matrix_forward, coloring_result)
+
+    return jac
+end

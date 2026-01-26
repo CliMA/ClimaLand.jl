@@ -1,0 +1,16 @@
+name = "LazyBroadcast"
+uuid = "9dccce8e-a116-406d-9fcc-a88ed4f510c8"
+authors = ["CliMA Contributors <clima-software@caltech.edu>"]
+version = "1.0.0"
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[targets]
+test = ["Test", "SafeTestsets", "InteractiveUtils"]

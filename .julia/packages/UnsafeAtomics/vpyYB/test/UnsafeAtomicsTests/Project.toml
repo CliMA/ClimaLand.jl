@@ -1,0 +1,11 @@
+name = "UnsafeAtomicsTests"
+uuid = "3f8f9292-1a4a-472b-9e3f-f3f4421d4943"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
+version = "0.1.0-DEV"
+
+[deps]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+UnsafeAtomics = "013be700-e6cd-48c3-b4a1-df204f14c38f"
+
+[compat]
+julia = "1"

@@ -1,0 +1,27 @@
+name = "Atomix"
+uuid = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
+authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
+version = "1.1.2"
+
+[deps]
+UnsafeAtomics = "013be700-e6cd-48c3-b4a1-df204f14c38f"
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
+
+[extensions]
+AtomixCUDAExt = "CUDA"
+AtomixMetalExt = "Metal"
+AtomixoneAPIExt = "oneAPI"
+AtomixOpenCLExt = "OpenCL"
+
+[compat]
+CUDA = "5"
+Metal = "1.7"
+oneAPI = "1, 2"
+OpenCL = "^0.10"
+UnsafeAtomics = "0.1, 0.2, 0.3"
+julia = "1.10"

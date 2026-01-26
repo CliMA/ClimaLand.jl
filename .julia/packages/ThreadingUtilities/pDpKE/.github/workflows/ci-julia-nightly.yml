@@ -1,0 +1,59 @@
+name: CI (Julia nightly)
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
+  push:
+    tags: '*'
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE.md'
+      - 'README.md'
+      - '.github/workflows/TagBot.yml'
+jobs:
+  test-julia-nightly:
+    timeout-minutes: 30
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # use default arch
+        exclusive:
+          - '0'
+        os:
+          - ubuntu-latest
+          - macOS-latest  # arm
+          - windows-latest
+        threads:
+          - '5'
+        version:
+          # Runs on Julia nightly only.
+          - 'nightly'
+        include:
+          # (exclusive=1, threads=2)
+          - arch: x64
+            exclusive: '1'
+            os: ubuntu-latest
+            threads: '2'
+            version: 'nightly'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          JULIA_EXCLUSIVE: ${{ matrix.exclusive }}
+          JULIA_NUM_THREADS: ${{ matrix.threads }}
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info

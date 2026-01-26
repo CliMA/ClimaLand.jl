@@ -1,0 +1,5 @@
+┌ Info: Logging from worker 13
+└ @ ClimaCalibrate /glade/u/home/reich/.julia/packages/ClimaCalibrate/M5xO0/src/workers.jl:430
+┌ Error: You are using a local CUDA 12.3.0 toolkit, but CUDA.jl was precompiled for CUDA 12.2.0. This is unsupported.
+│ Call `CUDA.set_runtime_version!` to update the CUDA version to match your local installation.
+└ @ CUDA /glade/u/home/reich/.julia/packages/CUDA/TPbi4/src/initialization.jl:154

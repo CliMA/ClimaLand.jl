@@ -1,0 +1,16 @@
+name = "ExactPredicates"
+uuid = "429591f6-91af-11e9-00e2-59fbe8cec110"
+authors = ["Pierre Lairez <pierre@lairez.fr>"]
+description = "Fast and exact geometrical predicates in the Euclidean plane"
+licence = "MIT"
+version = "2.2.9"
+
+[deps]
+IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[compat]
+IntervalArithmetic = "^0.21, 0.22, 0.23, 1"
+StaticArrays = "^1.9"
+julia = "^1.1"

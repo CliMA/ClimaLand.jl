@@ -1,0 +1,16 @@
+name = "MicrosoftMPI_jll"
+uuid = "9237b28f-5490-5468-be7b-bb81f5f5e6cf"
+version = "10.1.4+3"
+
+[deps]
+JLLWrappers = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Artifacts = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[compat]
+JLLWrappers = "1.2.0"
+julia = "1.0"
+Pkg = "< 0.0.1, 1"
+Libdl = "< 0.0.1, 1"
+Artifacts = "< 0.0.1, 1"

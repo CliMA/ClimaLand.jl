@@ -1,0 +1,6 @@
+[deps]
+ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"

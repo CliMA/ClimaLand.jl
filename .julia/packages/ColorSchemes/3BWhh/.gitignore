@@ -1,0 +1,5 @@
+*.cov
+.vscode/*
+docs/build/*
+Manifest.toml
+src/build_*

@@ -1,0 +1,31 @@
+julia_worker:9765#10.169.152.48
+julia_worker:9296#10.169.152.58
+julia_worker:9245#10.169.152.59
+julia_worker:9314#10.169.152.55
+julia_worker:9125#10.169.152.51
+julia_worker:9148#10.169.152.53
+julia_worker:9348#10.169.152.49
+julia_worker:9321#10.169.152.60
+julia_worker:9641#10.169.152.57
+julia_worker:9379#10.169.152.65
+julia_worker:9479#10.169.152.53
+julia_worker:9569#10.169.152.48
+julia_worker:9574#10.169.152.58
+julia_worker:9520#10.169.152.51
+julia_worker:9634#10.169.152.65
+julia_worker:9202#10.169.152.49
+julia_worker:9236#10.169.152.60
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.
+Master process (id 1) could not connect within 60.0 seconds.
+exiting.

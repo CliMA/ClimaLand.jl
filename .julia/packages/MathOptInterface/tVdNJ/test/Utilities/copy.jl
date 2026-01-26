@@ -1,0 +1,1127 @@
+# Copyright (c) 2017: Miles Lubin and contributors
+# Copyright (c) 2017: Google Inc.
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
+module TestCopy
+
+using Test
+
+import MathOptInterface as MOI
+import MathOptInterface.Utilities as MOIU
+import MathOptInterface.Utilities.DoubleDicts
+
+function runtests()
+    for name in names(@__MODULE__; all = true)
+        if startswith("$(name)", "test_")
+            @testset "$(name)" begin
+                getfield(@__MODULE__, name)()
+            end
+        end
+    end
+    return
+end
+
+###
+### Test helpers
+###
+
+abstract type AbstractDummyModel <: MOI.ModelLike end
+
+function MOI.empty!(::AbstractDummyModel) end
+
+function MOI.copy_to(dest::AbstractDummyModel, src::MOI.ModelLike)
+    return MOIU.default_copy_to(dest, src)
+end
+
+MOI.supports(::AbstractDummyModel, ::MOI.ObjectiveSense) = true
+
+function MOI.supports(
+    ::AbstractDummyModel,
+    ::MOI.ConstraintPrimalStart,
+    ::Type{<:MOI.ConstraintIndex},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::AbstractDummyModel,
+    ::Type{MOI.VariableIndex},
+    ::Type{MOI.EqualTo{Float64}},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::AbstractDummyModel,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{MOI.Zeros},
+)
+    return true
+end
+
+struct DummyModel <: AbstractDummyModel end
+
+# Implements add_variable and add_constraint
+struct DummyModelWithAdd <: AbstractDummyModel end
+
+MOI.add_variable(::DummyModelWithAdd) = MOI.VariableIndex(0)
+
+MOI.add_variables(::DummyModelWithAdd, n) = fill(MOI.VariableIndex(0), n)
+
+function MOI.add_constraint(
+    ::DummyModelWithAdd,
+    ::MOI.VariableIndex,
+    ::MOI.EqualTo{Float64},
+)
+    return MOI.ConstraintIndex{MOI.VariableIndex,MOI.EqualTo{Float64}}(0)
+end
+
+struct DummyEvaluator <: MOI.AbstractNLPEvaluator end
+
+###
+### The tests
+###
+
+function _test_identity_index_map(::Type{T}) where {T}
+    model = MOI.Utilities.Model{T}()
+    x, y = MOI.add_variables(model, 2)
+    cx = MOI.add_constraint(model, x, MOI.EqualTo(one(T)))
+    cy = MOI.add_constraint(model, y, MOI.EqualTo(zero(T)))
+    c = MOI.add_constraint(model, one(T) * x + y, MOI.LessThan(zero(T)))
+    index_map = MOI.Utilities.identity_index_map(model)
+    @test x == index_map[x]
+    @test y == index_map[y]
+    @test cx == index_map[cx]
+    @test cy == index_map[cy]
+    @test c == index_map[c]
+    return
+end
+
+function test_identity_index_map()
+    _test_identity_index_map(Int)
+    _test_identity_index_map(Float64)
+    return
+end
+
+function test_IndexMap()
+    map = MOIU.IndexMap()
+    @test length(map) == 0
+    @test occursin("Utilities.IndexMap()", sprint(show, map))
+    x = MOI.VariableIndex(1)
+    y = MOI.VariableIndex(2)
+    cx = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Integer}(1)
+    cy = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Integer}(2)
+    map = MOIU.IndexMap(Dict(x => y), DoubleDicts.IndexDoubleDict())
+    map[cx] = cy
+    @test length(map) == 2
+    return
+end
+
+function test_AUTOMATIC()
+    src = DummyModel()
+    dest = DummyModel()
+    @test_throws ErrorException MOIU.default_copy_to(dest, src)
+    try
+        @test_throws ErrorException MOIU.default_copy_to(dest, src)
+    catch err
+        @test sprint(showerror, err) ==
+              "Model DummyModel does not support copy with names."
+    end
+end
+
+"""
+    test_issue_849()
+
+Create variables in same ordering when NLPBlock is used (#849)
+"""
+function test_issue_849()
+    model = MOIU.UniversalFallback(MOIU.Model{Float64}())
+    a = MOI.add_variable(model)
+    b, c = MOI.add_variables(model, 2)
+    x, cx = MOI.add_constrained_variable(model, MOI.GreaterThan(0.0))
+    y, cy = MOI.add_constrained_variables(model, MOI.Nonnegatives(1))
+    nlp_data = MOI.NLPBlockData(
+        [MOI.NLPBoundsPair(0.0, 1.0) for i in 1:5],
+        DummyEvaluator(),
+        false,
+    )
+    MOI.set(model, MOI.NLPBlock(), nlp_data)
+    copy = MOIU.UniversalFallback(MOIU.Model{Float64}())
+    index_map = MOIU.default_copy_to(copy, model)
+    for vi in [a, b, c, x, y[1]]
+        @test index_map[vi] == vi
+    end
+    for ci in [cx, cy]
+        @test index_map[ci] == ci
+    end
+    return
+end
+
+###
+### ConstrainedVariablesModel
+###
+
+"""
+    ConstrainedVariablesModel
+
+Model that distinguish variables created constrained
+"""
+struct ConstrainedVariablesModel <: MOI.ModelLike
+    added_constrained::Vector{Bool}
+end
+
+MOI.empty!(model::ConstrainedVariablesModel) = empty!(model.added_constrained)
+
+MOI.supports_incremental_interface(::ConstrainedVariablesModel) = true
+
+function MOI.copy_to(
+    dest::ConstrainedVariablesModel,
+    src::MOI.ModelLike;
+    kwargs...,
+)
+    return MOIU.default_copy_to(dest, src; kwargs...)
+end
+
+function MOI.add_variables(model::ConstrainedVariablesModel, n)
+    m = length(model.added_constrained)
+    for _ in 1:n
+        push!(model.added_constrained, false)
+    end
+    return MOI.VariableIndex.(m .+ (1:n))
+end
+
+function MOI.add_constrained_variables(
+    model::ConstrainedVariablesModel,
+    set::MOI.AbstractVectorSet,
+)
+    m = length(model.added_constrained)
+    for _ in 1:MOI.dimension(set)
+        push!(model.added_constrained, true)
+    end
+    ci = MOI.ConstraintIndex{MOI.VectorOfVariables,typeof(set)}(m + 1)
+    return MOI.VariableIndex.(m .+ (1:MOI.dimension(set))), ci
+end
+
+function MOI.add_constraint(
+    ::ConstrainedVariablesModel,
+    func::MOI.VectorOfVariables,
+    set::MOI.AbstractVectorSet,
+)
+    return MOI.ConstraintIndex{typeof(func),typeof(set)}(
+        func.variables[1].value,
+    )
+end
+
+function test_ConstrainedVariablesModel()
+    src = MOIU.Model{Int}()
+    x = MOI.add_variables(src, 3)
+    cx = MOI.add_constraint(src, [x[1], x[3], x[1], x[2]], MOI.Nonnegatives(4))
+    y, cy = MOI.add_constrained_variables(src, MOI.Nonpositives(3))
+    dest = ConstrainedVariablesModel(Bool[])
+    idxmap = MOI.copy_to(dest, src)
+    for vi in x
+        @test !dest.added_constrained[idxmap[vi].value]
+    end
+    for vi in y
+        @test dest.added_constrained[idxmap[vi].value]
+    end
+    return
+end
+
+###
+### AbstractConstrainedVariablesModel
+###
+
+abstract type AbstractConstrainedVariablesModel <: MOI.ModelLike end
+
+mutable struct OrderConstrainedVariablesModel <:
+               AbstractConstrainedVariablesModel
+    constraintIndices::Array{MOI.ConstraintIndex}
+    inner::MOIU.Model{Float64}
+    function OrderConstrainedVariablesModel()
+        return new(MOI.ConstraintIndex[], MOIU.Model{Float64}())
+    end
+end
+mutable struct ReverseOrderConstrainedVariablesModel <:
+               AbstractConstrainedVariablesModel
+    constraintIndices::Array{MOI.ConstraintIndex}
+    inner::MOIU.Model{Float64}
+    function ReverseOrderConstrainedVariablesModel()
+        return new(MOI.ConstraintIndex[], MOIU.Model{Float64}())
+    end
+end
+
+function MOI.add_variables(model::AbstractConstrainedVariablesModel, n)
+    return MOI.add_variables(model.inner, n)
+end
+
+function MOI.add_variable(model::AbstractConstrainedVariablesModel)
+    return MOI.add_variable(model.inner)
+end
+
+function MOI.add_constraint(
+    model::AbstractConstrainedVariablesModel,
+    f::MOI.AbstractFunction,
+    s::MOI.AbstractSet,
+)
+    ci = MOI.add_constraint(model.inner, f, s)
+    push!(model.constraintIndices, ci)
+    return ci
+end
+
+function MOI.copy_to(
+    dest::AbstractConstrainedVariablesModel,
+    src::MOI.ModelLike;
+    kwargs...,
+)
+    return MOIU.default_copy_to(dest, src; kwargs...)
+end
+
+MOI.supports_incremental_interface(::AbstractConstrainedVariablesModel) = true
+
+function MOI.empty!(model::AbstractConstrainedVariablesModel)
+    model.constraintIndices = MOI.ConstraintIndex[]
+    MOI.empty!(model.inner)
+    return
+end
+
+function MOI.supports_add_constrained_variables(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.Nonnegatives},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{MOI.Nonnegatives},
+)
+    return true
+end
+
+function MOI.supports_add_constrained_variables(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.Nonpositives},
+)
+    return false
+end
+
+function MOI.supports_add_constrained_variables(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.Nonnegatives},
+)
+    return false
+end
+
+function MOI.supports_constraint(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.VectorOfVariables},
+    ::Type{MOI.Nonnegatives},
+)
+    return false
+end
+
+function MOI.supports_add_constrained_variables(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.Nonpositives},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.VectorAffineFunction{Float64}},
+    ::Type{MOI.Nonnegatives},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.VectorAffineFunction{Float64}},
+    ::Type{MOI.Nonpositives},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.VariableIndex},
+    ::Type{<:MOI.GreaterThan},
+)
+    return true
+end
+
+function MOI.supports_add_constrained_variable(
+    ::OrderConstrainedVariablesModel,
+    ::Type{<:MOI.GreaterThan},
+)
+    return false
+end
+
+function MOI.supports_constraint(
+    ::OrderConstrainedVariablesModel,
+    ::Type{MOI.VariableIndex},
+    ::Type{<:MOI.LessThan},
+)
+    return false
+end
+
+function MOI.supports_add_constrained_variable(
+    ::OrderConstrainedVariablesModel,
+    ::Type{<:MOI.LessThan},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.VariableIndex},
+    ::Type{<:MOI.GreaterThan},
+)
+    return false
+end
+
+function MOI.supports_add_constrained_variable(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{<:MOI.GreaterThan},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{MOI.VariableIndex},
+    ::Type{<:MOI.LessThan},
+)
+    return true
+end
+
+function MOI.supports_add_constrained_variable(
+    ::ReverseOrderConstrainedVariablesModel,
+    ::Type{<:MOI.LessThan},
+)
+    return false
+end
+
+"""
+    test_create_variables_using_supports_add_constrained_variable()
+
+From Issue #987
+"""
+function test_create_variables_using_supports_add_constrained_variable()
+    # With vectors
+    src = MOIU.Model{Float64}()
+    a, c1 = MOI.add_constrained_variables(src, MOI.Nonpositives(3))
+    c2 = MOI.add_constraint(src, a, MOI.Nonnegatives(3))
+
+    dest = OrderConstrainedVariablesModel()
+    index_map = MOI.copy_to(dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[2])
+    @test typeof(c2) == typeof(dest.constraintIndices[1])
+
+    dest = ReverseOrderConstrainedVariablesModel()
+    index_map = MOI.copy_to(dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[1])
+    @test typeof(c2) == typeof(dest.constraintIndices[2])
+
+    b, cb = MOI.add_constrained_variables(src, MOI.Nonnegatives(2))
+    c3 = MOI.add_constraint(src, b, MOI.Zeros(2))
+
+    d, cd = MOI.add_constrained_variables(src, MOI.Zeros(2))
+    c4 = MOI.add_constraint(src, d, MOI.Nonpositives(2))
+
+    dest = OrderConstrainedVariablesModel()
+    bridged_dest = MOI.Bridges.full_bridge_optimizer(dest, Float64)
+    @test MOIU.sorted_variable_sets_by_cost(bridged_dest, src) ==
+          Type[MOI.Nonnegatives, MOI.Zeros, MOI.Nonpositives]
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Nonnegatives)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Nonnegatives}()) ==
+          0.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Nonnegatives,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Nonnegatives}(),
+    ) == 0.0
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Nonpositives)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Nonpositives}()) ==
+          1.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Nonpositives,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Nonpositives}(),
+    ) == 1.0
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Zeros)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Zeros}()) == 1.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Zeros,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Zeros}(),
+    ) == 2.0
+    index_map = MOI.copy_to(bridged_dest, src)
+    @test length(dest.constraintIndices) == 6
+
+    dest = ReverseOrderConstrainedVariablesModel()
+    bridged_dest = MOI.Bridges.full_bridge_optimizer(dest, Float64)
+    @test MOIU.sorted_variable_sets_by_cost(bridged_dest, src) ==
+          Type[MOI.Nonpositives, MOI.Zeros, MOI.Nonnegatives]
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Nonnegatives)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Nonnegatives}()) ==
+          2.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Nonnegatives,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Nonnegatives}(),
+    ) == 1.0
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Nonpositives)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Nonpositives}()) ==
+          0.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Nonpositives,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Nonpositives}(),
+    ) == 1.0
+    @test MOI.supports_add_constrained_variables(bridged_dest, MOI.Zeros)
+    @test MOI.get(bridged_dest, MOI.VariableBridgingCost{MOI.Zeros}()) == 1.0
+    @test MOI.supports_constraint(
+        bridged_dest,
+        MOI.VectorOfVariables,
+        MOI.Zeros,
+    )
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VectorOfVariables,MOI.Zeros}(),
+    ) == 3.0
+    index_map = MOI.copy_to(bridged_dest, src)
+    @test length(dest.constraintIndices) == 6
+
+    # With single variables
+    src = MOIU.Model{Float64}()
+    a, c1 = MOI.add_constrained_variable(src, MOI.GreaterThan{Float64}(5.0))
+    c2 = MOI.add_constraint(src, a, MOI.LessThan{Float64}(1.0))
+
+    dest = OrderConstrainedVariablesModel()
+    index_map = MOI.copy_to(dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[2])
+    @test typeof(c2) == typeof(dest.constraintIndices[1])
+
+    dest = ReverseOrderConstrainedVariablesModel()
+    index_map = MOI.copy_to(dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[1])
+    @test typeof(c2) == typeof(dest.constraintIndices[2])
+
+    dest = OrderConstrainedVariablesModel()
+    bridged_dest = MOI.Bridges.full_bridge_optimizer(dest, Float64)
+    @test MOI.get(
+        bridged_dest,
+        MOI.VariableBridgingCost{MOI.LessThan{Float64}}(),
+    ) == 0.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VariableIndex,MOI.LessThan{Float64}}(),
+    ) == 2.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.VariableBridgingCost{MOI.GreaterThan{Float64}}(),
+    ) == 1.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VariableIndex,MOI.GreaterThan{Float64}}(),
+    ) == 0.0
+    index_map = MOI.copy_to(bridged_dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[2])
+    @test typeof(c2) == typeof(dest.constraintIndices[1])
+
+    dest = ReverseOrderConstrainedVariablesModel()
+    bridged_dest = MOI.Bridges.full_bridge_optimizer(dest, Float64)
+    @test MOI.get(
+        bridged_dest,
+        MOI.VariableBridgingCost{MOI.LessThan{Float64}}(),
+    ) == 1.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VariableIndex,MOI.LessThan{Float64}}(),
+    ) == 0.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.VariableBridgingCost{MOI.GreaterThan{Float64}}(),
+    ) == 0.0
+    @test MOI.get(
+        bridged_dest,
+        MOI.ConstraintBridgingCost{MOI.VariableIndex,MOI.GreaterThan{Float64}}(),
+    ) == 2.0
+    index_map = MOI.copy_to(bridged_dest, src)
+    @test typeof(c1) == typeof(dest.constraintIndices[1])
+    @test typeof(c2) == typeof(dest.constraintIndices[2])
+end
+
+function test_filtering_copy()
+    # Create a basic model.
+    src = MOIU.Model{Float64}()
+    x = MOI.add_variable(src)
+    c1 = MOI.add_constraint(src, x, MOI.LessThan{Float64}(1.0))
+    c2 = MOI.add_constraint(src, x, MOI.GreaterThan{Float64}(0.0))
+
+    # Filtering function: the default case where this function always returns
+    # true is already well-tested by the above cases.
+    # Only keep the constraint c1.
+    f(::Any) = true
+    f(cidx::MOI.ConstraintIndex) = cidx == c1
+
+    # Perform the copy.
+    dst = OrderConstrainedVariablesModel()
+    index_map = MOI.copy_to(dst, MOI.Utilities.ModelFilter(f, src))
+
+    @test typeof(c1) == typeof(dst.constraintIndices[1])
+    @test length(dst.constraintIndices) == 1
+    return
+end
+
+function test_filtering_copy_empty()
+    src = MOI.Utilities.Model{Float64}()
+    MOI.set(src, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    model = MOI.Utilities.ModelFilter(src) do item
+        return item !== MOI.ObjectiveSense()
+    end
+    @test MOI.is_empty(model)
+    MOI.add_variable(src)
+    @test !MOI.is_empty(model)
+    MOI.empty!(model)
+    @test MOI.is_empty(model)
+    MOI.set(src, MOI.Name(), "Model")
+    @test !MOI.is_empty(model)
+    return
+end
+
+function test_filtering_copy_AbstractModelAttribute()
+    src = MOI.Utilities.Model{Float64}()
+    MOI.set(src, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    dest = MOI.Utilities.Model{Float64}()
+    filtered_src = MOI.Utilities.ModelFilter(src) do item
+        if item isa MOI.AbstractModelAttribute
+            return item != MOI.ObjectiveSense()
+        end
+        return true
+    end
+    @test MOI.is_empty(filtered_src)
+    MOI.copy_to(dest, filtered_src)
+    @test MOI.get(dest, MOI.ObjectiveSense()) == MOI.FEASIBILITY_SENSE
+    return
+end
+
+function test_filtering_copy_AbstractVariableAttribute()
+    src = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(src)
+    MOI.set(src, MOI.VariableName(), x, "x")
+    MOI.set(src, MOI.VariablePrimalStart(), x, 1.0)
+    dest = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    filtered_src = MOI.Utilities.ModelFilter(src) do item
+        if item isa MOI.AbstractVariableAttribute
+            return item != MOI.VariableName()
+        end
+        return true
+    end
+    @test !MOI.is_empty(filtered_src)
+    index_map = MOI.copy_to(dest, filtered_src)
+    @test MOI.get(dest, MOI.VariableName(), index_map[x]) == ""
+    @test MOI.get(dest, MOI.VariablePrimalStart(), index_map[x]) == 1.0
+    return
+end
+
+function test_filtering_copy_AbstractConstraintAttribute()
+    src = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(src)
+    c = MOI.add_constraint(src, MOI.VectorOfVariables([x]), MOI.Nonnegatives(1))
+    MOI.set(src, MOI.ConstraintName(), c, "c")
+    MOI.set(src, MOI.ConstraintDualStart(), c, [1.0])
+    dest = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    filtered_src = MOI.Utilities.ModelFilter(src) do item
+        if item isa MOI.AbstractConstraintAttribute
+            return item != MOI.ConstraintName()
+        end
+        return true
+    end
+    @test !MOI.is_empty(filtered_src)
+    index_map = MOI.copy_to(dest, filtered_src)
+    @test MOI.get(dest, MOI.ConstraintName(), index_map[c]) == ""
+    @test MOI.get(dest, MOI.ConstraintDualStart(), index_map[c]) == [1.0]
+    return
+end
+
+function test_filtering_copy_ListOfConstraintIndices()
+    src = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variables(src, 4)
+    MOI.add_constraint.(src, x, MOI.GreaterThan(0.0))
+    dest = MOI.Utilities.Model{Float64}()
+    filtered_src = MOI.Utilities.ModelFilter(src) do item
+        if item isa MOI.ConstraintIndex
+            return isodd(item.value)
+        end
+        return true
+    end
+    @test !MOI.is_empty(filtered_src)
+    index_map = MOI.copy_to(dest, filtered_src)
+    @test MOI.get(dest, MOI.NumberOfVariables()) == 4
+    @test MOI.get(
+        dest,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.GreaterThan{Float64}}(),
+    ) == 2
+    @test MOI.get(
+        filtered_src,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.GreaterThan{Float64}}(),
+    ) == 2
+    for xi in x
+        @test haskey(index_map, xi)
+        ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
+            xi.value,
+        )
+        @test haskey(index_map, ci) == isodd(xi.value)
+    end
+    return
+end
+
+function test_filtering_copy_ListOfConstraintTypesPresent()
+    src = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variables(src, 4)
+    MOI.add_constraint.(src, x, MOI.GreaterThan(0.0))
+    MOI.add_constraint.(src, x, MOI.ZeroOne())
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.copy_to(
+        dest,
+        MOI.Utilities.ModelFilter(src) do item
+            if item isa Tuple{Type,Type}
+                return item == (MOI.VariableIndex, MOI.ZeroOne)
+            end
+            return true
+        end,
+    )
+    @test MOI.get(dest, MOI.NumberOfVariables()) == 4
+    @test MOI.get(
+        dest,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.GreaterThan{Float64}}(),
+    ) == 0
+    @test MOI.get(
+        dest,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.ZeroOne}(),
+    ) == 4
+    return
+end
+
+###
+### BoundModel
+###
+mutable struct BoundModel <: MOI.ModelLike
+    # Type of model that only supports ≤ bound constraints. In particular, it
+    # does not support integrality constraints.
+    inner::MOIU.Model{Float64}
+    BoundModel() = new(MOIU.Model{Float64}())
+end
+
+MOI.add_variable(model::BoundModel) = MOI.add_variable(model.inner)
+
+function MOI.add_constraint(
+    model::BoundModel,
+    f::MOI.AbstractFunction,
+    s::MOI.LessThan{Float64},
+)
+    return MOI.add_constraint(model.inner, f, s)
+end
+
+function MOI.supports_constraint(
+    ::BoundModel,
+    ::Type{MOI.VariableIndex},
+    ::MOI.LessThan{Float64},
+)
+    return true
+end
+
+MOI.supports_incremental_interface(::BoundModel) = true
+
+function MOI.copy_to(dest::BoundModel, src::MOI.ModelLike; kwargs...)
+    return MOIU.default_copy_to(dest, src; kwargs...)
+end
+
+MOI.empty!(model::BoundModel) = MOI.empty!(model.inner)
+
+MOI.supports(::BoundModel, ::Type{MOI.NumberOfConstraints}) = true
+
+function MOI.get(model::BoundModel, attr::MOI.NumberOfConstraints)
+    return MOI.get(model.inner, attr)
+end
+
+function test_BoundModel_filtering_copy()
+    # Create a basic model.
+    src = MOIU.Model{Float64}()
+    x = MOI.add_variable(src)
+    c1 = MOI.add_constraint(src, x, MOI.LessThan{Float64}(10.0))
+    c2 = MOI.add_constraint(src, x, MOI.Integer())
+
+    # Filtering function: get rid of integrality constraint.
+    f(::Any) = true
+    f(::MOI.ConstraintIndex{F,MOI.Integer}) where {F} = false
+
+    # Perform the unfiltered copy. This should throw an error (that is, the
+    # implementation of BoundModel
+    # should be correct).
+    dst = BoundModel()
+    @test_throws(
+        MOI.UnsupportedConstraint{MOI.VariableIndex,MOI.Integer},
+        MOI.copy_to(dst, src),
+    )
+
+    # Perform the filtered copy. This should not throw an error.
+    dst = BoundModel()
+    MOI.copy_to(dst, MOI.Utilities.ModelFilter(f, src))
+    @test MOI.get(
+        dst,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.LessThan{Float64}}(),
+    ) == 1
+    @test MOI.get(
+        dst,
+        MOI.NumberOfConstraints{MOI.VariableIndex,MOI.Integer}(),
+    ) == 0
+end
+
+# We create a `OnlyCopyConstraints` that don't implement `add_constraint` but
+# implements `pass_nonvariable_constraints` to check that this is passed accross
+# all layers without falling back to `pass_nonvariable_constraints_fallback`
+# which calls `add_constraint`.
+
+struct OnlyCopyConstraints{F,S} <: MOI.ModelLike
+    constraints::MOIU.VectorOfConstraints{F,S}
+    function OnlyCopyConstraints{F,S}() where {F,S}
+        return new{F,S}(MOIU.VectorOfConstraints{F,S}())
+    end
+end
+
+function MOI.Utilities._add_variable(::OnlyCopyConstraints) end
+
+MOI.empty!(model::OnlyCopyConstraints) = MOI.empty!(model.constraints)
+
+function MOI.supports_constraint(
+    model::OnlyCopyConstraints,
+    F::Type{<:MOI.AbstractFunction},
+    S::Type{<:MOI.AbstractSet},
+)
+    return MOI.supports_constraint(model.constraints, F, S)
+end
+
+function MOIU.pass_nonvariable_constraints(
+    dest::OnlyCopyConstraints,
+    src::MOI.ModelLike,
+    idxmap::MOIU.IndexMap,
+    constraint_types,
+)
+    return MOIU.pass_nonvariable_constraints(
+        dest.constraints,
+        src,
+        idxmap,
+        constraint_types,
+    )
+end
+
+function _test_copy_of_constraints_passed_as_copy_accross_layers(
+    ::Type{T},
+) where {T}
+    F = MOI.ScalarAffineFunction{T}
+    S = MOI.EqualTo{T}
+    S2 = MOI.GreaterThan{T}
+    src = MOIU.Model{T}()
+    x = MOI.add_variable(src)
+    MOI.add_constraint(src, T(1) * x, MOI.EqualTo(T(1)))
+    MOI.add_constraint(src, T(2) * x, MOI.EqualTo(T(2)))
+    MOI.add_constraint(src, T(3) * x, MOI.GreaterThan(T(3)))
+    MOI.add_constraint(src, T(4) * x, MOI.GreaterThan(T(4)))
+    dest = MOIU.CachingOptimizer(
+        MOI.Bridges.full_bridge_optimizer(
+            MOIU.UniversalFallback(
+                MOIU.GenericOptimizer{
+                    T,
+                    MOI.Utilities.ObjectiveContainer{T},
+                    MOI.Utilities.VariablesContainer{T},
+                    OnlyCopyConstraints{F,S},
+                }(),
+            ),
+            T,
+        ),
+        MOIU.AUTOMATIC,
+    )
+    MOI.copy_to(dest, src)
+    voc = dest.model_cache.model.model.constraints.constraints
+    @test MOI.get(voc, MOI.NumberOfConstraints{F,S}()) == 2
+    @test !haskey(dest.model_cache.model.constraints, (F, S))
+    @test MOI.get(dest, MOI.NumberOfConstraints{F,S2}()) == 2
+    @test haskey(dest.model_cache.model.constraints, (F, S2))
+    return
+end
+
+function test_copy_of_constraints_passed_as_copy_accross_layers()
+    _test_copy_of_constraints_passed_as_copy_accross_layers(Int)
+    _test_copy_of_constraints_passed_as_copy_accross_layers(Float64)
+    return
+end
+
+struct Optimizer1698_1 <: MOI.AbstractOptimizer end
+
+function MOI.supports_constraint(
+    ::Optimizer1698_1,
+    ::Type{MOI.VariableIndex},
+    ::Type{MOI.Integer},
+)
+    return true
+end
+
+function MOI.supports_constraint(
+    ::Optimizer1698_1,
+    ::Type{<:Union{MOI.VectorOfVariables,MOI.VectorAffineFunction{Float64}}},
+    ::Type{<:Union{MOI.Nonnegatives,MOI.SecondOrderCone}},
+)
+    return true
+end
+
+function test_sorted_variable_sets_by_cost_1()
+    src = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variable(src)
+    y = MOI.add_variables(src, 2)
+    MOI.add_constraint(src, x, MOI.GreaterThan(1.0))
+    MOI.add_constraint(src, x, MOI.Integer())
+    MOI.add_constraint(src, y, MOI.SecondOrderCone(2))
+    dest = MOI.Bridges.full_bridge_optimizer(Optimizer1698_1(), Float64)
+    @test MOI.Utilities.sorted_variable_sets_by_cost(dest, src) ==
+          [MOI.SecondOrderCone, MOI.Integer, MOI.GreaterThan{Float64}]
+    return
+end
+
+struct Optimizer1698_2 <: MOI.AbstractOptimizer end
+
+function MOI.supports_constraint(
+    ::Optimizer1698_2,
+    ::Type{<:Union{MOI.VectorOfVariables,MOI.VectorAffineFunction{Float64}}},
+    ::Type{<:Union{MOI.Nonnegatives,MOI.Nonpositives}},
+)
+    return true
+end
+
+function test_sorted_variable_sets_by_cost_2()
+    src = MOI.Utilities.Model{Float64}()
+    MOI.add_constrained_variables(src, MOI.Nonnegatives(2))
+    MOI.add_constrained_variables(src, MOI.Zeros(2))
+    dest = MOI.Bridges.full_bridge_optimizer(Optimizer1698_2(), Float64)
+    @test MOI.Utilities.sorted_variable_sets_by_cost(dest, src) ==
+          [MOI.Nonnegatives, MOI.Zeros]
+    return
+end
+
+function test_sorted_copy_to()
+    src = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    x = MOI.add_variable(src)
+    f = MOI.ScalarNonlinearFunction(:sqr, Any[x])
+    attr_1 = MOI.UserDefinedFunction(:sqr, 1)
+    attr_2 = MOI.ObjectiveSense()
+    attr_3 = MOI.ObjectiveFunction{typeof(f)}()
+    attr_4 = MOI.Name()
+    MOI.set(src, attr_4, "abc")
+    MOI.set(src, attr_1, (sqrt,))
+    MOI.set(src, attr_3, f)
+    MOI.set(src, attr_2, MOI.MAX_SENSE)
+    dest = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    index_map = MOI.copy_to(dest, src)
+    @test MOI.get(dest, attr_1) == (sqrt,)
+    @test MOI.get(dest, attr_2) == MOI.MAX_SENSE
+    g = MOI.ScalarNonlinearFunction(:sqr, Any[index_map[x]])
+    @test ≈(g, MOI.get(dest, attr_3))
+    @test MOI.get(dest, attr_4) == "abc"
+    return
+end
+
+function test_copy_to_empty_VectorOfVariables_constraint()
+    src = MOI.Utilities.Model{Float64}()
+    x = MOI.add_variable(src)
+    F, S = MOI.VectorOfVariables, MOI.Zeros
+    MOI.add_constraint(src, F([]), S(0))
+    dest = MOI.Utilities.Model{Float64}()
+    MOI.copy_to(dest, src)
+    @test (F, S) in MOI.get(dest, MOI.ListOfConstraintTypesPresent())
+    @test MOI.get(dest, MOI.NumberOfConstraints{F,S}()) == 1
+    ci = only(MOI.get(dest, MOI.ListOfConstraintIndices{F,S}()))
+    @test MOI.get(dest, MOI.ConstraintFunction(), ci) == F([])
+    return
+end
+
+function test_copy_to_sorted_sets()
+    src = MOI.Utilities.Model{Float64}()
+    # Free variable to start
+    x1 = MOI.add_variable(src)
+    x2, _ = MOI.add_constrained_variables(src, MOI.SecondOrderCone(3))
+    x3 = MOI.add_variables(src, 2)
+    MOI.add_constraint(src, MOI.VectorOfVariables(x3), MOI.Nonnegatives(2))
+    # A variable with multiple domain sets
+    x4, _ = MOI.add_constrained_variable(src, MOI.GreaterThan(0.0))
+    _ = MOI.add_constraint(src, x4, MOI.LessThan(0.0))
+    # A split function. Not added as a variable
+    MOI.add_constraint(
+        src,
+        MOI.VectorOfVariables([x1, x3[2]]),
+        MOI.Nonpositives(2),
+    )
+    # Repeated set
+    _, _ = MOI.add_constrained_variables(src, MOI.Nonnegatives(3))
+    # An empty constraint
+    MOI.add_constraint(src, MOI.VectorOfVariables([]), MOI.Zeros(0))
+    # Two free variable to end
+    _ = MOI.add_variables(src, 2)
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.copy_to(dest, src)
+    x_src = MOI.get(src, MOI.ListOfVariableIndices())
+    x_dest = MOI.get(dest, MOI.ListOfVariableIndices())
+    for (x, y) in zip(x_src, x_dest)
+        @test index_map[x] == y
+    end
+    return
+end
+
+function test_deprecated_try_constrain_variables_scalar()
+    src = MOI.Utilities.Model{Float64}()
+    x, c_z = MOI.add_constrained_variable(src, MOI.ZeroOne())
+    c = MOI.add_constraint(src, x, MOI.EqualTo(0.0))
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.Utilities.IndexMap()
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.ZeroOne,
+    )
+    @test isempty(not_added)
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.EqualTo{Float64},
+    )
+    @test not_added == [c]
+    @test MOI.is_valid(dest, index_map[x])
+    @test MOI.is_valid(dest, index_map[c_z])
+    @test_throws KeyError index_map[c]
+    return
+end
+
+function test_deprecated_try_constrain_variables_vector()
+    src = MOI.Utilities.Model{Float64}()
+    x, c_z = MOI.add_constrained_variables(src, MOI.Nonnegatives(2))
+    y = MOI.add_variable(src)
+    c_duplicate = MOI.add_constraint(
+        src,
+        MOI.VectorOfVariables([x[1], x[1]]),
+        MOI.Zeros(2),
+    )
+    c_already_added = MOI.add_constraint(
+        src,
+        MOI.VectorOfVariables([y, x[1]]),
+        MOI.Nonpositives(2),
+    )
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.Utilities.IndexMap()
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.Nonnegatives,
+    )
+    @test isempty(not_added)
+    @test MOI.is_valid(dest, index_map[x[1]])
+    @test MOI.is_valid(dest, index_map[x[2]])
+    @test MOI.is_valid(dest, index_map[c_z])
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.Zeros,
+    )
+    @test not_added == [c_duplicate]
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.Nonpositives,
+    )
+    @test not_added == [c_already_added]
+    return
+end
+
+function test_deprecated_copy_free_variables()
+    src = MOI.Utilities.Model{Float64}()
+    x, c_z = MOI.add_constrained_variable(src, MOI.ZeroOne())
+    y = MOI.add_variable(src)
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.Utilities.IndexMap()
+    not_added = MOI.Utilities._try_constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.ZeroOne,
+    )
+    MOI.Utilities._copy_free_variables(dest, index_map, [x, y])
+    @test MOI.is_valid(dest, index_map[x])
+    @test MOI.is_valid(dest, index_map[y])
+    MOI.Utilities._copy_free_variables(dest, index_map, [x, y])
+    @test MOI.is_valid(dest, index_map[x])
+    @test MOI.is_valid(dest, index_map[y])
+    return
+end
+
+function test_index_map()
+    src = MOI.Utilities.Model{Float64}()
+    x, c_z = MOI.add_constrained_variable(src, MOI.ZeroOne())
+    dest = MOI.Utilities.Model{Float64}()
+    index_map = MOI.copy_to(dest, src)
+    @test collect(keys(index_map)) == Any[x, c_z]
+    delete!(index_map, x)
+    @test collect(keys(index_map)) == Any[c_z]
+    delete!(index_map, c_z)
+    @test collect(keys(index_map)) == Any[]
+    return
+end
+
+function test_copy_names_unsupported()
+    src = MOI.Utilities.Model{Float64}()
+    MOI.set(src, MOI.Name(), "Abc")
+    x = MOI.add_variable(src)
+    MOI.set(src, MOI.VariableName(), x, "x")
+    c = MOI.add_constraint(src, 1.0 * x, MOI.LessThan(1.0))
+    MOI.set(src, MOI.ConstraintName(), c, "c")
+    dest = MOI.Utilities.MockOptimizer(
+        MOI.Utilities.Model{Float64}();
+        supports_names = false,
+    )
+    index_map = MOI.copy_to(dest, src)
+    @test MOI.get(dest, MOI.VariableName(), index_map[x]) == ""
+    return
+end
+
+end  # module
+
+TestCopy.runtests()

@@ -1,0 +1,11 @@
+*.jl.cov
+*.jl.mem
+*.jld2
+*.h5
+*.nc
+*.jld
+/test/test_out.jld
+
+docs/build/
+Manifest.toml
+.vscode/

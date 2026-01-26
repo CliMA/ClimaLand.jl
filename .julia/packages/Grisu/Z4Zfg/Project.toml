@@ -1,0 +1,12 @@
+name = "Grisu"
+uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
+version = "1.0.2"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

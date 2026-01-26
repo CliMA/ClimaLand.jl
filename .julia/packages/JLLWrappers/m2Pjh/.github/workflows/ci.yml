@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: "master"
+    tags: ["*"]
+  pull_request:
+
+concurrency:
+  # Skip intermediate builds: all builds except for builds on the `master` branch
+  # Cancel intermediate builds: only pull request builds
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref != 'refs/heads/master' || github.run_number }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  test:
+    name: Julia ${{ matrix.julia-version }} - ${{ matrix.os }} - ${{ matrix.julia-arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version:
+          - "1.3"
+          - "1.4"
+          - "1.5"
+          - "1.6"
+          - "1.7"
+          - "1.8"
+          - "1.9"
+          - "1.10"
+          - "1"
+          - "nightly"
+        os:
+          - ubuntu-latest
+          - ubuntu-22.04-arm
+          - macos-13
+          - macos-latest
+          - windows-latest
+        julia-arch:
+          - x64
+          - x86
+          - aarch64
+        exclude:
+          # Exclude all incompatible os/architecture combinations
+          - os: macOS-latest
+            julia-arch: x86
+          - os: macOS-13
+            julia-arch: x86
+          - os: macOS-13
+            julia-arch: aarch64
+          - os: macOS-latest
+            julia-arch: x64
+          - os: ubuntu-latest
+            julia-arch: aarch64
+          - os: windows-latest
+            julia-arch: aarch64
+          - os: ubuntu-22.04-arm
+            julia-arch: x86
+          - os: ubuntu-22.04-arm
+            julia-arch: x64
+          # There seems to be an issue with Julia v1.4 on macOS:
+          # https://github.com/JuliaPackaging/JLLWrappers.jl/pull/67#issuecomment-2321873551
+          - os: macOS-13
+            julia-version: 1.4
+          # aarch64-darwin isn't available on old releases
+          - os: macOS-latest
+            julia-version: 1.3
+          - os: macOS-latest
+            julia-version: 1.4
+          - os: macOS-latest
+            julia-version: 1.5
+          - os: macOS-latest
+            julia-version: 1.6
+          - os: macOS-latest
+            julia-version: 1.7
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-runtest@v1

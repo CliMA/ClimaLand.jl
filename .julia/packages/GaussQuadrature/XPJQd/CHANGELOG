@@ -1,0 +1,19 @@
+Changelog: 
+
+2013-10-12 
+Initial release, version 0.1, tested with Julia 0.2 pre-release.
+
+2013-11-01
+Version 0.2, with support for arbitrary FloatingPoint arithmetic.
+Works with Julia 0.3.
+
+2015-09-25
+Version 0.3, remove deprecated features for Julia 0.4, add 
+documentation for individual functions.
+
+2015-10-17
+Version 0.3.1, add basic test for Travis, register package.
+
+2016-07-16 
+Version 0.3.2, change EndPt label type to avoid deprecation warnings
+in Julia 0.5.

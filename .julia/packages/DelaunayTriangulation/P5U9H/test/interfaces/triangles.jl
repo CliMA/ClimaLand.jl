@@ -1,0 +1,324 @@
+using ..DelaunayTriangulation
+const DT = DelaunayTriangulation
+using Test
+using StaticArraysCore
+
+global i = 1
+global j = 5
+global k = 10
+global T1 = (i, j, k)
+global T2 = [i, j, k]
+global T3 = SVector{3, Int32}((i, j, k))
+
+@testset "Individual triangles" begin
+    @testset "Constructing a triangle" begin
+        @test_throws MethodError DT.construct_triangle(String, i, j, k)
+        @test DT.construct_triangle(NTuple{3, Int}, i, j, k) == T1
+        @test DT.construct_triangle(Vector{Int}, i, j, k) == T2
+        @test DT.construct_triangle(SVector{3, Int32}, i, j, k) == T3
+        @inferred DT.construct_triangle(NTuple{3, Int}, i, j, k)
+    end
+
+    @testset "Getting indices" begin
+        @test_throws MethodError DT.geti(String)
+        @test DT.geti(T1) == DT.geti(T2) == DT.geti(T3) == i
+        @test_throws MethodError DT.getj(String)
+        @test DT.getj(T1) == DT.getj(T2) == DT.getj(T3) == j
+        @test_throws MethodError DT.getk(String)
+        @test DT.getk(T1) == DT.getk(T2) == DT.getk(T3) == k
+        @inferred DT.geti(T1)
+        @inferred DT.getj(T1)
+        @inferred DT.getk(T1)
+        @test triangle_vertices(T1) == triangle_vertices(T2) == triangle_vertices(T3) == (i, j, k)
+        @inferred triangle_vertices(T1)
+    end
+
+    @testset "Extracting the integer type" begin
+        @test_throws MethodError DT.integer_type(String)
+        @test DT.number_type(typeof(T1)) == DT.number_type(typeof(T2)) == Int
+        @test DT.number_type(typeof(T3)) == typeof(T3[1]) == Int32
+        @inferred DT.number_type(typeof(T1))
+    end
+
+    @testset "Edges of a triangle" begin
+        @test DT.triangle_edges(T1) ==
+            DT.triangle_edges(T2) ==
+            DT.triangle_edges(T3) ==
+            DT.triangle_edges(i, j, k) ==
+            ((i, j), (j, k), (k, i))
+        @inferred DT.triangle_edges(T1)
+    end
+
+    @testset "Rotating a triangle" begin
+        for T in (T1, T2, T3)
+            for r in 0:2
+                @test DT.rotate_triangle(T, r) ==
+                    DT.construct_triangle(typeof(T), ((i, j, k), (j, k, i), (k, i, j))[r + 1]...)
+                @inferred DT.rotate_triangle(T, r)
+            end
+        end
+    end
+
+    @testset "Comparing triangles" begin
+        for T in (T1, T2, T3)
+            @test DT.compare_triangles(T, (i, j, k))
+            @test DT.compare_triangles(T, (j, k, i))
+            @test DT.compare_triangles(T, (k, i, j))
+            @test DT.compare_triangles(T, [i, j, k])
+            @test !DT.compare_triangles(T, (k, j, i))
+            @test !DT.compare_triangles(T, (1, 50, 323))
+            @inferred DT.compare_triangles(T, (i, j, k))
+        end
+    end
+
+    @testset "Sorting a triangle" begin
+        T = (1, 7, 5)
+        sortT = (7, 5, 1)
+        @test DT.sort_triangle(T) == DT.sort_triangle(T...) == sortT
+        T = [3, 1, 5]
+        @test DT.sort_triangle(T) == [5, 3, 1]
+        T = (5, 7, 1)
+        @test DT.sort_triangle(T) == DT.sort_triangle(T...) == (5, 7, 1)
+        @inferred DT.sort_triangle(T)
+        @inferred DT.sort_triangle(T...)
+        i = 1
+        j = (0.3, 0.5)
+        k = 5
+        P = NTuple{2, Float64}
+        I = Int
+        types = Union{Tuple{I, I, P}, Tuple{I, P, I}, Tuple{P, I, I}}
+        types2 = Union{Tuple{P, P, I}, Tuple{P, I, P}, Tuple{P, P, I}}
+        @test DT.sort_triangle(i, j, k) == (i, j, k)
+        @inferred types DT.sort_triangle(i, j, k)
+        @test DT.sort_triangle(5, 7, (0.9, 0.2)) == (5, 7, (0.9, 0.2))
+        @test DT.sort_triangle(-3, (0.9, 0.2), (0.5, 0.5)) == ((0.9, 0.2), (0.5, 0.5), -3)
+        @test DT.sort_triangle((0.5, 0.2), -3, 1) == (1, (0.5, 0.2), -3)
+        @test DT.sort_triangle(1, (-0.2, 0.5), -2) == (1, (-0.2, 0.5), -2)
+        @test DT.sort_triangle((0.2, 0.5), (1.3, 1.3), -2) == ((0.2, 0.5), (1.3, 1.3), -2)
+        @inferred types DT.sort_triangle(5, 7, (0.9, 0.2))
+        @inferred types2 DT.sort_triangle(-3, (0.9, 0.2), (0.5, 0.5))
+        @inferred types DT.sort_triangle((0.5, 0.2), -3, 1)
+        @inferred types DT.sort_triangle(1, (-0.2, 0.5), -2)
+        @inferred types2 DT.sort_triangle((0.2, 0.5), (1.3, 1.3), -2)
+    end
+end
+
+global Ts1 = Set{typeof(T1)}(((1, 2, 3), (4, 6, 1), (10, 6, 1), (3, 10, 9), (5, 10, 3)))
+global Ts2 = Set{typeof(T2)}(([1, 2, 3], [4, 6, 1], [10, 6, 1], [3, 10, 9], [5, 10, 3]))
+global Ts3 = Set{typeof(T3)}(
+    (
+        SVector{3, Int32}((1, 2, 3)),
+        SVector{3, Int32}((4, 6, 1)),
+        SVector{3, Int32}((10, 6, 1)),
+        SVector{3, Int32}((3, 10, 9)),
+        SVector{3, Int32}((5, 10, 3)),
+    ),
+)
+
+@testset "Collection of triangles" begin
+    @testset "Getting the eltype of a collection of triangles" begin
+        for (T, Ts) in zip((T1, T2, T3), (Ts1, Ts2, Ts3))
+            @test DT.triangle_type(typeof(Ts)) == typeof(T)
+        end
+        @test DT.triangle_type(Vector{NTuple{3, Int}}) == NTuple{3, Int}
+        @inferred DT.triangle_type(Vector{NTuple{3, Int}})
+    end
+
+    @testset "Number of triangles" begin
+        for Ts in (Ts1, Ts2, Ts3)
+            @test num_triangles(Ts) == length(Ts) == 5
+        end
+        @test num_triangles([(1, 2, 3), (4, 5, 6), (10, 11, 12)]) == 3
+        @inferred num_triangles([(1, 2, 3), (4, 5, 6), (10, 11, 12)])
+    end
+
+    @testset "Seeing if a collection contains a triangle" begin
+        for Ts in (Ts1, Ts2, Ts3)
+            V = eltype(Ts)
+            V1 = DT.construct_triangle(V, 1, 2, 3)
+            V2 = DT.construct_triangle(V, 6, 1, 4)
+            V3 = DT.construct_triangle(V, 10, 6, 1)
+            V4 = DT.construct_triangle(V, 9, 3, 10)
+            V5 = DT.construct_triangle(V, 10, 3, 5)
+            V6 = DT.construct_triangle(V, 10, 12, 5)
+            V7 = DT.construct_triangle(V, 7, 17, 5)
+            e1, p1 = DT.contains_triangle(V1, Ts)
+            e2, p2 = DT.contains_triangle(V2..., Ts)
+            e3, p3 = DT.contains_triangle(V3, Ts)
+            e4, p4 = DT.contains_triangle(V4, Ts)
+            e5, p5 = DT.contains_triangle(V5..., Ts)
+            e6, p6 = DT.contains_triangle(V6, Ts)
+            e7, p7 = DT.contains_triangle(V7..., Ts)
+            @inferred DT.contains_triangle(V1, Ts)
+            @inferred DT.contains_triangle(V2..., Ts)
+            @test all((p1, p2, p3, p4, p5))
+            @test all((!p6, !p7))
+            @test e1 == V1
+            @test e2 == DT.construct_triangle(V, 4, 6, 1)
+            @test e3 == V3
+            @test e4 == DT.construct_triangle(V, 3, 10, 9)
+            @test e5 == DT.construct_triangle(V, 5, 10, 3)
+            @test e6 == V6
+            @test e7 == V7
+        end
+    end
+
+    @testset "Adding to a collection of triangles" begin
+        for Ts in (Ts1, Ts2, Ts3)
+            V = eltype(Ts)
+            V1 = DT.construct_triangle(V, 10, 12, 5)
+            V2 = DT.construct_triangle(V, 7, 17, 5)
+            V3 = DT.construct_triangle(V, 6, 17, 29)
+            V4 = DT.construct_triangle(V, 13, 50, 101)
+            V5 = DT.construct_triangle(V, 20, 25, 50)
+            V6 = [17, 23, 507]
+            V7 = (1, 100, 500)
+            V8 = SVector{3, Int32}(100, 50, 901)
+            G6 = DT.construct_triangle(V, V6...)
+            G7 = DT.construct_triangle(V, V7...)
+            G8 = DT.construct_triangle(V, V8...)
+            DT.add_to_triangles!(Ts, V1)
+            @inferred DT.add_to_triangles!(Ts, V1)
+            DT.add_triangle!(Ts, V2)
+            DT.add_triangle!(Ts, V3, V4, V5)
+            DT.add_triangle!(Ts, V6)
+            DT.add_triangle!(Ts, V7)
+            DT.add_to_triangles!(Ts, V8)
+            for F in (V1, V2, V3, V4, V5, G6, G7, G8)
+                @test F ∈ Ts
+            end
+            @test length(Ts) == 13
+        end
+        T = Vector{NTuple{3, Int}}()
+        DT.add_triangle!(T, (1, 2, 3))
+        DT.add_triangle!(T, (5, 6, 8), (9, 10, 12))
+        DT.add_triangle!(T, [13, 14, 15])
+        @test T == [(1, 2, 3), (5, 6, 8), (9, 10, 12), (13, 14, 15)]
+    end
+
+    @testset "Deleting from a collection of triangles" begin
+        for Ts in (Ts1, Ts2, Ts3)
+            V = eltype(Ts)
+            V1 = DT.construct_triangle(V, 10, 12, 5)
+            V2 = DT.construct_triangle(V, 7, 17, 5)
+            V3 = DT.construct_triangle(V, 6, 17, 29)
+            V4 = DT.construct_triangle(V, 13, 50, 101)
+            V5 = DT.construct_triangle(V, 20, 25, 50)
+            G1 = DT.construct_triangle(V, 12, 5, 10)
+            G2 = DT.construct_triangle(V, 5, 7, 17)
+            G5 = DT.construct_triangle(V, 20, 25, 50)
+            DT.delete_triangle!(Ts, G1)
+            DT.delete_triangle!(Ts, V2)
+            @inferred DT.delete_triangle!(Ts, V2)
+            DT.delete_triangle!(Ts, V3)
+            DT.delete_triangle!(Ts, V4...)
+            DT.delete_triangle!(Ts, V5)
+            for F in (V1, V2, V3, V4, V5)
+                @test F ∉ Ts
+            end
+            @test length(Ts) == 8
+        end
+    end
+
+    @testset "Iterating over each triangle" begin
+        for Ts in (Ts1, Ts2, Ts3)
+            @test each_triangle(Ts) == Ts
+        end
+        T = [1 2 3; 4 5 6; 7 8 9]'
+        @test each_triangle(T) == eachcol(T)
+        @inferred each_triangle(T)
+        V = [(1, 2, 3), (4, 5, 6), (10, 11, 12), (30, 31, 32), (7, 10, 11)]
+        @test each_triangle(V) == V
+        @inferred each_triangle(V)
+    end
+
+    @testset "Getting a positively oriented triangle" begin
+        points = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+        @test DT.construct_positively_oriented_triangle(NTuple{3, Int}, 1, 2, 3, points) ==
+            (1, 2, 3)
+        @test DT.construct_positively_oriented_triangle(NTuple{3, Int}, 2, 1, 3, points) ==
+            (1, 2, 3)
+        @inferred DT.construct_positively_oriented_triangle(NTuple{3, Int}, 2, 1, 3, points)
+    end
+
+    @testset "Comparing collections of triangles" begin
+        T = Set{NTuple{3, Int}}(
+            (
+                (1, 2, 3),
+                (2, 3, 4),
+                (4, 5, 6),
+                (6, 9, 11),
+            ),
+        )
+        V = Set{NTuple{3, Int}}(
+            (
+                (1, 2, 3),
+                (2, 3, 4),
+                (4, 5, 6),
+                (6, 9, 11),
+            ),
+        )
+        @test DT.compare_triangle_collections(T, V)
+        V = Set{NTuple{3, Int}}(
+            (
+                (1, 2, 3),
+                (2, 3, 4),
+                (4, 5, 6),
+            ),
+        )
+        @test !DT.compare_triangle_collections(T, V)
+        V = Set{NTuple{3, Int}}(
+            (
+                (3, 1, 2),
+                (3, 4, 2),
+                (6, 4, 5),
+                (6, 9, 11),
+            ),
+        )
+        @test DT.compare_triangle_collections(T, V)
+        V = Set{NTuple{3, Int}}(
+            (
+                (3, 1, 2),
+                (3, 4, 2),
+                (6, 4, 5),
+                (6, 11, 9),
+            ),
+        )
+        @test !DT.compare_triangle_collections(T, V)
+        @inferred DT.compare_triangle_collections(T, V)
+    end
+
+    @testset "Sorting a collection of triangles" begin
+        T = Set{NTuple{3, Int}}(
+            [
+                (1, 2, 3),
+                (10, 9, 3),
+                (11, 5, 1),
+                (193, 12, 10),
+                (5, 3, 1),
+                (19, 18, 17),
+                (17, 5, 23),
+                (20, 50, 72),
+                (30, 31, 32),
+                (20, 13, 37),
+            ],
+        )
+        V = DT.sort_triangles(T)
+        @inferred DT.sort_triangles(T)
+        @test V == Set{NTuple{3, Int}}(
+            [
+                (2, 3, 1),
+                (10, 9, 3),
+                (11, 5, 1),
+                (193, 12, 10),
+                (5, 3, 1),
+                (19, 18, 17),
+                (23, 17, 5),
+                (50, 72, 20),
+                (31, 32, 30),
+                (37, 20, 13),
+            ],
+        )
+        @test DT.compare_triangle_collections(T, V)
+    end
+end

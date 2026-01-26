@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+    branches:
+      - main
+    tags: '*'
+  pull_request:
+  merge_group:
+
+jobs:
+  test:
+    name: ci ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Run tests
+        run: julia --project -e 'using Pkg; Pkg.test(; coverage = false)'
+        # Using the julia-runtest action makes this more than 2 times slower.

@@ -1,0 +1,42 @@
+name: Documentation
+on:
+  push:
+    branches: [master]
+    tags: '*'
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@latest
+        with:
+          # Build documentation on Julia 1.10
+          version: '1.10'
+      - name: Install dependencies
+        shell: julia --project=docs {0}
+        run: |
+          using Pkg
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.instantiate()
+      - name: Build and deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
+          DOCUMENTER_LATEX_DEBUG: ${{ github.workspace }}/latex-debug-logs
+        run: julia --color=yes --project=docs/ docs/make.jl
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: PDF build logs
+          path: ${{ github.workspace }}/latex-debug-logs
+      - uses: errata-ai/vale-action@reviewdog
+        with:
+          version: 3.0.5
+          files: all
+          fail_on_error: true
+          filter_mode: nofilter
+          vale_flags: "--config=.vale.ini"
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

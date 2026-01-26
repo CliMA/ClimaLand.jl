@@ -1,0 +1,116 @@
+using Interpolations, Test
+
+@testset "LinearTests" begin
+    front(r::AbstractUnitRange) = first(r):last(r)-1
+    front(r::AbstractRange) = range(first(r), step=step(r), length=length(r)-1)
+
+    for D in (Constant, Linear)
+        for constructor in (interpolate, interpolate!)
+            isinplace = constructor == interpolate!
+            ## 1D
+            a = rand(5)
+            knots = (range(1, stop=length(a), length=length(a)),)
+            itp = @inferred(constructor(knots, a, Gridded(D())))
+            @inferred(itp(2))
+            @inferred(itp(CartesianIndex(2)))
+            for i = 1:length(a)
+                @test itp(i) ≈ a[i]
+                @test itp(CartesianIndex(i)) ≈ a[i]
+            end
+            @inferred(itp(knots...))
+            @test itp(knots...) ≈ a
+            # compare scalar indexing and vector indexing
+            x = front(knots[1] .+ 0.1)
+            v = itp(x)
+            for i = 1:length(x)
+                @test v[i] ≈ itp(x[i])
+            end
+            x = [2.3,2.2]   # non-increasing order
+            v = itp(x)
+            for i = 1:length(x)
+                @test v[i] ≈ itp(x[i])
+            end
+            # compare against BSpline
+            itpb = @inferred(constructor(a, BSpline(D())))
+            for x in range(1.1, stop=4.9, length=101)
+                @test itp(x) ≈ itpb(x)
+            end
+
+            knots = (range(0.0, stop=1.0, length=length(a)),)
+            itp = @inferred(constructor(knots, a, Gridded(D())))
+            @test itp([0.1, 0.2, 0.3]) == [itp(0.1), itp(0.2), itp(0.3)]
+
+            ## 2D
+            A = rand(6,5)
+            knots = (range(1, stop=size(A,1), length=size(A,1)), range(1, stop=size(A,2), length=size(A,2)))
+            itp = @inferred(constructor(knots, A, Gridded(D())))
+            isinplace && @test parent(itp) === A
+            @inferred(itp(2, 2))
+            @inferred(itp(CartesianIndex((2,2))))
+            for j = 2:size(A,2)-1, i = 2:size(A,1)-1
+                @test itp(i,j) ≈ A[i,j]
+                @test itp(CartesianIndex((i,j))) ≈ A[i,j]
+            end
+            @test itp(knots...) ≈ A
+            @inferred(itp(knots...))
+            # compare scalar indexing and vector indexing
+            x, y = front(knots[1] .+ 0.1), front(knots[2] .+ 0.6)
+            v = itp(x,y)
+            for j = 1:length(y), i = 1:length(x)
+                @test v[i,j] ≈ itp(x[i],y[j])
+            end
+            # check the fallback vector indexing
+            x = [2.3,2.2]   # non-increasing order
+            y = [3.5,2.8]
+            v = itp(x,y)
+            for j = 1:length(y), i = 1:length(x)
+                @test v[i,j] ≈ itp(x[i],y[j])
+            end
+            # compare against BSpline
+            itpb = @inferred(constructor(A, BSpline(D())))
+            for x in range(1.1, stop=5.9, length=101), y in range(1.1, stop=4.9, length=101)
+                @test itp(x,y) ≈ itpb(x,y)
+            end
+
+            A = rand(8,20)
+            knots = ([x^2 for x = 1:8], [0.2y for y = 1:20])
+            itp = constructor(knots, A, Gridded(D()))
+            @test itp(4,1.2) ≈ A[2,6]
+        end
+    end
+
+    # issue #248
+    itp = interpolate((1001:1005,), 1:5, Gridded(Linear()))
+    @test itp(1002) ≈ 2
+
+    # issue #255
+    itp = interpolate(([1,2,3],), [1.0f0, 2.0f0, 1.0f0], Gridded(Linear()))
+    @test itp(2) === 2.0f0
+    @test itp(2.0) === 2.0
+    @test itp(2.0f0) === 2.0f0
+
+    # trailing 1s, issue #301
+    @test itp(1.8, 1) == itp(1.8)
+
+    # issue #395
+    knots = ([0.0,0.0,1.0],) # not unique
+    # Further discussion determined this should be a warning rather than an error
+    # https://github.com/JuliaMath/Interpolations.jl/commit/318ebc88ca1fc084754f3c741266537f901a3310
+    knots_not_unique_warning = "Duplicated knots were deduplicated. Use Interpolations.deduplicate_knots!(knots) explicitly to avoid this warning."
+    @test_logs (:warn, knots_not_unique_warning) interpolate(knots, [1.0, 1.1, 2.0], Gridded(Linear()))
+
+    # knot deduplication, issue #467, PR #468
+    duplicated_knots = [1.0, 1.0, 1.0, nextfloat(1.0), nextfloat(1.0)]
+    successive_knots_warning = "Successive repeated knots detected. Consider using `move_knots` keyword to Interpolations.deduplicate_knots!"
+    @test_logs (:warn, successive_knots_warning) Interpolations.deduplicate_knots!(duplicated_knots)
+    @test allunique(duplicated_knots)
+
+    # inplace gridded interpolation, issue #495
+    knots = ([0., 1.],)
+    y = view([1., 2.], :)
+    f1 = interpolate(knots, y, Gridded(Linear()))
+    f2 = interpolate!(knots, y, Gridded(Linear()))
+    y .= 0
+    @test f1(0.5) ≈ 1.5
+    @test f2(0.5) ≈ 0
+end

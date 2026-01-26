@@ -1,0 +1,67 @@
+name = "ClimaTimeSteppers"
+uuid = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
+authors = ["Climate Modeling Alliance"]
+version = "0.8.5"
+
+[deps]
+ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+NVTX = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[weakdeps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[extensions]
+ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "StatsBase", "PrettyTables"]
+
+[compat]
+Aqua = "0.8"
+BenchmarkTools = "1"
+CUDA = "3, 4, 5"
+ClimaComms = "0.4, 0.5, 0.6"
+ClimaCore = "0.10, 0.11, 0.12, 0.13, 0.14"
+DataStructures = "0.18"
+DiffEqBase = "6"
+Distributions = "0.25"
+KernelAbstractions = "0.7, 0.8, 0.9"
+Krylov = "0.8, 0.9, 0.10"
+LinearAlgebra = "1"
+LinearOperators = "2"
+MPI = "0.20"
+NVTX = "0.3, 1"
+ODEConvergenceTester = "0.2"
+OrderedCollections = "1"
+PrettyTables = "2"
+Random = "1"
+SafeTestsets = "0.1"
+SciMLBase = "1, 2"
+StaticArrays = "1"
+StatsBase = "0.33, 0.34"
+Test = "1"
+julia = "1.9"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+ODEConvergenceTester = "42a5c2e1-f365-4540-8ca5-3684de3ecd95"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "ClimaCore", "Distributions", "Krylov", "MPI", "ODEConvergenceTester", "PrettyTables", "Random", "SafeTestsets", "Test"]
