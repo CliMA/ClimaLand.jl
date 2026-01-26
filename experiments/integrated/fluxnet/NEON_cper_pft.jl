@@ -306,7 +306,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260123_onlySummer_6aa1fff63e5f411b9691663dd56f4831db6a9957/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/Zoom/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260126_bugfix_Alexis_only_summer_88814e9f15a6b773abb6ab9ea8310288cdfd785c/output/"),
     output_vars,
     reduction_period = :halfhourly,
 );
@@ -325,7 +325,7 @@ solve!(simulation)
 #=
 using Logging
 
-io = open("logfile3.txt", "w")
+io = open("logfile5.txt", "w")
 logger = ConsoleLogger(io)
 
 with_logger(logger) do
