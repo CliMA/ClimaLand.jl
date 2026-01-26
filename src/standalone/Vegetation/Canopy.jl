@@ -293,7 +293,7 @@ end
         n_stem::Int = 0,
         n_leaf::Int = 1,
         h_stem::FT = FT(0),
-        h_leaf::FT = FT(1),
+        h_leaf::FT = toml_dict["canopy_height"],
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
