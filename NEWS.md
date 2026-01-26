@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- Make the soil model use the same turbulent fluxes function call as the other components PR[#1609](https://github.com/CliMA/ClimaLand.jl/pull/1609)
 - ![breaking change][badge-💥breaking] Remove thermal state from ClimaLand, use latest Thermodynamics package [#1594](https://github.com/CliMA/ClimaLand.jl/pull/1594)
 
 v1.4.0
