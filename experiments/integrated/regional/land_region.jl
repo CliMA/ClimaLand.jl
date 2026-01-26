@@ -64,6 +64,7 @@ function setup_model(FT, context, start_date, stop_date, Δt, domain, toml_dict)
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true
     )
     forcing = (; atmos, radiation)
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
