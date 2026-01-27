@@ -605,7 +605,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
         θ_i = soil_ice(model.drivers.met, p, Y, t, z)
-        Csom = Y.soilco2.SOC  # Now using prognostic SOC
+        Csom = max.(Y.soilco2.SOC, FT(0))  # Clamp SOC to non-negative
         P_sfc = p.drivers.P
         ν = model.drivers.met.ν
         θ_a100 = model.drivers.met.θ_a100
