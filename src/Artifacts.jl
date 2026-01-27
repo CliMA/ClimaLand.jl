@@ -314,8 +314,8 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
     if occursin("NEON", site_ID)
         #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_CPER_201701_201712.csv"
         #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/USVal_param_adaptSlayer_1f8b301b70dc015194659380910d1147f81efba6/input/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
-        #data_path = "/Users/evametz/Documents/Zoom/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201705_201709.csv"
-        data_path = "/Users/evametz/Documents/Zoom/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
+        #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201705_201709.csv"
+        data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Neon/CliMa_Input/dataframes_Neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
         #data_path = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/fluxnet_site_data/US-MOz.csv"
     else
         folder_path = @clima_artifact("fluxnet_sites", context)
