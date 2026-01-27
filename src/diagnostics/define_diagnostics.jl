@@ -917,6 +917,16 @@ function define_diagnostics!(land_model)
         compute! = (out, Y, p, t) -> compute_soc!(out, Y, p, t, land_model),
     )
 
+    # Soil CO2 in ppm (for NEON comparison)
+    add_diagnostic_variable!(
+        short_name = "sco2_ppm",
+        long_name = "Soil Pore Air CO2 Concentration",
+        standard_name = "soil_pore_air_co2_concentration",
+        units = "ppm",
+        comments = "CO2 concentration in soil pore air space, in parts per million by volume. Computed from air-equivalent CO2 concentration using ideal gas law. (depth resolved)",
+        compute! = (out, Y, p, t) -> compute_soilco2_ppm!(out, Y, p, t, land_model),
+    )
+
     # Soil water content
     add_diagnostic_variable!(
         short_name = "swc",
