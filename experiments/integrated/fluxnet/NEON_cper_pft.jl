@@ -292,7 +292,7 @@ short_names_1D = [
     "lhf",
     "rn",
 ]
-short_names_2D = ["swc", "tsoil", "si", "sco2", "soc", "so2"]
+short_names_2D = ["swc", "tsoil", "si", "sco2", "soc", "so2", "sco2_ppm"]
 output_vars = [short_names_1D..., short_names_2D...]
 
 diags = ClimaLand.default_diagnostics(
@@ -306,7 +306,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260126_bugfix_wholeYear_e409553ceb97104002d6163ccc3d6de19a29532b/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260127_corrSco2_wPPM_c779a5bfded640d128a2768fe1dd39e4ec261185/output/"),
     output_vars,
     reduction_period = :halfhourly,
 );
