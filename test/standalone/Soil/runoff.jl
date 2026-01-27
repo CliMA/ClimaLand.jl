@@ -5,8 +5,10 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 using ClimaLand.Soil.Runoff
 using Test
+using Dates
 using ClimaCore, NCDatasets
-FT = Float32
+import ClimaLand.Parameters as LP
+FT = Float64
 @testset "Base runoff functionality, FT = $FT" begin
     runoff = Runoff.NoRunoff()
     @test Runoff.runoff_vars(runoff) == (:infiltration,)
@@ -270,4 +272,81 @@ end
     )
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
     @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
+end
+
+@testset "EnergyHydrology model, TOPMODEL runoff FT =$FT" begin
+    toml_dict = LP.create_toml_dict(FT)
+    long = FT(-100)
+    lat = FT(40)
+    start_date = DateTime(2008)
+    stop_date = start_date + Day(10)
+    domain = ClimaLand.Domains.Column(;
+        zlim = FT.((-2, 0)),
+        nelements = 10,
+        longlat = (long, lat),
+    )
+    forcing = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        domain.space.surface,
+        toml_dict,
+        FT;
+        max_wind_speed = 25.0,
+        use_lowres_forcing = true,
+    )
+    model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
+    Y, p, cds = initialize(model)
+    Y.soil.ϑ_l .= model.parameters.ν .* FT(1.1)
+    Y.soil.θ_i .= 0
+    T = FT(290)
+    earth_param_set = model.parameters.earth_param_set
+    @. Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy(
+        Y.soil.θ_i,
+        ClimaLand.Soil.volumetric_heat_capacity(
+            model.parameters.ν,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            earth_param_set,
+        ),
+        T,
+        earth_param_set,
+    )
+    set_initial_cache! = make_set_initial_cache(model)
+    set_initial_cache!(p, Y, FT(0))
+    dY = similar(Y)
+    dY .= 0
+    ClimaLand.source!(dY, model.sources[2], Y, p, model)
+    @test all(
+        parent(dY.soil.ϑ_l) .-
+        parent((-1 .* p.soil.R_ss ./ p.soil.h∇ .* p.soil.is_saturated)) .≈ 0,
+    ) # column entirely saturated
+    @test all(
+        parent(dY.soil.ρe_int) .- parent((
+            -1 .* p.soil.R_ss ./ p.soil.h∇ .* p.soil.is_saturated .*
+            ClimaLand.Soil.volumetric_internal_energy_liq(T, earth_param_set)
+        )) .≈ 0,
+    ) # column entirely saturated
+    @test dY.soil.∫F_vol_liq_water_dt == -1 .* p.soil.R_ss
+    @test dY.soil.∫F_e_dt ==
+          -1 .* p.soil.R_ss .*
+          ClimaLand.Soil.volumetric_internal_energy_liq(T, earth_param_set)
+    # explicit step
+    Δt = 450.0
+    Y.soil.ρe_int .+= dY.soil.ρe_int .* Δt
+    Y.soil.ϑ_l .+= dY.soil.ϑ_l .* Δt
+
+    # Recompute T
+    new_temp = @. ClimaLand.Soil.temperature_from_ρe_int(
+        Y.soil.ρe_int,
+        Y.soil.θ_i,
+        ClimaLand.Soil.volumetric_heat_capacity(
+            p.soil.θ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            earth_param_set,
+        ),
+        earth_param_set,
+    )
+    @test new_temp == T # wont pass if too saturated because θ_l is used instead of ϑ_l
+
 end
