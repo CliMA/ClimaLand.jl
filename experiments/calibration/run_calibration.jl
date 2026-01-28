@@ -14,12 +14,11 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["lwu", "shf", "lhf"],
     minibatch_size = 1,
     n_iterations = 10,
-    sample_date_ranges = [
-        ("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9
-    ]extend = Dates.Month(3),
+    sample_date_ranges = [("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9],
+    extend = Dates.Month(3),
     spinup = Dates.Month(3),
     nelements = (180, 360, 15),
-    output_dir = "/glade/derecho/scratch/kdeck/recalibrate_saturated",
+    output_dir = "/glade/derecho/scratch/kdeck/recalibrate_saturated_K_lw",
     rng_seed = 42,
     obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
     model_type = ClimaLand.LandModel,
@@ -28,14 +27,15 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 
 if abspath(PROGRAM_FILE) == @__FILE__
     priors = [
-        EKP.constrained_gaussian("moisture_stress_c", 1.0, 0.5, 0, 2),
+        EKP.constrained_gaussian("moisture_stress_c", 0.5, 0.25, 0, 2),
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.11, 0, Inf),
         EKP.constrained_gaussian("pmodel_β", 146, 10, 0, Inf),
-        EKP.constrained_gaussian("leaf_Cd", 0.01, 0.05, 0, Inf),
+        EKP.constrained_gaussian("leaf_Cd", 0.08, 0.03, 0, Inf),
         EKP.constrained_gaussian("canopy_z_0m_coeff", 0.13, 0.05, 0.0, 0.5),
         EKP.constrained_gaussian("canopy_z_0b_coeff", 0.013, 0.005, 0.0, 0.05),
         EKP.constrained_gaussian("canopy_d_coeff", 0.67, 0.2, 0.0, 1.0),
-        EKP.constrained_gaussian("pmodel_fC3", 0.015, 0.005, 0.0, 0.03),
+        EKP.constrained_gaussian("canopy_K_lw", 1.0, 0.2, 0.0, 2.0),
+	EKP.constrained_gaussian("canopy_emissivity", 0.97, 0.02, 0.8,1.0),
     ]
 
     prior = EKP.combine_distributions(priors)
