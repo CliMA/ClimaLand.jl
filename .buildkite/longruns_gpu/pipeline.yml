@@ -161,6 +161,7 @@ steps:
     - wait
 
     - label: "Run ILAMB leaderboard"
+      key: "ilamb_dashboard"
       command:
         - export PATH="$${ILAMB_ROOT}/ilamb_env/bin:$PATH"
         - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
@@ -176,3 +177,9 @@ steps:
         - slurm_time: "2:00:00"
       concurrency: 1
       concurrency_group: "ilamb-run"
+
+    - label: "Send ILAMB dashboard to Azure VM"
+      depends_on:
+        - "ilamb_dashboard"
+      command:
+        - rsync -avz /net/sampo/data1/ilamb/buildkite/_build azure-arenchon:/home/arenchon/ilamb
