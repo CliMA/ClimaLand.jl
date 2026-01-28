@@ -98,6 +98,9 @@ function setup_model(
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
 
+    # Set up optimal LAI model (automatically loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(surface_domain, toml_dict)
+
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -106,6 +109,7 @@ function setup_model(
         prognostic_land_components,
         photosynthesis,
         conductance,
+        lai_model,
         soil_moisture_stress,
     )
 

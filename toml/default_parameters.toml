@@ -183,9 +183,9 @@ description = "Constant intrinsic quantum yield. Skillman (2008)."
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c4"]
-value = 0.057
+value = 0.040
 type = "float"
-description = "Constant intrinsic quantum yield. Skillman (2008)."
+description = "Constant intrinsic quantum yield for C4 plants. Lower than C3 due to energy cost of CO2-concentrating mechanism."
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c3"]
@@ -207,21 +207,21 @@ description = "Second order term in quadratic intrinsic quantum yield (Stocker 2
 tag = "PModelParameters"
 
 ["pmodel_ϕa0_c4"]
-value = 0.030624
+value = 0.021437
 type = "float"
-description = "Constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by 0.352 * 0.087."
+description = "Constant term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70 to account for CO2-concentrating mechanism energy cost."
 tag = "PModelParameters"
 
 ["pmodel_ϕa1_c4"]
-value = 0.001914
+value = 0.001340
 type = "float"
-description = "First order term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by 0.022 * 0.087."
+description = "First order term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70."
 tag = "PModelParameters"
 
 ["pmodel_ϕa2_c4"]
-value = -0.00002958
+value = -0.000020706
 type = "float"
-description = "Second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022). Computed by -0.00034 * 0.087."
+description = "Second order term in quadratic intrinsic quantum yield for C4. Scaled from C3 by 0.70."
 tag = "PModelParameters"
 
 ["pmodel_α"]
@@ -547,3 +547,37 @@ value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
+
+# Optimal LAI Model parameters (Zhou et al. 2025)
+# Water limitation enters LAI_max through the f₀×P/A₀ term (Equation 11),
+# where P is annual precipitation and A₀ is annual potential GPP with β=1.
+
+["optimal_lai_k"]
+value = 0.5
+type = "float"
+description = "Light extinction coefficient (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z"]
+value = 12.227
+type = "float"
+description = "Unit cost of constructing and maintaining leaves (mol m⁻² yr⁻¹)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma"]
+value = 0.771
+type = "float"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025). Set to 1.0 to match Zhou global code behavior (paper Eq. 20 uses 0.771)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_alpha"]
+value = 0.067
+type = "float"
+description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0"]
+value = 0.65
+type = "float"
+description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f₀ = 0.65 at the energy-water limitation transition. Water-limited fAPAR = f₀ × P / A₀."
+tag = "OptimalLAIModel"
