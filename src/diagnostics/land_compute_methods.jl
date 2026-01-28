@@ -951,7 +951,7 @@ end
     SoilCanopyModel,
     LandModel,
     EnergyHydrology,
-} p.soil.θ_l
+} Y.soil.ϑ_l
 @diagnostic_compute "soil_ice_content" Union{
     SoilCanopyModel,
     LandModel,
