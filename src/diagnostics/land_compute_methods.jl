@@ -473,7 +473,7 @@ function compute_10cm_water_mass!(
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     # Convert from volumetric water content to water mass per unit volume using density
-    @. Hθ = (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
+    @. Hθ = (p.soil.θ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
 
     # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
@@ -947,19 +947,22 @@ end
 @diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.CO2
 @diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2_f
 @diagnostic_compute "soc" Union{SoilCanopyModel, LandModel} Y.soilco2.SOC
-@diagnostic_compute "soil_water_content" Union{SoilCanopyModel, LandModel} Y.soil.ϑ_l
-# @diagnostic_compute "plant_water_content" Union{SoilCanopyModel, LandModel} Y.canopy.hydraulics.ϑ_l # return a Tuple
-@diagnostic_compute "soil_ice_content" Union{SoilCanopyModel, LandModel} Y.soil.θ_i
-@diagnostic_compute "soil_internal_energy" Union{SoilCanopyModel, LandModel} Y.soil.ρe_int
+@diagnostic_compute "soil_water_content" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} p.soil.θ_l
+@diagnostic_compute "soil_ice_content" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} Y.soil.θ_i
+@diagnostic_compute "soil_internal_energy" Union{
+    SoilCanopyModel,
+    LandModel,
+    EnergyHydrology,
+} Y.soil.ρe_int
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
-
-### EnergyHydrology ###
-
-@diagnostic_compute "soil_water_content" EnergyHydrology Y.soil.ϑ_l
-@diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
-@diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
-@diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
-@diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
