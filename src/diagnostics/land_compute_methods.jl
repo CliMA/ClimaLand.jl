@@ -947,6 +947,35 @@ end
 @diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.CO2
 @diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2_f
 @diagnostic_compute "soc" Union{SoilCanopyModel, LandModel} Y.soilco2.SOC
+
+# Soil CO2 in ppm (for comparison with NEON observations)
+# Converts air-equivalent CO2 concentration to ppm using ideal gas law:
+# ppm = (n_CO2 / n_air) × 10^6 = CO2_air_eq * R * T / (M_C * P) × 10^6
+function compute_soilco2_ppm!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    params = land_model.soilco2.parameters
+    M_C = FT(params.M_C)
+    R = FT(LP.gas_constant(params.earth_param_set))
+
+    CO2_air_eq = p.soilco2.CO2_air_eq  # kg C / m³ air-equivalent
+    T_soil = p.soilco2.T               # K
+    P_sfc = p.drivers.P                # Pa
+
+    if isnothing(out)
+        out = zeros(axes(CO2_air_eq))
+        fill!(field_values(out), NaN)
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+        return out
+    else
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+    end
+end
+
 @diagnostic_compute "soil_water_content" Union{SoilCanopyModel, LandModel} Y.soil.ϑ_l
 # @diagnostic_compute "plant_water_content" Union{SoilCanopyModel, LandModel} Y.canopy.hydraulics.ϑ_l # return a Tuple
 @diagnostic_compute "soil_ice_content" Union{SoilCanopyModel, LandModel} Y.soil.θ_i

@@ -470,7 +470,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
 end
 
 function get_possible_diagnostics(model::SoilCO2Model)
-    return ["sco2", "hr", "scd", "scms", "so2", "soc"]
+    return ["sco2", "hr", "scd", "scms", "so2", "soc", "sco2_ppm"]
 end
 function get_possible_diagnostics(model::CanopyModel)
     diagnostics = [
@@ -607,7 +607,7 @@ function get_short_diagnostics(model::EnergyHydrology)
     return ["swc", "si", "sie", "tsoil", "et"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2"]
+    return ["sco2", "so2", "soc", "sco2_ppm"]
 end
 function get_short_diagnostics(model::CanopyModel)
     return ["gpp", "ct", "lai", "trans", "er", "sif"]

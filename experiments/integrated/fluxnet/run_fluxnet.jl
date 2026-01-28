@@ -260,6 +260,9 @@ output_vars = [
     "swc",
     "tsoil",
     "si",
+    "sco2",
+    "so2",
+    "soc"
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -298,7 +301,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe"],
+    short_names = ["swc", "tsoil", "swe", "sco2", "so2", "soc"],
     spinup_date = start_date + Day(20),
     comparison_data,
 )
