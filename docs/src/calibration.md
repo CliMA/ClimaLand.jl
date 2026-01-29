@@ -33,8 +33,8 @@ the key ingredients introduced above:
 (EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of
 Ensemble Kalman methods to find a (locally) optimal parameter set `U` for a
 model `G` to fit noisy `Γ` observational data `Y`. These methods are optimized
-for problems where the model `G` is computationally expensive and no analtyic
-derivatives are available, as in the case of weather forcasting, where Ensemble
+for problems where the model `G` is computationally expensive and no analytic
+derivatives are available, as in the case of weather forecasting, where Ensemble
 Kalman techniques have a long history of success.
 
 Large calibration campaigns often require supercomputers and while direct use of
@@ -394,9 +394,9 @@ simulation data is done in `process_member_data` in
 
 !!! note "Time conventions"
     Different data sources have different conventions for time. For example,
-    data sources use January 1, January 15, and Feburary 1 for the monthly
+    data sources use January 1, January 15, and February 1 for the monthly
     average of January. For the diagnostics saved from a CliMA simulation, the
-    current convention is to save the monthly average on Feburary 1. You must
+    current convention is to save the monthly average on February 1. You must
     ensure that the time conventions are the same. For calibration, we choose
     the start of the time reduction, so for this example, the time associated
     with the monthly average of January is January 1. For seasonal averages, the
