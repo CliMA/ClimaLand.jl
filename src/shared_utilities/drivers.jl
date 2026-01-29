@@ -274,16 +274,9 @@ function default_zenith_angle(
         start_date + Dates.Second(round(t))
     end
 
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                insol_params,
-            ),
-        )
     # Reduces allocations by throwing away unwanted values
-    zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
-    return zenith_only.(d, δ, η_UTC, longitude, latitude)
+    zenith_only = (args...) -> Insolation.insolation(args...).μ
+    return zenith_only.(current_datetime, latitude, longitude, Ref(insol_params))
 end
 
 """
@@ -1251,13 +1244,13 @@ When `r.θs` is `nothing`, the cosine zenith angle
 not changed, and should be updated by the coupler. This differs from the behavior of
 `PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `θs` is `nothing`.
 
-Otherwise, the cosine zenith angle is computed using `cos.(r.θs(t, r.start_date))`.
+Otherwise, the cosine zenith angle is computed using `r.θs(t, r.start_date)`.
 """
 make_update_drivers(r::CoupledRadiativeFluxes{FT, Nothing}) where {FT} =
     (p, t) -> nothing
 function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
-        p.drivers.cosθs .= cos.(r.θs(t, r.start_date))
+        p.drivers.cosθs .= r.θs(t, r.start_date)
     end
     return update_drivers!
 end
@@ -1275,7 +1268,7 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         # Next we update the zenith angle and diffuse fraction of light. These are either
         # both required, or neither required.
         if !isnothing(r.θs)
-            p.drivers.cosθs .= FT.(cos.(r.θs(t, r.start_date)))
+            p.drivers.cosθs .= FT.(r.θs(t, r.start_date))
             if !isnothing(r.frac_diff)
                 # If the diffuse fraction is a TimeVaryingInput, we use that directly.
                 evaluate!(p.drivers.frac_diff, r.frac_diff, t)
@@ -1670,6 +1663,7 @@ function empirical_diffuse_fraction(
     RH = Thermodynamics.relative_humidity(thermo_params, T, P, q) # Note: This used RH over liquid before; not it's RH over ice when below freezing
     # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
     # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
+    cosθs = max(cosθs, eps(FT))
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
     kₜ = SW_d / k₀
     if kₜ ≤ 0.3

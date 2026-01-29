@@ -324,7 +324,7 @@ for float_type in (Float32, Float64)
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
             abs.(
-                cos.(radiation.θs.(sv.t, radiation.start_date)) .- cache_cosθs,
+                radiation.θs.(sv.t, radiation.start_date) .- cache_cosθs,
             ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
