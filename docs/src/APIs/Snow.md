@@ -23,7 +23,6 @@ ClimaLand.Snow.SnowParameters(toml_dict::CP.ParamDict, Δt)
 
 ```@docs
 ClimaLand.Snow.specific_heat_capacity
-ClimaLand.Snow.snow_surface_temperature
 ClimaLand.Snow.snow_thermal_conductivity
 ClimaLand.Snow.snow_bulk_temperature
 ClimaLand.Snow.liquid_mass_fraction
