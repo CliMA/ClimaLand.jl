@@ -3,6 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 ------
+
+v1.5.0
+------
 - Update to Insolation v1; use cosine zenith angle directly from Insolation.jl PR[#1617](https://github.com/CliMA/ClimaLand.jl/pull/1617)
 - Add parameterization for snow surface temperature PR[#1593](https://github.com/CliMA/ClimaLand.jl/pull/1593)
 - Make the soil model use the same turbulent fluxes function call as the other components PR[#1609](https://github.com/CliMA/ClimaLand.jl/pull/1609)
