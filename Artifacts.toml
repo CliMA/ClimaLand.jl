@@ -175,6 +175,9 @@ git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
 [forty_yrs_era5_land_forcing_data]
 git-tree-sha1 = "f269a0b057b9f438b4caafdef17da73746310787"
 
+[crujra_forcing_data]
+git-tree-sha1 = "149c3b511f0f027f4a67d4668484b5f2d9d26cd6"
+
 [era5_monthly_averages_surface_single_level_1979_2024]
 git-tree-sha1 = "6cddb07eeee2dd46dc5a19e9b2f706302ddba2c9"
 
