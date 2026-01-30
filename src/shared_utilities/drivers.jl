@@ -254,8 +254,9 @@ end
         insol_params::Insolation.Parameters.InsolationParameters{FT},
     )
 
-Calculate zenith angle with Insolation for the given start date, insolation parameters, latitude,
-and longitude.
+Calculate cosine of the zenith angle with Insolation for the given start date, insolation parameters, latitude,
+and longitude. Note that Insolation.jl returns 0 for the cosine when the
+sun is below the horizon.
 
 `latitude` and `longitude` can be a collections or a Number.
 """
@@ -276,7 +277,12 @@ function default_cos_zenith_angle(
 
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.insolation(args...).μ
-    return zenith_only.(current_datetime, latitude, longitude, Ref(insol_params))
+    return zenith_only.(
+        current_datetime,
+        latitude,
+        longitude,
+        Ref(insol_params),
+    )
 end
 
 """

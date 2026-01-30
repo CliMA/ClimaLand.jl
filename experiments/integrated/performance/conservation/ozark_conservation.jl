@@ -323,9 +323,7 @@ for float_type in (Float32, Float64)
         cache_Tair =
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
-            abs.(
-                radiation.cosθs.(sv.t, radiation.start_date) .- cache_cosθs,
-            ),
+            abs.(radiation.cosθs.(sv.t, radiation.start_date) .- cache_cosθs,),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
         atmos_T = map(sv.t) do time
