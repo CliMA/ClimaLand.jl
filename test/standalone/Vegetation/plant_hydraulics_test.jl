@@ -97,8 +97,8 @@ for FT in (Float32, Float64)
         long = FT(-180) # degree
         start_date = DateTime(2005)
 
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -146,7 +146,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
         Δz = FT(1.0) # height of compartments

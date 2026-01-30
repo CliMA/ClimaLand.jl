@@ -177,7 +177,7 @@ end
         ClimaCore.Fields.field2array(p.drivers.cosθs),
     )
     update_cosθs_only(p, 60 * 60 * 12) # populate with cos(zenith) at night
-    @test all((<)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # zenith angle at nighttime should be > 90 degrees
+    @test all((==)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # cos(zenith angle) at nighttime should be 0
 end
 
 @testset "Ground Conditions" begin

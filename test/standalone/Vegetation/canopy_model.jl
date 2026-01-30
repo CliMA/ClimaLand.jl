@@ -84,8 +84,8 @@ import ClimaParams
 
         shortwave_radiation(t) = 1000 # W/m2
         longwave_radiation(t) = 200 # W/m2
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -97,7 +97,7 @@ import ClimaParams
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
 
@@ -315,8 +315,8 @@ end
         long = FT(-180) # degree
         start_date = DateTime(2005)
 
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -363,7 +363,7 @@ end
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
 
@@ -533,8 +533,8 @@ end
         LAI = TimeVaryingInput((t) -> 0.0)
         shortwave_radiation(t) = 1000 # W/m2
         longwave_radiation(t) = 200 # W/m2
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -567,7 +567,7 @@ end
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
         ground = PrescribedGroundConditions{FT}()
