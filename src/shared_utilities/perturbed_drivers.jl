@@ -256,8 +256,8 @@ function prescribed_perturbed_temperature_era5(
         method = time_interpolation_method,
         file_reader_kwargs = (; preprocess_func = perturb_lw_d),
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -270,7 +270,7 @@ function prescribed_perturbed_temperature_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
@@ -447,8 +447,8 @@ function prescribed_perturbed_rh_era5(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -461,7 +461,7 @@ function prescribed_perturbed_rh_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )

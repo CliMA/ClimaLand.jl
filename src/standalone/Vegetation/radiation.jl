@@ -580,7 +580,7 @@ function canopy_sw_rt_two_stream(
     frac_diff::FT,
 ) where {FT}
     α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
-    cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
+    cosθs = max(eps(FT), cosθs) # The insolations package returns cosθs=0 (nighttime), but this assumes cosθs >0
     G = compute_G(G_Function, cosθs)
     K = extinction_coeff(G_Function, cosθs)
     # Compute μ̄, the average inverse diffuse optical length per LAI

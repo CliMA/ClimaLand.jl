@@ -7,7 +7,7 @@ function ParamViz.parameterisation(
     LAI,
     PAR,
     Vcmax25,
-    θs,
+    cosθs,
     ld,
     ρ_leaf,
     Ω,
@@ -27,7 +27,7 @@ function ParamViz.parameterisation(
     f,
     ΔHRd,
 )
-    K = extinction_coeff(RTparams.G_Function, θs)
+    K = extinction_coeff(RTparams.G_Function, cosθs)
     # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
     APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
@@ -74,7 +74,7 @@ function An_ci_app_f()
 
     constants = Constants(
         (
-            "θs", # Sun zenith angle
+            "cosθs", # cosine of sun zenith angle
             "ld", # Leaf angle distribution
             "ρ_leaf", # PAR canopy reflectance
             "Ω", # Clumping index
@@ -95,7 +95,7 @@ function An_ci_app_f()
             "ΔHRd",# a constant
         ),
         (
-            FT(0.6), # θs - is that a good value? in radian, right? --------
+            FT(0.5), # cosθs, corresponding to SZA = 60 degrees --------
             FT(0.5), # ld - ozark val
             FT(0.1), # ρ_leaf - ozark val
             FT(0.69), # Ω - ozark val

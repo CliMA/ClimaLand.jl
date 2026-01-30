@@ -125,7 +125,7 @@ p.drivers. This is available through the PrescribedRadiativeFluxes object.
 struct ZenithAngleAlbedoModel{FT} <: AbstractAlbedoModel{FT}
     "Free parameter controlling the minimum snow albedo"
     α_0::FT
-    "Free parameter controlling the snow albedo when θs = 90∘"
+    "Free parameter controlling the snow albedo when cosθs = 0"
     Δα::FT
     "Rate at which albedo drops to its minimum value with zenith angle"
     k::FT

@@ -165,9 +165,9 @@ LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
 SW_IN = TimeVaryingInput((t) -> 500.0)
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
 coords = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
-zenith_angle =
+cos_zenith_angle =
     (t, s) ->
-        default_zenith_angle.(
+        default_cos_zenith_angle.(
             t,
             s;
             insol_params,
@@ -179,7 +179,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     SW_IN,
     LW_IN,
     start_date,
-    θs = zenith_angle,
+    cosθs = cos_zenith_angle,
     toml_dict = toml_dict,
 );
 

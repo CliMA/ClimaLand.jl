@@ -33,7 +33,7 @@ export AbstractAtmosphericDrivers,
     prescribed_perturbed_temperature_era5,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
-    default_zenith_angle
+    default_cos_zenith_angle
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -175,12 +175,12 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
         T,
     } <: AbstractRadiativeDrivers{FT}
 
-To be used when coupling to an atmosphere model. Either both `θs` and `start_date`
+To be used when coupling to an atmosphere model. Either both `cosθs` and `start_date`
 must be `nothing`, or both must not be `nothing``.
 
-During the driver update, cosθs is unchanged if `θs` is `nothing`. This behavior differs from
-the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `θs` is `nothing`.
-Otherwise, `θs` recieves the following arguments:
+During the driver update, cosθs is unchanged if `cosθs` is `nothing`. This behavior differs from
+the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `cosθs` is `nothing`.
+Otherwise, `cosθs` recieves the following arguments:
 (`time_from_start`, `start_date`), and is expected to return zenith angle at the given time.
 $(DocStringExtensions.FIELDS)
 """
@@ -188,20 +188,20 @@ struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}, T} <:
        AbstractRadiativeDrivers{FT}
     """Function that fills a climacore field with the zenith angle given the following arguments:
     (time_from_start, `start_date`)"""
-    θs::F
+    cosθs::F
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::T
     function CoupledRadiativeFluxes{FT, F, T}(
-        θs::F,
+        cosθs::F,
         start_date::T,
     ) where {FT, F, T}
         (
-            (isnothing(θs) && isnothing(start_date)) ||
-            ((!isnothing(θs) && !isnothing(start_date)))
+            (isnothing(cosθs) && isnothing(start_date)) ||
+            ((!isnothing(cosθs) && !isnothing(start_date)))
         ) || error(
-            "CoupledRadiativeFluxes: `θs` and start_date` must both be `nothing` or both not `nothing`.",
+            "CoupledRadiativeFluxes: `cosθs` and start_date` must both be `nothing` or both not `nothing`.",
         )
-        new{FT, F, T}(θs, start_date)
+        new{FT, F, T}(cosθs, start_date)
     end
 end
 
@@ -231,22 +231,22 @@ function CoupledRadiativeFluxes{FT}(
     toml_dict::CP.ParamDict,
 ) where {FT, DT, LT}
     insol_params = LP.LandParameters(toml_dict).insol_params
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = latitude,
             longitude = longitude,
             insol_params = insol_params,
         )
-    return CoupledRadiativeFluxes{FT, typeof(zenith_angle), DT}(
-        zenith_angle,
+    return CoupledRadiativeFluxes{FT, typeof(cos_zenith_angle), DT}(
+        cos_zenith_angle,
         start_date,
     )
 end
 
 """
-    default_zenith_angle(
+    default_cos_zenith_angle(
         t::T,
         start_date::Dates.DateTime;
         latitude::LT,
@@ -259,7 +259,7 @@ and longitude.
 
 `latitude` and `longitude` can be a collections or a Number.
 """
-function default_zenith_angle(
+function default_cos_zenith_angle(
     t::T,
     start_date::Dates.DateTime;
     latitude::LT,
@@ -608,7 +608,7 @@ struct PrescribedRadiativeFluxes{
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
     "Sun zenith angle, in radians"
-    θs::T
+    cosθs::T
     "Thermodynamic parameters"
     thermo_params::TP
     function PrescribedRadiativeFluxes(
@@ -616,7 +616,7 @@ struct PrescribedRadiativeFluxes{
         SW_d,
         LW_d,
         start_date;
-        θs = nothing,
+        cosθs = nothing,
         toml_dict::Union{CP.ParamDict, Nothing} = nothing,
         frac_diff = nothing,
     )
@@ -626,7 +626,7 @@ struct PrescribedRadiativeFluxes{
             earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
-        args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
+        args = (SW_d, frac_diff, LW_d, start_date, cosθs, thermo_params)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -1240,17 +1240,17 @@ end
 Creates and returns a function which updates the driver variables
 in the case of a CoupledRadiativeFluxes.
 
-When `r.θs` is `nothing`, the cosine zenith angle
+When `r.cosθs` is `nothing`, the cosine zenith angle
 not changed, and should be updated by the coupler. This differs from the behavior of
-`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `θs` is `nothing`.
+`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `cosθs` is `nothing`.
 
-Otherwise, the cosine zenith angle is computed using `r.θs(t, r.start_date)`.
+Otherwise, the cosine zenith angle is computed using `r.cosθs(t, r.start_date)`.
 """
 make_update_drivers(r::CoupledRadiativeFluxes{FT, Nothing}) where {FT} =
     (p, t) -> nothing
 function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
-        p.drivers.cosθs .= r.θs(t, r.start_date)
+        p.drivers.cosθs .= r.cosθs(t, r.start_date)
     end
     return update_drivers!
 end
@@ -1267,8 +1267,8 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         evaluate!(p.drivers.LW_d, r.LW_d, t)
         # Next we update the zenith angle and diffuse fraction of light. These are either
         # both required, or neither required.
-        if !isnothing(r.θs)
-            p.drivers.cosθs .= FT.(r.θs(t, r.start_date))
+        if !isnothing(r.cosθs)
+            p.drivers.cosθs .= FT.(r.cosθs(t, r.start_date))
             if !isnothing(r.frac_diff)
                 # If the diffuse fraction is a TimeVaryingInput, we use that directly.
                 evaluate!(p.drivers.frac_diff, r.frac_diff, t)
@@ -1528,8 +1528,8 @@ function prescribed_forcing_era5(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -1542,7 +1542,7 @@ function prescribed_forcing_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
@@ -1621,7 +1621,7 @@ end
     empirical_diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, cosθs::FT, thermo_params) where {FT}
 
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
-of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
+of the solar zenith angle (`cosθs`), the total surface downwelling shortwave radiation (`SW_d`),
 the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
 (`td`).
 
@@ -1629,11 +1629,10 @@ See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible he
 and latent heat as a function of aerosol optical depth over the course of deforestation
 in the Brazilian Amazon" 2013.
 
-Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
-of k₀, which we divide by in this expression. This can amplify small errors
-when θs is near π/2.
+Note that cosθs is a coefficient of k₀, which we divide by in this expression. 
+This can amplify small errors when cosθs is near 0.
 
-This formula is empirical and can yied negative numbers depending on the
+This formula is empirical and can yield negative numbers depending on the
 input, which, when dividing by something very near zero,
 can become large negative numbers.
 

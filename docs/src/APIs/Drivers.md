@@ -24,7 +24,7 @@ ClimaLand.get_update_surface_temperature_function
 ClimaLand.get_update_surface_humidity_function
 ClimaLand.get_∂T_sfc∂T_function
 ClimaLand.get_∂q_sfc∂T_function
-ClimaLand.default_zenith_angle
+ClimaLand.default_cos_zenith_angle
 ClimaLand.prescribed_forcing_era5
 ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5

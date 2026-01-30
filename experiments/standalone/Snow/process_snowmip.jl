@@ -69,8 +69,8 @@ LW_d = TimeVaryingInput(seconds, LWdown; context)
 
 start_date = timestamp[mask][1]
 
-zenith_angle =
-    (t, s) -> ClimaLand.default_zenith_angle(
+cos_zenith_angle =
+    (t, s) -> ClimaLand.default_cos_zenith_angle(
         t,
         s;
         insol_params = earth_param_set.insol_params,
@@ -83,7 +83,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     SW_d,
     LW_d,
     start_date;
-    θs = zenith_angle,
+    cosθs = cos_zenith_angle,
     toml_dict = toml_dict,
 )
 

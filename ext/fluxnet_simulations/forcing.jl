@@ -206,8 +206,8 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         c_co2,
     )
 
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             insol_params = earth_param_set.insol_params,
@@ -219,7 +219,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         SW_d,
         LW_d,
         start_date,
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
     )
     return (; atmos, radiation)
