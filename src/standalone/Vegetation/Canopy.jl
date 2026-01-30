@@ -426,7 +426,7 @@ end
         toml_dict::CP.ParamDict;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy = toml_dict["canopy_emissivity"],
-	K_lw = toml_dict["canopy_K_lw"],
+        K_lw = toml_dict["canopy_K_lw"],
         n_layers::Int = 20,
     )
 
@@ -471,7 +471,7 @@ end
         toml_dict::CP.ParamDict;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = toml_dict["canopy_emissivity"],
-	 K_lw = toml_dict["canopy_K_lw"]
+        K_lw = toml_dict["canopy_K_lw"]
     ) where {FT <: AbstractFloat}
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.

@@ -89,7 +89,7 @@ function setup_model(
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    prognostic_land_components = (:canopy, :snow, :soil)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
     # Construct the P model manually since it is not a default
     photosynthesis = PModel{FT}(domain, toml_dict)
