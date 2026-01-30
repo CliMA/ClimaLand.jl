@@ -33,7 +33,8 @@ export AbstractAtmosphericDrivers,
     prescribed_perturbed_temperature_era5,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
-    default_cos_zenith_angle
+    default_cos_zenith_angle,
+    prescribed_forcing_crujra
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -1685,4 +1686,167 @@ function empirical_diffuse_fraction(
             FT(kₜ * (0.426 * kₜ + 0.256 * cosθs - 3.49e-3 * T + 0.0734 * RH))
     end
     return max(min(diff_frac, FT(1)), FT(0))
+end
+
+
+function prescribed_forcing_crujra(
+    start_date,
+    stop_date,
+    surface_space,
+    toml_dict::CP.ParamDict,
+    FT;
+    gustiness = 1,
+    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    regridder_type = :InterpolationsRegridder,
+    context = nothing,
+)
+
+    crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
+            start_date,
+            stop_date;
+            context,
+        )
+        
+    interpolation_method = Interpolations.Constant()
+
+    crujra_ncdata_path isa String && (crujra_ncdata_path = [crujra_ncdata_path])
+
+    earth_param_set = LP.LandParameters(toml_dict)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+
+    precip = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path],
+        ["mtpr", "msr"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        method = time_interpolation_method,
+        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+    )
+    # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
+    snow_precip = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msr",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        method = time_interpolation_method,
+    )
+
+    u_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "wind",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+    specific_humidity(Td, T, P; params = earth_param_set) =
+        ClimaLand.specific_humidity_from_dewpoint.(Td, T, P, params)
+    q_atmos = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path, crujra_ncdata_path],
+        ["d2m", "t2m", "sp"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        compose_function = specific_humidity,
+        method = time_interpolation_method,
+    )
+    P_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "sp",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+
+    T_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "t2m",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+    h_atmos = FT(10)
+
+    atmos = PrescribedAtmosphere(
+        precip,
+        snow_precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        start_date,
+        h_atmos,
+        toml_dict;
+        gustiness = FT(gustiness),
+        c_co2 = c_co2,
+    )
+
+    SW_d = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msdwswrf",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+    function compute_diffuse_fraction(total, direct)
+        diff = max(total - direct, Float32(0))
+        return min(diff / (total + eps(Float32)), Float32(1))
+    end
+    function compute_diffuse_fraction_broadcasted(total, direct)
+        return @. compute_diffuse_fraction(total, direct)
+    end
+
+    frac_diff = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path],
+        ["msdwswrf", "msdrswrf"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+        compose_function = compute_diffuse_fraction_broadcasted,
+    )
+    LW_d = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msdwlwrf",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
+            t,
+            s;
+            latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+            longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+            insol_params = earth_param_set.insol_params,
+        )
+
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        cosθs = cos_zenith_angle,
+        toml_dict = toml_dict,
+        frac_diff = frac_diff,
+    )
+    return (; atmos, radiation)
 end
