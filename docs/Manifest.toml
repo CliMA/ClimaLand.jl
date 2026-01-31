@@ -437,7 +437,7 @@ version = "0.3.0"
 deps = ["Adapt", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.5.0"
+version = "1.5.1"
 weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "DataFrames", "DelimitedFiles", "Flux", "GeoMakie", "HTTP", "Printf", "StatsBase"]
 
     [deps.ClimaLand.extensions]
@@ -2089,10 +2089,10 @@ uuid = "d0879d2d-cac2-40c8-9cee-1863dc0c7391"
 version = "0.1.2"
 
 [[deps.MathOptInterface]]
-deps = ["BenchmarkTools", "CodecBzip2", "CodecZlib", "ForwardDiff", "JSON3", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test"]
-git-tree-sha1 = "181c2611c7aa6a362fdf937b1e2af55e6691181f"
+deps = ["BenchmarkTools", "CodecBzip2", "CodecZlib", "ForwardDiff", "JSON", "LinearAlgebra", "MutableArithmetics", "NaNMath", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays", "SpecialFunctions", "Test"]
+git-tree-sha1 = "7fb98657926ccb4de8f9bb96cda453700ca39a8b"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "1.48.0"
+version = "1.49.0"
 
 [[deps.MathTeXEngine]]
 deps = ["AbstractTrees", "Automa", "DataStructures", "FreeTypeAbstraction", "GeometryBasics", "LaTeXStrings", "REPL", "RelocatableFolders", "UnicodeFun"]
@@ -2184,9 +2184,9 @@ version = "1.6.7"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "CommonDataModel", "DataStructures", "Dates", "DiskArrays", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "c82c73e2e0c57a0fe13d3414d7c5a6a821d24016"
+git-tree-sha1 = "0d3e499c8fd5b2549b4299eade61de601e5fe6e2"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.14.10"
+version = "0.14.11"
 
     [deps.NCDatasets.extensions]
     NCDatasetsMPIExt = "MPI"
@@ -3327,9 +3327,9 @@ version = "0.4.1"
 
 [[deps.Unitful]]
 deps = ["Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "c25751629f5baaa27fef307f96536db62e1d754e"
+git-tree-sha1 = "57e1b2c9de4bd6f40ecb9de4ac1797b81970d008"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.27.0"
+version = "1.28.0"
 weakdeps = ["ConstructionBase", "ForwardDiff", "InverseFunctions", "LaTeXStrings", "Latexify", "NaNMath", "Printf"]
 
     [deps.Unitful.extensions]

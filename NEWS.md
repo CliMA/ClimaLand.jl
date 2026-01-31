@@ -3,7 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 ------
-
+v1.5.1
+------
+- Adjust RootSolvers lower compat 
 v1.5.0
 ------
 - Update to Insolation v1; use cosine zenith angle directly from Insolation.jl PR[#1617](https://github.com/CliMA/ClimaLand.jl/pull/1617)
