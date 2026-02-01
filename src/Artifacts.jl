@@ -582,7 +582,7 @@ function era5_surface_data_1979_2024_path(; context = nothing)
 end
 
 function crujra_forcing_data_folder_path(; context = nothing)
-    @clima_artifact("crujra_forcing_data", context)
+    return "/net/sampo/data1/crujra/crujra_forcing_data_artifact"
 end
 
 function find_crujra_year_paths(start_date, stop_date; context = nothing)
