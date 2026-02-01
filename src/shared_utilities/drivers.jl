@@ -1697,7 +1697,7 @@ function prescribed_forcing_crujra(
     FT;
     gustiness = 1,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    time_interpolation_method = LinearInterpolation(),
     regridder_type = :InterpolationsRegridder,
     context = nothing,
 )
@@ -1714,6 +1714,7 @@ function prescribed_forcing_crujra(
 
     earth_param_set = LP.LandParameters(toml_dict)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    clean_missing = data -> coalesce.(data, Float32(NaN))
 
     precip = TimeVaryingInput(
         [crujra_ncdata_path, crujra_ncdata_path],
@@ -1722,7 +1723,8 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        file_reader_kwargs =
+            (; preprocess_func = (data) -> -clean_missing(data) / _ρ_liq),
         method = time_interpolation_method,
         compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
     )
@@ -1734,7 +1736,8 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / _ρ_liq,),
+        file_reader_kwargs =
+            (; preprocess_func = (data) -> -clean_missing(data) / _ρ_liq),
         method = time_interpolation_method,
     )
 
@@ -1745,6 +1748,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
     specific_humidity(Td, T, P; params = earth_param_set) =
@@ -1757,6 +1761,7 @@ function prescribed_forcing_crujra(
         regridder_type,
         regridder_kwargs = (; interpolation_method),
         compose_function = specific_humidity,
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
     P_atmos = TimeVaryingInput(
@@ -1766,6 +1771,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
 
@@ -1776,6 +1782,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
     h_atmos = FT(10)
@@ -1801,6 +1808,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
     function compute_diffuse_fraction(total, direct)
@@ -1818,6 +1826,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
         compose_function = compute_diffuse_fraction_broadcasted,
     )
@@ -1828,6 +1837,7 @@ function prescribed_forcing_crujra(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
         method = time_interpolation_method,
     )
     cos_zenith_angle =
