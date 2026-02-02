@@ -5,6 +5,7 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaLand: Artifacts
+
 """
     clm_canopy_radiation_parameters(
         surface_space;
@@ -304,4 +305,52 @@ function clm_medlyn_g1(
         file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
     return g1
+end
+
+"""
+    clm_canopy_height(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Linear(),
+        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        max_height = nothing
+    )
+
+Read spatially-varying canopy height (m) data from CLM vegetation properties onto the `surface_space`.
+
+If max_height is set, the heights are clipped to be <= max_height.
+```
+"""
+function clm_canopy_height(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    max_height = nothing,
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
+
+    canopy_height = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "z_top",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    if max_height isa Nothing
+        return canopy_height
+    else
+        return min.(canopy_height, max_height)
+    end
 end

@@ -23,10 +23,6 @@ using ClimaDiagnostics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaAnalysis
-import ClimaAnalysis
-import GeoMakie
-import ClimaAnalysis.Visualize as viz
-using CairoMakie
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
@@ -46,7 +42,8 @@ using ClimaLand.Domains: coordinates, Column
 import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand:
     initialize, make_update_aux, make_exp_tendency, make_set_initial_cache
-
+using CairoMakie, GeoMakie, ClimaAnalysis
+import ClimaLand.LandSimVis as LandSimVis
 """
    compute_extrema(v)
 
@@ -117,7 +114,7 @@ z_0b = FT(1e-3);
 t0 = 0.0;
 tf = 14 * 86400;
 Δt = 3600.0 / 3;
-
+stop_date = start_date + Second(tf)
 t0 = ITime(t0, epoch = start_date)
 tf = ITime(tf, epoch = start_date)
 Δt = ITime(Δt, epoch = start_date)
@@ -192,24 +189,7 @@ simulation = LandSimulation(
 sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
     simulation,
 );
-
-
-simdir = ClimaAnalysis.SimDir(output_dir)
-short_names = ["rn", "tsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
-for short_name in short_names
-    var = get(simdir; short_name)
-    t = ClimaAnalysis.times(var)[end]
-    var = get(simdir; short_name)
-    fig = CairoMakie.Figure(size = (800, 600))
-    kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-    viz.heatmap2D_on_globe!(
-        fig,
-        ClimaAnalysis.slice(var, time = t; kwargs...),
-        mask = viz.oceanmask(),
-        more_kwargs = Dict(:mask => ClimaAnalysis.Utils.kwargs(color = :white)),
-    )
-    CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
-end
+LandSimVis.make_heatmaps(simulation; savedir = output_dir, date = stop_date)
 
 # Interpolate to grid
 space = simulation.model.domain.space.surface

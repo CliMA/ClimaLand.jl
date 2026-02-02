@@ -1,5 +1,4 @@
-export snow_surface_temperature,
-    specific_heat_capacity,
+export specific_heat_capacity,
     snow_thermal_conductivity,
     snow_bulk_temperature,
     liquid_mass_fraction,
@@ -52,6 +51,7 @@ function update_snow_albedo!(
         (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
     @. α = max(min(α, 1), 0)
 end
+
 """
     update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
 
@@ -95,7 +95,6 @@ function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
     return FT(0)
 end
 
-
 """
     surface_albedo(model::SnowModel, Y, p)
 
@@ -124,7 +123,6 @@ function ClimaLand.component_temperature(model::SnowModel, Y, p)
     return p.snow.T_sfc
 end
 
-
 """
     ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
 
@@ -132,13 +130,18 @@ Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
-This asumes the atmospheric surface state is stored in p.drivers.
+This uses the atmospheric T, P, q from p.drivers.
 """
 function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    h_air = model.boundary_conditions.atmos.h
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
-        p.drivers.thermal_state,
+        p.drivers.T,
+        p.drivers.P,
+        p.drivers.q,
+        h_air - h_sfc,
         model.parameters,
     )
 
@@ -163,28 +166,38 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, atmos_ts, parameters) where {FT}
+    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, parameters) where {FT}
 
 Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
 of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
-
-This approximates the surface air density using an adiabatic approximation and the current atmospheric state.
 """
 function snow_surface_specific_humidity(
     T_sfc::FT,
     q_l::FT,
-    atmos_ts,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
+    Δz::FT,
     parameters,
 ) where {FT}
+    surface_flux_params =
+        LP.surface_fluxes_parameters(parameters.earth_param_set)
     thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
-    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, atmos_ts, T_sfc)
-    qsat_over_ice = Thermodynamics.q_vap_saturation_generic(
+    ρ_sfc = ClimaLand.compute_ρ_sfc(
+        surface_flux_params,
+        T_air,
+        P_air,
+        q_air,
+        Δz,
+        T_sfc,
+    )
+    qsat_over_ice = Thermodynamics.q_vap_saturation(
         thermo_params,
         T_sfc,
         ρ_sfc,
         Thermodynamics.Ice(),
     )
-    qsat_over_liq = Thermodynamics.q_vap_saturation_generic(
+    qsat_over_liq = Thermodynamics.q_vap_saturation(
         thermo_params,
         T_sfc,
         ρ_sfc,
@@ -192,15 +205,6 @@ function snow_surface_specific_humidity(
     )
     return qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end
-
-"""
-    snow_surface_temperature(T::FT) where {FT}
-
-Returns the snow surface temperature assuming it is the same
-as the bulk temperature T.
-"""
-snow_surface_temperature(T::FT) where {FT} = T
-
 
 """
     specific_heat_capacity(q_l::FT,
@@ -250,6 +254,39 @@ function snow_thermal_conductivity(
     return _κ_air +
            (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
            (κ_ice - _κ_air)
+end
+
+"""
+    diurnal_damping_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+
+Provides the characteristic depth for diurnal variations in temperature in snow, used in the
+calculation of the surface tempearture. Formula is replicated from the Utah Energy Balance (UEB) model.
+A paper describing the formula can be found at https://hess.copernicus.org/articles/18/5061/2014/.
+"""
+function diurnal_damping_depth(
+    κ::FT,
+    ρ::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
+    _DT_ = FT(parameters.earth_param_set.insol_params.day)
+    return sqrt(κ * _DT_ / (pi * _cp_i * ρ))
+end
+
+"""
+    surface_temp_scaling_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+
+Provides the scaling length scale for calculation of the surface temperature, which is stable
+in the small-snowpack limit.
+"""
+function surface_temp_scaling_length(
+    κ::FT,
+    ρ::FT,
+    z::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    d0 = diurnal_damping_depth(κ, ρ, parameters)
+    return d0 * (1 - exp(-z / d0))
 end
 
 """
@@ -333,7 +370,6 @@ function maximum_liquid_mass_fraction(
     end
 end
 
-
 """
     runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
 
@@ -360,7 +396,6 @@ function volumetric_internal_energy_liq(T, parameters)
     I_liq = _ρ_l * _cp_l * (T .- _T_ref)
     return I_liq
 end
-
 
 """
     compute_energy_runoff(S::FT, S_l::FT, T::FT, parameters) where {FT}
@@ -502,7 +537,6 @@ function energy_flux_falling_rain(atmos, p, parameters)
     )
 end
 
-
 """
     update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, params::SnowParameters)
 
@@ -519,8 +553,6 @@ function update_density_and_depth!(
     _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
     @. z_snow = _ρ_l * Y.snow.S / ρ_snow
-
-
 end
 
 """
@@ -538,4 +570,323 @@ function update_density_prog!(
     p,
 )
     return nothing
+end
+
+"""
+    flux_balance(
+        T_sfc_guess::FT,
+        T_bulk::FT,
+        z::FT,
+        κ::FT,
+        ρ_snow::FT,
+        ϵ_snow::FT,
+        SW_net::FT,
+        LW_d::FT,
+        q_l::FT,
+        h_sfc::FT,
+        displ::FT,
+        P_atmos::FT,
+        T_atmos::FT,
+        q_atmos::FT,
+        u_atmos,
+        roughness_model,
+        atmos_h::FT,
+        gustiness::FT,
+        parameters::SnowParameters{FT},
+    )
+
+Returns the balance (difference) in surface energy fluxes between a conductive flux for
+a proposed surface temperature, as well as input forcing surface fluxes. Evaluated point-wise
+to enable the broadcasting of the numerical root-solving algorithms over the resulting ClimaFields.
+"""
+function flux_balance(
+    T_sfc_guess::FT,
+    T_bulk::FT,
+    z::FT,
+    κ::FT,
+    ρ_snow::FT,
+    ϵ_snow::FT,
+    SW_net::FT,
+    LW_d::FT,
+    q_l::FT,
+    h_sfc::FT,
+    displ::FT,
+    P_atmos::FT,
+    T_atmos::FT,
+    q_atmos::FT,
+    u_atmos,
+    roughness_model,
+    atmos_h::FT,
+    gustiness,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+
+    # For some snowpack states, the SecantMethod can cause a nonpositive T_sfc to
+    # be attempted as part of the iteration trajectory - however, the algorithm
+    # can sometimes recover and still converge to the right value with the branch
+    # below. Negative T_sfc cause domain errors in SurfaceFluxes, which would prevent such recovery.
+    if T_sfc_guess <= eps(FT)
+        return κ * (T_sfc_guess - T_bulk)
+    end
+
+    _σ = LP.Stefan(parameters.earth_param_set)
+    LW_net = -ϵ_snow * (LW_d - _σ * T_sfc_guess^4) #match sign convention in ./shared_utilities/drivers.jl
+    d = surface_temp_scaling_length(κ, ρ_snow, z, parameters)
+
+    q_sfc = snow_surface_specific_humidity(
+        T_sfc_guess,
+        q_l,
+        T_atmos,
+        P_atmos,
+        q_atmos,
+        atmos_h - h_sfc,
+        parameters,
+    )
+
+    #we only need the lhf, shf, so the derivative functions
+    #can be specified as a simple computation:
+    blank_deriv(args...) = FT(1)
+
+    latent_flux, sensible_flux, _, _, _, _, _ =
+        ClimaLand.compute_turbulent_fluxes_at_a_point(
+            P_atmos,
+            T_atmos,
+            q_atmos,
+            u_atmos,
+            atmos_h,
+            T_sfc_guess,
+            q_sfc,
+            roughness_model,
+            nothing,
+            nothing,
+            h_sfc,
+            displ,
+            blank_deriv,
+            blank_deriv,
+            gustiness,
+            parameters.earth_param_set,
+        )
+
+    #For numerical stability, the scaling length of conductive flux
+    #is multiplied on the LHS, instead of dividing the temperature difference:
+    #(This function output is not needed in flux units, at present)
+    return FT(
+        d * (SW_net + LW_net + latent_flux + sensible_flux) +
+        κ * (T_sfc_guess - T_bulk),
+    )
+end
+
+"""
+    solve_for_surface_temp_at_a_point(
+        T_bulk::FT,
+        z_snow::FT,
+        κ_snow::FT,
+        ρ_snow::FT,
+        ϵ_snow::FT,
+        SW_net::FT,
+        LW_d::FT,
+        q_l::FT,
+        h_sfc::FT,
+        displ::FT,
+        P_atmos::FT,
+        T_atmos::FT,
+        q_atmos::FT,
+        u_atmos,
+        roughness_model,
+        atmos_h::FT,
+        gustiness,
+        parameters::SnowParameters{FT},
+    )
+
+Determines the surface temperature from the surface energy balance, at a point location.
+Makes use of a root-solving algorithm (SecantMethod), which is broadcasted over the input ClimaFields.
+"""
+function solve_for_surface_temp_at_a_point(
+    T_bulk::FT,
+    z_snow::FT,
+    κ_snow::FT,
+    ρ_snow::FT,
+    ϵ_snow::FT,
+    SW_net::FT,
+    LW_d::FT,
+    q_l::FT,
+    h_sfc::FT,
+    displ::FT,
+    P_atmos::FT,
+    T_atmos::FT,
+    q_atmos::FT,
+    u_atmos,
+    roughness_model,
+    atmos_h::FT,
+    gustiness,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+
+    flux_balance_closure(T_sfc_guess::FT)::FT = flux_balance(
+        T_sfc_guess,
+        T_bulk,
+        z_snow,
+        κ_snow,
+        ρ_snow,
+        ϵ_snow,
+        SW_net,
+        LW_d,
+        q_l,
+        h_sfc,
+        displ,
+        P_atmos,
+        T_atmos,
+        q_atmos,
+        u_atmos,
+        roughness_model,
+        atmos_h,
+        gustiness,
+        parameters,
+    )
+
+    tol = parameters.surf_temp.tol
+    N_iters = parameters.surf_temp.N_iters
+
+    #Starting points picked to minimize number of failed convergences:
+    method = SecantMethod(T_atmos, T_atmos - FT(1))
+
+    sol = RootSolvers.find_zero(
+        T -> flux_balance_closure(T),
+        method,
+        CompactSolution(),
+        ResidualTolerance(tol),
+        N_iters,
+    )
+
+    return ifelse(sol.converged, sol.root, T_bulk)
+end
+
+"""
+    surface_residual_flux(
+        T_sfc_root::FT,
+        κ::FT,
+        ρ::FT,
+        z::FT,
+        parameters::SnowParameters{FT}
+    )
+
+Determines the residual surface energy flux to dump into the bulk energy whenever the correct surface
+temperature to satisfy Fourier's Law of Conduction at the surface is greater than T_freeze.
+"""
+function surface_residual_flux(
+    T_sfc_root::FT,
+    κ::FT,
+    ρ::FT,
+    z::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    d_safe = max(surface_temp_scaling_length(κ, ρ, z, parameters), eps(FT))
+    return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
+           FT(0)
+end
+
+"""
+    update_surf_temp!(model::SnowModel, surf_temp::EquilibriumGradientTemperatureModel, SW_net, LW_down, Y, p, t)
+
+Updates the surface temperature variable, storing residual energy flux in p.snow.surf_residual_flux to be added to the bulk.
+"""
+function update_surf_temp!(
+    model::SnowModel,
+    surf_temp::EquilibriumGradientTemperatureModel,
+    SW_net,
+    LW_d,
+    Y,
+    p,
+    t,
+)
+    bc = model.boundary_conditions
+    _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
+
+    #If roughness length is updated during the Monin-Obukhov iterations, we might need to move this inside of the root solve.
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    roughness_model = ClimaLand.surface_roughness_model(model, Y, p)
+    displ = ClimaLand.surface_displacement_height(model, Y, p)
+    #might need to update this call as gustiness models change:
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(bc.atmos.gustiness)
+
+    #get surf_temp values, even if they are > T_freeze:
+    p.snow.T_sfc .=
+        solve_for_surface_temp_at_a_point.(
+            p.snow.T,
+            p.snow.z_snow,
+            p.snow.κ,
+            p.snow.ρ_snow,
+            model.parameters.ϵ_snow,
+            SW_net, #passing radiation as args allows different radiation situations, i.e. open ground vs canopy-shielded
+            LW_d, #passing radiation as args enables different radiation situations, i.e. open ground vs canopy-shielded
+            p.snow.q_l,
+            h_sfc,
+            displ,
+            p.drivers.P,
+            p.drivers.T,
+            p.drivers.q,
+            p.drivers.u,
+            roughness_model,
+            bc.atmos.h,
+            gustiness,
+            model.parameters,
+        )
+
+    #set residual flux using values if T_sfc > T_freeze:
+    p.snow.surf_residual_flux .=
+        surface_residual_flux.(
+            p.snow.T_sfc,
+            p.snow.κ,
+            p.snow.ρ_snow,
+            p.snow.z_snow,
+            model.parameters,
+        )
+
+    #reset T_sfc accordingly:
+    p.snow.T_sfc .= min.(_T_freeze, p.snow.T_sfc)
+    return nothing
+end
+
+
+"""
+    update_surf_temp!(model::SnowModel, surf_temp::BulkSurfaceTemperatureModel, Y, p, t)
+
+Updates the surface temperature variable so that it matches the bulk temperature.
+Note, this update function is not called for the integrated land model - the update to the surface temperature happens via a different
+function that handles the radiation sent from the canopy (see `lsm_radiant_energy_fluxes!()`)
+"""
+function update_surf_temp!(
+    model::SnowModel,
+    surf_temp::BulkSurfaceTemperatureModel,
+    SW_net,
+    LW_d,
+    Y,
+    p,
+    t,
+)
+    p.snow.T_sfc .= p.snow.T
+    return nothing
+end
+
+"""
+    get_residual_surface_flux(surf_temp::BulkSurfaceTemperatureModel, Y, p)
+
+Returns any residual surface flux as defined by the surface temperature parameterization choice.
+"""
+function get_residual_surface_flux(surf_temp::BulkSurfaceTemperatureModel, Y, p)
+    return FTfromY(Y)(0)
+end
+
+"""
+    get_residual_surface_flux(surf_temp::EquilibriumGradientTemperatureModel, Y, p)
+
+Returns any residual surface flux as defined by the surface temperature parameterization choice.
+"""
+function get_residual_surface_flux(
+    surf_temp::EquilibriumGradientTemperatureModel,
+    Y,
+    p,
+)
+    return p.snow.surf_residual_flux
 end

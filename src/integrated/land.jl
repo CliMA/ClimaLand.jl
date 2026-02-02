@@ -465,6 +465,7 @@ function lsm_radiant_energy_fluxes!(
 ) where {FT}
     canopy = land.canopy
     canopy_bc = canopy.boundary_conditions
+    snow = land.snow
     radiation = canopy_bc.radiation
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
@@ -517,12 +518,24 @@ function lsm_radiant_energy_fluxes!(
     @. R_net_snow .= -(
         f_trans_nir * nir_d * (1 - α_snow_NIR) +
         f_trans_par * par_d * (1 - α_snow_PAR)
-    )
+    ) #at this point, R_net_snow equals the SW_net for evaluating the snow surface temperature
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+
+    #now solve for the snow surface temperature:
+    Snow.update_surf_temp!(
+        snow,
+        snow.parameters.surf_temp,
+        R_net_snow,
+        LW_d_canopy,
+        Y,
+        p,
+        t,
+    )
+
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
@@ -691,6 +704,10 @@ function snow_boundary_fluxes!(
     p,
     t,
 ) where {FT}
+
+    #In this integrated version, the surface temperature is instead
+    #set in the previous function call, in lsm_radiant_energy_fluxes!().
+
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
@@ -713,14 +730,14 @@ function snow_boundary_fluxes!(
         Snow.energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
-    @. p.snow.total_energy_flux =
-        e_flux_falling_snow +
+    p.snow.total_energy_flux .=
+        e_flux_falling_snow .+
         (
-            p.snow.turbulent_fluxes.lhf +
-            p.snow.turbulent_fluxes.shf +
-            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
+            Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
+            p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
+            p.snow.R_n .- p.snow.energy_runoff .- p.ground_heat_flux .+
             e_flux_falling_rain
-        ) * p.snow.snow_cover_fraction
+        ) .* p.snow.snow_cover_fraction
     return nothing
 end
 

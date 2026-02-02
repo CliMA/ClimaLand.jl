@@ -206,8 +206,8 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         c_co2,
     )
 
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             insol_params = earth_param_set.insol_params,
@@ -219,7 +219,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         SW_d,
         LW_d,
         start_date,
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
     )
     return (; atmos, radiation)
@@ -398,8 +398,9 @@ these units are what Fluxnet sites report the data
 in.
 """
 function compute_q(P, VPD, T; thermo_params)
+    _T_freeze = Thermodynamics.Parameters.T_freeze(thermo_params)
     # Convert units
-    T = T + 273.15  # C to K
+    T = T + _T_freeze  # C to K
     VPD = VPD * 100.0 # hPa to Pa
     P = P * 1000.0 # kPa to Pa
     # Compute q
@@ -409,7 +410,8 @@ function compute_q(P, VPD, T; thermo_params)
         Thermodynamics.Liquid(),
     )
     e = esat - VPD
-    q = 0.622 * e / (P - 0.378 * e)
+    ρ = Thermodynamics.air_density(thermo_params, T, P) # this assumes the gas constant for dry air, which induces a small error
+    q = Thermodynamics.q_vap_from_p_vap(thermo_params, T, ρ, e)
     return q
 end
 

@@ -29,19 +29,15 @@ FT = Float32
           NamedTuple{(:P_liq,)}((zero_instance,))
     @test ClimaLand.initialize_drivers((), coords) == (;)
     pa_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
-    zero_thermal_state = ClimaCore.Fields.zeros(
-        Thermodynamics.PhaseEquil{FT},
-        axes(coords.surface),
-    )
     pa_vals = ([zero_instance for k in pa_keys]...,)
-    all_pa_keys = (pa_keys..., :thermal_state)
-    all_pa_vals = (pa_vals..., zero_thermal_state)
+    all_pa_keys = (pa_keys...,)
+    all_pa_vals = (pa_vals...,)
     @test ClimaLand.initialize_drivers((pa,), coords) ==
           NamedTuple{all_pa_keys}(all_pa_vals)
     pr_keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
     pr_vals = ([zero_instance for k in pr_keys]...,)
-    all_papr_keys = (pa_keys..., :thermal_state, pr_keys...)
-    all_papr_vals = (pa_vals..., zero_thermal_state, pr_vals...)
+    all_papr_keys = (pa_keys..., pr_keys...)
+    all_papr_vals = (pa_vals..., pr_vals...)
     @test ClimaLand.initialize_drivers((pa, pr), coords) ==
           NamedTuple{all_papr_keys}(all_papr_vals)
 end
@@ -141,7 +137,6 @@ end
         :P,
         :q,
         :u,
-        :thermal_state,
         :SW_d,
         :LW_d,
         :cosθs,
@@ -182,7 +177,7 @@ end
         ClimaCore.Fields.field2array(p.drivers.cosθs),
     )
     update_cosθs_only(p, 60 * 60 * 12) # populate with cos(zenith) at night
-    @test all((<)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # zenith angle at nighttime should be > 90 degrees
+    @test all((==)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # cos(zenith angle) at nighttime should be 0
 end
 
 @testset "Ground Conditions" begin

@@ -103,6 +103,24 @@ get_soil(m::EnergyHydrology) = m
     CanopyModel,
 } p.canopy.autotrophic_respiration.Ra
 
+# Net Ecosystem Exchange (NEE = ER - GPP)
+function compute_net_ecosystem_exchange!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    # Compute ER first
+    if isnothing(out)
+        out = zeros(land_model.soil.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    compute_total_respiration!(out, Y, p, t, land_model)
+    @. out -= p.canopy.photosynthesis.GPP
+    return out
+end
+
 # Canopy - Conductance
 function compute_stomatal_conductance!(
     out,
@@ -455,7 +473,7 @@ function compute_10cm_water_mass!(
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     # Convert from volumetric water content to water mass per unit volume using density
-    @. Hθ = (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
+    @. Hθ = (p.soil.θ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
 
     # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
@@ -966,11 +984,4 @@ end
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
-
-### EnergyHydrology ###
-
-@diagnostic_compute "soil_water_content" EnergyHydrology Y.soil.ϑ_l
-@diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
-@diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
-@diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq

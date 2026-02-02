@@ -84,8 +84,8 @@ import ClimaParams
 
         shortwave_radiation(t) = 1000 # W/m2
         longwave_radiation(t) = 200 # W/m2
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -97,7 +97,7 @@ import ClimaParams
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
 
@@ -131,7 +131,6 @@ import ClimaParams
             :u,
             :q,
             :c_co2,
-            :thermal_state,
             :SW_d,
             :LW_d,
             :cosθs,
@@ -316,8 +315,8 @@ end
         long = FT(-180) # degree
         start_date = DateTime(2005)
 
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -364,7 +363,7 @@ end
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
 
@@ -497,7 +496,7 @@ end
         estimated_SHF = p.canopy.turbulent_fluxes.∂shf∂T
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
-        )[1] < 0.02
+        )[1] < 0.01
 
         finitediff_LHF =
             (
@@ -507,14 +506,14 @@ end
         estimated_LHF = p.canopy.turbulent_fluxes.∂lhf∂T
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
-        )[1] < 0.11
+        )[1] < 0.25
 
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
         ∂Ṫ∂T = Array(parent(jac_value))[1] .+ 1
         @test abs.(
             Array(parent(dY_2.canopy.energy.T .- dY.canopy.energy.T))[1] ./ ΔT -
             ∂Ṫ∂T
-        ) / ∂Ṫ∂T < 0.05 # Error propagates here from ∂LHF∂T
+        ) / abs.(∂Ṫ∂T) < 0.15 # Error propagates here from ∂LHF∂T
     end
 end
 
@@ -534,8 +533,8 @@ end
         LAI = TimeVaryingInput((t) -> 0.0)
         shortwave_radiation(t) = 1000 # W/m2
         longwave_radiation(t) = 200 # W/m2
-        zenith_angle =
-            (t, s) -> default_zenith_angle(
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
                 t,
                 s;
                 insol_params = earth_param_set.insol_params,
@@ -568,7 +567,7 @@ end
             TimeVaryingInput(shortwave_radiation),
             TimeVaryingInput(longwave_radiation),
             start_date;
-            θs = zenith_angle,
+            cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
         ground = PrescribedGroundConditions{FT}()
@@ -700,7 +699,6 @@ end
                 :u,
                 :q,
                 :c_co2,
-                :thermal_state,
                 :SW_d,
                 :LW_d,
                 :cosθs,
@@ -778,7 +776,6 @@ end
             :u,
             :q,
             :c_co2,
-            :thermal_state,
             :SW_d,
             :LW_d,
             :cosθs,

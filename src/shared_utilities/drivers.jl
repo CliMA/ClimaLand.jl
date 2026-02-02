@@ -25,17 +25,15 @@ export AbstractAtmosphericDrivers,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
-    set_atmos_ts!,
     turbulent_fluxes!,
     net_radiation!,
     turbulent_fluxes_at_a_point,
-    vapor_pressure_deficit,
     make_update_drivers,
     prescribed_forcing_era5,
     prescribed_perturbed_temperature_era5,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
-    default_zenith_angle
+    default_cos_zenith_angle
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -177,12 +175,12 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
         T,
     } <: AbstractRadiativeDrivers{FT}
 
-To be used when coupling to an atmosphere model. Either both `θs` and `start_date`
+To be used when coupling to an atmosphere model. Either both `cosθs` and `start_date`
 must be `nothing`, or both must not be `nothing``.
 
-During the driver update, cosθs is unchanged if `θs` is `nothing`. This behavior differs from
-the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `θs` is `nothing`.
-Otherwise, `θs` recieves the following arguments:
+During the driver update, cosθs is unchanged if `cosθs` is `nothing`. This behavior differs from
+the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `cosθs` is `nothing`.
+Otherwise, `cosθs` recieves the following arguments:
 (`time_from_start`, `start_date`), and is expected to return zenith angle at the given time.
 $(DocStringExtensions.FIELDS)
 """
@@ -190,20 +188,20 @@ struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}, T} <:
        AbstractRadiativeDrivers{FT}
     """Function that fills a climacore field with the zenith angle given the following arguments:
     (time_from_start, `start_date`)"""
-    θs::F
+    cosθs::F
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::T
     function CoupledRadiativeFluxes{FT, F, T}(
-        θs::F,
+        cosθs::F,
         start_date::T,
     ) where {FT, F, T}
         (
-            (isnothing(θs) && isnothing(start_date)) ||
-            ((!isnothing(θs) && !isnothing(start_date)))
+            (isnothing(cosθs) && isnothing(start_date)) ||
+            ((!isnothing(cosθs) && !isnothing(start_date)))
         ) || error(
-            "CoupledRadiativeFluxes: `θs` and start_date` must both be `nothing` or both not `nothing`.",
+            "CoupledRadiativeFluxes: `cosθs` and start_date` must both be `nothing` or both not `nothing`.",
         )
-        new{FT, F, T}(θs, start_date)
+        new{FT, F, T}(cosθs, start_date)
     end
 end
 
@@ -233,22 +231,22 @@ function CoupledRadiativeFluxes{FT}(
     toml_dict::CP.ParamDict,
 ) where {FT, DT, LT}
     insol_params = LP.LandParameters(toml_dict).insol_params
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = latitude,
             longitude = longitude,
             insol_params = insol_params,
         )
-    return CoupledRadiativeFluxes{FT, typeof(zenith_angle), DT}(
-        zenith_angle,
+    return CoupledRadiativeFluxes{FT, typeof(cos_zenith_angle), DT}(
+        cos_zenith_angle,
         start_date,
     )
 end
 
 """
-    default_zenith_angle(
+    default_cos_zenith_angle(
         t::T,
         start_date::Dates.DateTime;
         latitude::LT,
@@ -256,12 +254,13 @@ end
         insol_params::Insolation.Parameters.InsolationParameters{FT},
     )
 
-Calculate zenith angle with Insolation for the given start date, insolation parameters, latitude,
-and longitude.
+Calculate cosine of the zenith angle with Insolation for the given start date, insolation parameters, latitude,
+and longitude. Note that Insolation.jl returns 0 for the cosine when the
+sun is below the horizon.
 
 `latitude` and `longitude` can be a collections or a Number.
 """
-function default_zenith_angle(
+function default_cos_zenith_angle(
     t::T,
     start_date::Dates.DateTime;
     latitude::LT,
@@ -276,16 +275,14 @@ function default_zenith_angle(
         start_date + Dates.Second(round(t))
     end
 
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                insol_params,
-            ),
-        )
     # Reduces allocations by throwing away unwanted values
-    zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
-    return zenith_only.(d, δ, η_UTC, longitude, latitude)
+    zenith_only = (args...) -> Insolation.insolation(args...).μ
+    return zenith_only.(
+        current_datetime,
+        latitude,
+        longitude,
+        Ref(insol_params),
+    )
 end
 
 """
@@ -318,39 +315,27 @@ struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
 end
 
 """
-    compute_ρ_sfc(thermo_params, ts_in, T_sfc)
+    compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
 
 Computes the density of air at the surface, given the temperature
-at the surface T_sfc, the thermodynamic state of the atmosphere,
-ts_in, and a set of Clima.Thermodynamics parameters thermo_params.
-
-This assumes the ideal gas law and hydrostatic balance to
-extrapolate to the surface.
-
+at the surface T_sfc, the atmospheric temperature T_air, pressure P_air,
+specific humidity q_air, , and height difference between the atmos level
+and surface level, using surface_flux_params.
 """
-function compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
-    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+function compute_ρ_sfc(surface_flux_params, T_air, P_air, q_air, Δh, T_sfc)
     T_sfc = T_sfc < 0 ? eltype(T_sfc)(NaN) : T_sfc
-    ρ_sfc =
-        ρ_air *
-        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int)
+    thermo_params =
+        SurfaceFluxes.Parameters.thermodynamics_params(surface_flux_params)
+    ρ_air = Thermodynamics.air_density(thermo_params, T_air, P_air, q_air)
+    return SurfaceFluxes.surface_density(
+        surface_flux_params,
+        T_air,
+        ρ_air,
+        T_sfc,
+        Δh,
+        q_air,
+    )
     return ρ_sfc
-end
-
-"""
-    set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p)
-
-Fill the pre-allocated ts_in `Field` with a thermodynamic state computed from the
-atmosphere.
-"""
-function set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p) where {FT}
-    P = p.drivers.P
-    T = p.drivers.T
-    q = p.drivers.q
-    ts_in .= Thermodynamics.PhaseEquil_pTq.(atmos.thermo_params, P, T, q)
-    return nothing
 end
 
 return_momentum_fluxes(atmos::PrescribedAtmosphere) = false
@@ -393,6 +378,8 @@ function turbulent_fluxes!(
     update_∂q_sfc∂T = get_∂q_sfc∂T_function(model, Y, p)
     earth_param_set = get_earth_param_set(model)
     momentum_fluxes = Val(return_momentum_fluxes(atmos))
+    gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
+
     dest .=
         turbulent_fluxes_at_a_point.(
             momentum_fluxes, # return_extra_fluxes
@@ -410,6 +397,7 @@ function turbulent_fluxes!(
             displ,
             update_∂T_sfc∂T,
             update_∂q_sfc∂T,
+            gustiness,
             earth_param_set,
         )
     return nothing
@@ -452,6 +440,7 @@ end
         displ::FT,
         update_∂T_sfc∂T,
         update_∂q_sfc∂T,
+        gustiness,
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -491,13 +480,13 @@ function compute_turbulent_fluxes_at_a_point(
     displ::FT,
     update_∂T_sfc∂T,
     update_∂q_sfc∂T,
+    gustiness,
     earth_param_set,
 ) where {FT}
 
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     _grav = LP.grav(earth_param_set) # used to compute surface potential
-    gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
 
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     positional_default_args = (
@@ -511,19 +500,8 @@ function compute_turbulent_fluxes_at_a_point(
     else
         u = u_atmos
     end
-    phase_partition_atmos = Thermodynamics.PhasePartition_equil_given_p(
-        thermo_params,
-        T_atmos,
-        P_atmos,
-        q_tot_atmos,
-        Thermodynamics.PhaseEquil,
-    )
-    ρ_atmos = Thermodynamics.air_density(
-        thermo_params,
-        T_atmos,
-        P_atmos,
-        phase_partition_atmos,
-    )
+    ρ_atmos =
+        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_tot_atmos)
     output = SurfaceFluxes.surface_fluxes(
         surface_flux_params,
         T_atmos,
@@ -550,20 +528,11 @@ function compute_turbulent_fluxes_at_a_point(
     E = output.evaporation
 
     # vapor flux in volume of liquid water
-    Ẽ = E / _ρ_liq
+    Ẽ = E / _ρ_liq
 
-    # Approximate derivatives of fluxes with respect to T_sfc, q_sfc
+    # Approximate derivatives of fluxes with respect to T_sfc
     g_h = output.g_h
     u_star = output.ustar
-    ρ_sfc = ρ_atmos
-    ∂lhf∂T =
-        ρ_sfc *
-        g_h *
-        _LH_v0 *
-        update_∂q_sfc∂T(u_star, g_h, T_sfc_guess, P_atmos, earth_param_set)
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
-    # Buoyancy Flux
     ρ_sfc = SurfaceFluxes.surface_density(
         surface_flux_params,
         T_atmos,
@@ -575,6 +544,21 @@ function compute_turbulent_fluxes_at_a_point(
         FT(0),
         output.q_vap_sfc,
     )
+    # This assumes that q_vap_sfc_guess is the saturated value
+    ∂lhf∂T =
+        ρ_sfc *
+        g_h *
+        _LH_v0 *
+        update_∂q_sfc∂T(
+            u_star,
+            g_h,
+            q_vap_sfc_guess,
+            T_sfc_guess,
+            earth_param_set,
+        )
+    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
+    ∂shf∂T = ρ_sfc * g_h * cp_d * update_∂T_sfc∂T(u_star, g_h, earth_param_set)
+    # Buoyancy Flux
     buoyancy_flux = SurfaceFluxes.buoyancy_flux(
         surface_flux_params,
         output.shf,
@@ -588,7 +572,7 @@ function compute_turbulent_fluxes_at_a_point(
     return (
         output.lhf,
         output.shf,
-        Ẽ,
+        Ẽ,
         ∂lhf∂T,
         ∂shf∂T,
         output.ρτxz,
@@ -630,7 +614,7 @@ struct PrescribedRadiativeFluxes{
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
     "Sun zenith angle, in radians"
-    θs::T
+    cosθs::T
     "Thermodynamic parameters"
     thermo_params::TP
     function PrescribedRadiativeFluxes(
@@ -638,7 +622,7 @@ struct PrescribedRadiativeFluxes{
         SW_d,
         LW_d,
         start_date;
-        θs = nothing,
+        cosθs = nothing,
         toml_dict::Union{CP.ParamDict, Nothing} = nothing,
         frac_diff = nothing,
     )
@@ -648,7 +632,7 @@ struct PrescribedRadiativeFluxes{
             earth_param_set = LP.LandParameters(toml_dict)
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
-        args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
+        args = (SW_d, frac_diff, LW_d, start_date, cosθs, thermo_params)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -833,13 +817,22 @@ function get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
+        q_sat,
         T_sfc,
-        P_sfc,
         earth_param_set,
     )
-        FT = eltype(earth_param_set)
         _T_freeze = LP.T_freeze(earth_param_set)
-        return ClimaLand.partial_q_sat_partial_T(P_sfc, T_sfc - _T_freeze)
+        phase = ifelse(
+            T_sfc > _T_freeze,
+            Thermodynamics.Liquid(),
+            Thermodynamics.Ice(),
+        )
+        return ClimaLand.partial_q_sat_partial_T(
+            q_sat,
+            T_sfc,
+            phase,
+            earth_param_set,
+        )
     end
     return update_∂q_sfc∂T_at_a_point
 end
@@ -887,53 +880,6 @@ the functions in this file.
 function surface_emissivity(model::AbstractModel, Y, p) end
 
 """
-    vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-
-Computes the vapor pressure deficit for air with temperature T_air,
-pressure P_air, and specific humidity q_air, using thermo_params,
-a Thermodynamics.jl param set.
-"""
-function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-    es = Thermodynamics.saturation_vapor_pressure(
-        thermo_params,
-        T_air,
-        Thermodynamics.Liquid(),
-    )
-    ea = Thermodynamics.partial_pressure_vapor(
-        thermo_params,
-        P_air,
-        Thermodynamics.PhasePartition(q_air),
-    )
-    return es - ea
-end
-
-"""
-    relative_humidity(T_air, P_air, q_air, thermo_params)
-
-Computes the vapor pressure deficit for air with temperature T_air,
-pressure P_air, and specific humidity q_air, using thermo_params,
-a Thermodynamics.jl param set.
-"""
-function relative_humidity(
-    T_air::FT,
-    P_air::FT,
-    q_air::FT,
-    thermo_params,
-) where {FT}
-    es = Thermodynamics.saturation_vapor_pressure(
-        thermo_params,
-        T_air,
-        Thermodynamics.Liquid(),
-    )
-    ea = Thermodynamics.partial_pressure_vapor(
-        thermo_params,
-        P_air,
-        Thermodynamics.PhasePartition(q_air),
-    )
-    return es / ea
-end
-
-"""
     specific_humidity_from_dewpoint(dewpoint_temperature, temperature, air_pressure, earth_param_set)
 
 Estimates the specific humidity given the dewpoint temperature, temperature of the air
@@ -963,11 +909,12 @@ function specific_humidity_from_dewpoint(
         sim_FT(T_dew_air) - _T_freeze,
         sim_FT(T_air) - _T_freeze,
     )
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air),
         rh,
+        Thermodynamics.Liquid(),
     )
     return q
 end
@@ -1127,9 +1074,8 @@ horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
-    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
-    # The thermal state is a different type
-    types = ([FT for k in keys[1:(end - 1)]]..., Thermodynamics.PhaseEquil{FT})
+    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+    types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
@@ -1185,7 +1131,7 @@ end
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
-with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q, `u`, and `thermal_state`.
+with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, `q`, and `u`.
 
 This is intended to be used in coupled simulations with ClimaCoupler.jl.
 """
@@ -1193,12 +1139,8 @@ function ClimaLand.initialize_drivers(
     a::CoupledAtmosphere{FT},
     coords,
 ) where {FT}
-    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u, :thermal_state)
-    types = (
-        [FT for k in 1:(length(keys) - 2)]...,
-        SVector{2, FT},
-        Thermodynamics.PhaseEquil{FT},
-    )
+    keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q, :u)
+    types = ([FT for k in 1:(length(keys) - 1)]..., SVector{2, FT})
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
@@ -1282,7 +1224,6 @@ function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
         evaluate!(p.drivers.u, a.u, t)
         evaluate!(p.drivers.q, a.q, t)
         evaluate!(p.drivers.c_co2, a.c_co2, t)
-        set_atmos_ts!(p.drivers.thermal_state, a, p)
     end
     return update_drivers!
 end
@@ -1305,17 +1246,17 @@ end
 Creates and returns a function which updates the driver variables
 in the case of a CoupledRadiativeFluxes.
 
-When `r.θs` is `nothing`, the cosine zenith angle
+When `r.cosθs` is `nothing`, the cosine zenith angle
 not changed, and should be updated by the coupler. This differs from the behavior of
-`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `θs` is `nothing`.
+`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `cosθs` is `nothing`.
 
-Otherwise, the cosine zenith angle is computed using `cos.(r.θs(t, r.start_date))`.
+Otherwise, the cosine zenith angle is computed using `r.cosθs(t, r.start_date)`.
 """
 make_update_drivers(r::CoupledRadiativeFluxes{FT, Nothing}) where {FT} =
     (p, t) -> nothing
 function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
-        p.drivers.cosθs .= cos.(r.θs(t, r.start_date))
+        p.drivers.cosθs .= r.cosθs(t, r.start_date)
     end
     return update_drivers!
 end
@@ -1332,8 +1273,8 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         evaluate!(p.drivers.LW_d, r.LW_d, t)
         # Next we update the zenith angle and diffuse fraction of light. These are either
         # both required, or neither required.
-        if !isnothing(r.θs)
-            p.drivers.cosθs .= FT.(cos.(r.θs(t, r.start_date)))
+        if !isnothing(r.cosθs)
+            p.drivers.cosθs .= FT.(r.cosθs(t, r.start_date))
             if !isnothing(r.frac_diff)
                 # If the diffuse fraction is a TimeVaryingInput, we use that directly.
                 evaluate!(p.drivers.frac_diff, r.frac_diff, t)
@@ -1593,8 +1534,8 @@ function prescribed_forcing_era5(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -1607,7 +1548,7 @@ function prescribed_forcing_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
@@ -1686,7 +1627,7 @@ end
     empirical_diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, cosθs::FT, thermo_params) where {FT}
 
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
-of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
+of the solar zenith angle (`cosθs`), the total surface downwelling shortwave radiation (`SW_d`),
 the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
 (`td`).
 
@@ -1694,11 +1635,10 @@ See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible he
 and latent heat as a function of aerosol optical depth over the course of deforestation
 in the Brazilian Amazon" 2013.
 
-Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
-of k₀, which we divide by in this expression. This can amplify small errors
-when θs is near π/2.
+Note that cosθs is a coefficient of k₀, which we divide by in this expression. 
+This can amplify small errors when cosθs is near 0.
 
-This formula is empirical and can yied negative numbers depending on the
+This formula is empirical and can yield negative numbers depending on the
 input, which, when dividing by something very near zero,
 can become large negative numbers.
 
@@ -1724,7 +1664,11 @@ function empirical_diffuse_fraction(
     else
         DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
     end
-    RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
+    # Pass explicit zero liquid/ice fractions to avoid Thermodynamics.jl MethodError with default Integer arguments
+    RH = Thermodynamics.relative_humidity(thermo_params, T, P, q) # Note: This used RH over liquid before; not it's RH over ice when below freezing
+    # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
+    # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
+    cosθs = max(cosθs, eps(FT))
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
     kₜ = SW_d / k₀
     if kₜ ≤ 0.3

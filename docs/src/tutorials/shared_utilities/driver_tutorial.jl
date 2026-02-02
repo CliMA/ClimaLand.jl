@@ -81,8 +81,8 @@ diffuse_fraction = TimeVaryingInput(seconds, diffuse_fraction);
 toml_dict = LP.create_toml_dict(Float64);
 earth_param_set = LP.LandParameters(toml_dict);
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
-zenith_angle =
-    (t, s) -> default_zenith_angle(
+cos_zenith_angle =
+    (t, s) -> default_cos_zenith_angle(
         t,
         s;
         insol_params,
@@ -97,7 +97,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     SW_d,
     LW_d,
     start_date;
-    θs = zenith_angle,
+    cosθs = cos_zenith_angle,
     frac_diff = diffuse_fraction,
 );
 

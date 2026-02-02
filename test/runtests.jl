@@ -121,6 +121,9 @@ end
 @safetestset "Canopy spatial parameters" begin
     include("standalone/Vegetation/spatial_parameters.jl")
 end
+@safetestset "Canopy spatially varying height" begin
+    include("standalone/Vegetation/test_spatially_varying_canopy_height.jl")
+end
 @safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
 end

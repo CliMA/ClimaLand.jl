@@ -102,7 +102,7 @@ ground = ClimaLand.PrognosticGroundConditions{FT}();
 # as opposed to the default `ConstantAlbedoModel` which uses a temporally and
 # spatially constant snow albedo.
 α_0 = FT(0.6) # parameter controlling the minimum snow albedo
-Δα = FT(0.06) # parameter controlling the snow albedo when θs = 90∘
+Δα = FT(0.06) # parameter controlling the snow albedo when cosθs = 0
 k = FT(2) # rate at which albedo drops to its minimum value with zenith angle
 α_snow = Snow.ZenithAngleAlbedoModel(α_0, Δα, k);
 

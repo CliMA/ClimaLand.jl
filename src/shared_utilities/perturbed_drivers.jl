@@ -31,11 +31,12 @@ function perturbed_temp_specific_humidity_from_dewpoint(
         sim_FT(T_dew_air) - _T_freeze,
         sim_FT(T_air) - _T_freeze,
     )
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air + ΔT),
         rh,
+        Thermodynamics.Liquid(),
     )
     return q
 end
@@ -72,11 +73,12 @@ function perturbed_rh_specific_humidity_from_dewpoint(
         sim_FT(T_air) - _T_freeze,
     )
     rh = min(max(rh_true + Δrh, sqrt(eps(sim_FT))), sim_FT(1))
-    q = Thermodynamics.q_vap_from_RH_liquid(
+    q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
         sim_FT(T_air),
         rh,
+        Thermodynamics.Liquid(),
     )
     return q
 end
@@ -254,8 +256,8 @@ function prescribed_perturbed_temperature_era5(
         method = time_interpolation_method,
         file_reader_kwargs = (; preprocess_func = perturb_lw_d),
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -268,7 +270,7 @@ function prescribed_perturbed_temperature_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )
@@ -445,8 +447,8 @@ function prescribed_perturbed_rh_era5(
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
     )
-    zenith_angle =
-        (t, s) -> default_zenith_angle(
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
             t,
             s;
             latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
@@ -459,7 +461,7 @@ function prescribed_perturbed_rh_era5(
         SW_d,
         LW_d,
         start_date;
-        θs = zenith_angle,
+        cosθs = cos_zenith_angle,
         toml_dict = toml_dict,
         frac_diff = frac_diff,
     )

@@ -227,14 +227,14 @@ function saturation_specific_humidity(
     thermo_params::TPE,
 )::FT where {FT, TPE}
     if T > TP.T_freeze(thermo_params)
-        Thermodynamics.q_vap_saturation_generic(
+        Thermodynamics.q_vap_saturation(
             thermo_params,
             T,
             ρ_sfc,
             Thermodynamics.Liquid(),
         )
     else
-        Thermodynamics.q_vap_saturation_generic(
+        Thermodynamics.q_vap_saturation(
             thermo_params,
             T,
             ρ_sfc,

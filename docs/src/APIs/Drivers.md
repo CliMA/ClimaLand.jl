@@ -16,7 +16,6 @@ ClimaLand.AbstractAtmosphericDrivers
 ClimaLand.AbstractRadiativeDrivers
 ClimaLand.turbulent_fluxes!
 ClimaLand.turbulent_fluxes_at_a_point
-ClimaLand.set_atmos_ts!
 ClimaLand.component_temperature
 ClimaLand.component_specific_humidity
 ClimaLand.surface_roughness_model
@@ -25,13 +24,12 @@ ClimaLand.get_update_surface_temperature_function
 ClimaLand.get_update_surface_humidity_function
 ClimaLand.get_∂T_sfc∂T_function
 ClimaLand.get_∂q_sfc∂T_function
-ClimaLand.default_zenith_angle
+ClimaLand.default_cos_zenith_angle
 ClimaLand.prescribed_forcing_era5
 ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5
 ClimaLand.prescribed_analytic_forcing
 ClimaLand.net_radiation!
-ClimaLand.vapor_pressure_deficit
 ClimaLand.get_drivers
 ClimaLand.make_update_drivers
 ```

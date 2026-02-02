@@ -343,6 +343,17 @@ function define_diagnostics!(land_model)
             compute_photosynthesis_gross_canopy!(out, Y, p, t, land_model),
     )
 
+    # NEE - Net Ecosystem Exchange
+    add_diagnostic_variable!(
+        short_name = "nee",
+        long_name = "Net Ecosystem Exchange",
+        standard_name = "net_ecosystem_exchange",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "Net CO2 flux from ecosystem to atmosphere (positive upward). NEE = ER - GPP.",
+        compute! = (out, Y, p, t) ->
+            compute_net_ecosystem_exchange!(out, Y, p, t, land_model),
+    )
+
     # Leaf net photosynthesis
     add_diagnostic_variable!(
         short_name = "an",
