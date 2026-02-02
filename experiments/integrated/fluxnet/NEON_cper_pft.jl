@@ -126,7 +126,8 @@ pft_pcts = [
 ]
 
 # Load the PFT parameters into the namespace
-(
+# comment out to fall back on global parameters
+#=(
     Ω,
     α_PAR_leaf,
     α_NIR_leaf,
@@ -142,8 +143,7 @@ pft_pcts = [
     ψ63,
     plant_ν,
     rooting_depth,
-) = FT.(params_from_pfts(pft_pcts))
-
+) = FT.(params_from_pfts(pft_pcts))=#
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 
@@ -161,19 +161,22 @@ pft_pcts = [
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+# comment out to fall back on global parameters
+#=soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
     PAR_albedo = soil_α_PAR,
     NIR_albedo = soil_α_NIR,
-)
+)=#
 
 runoff = ClimaLand.Soil.Runoff.SurfaceRunoff()
-retention_parameters = (;
+# comment out to fall back on global parameters
+#=retention_parameters = (;
     ν = soil_ν,
     θ_r,
     K_sat = soil_K_sat,
     hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
 )
 composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
+=#
 soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     soil_domain,
@@ -181,14 +184,16 @@ soil = Soil.EnergyHydrology{FT}(
     toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
-    albedo = soil_albedo,
     runoff,
+    # comment out to fall back on global parameters
+    #=    
+    albedo = soil_albedo,
     retention_parameters,
     composition_parameters,
     S_s = soil_S_s,
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
+    emissivity = soil_ϵ,=#
 )
 
 # Soil microbes model
@@ -258,12 +263,14 @@ canopy = Canopy.CanopyModel{FT}(
     LAI,
     toml_dict;
     prognostic_land_components,
+    # comment out to fall back on global parameters
+    #=
     radiative_transfer,
     photosynthesis,
     conductance,
     hydraulics,
     energy,
-    biomass,
+    biomass,=#
 )
 
 # Integrated plant hydraulics and soil model
@@ -306,7 +313,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260127_corrSco2_wPPM_786c3c4ad3327f09b7c7fb77aba79e79b8636bbd/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260202_checkGlobal_ec52972bdd90bf74b2834adc008b8f3c9f2f8ca9/output/"),
     output_vars,
     reduction_period = :halfhourly,
 );
