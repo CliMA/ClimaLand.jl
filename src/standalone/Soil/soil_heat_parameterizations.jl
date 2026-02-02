@@ -47,7 +47,7 @@ function soil_Tf_depressed(
     θtot = min(_ρ_ice / _ρ_liq * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
-    Tf_depressed = max(_T_freeze * exp(_grav * ψw0 / _LH_f0), FT(0))
+    Tf_depressed = max(_T_freeze * exp(_grav * ψw0 / _LH_f0), FT(1)) # if Tf_depressed is zero, we divide by it later and get NaNs.
     return Tf_depressed
 end
 
