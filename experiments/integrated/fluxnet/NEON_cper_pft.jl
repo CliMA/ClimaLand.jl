@@ -203,18 +203,20 @@ soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
 
 # Canopy model - Set up individual Component arguments with non-default parameters
 # Set up radiative transfer
-radiation_parameters = (;
+# Additionally comment out to fall back on global parameters
+#= radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
     α_PAR_leaf,
     τ_PAR_leaf,
     α_NIR_leaf,
     τ_NIR_leaf,
-)
+)=#
 radiative_transfer = Canopy.TwoStreamModel{FT}(
     canopy_domain,
     toml_dict;
-    radiation_parameters,
+    # Additionally comment out to fall back on global parameters
+    #radiation_parameters,
     ϵ_canopy,
 )
 
@@ -222,9 +224,10 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 conductance = Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
 # Set up photosynthesis
-photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
+# Additionally comment out to fall back on global parameters
+#photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
 photosynthesis =
-    FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
+    FarquharModel{FT}(canopy_domain, toml_dict)#; photosynthesis_parameters)# Additionally comment out to fall back on global parameters
 
 # Set up plant hydraulics
 # Read in LAI from MODIS data
@@ -238,21 +241,23 @@ RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
     toml_dict;
-    n_stem,
+    # Additionally comment out to fall back on global parameters
+    #=n_stem,
     n_leaf,
     h_stem,
     h_leaf,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
-    retention_model,
+    retention_model,=#
 )
+# TBD Additionally comment out to fall back on global parameters?
 height = h_stem + h_leaf
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
 # Set up energy model
-energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
+energy = Canopy.BigLeafEnergyModel{FT}(toml_dict)#; ac_canopy)# Additionally comment out to fall back on global parameters
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
@@ -313,7 +318,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260202_checkGlobal_ec52972bdd90bf74b2834adc008b8f3c9f2f8ca9/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260202_checkGlobal_ec52972bdd90bf74b2834adc008b8f3c9f2f8ca9/output2/"),
     output_vars,
     reduction_period = :halfhourly,
 );
