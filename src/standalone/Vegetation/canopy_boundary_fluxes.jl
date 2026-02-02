@@ -5,8 +5,8 @@ import SurfaceFluxes.Parameters as SFP
 
 import ClimaLand: turbulent_fluxes!, AbstractBC, get_earth_param_set
 
-function get_earth_param_set(model::CanopyModel)
-    return model.earth_param_set
+function ClimaLand.get_earth_param_set(model::CanopyModel)
+    return model.parameters.earth_param_set
 end
 
 """
@@ -211,7 +211,7 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    T_sfc = component_temperature(model, Y, p)
+    T_sfc = ClimaLand.component_temperature(model, Y, p)
     T_air = p.drivers.T
     P_air = p.drivers.P
     q_air = p.drivers.q

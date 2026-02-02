@@ -928,6 +928,17 @@ function define_diagnostics!(land_model)
             compute_soil_water_content!(out, Y, p, t, land_model),
     )
 
+    # Surface soil moisture (for SMAP comparison)
+    add_diagnostic_variable!(
+        short_name = "sm_surface",
+        long_name = "Surface Soil Moisture",
+        standard_name = "surface_soil_moisture",
+        units = "m^3 m^-3",
+        comments = "Volumetric soil water content at the surface layer (for SMAP satellite comparison)",
+        compute! = (out, Y, p, t) ->
+            compute_surface_soil_moisture!(out, Y, p, t, land_model),
+    )
+
     add_diagnostic_variable!(
         short_name = "iwc",
         long_name = "Integrated Soil Water Mass in first 10cm",

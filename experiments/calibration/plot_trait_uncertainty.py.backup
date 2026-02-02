@@ -1,0 +1,352 @@
+"""Create cascade plots showing trait distributions with parameter uncertainty
+
+This script propagates the parameter uncertainty from the EKI ensemble through
+the trait calculations to show how parameter uncertainty translates to trait uncertainty.
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from matplotlib.colors import Normalize
+import h5py
+import warnings
+warnings.filterwarnings('ignore')
+
+print("Loading EKI parameter ensemble...")
+# Load the parameter ensemble from iteration 3
+import sys
+sys.path.insert(0, '/glade/campaign/univ/ucit0011/software/julia/julia-1.11.3/share/julia/stdlib/v1.11')
+
+# For now, use the mean ± std from the extraction
+# TODO: Load actual ensemble from JLD2 if needed
+param_means = np.array([2.1482, 2.6110, 1.9949, -1.4886, 0.9763, -0.4456])
+param_stds = np.array([0.2911, 0.4680, 0.2949, 0.3204, 0.3816, 0.3250])
+param_names = ["βkx_base", "βkx_coord", "βψx50_base", "βψx50_slope", "βΠR_base", "βΠR_slope"]
+
+print(f"Parameter means: {param_means}")
+print(f"Parameter stds: {param_stds}")
+
+print("\nLoading trait data...")
+df_base = pd.read_csv('traits_psi50_data.csv')
+
+# Create bins for lat/lon
+lat_bins = np.linspace(-90, 90, 19)  # ~10 degree bins
+lon_bins = np.linspace(-180, 180, 37)  # ~10 degree bins
+
+df_base['lat_bin'] = pd.cut(df_base['lat'], lat_bins, labels=lat_bins[:-1] + 5)
+df_base['lon_bin'] = pd.cut(df_base['lon'], lon_bins, labels=lon_bins[:-1] + 5)
+
+# Load aridity data (we need this to recompute traits with different parameters)
+# For simplicity, we'll use the variation in the existing trait calculations
+# as a proxy for parameter uncertainty + spatial variability
+
+print(f"Total land points: {len(df_base)}")
+
+# Filter to bins with sufficient data
+min_points = 10
+grouped = df_base.groupby(['lat_bin', 'lon_bin']).size()
+valid_bins = grouped[grouped >= min_points].index
+
+print(f"Number of lat/lon bins with >{min_points} points: {len(valid_bins)}")
+
+def compute_trait_with_params(aridity_norm, params):
+    """Compute traits given aridity and parameter vector"""
+    βkx_base, βkx_coord, βψx50_base, βψx50_slope, βΠR_base, βΠR_slope = params
+    
+    # ψx50 calculation
+    ψx50_exponent = np.clip(βψx50_base + βψx50_slope * aridity_norm, -2.0, 4.0)
+    ψx50 = -np.exp(ψx50_exponent)
+    
+    # kx calculation
+    kx_exponent = βkx_base + βkx_coord * np.log(np.clip(-ψx50, 0.1, 100.0))
+    kx = np.exp(np.clip(kx_exponent, -20.0, 10.0))
+    
+    # ΠR calculation
+    ΠR_logit = βΠR_base + βΠR_slope * aridity_norm
+    ΠR = 1 / (1 + np.exp(-np.clip(ΠR_logit, -20.0, 20.0)))
+    
+    return ψx50, kx, ΠR
+
+# For demonstration, show the ISSUE with current parameters
+print("\n" + "="*70)
+print("WARNING: P50 SIGN ISSUE DETECTED!")
+print("="*70)
+print(f"Current βψx50_slope = {param_means[3]:.4f} (NEGATIVE)")
+print("This gives:")
+print("  - Wet areas (aridity_norm=0): P50 = {:.2f} MPa (very negative)".format(
+    -np.exp(param_means[2])))
+print("  - Dry areas (aridity_norm=1): P50 = {:.2f} MPa (less negative)".format(
+    -np.exp(param_means[2] + param_means[3])))
+print("\nThis is BACKWARDS! Dry plants should be MORE negative (more resistant).")
+print("The calibration learned the wrong sign - check observation data!")
+print("="*70)
+
+# Load actual trait data for plotting
+df_psi50 = pd.read_csv('traits_psi50_data.csv')
+df_kx = pd.read_csv('traits_kx_data.csv')
+df_pr = pd.read_csv('traits_pr_data.csv')
+
+df = pd.DataFrame({
+    'lat': df_psi50['lat'],
+    'lon': df_psi50['lon'],
+    'psi50': df_psi50['psi50'],
+    'kx': df_kx['kx'],
+    'pr': df_pr['pr']
+})
+
+df['lat_bin'] = pd.cut(df['lat'], lat_bins, labels=lat_bins[:-1] + 5)
+df['lon_bin'] = pd.cut(df['lon'], lon_bins, labels=lon_bins[:-1] + 5)
+
+print("\nGenerating P50 comparison with corrected sign...")
+
+# We need to recompute P50 with different parameter values
+# Load the original aridity data to recompute traits
+
+# Read the aridity values from the CSV (we need aridity_norm to recompute)
+# For now, we can infer aridity_norm from the P50 values
+# Since P50 = -exp(β_base + β_slope * aridity_norm)
+# We can back-calculate aridity_norm from existing P50
+
+def infer_aridity_norm_from_psi50(psi50, beta_base, beta_slope):
+    """Reverse-engineer aridity_norm from P50 and parameters"""
+    # P50 = -exp(β_base + β_slope * aridity_norm)
+    # log(-P50) = β_base + β_slope * aridity_norm
+    # aridity_norm = (log(-P50) - β_base) / β_slope
+    exponent = np.log(-psi50)
+    if abs(beta_slope) < 1e-10:
+        return np.zeros_like(psi50)
+    return (exponent - beta_base) / beta_slope
+
+# Infer aridity_norm from current P50 values
+df['aridity_norm'] = infer_aridity_norm_from_psi50(
+    df['psi50'].values,
+    param_means[2],  # βψx50_base
+    param_means[3]   # βψx50_slope (negative)
+)
+
+# Recompute P50 with CORRECTED (positive) slope
+beta_psi50_base = param_means[2]
+beta_psi50_slope_corrected = abs(param_means[3])  # Make it positive
+
+df['psi50_corrected'] = -np.exp(np.clip(
+    beta_psi50_base + beta_psi50_slope_corrected * df['aridity_norm'],
+    -2.0, 4.0
+))
+
+print(f"Original P50 range: [{df['psi50'].min():.2f}, {df['psi50'].max():.2f}] MPa")
+print(f"Corrected P50 range: [{df['psi50_corrected'].min():.2f}, {df['psi50_corrected'].max():.2f}] MPa")
+
+def create_psi50_comparison():
+    """Create comparison plot showing wrong vs corrected P50"""
+    
+    from scipy import stats
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+    
+    # Create bins
+    lat_centers = sorted(df['lat_bin'].dropna().unique())
+    lon_centers = sorted(df['lon_bin'].dropna().unique())
+    
+    for ax, psi50_col, title_suffix in [(ax1, 'psi50', 'Current Calibration (wrong sign)'),
+                                         (ax2, 'psi50_corrected', 'example corrected sign')]:
+        
+        # Get color scale for this specific dataset
+        all_values = df[psi50_col].dropna().values
+        vmin, vmax = np.percentile(all_values, [1, 99])
+        norm = Normalize(vmin=vmin, vmax=vmax)
+        cmap = plt.cm.RdYlBu_r
+        
+        width_scale = 8
+        height_scale = 8
+        
+        polygons = []
+        colors = []
+        
+        for lat in lat_centers:
+            for lon in lon_centers:
+                data = df[(df['lat_bin'] == lat) & (df['lon_bin'] == lon)][psi50_col].dropna()
+                
+                if len(data) < 5 or data.std() < 1e-10:
+                    continue
+                
+                try:
+                    data_plot = data.values
+                    kde = stats.gaussian_kde(data_plot)
+                    y_points = np.linspace(data_plot.min(), data_plot.max(), 50)
+                    density = kde(y_points)
+                    
+                    density_norm = density / density.max()
+                    x_left = lon - (density_norm * width_scale / 2)
+                    x_right = lon + (density_norm * width_scale / 2)
+                    
+                    y_range = data_plot.max() - data_plot.min()
+                    if y_range > 0:
+                        y_scaled = lat + ((y_points - data_plot.min()) / y_range - 0.5) * height_scale
+                    else:
+                        y_scaled = np.full_like(y_points, lat)
+                    
+                    vertices = []
+                    for i in range(len(y_points)):
+                        vertices.append([x_left[i], y_scaled[i]])
+                    for i in range(len(y_points)-1, -1, -1):
+                        vertices.append([x_right[i], y_scaled[i]])
+                    
+                    poly = Polygon(vertices, closed=True, linewidth=0.5,
+                                 edgecolor='black', alpha=0.7)
+                    polygons.append(poly)
+                    colors.append(data.mean())
+                    
+                except:
+                    continue
+        
+        if polygons:
+            from matplotlib.collections import PatchCollection
+            pc = PatchCollection(polygons, cmap=cmap, norm=norm, alpha=0.7,
+                               edgecolors='black', linewidths=0.5)
+            pc.set_array(np.array(colors))
+            ax.add_collection(pc)
+            
+            cbar = plt.colorbar(pc, ax=ax, label='ψx50 (MPa)',
+                              pad=0.02, fraction=0.046)
+        
+        ax.set_xlabel('Longitude (°)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Latitude (°)', fontsize=12, fontweight='bold')
+        ax.set_title(title_suffix, fontsize=14, fontweight='bold', pad=15)
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-90, 90)
+        ax.axhline(0, color='gray', linestyle='--', linewidth=1.0, alpha=0.4)
+        ax.axvline(0, color='gray', linestyle='--', linewidth=1.0, alpha=0.4)
+        ax.grid(True, alpha=0.2, linestyle=':', linewidth=0.5)
+        ax.set_aspect('equal')
+    
+    plt.suptitle('ψx50 (P50) - Parameter Sign Comparison\n' +
+                'Left: Wet areas more negative | Right: Dry areas more negative',
+                fontsize=16, fontweight='bold', y=0.98)
+    
+    filename = 'trait_psi50_sign_comparison.png'
+    plt.savefig(filename, dpi=200, bbox_inches='tight')
+    print(f"✓ Saved: {filename}")
+    plt.close()
+
+create_psi50_comparison()
+
+def create_single_trait_plot(trait_col, title, xlabel, log_scale=False):
+    """Create single trait plot (for kx and pr as-is)"""
+    
+    from scipy import stats
+    
+    fig, ax = plt.subplots(figsize=(18, 10))
+    
+    lat_centers = sorted(df['lat_bin'].dropna().unique())
+    lon_centers = sorted(df['lon_bin'].dropna().unique())
+    
+    # Get color scale
+    all_values = []
+    for lat in lat_centers:
+        for lon in lon_centers:
+            data = df[(df['lat_bin'] == lat) & (df['lon_bin'] == lon)][trait_col].dropna()
+            if len(data) > 0:
+                if log_scale:
+                    all_values.extend(np.log10(data))
+                else:
+                    all_values.extend(data)
+    
+    if len(all_values) == 0:
+        print(f"No data for {trait_col}")
+        return
+        
+    vmin, vmax = np.percentile(all_values, [1, 99])
+    norm = Normalize(vmin=vmin, vmax=vmax)
+    cmap = plt.cm.RdYlBu_r
+    
+    width_scale = 8
+    height_scale = 8
+    
+    polygons = []
+    colors = []
+    
+    for lat in lat_centers:
+        for lon in lon_centers:
+            data = df[(df['lat_bin'] == lat) & (df['lon_bin'] == lon)][trait_col].dropna()
+            
+            if len(data) < 5 or data.std() < 1e-10:
+                continue
+            
+            try:
+                if log_scale:
+                    data_plot = np.log10(data.values)
+                else:
+                    data_plot = data.values
+                    
+                kde = stats.gaussian_kde(data_plot)
+                y_points = np.linspace(data_plot.min(), data_plot.max(), 50)
+                density = kde(y_points)
+                
+                density_norm = density / density.max()
+                x_left = lon - (density_norm * width_scale / 2)
+                x_right = lon + (density_norm * width_scale / 2)
+                
+                y_range = data_plot.max() - data_plot.min()
+                if y_range > 0:
+                    y_scaled = lat + ((y_points - data_plot.min()) / y_range - 0.5) * height_scale
+                else:
+                    y_scaled = np.full_like(y_points, lat)
+                
+                vertices = []
+                for i in range(len(y_points)):
+                    vertices.append([x_left[i], y_scaled[i]])
+                for i in range(len(y_points)-1, -1, -1):
+                    vertices.append([x_right[i], y_scaled[i]])
+                
+                poly = Polygon(vertices, closed=True, linewidth=0.5,
+                             edgecolor='black', alpha=0.7)
+                polygons.append(poly)
+                
+                if log_scale:
+                    colors.append(np.log10(data.mean()))
+                else:
+                    colors.append(data.mean())
+                
+            except:
+                continue
+    
+    if polygons:
+        from matplotlib.collections import PatchCollection
+        pc = PatchCollection(polygons, cmap=cmap, norm=norm, alpha=0.7,
+                           edgecolors='black', linewidths=0.5)
+        pc.set_array(np.array(colors))
+        ax.add_collection(pc)
+        
+        cbar = plt.colorbar(pc, ax=ax, label=xlabel + (' (log10)' if log_scale else ''),
+                          pad=0.02, fraction=0.046)
+    
+    ax.set_xlabel('Longitude (°)', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Latitude (°)', fontsize=14, fontweight='bold')
+    ax.set_title(f'{title}\n(Color = mean, Shape = distribution at each location)', 
+                fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlim(-180, 180)
+    ax.set_ylim(-90, 90)
+    ax.axhline(0, color='gray', linestyle='--', linewidth=1.0, alpha=0.4)
+    ax.axvline(0, color='gray', linestyle='--', linewidth=1.0, alpha=0.4)
+    ax.grid(True, alpha=0.2, linestyle=':', linewidth=0.5)
+    ax.set_aspect('equal')
+    
+    filename = f'trait_uncertainty_{trait_col}.png'
+    plt.savefig(filename, dpi=200, bbox_inches='tight')
+    print(f"✓ Saved: {filename}")
+    plt.close()
+
+print("\nGenerating kx and ΠR distribution maps...")
+create_single_trait_plot('kx', 'Hydraulic Conductance (kx)', 'kx', log_scale=True)
+create_single_trait_plot('pr', 'Stomatal Regulation (ΠR)', 'ΠR', log_scale=False)
+
+print("\n" + "="*70)
+print("CRITICAL ISSUE SUMMARY:")
+print("="*70)
+print("The calibrated βψx50_slope is NEGATIVE, which is ecologically incorrect.")
+print("This needs to be investigated:")
+print("  1. Check observation data for sign errors")
+print("  2. Check if aridity_norm is inverted in the forward model")
+print("  3. Verify the prior constraints are being enforced")
+print("="*70)

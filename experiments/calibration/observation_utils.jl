@@ -8,23 +8,29 @@ import ClimaAnalysis
 Return latitudes and longitude for the diagnostics of the land model run at a
 given resolution (`nelements`).
 
-It assumes that the model is run using a global box domain with `nelements`,
-and that the output is on the grid specified by
-`ClimaLand.Diagnostics.default_output_writer`.
+It assumes that the output is on the default grid, as determined by
+`ClimaLand.default_num_points`. It also assumes that the domain is the full
+globe.
 """
 function get_lat_lon_from_resolution(nelements)
+    # Values of radius and depth (set to 0.1) do not matter; we just need
+    # information from the domain in the latitude/longitude directions.
     # We do not want to load the CUDA backend or construct this on GPU which is
     # wasteful, so we construct this on CPU instead
-    domain = ClimaLand.Domains.global_box_domain(
-        Float64;
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
         nelements,
         context = ClimaComms.SingletonCommsContext{ClimaComms.CPUSingleThreaded}(
             ClimaComms.CPUSingleThreaded(),
         ),
     )
-    coords = ClimaLand.Domains.coordinates(domain).surface
-    longs = unique(Array(parent(coords.long))[:])
-    lats = unique(Array(parent(coords.lat))[:])
+    # If the default number of diagnostic latitude and longitude points is not
+    # used when running the simulations, this will need to be changed.
+    num_long, num_lat, _ =
+        ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
+    longs = collect(range(-180.0, 180.0, length = num_long))
+    lats = collect(range(-90.0, 90.0, length = num_lat))
     return lats, longs
 end
 
@@ -32,12 +38,6 @@ end
     make_ocean_mask(nelements)
 
 Make an ocean mask.
-
-
-This assumes that the model is run using a global box domain with `nelements`,
-mask threshold set to 0.99,
-and that the output is on the grid specified by
-`ClimaLand.Diagnostics.default_output_writer`.
 
 # Notes
 - ClimaLand simulates only locations where its mask == 1 (based on a threshold
@@ -58,8 +58,9 @@ function make_ocean_mask(nelements)
 
     # We do not want to load the CUDA backend or construct this on GPU which is
     # wasteful, so we construct this on CPU instead
-    domain = ClimaLand.Domains.global_box_domain(
-        Float64;
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
         nelements,
         context = ClimaComms.SingletonCommsContext{ClimaComms.CPUSingleThreaded}(
             ClimaComms.CPUSingleThreaded(),
@@ -79,12 +80,6 @@ function make_ocean_mask(nelements)
     # Select only locations where the interpolated mask is equal to 1
     interpolated_mask =
         Array(ClimaCore.Remapping.interpolate(mask; target_hcoords))
-
-    all(0 .<= interpolated_mask .<= 1) ||
-        error("Interpolated mask contains values outside the range [0, 1]")
-    # Interpolating using ClimaCore does not guarantee that the values are
-    # exactly zeroes and ones
-    @. interpolated_mask = round(interpolated_mask)
 
     # Make a OutputVar to make a mask from
     # TODO: This touches on the internals of ClimaAnalysis which should not be

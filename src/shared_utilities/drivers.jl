@@ -473,7 +473,7 @@ function compute_turbulent_fluxes_at_a_point(
     h_atmos::FT,
     T_sfc_guess::FT,
     q_vap_sfc_guess::FT,
-    roughness_model::SurfaceFluxes.AbstractRoughnessParams,
+    roughness_model,
     update_T_sfc,
     update_q_vap_sfc,
     h_sfc::FT,

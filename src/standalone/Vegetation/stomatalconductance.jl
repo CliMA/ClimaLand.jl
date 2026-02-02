@@ -1,5 +1,5 @@
 export MedlynConductanceParameters,
-    MedlynConductanceModel, PModelConductanceParameters, PModelConductance, uSPACConductanceParameters, uSPACConductanceModel, uSPACCWDStaticParameters, uSPACConductanceCWDStatic, uSPACPiParameters, uSPACConductancePi
+    MedlynConductanceModel, PModelConductanceParameters, PModelConductance, uSPACPiParameters, uSPACConductancePi
 
 abstract type AbstractStomatalConductanceModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -55,7 +55,7 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
     P_air = p.drivers.P
     T_air = p.drivers.T
     q_air = p.drivers.q
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     thermo_params = earth_param_set.thermo_params
     (; g1, g0, Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
@@ -144,7 +144,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
     T_air = p.drivers.T
-    earth_param_set = canopy.earth_param_set
+    earth_param_set = canopy.parameters.earth_param_set
     (; Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
@@ -165,53 +165,7 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
         ) # avoids division by zero, since conductance is zero when An is zero 
 end
 
-#################### uSPAC conductance (existing static back-compat) ####################
-Base.@kwdef struct uSPACConductanceParameters{FT <: AbstractFloat}
-    "Well-watered transpiration fraction (unitless), plateau of β(s)"
-    fww::FT
-    "Soil saturation threshold where down-regulation begins (unitless)"
-    s_star::FT
-    "Soil saturation at shutdown (unitless)"
-    s_w::FT
-    "Optional cap on stomatal conductance (mol m^-2 s^-1); Inf for none"
-    gsw_max::FT = FT(Inf)
-end
-Base.eltype(::uSPACConductanceParameters{FT}) where {FT} = FT
-
-struct uSPACConductanceModel{FT, OCP <: uSPACConductanceParameters{FT}} <:
-       AbstractStomatalConductanceModel{FT}
-    parameters::OCP
-end
-
-function uSPACConductanceModel{FT}(
-    parameters::uSPACConductanceParameters{FT},
-) where {FT <: AbstractFloat}
-    return uSPACConductanceModel{eltype(parameters), typeof(parameters)}(parameters)
-end
-
-function uSPACConductanceModel{FT}(;
-    canopy_params, soil_params, root_params, met_params=nothing, gsw_max = FT(Inf)
-) where {FT <: AbstractFloat}
-    uspac = uSPACStomata.build_uspac_from_ClimaLand(;
-        canopy_params = canopy_params,
-        soil_params   = soil_params,
-        root_params   = root_params,
-        met_params    = met_params,
-        overrides     = NamedTuple()
-    )
-    pars = uSPACConductanceParameters{FT}(;
-        fww     = FT(uspac.fww),
-        s_star  = FT(uspac.s_star),
-        s_w     = FT(uspac.s_w),
-        gsw_max = FT(uspac.gsw_max),
-    )
-    return uSPACConductanceModel{FT}(pars)
-end
-
-
-ClimaLand.auxiliary_vars(::uSPACConductanceModel) = (:r_stomata_canopy, :gsw_leaf, :gsw_canopy)
-ClimaLand.auxiliary_types(::uSPACConductanceModel{FT}) where {FT} = (FT, FT, FT)
-ClimaLand.auxiliary_domain_names(::uSPACConductanceModel) = (:surface, :surface, :surface)
+#################### uSPAC conductance ####################
 
 # --- soft getters ---
 @inline _has(x, f::Symbol) = Base.hasproperty(x, f)
@@ -281,152 +235,45 @@ end
     @. max(es - e, FT(0))
 end
 
-"""
-    update_canopy_conductance!(p, Y, model::uSPACConductanceModel, canopy)
-
-Static uSPAC (back-compat, no time variability in parameters).
-"""
-function update_canopy_conductance!(p, Y, model::uSPACConductanceModel, canopy)
-    FT   = eltype(model.parameters)
-    pars = model.parameters
-    earth = canopy.parameters.earth_param_set
-    Rgas  = LP.gas_constant(earth)  # FT scalar
-
-    # Inputs as Fields
-    P_air = p.drivers.P
-    T_air = p.drivers.T
-    LAI   = p.canopy.biomass.area_index.leaf
-    s     = _saturation_field(p, canopy, FT)
-    E0    = _E0_field(p, canopy, FT)
-    VPD   = _VPD_field(p, FT)
-
-    # uSPAC β(s)
-    r  = @. clamp((s - pars.s_w) / max(pars.s_star - pars.s_w, eps(FT)), FT(0), FT(1))
-    β  = @. pars.fww * r
-
-    # gsw (leaf molar), all Fields
-    ρw = FT(1000.0); Mw = FT(0.01801528)
-    E_mps = @. β * E0
-    E_mol = @. (ρw * E_mps) / Mw
-    gsw_leaf = @. ifelse(VPD > eps(FT), min(E_mol * (P_air / VPD), pars.gsw_max), FT(0))
-
-    # expose leaf/canopy molar conductance (optional aux)
-    if Base.hasproperty(p.canopy.conductance, :gsw_leaf)
-        @. p.canopy.conductance.gsw_leaf = gsw_leaf
-    end
-    if Base.hasproperty(p.canopy.conductance, :gsw_canopy)
-        @. p.canopy.conductance.gsw_canopy = gsw_leaf * max(LAI, sqrt(eps(FT)))
-    end
-
-    # convert to m s^-1 and to canopy resistance Field
-    g_leaf_mps = @. gsw_leaf * (Rgas * T_air / P_air)             # m s^-1 (leaf)
-    g_canopy   = @. g_leaf_mps * max(LAI, sqrt(eps(FT)))           # m s^-1 (ground)
-    @. p.canopy.conductance.r_stomata_canopy = 1 / (g_canopy + eps(FT))
-    return nothing
-end
-
-
-# ===================== CWD-controlled uSPAC =====================
-
-# Maps w = [1, log1p(CWD_mm)] -> (α, a, b) via Γ (rows α,a,b), then
-#   fww = σ(α), s_w = σ(a), s* = s_w + (1 - s_w) σ(b)
-Base.@kwdef struct uSPACCWDStaticParameters{FT <: AbstractFloat}
-    Γ::NTuple{6,FT}       # row-major [α0, αCWD, a0, aCWD, b0, bCWD]
-    cwd_mm::FT            # site/pixel covariate (mm)
-    gsw_max::FT = FT(Inf)
-end
-Base.eltype(::uSPACCWDStaticParameters{FT}) where {FT} = FT
-
-struct uSPACConductanceCWDStatic{FT,
-                                P<:uSPACCWDStaticParameters{FT}} <:
-       AbstractStomatalConductanceModel{FT}
-    parameters::P
-end
-uSPACConductanceCWDStatic{FT}(p::uSPACCWDStaticParameters{FT}) where {FT<:AbstractFloat} =
-    uSPACConductanceCWDStatic{FT,typeof(p)}(p)
-
-
-ClimaLand.auxiliary_vars(::uSPACConductanceCWDStatic) = (:r_stomata_canopy, :gsw_leaf, :gsw_canopy)
-ClimaLand.auxiliary_types(::uSPACConductanceCWDStatic{FT}) where {FT} = (FT, FT, FT)
-ClimaLand.auxiliary_domain_names(::uSPACConductanceCWDStatic) = (:surface, :surface, :surface)
-
-@inline _σ(x) = inv(one(x) + exp(-x))
-@inline _affine2(γ0::T, γ1::T, CWD::T) where {T} = γ0 + γ1 * log1p(CWD)
-
-function update_canopy_conductance!(p, Y, model::uSPACConductanceCWDStatic, canopy)
-    FT   = eltype(model.parameters)
-    pars = model.parameters
-    earth = canopy.parameters.earth_param_set
-    Rgas  = LP.gas_constant(earth)
-
-    # Drivers / state
-    P_air = p.drivers.P
-    T_air = p.drivers.T
-    LAI   = p.canopy.biomass.area_index.leaf
-    s     = _saturation_field(p, canopy, FT)
-    E0    = _E0_field(p, canopy, FT)
-    VPD   = _VPD_field(p, FT)
-
-    # CWD → (α, a, b) → (fww, s*, sw)  (scalars of type FT)
-    γα0, γαC, γa0, γaC, γb0, γbC = pars.Γ
-    CWD = FT(pars.cwd_mm)
-    α = γα0 + γαC * log1p(CWD)
-    a = γa0  + γaC  * log1p(CWD)
-    b = γb0  + γbC  * log1p(CWD)
-
-    sw    = inv(FT(1) + exp(-a))
-    sb    = inv(FT(1) + exp(-b))
-    sstar = sw + (FT(1) - sw) * sb
-    fww   = inv(FT(1) + exp(-α))
-
-    # β(s) piecewise (broadcasted)
-    r  = @. clamp((s - sw) / max(sstar - sw, eps(FT)), FT(0), FT(1))
-    β  = @. fww * r
-
-    # Convert to gsw (leaf, molar)
-    ρw = FT(1000.0); Mw = FT(0.01801528)
-    E_mps = @. β * E0
-    E_mol = @. (ρw * E_mps) / Mw
-    gsw_max = pars.gsw_max
-    gsw_leaf = @. ifelse(VPD > eps(FT),
-                         min(E_mol * (P_air / VPD), gsw_max),
-                         FT(0))
-
-    if Base.hasproperty(p.canopy.conductance, :gsw_leaf)
-        @. p.canopy.conductance.gsw_leaf = gsw_leaf
-    end
-    if Base.hasproperty(p.canopy.conductance, :gsw_canopy)
-        @. p.canopy.conductance.gsw_canopy = gsw_leaf * max(LAI, sqrt(eps(FT)))
-    end
-
-    g_leaf_mps = @. gsw_leaf * (Rgas * T_air / P_air)
-    g_canopy   = @. g_leaf_mps * max(LAI, sqrt(eps(FT)))
-    @. p.canopy.conductance.r_stomata_canopy = 1 / (g_canopy + eps(FT))
-    return nothing
-end
-
 # ===================== Π-group controlled uSPAC =====================
 
 Base.@kwdef struct uSPACPiParameters{FT <: AbstractFloat}
-    # Coefficients to map aridity → ΠR, ΠF  (Π = α + β * log1p(aridity))
-    ΓR::NTuple{2,FT}   # [α_R, β_R]
-    ΓF::NTuple{2,FT}   # [α_F, β_F]
-
-    # Coefficients to map soil texture → ΠT, ΠS  (Π = α + β*Sand)
-    ΓT::NTuple{2,FT}   # sand    → ΠT  
-    ΓS::NTuple{2,FT}   # sand    → ΠS
-
-    # Covariates can be scalars (FT) or Field/array-like; we keep them as Any to allow either.
-    #aridity_idx::Any   # e.g., CWD (mm), PET/MAP ratio, etc.  scalar or Field
-    #sand::Any          # 0..1 scalar or Field
-    aridity_idx::Any = nothing   # <- default
-    sand::Any        = nothing   # <- default
-
-    # Soil water retention exponent; thresholds for s* and s_w as fractions of fww
+    # Calibrated parameters (aridity-dependent)
+    βkx_base::FT      # Log-scale intercept for absolute kx (m day⁻¹ MPa⁻¹)
+    βkx_coord::FT     # Coordination coefficient: kx ~ P50^βkx_coord (safety-efficiency trade-off)
+    βψx50_base::FT    # Base for ψx50 exponential transform
+    βψx50_slope::FT   # Slope for ψx50 vs. aridity
+    βΠR_base::FT      # Base for ΠR logistic transform
+    βΠR_slope::FT     # Slope for ΠR logistic transform
+    
+    # Trait variance parameters (Phase 1.5: Climate-dependent variance, best-guess functional forms)
+    # Base values from literature (wet climate reference)
+    σ_logkx_base::FT = FT(0.5)    # Base std dev in log(kx) (wet climates, Liu et al. 2019)
+    σ_P50_base::FT = FT(1.5)      # Base std dev of P50 in MPa (Choat et al. 2012)
+    σ_ΠR_base::FT = FT(0.15)      # Base std dev of ΠR (unitless)
+    
+    # Climate-dependent variance modifiers (aridity → variance relationship)
+    # Hypothesis: Dry climates have higher trait variance (niche partitioning)
+    α_σ_logkx::FT = FT(0.3)   # Increase in σ_logkx per unit decrease in aridity (dry → more variable kx)
+    α_σ_P50::FT = FT(1.0)     # Increase in σ_P50 per unit decrease in aridity (dry → more variable P50)
+    α_σ_ΠR::FT = FT(0.1)      # Increase in σ_ΠR per unit decrease in aridity (dry → more variable strategy)
+    
+    # Correlations (also climate-dependent)
+    ρ_kx_P50_base::FT = FT(0.7)   # Base correlation (Manzoni et al. 2013)
+    ρ_kx_ΠR_base::FT = FT(-0.3)   # Base correlation
+    ρ_P50_ΠR_base::FT = FT(-0.2)  # Base correlation
+    α_ρ_kx_P50::FT = FT(-0.2)     # Weaker coordination in dry climates (more independent strategies)
+    
+    n_quad::Int = 3                      # Quadrature order (3, 5, or 7 points per dimension)
+    use_trait_distribution::Bool = false  # Enable trait heterogeneity
+    
+    # Covariates
+    aridity_idx::Any = nothing
+    
+    # Fixed parameters
     b::FT = FT(4.38)
     β_star_frac::FT = FT(0.95)
     β_w_frac::FT    = FT(0.05)
-
     gsw_max::FT = FT(Inf)
 end
 Base.eltype(::uSPACPiParameters{FT}) where {FT} = FT
@@ -458,49 +305,41 @@ end
 @inline _as_like_field(like, x::Number, ::Type{FT}) where {FT} = @. zero(like) + FT(x)
 @inline _as_like_field(like, x,       ::Type)               = x   # assume array/Field-like already shaped
 
-@inline _σ(x) = inv(one(x) + exp(-x))
+#@inline _σ(x) = inv(one(x) + exp(-x)) DEFINED ABOVE ELSEWHERE
 
 # Elementwise uSPAC Π → (fww, s*, s_w); written as scalar funcs so we can broadcast them
 # --- covariate extractors (auto-pull; return Fields matching grid) ---
 function extract_aridity!(like, p, canopy, ::Type{FT}) where {FT}
     # drivers first; then canopy.parameters; else soft default
     ari = _getfirst(p.drivers, (:CWD_mm, :aridity_index, :PET_MAP_ratio, :MAP_over_PET), nothing)
-    if ari === nothing && Base.hasproperty(canopy, :parameters)
-        ari = _getfirst(canopy.parameters, (:CWD_mm, :aridity_index, :PET_MAP_ratio, :MAP_over_PET), nothing)
-    end
-    ari === nothing && (ari = FT(100.0))  # safe fallback for smoke tests
     return _as_like_field(like, ari, FT)
-end
-
-function extract_sand!(like, p, ::Type{FT}) where {FT}
-    # try soil, then soil.parameters, then parameters.texture; else default ~loamy
-    sand = _getfirst(p.soil, (:ν_ss_quartz, :sand, :soil_sand, :sand_frac), nothing)
-    if (sand === nothing) && Base.hasproperty(p.soil, :parameters)
-        sand = _getfirst(p.soil.parameters, (:ν_ss_quartz, :sand, :soil_sand, :sand_frac), sand)
-        tex  = _getfirst(p.soil.parameters, (:texture,), nothing)
-        if tex !== nothing
-            sand = sand === nothing ? _getfirst(tex, (:ν_ss_quartz, :sand, :sand_frac), sand) : sand
-        end
-    end
-    sand === nothing && (sand = FT(0.45))  # safe default fraction (0..1)
-    return _as_like_field(like, sand, FT)
 end
 
 # --- uSPAC algebra as scalar funcs so we can broadcast ---
 @inline function _uspac_fww_from_Pi(ΠR, ΠF)
+    ΠR_safe = max(abs(ΠR), sqrt(eps(ΠR)))  # Prevent division by zero
     halfΠF = ΠF / 2
-    rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR
-    rad = ifelse(rad > eps(rad), rad, eps(rad))
-    return 1 - (1 / (2 * ΠR)) * (1 + halfΠF - sqrt(rad))
+    rad = (halfΠF + 1)^2 - 2 * ΠF * ΠR_safe
+    rad = max(rad, eps(rad))  # Ensure positive radicand
+    fww = 1 - (1 / (2 * ΠR_safe)) * (1 + halfΠF - sqrt(rad))
+    return clamp(fww, zero(fww), one(fww))  # Ensure [0,1]
 end
+
 @inline function _uspac_s_of_beta(β, ΠR, ΠF, ΠT, ΠS, b)
     β = clamp(β, zero(β), one(β))
+    
+    # Bassiouni et al Eq. 5
     denom = 1 - (1 - β) * ΠR
     denom = ifelse(abs(denom) < sqrt(eps(denom)), sign(denom) * sqrt(eps(denom)), denom)
-    termA = (4 * β * ΠS * ΠS) / max(ΠT, eps(ΠT))
+    
+    # Safeguard ΠT and ΠS
+    ΠT_safe = max(abs(ΠT), sqrt(eps(ΠT)))
+    ΠS_safe = max(abs(ΠS), sqrt(eps(ΠS)))
+    
+    termA = (4 * β * ΠS_safe * ΠS_safe) / ΠT_safe
     termB = (2 * (1 - β) - β * ΠF) / denom
     inner = sqrt(max(1 + termA * termB, eps(termA))) - 1
-    base  = (ΠT / (2 * β * ΠS)) * inner
+    base  = (ΠT_safe / (2 * β * ΠS_safe)) * inner
     s = (max(base, eps(base)))^(-one(b)/b)
     return clamp(s, zero(s), one(s))
 end
@@ -521,41 +360,208 @@ function update_canopy_conductance!(p, Y, model::uSPACConductancePi, canopy)
 
     like = s  # grid shape for broadcasting
 
-    # --- auto-fetch covariates as Fields ---
-    # aridity = extract_aridity!(like, p, canopy, FT)  # Field or broadcasted scalar
-    # sand    = extract_sand!(like, p, FT)
-    like = s
-    aridity = isnothing(pars.aridity_idx) ? extract_aridity!(like, p, canopy, FT) : _as_like_field(like, pars.aridity_idx, FT)
-    sand    = isnothing(pars.sand) ? extract_sand!(like, p, FT) : _as_like_field(like, pars.sand, FT)
+    # --- Extract aridity (only covariate needed for calibration) ---
+    aridity = isnothing(pars.aridity_idx) ? 
+              extract_aridity!(like, p, canopy, FT) : 
+              _as_like_field(like, pars.aridity_idx, FT)
 
-    # --- Π from covariates (sand-only for ΠT, ΠS) ---
-    αR, βR  = pars.ΓR
-    αF, βF  = pars.ΓF
-    αT, βTs = pars.ΓT
-    αS, βSs = pars.ΓS
+    # Normalization: For Global Aridity Index (P/ET0):
+    # 0 = hyper-arid, 0.03-0.2 = arid, 0.2-0.5 = semi-arid, 0.5-0.65 = dry sub-humid
+    # 0.65-1.0 = humid, >1.0 = very humid, >2.0 = extremely humid
+    # We INVERT so that: high norm = dry, low norm = wet
+    # Clamp to reasonable range (2.0 = very humid reference)
+    # NOTE: Ocean points are already masked to NaN in the aridity field by 
+    # load_aridity_field() using the topographic land/sea mask
+    aridity_norm = @. 1.0 - clamp(aridity / FT(2.0), FT(0.0), FT(1.0))
 
-    ΠR = @. αR + βR * log1p(aridity)
-    ΠF = @. αF + βF * log1p(aridity)
-    ΠT = @. αT + βTs * sand
-    ΠS = @. αS + βSs * sand
+    # --- Compute kx, ψx50, and ΠR from CALIBRATED β coefficients ---
 
-    # Π → (fww, s*, s_w) elementwise
-    fww   = @. _uspac_fww_from_Pi(ΠR, ΠF)
-    sstar = @. _uspac_s_of_beta(pars.β_star_frac * fww, ΠR, ΠF, ΠT, ΠS, pars.b)
-    sw    = @. _uspac_s_of_beta(pars.β_w_frac    * fww, ΠR, ΠF, ΠT, ΠS, pars.b)
+    #     WET ←─────────── aridity_norm ─────────→ DRY
+    # 0.0                                       1.0
+    # (aridity_norm: 0 = wet, 1 = dry)
 
-    # β(s) piecewise
-    r  = @. clamp((s - sw) / max(sstar - sw, eps(FT)), FT(0), FT(1))
-    β  = @. fww * r
+    # ψx50:  ╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (exponential, always negative, DECREASES with aridity_norm)
+    #     -0.5 MPa (wet) → -10 MPa (dry)
 
-    # Stomatal conductance (leaf, molar) and canopy resistance (ground)
-    ρw = FT(1000.0); Mw = FT(0.01801528)
-    E_mps   = @. β * E0
-    E_mol   = @. (ρw * E_mps) / Mw
-    gsw_leaf = @. ifelse(VPD > eps(FT),
-                         min(E_mol * (P_air / VPD), pars.gsw_max),
-                         FT(0))
+    # kx:    ╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (decreases with aridity_norm via coordination with ψx50)
+    #     high → low
 
+    # ΠR:    ───╮
+    #           ╰──────  (sigmoid S-curve)
+    #     0 (isohydric, wet) → 1 (anisohydric, dry)
+
+    # ψx50: Negative water potential using exponential
+    # Higher aridity_norm (dry) → more negative P50 (cavitation-resistant)
+    # Clamp the exponent to prevent extreme values in hyperarid regions
+    # Use ifelse to skip ocean points (aridity_norm = NaN)
+    ψx50_exponent = @. ifelse(isnan(aridity_norm), FT(0), 
+                              clamp(pars.βψx50_base + pars.βψx50_slope * aridity_norm, FT(-2.0), FT(4.0)))
+    ψx50_mean = @. ifelse(isnan(aridity_norm), FT(NaN), -exp(ψx50_exponent))
+    
+    # Encode the universal trade-off: safety-efficiency spectrum
+    # literature shows kx and P50 are coordinated
+    # High kx → vulnerable to cavitation → requires less negative P50 (wet climates)
+    # Low kx → safer from cavitation → can have very negative P50 (dry climates)
+    # kx's direct climate response is weak once you account for P50 (Liu et al. 2019)
+    # 
+    # COORDINATION EQUATION: kx = exp(βkx_base - βkx_coord * log(-ψx50))
+    # Note the NEGATIVE sign: as ψx50 becomes more negative (larger -ψx50),
+    # log(-ψx50) increases, so kx DECREASES (with positive βkx_coord)
+    # This creates: less negative P50 → high kx (wet), more negative P50 → low kx (dry)
+    # Clamp log argument to prevent issues with extreme ψx50 values
+    # Also clamp the full exponent to prevent overflow/underflow in exp()
+    kx_exponent = @. pars.βkx_base - pars.βkx_coord * log(clamp(-ψx50_mean, FT(0.1), FT(100.0)))
+    kx_mean = @. ifelse(isnan(aridity_norm), FT(NaN),
+                        exp(clamp(kx_exponent, FT(-20.0), FT(10.0))))
+
+    # ΠR: Logistic sigmoid (0 to 1)
+    # Higher aridity_norm (dry) → higher ΠR (anisohydric strategy)
+    # Clamp the sigmoid argument to prevent overflow in exp()
+    ΠR_logit = @. pars.βΠR_base + pars.βΠR_slope * aridity_norm
+    ΠR_mean = @. ifelse(isnan(aridity_norm), FT(NaN),
+                        1 / (1 + exp(-clamp(ΠR_logit, FT(-20.0), FT(20.0)))))
+
+    # ============ TRAIT DISTRIBUTION INTEGRATION (Phase 1.5: Climate-dependent variance) ============
+    if pars.use_trait_distribution
+        # Compute climate-dependent variance parameters
+        # Hypothesis: Dry climates → higher variance (niche partitioning for limited water)
+        #             Wet climates → lower variance (competitive exclusion, less niche space)
+        # aridity_norm: 0 (dry) → 1 (wet), so (1 - aridity_norm) = aridity stress
+        
+        # Standard deviations increase with aridity stress (dry conditions)
+        # Skip ocean points (aridity_norm = NaN) → set variance to NaN
+        aridity_stress = @. ifelse(isnan(aridity_norm), FT(NaN), FT(1) - aridity_norm)
+        σ_logkx = @. ifelse(isnan(aridity_stress), FT(NaN), pars.σ_logkx_base + pars.α_σ_logkx * aridity_stress)
+        σ_P50 = @. ifelse(isnan(aridity_stress), FT(NaN), pars.σ_P50_base + pars.α_σ_P50 * aridity_stress)
+        σ_ΠR = @. ifelse(isnan(aridity_stress), FT(NaN), pars.σ_ΠR_base + pars.α_σ_ΠR * aridity_stress)
+        
+        # Correlations weaken in dry climates (more independent strategies)
+        ρ_kx_P50 = @. ifelse(isnan(aridity_stress), FT(NaN), pars.ρ_kx_P50_base + pars.α_ρ_kx_P50 * aridity_stress)
+        ρ_kx_ΠR = pars.ρ_kx_ΠR_base  # Keep fixed for now
+        ρ_P50_ΠR = pars.ρ_P50_ΠR_base  # Keep fixed for now
+        
+        # Clamp correlations to valid range [-1, 1]
+        ρ_kx_P50 = @. clamp(ρ_kx_P50, FT(-0.99), FT(0.99))
+        
+        # For simplicity in quadrature generation, use spatial mean variance
+        # (Full spatially-varying variance would require per-gridcell quadrature)
+        # Important: Filter out NaN values (ocean points) before computing means
+        # Note: We replace NaN with 0 for summing, then count non-NaN points
+        σ_logkx_clean = @. ifelse(isnan(σ_logkx), FT(0), σ_logkx)
+        σ_P50_clean = @. ifelse(isnan(σ_P50), FT(0), σ_P50)
+        σ_ΠR_clean = @. ifelse(isnan(σ_ΠR), FT(0), σ_ΠR)
+        ρ_kx_P50_clean = @. ifelse(isnan(ρ_kx_P50), FT(0), ρ_kx_P50)
+        aridity_valid_count = @. ifelse(isnan(aridity_norm), FT(0), FT(1))
+        n_valid = max(sum(aridity_valid_count), FT(1))
+        
+        σ_logkx_val = sum(σ_logkx_clean) / n_valid
+        σ_P50_val = sum(σ_P50_clean) / n_valid
+        σ_ΠR_val = sum(σ_ΠR_clean) / n_valid
+        ρ_kx_P50_val = sum(ρ_kx_P50_clean) / n_valid
+        ρ_kx_ΠR_val = ρ_kx_ΠR
+        ρ_P50_ΠR_val = ρ_P50_ΠR
+        
+        # Generate trait quadrature (3D: log(kx), P50, ΠR)
+        # Mean traits come from climate-dependent calibration
+        # Important: Avoid log(NaN) at ocean points - use cleaned fields
+        μ_logkx_field = @. ifelse(isnan(aridity_norm), FT(0), log(kx_mean))
+        μ_P50_field = @. ifelse(isnan(aridity_norm), FT(0), ψx50_mean)
+        μ_ΠR_field = @. ifelse(isnan(aridity_norm), FT(0), ΠR_mean)
+        
+        # Extract representative mean values for quadrature generation
+        # Use spatial mean of valid (non-ocean) points only
+        μ_logkx_val = sum(μ_logkx_field) / n_valid
+        μ_P50_val = sum(μ_P50_field) / n_valid
+        μ_ΠR_val = sum(μ_ΠR_field) / n_valid
+        
+        # Point-wise integration over trait space
+        # We need to broadcast the integration over all spatial points
+        gsw_leaf = similar(s)  # Initialize output field
+        
+        # Generate quadrature points using spatially-averaged variance and means
+        # (For full spatial heterogeneity, would need per-gridcell quadrature - future optimization)
+        quad = uSPACStomata.generate_trait_quadrature(;
+            FT = FT,
+            n_quad = pars.n_quad,
+            μ_logkx = μ_logkx_val,  # Spatial mean
+            μ_P50 = μ_P50_val,
+            μ_ΠR = μ_ΠR_val,
+            σ_logkx = σ_logkx_val,  # Climate-dependent variance (spatial average)
+            σ_P50 = σ_P50_val,
+            σ_ΠR = σ_ΠR_val,
+            ρ_kx_P50 = ρ_kx_P50_val,  # Climate-dependent correlations
+            ρ_kx_ΠR = ρ_kx_ΠR_val,
+            ρ_P50_ΠR = ρ_P50_ΠR_val
+        )
+        
+        # Integrate over traits: E[gsw] = Σ wᵢ × gsw(traitᵢ)
+        @. gsw_leaf = zero(s)  # Initialize
+        for i in 1:length(quad.points)
+            logkx_sample, P50_sample, ΠR_sample = quad.points[i]
+            kx_sample_val = exp(logkx_sample)
+            weight = quad.weights[i]
+            
+            # Compute Π-groups for this trait sample (broadcast over space)
+            kx_sample_field = @. zero(kx_mean) + kx_sample_val
+            P50_sample_field = @. zero(ψx50_mean) + P50_sample
+            ΠR_sample_field = @. zero(ΠR_mean) + ΠR_sample
+            
+            ΠF_sample, ΠT_sample, ΠS_sample = uSPACStomata.pi_groups_from_calibrated_traits(
+                p, canopy, pars, kx_sample_field, P50_sample_field, ΠR_sample_field, FT
+            )
+            
+            # Π → (fww, s*, s_w) for this trait sample
+            fww_sample = @. _uspac_fww_from_Pi(ΠR_sample, ΠF_sample)
+            sstar_sample = @. _uspac_s_of_beta(
+                pars.β_star_frac * fww_sample, 
+                ΠR_sample, ΠF_sample, ΠT_sample, ΠS_sample, pars.b
+            )
+            sw_sample = @. _uspac_s_of_beta(
+                pars.β_w_frac * fww_sample,
+                ΠR_sample, ΠF_sample, ΠT_sample, ΠS_sample, pars.b
+            )
+            
+            # β(s) piecewise for this trait sample
+            r_sample = @. clamp((s - sw_sample) / max(sstar_sample - sw_sample, eps(FT)), FT(0), FT(1))
+            β_sample = @. fww_sample * r_sample
+            
+            # Stomatal conductance for this trait sample
+            ρw = FT(1000.0); Mw = FT(0.01801528)
+            E_mps_sample = @. β_sample * E0
+            E_mol_sample = @. (ρw * E_mps_sample) / Mw
+            gsw_sample = @. ifelse(VPD > eps(FT),
+                                  min(E_mol_sample * (P_air / VPD), pars.gsw_max),
+                                  FT(0))
+            
+            # Accumulate weighted contribution
+            @. gsw_leaf = gsw_leaf + weight * gsw_sample
+        end
+    else
+        # ============ MEAN-FIELD (Original Code) ============
+        # Compute remaining Π-groups from model components
+        ΠF, ΠT, ΠS = uSPACStomata.pi_groups_from_calibrated_traits(p, canopy, pars, kx_mean, ψx50_mean, ΠR_mean, FT)
+
+        # --- Π → (fww, s*, s_w) elementwise ---
+        fww   = @. _uspac_fww_from_Pi(ΠR_mean, ΠF)
+        sstar = @. _uspac_s_of_beta(pars.β_star_frac * fww, ΠR_mean, ΠF, ΠT, ΠS, pars.b)
+        sw    = @. _uspac_s_of_beta(pars.β_w_frac    * fww, ΠR_mean, ΠF, ΠT, ΠS, pars.b)
+
+        # --- β(s) piecewise ---
+        r  = @. clamp((s - sw) / max(sstar - sw, eps(FT)), FT(0), FT(1))
+        β  = @. fww * r
+
+        # --- Stomatal conductance (leaf, molar) and canopy resistance ---
+        ρw = FT(1000.0); Mw = FT(0.01801528)
+        E_mps   = @. β * E0
+        E_mol   = @. (ρw * E_mps) / Mw
+        gsw_leaf = @. ifelse(VPD > eps(FT),
+                             min(E_mol * (P_air / VPD), pars.gsw_max),
+                             FT(0))
+    end
+
+    # ============ COMMON OUTPUT (Both mean-field and distribution) ============
+
+    # Optional aux storage
     if Base.hasproperty(p.canopy.conductance, :gsw_leaf)
         @. p.canopy.conductance.gsw_leaf = gsw_leaf
     end
@@ -563,6 +569,7 @@ function update_canopy_conductance!(p, Y, model::uSPACConductancePi, canopy)
         @. p.canopy.conductance.gsw_canopy = gsw_leaf * max(LAI, sqrt(eps(FT)))
     end
 
+    # Convert to canopy resistance (ground area basis)
     g_leaf_mps = @. gsw_leaf * (Rgas * T_air / P_air)
     g_canopy   = @. g_leaf_mps * max(LAI, sqrt(eps(FT)))
     @. p.canopy.conductance.r_stomata_canopy = 1 / (g_canopy + eps(FT))

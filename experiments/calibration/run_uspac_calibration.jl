@@ -24,7 +24,7 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     sample_date_ranges = [("2016-12-1", "2019-9-1")],
     extend = Dates.Month(3),
     spinup = Dates.Month(3),
-    # Grid (horizontal elements, vertical levels)
+    # Grid (horizontal elements, vertical elements)
     nelements = (101, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,

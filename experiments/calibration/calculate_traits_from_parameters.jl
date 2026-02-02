@@ -36,14 +36,14 @@ aridity = parent(cwd_field)  # Global Aridity Index (P/ET0)
 lats = parent(lats_field)
 lons = parent(lons_field)
 
-# Load parameter estimates
+# Load parameter estimates from calibration iteration 3
 parameters = (
-    βkx_base = -6.5,
-    βΠR_base = -4.4,      # Adjusted for percentile-based normalization
-    βψx50_slope = 1.2,    # Reduced slope for realistic P50 range (-1 to -10 MPa)
-    βkx_coord = -2.5,     # Increased coordination for more kx variation (2-3 orders of magnitude)
-    βψx50_base = 0.2,     # Baseline for P50 equation
-    βΠR_slope = 6.0       # Slope for isohydric-anisohydric transition
+    βkx_base        =  2.1482,  # Baseline log conductivity
+    βkx_coord       =  2.6110,  # kx-P50 coordination (safety-efficiency trade-off)
+    βψx50_base      =  1.9949,  # P50 baseline
+    βψx50_slope     = -1.4886,  # P50 climate sensitivity
+    βΠR_base        =  0.9763,  # Stomatal strategy baseline (isohydric-anisohydric)
+    βΠR_slope       = -0.4456   # Stomatal strategy climate sensitivity
 )
 
 println("\nCalibrated parameters:")
@@ -61,61 +61,80 @@ println("\nAridity statistics:")
 land_aridity = filter(!isnan, aridity)
 println("  Global Aridity Index (P/ET0) - min: $(minimum(land_aridity)), max: $(maximum(land_aridity)), mean: $(mean(land_aridity))")
 
-# Normalization: For Global Aridity Index, typical values range 0-6.5
-# Ocean points are NaN and will be filtered out from statistics
-# We normalize to get aridity_norm in a reasonable range for the trait equations
-
 # Normalize aridity for trait calculations
-# Raw aridity: high = wet (more P/ET0), low = dry (less P/ET0)
+# This matches the normalization in src/standalone/Vegetation/stomatalconductance.jl (line 374)
+# For Global Aridity Index (P/ET0):
+# 0 = hyper-arid, 0.03-0.2 = arid, 0.2-0.5 = semi-arid, 0.5-0.65 = dry sub-humid
+# 0.65-1.0 = humid, >1.0 = very humid, >2.0 = extremely humid
 # We INVERT so that: high norm = dry, low norm = wet
-# Use 95th percentile as reference to avoid skewing by extreme humid values
-using Statistics
-ref_aridity = quantile(land_aridity, 0.95)  # 95th percentile = "wet" reference
-aridity_norm = @. (ref_aridity - aridity) / ref_aridity
-# Result: wet (high aridity) → low norm (~0), dry (low aridity) → high norm (~1)
-# NaN (ocean) stays NaN and propagates through calculations
+# Clamp to reasonable range (2.0 = very humid reference)
+# NOTE: Ocean points are already NaN in the aridity field
+aridity_norm = @. 1.0 - clamp(aridity / 2.0, 0.0, 1.0)
+# Result: 
+#   aridity=0 (hyper-arid) → norm=1.0 (very dry)
+#   aridity=2.0 (very humid) → norm=0.0 (very wet)
+#   NaN (ocean) stays NaN and propagates through calculations
 
 land_norm = filter(!isnan, aridity_norm)
-#println("  Reference aridity (95th percentile): $(ref_aridity)")
-println("  Inverted and normalized - min: $(minimum(land_norm)), max: $(maximum(land_norm)), mean: $(mean(land_norm))")
+println("  Normalized aridity - min: $(minimum(land_norm)), max: $(maximum(land_norm)), mean: $(mean(land_norm))")
 println("  Median: $(median(land_norm)), 25%: $(quantile(land_norm, 0.25)), 75%: $(quantile(land_norm, 0.75))")
 
 # --- Calculate functional traits from calibrated parameters ---
+# This matches the computation in src/standalone/Vegetation/stomatalconductance.jl (lines 393-415)
+
+#     WET ←─────────── aridity_norm ─────────→ DRY
+# 0.0                                       1.0
+# (aridity_norm: 0 = wet, 1 = dry)
+
+# ψx50:  ╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (exponential, always negative, DECREASES with aridity_norm)
+#     -0.5 MPa (wet) → -10 MPa (dry)
+
+# kx:    ╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (decreases with aridity_norm via coordination with ψx50)
+#     high → low
+
+# ΠR:    ───╮
+#           ╰──────  (sigmoid S-curve)
+#     0 (isohydric, wet) → 1 (anisohydric, dry)
 
 # ψx50: Negative water potential using exponential
-# Physical meaning: Dry plants have more cavitation-resistant xylem (more negative P50)
-# WET (low aridity_norm) ←───── aridity_norm ─────→ DRY (high aridity_norm)
-# With POSITIVE slope: high aridity_norm → large positive exponent → very negative P50
-# ψx50:  ╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (more negative in dry)
-#     -1 MPa (wet) → -10^36 MPa (dry)
-ψx50 = @. -exp(parameters.βψx50_base + parameters.βψx50_slope * aridity_norm)
+# Higher aridity_norm (dry) → more negative P50 (cavitation-resistant)
+# Clamp the exponent to prevent extreme values in hyperarid regions
+# Use ifelse to skip ocean points (aridity_norm = NaN)
+ψx50_exponent = @. ifelse(isnan(aridity_norm), 0.0, 
+                          clamp(parameters.βψx50_base + parameters.βψx50_slope * aridity_norm, -2.0, 4.0))
+ψx50 = @. ifelse(isnan(aridity_norm), NaN, -exp(ψx50_exponent))
 
 land_psi50 = filter(!isnan, ψx50)
 println("\nψx50 (MPa) statistics (land only):")
 println("  min: $(minimum(land_psi50)), max: $(maximum(land_psi50)), mean: $(mean(land_psi50)), median: $(median(land_psi50))")
 
 # kx: Hydraulic conductance with safety-efficiency coordination
-# Physical meaning: Encodes the universal trade-off in the safety-efficiency spectrum
-# Literature shows kx and P50 are coordinated (Liu et al. 2019)
+# Encode the universal trade-off: safety-efficiency spectrum
+# literature shows kx and P50 are coordinated
 # High kx → vulnerable to cavitation → requires less negative P50 (wet climates)
 # Low kx → safer from cavitation → can have very negative P50 (dry climates)
-# kx:    ╱╱╱╱╱╱╱╱╱╱╱╱╱╱  (increases with aridity through P50 coordination)
-#     low → high
-kx = @. exp(parameters.βkx_base + parameters.βkx_coord * log(-ψx50))
+# kx's direct climate response is weak once you account for P50 (Liu et al. 2019)
+# 
+# COORDINATION EQUATION: kx = exp(βkx_base - βkx_coord * log(-ψx50))
+# Note the NEGATIVE sign: as ψx50 becomes more negative (larger -ψx50),
+# log(-ψx50) increases, so kx DECREASES (with positive βkx_coord)
+# This creates: less negative P50 → high kx (wet), more negative P50 → low kx (dry)
+# Clamp log argument to prevent issues with extreme ψx50 values
+# Also clamp the full exponent to prevent overflow/underflow in exp()
+kx_exponent = @. parameters.βkx_base - parameters.βkx_coord * log(clamp(-ψx50, 0.1, 100.0))
+kx = @. ifelse(isnan(aridity_norm), NaN,
+               exp(clamp(kx_exponent, -20.0, 10.0)))
 
 land_kx = filter(!isnan, kx)
 println("\nkx (hydraulic conductance) statistics (land only):")
 println("  min: $(minimum(land_kx)), max: $(maximum(land_kx)), mean: $(mean(land_kx)), median: $(median(land_kx))")
 
-# ΠR: Isohydric-anisohydric regulation strategy
-# Physical meaning: Dry plants are more anisohydric 
-# (tolerate lower leaf water potential, less stomatal regulation)
-# WET (low aridity_norm) ←───── aridity_norm ─────→ DRY (high aridity_norm)
-# With POSITIVE slope: high aridity_norm → high ΠR (anisohydric)
-# ΠR:        ╭──────  (sigmoid, increases with aridity_norm)
-#     ───╯
-#     0 (isohydric, wet) → 1 (anisohydric, dry)
-ΠR = @. 1 / (1 + exp(-(parameters.βΠR_base + parameters.βΠR_slope * aridity_norm)))
+# ΠR: Logistic sigmoid (0 to 1)
+# Higher aridity_norm (dry) → higher ΠR (anisohydric strategy)
+# Clamp the sigmoid argument to prevent overflow in exp()
+ΠR_logit = @. parameters.βΠR_base + parameters.βΠR_slope * aridity_norm
+ΠR = @. ifelse(isnan(aridity_norm), NaN,
+               1 / (1 + exp(-clamp(ΠR_logit, -20.0, 20.0))))
 
 land_pr = filter(!isnan, ΠR)
 println("\nΠR (regulation strategy) statistics (land only):")

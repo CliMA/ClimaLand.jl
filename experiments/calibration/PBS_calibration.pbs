@@ -3,7 +3,7 @@
 #PBS -o output.txt
 #PBS -e error.txt
 #PBS -l walltime=12:00:00
-#PBS -l select=1:ncpus=1:ngpus=1
+#PBS -l select=1:ncpus=4:ngpus=1:mem=50GB
 
 ## Account number for CliMA
 #PBS -A UCIT0011
@@ -16,6 +16,35 @@ module load climacommon
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=.buildkite/ experiments/calibration/generate_observations.jl
-julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+## Set SMAP data directory for observation generation
+export SMAP_DATA_PATH="/glade/campaign/univ/ucit0011/smap/SMAP_L3_SM_P_E"
+
+## Add project directory to Julia depot path so workers can find Overrides.toml
+##export JULIA_DEPOT_PATH="/glade/derecho/scratch/reich/ClimaLand.jl:$HOME/.julia"
+
+echo "======================================"
+echo "Job started at: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Running in: $(pwd)"
+echo "======================================"
+
+echo "Instantiating Julia environment..."
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)' || { echo "Package instantiation failed"; exit 1; }
+
+##echo "Installing Glob package for SMAP..."
+##julia --project=.buildkite -e 'using Pkg; Pkg.add("Glob")' || { echo "Glob installation failed"; exit 1; }
+
+##echo "Regridding SMAP soil moisture observations..."
+##julia --project=.buildkite/ experiments/calibration/regrid_smap_to_model_grid.jl || { echo "SMAP regrid failed"; exit 1; }
+
+##echo "Generating SMAP soil moisture observations..."
+##julia --project=.buildkite/ experiments/calibration/generate_smap_observations_from_regridded.jl || { echo "SMAP observation generation failed"; exit 1; }
+
+##echo "Generating aridity observations..."
+##julia --project=.buildkite -e 'using Pkg; Pkg.add("ArchGDAL"); Pkg.add("Interpolations")' || { echo "Package installation failed"; exit 1; }
+##julia --project=.buildkite/ experiments/calibration/download_and_prepare_aridity.jl || { echo "aridity generation failed"; exit 1; }
+
+
+echo "Starting calibration..."
+julia --project=.buildkite/ experiments/calibration/run_uspac_calibration.jl
+

@@ -53,6 +53,7 @@ include("./solar_induced_fluorescence.jl")
 include("./pfts.jl")
 include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
+include("./canopy_turbulent_fluxes.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
@@ -290,7 +291,6 @@ end
             c = FT(4),
         ),
         retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
-        transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
@@ -324,7 +324,6 @@ function PlantHydraulicsModel{FT}(
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
     conductivity_model = PlantHydraulics.Weibull(toml_dict),
     retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
-    transpiration = PlantHydraulics.DiagnosticTranspiration{FT}(),
 ) where {FT <: AbstractFloat}
     @assert n_stem >= 0 "Stem number must be non-negative"
     @assert n_leaf >= 0 "Leaf number must be non-negative"
@@ -364,7 +363,6 @@ function PlantHydraulicsModel{FT}(
         compartment_midpoints,
         compartment_surfaces,
         parameters,
-        transpiration,
     )
 end
 
@@ -402,6 +400,7 @@ function PrescribedBiomassModel{FT}(
         FT,
         typeof(plant_area_index),
         typeof(rooting_depth),
+        typeof(height),
     }(
         plant_area_index,
         rooting_depth,
@@ -542,30 +541,16 @@ function PModelConductance{FT}(
 end
 
 """
-    uSPACConductanceModel{FT}(
-        domain;
-        canopy_params,
-        soil_params,
-        root_params,
-        met_params = nothing,
-        gsw_max = LP.get_default_parameter(FT, :uspac_gsw_cap) # or FT(Inf)
+    uSPACConductancePi{FT}(
+        uspac_pars::uSPACPiParameters{FT}
     ) where {FT <: AbstractFloat}
 
-Creates an uSPACConductanceModel using β(s) parameters diagnosed from
-your existing canopy/soil/root parameter structs (one-time at setup).
+Creates a uSPACConductancePi model using calibrated Π-group parameters.
+This model uses dimensionless analysis to predict stomatal conductance
+based on soil-plant-atmosphere hydraulics.
 """
-function uSPACConductanceModel{FT}(
-    domain;
-    canopy_params,
-    soil_params,
-    root_params,
-    met_params = nothing,
-    gsw_max = FT(Inf),
-) where {FT <: AbstractFloat}
-    return uSPACConductanceModel{FT}(;
-        canopy_params, soil_params, root_params, met_params, gsw_max
-    )
-end
+# Note: Constructor is defined in stomatalconductance.jl
+# This is just documentation for the Canopy module interface
 
 
 
@@ -662,6 +647,10 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PS, D} <:
     "Canopy model domain"
     domain::D
 end
+
+# Property accessor to maintain backward compatibility with old API
+Base.getproperty(canopy::CanopyModel, sym::Symbol) = 
+    sym === :earth_param_set ? getfield(canopy, :parameters).earth_param_set : getfield(canopy, sym)
 
 """
     CanopyModel{FT}(;
@@ -803,7 +792,7 @@ function CanopyModel{FT}(
     autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
     radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
     photosynthesis = FarquharModel{FT}(domain, toml_dict),
-    conductance =  uSPACConductanceModel{FT}(domain, toml_dict),
+    conductance = MedlynConductanceModel{FT}(domain, toml_dict),
     soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
@@ -838,11 +827,13 @@ function CanopyModel{FT}(
 
     # Confirm that the LAI passed agrees with the LAI of the biomass model
     @assert biomass.plant_area_index.LAI == LAI
+    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(toml_dict, biomass.height)
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
         ground,
-        prognostic_land_components,
+        turbulent_flux_parameterization;
+        prognostic_land_components = prognostic_land_components,
     )
 
     earth_param_set = LP.LandParameters(toml_dict)

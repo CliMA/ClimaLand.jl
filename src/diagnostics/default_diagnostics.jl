@@ -450,6 +450,7 @@ variable(s) each diagnostic comes from.
 function get_possible_diagnostics(model::EnergyHydrology)
     diagnostics = [
         "swc",
+        "sm_surface",
         "si",
         "sie",
         "tsoil",
@@ -593,7 +594,7 @@ function get_possible_diagnostics(model::LandModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics = ["swa", "swu", "lwu", "tair", "precip"]
+    additional_diagnostics = ["swa", "swu", "lwu", "lhf", "shf", "tair", "precip"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end

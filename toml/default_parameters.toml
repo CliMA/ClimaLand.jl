@@ -480,6 +480,18 @@ type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
+[canopy_momentum_roughness_length]
+value = 0.1
+type = "float"
+description = "Roughness length for momentum (m)"
+tag = "MoninObukhovCanopyFluxes"
+
+[canopy_scalar_roughness_length]
+value = 0.2
+type = "float"
+description = "Roughness length for scalars (m)"
+tag = "MoninObukhovCanopyFluxes"
+
 ["leaf_Cd"]
 value = 0.01
 type = "float"
