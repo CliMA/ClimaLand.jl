@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 ------
+v1.5.2
+------
+- Fix divide by zero bug
+
 v1.5.1
 ------
 - Adjust RootSolvers lower compat 
