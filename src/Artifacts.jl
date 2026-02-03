@@ -581,4 +581,25 @@ function era5_surface_data_1979_2024_path(; context = nothing)
     )
 end
 
+function crujra_forcing_data_folder_path(; context = nothing)
+    return "/net/sampo/data1/crujra/crujra_forcing_data_artifact"
+end
+
+function find_crujra_year_paths(start_date, stop_date; context = nothing)
+    year0 = Dates.year(start_date)
+    yearf = Dates.year(stop_date)
+    crujra_path =
+        crujra_forcing_data_folder_path(context = context)
+    years = collect(
+        joinpath(crujra_path, "crujra_forcing_data_$(year)_0.5x0.5.nc") for
+        year in year0:yearf
+    )
+    for year in years
+        isfile(year) || error(
+            "The year $year does not exist in the CRU-JRA forcing data artifact; please use dates between 1901 and 2023.",
+        )
+    end
+    return years
+end
+
 end
