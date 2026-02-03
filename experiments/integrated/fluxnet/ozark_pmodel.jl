@@ -181,12 +181,8 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
 )
 
 # Set up plant hydraulics
-# Read in LAI from MODIS data
-surface_space = land_domain.space.surface;
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
@@ -202,27 +198,38 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
 )
 height = h_stem + h_leaf
 biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+    Canopy.ZhouOptimalLAIModel{FT}(surface_domain, toml_dict; SAI, RAI, rooting_depth, height)
 
 # Set up the energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
+autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}(toml_dict)
+sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
-canopy_forcing = (; atmos, radiation, ground)
+turbulent_flux_parameterization =
+    Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
+boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+    atmos,
+    radiation,
+    ground,
+    turbulent_flux_parameterization,
+    prognostic_land_components,
+)
+earth_param_set = LP.LandParameters(toml_dict)
 
 # Combine the components into a CanopyModel
-canopy = Canopy.CanopyModel{FT}(
-    surface_domain,
-    canopy_forcing,
-    LAI,
-    toml_dict;
-    prognostic_land_components,
+canopy = Canopy.CanopyModel{FT}(;
+    domain = surface_domain,
+    boundary_conditions,
+    earth_param_set,
+    autotrophic_respiration,
     radiative_transfer,
     photosynthesis,
     conductance,
     soil_moisture_stress,
     hydraulics,
     energy,
+    sif,
     biomass,
 )
 
