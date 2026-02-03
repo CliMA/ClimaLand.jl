@@ -69,6 +69,10 @@ hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict);
 height = FT(1)
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+
+# Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+lai_model = Canopy.OptimalLAIModel{FT}(land_domain, toml_dict)
+
 canopy = ClimaLand.Canopy.CanopyModel{FT}(
     land_domain,
     forcing,
@@ -76,6 +80,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     toml_dict;
     hydraulics,
     biomass,
+    lai_model,
 )
 
 function set_ic!(Y, p, t0, model)

@@ -274,6 +274,26 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
+@diagnostic_compute "leaf_area_index_pred" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.LAI
+@diagnostic_compute "a0_daily" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_daily
+@diagnostic_compute "a0_annual" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_annual
+@diagnostic_compute "a0_daily_acc" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.lai_model.A0_daily_acc
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
@@ -405,6 +425,37 @@ end
     CanopyModel,
 } p.drivers.q
 @diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.u
+
+# Vapor Pressure Deficit
+function compute_vapor_pressure_deficit!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    canopy = get_canopy(land_model)
+    earth_param_set = canopy.earth_param_set
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = ClimaLand.vapor_pressure_deficit(
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            thermo_params,
+        )
+        return out
+    else
+        @. out = ClimaLand.vapor_pressure_deficit(
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            thermo_params,
+        )
+    end
+end
 
 function compute_precip!(
     out,
@@ -900,7 +951,7 @@ function compute_canopy_temperature!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     PAI = p.scratch1
-    @. PAI = p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem
+    @. PAI = p.canopy.lai_model.LAI + p.canopy.biomass.area_index.stem
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
@@ -925,7 +976,7 @@ function compute_canopy_temperature!(
     t,
     land_model::CanopyModel{FT},
 ) where {FT}
-    PAI = p.canopy.biomass.area_index.leaf .+ p.canopy.biomass.area_index.stem # Allocates
+    PAI = p.canopy.lai_model.LAI .+ p.canopy.biomass.area_index.stem # Allocates
     if isnothing(out)
         out = zeros(land_model.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean

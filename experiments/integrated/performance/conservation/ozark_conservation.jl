@@ -201,6 +201,10 @@ for float_type in (Float32, Float64)
         start_date + Second(t0),
         stop_date + Second(tf),
     )
+
+    # Set up optimal LAI model (loads spatially varying GSL and A0_annual)
+    lai_model = Canopy.OptimalLAIModel{FT}(canopy_domain, toml_dict)
+
     # Get the maximum LAI at this site over the first year of the simulation
     maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
     RAI = FT(maxLAI) * f_root_to_shoot # convert to float type of simulation
@@ -241,6 +245,7 @@ for float_type in (Float32, Float64)
         radiative_transfer,
         photosynthesis,
         conductance,
+        lai_model,
         hydraulics,
         energy,
         biomass,
