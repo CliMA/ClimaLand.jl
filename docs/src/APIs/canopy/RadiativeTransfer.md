@@ -40,4 +40,5 @@ ClimaLand.Canopy.canopy_sw_rt_beer_lambert
 ClimaLand.Canopy.canopy_sw_rt_two_stream
 ClimaLand.Canopy.extinction_coeff
 ClimaLand.Canopy.compute_G
+ClimaLand.Canopy.compute_PPFD
 ```

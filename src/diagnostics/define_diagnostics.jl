@@ -325,6 +325,28 @@ function define_diagnostics!(land_model, possible_diags)
             compute_leaf_area_index!(out, Y, p, t, land_model),
     )
 
+    # Daily potential GPP (from optimal LAI model)
+    add_diagnostic_variable!(
+        short_name = "a0d",
+        long_name = "Daily Potential GPP",
+        standard_name = "daily_potential_gpp",
+        units = "mol CO2 m^-2 day^-1",
+        comments = "Cumulative sum of potential GPP (with fAPAR=1) over each day, used by the optimal LAI model.",
+        compute! = (out, Y, p, t) ->
+            compute_a0_daily!(out, Y, p, t, land_model),
+    )
+
+    # Annual potential GPP (from optimal LAI model)
+    add_diagnostic_variable!(
+        short_name = "a0a",
+        long_name = "Annual Potential GPP",
+        standard_name = "annual_potential_gpp",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Cumulative sum of daily potential GPP (at local noon) over each year, used by the optimal LAI model.",
+        compute! = (out, Y, p, t) ->
+            compute_a0_annual!(out, Y, p, t, land_model),
+    )
+
     # Moisture stress factor
     conditional_add_diagnostic_variable!(
         possible_diags;

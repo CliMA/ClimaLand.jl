@@ -198,6 +198,23 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
 end
 
 """
+    optimal_lai_initial_conditions_path(; context = nothing)
+
+Return the path to the NetCDF file containing spatially varying initial conditions
+for the prognostic optimal LAI model:
+- GSL: Growing season length (days)
+- A0_annual: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
+- precip_annual: Mean annual precipitation (mol H₂O m⁻² yr⁻¹)
+- vpd_gs: Growing season VPD (Pa)
+- lai_init: Initial LAI from MODIS (m² m⁻²)
+"""
+function optimal_lai_initial_conditions_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_inputs", context)
+    return joinpath(dir, "optimal_lai_inputs.nc")
+end
+
+
+"""
     clm_data__folder_path(; context, lowres = false)
 
 Return the path to the folder that contains the clm data. If the lowres flag is set to true,

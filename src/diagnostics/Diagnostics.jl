@@ -25,7 +25,8 @@ import ..Canopy:
     get_Rd_leaf,
     MedlynConductanceModel,
     PModelConductance,
-    canopy_temperature
+    canopy_temperature,
+    ZhouOptimalLAIModel
 import ..Domains:
     top_center_to_surface,
     AbstractDomain,

@@ -20,6 +20,7 @@ standalone_models = [
         ]
         "Canopy structure" => [
             "Prescribed structure" => "standalone/pages/vegetation/canopy_structure/prescribed_structure.md",
+            "Optimal LAI" => "standalone/pages/vegetation/canopy_structure/optimal_lai.md",
         ]
         "Canopy energy" => [
             "Physics" => "standalone/pages/vegetation/canopy_energy/canopy_energy.md",

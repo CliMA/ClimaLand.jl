@@ -274,6 +274,11 @@ end
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
 
+# Canopy - Optimal LAI model diagnostics
+@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_daily
+
+@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_annual
+
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
     SoilCanopyModel,

@@ -86,6 +86,38 @@ type = "float"
 description = "The constant canopy height (m)"
 tag = "PrescribedBiomassModel"
 
+# Optimal LAI Model (Zhou et al. 2025)
+
+["optimal_lai_k"]
+value = 0.5
+type = "float"
+description = "Light extinction coefficient (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z"]
+value = 12.227
+type = "float"
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma"]
+value = 1.1
+type = "float"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_alpha"]
+value = 0.067
+type = "float"
+description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0"]
+value = 0.65
+type = "float"
+description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
+tag = "OptimalLAIModel"
+
 # Plant Hydraulics Parameters
 
 ["plant_nu"]
