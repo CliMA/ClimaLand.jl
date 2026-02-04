@@ -501,7 +501,7 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_pre_exponential_factor"]
-value = 194000.0
+value = 23835.0
 type = "float"
 description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
 tag = "SoilCO2Parameters"
@@ -546,4 +546,34 @@ tag = "SoilCO2Parameters"
 value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
+tag = "SoilCO2Parameters"
+
+["O2_volume_fraction"]
+value = 0.2095
+type = "float"
+description = "Volumetric fraction of O₂ in atmospheric air (dimensionless)"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_k298"]
+value = 3.4e-4
+type = "float"
+description = "Henry's law constant for CO₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_Tcoeff"]
+value = 2400.0
+type = "float"
+description = "Temperature coefficient for CO₂ Henry's law (K)"
+tag = "SoilCO2Parameters"
+
+["O2_henry_k298"]
+value = 1.3e-5
+type = "float"
+description = "Henry's law constant for O₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["O2_henry_Tcoeff"]
+value = 1500.0
+type = "float"
+description = "Temperature coefficient for O₂ Henry's law (K)"
 tag = "SoilCO2Parameters"

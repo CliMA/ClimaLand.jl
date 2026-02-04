@@ -24,6 +24,7 @@ import ClimaLand.Parameters as LP
 using ClimaDiagnostics
 using ClimaUtilities
 
+
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
@@ -31,7 +32,7 @@ import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 climaland_dir = pkgdir(ClimaLand)
-site_ID = "US-MOz"
+site_ID = "NEON-cper"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
 
@@ -114,14 +115,14 @@ pft_pcts = [
     0.0, # BET_Trop
     0.0, # BET_Temp
     0.0, # BDT_Trop
-    1.0, # BDT_Temp
+    0.0, # BDT_Temp
     0.0, # BDT_Bor
     0.0, # BES_Temp
     0.0, # BDS_Temp
     0.0, # BDT_Bor
     0.0, # C3G_A
     0.0, # C3G_NA
-    0.0, # C4G
+    1.0, # C4G
 ]
 
 # Load the PFT parameters into the namespace
@@ -291,7 +292,7 @@ short_names_1D = [
     "lhf",
     "rn",
 ]
-short_names_2D = ["swc", "tsoil", "si"]
+short_names_2D = ["swc", "tsoil", "si", "sco2", "soc", "so2"]
 output_vars = [short_names_1D..., short_names_2D...]
 
 diags = ClimaLand.default_diagnostics(
@@ -301,6 +302,14 @@ diags = ClimaLand.default_diagnostics(
     output_vars,
     reduction_period = :halfhourly,
 )
+
+#diags = ClimaLand.default_diagnostics(
+#    land,
+#    start_date;
+#    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/NEON-CPER/20260126_bugfix_wholeYear_e409553ceb97104002d6163ccc3d6de19a29532b/output/"),
+#    output_vars,
+#    reduction_period = :halfhourly,
+#);
 
 simulation = LandSimulation(
     start_date,
@@ -312,12 +321,25 @@ simulation = LandSimulation(
     diagnostics = diags,
 )
 solve!(simulation)
+#=
+
+using Logging
+
+io = open("logfile5.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir =
     #joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/US-MOz/pft/out")
-    "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/FirstTries/ozark_pft/US-MOz/pft/out"
+    "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/FirstTries/NEON_cper_pft/NEON-cper-withERA/pft/"
 mkpath(savedir)
+
 LandSimVis.make_diurnal_timeseries(
     land_domain,
     diags,
@@ -332,7 +354,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "gpp","swu"],
+    short_names = ["swc", "tsoil", "gpp","swu","sco2"],
     spinup_date = start_date + Day(20),
     comparison_data,
-)
+)=#

@@ -3,7 +3,10 @@ export volumetric_air_content,
     microbe_source,
     o2_concentration,
     o2_fraction_from_concentration,
-    o2_availability
+    o2_availability,
+    henry_constant,
+    beta_gas,
+    effective_porosity
 
 
 """
@@ -137,6 +140,67 @@ end
 
 
 """
+    henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT) where {FT}
+
+Compute temperature-dependent Henry's law constant using van 't Hoff equation.
+Returns K_H in mol/(m³·Pa).
+
+The temperature dependence follows:
+    K_H(T) = K_H(T_ref) * exp[dln_K_H_dT * (1/T - 1/T_ref)]
+
+where T_ref = 298.15 K and dln_K_H_dT is the temperature coefficient.
+
+Reference: Sander (2015), Atmos. Chem. Phys., 15, 4399-4981.
+"""
+function henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT) where {FT}
+    T_ref = FT(298.15)
+    return K_H_298 * exp(dln_K_H_dT * (FT(1) / T - FT(1) / T_ref))
+end
+
+
+"""
+    beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+
+Compute dimensionless Henry's law factor β = K_H * R * T.
+
+This converts liquid water storage to air-equivalent storage capacity.
+For CO2 at 20-25°C: β ≈ 0.7-0.9 (significant buffering)
+For O2 at 20°C: β ≈ 0.03 (less buffering, but still helps)
+
+Arguments:
+- K_H: Henry's law constant (mol/(m³·Pa))
+- R: Universal gas constant (J/(mol·K))
+- T: Temperature (K)
+"""
+function beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+    return K_H * R * T
+end
+
+
+"""
+    effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+
+Compute effective porosity accounting for gas and dissolved storage.
+
+    θ_eff = max(θ_a + β * θ_l, θ_eff_min)
+
+When θ_a → 0 (saturated soil) but θ_l > 0, θ_eff remains finite,
+preventing blow-up in concentration calculations. A minimum floor
+of 1e-4 is applied for numerical stability in extreme conditions
+(e.g., very dry desert soils where both θ_a and θ_l are small).
+
+Arguments:
+- θ_a: Volumetric air content (m³/m³)
+- θ_l: Volumetric liquid water content (m³/m³)
+- β: Dimensionless Henry's law factor
+"""
+function effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+    θ_eff_min = FT(1e-4)  # Minimum effective porosity for numerical stability
+    return max(θ_a + β * θ_l, θ_eff_min)
+end
+
+
+"""
     volumetric_air_content(θ_w::FT,
                            ν::FT,
                            ) where {FT}
@@ -144,9 +208,12 @@ end
 Computes the volumetric air content (`θ_a`) in the soil,
 which is related to the total soil porosity (`ν`) and
 volumetric soil water content (`θ_w = θ_l+θ_i`).
+
+Note: The effective_porosity function provides numerical stability
+when θ_a approaches zero by accounting for dissolved gas in liquid water.
 """
 function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
-    θ_a = max(ν - θ_w, FT(0))
+    θ_a = max(ν - θ_w, FT(0))  # Physical floor only
     return θ_a
 end
 
@@ -187,9 +254,9 @@ function co2_diffusivity(
     P_ref = FT(LP.P_ref(earth_param_set))
     θ_a = volumetric_air_content(θ_w, ν)
     D0 = D_ref * max((T_soil / T_ref), 0)^FT(1.75) * (P_ref / P_sfc)
-    D =
-        D0 *
-        (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) *
-        (θ_a / θ_a100)^(FT(2) + FT(3) / b)
+    # Cap the ratio to prevent diffusivity blow-up in very dry conditions
+    # (e.g., Sahara where θ_a can greatly exceed θ_a100)
+    ratio = min(θ_a / max(θ_a100, eps(FT)), FT(5))
+    D = D0 * (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) * ratio^(FT(2) + FT(3) / b)
     return D
 end

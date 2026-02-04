@@ -96,6 +96,54 @@ function set_soil_initial_conditions!(
 end
 
 """
+    set_soilco2_initial_conditions!(Y, p, land)
+
+Initialize soil CO2 state to be consistent with atmospheric CO2 and soil state.
+CO2 is stored as carbon mass per soil volume (kg C m⁻³ soil).
+"""
+function set_soilco2_initial_conditions!(Y, p, land)
+    FT = eltype(Y.soilco2.CO2)
+    soil = land.soil
+    soilco2 = land.soilco2
+    params = soilco2.parameters
+
+    θ_l = Y.soil.ϑ_l
+    θ_i = Y.soil.θ_i
+    θ_w = θ_l .+ θ_i
+    ν = soil.parameters.ν
+
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        θ_l,
+        θ_i,
+        soil.parameters.ρc_ds,
+        soil.parameters.earth_param_set,
+    )
+    T_soil = ClimaLand.Soil.temperature_from_ρe_int.(
+        Y.soil.ρe_int,
+        θ_i,
+        ρc_s,
+        soil.parameters.earth_param_set,
+    )
+
+    θ_a = ClimaLand.Soil.Biogeochemistry.volumetric_air_content.(θ_w, ν)
+    R = FT(ClimaLand.Parameters.gas_constant(params.earth_param_set))
+    M_C = FT(params.M_C)
+
+    K_H = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
+        params.K_H_co2_298,
+        params.dln_K_H_co2_dT,
+        T_soil,
+    )
+    β = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H, R, T_soil)
+    θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β)
+
+    @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
+    Y.soilco2.O2_f .= FT(0.21)
+    Y.soilco2.SOC .= FT(5.0)
+    return nothing
+end
+
+"""
     clip_to_bounds(
     T::FT,
     lb::FT,
@@ -238,12 +286,6 @@ function make_set_initial_state_from_file(
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
         end
-        # SoilCO2 IC
-        if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-        end
         # Soil IC
         if enforce_constraints
             # get only the values over land
@@ -261,6 +303,11 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # SoilCO2 IC (requires soil state)
+        if !isnothing(land.soilco2)
+            set_soilco2_initial_conditions!(Y, p, land)
+        end
 
         # Snow IC
         # Use soil temperature at top to set IC
@@ -374,10 +421,6 @@ function make_set_initial_state_from_file(
             evaluate!(p.drivers.T, atmos.T, t0)
         end
 
-        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-
         if enforce_constraints
             # get only the values over land
             T_atmos = Array(parent(p.drivers.T))[:]
@@ -394,6 +437,10 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # SoilCO2 IC (requires soil state)
+        set_soilco2_initial_conditions!(Y, p, land)
+
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
