@@ -265,6 +265,7 @@ output_vars = [
     "so2",
     "soc",
     "scms",
+    "lai",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -285,7 +286,19 @@ simulation = LandSimulation(
     diagnostics = diags,
 )
 
-@time solve!(simulation)
+using Logging
+
+io = open("logfile.txt", "w")
+logger = ConsoleLogger(io)
+
+with_logger(logger) do
+    solve!(simulation)
+end
+
+close(io)
+
+
+#@time solve!(simulation)
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
@@ -307,7 +320,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe"],
+    short_names = ["swc", "tsoil", "swe", "lai"],
     spinup_date = start_date + Day(20),
     comparison_data,
 )

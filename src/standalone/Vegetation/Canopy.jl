@@ -894,6 +894,103 @@ function CanopyModel{FT}(
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
+"""
+    function CanopyModel{FT}(
+        domain,
+        forcing::NamedTuple,
+        toml_dict::CP.ParamDict;
+        prognostic_land_components = (:canopy,),
+        biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+        ...
+    ) where {FT}
+
+Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`,
+using the optimal LAI model (ZhouOptimalLAIModel) by default.
+
+This constructor does not require `LAI` as a positional argument, making it suitable
+for use with prognostic LAI models like `ZhouOptimalLAIModel`.
+
+Defaults are provided for each canopy component model, which can be overridden
+by passing in a different instance of that type of model.
+
+The required argument `forcing` should be a NamedTuple with the following fields:
+- `atmos`: a `PrescribedAtmosphere` or `CoupledAtmosphere` object
+- `radiation`: a `PrescribedRadiativeFluxes` or `CoupledRadiativeFluxes` object
+- `ground`: a `PrescribedGroundConditions` or `PrognosticGroundConditions` object
+
+When running the canopy model in standalone mode, set `prognostic_land_components = (:canopy,)`,
+while for running integrated land models, this should be a list of the individual models.
+"""
+function CanopyModel{FT}(
+    domain::Union{
+        ClimaLand.Domains.Point,
+        ClimaLand.Domains.Plane,
+        ClimaLand.Domains.SphericalSurface,
+    },
+    forcing::NamedTuple,
+    toml_dict::CP.ParamDict;
+    prognostic_land_components = (:canopy,),
+    autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    photosynthesis = FarquharModel{FT}(domain, toml_dict),
+    conductance = MedlynConductanceModel{FT}(domain, toml_dict),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
+    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    energy = BigLeafEnergyModel{FT}(toml_dict),
+    biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
+        toml_dict,
+        biomass.height,
+    ),
+    sif = Lee2015SIFModel{FT}(toml_dict),
+) where {FT}
+    (; atmos, radiation, ground) = forcing
+
+    # Confirm that each spatially-varying parameter is on the correct domain
+    for component in [
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+        hydraulics,
+        energy,
+        biomass,
+        sif,
+    ]
+        # For component models without parameters, skip the check
+        !hasproperty(component, :parameters) && continue
+
+        @assert !(component.parameters isa ClimaCore.Fields.Field) ||
+                axes(component.parameters) == domain.space.surface
+    end
+
+    boundary_conditions = AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        ground,
+        turbulent_flux_parameterization,
+        prognostic_land_components,
+    )
+
+    earth_param_set = LP.LandParameters(toml_dict)
+    args = (
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+        hydraulics,
+        energy,
+        sif,
+        biomass,
+        boundary_conditions,
+        earth_param_set,
+        domain,
+    )
+    return CanopyModel{FT, typeof.(args)...}(args...)
+end
+
 ClimaLand.name(::CanopyModel) = :canopy
 
 """

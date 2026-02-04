@@ -193,7 +193,7 @@ function c3_compute_chi(
     VPD::FT,
     ca::FT,
 ) where {FT}
-    (; beta) = pmodel_parameters
+    (; β) = pmodel_parameters
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi, ρ_water) = pmodel_constants
 
     # Convert ca to partial pressure
@@ -205,7 +205,7 @@ function c3_compute_chi(
     Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute xi (sensitivity to dryness)
-    ξ = sqrt(beta * (Kmm + Γstar) / (Drel * ηstar))
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
 
     # Compute ci and chi
     # Guard against zero/negative VPD
@@ -647,11 +647,11 @@ function call_update_optimal_LAI(
     # Compute VPD (clipped to avoid numerical issues)
     VPD = @. lazy(
         max(
-            ClimaLand.vapor_pressure_deficit(
+            Thermodynamics.vapor_pressure_deficit(
+                LP.thermodynamic_parameters(earth_param_set),
                 p.drivers.T,
                 p.drivers.P,
                 p.drivers.q,
-                LP.thermodynamic_parameters(earth_param_set),
             ),
             sqrt(eps(FT)),
         ),
