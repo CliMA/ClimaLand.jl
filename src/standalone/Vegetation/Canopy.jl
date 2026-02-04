@@ -69,7 +69,7 @@ using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
 include("./canopy_turbulent_fluxes.jl")
-
+include("./diagnostic_canopy.jl")
 
 
 ########################################################
@@ -884,15 +884,15 @@ function prognostic_types(canopy::CanopyModel)
 end
 
 """
-    auxiliary_vars(canopy::CanopyModel)
+    auxiliary_vars(canopy::Union{CanopyModel,DiagnosticCanopyModel})
 
 Returns the auxiliary variables for the canopy model by
 looping over each sub-component name in `canopy_components`.
 
-This relies on the propertynames of `CanopyModel` being the same
+This relies on the propertynames of `canopy` being the same
 as those returned by `canopy_components`.
 """
-function auxiliary_vars(canopy::CanopyModel)
+function auxiliary_vars(canopy::Union{CanopyModel,DiagnosticCanopyModel})
     components = canopy_components(canopy)
     auxiliary_list = map(components) do model
         auxiliary_vars(getproperty(canopy, model))
@@ -901,15 +901,15 @@ function auxiliary_vars(canopy::CanopyModel)
 end
 
 """
-    auxiliary_types(canopy::CanopyModel)
+    auxiliary_types(canopy::Union{CanopyModel,DiagnosticCanopyModel})
 
 Returns the auxiliary types for the canopy model by
 looping over each sub-component name in `canopy_components`.
 
-This relies on the propertynames of `CanopyModel` being the same
+This relies on the propertynames of `canopy` being the same
 as those returned by `canopy_components`.
 """
-function auxiliary_types(canopy::CanopyModel)
+function auxiliary_types(canopy::Union{CanopyModel,DiagnosticCanopyModel})
     components = canopy_components(canopy)
     auxiliary_list = map(components) do model
         auxiliary_types(getproperty(canopy, model))
@@ -987,7 +987,7 @@ This function loops over the components of the `CanopyModel` and appends
 each component models auxiliary state vector into a single state vector,
 structured by component name.
 """
-function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
+function initialize_auxiliary(model::Union{CanopyModel{FT},DiagnosticCanopyModel{FT}}, coords) where {FT}
     components = canopy_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -1013,7 +1013,7 @@ Add boundary condition-related variables to the cache.
 This calls functions defined in canopy_boundary_fluxes.jl
 which dispatch on the boundary condition type to add the correct variables.
 """
-function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
+function initialize_boundary_vars(model::Union{CanopyModel{FT},DiagnosticCanopyModel{FT}}, coords) where {FT}
     vars = boundary_vars(model.boundary_conditions, ClimaLand.TopBoundary())
     types = boundary_var_types(
         model,
@@ -1175,12 +1175,12 @@ function ClimaLand.make_compute_jacobian(canopy::CanopyModel)
 end
 
 
-function ClimaLand.get_drivers(model::CanopyModel)
+function ClimaLand.get_drivers(model::Union{CanopyModel, DiagnosticCanopyModel})
     ClimaLand.get_drivers(model.boundary_conditions)
 end
 include("./canopy_boundary_fluxes.jl")
 #Make the canopy model broadcastable
-Base.broadcastable(C::CanopyModel) = tuple(C)
+Base.broadcastable(C::Union{CanopyModel,DiagnosticCanopyModel}) = tuple(C)
 
 """
     ClimaLand.total_energy_per_area!(
@@ -1279,7 +1279,7 @@ end
 Creates the tuple of model callbacks for a CanopyModel
 by calling `get_model_callbacks` on each component model.
 """
-function get_model_callbacks(model::CanopyModel{FT}; t0, Δt) where {FT}
+function get_model_callbacks(model::Union{CanopyModel{FT}, DiagnosticCanopyModel{FT}}; t0, Δt) where {FT}
     components = canopy_components(model)
     callbacks = ()
     callback_list = map(components) do (component)
