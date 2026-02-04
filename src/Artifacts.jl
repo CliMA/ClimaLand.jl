@@ -345,13 +345,12 @@ function callmip_data_path(site_ID; context = nothing)
     # data_path = joinpath(folder_path, "$(site_ID).csv")
     
     # For now, expect users to provide the path via environment variable
-    # or place files in a local directory
+    # or use a default path
     if haskey(ENV, "CALLMIP_DATA_PATH")
         data_path = joinpath(ENV["CALLMIP_DATA_PATH"], "$(site_ID).csv")
     else
-        # Default to a local path (users need to create this and add data)
-        climaland_dir = pkgdir(@__MODULE__)
-        data_path = joinpath(climaland_dir, "..", "callmip_data", "$(site_ID).csv")
+        # Default to sampo data directory
+        data_path = joinpath("/net/sampo/data1/renatob", "callmip_forcing", "$(site_ID).csv")
     end
     
     return data_path

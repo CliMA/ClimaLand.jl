@@ -33,8 +33,8 @@ using ClimaUtilities
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
-import ClimaLand.LandSimVis as LandSimVis
+# using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+# import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
@@ -114,9 +114,9 @@ prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
-# Define simulation period - adjust these dates based on your forcing data
+# Define simulation period - short 1-day test
 start_date = DateTime(2008, 1, 1)
-stop_date = DateTime(2008, 1, 2)  # Short test run - extend for actual calibration
+stop_date = DateTime(2009, 1, 1)  # Full year 2008
 
 # This reads in the data from the CalMIP site and creates
 # the atmospheric and radiative driver structs for the model
@@ -253,7 +253,20 @@ set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
 )
 
 # Set up diagnostics
-output_writer = ClimaDiagnostics.Writers.DictWriter()
+# Define output directory for diagnostics
+outdir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments/integrated/fluxnet/$(site_ID)/callmip/out",
+)
+mkpath(outdir)
+println("Creating NetCDF output writer for directory: ", outdir)
+
+# Use NetCDFWriter to save diagnostics to NetCDF files
+output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+    soil_domain.space.subsurface,
+    outdir;
+    start_date,
+)
 
 # CalMIP requires specific output variables - ensure these match protocol requirements
 short_names_1D = [
@@ -298,37 +311,25 @@ simulation = LandSimulation(
 )
 solve!(simulation)
 
-# Post-processing and visualization
-# Get comparison data if available
-comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
+# Post-processing
+println("\nSimulation completed successfully!")
+println("Start date: ", start_date)
+println("Stop date: ", stop_date)
+println("Number of diagnostics: ", length(diags))
 
-# Create output directory
-savedir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/integrated/fluxnet/$(site_ID)/callmip/out",
-)
-mkpath(savedir)
+# Close the output writers to flush diagnostics to files
+ClimaLand.Diagnostics.close_output_writers(diags)
+println("Output files written to: ", outdir)
 
-# Generate timeseries plots
-LandSimVis.make_diurnal_timeseries(
-    land_domain,
-    diags,
-    start_date;
-    savedir,
-    short_names = ["gpp", "shf", "lhf", "swu", "lwu"],
-    spinup_date = start_date + Day(20),
-    comparison_data,
-)
+# List output files
+println("Output files:")
+for file in readdir(outdir; join=false)
+    filepath = joinpath(outdir, file)
+    if isfile(filepath)
+        filesize_mb = round(stat(filepath).size / 1024^2, digits=2)
+        println("  $file ($(filesize_mb) MB)")
+    end
+end
 
-LandSimVis.make_timeseries(
-    land_domain,
-    diags,
-    start_date;
-    savedir,
-    short_names = ["swc", "tsoil"],
-    spinup_date = start_date + Day(20),
-    comparison_data,
-)
-
-println("Simulation completed successfully!")
-println("Output saved to: ", savedir)
+# TODO: Add visualization when CairoMakie is available
+# TODO: Add comparison with observation data from Flux NetCDF file
