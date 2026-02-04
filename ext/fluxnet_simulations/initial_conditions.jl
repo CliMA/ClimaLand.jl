@@ -98,12 +98,10 @@ function set_fluxnet_ic!(
         varname => findfirst(columns[:] .== varname) for varname in varnames
     )
     FT = eltype(Y.soil.ρe_int)
-    tmp_ic = @. model.parameters.θ_r +
-       (model.parameters.ν - model.parameters.θ_r) * FT(0.95)
     if isnothing(column_name_map["SWC_F_MDS_1"])
-        θ_l_0 = tmp_ic
+        θ_l_0 = model.parameters.ν ./ 2
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
-        θ_l_0 = tmp_ic
+        θ_l_0 = model.parameters.ν ./ 2
     else
         θ_l_0 =
             min.(
@@ -115,7 +113,7 @@ function set_fluxnet_ic!(
                         val,
                     ),
                 ),
-                tmp_ic,
+                model.parameters.ν .* FT(0.9),
             )
     end
     Y.soil.ϑ_l .= θ_l_0
