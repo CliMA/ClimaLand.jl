@@ -318,6 +318,46 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
 end
 
 """
+    callmip_data_path(site_ID; context = nothing)
+
+Return the path to the file that contains forcing data for a CalMIP site.
+Currently supports DK-Sor (Denmark Sorø) for CalMIP Phase 1a test calibration.
+
+Site information:
+DK-Sor (Denmark Sorø):
+- Location: 55.486°N, 11.6446°E
+- Vegetation: Deciduous Broadleaf Forest (Beech)
+- CalMIP Phase 1a test site
+
+For more information see: https://github.com/callmip-org/Phase1
+
+TODO: CalMIP data needs to be added to ClimaArtifacts.
+For now, this expects the CSV files to be available locally.
+Users should download CalMIP forcing data from:
+- https://github.com/callmip-org/Phase1/tree/main/Data
+- https://modelevaluation.org
+"""
+function callmip_data_path(site_ID; context = nothing)
+    @assert site_ID ∈ ("DK-Sor",)
+    
+    # TODO: Once CalMIP data is added to ClimaArtifacts, use:
+    # folder_path = @clima_artifact("callmip_sites", context)
+    # data_path = joinpath(folder_path, "$(site_ID).csv")
+    
+    # For now, expect users to provide the path via environment variable
+    # or place files in a local directory
+    if haskey(ENV, "CALLMIP_DATA_PATH")
+        data_path = joinpath(ENV["CALLMIP_DATA_PATH"], "$(site_ID).csv")
+    else
+        # Default to a local path (users need to create this and add data)
+        climaland_dir = pkgdir(@__MODULE__)
+        data_path = joinpath(climaland_dir, "..", "callmip_data", "$(site_ID).csv")
+    end
+    
+    return data_path
+end
+
+"""
     esm_snowmip_data_path(; context = nothing)
 
 Returns the path to the ESM-Snowmip data set.
