@@ -80,13 +80,6 @@ function setup_model(
     )
     forcing = (; atmos, radiation)
 
-    # Read in LAI from MODIS data
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        surface_space,
-        start_date,
-        stop_date,
-    )
-
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
@@ -97,19 +90,13 @@ function setup_model(
     # Use the soil moisture stress function based on soil moisture only
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
-        domain,
-        LAI,
-        toml_dict;
-        height = ClimaLand.Canopy.clm_canopy_height(
-            surface_space;
-            max_height = atmos.h * FT(0.9),
-        ),
-    )
+
+    # Use optimal LAI model (Zhou et al. 2025) instead of prescribed LAI
+    biomass = Canopy.ZhouOptimalLAIModel{FT}(canopy_domain, toml_dict)
+
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
-        LAI,
         toml_dict;
         prognostic_land_components,
         photosynthesis,
@@ -138,7 +125,6 @@ function setup_model(
     # Construct the land model with all default components except for snow
     land = LandModel{FT}(
         forcing,
-        LAI,
         toml_dict,
         domain,
         Δt;

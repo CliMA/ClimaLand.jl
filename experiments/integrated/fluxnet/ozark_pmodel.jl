@@ -202,34 +202,22 @@ biomass =
 
 # Set up the energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
-autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}(toml_dict)
-sif = Canopy.Lee2015SIFModel{FT}(toml_dict)
 
 ground = ClimaLand.PrognosticGroundConditions{FT}()
-turbulent_flux_parameterization =
-    Canopy.MoninObukhovCanopyFluxes(toml_dict, biomass.height)
-boundary_conditions = Canopy.AtmosDrivenCanopyBC(
-    atmos,
-    radiation,
-    ground,
-    turbulent_flux_parameterization,
-    prognostic_land_components,
-)
-earth_param_set = LP.LandParameters(toml_dict)
+canopy_forcing = (; atmos, radiation, ground)
 
 # Combine the components into a CanopyModel
-canopy = Canopy.CanopyModel{FT}(;
-    domain = surface_domain,
-    boundary_conditions,
-    earth_param_set,
-    autotrophic_respiration,
+canopy = Canopy.CanopyModel{FT}(
+    surface_domain,
+    canopy_forcing,
+    toml_dict;
+    prognostic_land_components,
     radiative_transfer,
     photosynthesis,
     conductance,
     soil_moisture_stress,
     hydraulics,
     energy,
-    sif,
     biomass,
 )
 
