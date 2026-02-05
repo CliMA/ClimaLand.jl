@@ -734,7 +734,8 @@ These variables are updated in place in `soil_boundary_fluxes!`.
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
-    :R_n,
+    :SW_n,
+    :LW_n,
     :top_bc,
     :top_bc_wvec,
     :sfc_scratch,
@@ -753,6 +754,7 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -782,6 +784,7 @@ boundary_var_types(
         (:lhf, :shf, :vapor_flux_liq, :vapor_flux_ice),
         Tuple{FT, FT, FT, FT},
     },
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
@@ -830,6 +833,7 @@ boundary_var_types(
         ),
         Tuple{FT, FT, FT, FT, FT, FT, FT},
     },
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
@@ -903,7 +907,8 @@ function soil_boundary_fluxes!(
     t,
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
-    net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
+    net_sw_radiation!(p.soil.SW_n, bc.radiation, model, Y, p, t)
+    net_lw_radiation!(p.soil.LW_n, bc.radiation, model, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx = compute_liquid_influx(p, model, prognostic_land_components)
     # This partitions the influx into runoff and infiltration
@@ -924,7 +929,8 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        p.soil.R_n +
+        p.soil.SW_n +
+        p.soil.LW_n +
         p.soil.turbulent_fluxes.lhf +
         p.soil.turbulent_fluxes.shf +
         infiltration_energy_flux

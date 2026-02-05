@@ -458,7 +458,7 @@ end
     SoilCanopyModel,
     LandModel,
     EnergyHydrology,
-} p.soil.R_n
+} @. lazy(p.soil.LW_n + p.soil.SW_n)
 
 function compute_10cm_water_mass!(
     out,

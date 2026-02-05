@@ -27,6 +27,8 @@ export AbstractAtmosphericDrivers,
     CoupledRadiativeFluxes,
     turbulent_fluxes!,
     net_radiation!,
+    net_sw_radiation!,
+    net_lw_radiation!,
     turbulent_fluxes_at_a_point,
     make_update_drivers,
     prescribed_forcing_era5,
@@ -672,6 +674,40 @@ function net_radiation!(
     return nothing
 end
 
+function net_lw_radiation!(
+    dest::ClimaCore.Fields.Field,
+    radiation::PrescribedRadiativeFluxes,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    LW_d = p.drivers.LW_d
+    earth_param_set = model.parameters.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    T_sfc = component_temperature(model, Y, p)
+    ϵ_sfc = surface_emissivity(model, Y, p)
+    # Recall positive values indicate toward surface, so we need a negative sign out front
+    # in order to inidicate positive R_n  = towards atmos.
+    @. dest = -ϵ_sfc * (LW_d - _σ * T_sfc^4)
+    return nothing
+end
+
+function net_sw_radiation!(
+    dest::ClimaCore.Fields.Field,
+    radiation::PrescribedRadiativeFluxes,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    SW_d = p.drivers.SW_d
+    α_sfc = surface_albedo(model, Y, p)
+    #  positive values indicate toward surface, so we need a negative sign out front
+    # in order to inidicate positive R_n  = towards atmos.
+    @. dest = -(1 - α_sfc) * SW_d
+    return nothing
+end
 
 """
     net_radiation!(dest,

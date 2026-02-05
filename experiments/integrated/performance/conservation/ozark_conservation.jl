@@ -454,6 +454,11 @@ for float_type in (Float32, Float64)
         axislegend(position = :lb)
         CairoMakie.save(joinpath(savedir, "water_conservation.png"), fig)
 
+        net_land_expected = lhs_canopy + lhs_soil
+        net_land_computed =
+            cumsum(
+                -1 .* T ./ leaf_area_index .- (precip .+ E .- soil_bottom_flux),
+            ) * dt
 
 
         ##  Soil energy balance ##
@@ -468,10 +473,10 @@ for float_type in (Float32, Float64)
             parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for
             k in 2:length(sol.t)
         ]
-        # Radiation is computed in LW and SW components
-        # with positive numbers indicating the soil gaining energy.
-        soil_Rn =
-            -1 .* [parent(sv.saveval[k].soil.R_n)[1] for k in 2:length(sol.t)]
+        soil_Rn = [
+            parent(sv.saveval[k].soil.LW_n .+ sv.saveval[k].soil.SW_n)[1]
+            for k in 2:length(sol.t)
+        ]
         # Root sink term: a positive root extraction is a sink term for soil; add minus sign
         root_sink_energy = [
             sum(-1 .* sv.saveval[k].root_energy_extraction) for
