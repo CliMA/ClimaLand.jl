@@ -119,9 +119,9 @@ start_date = DateTime(2008, 1, 1)
 stop_date = DateTime(2009, 1, 1)  # Full year 2008
 
 # This reads in the data from the CalMIP site and creates
-# the atmospheric and radiative driver structs for the model
-# Note: You need to update the forcing.jl file to handle CalMIP data format
-# or adapt the prescribed_forcing_fluxnet function to work with CalMIP data
+# the atmospheric and radiative driver structs for the model.
+# CalMIP-format data for this site are handled via the shared
+# Fluxnet/CalMIP data-reading utilities used by `prescribed_forcing_fluxnet`.
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
