@@ -4,6 +4,7 @@ ClimaLand.jl Release Notes
 main
 ------
 - Updated parameters, quantum yield for C4, canopy LW PR[#1613](https://github.com/CliMA/ClimaLand.jl/pull/1613)
+- ![][badge-✨feature] Add prognostic optimal LAI model (Zhou et al. 2025) as a biomass model (`ZhouOptimalLAIModel`), computing LAI dynamically from energy and water constraints
 
 v1.5.2
 ------
@@ -11,7 +12,7 @@ v1.5.2
 
 v1.5.1
 ------
-- Adjust RootSolvers lower compat 
+- Adjust RootSolvers lower compat
 
 v1.5.0
 ------

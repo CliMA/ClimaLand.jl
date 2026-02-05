@@ -30,7 +30,7 @@ TAIR_FILE = joinpath(@__DIR__, "tair_1M_average.nc")
 PRECIP_FILE = joinpath(@__DIR__, "precip_1M_average.nc")
 VPD_FILE = joinpath(@__DIR__, "vpd_1M_average.nc")
 F0_FILE = joinpath(@__DIR__, "f0.nc")  # Zhou et al. spatially varying f0
-OUTPUT_FILE = joinpath(@__DIR__, "initial_conditions.nc")
+OUTPUT_FILE = joinpath(@__DIR__, "optimal_lai_inputs.nc")
 
 # GSL parameters
 LAI_THRESHOLD_FRACTION = 0.2  # LAI must be above 20% of annual max to count as "growing"
@@ -528,7 +528,7 @@ function main()
     # Global attributes
     ds_out.attrib["title"] = "Initial Conditions for Optimal LAI Model"
     ds_out.attrib["source"] = "Computed from ClimaLand.jl optimal LAI simulation, ERA5 climate data, and MODIS LAI"
-    ds_out.attrib["history"] = "Created by initial_conditions.jl"
+    ds_out.attrib["history"] = "Created by optimal_lai_inputs.jl"
     ds_out.attrib["references"] = "Zhou et al. (2025) Global Change Biology - GSL defined as days with T > 0C, water limitation via f0*P/A0 term"
 
     close(ds_out)

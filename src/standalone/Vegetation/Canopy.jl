@@ -424,7 +424,7 @@ end
     ZhouOptimalLAIModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        gsl_a0_data = optimal_lai_initial_conditions(domain.space.surface),
+        optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
         SAI::FT = toml_dict["SAI"],
         RAI::FT = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -442,7 +442,7 @@ energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf
 - `toml_dict`: Parameter dictionary containing optimal LAI parameters
 
 # Keyword Arguments
-- `gsl_a0_data`: NamedTuple with spatially varying initial conditions (GSL, A0_annual,
+- `optimal_lai_inputs`: NamedTuple with spatially varying initial conditions (GSL, A0_annual,
   precip_annual, vpd_gs, lai_init, f0). Default loads from `optimal_lai_initial_conditions`.
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
@@ -462,7 +462,7 @@ Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
 function ZhouOptimalLAIModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    gsl_a0_data = optimal_lai_initial_conditions(domain.space.surface),
+    optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
@@ -471,7 +471,7 @@ function ZhouOptimalLAIModel{FT}(
     parameters = OptimalLAIParameters{FT}(toml_dict)
     return ZhouOptimalLAIModel{FT}(
         parameters,
-        gsl_a0_data;
+        optimal_lai_inputs;
         SAI,
         RAI,
         rooting_depth,

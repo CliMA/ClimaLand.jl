@@ -336,7 +336,7 @@ water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf`, consiste
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
-- `gsl_a0_data`: NamedTuple with spatially varying GSL (growing season length in days),
+- `optimal_lai_inputs`: NamedTuple with spatially varying GSL (growing season length in days),
   A0_annual (annual potential GPP in mol CO2 m^-2 yr^-1), precip_annual (mm yr^-1),
   vpd_gs (Pa), lai_init (initial LAI from MODIS), and f0 (fraction of precip for transpiration),
   typically created using `optimal_lai_initial_conditions`.
@@ -359,7 +359,7 @@ struct ZhouOptimalLAIModel{
     "Required parameters for the optimal LAI model"
     parameters::OLPT
     "Spatially varying initial conditions (GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0)"
-    gsl_a0_data::GD
+    optimal_lai_inputs::GD
     "Prescribed stem area index (m^2 m^-2)"
     SAI::FT
     "Prescribed root area index (m^2 m^-2)"
@@ -375,7 +375,7 @@ Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
 """
     ZhouOptimalLAIModel{FT}(
         parameters::OptimalLAIParameters{FT},
-        gsl_a0_data;
+        optimal_lai_inputs;
         SAI::FT,
         RAI::FT,
         rooting_depth,
@@ -386,7 +386,7 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 
 # Arguments
 - `parameters`: OptimalLAIParameters for the model
-- `gsl_a0_data`: NamedTuple with spatially varying GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0 fields,
+- `optimal_lai_inputs`: NamedTuple with spatially varying GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0 fields,
   typically created using `optimal_lai_initial_conditions`.
 - `SAI`: Prescribed stem area index (m^2 m^-2)
 - `RAI`: Prescribed root area index (m^2 m^-2)
@@ -395,7 +395,7 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 """
 function ZhouOptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT},
-    gsl_a0_data;
+    optimal_lai_inputs;
     SAI::FT,
     RAI::FT,
     rooting_depth,
@@ -404,12 +404,12 @@ function ZhouOptimalLAIModel{FT}(
     return ZhouOptimalLAIModel{
         FT,
         typeof(parameters),
-        typeof(gsl_a0_data),
+        typeof(optimal_lai_inputs),
         typeof(rooting_depth),
         typeof(height),
     }(
         parameters,
-        gsl_a0_data,
+        optimal_lai_inputs,
         SAI,
         RAI,
         rooting_depth,
@@ -510,7 +510,7 @@ end
 
 The optimal LAI model requires initialization of LAI and A0 values before the simulation.
 
-GSL, A0_annual, precip_annual, vpd_gs, lai_init, and f0 are taken from `model.gsl_a0_data`, which
+GSL, A0_annual, precip_annual, vpd_gs, lai_init, and f0 are taken from `model.optimal_lai_inputs`, which
 contains spatially varying fields typically created using `optimal_lai_initial_conditions`.
 
 LAI is initialized from MODIS satellite observations (`lai_init`) rather than computing
@@ -535,16 +535,16 @@ function set_historical_cache!(
     A0_daily = eltype(model.parameters)(0.5),
 )
     parameters = model.parameters
-    gsl_a0_data = model.gsl_a0_data
+    optimal_lai_inputs = model.optimal_lai_inputs
     FT = eltype(parameters)
 
-    # Get spatially varying data from gsl_a0_data
-    GSL = gsl_a0_data.GSL
-    A0_annual = gsl_a0_data.A0_annual
-    precip_annual_mm = gsl_a0_data.precip_annual  # in mm yr^-1
-    vpd_gs = gsl_a0_data.vpd_gs  # in Pa
-    lai_init = gsl_a0_data.lai_init  # MODIS first timestep
-    f0 = gsl_a0_data.f0  # spatially varying f0 from Zhou et al.
+    # Get spatially varying data from optimal_lai_inputs
+    GSL = optimal_lai_inputs.GSL
+    A0_annual = optimal_lai_inputs.A0_annual
+    precip_annual_mm = optimal_lai_inputs.precip_annual  # in mm yr^-1
+    vpd_gs = optimal_lai_inputs.vpd_gs  # in Pa
+    lai_init = optimal_lai_inputs.lai_init  # MODIS first timestep
+    f0 = optimal_lai_inputs.f0  # spatially varying f0 from Zhou et al.
 
     L = p.canopy.biomass.area_index.leaf
 

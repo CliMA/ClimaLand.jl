@@ -33,7 +33,7 @@ using ClimaCore
         @testset "ZhouOptimalLAIModel construction for FT = $FT" begin
             params = Canopy.OptimalLAIParameters{FT}(toml_dict)
             # For unit tests, use scalar values for initial conditions
-            gsl_a0_data = (;
+            optimal_lai_inputs = (;
                 GSL = FT(240.0),
                 A0_annual = FT(258.0),
                 precip_annual = FT(1000.0),
@@ -43,7 +43,7 @@ using ClimaCore
             )
             model = Canopy.ZhouOptimalLAIModel{FT}(
                 params,
-                gsl_a0_data;
+                optimal_lai_inputs;
                 SAI = FT(0.0),
                 RAI = FT(1.0),
                 rooting_depth = FT(1.0),
@@ -51,7 +51,7 @@ using ClimaCore
             )
 
             @test model.parameters === params
-            @test model.gsl_a0_data === gsl_a0_data
+            @test model.optimal_lai_inputs === optimal_lai_inputs
             @test eltype(model) == FT
             @test model.SAI == FT(0.0)
             @test model.RAI == FT(1.0)
@@ -303,15 +303,15 @@ using ClimaCore
                 surface_space = domain.space.surface
 
                 # Load initial conditions from global data file
-                gsl_a0_data = Canopy.optimal_lai_initial_conditions(surface_space)
+                optimal_lai_inputs = Canopy.optimal_lai_initial_conditions(surface_space)
 
                 # Extract scalar values from Fields
-                GSL_val = Array(parent(gsl_a0_data.GSL))[1]
-                A0_annual_val = Array(parent(gsl_a0_data.A0_annual))[1]
-                precip_annual_val = Array(parent(gsl_a0_data.precip_annual))[1]
-                vpd_gs_val = Array(parent(gsl_a0_data.vpd_gs))[1]
-                lai_init_val = Array(parent(gsl_a0_data.lai_init))[1]
-                f0_val = Array(parent(gsl_a0_data.f0))[1]
+                GSL_val = Array(parent(optimal_lai_inputs.GSL))[1]
+                A0_annual_val = Array(parent(optimal_lai_inputs.A0_annual))[1]
+                precip_annual_val = Array(parent(optimal_lai_inputs.precip_annual))[1]
+                vpd_gs_val = Array(parent(optimal_lai_inputs.vpd_gs))[1]
+                lai_init_val = Array(parent(optimal_lai_inputs.lai_init))[1]
+                f0_val = Array(parent(optimal_lai_inputs.f0))[1]
 
                 @testset "$site_name" begin
                     # GSL should be positive and reasonable (0-365 days)

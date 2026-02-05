@@ -208,19 +208,16 @@ for the prognostic optimal LAI model:
 - vpd_gs: Growing season VPD (Pa)
 - lai_init: Initial LAI from MODIS (m² m⁻²)
 
-This dataset is currently shipped in-repo under `data_laiopt/initial_conditions.nc`,
+This dataset is currently shipped in-repo under `data_laiopt/optimal_lai_inputs.nc`,
 but is expected to become a ClimaArtifact in the future.
 """
 function optimal_lai_initial_conditions_path(; context = nothing)
-    path = normpath(joinpath(@__DIR__, "..", "data_laiopt", "initial_conditions.nc"))
+    path = normpath(joinpath(@__DIR__, "..", "data_laiopt", "optimal_lai_inputs.nc"))
     isfile(path) ||
         error("Optimal-LAI initial conditions file not found at `$path`.")
     return path
 end
 
-# Backwards compatibility alias
-optimal_lai_gsl_a0_data_path(; context = nothing) =
-    optimal_lai_initial_conditions_path(; context)
 
 """
     clm_data__folder_path(; context, lowres = false)
