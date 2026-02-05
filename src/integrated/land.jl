@@ -461,6 +461,8 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
+
+
     end
     return update_boundary_fluxes!
 end
@@ -500,6 +502,37 @@ function make_update_implicit_cache(
     return update_implicit_cache!
 end
 
+function make_exp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
+    update_exp_c! = make_update_cache(land)
+
+    function exp_tendency!(dY, Y, p, t)
+        update_exp_c!(p, Y, t)
+        for f! in compute_exp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        top_water_flux = @. lazy(
+            p.drivers.P_snow +
+            (p.snow.turbulent_fluxes.vapor_flux + p.drivers.P_liq) *
+            p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.vapor_flux +
+            p.soil.infiltration,
+        )
+        bottom_water_flux = p.soil.bottom_bc.water
+        @. dY.∫F_vol_liq_water_dt =
+            -(top_water_flux - bottom_water_flux + p.soil.R_ss)
+    end
+    return exp_tendency!
+end
+
+
+
 function make_imp_tendency(land::LandModel)
     components = land_components(land)
     compute_imp_tendency_list =
@@ -518,41 +551,18 @@ function make_imp_tendency(land::LandModel)
             Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
         top_heat_flux = @. lazy(
             e_flux_falling_snow +
-            (
-                e_flux_falling_rain +
-                p.snow.turbulent_fluxes.lhf +
-                p.snow.turbulent_fluxes.shf +
-                p.snow.LW_n +
-                p.snow.SW_n
-            ) * p.snow.snow_cover_fraction +
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.LW_n +
-                p.soil.SW_n +
-                p.soil.turbulent_fluxes.lhf +
-                p.soil.turbulent_fluxes.shf
-            ) +
+            e_flux_falling_rain +
+            (p.snow.turbulent_fluxes.lhf + p.snow.turbulent_fluxes.shf) *
+            p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) *
+            (p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf) +
             p.canopy.turbulent_fluxes.shf +
             p.canopy.turbulent_fluxes.lhf +
-            p.canopy.radiative_transfer.SW_n +
-            p.canopy.radiative_transfer.LW_n,
+            +p.LW_u - p.drivers.LW_d + p.SW_u - p.drivers.SW_d,
         )
         bottom_heat_flux = p.soil.bottom_bc.heat
-
         @. dY.∫F_e_dt = -(top_heat_flux - bottom_heat_flux)
 
-        top_water_flux = @. lazy(
-            p.drivers.P_snow +
-            (p.snow.turbulent_fluxes.vapor_flux + p.drivers.P_liq) *
-            p.snow.snow_cover_fraction +
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.vapor_flux_liq +
-                p.soil.turbulent_fluxes.vapor_flux_ice
-            ) +
-            p.canopy.turbulent_fluxes.vapor_flux +
-            p.soil.infiltration,
-        )
-        bottom_water_flux = p.soil.bottom_bc.water
-        @. dY.∫F_vol_liq_water_dt = -(top_water_flux - bottom_water_flux)# + p.soil.R_ss)
 
     end
     return imp_tendency!
