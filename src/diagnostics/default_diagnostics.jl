@@ -231,11 +231,7 @@ This method can be extended for any model that extends `get_possible_diagnostics
 Note that `EnergyHydrology` and `LandModel` have a specialized method that handles conservation diagnostics.
 """
 function default_diagnostics(
-    model::Union{
-        CanopyModel{FT},
-        SoilCanopyModel{FT},
-        BucketModel{FT},
-    },
+    model::Union{CanopyModel{FT}, SoilCanopyModel{FT}, BucketModel{FT}},
     start_date::DateTime,
     outdir;
     output_writer = default_output_writer(

@@ -180,6 +180,7 @@ ClimaLand.Simulations.solve!(simulation)
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
 LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+LandSimVis.check_conservation(simulation; savedir = root_path)
 
 if LONGER_RUN
     include("../ilamb/ilamb_conversion.jl")
