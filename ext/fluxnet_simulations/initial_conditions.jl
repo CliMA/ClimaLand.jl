@@ -99,9 +99,9 @@ function set_fluxnet_ic!(
     )
     FT = eltype(Y.soil.ρe_int)
     if isnothing(column_name_map["SWC_F_MDS_1"])
-        θ_l_0 = model.parameters.ν / 2
+        θ_l_0 = model.parameters.ν ./ 2
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
-        θ_l_0 = model.parameters.ν / 2
+        θ_l_0 = model.parameters.ν ./ 2
     else
         θ_l_0 =
             min.(

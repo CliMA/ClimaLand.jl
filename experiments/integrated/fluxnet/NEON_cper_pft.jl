@@ -141,7 +141,7 @@ short_names_1D = [
     "rn",
 ]
 short_names_2D = ["swc", "tsoil", "si", "sco2", "soc", "so2", "sco2_ppm"]
-output_vars = ["sco2_ppm"] #short_names_1D..., short_names_2D...]
+output_vars = [short_names_1D..., short_names_2D...]
 
 diags = ClimaLand.default_diagnostics(
     land,
