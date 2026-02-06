@@ -219,7 +219,6 @@ function ClimaLand.component_specific_humidity(model::CanopyModel, Y, p)
     # Below we approximate the surface air density with the
     # atmospheric density to make it independent of T
     # This makes our estimate of the derivatives more exact later on
-    atmos = model.boundary_conditions.atmos
     q_sfc = @. lazy(
         Thermodynamics.q_vap_saturation(
             thermo_params,
@@ -293,7 +292,7 @@ function ClimaLand.get_update_surface_humidity_function(
         r_stomata_canopy,
     )
         FT = eltype(param_set)
-        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
+        g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         g_h = SurfaceFluxes.heat_conductance(
@@ -369,7 +368,7 @@ function ClimaLand.get_update_surface_temperature_function(
             scheme,
         )
         ws = SurfaceFluxes.windspeed(param_set, ζ, u_star, inputs)
-        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
+        g_land = leaf_Cd * u_star * AI
 
         ΔΦ = Φ_int - Φ_sfc
         cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
@@ -408,7 +407,7 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     )
         FT = eltype(earth_param_set)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
-        g_leaf = leaf_Cd * max(u_star, FT(1)) * LAI # TODO - change clipping Issue 1600
+        g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
         g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
@@ -447,7 +446,7 @@ function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
         AI,
     )
         FT = eltype(earth_param_set)
-        g_land = leaf_Cd * max(u_star, FT(1)) * AI # TODO - change clipping Issue 1600
+        g_land = leaf_Cd * u_star * AI
         ∂T_sfc∂T = (g_land / g_h) / (1 + g_land / g_h)
         return ∂T_sfc∂T
     end

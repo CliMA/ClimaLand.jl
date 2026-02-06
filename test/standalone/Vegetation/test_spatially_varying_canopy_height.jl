@@ -187,10 +187,10 @@ end
     @test axes(canopy.biomass.height) == surface_space
     z_0min = canopy.boundary_conditions.turbulent_flux_parameterization.z_0min
     @test canopy.boundary_conditions.turbulent_flux_parameterization.displ ==
-          FT(0.67) .* capped_height
+          toml_dict["canopy_d_coeff"] .* capped_height
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0m ==
-          FT(0.13) .* capped_height .+ z_0min
+          toml_dict["canopy_z_0m_coeff"] .* capped_height .+ z_0min
     @test canopy.boundary_conditions.turbulent_flux_parameterization.z_0b ==
-          FT(0.013) .* capped_height .+ z_0min
+          toml_dict["canopy_z_0b_coeff"] .* capped_height .+ z_0min
 
 end
