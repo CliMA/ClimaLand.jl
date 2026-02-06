@@ -47,7 +47,14 @@ function set_fluxnet_ic!(
     hour_offset_from_UTC,
     model::ClimaLand.AbstractLandModel,
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    # Check if this is a CalMIP site
+    callmip_sites = ("DK-Sor",)  # Add more CalMIP sites here as needed
+    
+    if site_ID ∈ callmip_sites
+        fluxnet_csv_path = ClimaLand.Artifacts.callmip_data_path(site_ID)
+    else
+        fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    end
 
     # Read the data and get the column name map
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
