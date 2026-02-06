@@ -95,8 +95,8 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pmodel.jl"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/pmodel/out/*png"
 
-      - label: "ozark_conservation"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
+      - label: "conservation"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation.jl"
         artifact_paths: "experiments/integrated/performance/conservation/output_active/*png"
 
       - label: "Soilbiogeochem"
