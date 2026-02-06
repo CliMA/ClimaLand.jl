@@ -426,6 +426,7 @@ end
         toml_dict::CP.ParamDict;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy = toml_dict["canopy_emissivity"],
+        K_lw = toml_dict["canopy_K_lw"],
         n_layers::Int = 20,
     )
 
@@ -451,12 +452,14 @@ function TwoStreamModel{FT}(
         domain.space.surface,
     ),
     ϵ_canopy::FT = toml_dict["canopy_emissivity"],
+    K_lw = toml_dict["canopy_K_lw"],
     n_layers::Int = 20,
 ) where {FT <: AbstractFloat}
     parameters = TwoStreamParameters(
         toml_dict;
         radiation_parameters...,
         ϵ_canopy,
+        K_lw,
         n_layers,
     )
     return TwoStreamModel{FT, typeof(parameters)}(parameters)
@@ -468,6 +471,7 @@ end
         toml_dict::CP.ParamDict;
         radiation_parameters = clm_canopy_radiation_parameters(domain.space.surface),
         ϵ_canopy::FT = toml_dict["canopy_emissivity"],
+        K_lw = toml_dict["canopy_K_lw"]
     ) where {FT <: AbstractFloat}
 
 Creates a Beer-Lambert model for canopy radiative transfer on the provided domain.
@@ -489,6 +493,7 @@ function BeerLambertModel{FT}(
         domain.space.surface,
     ),
     ϵ_canopy::FT = toml_dict["canopy_emissivity"],
+    K_lw = toml_dict["canopy_K_lw"],
 ) where {FT <: AbstractFloat}
     # Filter out radiation parameters that are not needed for Beer-Lambert model
     radiation_parameters = NamedTuple{
@@ -499,8 +504,12 @@ function BeerLambertModel{FT}(
     }(
         radiation_parameters,
     )
-    parameters =
-        BeerLambertParameters(toml_dict; ϵ_canopy, radiation_parameters...)
+    parameters = BeerLambertParameters(
+        toml_dict;
+        ϵ_canopy,
+        K_lw,
+        radiation_parameters...,
+    )
     return BeerLambertModel{FT, typeof(parameters)}(parameters)
 end
 
