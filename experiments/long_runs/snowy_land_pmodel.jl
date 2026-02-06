@@ -92,7 +92,7 @@ function setup_model(
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
 
     # Use optimal LAI model (Zhou et al. 2025) instead of prescribed LAI
-    biomass = Canopy.ZhouOptimalLAIModel{FT}(canopy_domain, toml_dict)
+    biomass = Canopy.ZhouOptimalLAIModel{FT}(surface_domain, toml_dict)
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,

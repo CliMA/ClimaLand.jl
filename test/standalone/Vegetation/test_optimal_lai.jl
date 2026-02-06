@@ -280,11 +280,6 @@ using ClimaCore
             @test L_no_update == L
         end
 
-        @testset "MM_TO_MOL_H2O constant for FT = $FT" begin
-            # 1 mm yr^-1 = 1000 g m^-2 yr^-1 / 18.015 g mol^-1 ~ 55.51 mol m^-2 yr^-1
-            @test Canopy.MM_TO_MOL_H2O ≈ 1000.0 / 18.015 atol = 0.01
-        end
-
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
             # Test that optimal_lai_initial_conditions returns reasonable values
             # for single-point domains at various locations (Fluxnet sites)
@@ -325,8 +320,8 @@ using ClimaCore
                     @test A0_annual_val > FT(0) "A0_annual should be positive at $site_name, got $A0_annual_val"
                     @test A0_annual_val < FT(1000) "A0_annual should be < 1000 at $site_name"
 
-                    # precip_annual should be positive (mm yr^-1)
-                    # Ranges from ~100 (desert) to ~3000+ (tropical)
+                    # precip_annual should be positive (mol H2O m^-2 yr^-1)
+                    # Ranges from ~5000 (desert, ~100 mm) to ~170000+ (tropical, ~3000 mm)
                     @test precip_annual_val >= FT(0) "precip_annual should be non-negative at $site_name"
                     @test precip_annual_val > FT(0) "precip_annual should be positive at $site_name, got $precip_annual_val"
 

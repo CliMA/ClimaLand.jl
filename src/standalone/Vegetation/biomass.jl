@@ -541,7 +541,7 @@ function set_historical_cache!(
     # Get spatially varying data from optimal_lai_inputs
     GSL = optimal_lai_inputs.GSL
     A0_annual = optimal_lai_inputs.A0_annual
-    precip_annual_mm = optimal_lai_inputs.precip_annual  # in mm yr^-1
+    precip_annual = optimal_lai_inputs.precip_annual  # in mol H2O m^-2 yr^-1
     vpd_gs = optimal_lai_inputs.vpd_gs  # in Pa
     lai_init = optimal_lai_inputs.lai_init  # MODIS first timestep
     f0 = optimal_lai_inputs.f0  # spatially varying f0 from Zhou et al.
@@ -563,9 +563,8 @@ function set_historical_cache!(
     # Store GSL in the cache (spatially varying field)
     p.canopy.biomass.GSL .= GSL
 
-    # Store precip_annual converted to mol H2O m^-2 yr^-1
-    # (input is in mm yr^-1, Zhou et al. uses mol m^-2 yr^-1)
-    @. p.canopy.biomass.precip_annual = precip_annual_mm * FT(MM_TO_MOL_H2O)
+    # Store precip_annual (already in mol H2O m^-2 yr^-1 from optimal_lai_inputs.nc)
+    p.canopy.biomass.precip_annual .= precip_annual
 
     # Store vpd_gs (already in Pa)
     p.canopy.biomass.vpd_gs .= vpd_gs

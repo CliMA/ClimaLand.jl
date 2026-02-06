@@ -4,7 +4,7 @@ Compute initial conditions for the optimal LAI model.
 This script generates spatially varying initial conditions:
 - GSL: Growing season length (days) - hybrid LAI/temperature approach following Zhou et al. (2025)
 - A0_annual: Annual potential GPP (mol CO₂ m⁻² yr⁻¹) from P-model simulation
-- precip_annual: Mean annual precipitation (mm yr⁻¹)
+- precip_annual: Mean annual precipitation (mol H₂O m⁻² yr⁻¹)
 - vpd_gs: Average VPD during growing season (Pa)
 - lai_init: Initial LAI from MODIS (m² m⁻²) - first timestep of satellite data
 - f0: Spatially varying fraction of precipitation for transpiration (dimensionless) from Zhou et al.
@@ -163,9 +163,9 @@ function compute_annual_precipitation(precip_timeseries::Vector{T}) where T
             Note: ERA5 often uses negative values for precipitation (downward flux convention).
 
     Returns:
-        precip_annual: Mean annual precipitation (mm yr⁻¹), always positive
+        precip_annual: Mean annual precipitation (mol H₂O m⁻² yr⁻¹), always positive
 
-    Note: 1 kg m⁻² = 1 mm water depth
+    Note: 1 kg m⁻² = 1 mm water depth = 1000 g m⁻² = 1000/18.015 mol H₂O m⁻²
     """
     # Handle NaN
     valid = .!isnan.(precip_timeseries)
@@ -186,14 +186,20 @@ function compute_annual_precipitation(precip_timeseries::Vector{T}) where T
     # (ERA5 uses negative values for precipitation by convention)
     precip_monthly = [isnan(x) ? T(0) : abs(x) for x in precip_monthly]
 
-    # Convert from kg m⁻² s⁻¹ to mm yr⁻¹
+    # Convert from kg m⁻² s⁻¹ to mol H₂O m⁻² yr⁻¹
     # Sum monthly values, each multiplied by seconds in that month
     # For simplicity, use average seconds per month = 365.25 * 24 * 3600 / 12
     seconds_per_month = T(365.25 * 24 * 3600 / 12)
 
-    # Annual precipitation = sum of (monthly_rate × seconds_per_month)
-    # Since kg m⁻² = mm, this gives mm yr⁻¹
-    precip_annual = sum(precip_monthly) * seconds_per_month
+    # Conversion factor from mm (= kg m⁻²) to mol H₂O m⁻²
+    # 1 mm = 1 kg m⁻² = 1000 g m⁻²; Molar mass of water = 18.015 g/mol
+    # So: 1 mm = 1000/18.015 mol m⁻² ≈ 55.51 mol m⁻²
+    MM_TO_MOL_H2O = T(1000.0 / 18.015)
+
+    # Annual precipitation = sum of (monthly_rate × seconds_per_month) × conversion
+    # kg m⁻² s⁻¹ × s → kg m⁻² (= mm) → mol H₂O m⁻²
+    precip_annual_mm = sum(precip_monthly) * seconds_per_month
+    precip_annual = precip_annual_mm * MM_TO_MOL_H2O
 
     return precip_annual
 end
@@ -449,8 +455,9 @@ function main()
 
     println("\nPrecip_annual statistics:")
     println("  Valid points: $(length(valid_precip))")
-    println("  Range: $(round(minimum(valid_precip), digits=1)) - $(round(maximum(valid_precip), digits=1)) mm yr^-1")
-    println("  Mean: $(round(mean(valid_precip), digits=1)) mm yr^-1")
+    println("  Range: $(round(minimum(valid_precip), digits=1)) - $(round(maximum(valid_precip), digits=1)) mol H2O m^-2 yr^-1")
+    println("  Mean: $(round(mean(valid_precip), digits=1)) mol H2O m^-2 yr^-1")
+    println("  (Equivalent to $(round(minimum(valid_precip) * 18.015 / 1000, digits=1)) - $(round(maximum(valid_precip) * 18.015 / 1000, digits=1)) mm yr^-1)")
 
     println("\nVPD_gs (growing season) statistics:")
     println("  Valid points: $(length(valid_vpd))")
@@ -502,9 +509,9 @@ function main()
     a0_var[:, :] = a0_out
 
     precip_var = defVar(ds_out, "precip_annual", Float64, ("lon", "lat"))
-    precip_var.attrib["units"] = "mm yr^-1"
+    precip_var.attrib["units"] = "mol H2O m^-2 yr^-1"
     precip_var.attrib["long_name"] = "Mean Annual Precipitation"
-    precip_var.attrib["description"] = "Mean annual precipitation computed from monthly averages. Used for water limitation term (f0*P/A0) in LAI_max calculation following Zhou et al. (2025)."
+    precip_var.attrib["description"] = "Mean annual precipitation computed from monthly averages. Converted from kg m^-2 s^-1 to mol H2O m^-2 yr^-1 (1 mm = 55.51 mol H2O m^-2). Used for water limitation term (f0*P/A0) in LAI_max calculation following Zhou et al. (2025)."
     precip_var[:, :] = precip_annual
 
     vpd_var = defVar(ds_out, "vpd_gs", Float64, ("lon", "lat"))

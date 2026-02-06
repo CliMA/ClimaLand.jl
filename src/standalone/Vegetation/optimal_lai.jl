@@ -59,11 +59,6 @@ function OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
     )
 end
 
-# Conversion factor from mm yr^-1 to mol H2O m^-2 yr^-1
-# 1 mm = 1 kg m^-2 = 1000 g m^-2; Molar mass of water = 18.015 g/mol
-# So: 1 mm yr^-1 = 1000/18.015 mol m^-2 yr^-1 ~ 55.51 mol m^-2 yr^-1
-const MM_TO_MOL_H2O = 1000.0 / 18.015
-
 """
     compute_L_max(Ao_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
 
