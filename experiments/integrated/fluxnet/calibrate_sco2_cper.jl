@@ -338,10 +338,10 @@ println("\n=== Setting up UKI calibration ===")
 
 # 4 constrained Gaussian priors
 priors = [
-    PD.constrained_gaussian("α_sx", 23835.0, 12000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("Ea_sx", 61000.0, 10000.0, 40000.0, 80000.0),
-    PD.constrained_gaussian("kM_sx", 0.005, 0.003, 1e-5, 0.1),
-    PD.constrained_gaussian("kM_o2", 0.004, 0.002, 1e-5, 0.1),
+    PD.constrained_gaussian("α_sx", 9356.0, 7000.0, 1000.0, 200000.0), #23835.0, 12000.0, 1000.0, 200000.0),
+    PD.constrained_gaussian("Ea_sx", 65098.0, 10000.0, 40000.0, 80000.0), #61000.0, 10000.0, 40000.0, 80000.0),
+    PD.constrained_gaussian("kM_sx", 0.0116, 0.003, 1e-5, 0.1), #0.005, 0.003, 1e-5, 0.1),
+    PD.constrained_gaussian("kM_o2", 0.003566, 0.002, 1e-5, 0.1), #0.004, 0.002, 1e-5, 0.1),
 ]
 prior = PD.combine_distributions(priors)
 
@@ -380,7 +380,7 @@ println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
 savedir = joinpath(@__DIR__, "calibrate_sco2_cper_output")
-savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_NEON-CPER/20260205_newGlobal"
+savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_NEON-CPER/20260206_firstUpdate/"
 mkpath(savedir)
 
 # Parameter convergence + error plot
