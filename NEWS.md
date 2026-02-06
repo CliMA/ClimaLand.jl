@@ -3,6 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 ------
+
+v1.5.3
+------
 - Updated parameters, quantum yield for C4, canopy LW PR[#1613](https://github.com/CliMA/ClimaLand.jl/pull/1613)
 
 v1.5.2
