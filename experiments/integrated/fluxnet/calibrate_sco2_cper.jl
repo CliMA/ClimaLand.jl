@@ -340,7 +340,7 @@ println("\n=== Setting up UKI calibration ===")
 priors = [
     PD.constrained_gaussian("α_sx", 40000.0, 20000.0, 1000.0, 200000.0), #23835.0, 12000.0, 1000.0, 200000.0),
     PD.constrained_gaussian("Ea_sx", 66858.0, 10000.0, 40000.0, 80000.0), #61000.0, 10000.0, 40000.0, 80000.0),
-    PD.constrained_gaussian("kM_sx", 0.0001, 0.003, 1e-5, 0.1), #0.005, 0.003, 1e-5, 0.1),
+    PD.constrained_gaussian("kM_sx", 0.001, 0.0008, 1e-5, 0.1), #0.005, 0.003, 1e-5, 0.1),
     PD.constrained_gaussian("kM_o2", 0.08, 0.01, 1e-5, 0.1), #0.004, 0.002, 1e-5, 0.1),
 ]
 prior = PD.combine_distributions(priors)
