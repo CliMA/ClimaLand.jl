@@ -228,6 +228,79 @@ function LandModel{FT}(
 end
 
 """
+    LandModel{FT}(
+        forcing,
+        toml_dict::CP.ParamDict,
+        domain::Union{
+            ClimaLand.Domains.Column,
+            ClimaLand.Domains.SphericalShell,
+            ClimaLand.Domains.HybridBox,
+        },
+        Δt;
+        prognostic_land_components = (:canopy, :snow, :soil),
+        soil = ...,
+        soilco2 = ...,
+        canopy = Canopy.CanopyModel{FT}(..., toml_dict; ...),
+        snow = ...,
+    ) where {FT}
+
+A convenience constructor for setting up the default LandModel using prognostic (modeled) LAI
+via the `ZhouOptimalLAIModel`. This is identical to the LAI-prescribing constructor, except
+that `LAI` is not a required argument and the default canopy model uses `ZhouOptimalLAIModel`
+for the biomass component instead of `PrescribedBiomassModel`.
+
+See also the constructor `LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; ...)` for
+the version that uses prescribed LAI from a `TimeVaryingInput`.
+"""
+function LandModel{FT}(
+    forcing,
+    toml_dict::CP.ParamDict,
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
+    Δt;
+    prognostic_land_components = (:canopy, :snow, :soil),
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+    ),
+    soilco2 = :soilco2 in prognostic_land_components ?
+              Soil.Biogeochemistry.SoilCO2Model{FT}(
+        domain,
+        Soil.Biogeochemistry.SoilDrivers(
+            PrognosticMet(soil.parameters),
+            forcing.atmos,
+        ),
+        toml_dict,
+    ) : nothing,
+    canopy = Canopy.CanopyModel{FT}(
+        Domains.obtain_surface_domain(domain),
+        (;
+            atmos = forcing.atmos,
+            radiation = forcing.radiation,
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
+        ),
+        toml_dict;
+        prognostic_land_components,
+    ),
+    snow = Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components,
+    ),
+) where {FT}
+    return LandModel{FT}(canopy, snow, soil, soilco2)
+end
+
+"""
     ClimaLand.land_components(land::LandModel)
 
 Returns the components of the `LandModel`.
@@ -795,6 +868,7 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
         update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
+        Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
