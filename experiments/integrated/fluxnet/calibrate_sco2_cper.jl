@@ -42,6 +42,7 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using ClimaDiagnostics
 using ClimaUtilities
 import ClimaUtilities.TimeManager: date
+import ClimaLand.LandSimVis as LandSimVis
 
 import EnsembleKalmanProcesses as EKP
 import EnsembleKalmanProcesses.ParameterDistributions as PD
@@ -93,15 +94,19 @@ land_domain = Column(;
 surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val)) #CHECK THAT
+
 # Build ERA5 forcing (global-style)
 toml_dict_base = LP.create_toml_dict(FT)
-(atmos, radiation) = ClimaLand.prescribed_forcing_era5(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
     start_date,
-    stop_date,
-    surface_space,
     toml_dict_base,
-    FT;
-    use_lowres_forcing = true,
+    FT,
 )
 
 # LAI from MODIS (global-style)
@@ -258,7 +263,7 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 
     # Diagnostics: sco2_ppm at halfhourly resolution
     output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["sco2_ppm"]
+    output_vars = ["swc", "tsoil", "si", "sco2", "soc", "so2","sco2_ppm"]
     diags = ClimaLand.default_diagnostics(
         land,
         start_date;
@@ -266,6 +271,7 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
         output_vars,
         reduction_period = :halfhourly,
     )
+    
 
     # Build and run simulation
     simulation = LandSimulation(
@@ -282,12 +288,12 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
     # Clean up temp file
     rm(tmp_toml_path; force = true)
 
-    return simulation
+    return simulation, diags
 end
 
 # ── 7. Forward Model G ───────────────────────────────────────────────────────
 function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-    simulation = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
+    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 
     # Extract sco2_ppm at target layer
     (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
@@ -374,6 +380,7 @@ println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
 savedir = joinpath(@__DIR__, "calibrate_sco2_cper_output")
+savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_NEON-CPER/20260205_newGlobal"
 mkpath(savedir)
 
 # Parameter convergence + error plot
@@ -461,4 +468,102 @@ println("\nDone.")
   lines!(ax, 1:n_obs, y_obs; color=:black, linewidth=2, label="NEON obs")
   lines!(ax, 1:n_obs, last_G_ensemble[:, best_idx]; color=:blue, linewidth=1.5, label="Best member ($(best_idx))")
   axislegend(ax; position=:rt)
-  save("sco2_best_vs_obs.png", fig)
+  save(joinpath(savedir, "sco2_best_vs_obs.png"), fig)
+  println("Saved: sco2_best_vs_obs.png")
+
+# ── 11. Run final model with best parameters and create timeseries plots ─────
+println("\n=== Generating timeseries plots with best parameters ===")
+
+# Run model with best parameters to get diagnostics
+simulation_best, _ = run_model(best_params...)
+
+# Plot SWC daily mean at target layer (similar to sco2_best_vs_obs)
+(times_swc, swc_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation_best.diagnostics[1].output_writer,
+    "swc_30m_average";
+    layer = target_layer,
+)
+swc_dates = times_swc isa Vector{DateTime} ? times_swc : date.(times_swc)
+swc_df = DataFrame(datetime = swc_dates, swc = Float64.(swc_data))
+swc_df[!, :date] = Date.(swc_df.datetime)
+swc_df = filter(row -> row.date >= Date(spinup_date), swc_df)
+swc_daily = combine(groupby(swc_df, :date), :swc => mean => :daily_mean)
+sort!(swc_daily, :date)
+
+fig_swc = Figure(size = (1000, 500))
+ax_swc = Axis(
+    fig_swc[1, 1];
+    xlabel = "Day index (after spinup)",
+    ylabel = "SWC",
+    title = "Soil water content at 6 cm (daily mean)",
+)
+lines!(ax_swc, 1:nrow(swc_daily), swc_daily.daily_mean; color = :blue, linewidth = 1.5, label = "SWC")
+axislegend(ax_swc; position = :rt)
+CairoMakie.save(joinpath(savedir, "swc_daily_best.png"), fig_swc)
+println("Saved: swc_daily_best.png")
+
+# Plot soil temperature daily mean at target layer
+(times_tsoil, tsoil_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation_best.diagnostics[1].output_writer,
+    "tsoil_30m_average";
+    layer = target_layer,
+)
+tsoil_dates = times_tsoil isa Vector{DateTime} ? times_tsoil : date.(times_tsoil)
+tsoil_df = DataFrame(datetime = tsoil_dates, tsoil = Float64.(tsoil_data))
+tsoil_df[!, :date] = Date.(tsoil_df.datetime)
+tsoil_df = filter(row -> row.date >= Date(spinup_date), tsoil_df)
+tsoil_daily = combine(groupby(tsoil_df, :date), :tsoil => mean => :daily_mean)
+sort!(tsoil_daily, :date)
+
+fig_tsoil = Figure(size = (1000, 500))
+ax_tsoil = Axis(
+    fig_tsoil[1, 1];
+    xlabel = "Day index (after spinup)",
+    ylabel = "Tsoil",
+    title = "Soil temperature at 6 cm (daily mean)",
+)
+lines!(
+    ax_tsoil,
+    1:nrow(tsoil_daily),
+    tsoil_daily.daily_mean;
+    color = :red,
+    linewidth = 1.5,
+    label = "Tsoil",
+)
+axislegend(ax_tsoil; position = :rt)
+CairoMakie.save(joinpath(savedir, "tsoil_daily_best.png"), fig_tsoil)
+println("Saved: tsoil_daily_best.png")
+
+# Plot O2 daily mean at target layer
+(times_so2, so2_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+    simulation_best.diagnostics[1].output_writer,
+    "so2_30m_average";
+    layer = target_layer,
+)
+so2_dates = times_so2 isa Vector{DateTime} ? times_so2 : date.(times_so2)
+so2_df = DataFrame(datetime = so2_dates, so2 = Float64.(so2_data))
+so2_df[!, :date] = Date.(so2_df.datetime)
+so2_df = filter(row -> row.date >= Date(spinup_date), so2_df)
+so2_daily = combine(groupby(so2_df, :date), :so2 => mean => :daily_mean)
+sort!(so2_daily, :date)
+
+fig_so2 = Figure(size = (1000, 500))
+ax_so2 = Axis(
+    fig_so2[1, 1];
+    xlabel = "Day index (after spinup)",
+    ylabel = "O2",
+    title = "Soil O₂ at 6 cm (daily mean)",
+)
+lines!(
+    ax_so2,
+    1:nrow(so2_daily),
+    so2_daily.daily_mean;
+    color = :green,
+    linewidth = 1.5,
+    label = "O2",
+)
+axislegend(ax_so2; position = :rt)
+CairoMakie.save(joinpath(savedir, "so2_daily_best.png"), fig_so2)
+println("Saved: so2_daily_best.png")
+
+
