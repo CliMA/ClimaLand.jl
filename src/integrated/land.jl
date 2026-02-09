@@ -270,6 +270,8 @@ lsm_aux_vars(m::LandModel) = (
     :ϵ_sfc,
     :α_sfc,
     :α_ground,
+    :total_energy,
+    :total_water,
 )
 
 """
@@ -297,6 +299,8 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+    FT,
+    FT,
 )
 
 """
@@ -324,7 +328,66 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
 )
+
+function initialize_prognostic(
+    model::LandModel{FT},
+    coords::NamedTuple,
+) where {FT}
+    components = land_components(model)
+    Y_state_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        getproperty(initialize_prognostic(submodel, coords), component)
+    end
+    conservation_vars = (:∫F_vol_liq_water_dt, :∫F_e_dt)
+    conservation_types = (FT, FT)
+    conservation_domain_names = (:surface, :surface)
+    conservation_state_list = initialize_vars(
+        conservation_vars,
+        conservation_types,
+        conservation_domain_names,
+        coords,
+        :conservation_check,
+    )
+    Y = ClimaCore.Fields.FieldVector(;
+        NamedTuple{(components..., conservation_vars...)}((
+            Y_state_list...,
+            conservation_state_list.conservation_check...,
+        ))...,
+    )
+    return Y
+end
+
+function make_update_aux(land::LandModel)
+    components = land_components(land)
+    update_aux_function_list =
+        map(x -> make_update_aux(getproperty(land, x)), components)
+    function update_aux!(p, Y, t)
+        for f! in update_aux_function_list
+            f!(p, Y, t)
+        end
+        sfc_cache = p.scratch1 .* 0
+        ClimaLand.total_liq_water_vol_per_area!(
+            p.total_water,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+        ClimaLand.total_energy_per_area!(
+            p.total_energy,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+    end
+    return update_aux!
+end
 
 """
     make_update_boundary_fluxes(
@@ -365,9 +428,8 @@ function make_update_boundary_fluxes(
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
-
-        # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
+        # Radiation
+        explicit_radiation_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
@@ -399,6 +461,8 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
+
+
     end
     return update_boundary_fluxes!
 end
@@ -419,8 +483,8 @@ function make_update_implicit_cache(
     function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
-        # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
+        # Canopy LW
+        implicit_radiation_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
@@ -438,25 +502,149 @@ function make_update_implicit_cache(
     return update_implicit_cache!
 end
 
+function make_exp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
+    update_exp_c! = make_update_cache(land)
 
-"""
-    lsm_radiant_energy_fluxes!(p,land::LandModel{FT},
-                                canopy_radiation::Canopy.AbstractRadiationModel{FT},
-                                Y,
-                                t,
-                                ) where {FT}
+    function exp_tendency!(dY, Y, p, t)
+        update_exp_c!(p, Y, t)
+        for f! in compute_exp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        top_water_flux = @. lazy(
+            p.drivers.P_snow +
+            (p.snow.turbulent_fluxes.vapor_flux + p.drivers.P_liq) *
+            p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.vapor_flux +
+            p.soil.infiltration,
+        )
+        bottom_water_flux = p.soil.bottom_bc.water
+        @. dY.∫F_vol_liq_water_dt =
+            -(top_water_flux - bottom_water_flux + p.soil.R_ss)
+    end
+    return exp_tendency!
+end
 
 
-A function which computes the net radiation at the ground surface
-give the canopy radiation model, as well as the outgoing radiation,
-and the net canopy radiation.
 
-Returns the correct radiative fluxes for bare ground in the case
-where the canopy LAI is zero. Note also that this serves the role of
-`canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
-when the Canopy is run in standalone mode.
-"""
-function lsm_radiant_energy_fluxes!(
+function make_imp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_imp_tendency_list =
+        map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
+    update_imp_c! = make_update_implicit_cache(land)
+
+    function imp_tendency!(dY, Y, p, t)
+        update_imp_c!(p, Y, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        atmos = land.snow.boundary_conditions.atmos
+        e_flux_falling_snow =
+            Snow.energy_flux_falling_snow(atmos, p, land.snow.parameters)
+        e_flux_falling_rain =
+            Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
+        top_heat_flux = @. lazy(
+            e_flux_falling_snow +
+            e_flux_falling_rain +
+            (p.snow.turbulent_fluxes.lhf + p.snow.turbulent_fluxes.shf) *
+            p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) *
+            (p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf) +
+            p.canopy.turbulent_fluxes.shf +
+            p.canopy.turbulent_fluxes.lhf +
+            +p.LW_u - p.drivers.LW_d + p.SW_u - p.drivers.SW_d,
+        )
+        bottom_heat_flux = p.soil.bottom_bc.heat
+        @. dY.∫F_e_dt = -(top_heat_flux - bottom_heat_flux)
+
+        top_water_flux = @. lazy(
+            p.drivers.P_snow +
+            (p.snow.turbulent_fluxes.vapor_flux + p.drivers.P_liq) *
+            p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.vapor_flux +
+            p.soil.infiltration,
+        )
+        bottom_water_flux = p.soil.bottom_bc.water
+        @. dY.∫F_vol_liq_water_dt = -(top_water_flux - bottom_water_flux)# + p.soil.R_ss)
+
+    end
+    return imp_tendency!
+end
+
+function explicit_radiation_fluxes!(
+    p,
+    land::LandModel{FT},
+    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    Y,
+    t,
+) where {FT}
+    canopy = land.canopy
+
+    # Short wave
+    α_soil_PAR = p.soil.PAR_albedo
+    α_soil_NIR = p.soil.NIR_albedo
+    α_snow_NIR = p.snow.α_snow
+    α_snow_PAR = p.snow.α_snow
+
+    # in W/m^2
+    par_d = p.canopy.radiative_transfer.par_d
+    nir_d = p.canopy.radiative_transfer.nir_d
+    f_refl_par = p.canopy.radiative_transfer.par.refl
+    f_refl_nir = p.canopy.radiative_transfer.nir.refl
+    f_trans_par = p.canopy.radiative_transfer.par.trans
+    f_trans_nir = p.canopy.radiative_transfer.nir.trans
+
+    # net soil/snow = -(1-α)*trans for par and nir
+    @. p.soil.SW_n .= -(
+        f_trans_nir * nir_d * (1 - α_soil_NIR) +
+        f_trans_par * par_d * (1 - α_soil_PAR)
+    )
+    @. p.snow.SW_n .= -(
+        f_trans_nir * nir_d * (1 - α_snow_NIR) +
+        f_trans_par * par_d * (1 - α_snow_PAR)
+    )
+    # SW upwelling  = reflected par + reflected nir
+    @. p.SW_u = par_d * f_refl_par + f_refl_nir * nir_d
+
+    # Long wave
+    LW_d_canopy = p.scratch1
+    earth_param_set = canopy.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    LW_d = p.drivers.LW_d
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
+    ϵ_soil = land.soil.parameters.emissivity
+    ϵ_snow = land.snow.parameters.ϵ_snow
+    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4)
+
+    @. p.soil.LW_n = -(ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4)
+    #now solve for the snow surface temperature:
+    Snow.update_surf_temp!(
+        land.snow,
+        land.snow.parameters.surf_temp,
+        p.snow.SW_n,
+        LW_d_canopy,
+        Y,
+        p,
+        t,
+    )
+    T_snow = p.snow.T_sfc
+    @. p.snow.LW_n = -(ϵ_snow * LW_d_canopy - ϵ_snow * _σ * T_snow^4) # identical to soil
+end
+
+function implicit_radiation_fluxes!(
     p,
     land::LandModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
@@ -470,87 +658,39 @@ function lsm_radiant_energy_fluxes!(
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
-    SW_d = p.drivers.SW_d
-
-    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
-
-    α_soil_PAR = p.soil.PAR_albedo
-    α_soil_NIR = p.soil.NIR_albedo
-    ϵ_soil = land.soil.parameters.emissivity
-    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
-    α_snow_NIR = p.snow.α_snow
-    α_snow_PAR = p.snow.α_snow
-    ϵ_snow = land.snow.parameters.ϵ_snow
-    T_snow = p.snow.T_sfc
-
-    # in W/m^2
     LW_d_canopy = p.scratch1
     LW_u_soil = p.scratch2
     LW_u_snow = p.scratch3
     LW_net_canopy = p.canopy.radiative_transfer.LW_n
-    SW_net_canopy = p.canopy.radiative_transfer.SW_n
-    R_net_soil = p.soil.R_n
-    R_net_snow = p.snow.R_n
     LW_u = p.LW_u
-    SW_u = p.SW_u
-    par_d = p.canopy.radiative_transfer.par_d
-    nir_d = p.canopy.radiative_transfer.nir_d
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    f_abs_nir = p.canopy.radiative_transfer.nir.abs
-    f_refl_par = p.canopy.radiative_transfer.par.refl
-    f_refl_nir = p.canopy.radiative_transfer.nir.refl
-    f_trans_par = p.canopy.radiative_transfer.par.trans
-    f_trans_nir = p.canopy.radiative_transfer.nir.trans
-    # in total: d - u = CANOPY_ABS + (1-α_ground)*CANOPY_TRANS
-    # SW_u  = reflected par + reflected nir
-    @. SW_u = par_d * f_refl_par + f_refl_nir * nir_d
-
-    # net canopy
-    @. SW_net_canopy = f_abs_par * par_d + f_abs_nir * nir_d
-
-    # net radiative flux for soil = -((1-α)*trans for par and nir)
-    @. R_net_soil .= -(
-        f_trans_nir * nir_d * (1 - α_soil_NIR) +
-        f_trans_par * par_d * (1 - α_soil_PAR)
-    )
-
-    @. R_net_snow .= -(
-        f_trans_nir * nir_d * (1 - α_snow_NIR) +
-        f_trans_par * par_d * (1 - α_snow_PAR)
-    ) #at this point, R_net_snow equals the SW_net for evaluating the snow surface temperature
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
 
-    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
+    ϵ_soil = land.soil.parameters.emissivity
+    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+
+    ϵ_snow = land.snow.parameters.ϵ_snow
+    T_snow = p.snow.T_sfc # do not update this again
+
+    # Working through the math, this satisfies: LW_u - LW_d = LW_c + LW_soil + LW_snow
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-
-    #now solve for the snow surface temperature:
-    Snow.update_surf_temp!(
-        snow,
-        snow.parameters.surf_temp,
-        R_net_snow,
-        LW_d_canopy,
-        Y,
-        p,
-        t,
-    )
 
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
-    @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
-    @. R_net_snow -= ϵ_snow * LW_d_canopy - ϵ_snow * _σ * T_snow^4 # identical to soil, checked
-    @. LW_net_canopy =
+    @. LW_net_canopy = -(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_soil * (1 - p.snow.snow_cover_fraction) +
-        ϵ_canopy * LW_u_snow * p.snow.snow_cover_fraction # area weighted by snow cover fraction, OK
+        ϵ_canopy * LW_u_snow * p.snow.snow_cover_fraction
+    ) # area weighted by snow cover fraction, OK
+
     @. LW_u =
-        (1 - ϵ_canopy) * LW_u_soil * (1 - p.snow.snow_cover_fraction) +
-        (1 - ϵ_canopy) * LW_u_snow * p.snow.snow_cover_fraction +
-        ϵ_canopy * _σ * T_canopy^4 # area weighed by snow cover fraction, OK
+        p.drivers.LW_d +
+        p.canopy.radiative_transfer.LW_n +
+        p.soil.LW_n * (1 - p.snow.snow_cover_fraction) +
+        p.snow.snow_cover_fraction * p.snow.LW_n
+
 end
-
-
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
     soil_boundary_fluxes!(
@@ -615,7 +755,8 @@ function soil_boundary_fluxes!(
     # has a nonzero sublimation which was applied for the entire step.
     @. p.soil.top_bc.heat =
         (1 - p.snow.snow_cover_fraction) * (
-            p.soil.R_n +
+            p.soil.LW_n +
+            p.soil.SW_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
@@ -729,14 +870,14 @@ function snow_boundary_fluxes!(
     e_flux_falling_rain =
         Snow.energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
-    # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
+    # positive fluxes are TOWARDS atmos
     p.snow.total_energy_flux .=
         e_flux_falling_snow .+
         (
             Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n .- p.snow.energy_runoff .- p.ground_heat_flux .+
-            e_flux_falling_rain
+            p.snow.LW_n .+ p.snow.SW_n .- p.snow.energy_runoff .-
+            p.ground_heat_flux .+ e_flux_falling_rain
         ) .* p.snow.snow_cover_fraction
     return nothing
 end
