@@ -72,7 +72,6 @@ get_soil(m::EnergyHydrology) = m
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n
 @diagnostic_compute "sensible_heat_flux" BucketModel p.bucket.turbulent_fluxes.shf
-@diagnostic_compute "surface_air_density" BucketModel p.bucket.ρ_sfc
 @diagnostic_compute "specific_humidity" BucketModel p.bucket.q_sfc
 @diagnostic_compute "surface_temperature" BucketModel p.bucket.T_sfc
 @diagnostic_compute "vapor_flux" BucketModel p.bucket.turbulent_fluxes.vapor_flux

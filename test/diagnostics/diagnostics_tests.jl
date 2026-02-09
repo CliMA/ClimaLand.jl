@@ -331,7 +331,7 @@ end
     # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
-    atmos = CoupledAtmosphere{FT}(surface_space, atmos_h)
+    atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
     radiation = CoupledRadiativeFluxes{FT}()
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     LAI = TimeVaryingInput((t) -> FT(1.0))
