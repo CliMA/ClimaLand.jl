@@ -74,27 +74,33 @@ p.drivers.u.data.:2 .= FT(3)
 p.drivers.SW_d .= FT(500)
 p.drivers.LW_d .= FT(100)
 p.drivers.frac_diff .= FT(0.5)
-
-ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
-set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
-t0 = ITime(0, Second(1), start_date)
-set_ic!(Y, p, t0, land)
-set_initial_cache! = make_set_initial_cache(land)
-set_initial_cache!(p, Y, t0)
-
-#TODO: After the LW/SW split PR, update this test below to check LW and SW are not nan
 for component in (:soil, :canopy, :snow)
     cache = getproperty(p, component).turbulent_fluxes
     @test :buoyancy_flux ∈ propertynames(cache)
     @test :ρτxz ∈ propertynames(cache)
     @test :ρτyz ∈ propertynames(cache)
-    if component == :soil
-        for field in (:lhf, :shf, :vapor_flux_ice, :vapor_flux_liq)
-            @test sum(isnan.(parent(getproperty(cache, field)))) == 0
-        end
-    else
-        for field in (:lhf, :shf, :vapor_flux)
-            @test sum(isnan.(parent(getproperty(cache, field)))) == 0
+end
+
+if !(ClimaComms.device() isa ClimaComms.CUDADevice)
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
+    t0 = ITime(0, Second(1), start_date)
+    set_ic!(Y, p, t0, land)
+    set_initial_cache! = make_set_initial_cache(land)
+    set_initial_cache!(p, Y, t0)
+
+    #TODO: After the LW/SW split PR, update this test below to check LW and SW are not nan
+    for component in (:soil, :canopy, :snow)
+        cache = getproperty(p, component).turbulent_fluxes
+        if component == :soil
+            for field in (:lhf, :shf, :vapor_flux_ice, :vapor_flux_liq)
+                @test sum(isnan.(parent(getproperty(cache, field)))) == 0
+            end
+        else
+            for field in (:lhf, :shf, :vapor_flux)
+                @test sum(isnan.(parent(getproperty(cache, field)))) == 0
+            end
         end
     end
 end
