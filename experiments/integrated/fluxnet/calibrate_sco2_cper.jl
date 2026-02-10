@@ -64,9 +64,10 @@ spinup_days = 20
 SOC_init = FT(2.0)
 dt = Float64(450)  # 7.5 minutes
 
-# Dates - get location from FLUXNET metadata, but use ERA5 forcing
+# Dates - get location and tower height from FLUXNET metadata
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
 spinup_date = start_date + Day(spinup_days)
@@ -74,7 +75,7 @@ spinup_date = start_date + Day(spinup_days)
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 5
+N_iterations = 20
 
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
@@ -93,15 +94,17 @@ land_domain = Column(;
 surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
-# Build ERA5 forcing (global-style)
+# Build forcing from NEON CSV data (site-level meteorological observations)
 toml_dict_base = LP.create_toml_dict(FT)
-(atmos, radiation) = ClimaLand.prescribed_forcing_era5(
+(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
     start_date,
-    stop_date,
-    surface_space,
     toml_dict_base,
-    FT;
-    use_lowres_forcing = true,
+    FT,
 )
 
 # LAI from MODIS (global-style)
