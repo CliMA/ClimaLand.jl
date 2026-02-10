@@ -305,20 +305,18 @@ land = LandModel{FT}(
             Array(binary_mask),
         ] .< 0,
     )
-    ρc_s =
-        ClimaLand.Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil.parameters.ρc_ds,
-            soil.parameters.earth_param_set,
-        )
-    T =
-        ClimaLand.Soil.temperature_from_ρe_int.(
-            Y.soil.ρe_int,
-            Y.soil.θ_i,
-            ρc_s,
-            soil.parameters.earth_param_set,
-        )
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        soil.parameters.ρc_ds,
+        soil.parameters.earth_param_set,
+    )
+    T = ClimaLand.Soil.temperature_from_ρe_int.(
+        Y.soil.ρe_int,
+        Y.soil.θ_i,
+        ρc_s,
+        soil.parameters.earth_param_set,
+    )
     @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
     @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
 end

@@ -39,7 +39,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using CairoMakie
 using Statistics
-import StatsBase: percentile
 using Dates
 using Insolation
 using StaticArrays
@@ -122,13 +121,12 @@ function set_ic!(Y, p, t0, model)
     (; retention_model, ν, S_s) = model.hydraulics.parameters
     ψ_leaf_0 = FT(-2e5 / 9800)
     ψ_stem_0 = FT(-1e5 / 9800)
-    S_l_ini =
-        inverse_water_retention_curve.(
-            retention_model,
-            [ψ_stem_0, ψ_leaf_0],
-            ν,
-            S_s,
-        )
+    S_l_ini = inverse_water_retention_curve.(
+        retention_model,
+        [ψ_stem_0, ψ_leaf_0],
+        ν,
+        S_s,
+    )
 
     Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
@@ -170,8 +168,8 @@ for dt in dts
 
         global ΔT = abs.(T .- ref_T)
         push!(mean_err, FT(mean(ΔT)))
-        push!(p95_err, FT(percentile(ΔT, 95)))
-        push!(p99_err, FT(percentile(ΔT, 99)))
+        push!(p95_err, FT(quantile(ΔT, 0.95)))
+        push!(p99_err, FT(quantile(ΔT, 0.99)))
         push!(sol_err, ΔT[end])
         push!(T_states, T)
         push!(times, float.(sol.t))

@@ -1,7 +1,5 @@
 using ClimaLand
 using Test
-using BSON, Dates, HTTP
-using DataFrames, CSV, StatsBase, Flux, LinearAlgebra
 
 import ClimaParams as CP
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
@@ -13,16 +11,22 @@ using ClimaLand.Snow
 using ClimaLand.Domains
 import ClimaLand.Parameters as LP
 using ClimaComms
+ClimaComms.@import_required_backends
 
-DataToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
-ModelToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
-NeuralSnowExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
+using Flux, Adapt, JLD2, InteractiveUtils #leftover weak dep for ConstrainedNeuralModelExt
+using Downloads, Statistics, DataFrames #leftover weak dep for SNOTELScraperExt
 
-if !isnothing(DataToolsExt)
-    DataTools = DataToolsExt.DataTools
-    ModelTools = ModelToolsExt.ModelTools
-    NeuralSnow = NeuralSnowExt.NeuralSnow
-    @testset "Testing Data Utilities" begin
+
+SNOTELScraperExt = Base.get_extension(ClimaLand, :SNOTELScraperExt)
+ConstrainedNeuralModelExt =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt)
+NeuralSnowExt = Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt)
+
+if !isnothing(SNOTELScraperExt)
+    DataTools = SNOTELScraperExt.DataTools
+    CNM = ConstrainedNeuralModelExt.ConstrainedNeuralModels
+    NeuralSnow = ConstrainedNeuralModelExt.NeuralSnow
+    @testset "Testing SNOTELScraper Extension" begin
         start_date = "2015-01-01"
         end_date = "2015-02-01"
         station_id = 1030
@@ -62,7 +66,7 @@ if !isnothing(DataToolsExt)
         =#
 
         download_link = "https://caltech.box.com/shared/static/4tih9hiydrc7bcvrpkr2x727b5l54oiq.csv"
-        download_data = CSV.read(HTTP.get(download_link).body, DataFrame)
+        download_data = DataTools.df_from_url(download_link) #CSV.read(HTTP.get(download_link).body, DataFrame)
         test_data2 = deepcopy(download_data)
         #=
         test_data2 = DataTools.sitedata_daily(
@@ -80,7 +84,7 @@ if !isnothing(DataToolsExt)
         #@test isequal(download_data, test_data2)
 
         download_link_hr = "https://caltech.box.com/shared/static/4q7qtnc2nv8rwh4q8s0afe238ydzfl93.csv"
-        download_data = CSV.read(HTTP.get(download_link_hr).body, DataFrame)
+        download_data = DataTools.df_from_url(download_link_hr) #CSV.read(HTTP.get(download_link_hr).body, DataFrame)
         test_data3 = deepcopy(download_data)
         #=
         test_data3 = DataTools.sitedata_hourly(
@@ -202,103 +206,14 @@ if !isnothing(DataToolsExt)
         @test sum(x1) == 1
     end
 
-    @testset "Testing Model Utilities" begin
-        nfeatures = 7
-        n = 5
-        pred_vars = [
-            :z,
-            :SWE,
-            :rel_hum_avg,
-            :sol_rad_avg,
-            :wind_speed_avg,
-            :air_temp_avg,
-            :dprecipdt_snow,
-        ]
-        z_idx = 1
-        swe_idx = 2
-        p_idx = 7
-        model = ModelTools.make_model(Float32, nfeatures, n, z_idx, p_idx)
-        ps = ModelTools.get_model_ps(model)
-        for item in ps
-            item[:] .= Float32(1.0)
-        end
-
-        test_input = Matrix{Float32}(ones(nfeatures, 1))
-        @test model(test_input)[1] == 1968
-        @test size(model(test_input)) == (1,)
-        @test sum(length, ps) == nfeatures * (n * (2 * nfeatures + 1) + 2) + 1
-        ModelTools.setoutscale!(model, 0.5)
-        @test model[:final_scale].weight[3, 3] == 0.5
-        @test model(test_input)[1] == 984
-        ModelTools.setoutscale!(model, 2.0)
-        @test model(test_input)[1] == 1968 #this tests clipping
-        @test model(-test_input)[1] == 0.0
-        ModelTools.settimescale!(model, 1968)
-        @test model[:final_scale].weight[2, 2] == Float32(1 / 1968)
-        @test ModelTools.evaluate(model, Vector{Float32}(ones(nfeatures)))[1] ==
-              1968
-
-        test_constants = [1.0, 2.0, 3.0, 4.0, 5.0]
-        x = zeros(6, 5)
-        x[1:5, 1:5] = diagm([1, 2, 3, 4, 5])
-        x[6, :] = [1, 1, 1, 1, 1]
-        y = [1.0, 4.0, 9.0, 16.0, 25.0, 15.0]
-        x_dataframe = DataFrame(x, :auto)
-        x_dataframe[!, :y] = y
-        answer = [1.0, 2.0, 3.0, 4.0, 5.0, 0.0]
-        model2 =
-            ModelTools.LinearModel(x_dataframe, [:x1, :x2, :x3, :x4, :x5], :y)
-        model3 = ModelTools.LinearModel(x, y)
-        @test model2 ≈ answer
-        @test model3 ≈ answer
-        @test ModelTools.evaluate(model2, Vector{Float32}(ones(5)))[1] == 15
-        @test typeof(
-            ModelTools.evaluate(model2, Vector{Float32}(ones(5)))[1],
-        ) == Float32
-
-        temp(x) = x
-        test_loss_check(x, y) = ModelTools.custom_loss(x, y, temp, 2, 1)
-        input_x = Vector{Float32}([1, 2, 3, 4, 5])
-        input_y = Vector{Float32}([2, 3, 5, 2, 3])
-        @test test_loss_check(input_x, input_y) == 11.8f0
-        @test typeof(test_loss_check(input_x, input_y)) == Float32
-
-        data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
-        modelz_download_link = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
-        modelswe_download_link = "https://caltech.box.com/shared/static/fe3cghffl0vz3xlzi3jsg3sb2ptyxlai.bson"
-        data = CSV.read(HTTP.get(data_download_link).body, DataFrame)
-        data = data[data[!, :id] .== 1286, :]
-        data = DataTools.prep_data(data)
-        zmodel = ModelTools.make_model(Float32, nfeatures, 4, z_idx, p_idx)
-        swemodel = ModelTools.make_model(Float32, nfeatures, 5, swe_idx, p_idx)
-        zmodel_state =
-            BSON.load(IOBuffer(HTTP.get(modelz_download_link).body))[:zstate]
-        swemodel_state =
-            BSON.load(IOBuffer(HTTP.get(modelswe_download_link).body))[:swestate]
-        Flux.loadmodel!(zmodel, zmodel_state)
-        Flux.loadmodel!(swemodel, swemodel_state)
-        ModelTools.settimescale!(zmodel, 86400.0)
-        ModelTools.settimescale!(swemodel, 86400.0)
-        pred_series, _, _ = ModelTools.make_timeseries(zmodel, data, Day(1))
-        true_series = data[!, :z]
-        test_loss(x, y) = ModelTools.custom_loss(x, y, zmodel, 2, 1)
-        series_err =
-            sqrt(sum((pred_series .- true_series) .^ 2) ./ length(pred_series))
-        direct_err = test_loss(
-            Matrix{Float32}(select(data, pred_vars))',
-            data[!, :dzdt]',
-        )
-        @test series_err ≈ 0.15 atol = 0.05
-        @test direct_err ≈ 0 atol = 1e-12
-
-        zseries, sweseries, _, _ =
-            ModelTools.paired_timeseries(zmodel, swemodel, data, Day(1))
-        true_swes = data[!, :SWE]
-        zerr = sqrt(sum((zseries .- true_series) .^ 2) ./ length(true_series))
-        sweerr = sqrt(sum((sweseries .- true_swes) .^ 2) ./ length(true_series))
-        @test zerr ≈ 0.1 atol = 0.05
-        @test sweerr ≈ 0.05 atol = 0.03
-
+    @testset "Testing ConstrainedNeuralModels module" begin
+        FT = Float32
+        no_scale = CNM.NoScaling{FT}
+        use_in_scales = ones(FT, 7)
+        c_scale = CNM.ConstScaling(use_in_scales)
+        @test no_scale <: CSM.InputWeighting{FT}
+        @test c_scale <: CSM.InputWeighting{FT}
+        @test c_scale.in_scales == use_in_scales
     end
 
     @testset "Testing NeuralSnow module" begin
@@ -366,12 +281,11 @@ if !isnothing(DataToolsExt)
               (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
 
         Y.snow.S .= FT(0.1)
-        Y.snow.U .=
-            ClimaLand.Snow.energy_from_T_and_swe.(
-                Y.snow.S,
-                FT(273.0),
-                Ref(model.parameters),
-            )
+        Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+            Y.snow.S,
+            FT(273.0),
+            Ref(model.parameters),
+        )
         Y.snow.Z .= FT(0.2)
         set_initial_cache! = ClimaLand.make_set_initial_cache(model)
         t0 = FT(0.0)

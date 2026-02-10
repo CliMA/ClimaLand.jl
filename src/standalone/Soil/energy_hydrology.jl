@@ -1197,27 +1197,26 @@ function turbulent_fluxes!(
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     gustiness = SurfaceFluxes.ConstantGustinessSpec(atmos.gustiness)
-    dest .=
-        soil_turbulent_fluxes_at_a_point.(
-            momentum_fluxes, # return_extra_fluxes
-            ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc), # is_liquid
-            p.drivers.P,
-            p.drivers.T,
-            p.drivers.q, # q_tot
-            p.drivers.u,
-            atmos.h,
-            T_sfc,
-            q_sfc,
-            roughness_model,
-            update_T_sfc,
-            update_q_sfc,
-            h_sfc,
-            displ,
-            update_∂T_sfc∂T,
-            update_∂q_sfc∂T,
-            gustiness,
-            earth_param_set,
-        )
+    dest .= soil_turbulent_fluxes_at_a_point.(
+        momentum_fluxes, # return_extra_fluxes
+        ClimaLand.heaviside.(T_sfc, Tf_depressed_sfc), # is_liquid
+        p.drivers.P,
+        p.drivers.T,
+        p.drivers.q, # q_tot
+        p.drivers.u,
+        atmos.h,
+        T_sfc,
+        q_sfc,
+        roughness_model,
+        update_T_sfc,
+        update_q_sfc,
+        h_sfc,
+        displ,
+        update_∂T_sfc∂T,
+        update_∂q_sfc∂T,
+        gustiness,
+        earth_param_set,
+    )
     return nothing
 end
 

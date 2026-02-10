@@ -27,7 +27,7 @@
 #nb required_pkgs = ["ClimaLand", "ClimaDiagnostics", "CairoMakie",
 #nb "EnsembleKalmanProcesses", "Random", "Logging"]
 #nb Pkg.add(required_pkgs)
-#nb plotting_pkgs = ["ClimaAnalysis", "GeoMakie", "Printf", "StatsBase"]
+#nb plotting_pkgs = ["ClimaAnalysis", "GeoMakie", "Printf", "Statistics"]
 #nb Pkg.add(plotting_pkgs)
 #nb Pkg.add(Pkg.PackageSpec(;name="ClimaLand", rev="main")) # TODO REMOVE THIS AFTER RELEASE
 #nb Pkg.instantiate()
@@ -54,7 +54,7 @@ using Statistics
 using Logging
 import Random
 using Dates
-using ClimaAnalysis, GeoMakie, Printf, StatsBase
+using ClimaAnalysis, GeoMakie, Printf
 
 # ## Configuration and Site Setup
 #
@@ -210,14 +210,13 @@ end
 function G(Vcmax25)
     simulation = model(Vcmax25)
     lhf = get_lhf(simulation)
-    observation =
-        Float64.(
-            get_diurnal_average(
-                lhf,
-                simulation.start_date,
-                simulation.start_date + Day(20),
-            ),
-        )
+    observation = Float64.(
+        get_diurnal_average(
+            lhf,
+            simulation.start_date,
+            simulation.start_date + Day(20),
+        ),
+    )
     return observation
 end
 

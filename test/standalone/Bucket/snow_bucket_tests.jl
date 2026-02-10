@@ -123,8 +123,7 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t0)
         # Test that the albedo is the bareground albedo (negative snow treated as zero snow)
-        @test p.bucket.α_sfc ==
-              FT.(
+        @test p.bucket.α_sfc == FT.(
             α_bareground_func.(
                 ClimaCore.Fields.coordinate_field(surface_space),
             ),
@@ -133,8 +132,7 @@ for FT in (Float32, Float64)
         @show p.bucket.turbulent_fluxes.vapor_flux
         @test all(parent(p.bucket.turbulent_fluxes.vapor_flux) .== FT(0.0))
         # Test that q_sfc is computed as if there was zero snow
-        @test p.bucket.q_sfc ==
-              ClimaLand.Bucket.saturation_specific_humidity.(
+        @test p.bucket.q_sfc == ClimaLand.Bucket.saturation_specific_humidity.(
             p.bucket.T_sfc,
             p.bucket.ρ_sfc,
             earth_param_set.thermo_params,
@@ -245,26 +243,23 @@ for FT in (Float32, Float64)
                 return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
             end
 
-            partitioned_fluxes =
-                partition_snow_surface_fluxes.(
-                    Y.bucket.σS,
-                    p.bucket.T_sfc,
-                    model.parameters.τc,
-                    snow_cover_fraction.(Y.bucket.σS),
-                    p.bucket.turbulent_fluxes.vapor_flux,
-                    p.bucket.turbulent_fluxes.lhf .+
-                    p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
-                    _ρLH_f0,
-                    _T_freeze,
-                )
+            partitioned_fluxes = partition_snow_surface_fluxes.(
+                Y.bucket.σS,
+                p.bucket.T_sfc,
+                model.parameters.τc,
+                snow_cover_fraction.(Y.bucket.σS),
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.turbulent_fluxes.lhf .+ p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
+                _ρLH_f0,
+                _T_freeze,
+            )
             F_melt = partitioned_fluxes.F_melt
             F_into_snow =
                 partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G_under_snow
             F_sfc =
-                p.bucket.turbulent_fluxes.lhf .+
-                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n .-
-                _ρLH_f0 .* FT(snow_precip(t0))
+                p.bucket.turbulent_fluxes.lhf .+ p.bucket.turbulent_fluxes.shf .+
+                p.bucket.R_n .- _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
                 FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
                 p.bucket.turbulent_fluxes.vapor_flux
@@ -359,26 +354,23 @@ for FT in (Float32, Float64)
                 return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
             end
 
-            partitioned_fluxes =
-                partition_snow_surface_fluxes.(
-                    Y.bucket.σS,
-                    p.bucket.T_sfc,
-                    model.parameters.τc,
-                    snow_cover_fraction.(Y.bucket.σS),
-                    p.bucket.turbulent_fluxes.vapor_flux,
-                    p.bucket.turbulent_fluxes.lhf .+
-                    p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
-                    _ρLH_f0,
-                    _T_freeze,
-                )
+            partitioned_fluxes = partition_snow_surface_fluxes.(
+                Y.bucket.σS,
+                p.bucket.T_sfc,
+                model.parameters.τc,
+                snow_cover_fraction.(Y.bucket.σS),
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.turbulent_fluxes.lhf .+ p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
+                _ρLH_f0,
+                _T_freeze,
+            )
             F_melt = partitioned_fluxes.F_melt
             F_into_snow =
                 partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G_under_snow
             F_sfc =
-                p.bucket.turbulent_fluxes.lhf .+
-                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n .-
-                _ρLH_f0 .* FT(snow_precip(t0))
+                p.bucket.turbulent_fluxes.lhf .+ p.bucket.turbulent_fluxes.shf .+
+                p.bucket.R_n .- _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
                 FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
                 p.bucket.turbulent_fluxes.vapor_flux
@@ -480,17 +472,16 @@ for FT in (Float32, Float64)
         F_sfc = @. p.bucket.turbulent_fluxes.lhf +
            p.bucket.turbulent_fluxes.shf +
            p.bucket.R_n
-        partitioned_fluxes =
-            partition_snow_surface_fluxes.(
-                Y.bucket.σS,
-                p.bucket.T_sfc,
-                model.parameters.τc,
-                σ_snow,
-                p.bucket.turbulent_fluxes.vapor_flux,
-                F_sfc,
-                _ρLH_f0,
-                _T_freeze,
-            )
+        partitioned_fluxes = partition_snow_surface_fluxes.(
+            Y.bucket.σS,
+            p.bucket.T_sfc,
+            model.parameters.τc,
+            σ_snow,
+            p.bucket.turbulent_fluxes.vapor_flux,
+            F_sfc,
+            _ρLH_f0,
+            _T_freeze,
+        )
         F_melt = partitioned_fluxes.F_melt
         F_into_snow = @. partitioned_fluxes.F_into_snow * σ_snow -
            _ρLH_f0 * FT(snow_precip(t0))

@@ -56,7 +56,7 @@ import ClimaLand.Parameters as LP
 import ClimaDiagnostics
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf
 import ClimaLand.LandSimVis as LandSimVis
 
 # Define the floating point precision desired (64 or 32 bit), and get the
@@ -215,13 +215,12 @@ function set_ic!(Y, p, t0, model)
     ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
 
-    S_l_ini =
-        inverse_water_retention_curve.(
-            retention_model,
-            [ψ_stem_0, ψ_leaf_0],
-            ν,
-            S_s,
-        )
+    S_l_ini = inverse_water_retention_curve.(
+        retention_model,
+        [ψ_stem_0, ψ_leaf_0],
+        ν,
+        S_s,
+    )
     for i in 1:2
         Y.canopy.hydraulics.ϑ_l.:($i) .=
             augmented_liquid_fraction.(ν, S_l_ini[i])

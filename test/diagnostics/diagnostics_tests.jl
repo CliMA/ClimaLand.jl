@@ -205,20 +205,18 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
         Y.soil.ϑ_l .= FT(0.24)
         Y.soil.θ_i .= FT(0.0)
         T = FT(290.15)
-        ρc_s =
-            Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                model.parameters.ρc_ds,
-                model.parameters.earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                T,
-                model.parameters.earth_param_set,
-            )
+        ρc_s = Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            model.parameters.earth_param_set,
+        )
+        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            model.parameters.earth_param_set,
+        )
     end
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()
@@ -284,20 +282,18 @@ end
         Y.soil.ϑ_l .= FT(0.24)
         Y.soil.θ_i .= FT(0.0)
         T = FT(290.15)
-        ρc_s =
-            Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                model.soil.parameters.ρc_ds,
-                model.soil.parameters.earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                T,
-                model.soil.parameters.earth_param_set,
-            )
+        ρc_s = Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.soil.parameters.ρc_ds,
+            model.soil.parameters.earth_param_set,
+        )
+        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            model.soil.parameters.earth_param_set,
+        )
 
         Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 

@@ -11,10 +11,10 @@
 
 # We begin by importing all required packages:
 using ClimaLand
-using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, BSON
+using DataFrames, Downloads, Dates, Flux, Statistics
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "BSON", and "ClimaLand"
+# be loaded only if "DataFrames", "Downloads", "Flux", "Statistics", and "ClimaLand"
 # are loaded.
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 

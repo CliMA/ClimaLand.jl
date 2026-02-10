@@ -123,11 +123,10 @@ end
 
         # Cleaning the build directory should remove the old png file from
         # populate_build_dir
-        files_in_build_dir =
-            basename.([
-                joinpath(root, file) for
-                (root, _, files) in walkdir(ilamb_build_dir) for file in files
-            ])
+        files_in_build_dir = basename.([
+            joinpath(root, file) for
+            (root, _, files) in walkdir(ilamb_build_dir) for file in files
+        ])
         png_files_in_build_dir =
             filter(filename -> endswith(filename, ".png"), files_in_build_dir)
 
@@ -157,11 +156,10 @@ end
         @test isdir(model_dir2)
         @test isdir(model_dir3)
 
-        files_in_build_dir =
-            basename.([
-                joinpath(root, file) for
-                (root, _, files) in walkdir(ilamb_build_dir) for file in files
-            ])
+        files_in_build_dir = basename.([
+            joinpath(root, file) for
+            (root, _, files) in walkdir(ilamb_build_dir) for file in files
+        ])
         @test length(files_in_build_dir) == 3
         @test isfile(joinpath(ilamb_build_dir, "benchmark_$model_name2.nc"))
         @test isfile(joinpath(ilamb_build_dir, "benchmark_$model_name3.nc"))
@@ -271,11 +269,10 @@ end
     )
     @test isfile(build_dir, "3_2010-01-01_1234567_suffix.nc")
 
-    files_in_build_dir =
-        basename.([
-            joinpath(root, file) for (root, _, files) in walkdir(build_dir) for
-            file in files
-        ])
+    files_in_build_dir = basename.([
+        joinpath(root, file) for (root, _, files) in walkdir(build_dir) for
+        file in files
+    ])
 
     @test length(files_in_build_dir) == 3
     @test "misc" ∉ files_in_build_dir

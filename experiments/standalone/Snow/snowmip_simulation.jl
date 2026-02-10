@@ -21,10 +21,11 @@ using Insolation
 using DelimitedFiles
 using ClimaUtilities.Utils: linear_interpolation
 
-using CSV, HTTP, Flux, BSON, StatsBase
+using Flux
 
 ClimaComms.@import_required_backends
-NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
 # Site-specific quantities
 # Error if no site argument is provided
