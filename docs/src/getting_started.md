@@ -22,7 +22,7 @@ in a region (in a box), or at a site (in a column). See the [tutorial to ClimaLa
 - Set your simulation period: start date, end date, timestep.
 - Set the forcings (for example, air temperature, precipitations).
 - Set the initial conditions. Differential equations required initial conditions to solve.
-For some simulations (e.g., global land simualtions), we provide default initial condition ("ic") functions,
+For some simulations (e.g., global land simulations), we provide default initial condition ("ic") functions,
 but in many cases you need to create your own `set_ic!` function.
 - Set how output is saved. For some simulations (e.g., global land simulations), we use the default diagnostic output,
 corresponding to monthly averages of specific variables saved to netcdf files.
