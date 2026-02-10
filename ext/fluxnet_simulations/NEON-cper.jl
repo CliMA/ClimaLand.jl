@@ -143,9 +143,11 @@ function FluxnetSimulations.get_parameters(
     retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
     plant_ν = FT(8.93e-3),
     plant_S_s = FT(1e-2 * 0.0098),
+    #ADAPT THAT
     rooting_depth = FT(0.6), # adapted with https://data.neonscience.org/api/v0/documents/NEON.DOC.003883vB
     n_stem = Int64(0),
     n_leaf = Int64(1),
+    #ADAPT THESE HEIGHTS
     h_leaf = FT(0.2), #adapted according to pictures
     h_stem = FT(0),
     h_canopy = h_leaf + h_stem,
