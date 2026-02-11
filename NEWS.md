@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- ![breaking change][badge-💥breaking] Unify radiation for bucket and integrated land PR[#1630](https://github.com/CliMA/ClimaLand.jl/pull/1630)
 
 v1.5.3
 ------
