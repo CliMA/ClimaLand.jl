@@ -130,7 +130,8 @@ stop_date = DateTime(2009, 1, 1)  # Full year 2008
     atmos_h,
     start_date,
     toml_dict,
-    FT,
+    FT;
+    split_precip = :callmip,
 )
 
 # Set up soil model

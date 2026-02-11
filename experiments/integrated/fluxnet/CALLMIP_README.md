@@ -1,6 +1,6 @@
 # CalMIP DK-Sor Site Simulation Guide
 
-This directory contains the setup for running CalMIP (California Land Model Intercomparison Project) simulations for the DK-Sor (Denmark Sorø) flux tower site in ClimaLand.jl.
+This directory contains the setup for running CalMIP (Calibration Land Model Intercomparison Project) simulations for the DK-Sor (Denmark Sorø) flux tower site in ClimaLand.jl.
 
 ## Files Created
 
