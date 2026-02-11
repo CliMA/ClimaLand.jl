@@ -75,7 +75,7 @@ spinup_date = start_date + Day(spinup_days)
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 20
+N_iterations = 10
 
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
