@@ -28,6 +28,11 @@ which is why we drop missing data. For the timestamp of the observation, we use
 the halfway point between the timestamp start and timestamp end:
 see https://fluxnet.org/data/fluxnet2015-dataset/fullset-data-product/ for details.
 
+The `split_precip` keyword argument controls rain/snow partitioning:
+- `true` or `:jennings`: Jennings et al. (2018) logistic function using temperature and humidity
+- `:callmip`: CalMIP Phase 1 binary threshold (Tair < 273.15K → snow, >= 273.15K → rain)
+- `false`: No splitting (all precipitation treated as rain)
+
 This assumes that the first row of the CSV file is the list of of column names,
 and that these names are:
 "TA_F" (air temperature in C)
@@ -153,7 +158,30 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     # Convert to a flux using data_dt. Also, change the sign, because in ClimaLand
     # precipitation is a downward flux (negative), and convert from accumulated mm to m/s
     data_dt = Second(UTC_datetimes[2] - UTC_datetimes[1]).value # seconds
-    if split_precip
+    if split_precip == :callmip
+        # CalMIP Phase 1 protocol: binary threshold at 273.15K (0°C)
+        # Tair < 273.15K → all snow, Tair >= 273.15K → all rain
+        # TA_F is in °C, so threshold is 0°C
+        compute_rain_callmip(T, precip) =
+            T >= 0 ? -precip / 1000 / data_dt : zero(precip)
+        compute_snow_callmip(T, precip) =
+            T < 0 ? -precip / 1000 / data_dt : zero(precip)
+        atmos_P_liq = time_varying_input_from_data(
+            data,
+            ["TA_F", "P_F"],
+            column_name_map,
+            seconds_since_start_date;
+            preprocess_func = compute_rain_callmip,
+        )
+        atmos_P_snow = time_varying_input_from_data(
+            data,
+            ["TA_F", "P_F"],
+            column_name_map,
+            seconds_since_start_date;
+            preprocess_func = compute_snow_callmip,
+        )
+    elseif split_precip == true || split_precip == :jennings
+        # Jennings et al. (2018) logistic function using temperature and humidity
         compute_rain(T, VPD, precip; thermo_params = thermo_params) =
             -1 * precip / 1000 / data_dt *
             (1 - snow_precip_fraction(T, VPD; thermo_params))
@@ -365,6 +393,14 @@ end
 Estimate the fraction of precipitation that is in snow form,
 given the air temperature at the surface in C and the vapor pressure
 deficit in hPa.
+
+Uses a logistic function based on temperature and relative humidity,
+which provides a smooth transition between rain and snow phases.
+Used when `split_precip=true` or `split_precip=:jennings`.
+
+For CalMIP experiments, use `split_precip=:callmip` in
+`prescribed_forcing_fluxnet` instead, which applies the CalMIP Phase 1
+binary threshold (Tair < 273.15K → snow, Tair >= 273.15K → rain).
 
 See Jennings, K.S., Winchell, T.S., Livneh, B. et al.
 Spatial variation of the rain–snow temperature threshold across the

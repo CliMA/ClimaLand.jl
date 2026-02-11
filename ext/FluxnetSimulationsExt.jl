@@ -27,6 +27,7 @@ include("fluxnet_simulations/US-MOz.jl")
 include("fluxnet_simulations/US-Ha1.jl")
 include("fluxnet_simulations/US-NR1.jl")
 include("fluxnet_simulations/US-Var.jl")
+include("fluxnet_simulations/DK-Sor.jl")  # CalMIP Phase 1a test site
 
 # Include the data processing, forcing, and initial conditions utilities.
 include("fluxnet_simulations/data_processing.jl")
