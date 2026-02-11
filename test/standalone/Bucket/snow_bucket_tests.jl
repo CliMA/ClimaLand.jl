@@ -133,10 +133,20 @@ for FT in (Float32, Float64)
         @show p.bucket.turbulent_fluxes.vapor_flux
         @test all(parent(p.bucket.turbulent_fluxes.vapor_flux) .== FT(0.0))
         # Test that q_sfc is computed as if there was zero snow
+        h_sfc = ClimaLand.surface_height(model, Y, p)
+        surface_flux_params =
+            LP.surface_fluxes_parameters(model.parameters.earth_param_set)
         @test p.bucket.q_sfc ==
               ClimaLand.Bucket.saturation_specific_humidity.(
             p.bucket.T_sfc,
-            p.bucket.ρ_sfc,
+            ClimaLand.compute_ρ_sfc.(
+                surface_flux_params,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                bucket_atmos.h .- h_sfc,
+                p.bucket.T_sfc,
+            ),
             earth_param_set.thermo_params,
         )
         # Test that beta factor is zero despite negative water content
