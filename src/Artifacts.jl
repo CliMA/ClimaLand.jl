@@ -339,20 +339,24 @@ Users should download CalMIP forcing data from:
 """
 function callmip_data_path(site_ID; context = nothing)
     @assert site_ID ∈ ("DK-Sor",)
-    
+
     # TODO: Once CalMIP data is added to ClimaArtifacts, use:
     # folder_path = @clima_artifact("callmip_sites", context)
     # data_path = joinpath(folder_path, "$(site_ID).csv")
-    
+
     # For now, expect users to provide the path via environment variable
     # or use a default path
     if haskey(ENV, "CALLMIP_DATA_PATH")
         data_path = joinpath(ENV["CALLMIP_DATA_PATH"], "$(site_ID).csv")
     else
         # Default to sampo data directory
-        data_path = joinpath("/net/sampo/data1/renatob", "callmip_forcing", "$(site_ID).csv")
+        data_path = joinpath(
+            "/net/sampo/data1/renatob",
+            "callmip_forcing",
+            "$(site_ID).csv",
+        )
     end
-    
+
     return data_path
 end
 

@@ -199,7 +199,8 @@ photosynthesis =
 surface_space = land_domain.space.surface
 
 # Use prescribed LAI from MODIS data or constant LAI for testing
-LAI = ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
 RAI = maxLAI * f_root_to_shoot
@@ -324,10 +325,10 @@ println("Output files written to: ", outdir)
 
 # List output files
 println("Output files:")
-for file in readdir(outdir; join=false)
+for file in readdir(outdir; join = false)
     filepath = joinpath(outdir, file)
     if isfile(filepath)
-        filesize_mb = round(stat(filepath).size / 1024^2, digits=2)
+        filesize_mb = round(stat(filepath).size / 1024^2, digits = 2)
         println("  $file ($(filesize_mb) MB)")
     end
 end

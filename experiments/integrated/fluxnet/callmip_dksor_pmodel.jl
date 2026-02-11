@@ -87,7 +87,8 @@ canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 )
 
 # ── 6. LAI from MODIS ─────────────────────────────────────────────────────────
-LAI = ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # ── 7. Custom canopy components (PModel overrides) ────────────────────────────
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)

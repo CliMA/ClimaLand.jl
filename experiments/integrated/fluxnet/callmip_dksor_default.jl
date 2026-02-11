@@ -83,7 +83,8 @@ surface_space = land_domain.space.surface
 )
 
 # ── 6. LAI from MODIS ─────────────────────────────────────────────────────────
-LAI = ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 
 # ── 7. Build LandModel (all defaults) ────────────────────────────────────────
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
