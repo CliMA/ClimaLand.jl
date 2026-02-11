@@ -422,6 +422,18 @@ savedir = joinpath(@__DIR__, "calibrate_sco2_cper_output")
 savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_NEON-CPER/20260211_moreExtreme_pmodel/"
 mkpath(savedir)
 
+# Write final parameters to file
+params_file = joinpath(savedir, "final_parameters.txt")
+open(params_file, "w") do io
+    println(io, "=== Calibration Complete ===")
+    println(io, "Final parameter means:")
+    println(io, "  α_sx  = ", round(final_params[1], sigdigits = 5))
+    println(io, "  Ea_sx = ", round(final_params[2], sigdigits = 5))
+    println(io, "  kM_sx = ", round(final_params[3], sigdigits = 4))
+    println(io, "  kM_o2 = ", round(final_params[4], sigdigits = 4))
+end
+println("Saved final parameters to: $params_file")
+
 # Parameter convergence + error plot
 dim_size = sum(length.(EKP.batch(prior)))
 fig1 = CairoMakie.Figure(size = ((dim_size + 1) * 500, 500))
@@ -500,6 +512,22 @@ println("\nDone.")
   best_params = final_params_all[:, best_idx]
   println("Best params: α_sx=$(round(best_params[1],sigdigits=5)), Ea_sx=$(round(best_params[2],sigdigits=5)),
   kM_sx=$(round(best_params[3],sigdigits=4)), kM_o2=$(round(best_params[4],sigdigits=4))")
+
+  # Write best parameters to file
+  best_params_file = joinpath(savedir, "best_parameters.txt")
+  open(best_params_file, "w") do io
+      println(io, "=== Best Ensemble Member ===")
+      println(io, "Best member: $best_idx")
+      println(io, "RMSE: $(round(rmse_per_member[best_idx], sigdigits=4)) ppm")
+      println(io, "Worst member: $worst_idx")
+      println(io, "Worst RMSE: $(round(rmse_per_member[worst_idx], sigdigits=4)) ppm")
+      println(io, "\nBest parameters:")
+      println(io, "  α_sx  = $(round(best_params[1], sigdigits=5))")
+      println(io, "  Ea_sx = $(round(best_params[2], sigdigits=5))")
+      println(io, "  kM_sx = $(round(best_params[3], sigdigits=4))")
+      println(io, "  kM_o2 = $(round(best_params[4], sigdigits=4))")
+  end
+  println("Saved best parameters to: $best_params_file")
 
   # Plot best member vs obs
   fig = Figure(size=(1000, 500))
