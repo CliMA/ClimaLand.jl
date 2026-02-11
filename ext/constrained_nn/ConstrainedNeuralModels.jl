@@ -183,6 +183,7 @@ end
 Defines MulLayer behavior specifically for its usage in the final reduction of model outputs to apply constraints,
 when given StaticArray inputs, for increased performance.
 """
+#is this brittle?
 @inline function (layer::MulLayer{FT})(
     x::SMatrix{K, N, FT},
 )::SMatrix{1, N, FT} where {K, N, FT <: AbstractFloat}

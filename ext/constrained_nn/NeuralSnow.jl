@@ -72,7 +72,7 @@ within the NeuralDepthModel. No upper bound should exist whenever snow
 precipitation exists, and otherwise the upper limit is dz/dt = 0. This is
 represented by the formula: `(input[b.precip_idx] > 0) * relu(pred[1])`.
 """
-@bound function (b::Snow_Depth_Upper_Bound{FT})(
+@bound function (b::Snow_Depth_Upper_Bound)(
     pred::SVector{1, FT},
     input::SVector{7, FT},
 )::FT where {FT <: AbstractFloat}

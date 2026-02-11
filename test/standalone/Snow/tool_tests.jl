@@ -208,12 +208,142 @@ if !isnothing(SNOTELScraperExt)
 
     @testset "Testing ConstrainedNeuralModels module" begin
         FT = Float32
-        no_scale = CNM.NoScaling{FT}
+        no_scale = CNM.NoScaling{FT}()
         use_in_scales = ones(FT, 7)
         c_scale = CNM.ConstScaling(use_in_scales)
-        @test no_scale <: CSM.InputWeighting{FT}
-        @test c_scale <: CSM.InputWeighting{FT}
+        @test typeof(no_scale) <: CNM.InputWeighting{FT}
+        @test typeof(c_scale) <: CNM.InputWeighting{FT}
         @test c_scale.in_scales == use_in_scales
+
+        testfunc1(x, y) = x .^ 2 .+ y
+        ub = CNM.UpperOnly{typeof(testfunc1)}(testfunc1)
+        lb = CNM.LowerOnly{typeof(testfunc1)}(testfunc1)
+        @test typeof(ub) <: CNM.ConstraintType
+        @test typeof(lb) <: CNM.ConstraintType
+        @test CNM.output_dim(ub) == 2
+        @test CNM.output_dim(lb) == 2
+        @test ub.bound(3, 1) == 10
+        @test lb.bound(3, 1) == 10
+        @test ub.bound == testfunc1
+        @test lb.bound == testfunc1
+        ts = CNM.TwoSided{typeof(testfunc1), typeof(testfunc1)}(
+            testfunc1,
+            testfunc1,
+        )
+        @test typeof(ts) <: CNM.ConstraintType
+        @test CNM.output_dim(ts) == 3
+        @test ts.upper_bound(3, 1) == 10
+        @test ts.lower_bound(3, 1) == 10
+        @test ts.upper_bound == testfunc1
+        @test ts.lower_bound == testfunc1
+        @test CNM.get_bounds(ub, 4, 3) == (19,)
+        @test CNM.get_bounds(lb, 4, 3) == (19,)
+        @test CNM.get_bounds(ts, 4, 3) == (19, 19)
+        @test CNM.get_bounds(ub) == (testfunc1,)
+        @test CNM.get_bounds(lb) == (testfunc1,)
+        @test CNM.get_bounds(ts) == (testfunc1, testfunc1)
+
+        inp_1 = Matrix{FT}([1.0 2.0])
+        ans_1 = [2 6; 1 2]
+        ans_11 = [2 6; 2 6; 1 2]
+        ub_1 = CNM.boundary_connection(ub, inp_1, inp_1)
+        lb_1 = CNM.boundary_connection(lb, inp_1, inp_1)
+        ts_1 = CNM.boundary_connection(ts, inp_1, inp_1)
+
+        @test ub_1 == ans_1
+        @test lb_1 == ans_1
+        @test ts_1 == ans_11
+        @test typeof(ub_1) == Matrix{FT}
+        @test typeof(lb_1) == Matrix{FT}
+        @test typeof(ts_1) == Matrix{FT}
+        @test eltype(ub_1) == FT
+        @test eltype(lb_1) == FT
+        @test eltype(ts_1) == FT
+
+        inp_2 = SMatrix{1, 2, FT}(inp_1)
+        ans_2 = SMatrix{2, 2, FT}(ans_1)
+        ans_22 = SMatrix{3, 2, FT}(ans_11)
+        ub_2 = CNM.boundary_connection(ub, inp_2, inp_2)
+        lb_2 = CNM.boundary_connection(lb, inp_2, inp_2)
+        ts_2 = CNM.boundary_connection(ts, inp_2, inp_2)
+
+        @test ub_2 == ans_2
+        @test lb_2 == ans_2
+        @test ts_2 == ans_22
+        @test typeof(ub_2) == SMatrix{2, 2, FT, 4}
+        @test typeof(lb_2) == SMatrix{2, 2, FT, 4}
+        @test typeof(ts_2) == SMatrix{3, 2, FT, 6}
+        @test eltype(ub_2) == FT
+        @test eltype(lb_2) == FT
+        @test eltype(ts_2) == FT
+
+        testfunc2(x, y) = x[1] + y[1]
+        ub = CNM.UpperOnly{typeof(testfunc2)}(testfunc2)
+        lb = CNM.LowerOnly{typeof(testfunc2)}(testfunc2)
+        ts = CNM.TwoSided{typeof(testfunc2), typeof(testfunc2)}(
+            testfunc2,
+            testfunc2,
+        )
+        inp_3 = SVector{1, FT}(3)
+        ans_3 = SMatrix{2, 1, FT}([6; 3])
+        ans_33 = SMatrix{3, 1, FT}([6; 6; 3])
+        ub_3 = CNM.boundary_connection(ub, inp_3, inp_3)
+        lb_3 = CNM.boundary_connection(lb, inp_3, inp_3)
+        ts_3 = CNM.boundary_connection(ts, inp_3, inp_3)
+
+        @test ub_3 == ans_3
+        @test lb_3 == ans_3
+        @test ts_3 == ans_33
+        @test typeof(ub_3) == SMatrix{2, 1, FT, 2}
+        @test typeof(lb_3) == SMatrix{2, 1, FT, 2}
+        @test typeof(ts_3) == SMatrix{3, 1, FT, 3}
+        @test eltype(ub_3) == FT
+        @test eltype(lb_3) == FT
+        @test eltype(ts_3) == FT
+
+        test_matrix = Matrix{FT}([1 -1])
+        ml = CNM.MulLayer(test_matrix)
+        @test eltype(ml.W) == FT
+        @test typeof(ml) === CNM.MulLayer{FT, Matrix{FT}}
+        @test ml.W == test_matrix
+        @test ml(FT.([-1; 1]))[1] == -2
+        @test ml(SMatrix{2, 1, FT}([-1; 2]))[1] == -3
+
+        ml_conv = CNM.convert_model(ml, Float64)
+        @test eltype(ml_conv.W) == Float64
+        @test typeof(ml_conv) == CNM.MulLayer{Float64, Matrix{Float64}}
+        @test ml_conv.W == test_matrix
+        @test ml_conv(Float64.([-1; 1]))[1] == -2
+        @test ml_conv(SMatrix{2, 1, Float64}([-1; 2]))[1] == -3
+
+        gm_1 = CNM.get_scaling_matrix(ub, FT(-1))
+        gm_2 = CNM.get_scaling_matrix(lb, Float64(-1))
+        gm_3 = CNM.get_scaling_matrix(ts, FT(-1))
+        @test gm_1 == [1 0; 0 -1]
+        @test eltype(gm_1) == FT
+        @test gm_2 == [1 0; 0 -1]
+        @test eltype(gm_2) == Float64
+        @test gm_3 == [1 0 0; 0 1 0; 0 0 -1]
+        @test eltype(gm_3) == FT
+
+        def_l = Matrix{FT}([1 0; -1 0; -1 1])
+        def_u = Matrix{FT}([1 0; -1 0; 1 -1])
+        def_t = Matrix{FT}([1 0 0; -1 0 0; 0 1 0; 0 -1 0; 1 0 -1])
+        inp_u = Matrix{FT}([1 2 3; 0 4 4])
+        inp_l = Matrix{FT}([0 4 4; 1 2 3])
+        inp_t = Matrix{FT}([1 1 1; 0 0 0; 2 0.5 -1])
+        gd_u = CNM.default_fixed_layers(ub, FT)
+        gd_l = CNM.default_fixed_layers(lb, Float64)
+        gd_t = CNM.default_fixed_layers(ts, FT)
+        @test gd_u[1].weight == def_u
+        @test gd_l[1].weight == def_l
+        @test gd_t[1].weight == def_t
+        @test eltype(gd_u[1].weight) == FT
+        @test eltype(gd_l[1].weight) == Float64
+        @test eltype(gd_t[1].weight) == FT
+        @test gd_u(inp_u) == [0 2 3] #applies upper bound
+        @test gd_l(inp_l) == [1 4 4] #applies lower bound
+        @test gd_t(inp_t) == [1 0.5 0] #applies both
     end
 
     @testset "Testing NeuralSnow module" begin
