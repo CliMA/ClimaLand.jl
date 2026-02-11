@@ -10,10 +10,14 @@ function update_root_extraction!(p, Y, t, land)
     (; conductivity_model) = land.canopy.hydraulics.parameters
     area_index = p.canopy.biomass.area_index
     above_ground_area_index = p.scratch1
-    above_ground_area_index .= PlantHydraulics.harmonic_mean.(
-        getproperty(area_index, land.canopy.hydraulics.compartment_labels[1]),
-        getproperty(area_index, :root),
-    )
+    above_ground_area_index .=
+        PlantHydraulics.harmonic_mean.(
+            getproperty(
+                area_index,
+                land.canopy.hydraulics.compartment_labels[1],
+            ),
+            getproperty(area_index, :root),
+        )
     # Note that we model the flux between each soil layer and the canopy as:
     # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
     # K_eff = K_soil K_canopy /(K_canopy + K_soil)

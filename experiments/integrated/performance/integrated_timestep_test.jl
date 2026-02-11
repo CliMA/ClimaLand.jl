@@ -72,30 +72,33 @@ function set_ic!(Y, p, t0, model)
     Y.soil.ϑ_l = FT(0.3)
     Y.soil.θ_i = FT(0.0)
     T_0 = FT(297.5)
-    ρc_s = volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        model.soil.parameters.ρc_ds,
-        model.soil.parameters.earth_param_set,
-    )
-    Y.soil.ρe_int = volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T_0,
-        model.soil.parameters.earth_param_set,
-    )
+    ρc_s =
+        volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.soil.parameters.ρc_ds,
+            model.soil.parameters.earth_param_set,
+        )
+    Y.soil.ρe_int =
+        volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T_0,
+            model.soil.parameters.earth_param_set,
+        )
 
     Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
     ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
     canopy_params = model.canopy.hydraulics.parameters
-    S_l_ini = inverse_water_retention_curve.(
-        canopy_params.retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        canopy_params.ν,
-        canopy_params.S_s,
-    )
+    S_l_ini =
+        inverse_water_retention_curve.(
+            canopy_params.retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            canopy_params.ν,
+            canopy_params.S_s,
+        )
 
     for i in 1:2
         S_l = S_l_ini[i]
@@ -162,13 +165,14 @@ SW_IN = TimeVaryingInput((t) -> 500.0)
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
 coords = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
 cos_zenith_angle =
-    (t, s) -> default_cos_zenith_angle.(
-        t,
-        s;
-        insol_params,
-        longitude = coords.long,
-        latitude = coords.lat,
-    );
+    (t, s) ->
+        default_cos_zenith_angle.(
+            t,
+            s;
+            insol_params,
+            longitude = coords.long,
+            latitude = coords.lat,
+        );
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,

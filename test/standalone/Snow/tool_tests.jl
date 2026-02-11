@@ -281,11 +281,12 @@ if !isnothing(SNOTELScraperExt)
               (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
 
         Y.snow.S .= FT(0.1)
-        Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
-            Y.snow.S,
-            FT(273.0),
-            Ref(model.parameters),
-        )
+        Y.snow.U .=
+            ClimaLand.Snow.energy_from_T_and_swe.(
+                Y.snow.S,
+                FT(273.0),
+                Ref(model.parameters),
+            )
         Y.snow.Z .= FT(0.2)
         set_initial_cache! = ClimaLand.make_set_initial_cache(model)
         t0 = FT(0.0)

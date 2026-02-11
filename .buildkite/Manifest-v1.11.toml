@@ -507,28 +507,17 @@ weakdeps = ["CUDA"]
     ClimaInterpolationsCUDAExt = "CUDA"
 
 [[deps.ClimaLand]]
-deps = ["Adapt", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
-git-tree-sha1 = "1eb4a7268471d4a6c06ebfa434d530c8d003be0d"
+deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
+path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "1.5.3"
+weakdeps = ["Adapt", "CairoMakie", "ClimaAnalysis", "DataFrames", "DelimitedFiles", "Downloads", "Flux", "GeoMakie", "InteractiveUtils", "JLD2", "Printf", "Statistics"]
 
     [deps.ClimaLand.extensions]
+    ConstrainedNeuralModelExt = ["Adapt", "Flux", "JLD2", "InteractiveUtils"]
     FluxnetSimulationsExt = ["DelimitedFiles"]
-    LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Printf", "StatsBase"]
-    NeuralSnowExt = ["Adapt", "CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
-
-    [deps.ClimaLand.weakdeps]
-    BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
-    CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-    CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-    ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
-    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-    DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-    Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-    GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
-    HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-    Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+    LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Printf", "Statistics"]
+    SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 
 [[deps.ClimaParams]]
 deps = ["Dates", "TOML"]

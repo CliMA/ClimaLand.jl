@@ -343,19 +343,24 @@ function PlantHydraulicsModel{FT}(
 
     # Construct compartment surfaces and midpoints from heights and number of compartments
     zmin = FT(0)
-    compartment_surfaces = FT.(
-        vcat(
-            [zmin], # surface at ground level
-            [h_stem * i for i in 1:n_stem], # stem compartments
-            [h_stem * n_stem + h_leaf * j for j in 1:n_leaf], # leaf compartments
-        ),
-    )
-    compartment_midpoints = FT.(
-        vcat(
-            [h_stem * (i - 1) + h_stem / 2 for i in 1:n_stem], # stem compartments
-            [h_stem * n_stem + h_leaf * (j - 1) + h_leaf / 2 for j in 1:n_leaf], # leaf compartments
-        ),
-    )
+    compartment_surfaces =
+        FT.(
+            vcat(
+                [zmin], # surface at ground level
+                [h_stem * i for i in 1:n_stem], # stem compartments
+                [h_stem * n_stem + h_leaf * j for j in 1:n_leaf], # leaf compartments
+            ),
+        )
+    compartment_midpoints =
+        FT.(
+            vcat(
+                [h_stem * (i - 1) + h_stem / 2 for i in 1:n_stem], # stem compartments
+                [
+                    h_stem * n_stem + h_leaf * (j - 1) + h_leaf / 2 for
+                    j in 1:n_leaf
+                ], # leaf compartments
+            ),
+        )
 
     parameters = PlantHydraulics.PlantHydraulicsParameters(;
         ν,

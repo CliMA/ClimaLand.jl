@@ -272,11 +272,12 @@ for FT in (Float32, Float64)
         @test eltype(k) == FT
 
         # Volumetric Liquid Fraction
-        vlf = volumetric_liquid_fraction.(
-            FT.([0.25, 0.5, 0.75]),
-            FT(0.5),
-            FT(0.0),
-        )
+        vlf =
+            volumetric_liquid_fraction.(
+                FT.([0.25, 0.5, 0.75]),
+                FT(0.5),
+                FT(0.0),
+            )
         @test vlf ≈ FT.([0.25, 0.5, 0.5])
     end
 

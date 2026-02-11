@@ -390,20 +390,26 @@ end
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(0) # number of stem elements
         n_leaf = Int64(1) # number of leaf elements
-        compartment_centers = FT.(
-            Vector(
-                range(
-                    start = Δz / 2,
-                    step = Δz,
-                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+        compartment_centers =
+            FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                    ),
                 ),
-            ),
-        )
-        compartment_faces = FT.(
-            Vector(
-                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
-            ),
-        )
+            )
+        compartment_faces =
+            FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
         soil_driver = PrescribedGroundConditions{FT}()
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
@@ -483,8 +489,10 @@ end
         )[1] < 0.01
 
         finitediff_SHF =
-            (p_2.canopy.turbulent_fluxes.shf .- p.canopy.turbulent_fluxes.shf) ./
-            ΔT
+            (
+                p_2.canopy.turbulent_fluxes.shf .-
+                p.canopy.turbulent_fluxes.shf
+            ) ./ ΔT
         estimated_SHF = p.canopy.turbulent_fluxes.∂shf∂T
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
@@ -492,8 +500,10 @@ end
 
         # It's not obvious why this is so poor compared to SHF
         finitediff_LHF =
-            (p_2.canopy.turbulent_fluxes.lhf .- p.canopy.turbulent_fluxes.lhf) ./
-            ΔT
+            (
+                p_2.canopy.turbulent_fluxes.lhf .-
+                p.canopy.turbulent_fluxes.lhf
+            ) ./ ΔT
         estimated_LHF = p.canopy.turbulent_fluxes.∂lhf∂T
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),

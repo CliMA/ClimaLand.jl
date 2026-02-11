@@ -39,7 +39,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [extensions]
-ConstrainedNeuralModelExt = ["Adapt", "Flux", "JLD2", "InteractiveUtils", "StaticArrays"]
+ConstrainedNeuralModelExt = ["Adapt", "Flux", "JLD2", "InteractiveUtils"]
 FluxnetSimulationsExt = ["DelimitedFiles"]
 LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Printf", "Statistics"]
 SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]

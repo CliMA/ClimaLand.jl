@@ -147,12 +147,13 @@ function set_ic!(Y, p, t0, model)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-        FT(0.0),
-        ρc_s,
-        T,
-        params.earth_param_set,
-    )
+    Y.soil.ρe_int .=
+        Soil.volumetric_internal_energy.(
+            FT(0.0),
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
 end
 
 # We choose the initial and final simulation times:

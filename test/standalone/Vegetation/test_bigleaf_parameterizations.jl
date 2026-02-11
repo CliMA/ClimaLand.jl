@@ -56,14 +56,15 @@ for FT in (Float32, Float64)
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
         K = extinction_coeff.(RTparams.G_Function, cos.(θs))
         α_soil_PAR = FT(0.2)
-        output = canopy_sw_rt_beer_lambert.(
-            RTparams.G_Function,
-            cos.(θs),
-            RTparams.Ω,
-            RTparams.α_PAR_leaf,
-            LAI,
-            α_soil_PAR,
-        )
+        output =
+            canopy_sw_rt_beer_lambert.(
+                RTparams.G_Function,
+                cos.(θs),
+                RTparams.Ω,
+                RTparams.α_PAR_leaf,
+                LAI,
+                α_soil_PAR,
+            )
         FAPAR = getproperty.(output, :abs)
         FTPAR = getproperty.(output, :trans)
         FRPAR = getproperty.(output, :refl)
@@ -140,12 +141,13 @@ for FT in (Float32, Float64)
               FT(exp(1)) *
               arrhenius_function(T, To, R, photosynthesisparams.ΔHJmax)
         APAR = FT(1)
-        J = ClimaLand.Canopy.electron_transport_farquhar.(
-            APAR,
-            Jmax,
-            photosynthesisparams.θj,
-            photosynthesisparams.ϕ,
-        ) # mol m-2 s-1
+        J =
+            ClimaLand.Canopy.electron_transport_farquhar.(
+                APAR,
+                Jmax,
+                photosynthesisparams.θj,
+                photosynthesisparams.ϕ,
+            ) # mol m-2 s-1
         @test all(
             @.(
                 photosynthesisparams.θj * J^2 -
@@ -154,12 +156,13 @@ for FT in (Float32, Float64)
             )
         )
 
-        Aj = ClimaLand.Canopy.light_assimilation_farquhar.(
-            Ref(photosynthesisparams.is_c3),
-            J,
-            ci,
-            Γstar,
-        )
+        Aj =
+            ClimaLand.Canopy.light_assimilation_farquhar.(
+                Ref(photosynthesisparams.is_c3),
+                J,
+                ci,
+                Γstar,
+            )
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
         β = compute_tuzet_moisture_stress(p_l, pc, sc)
         @test β == (1 + exp(sc * pc)) / (1 + exp(sc * (p_l - pc)))
@@ -233,13 +236,14 @@ for FT in (Float32, Float64)
               (1 + exp(s5 * (T - s6)))
         A = ClimaLand.Canopy.gross_photosynthesis.(Ac, Aj)
         An = ClimaLand.Canopy.net_photosynthesis.(A .* β, Rd)
-        stomatal_conductance = medlyn_conductance.(
-            stomatal_g_params.g0,
-            stomatal_g_params.Drel,
-            m_t,
-            An,
-            ca,
-        )
+        stomatal_conductance =
+            medlyn_conductance.(
+                stomatal_g_params.g0,
+                stomatal_g_params.Drel,
+                m_t,
+                An,
+                ca,
+            )
         @test all(
             @.(
                 stomatal_conductance ≈ (

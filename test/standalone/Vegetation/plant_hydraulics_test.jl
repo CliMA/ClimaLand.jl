@@ -287,12 +287,13 @@ for FT in (Float32, Float64)
             iterations = 20,
         )
 
-        S_l = inverse_water_retention_curve.(
-            retention_model,
-            soln.zero,
-            plant_ν,
-            plant_S_s,
-        )
+        S_l =
+            inverse_water_retention_curve.(
+                retention_model,
+                soln.zero,
+                plant_ν,
+                plant_S_s,
+            )
 
         ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 

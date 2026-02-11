@@ -150,12 +150,13 @@ function set_ic!(Y, p, t0, model)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Y.soil.ρe_int = Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        params.earth_param_set,
-    )
+    Y.soil.ρe_int =
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
 end
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(

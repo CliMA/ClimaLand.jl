@@ -14,7 +14,7 @@ import ClimaCore
 using Thermodynamics
 
 using Flux
-using Adapt, StaticArray #only needed to circumvent make_static_model() warning
+using Adapt, StaticArrays #only needed to circumvent make_static_model() warning
 using ..ConstrainedNeuralModels
 
 export NeuralDepthModel
@@ -32,7 +32,7 @@ end
 
 """
     (b::Snow_Depth_Lower_Bound)(
-        pred::pred::SVector{1, FT},
+        pred::SVector{1, FT},
         input::SVector{7, FT},
     )::FT where {FT <: AbstractFloat}
 
@@ -44,7 +44,7 @@ the input vector associated with the snow depth, i.e. the function
 is merely `input[b.z_idx]`.
 """
 @bound function (b::Snow_Depth_Lower_Bound)(
-    pred::pred::SVector{1, FT},
+    pred::SVector{1, FT},
     input::SVector{7, FT},
 )::FT where {FT <: AbstractFloat}
     return input[b.z_idx]
@@ -63,7 +63,7 @@ end
 
 """
     (b::Snow_Depth_Upper_Bound)(
-        pred::pred::SVector{1, FT},
+        pred::SVector{1, FT},
         input::SVector{7, FT},
     )::FT where {FT <: AbstractFloat}
 
@@ -73,7 +73,7 @@ precipitation exists, and otherwise the upper limit is dz/dt = 0. This is
 represented by the formula: `(input[b.precip_idx] > 0) * relu(pred[1])`.
 """
 @bound function (b::Snow_Depth_Upper_Bound{FT})(
-    pred::pred::SVector{1, FT},
+    pred::SVector{1, FT},
     input::SVector{7, FT},
 )::FT where {FT <: AbstractFloat}
     return >(input[b.precip_idx], 0) * relu(pred[1])
@@ -91,8 +91,8 @@ custom fixed layers used for this model. It can only be called
 prior to the model being made static.
 """
 function _set_timescale!(m::ConstrainedNeuralModel, Δt::Real)
-    m.fixed_layers[1].weight[2, 2] = 1 * eltype(m.out_scale)(1/Δt)
-    m.initial_fixed_layer[2, 2] = 1 * eltype(m.out_scale)(1/Δt)
+    m.fixed_layers[1].weight[2, 2] = 1 * eltype(m.out_scale)(1 / Δt)
+    m.initial_fixed_layer[2, 2] = 1 * eltype(m.out_scale)(1 / Δt)
 end
 
 #=
@@ -288,17 +288,18 @@ Updates the dY.snow.Z field in places with the predicted change in snow depth (r
 density paramterization.
 """
 function update_dzdt!(dzdt, density::NeuralDepthModel, Y)
-    dzdt .= eval_nn.(
-        Ref(density),
-        Y.snow.Z,
-        Y.snow.S,
-        Y.snow.P_avg,
-        Y.snow.T_avg,
-        Y.snow.R_avg,
-        Y.snow.Qrel_avg,
-        Y.snow.u_avg,
-        #might need to include the snow cover fraction here from p.snow.scf to get the right value
-    )
+    dzdt .=
+        eval_nn.(
+            Ref(density),
+            Y.snow.Z,
+            Y.snow.S,
+            Y.snow.P_avg,
+            Y.snow.T_avg,
+            Y.snow.R_avg,
+            Y.snow.Qrel_avg,
+            Y.snow.u_avg,
+            #might need to include the snow cover fraction here from p.snow.scf to get the right value
+        )
 end
 
 """

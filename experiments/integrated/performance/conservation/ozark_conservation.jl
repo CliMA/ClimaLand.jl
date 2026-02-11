@@ -434,7 +434,8 @@ for float_type in (Float32, Float64)
         lines!(
             ax,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (soil_mass_change_actual - soil_mass_change_exp) ./
                 soil_mass_change_exp,
             ),
@@ -443,7 +444,8 @@ for float_type in (Float32, Float64)
         lines!(
             ax,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (canopy_mass_change_actual - canopy_mass_change_exp) ./
                 canopy_mass_change_exp,
             ),
@@ -503,7 +505,8 @@ for float_type in (Float32, Float64)
         lines!(
             ax,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (soil_energy_change_actual - soil_energy_change_exp) ./
                 soil_energy_change_exp,
             ),

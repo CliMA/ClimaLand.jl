@@ -796,11 +796,11 @@ function build_parameter_metadata(
         $(string.(build_func.model.predictive_model))
     Index markers for the different model pieces (using Flux layer notation) are as follows:
         $(string.(build_func.offsets.predictive_model.layers))
-    
+
     $(custom_metadata)
-    
+
     MODEL BUILDING: model structure info was saved in \"$(basename(model_struct_filepath))\" when creating this file.
-    
+
     To build the associated ConstrainedNeuralModel with these parameters, call `load_function()` with these
     parameters and the data of the model structure as follows:
         model = load_model(THIS_DATA_OBJECT["trainable_params"], "filepath/to/structure/data")
@@ -1091,7 +1091,7 @@ function build_model_metadata(
         (same type as FLOAT TYPE) `params` of size $(sum(length, Flux.params(m.predictive_model))), as follows:
             
             model = load_model(params, (THIS DATA, OR FILEPATH))
-        
+
         See `load_model()` documentation for more details."
         """
     return m_meta, api

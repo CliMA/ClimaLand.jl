@@ -2,7 +2,7 @@
 
 julia_version = "1.11.9"
 manifest_format = "2.0"
-project_hash = "e1d43179e3f96103f2acb13cd3352ae2d600eb49"
+project_hash = "9fd5585b6d6d7c056b270cfe9758f7f9ab96a95f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -444,7 +444,7 @@ uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "1.5.3"
 
     [deps.ClimaLand.extensions]
-    ConstrainedNeuralModelExt = ["Adapt", "Flux", "JLD2", "InteractiveUtils"]
+    ConstrainedNeuralModelExt = ["Adapt", "Flux", "JLD2", "InteractiveUtils", "StaticArrays"]
     FluxnetSimulationsExt = ["DelimitedFiles"]
     LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Printf", "Statistics"]
     SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]

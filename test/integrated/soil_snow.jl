@@ -49,12 +49,13 @@ function init_soil!(Y, z, params)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Y.soil.ρe_int = ClimaLand.Soil.volumetric_internal_energy.(
-        FT(0),
-        ρc_s,
-        T,
-        params.earth_param_set,
-    )
+    Y.soil.ρe_int =
+        ClimaLand.Soil.volumetric_internal_energy.(
+            FT(0),
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
 end
 function init_snow!(Y, S, params)
     Y.snow.S .= S
