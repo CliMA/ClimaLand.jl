@@ -129,6 +129,8 @@ function bound_symbol(bound)
         return Symbol(bound)
     elseif bound isa Method
         return bound.name
+    elseif bound isa Symbol
+        return bound
     else
         return nameof(typeof(bound))
     end
@@ -139,50 +141,26 @@ end
 
 Checks if a passed bound is a valid bound for usage by a ConstrainedNeuralModel.
 Handles various argtypes (a specific submethod, a name, the object itself, etc.)
+Note: Will not work if trying to pass an instance of a callable type as a symbol.
 """
 function is_valid_bound(bound)
-    if bound isa Function
-        return haskey(_BOUND_INFO_[:FUNCTION], bound_symbol(bound))
-    else
-        return haskey(_BOUND_INFO_[:FUNCTOR], bound_symbol(bound))
-    end
-end
-
-"""
-    get_bound_info(bound::Symbol)
-
-Retrieves all methods and associated information on the given bound, if it is a valid bound.
-Dispatched for a symbol input.
-"""
-function get_bound_info(bound::Symbol)
-    if haskey(_BOUND_INFO_[:FUNCTION], bound)
-        return _BOUND_INFO_[:FUNCTION][bound]
-    elseif haskey(_BOUND_INFO_[:FUNCTOR], bound)
-        return _BOUND_INFO_[:FUNCTOR][bound]
-    else
-        error(
-            """
-      No bound data exists for $(bound) - make sure all methods have been defined with 
-      the @bound macro. If $(bound) is a functor, also make sure its declaration includes
-      the @bound_type macro.
-      """,
-        )
-    end
+    return haskey(_BOUND_INFO_[:FUNCTION], bound_symbol(bound)) || haskey(_BOUND_INFO_[:FUNCTOR], bound_symbol(bound))
 end
 
 """
     get_bound_info(bound)
 
 Retrieves all methods and associated information on the given bound, if it is a valid bound.
-Dispatched for arbitrary input (a specific method pertaining to a bound, its name, etc.)
+Dispatched for arbitrary input (a function for a bound, its name, etc.)
 """
 function get_bound_info(bound)
     b = bound_symbol(bound)
     if is_valid_bound(bound)
-        if bound isa Function
-            return _BOUND_INFO_[:FUNCTION][b]
-        else
+        #if valid, must be in one of them:
+        if haskey(_BOUND_INFO_[:FUNCTOR], b)
             return _BOUND_INFO_[:FUNCTOR][b]
+        else
+            return _BOUND_INFO_[:FUNCTION][b]
         end
     else
         error(
@@ -484,7 +462,7 @@ type) the method is declared for.
 """
 function _get_func_info(expr::Expr)
     sig = expr.args[1]
-    where_params = :(nothing)
+    where_params = [:(nothing)]
     ret_type = :(nothing)
 
     if sig isa Expr && (sig.head == :where)
@@ -501,7 +479,7 @@ function _get_func_info(expr::Expr)
     if sig.args[1] isa Symbol #its a function method
         return sig.args[1], :FUNCTION, ret_type
     elseif sig.args[1] isa Expr && sig.args[1].head == :(::) #functor
-        sig = sig.args[1].args[2]
+        sig = sig.args[1].args[end]
         if sig isa Symbol #basic type
             return sig, :FUNCTOR, ret_type
         else #parametric type, just need head type
@@ -517,20 +495,22 @@ end
 """
     _get_argtypes(x::UnionAll, transform = nothing)
 
-Utility function to extract the individual Types from a grouped
-UnionAll type (e.g., from a method signature), combining them with
-the parametric types declared for the whole group. Once the
-list is determined from unwrapping the UnionAll and identifying
-the tuple of arg types (instead of the parametric types, which precede
+Utility function to extract the individual argument types from a grouped
+UnionAll type from a method signature, combining them
+with the parametric types declared for the whole group. Once the
+list is determined from unwrapping the UnionAll and thus identifying
+the tuple of arg types (instead of the parametric types alone, which precede
 the tuple of argument types), an optional functional transform can
 be applied to each Type. Necessary in comparing method argument
 types or the signatures for particular docstrings.
 """
 function _get_argtypes(x::UnionAll, transform = nothing)
     u = Base.unwrap_unionall(x)
+    #get to the arg tuple (at the end)
     while u isa Union
         u = u.b
     end
+    #now get the fieldtypes from the resulting data type
     return _get_argtypes(u, transform)
 end
 
@@ -540,7 +520,7 @@ end
 Dispatched form of _get_argtypes() for the case of an empty
 signature (an instance Union{} of type Core.TypeofBottom).
 """
-_get_argtypes(x::Core.TypeofBottom, transform) = ()
+_get_argtypes(x::Core.TypeofBottom, transform = nothing) = ()
 
 """
     _get_argtypes(x::DataType, transform = nothing)

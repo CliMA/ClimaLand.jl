@@ -22,9 +22,15 @@ ConstrainedNeuralModelExt =
     Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt)
 NeuralSnowExt = Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt)
 
+if !isnothing(ConstrainedNeuralModelExt)
+    CNM = ConstrainedNeuralModelExt.ConstrainedNeuralModels
+    import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound as @bound
+    import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound_type as @bound_type
+    mt = SMatrix{1, N, <:AbstractFloat, N} where {N<:Int} #to deal with one eval() call in testing
+end
+
 if !isnothing(SNOTELScraperExt)
     DataTools = SNOTELScraperExt.DataTools
-    CNM = ConstrainedNeuralModelExt.ConstrainedNeuralModels
     NeuralSnow = ConstrainedNeuralModelExt.NeuralSnow
     @testset "Testing SNOTELScraper Extension" begin
         start_date = "2015-01-01"
@@ -344,6 +350,254 @@ if !isnothing(SNOTELScraperExt)
         @test gd_u(inp_u) == [0 2 3] #applies upper bound
         @test gd_l(inp_l) == [1 4 4] #applies lower bound
         @test gd_t(inp_t) == [1 0.5 0] #applies both
+        test_dec_doc = "this is a test declarative doc\n"
+        test_m_doc = "this is a test method doc\n"
+
+        prev_length = length(CNM._BOUND_TYPES_)
+
+        """
+        this is a test declarative doc
+        """
+        @bound_type struct up_functor
+            a::Int
+            b::DataType
+            c::FT
+        end
+        
+        @bound function (b::up_functor)(pred::AbstractArray{T}, input::AbstractArray{T})::AbstractArray{T} where {T <: AbstractFloat}
+            return pred .+ input
+        end
+
+        upper_funct = up_functor(1, Tuple{FT(2), FT(3)}, FT(4))
+
+        test_code = "@bound_type struct up_functor\n    a::Int\n    b::DataType\n    c::FT\nend"
+        funct_code = "@bound function ((b::up_functor)(pred::AbstractArray{T}, input::AbstractArray{T})::AbstractArray{T}) where T <: AbstractFloat\n    return pred .+ input\nend"
+        @test length(CNM._BOUND_TYPES_) == prev_length + 1
+        @test CNM.is_bound_type(:up_functor)
+        @test CNM.is_bound_type(up_functor)
+        @test !CNM.is_bound_type(:low_functor) #not made
+        new_info = CNM._BOUND_TYPES_[:up_functor]
+        @test !haskey(new_info, :methods)
+        CNM.populate_functor_methods!(up_functor)
+        @test haskey(new_info, :methods)
+        @test length(new_info[:methods]) == 3 #2 constructors (default plus one above), 1 instancemethod
+        @test CNM.get_bound_type_info(up_functor) == new_info
+        @test new_info[:doc] == test_dec_doc
+        @test new_info[:supertype] == Any
+        @test new_info[:typevars] == (Int, DataType, FT)
+        @test new_info[:code] == test_code
+        @test getindex.(new_info[:params], 1) == [:a, :b, :c]
+        @test CNM.bound_symbol(up_functor) == :up_functor
+        @test CNM.bound_symbol(upper_funct) == :up_functor
+        @test CNM.is_valid_bound(:up_functor)
+        @test CNM.is_valid_bound(up_functor)
+        @test CNM.is_valid_bound(upper_funct)
+
+        m_up = CNM.instancemethods(up_functor)
+        @test length(m_up) == 1
+        m_up = m_up[1]
+        @test m_up in keys(new_info[:methods])
+        @test CNM.bound_symbol(upper_funct) == :up_functor
+        @test CNM.bound_symbol(:upper_funct) == :upper_funct
+        @test !CNM.is_valid_bound(:upper_funct) #can't pass an instance of a callable type as a symbol.
+        @test CNM.is_valid_bound(m_up)
+        @test CNM.get_bound_info(up_functor) == CNM._BOUND_INFO_[:FUNCTOR][:up_functor]
+        up_info = CNM.get_bound_info(upper_funct)
+        m_up_info = first(values(CNM._BOUND_INFO_[:FUNCTOR][:up_functor]))
+        @test CNM.get_bound_info(m_up) == m_up_info
+        @test m_up_info[:method] == m_up
+        @test m_up_info[:class] == :FUNCTOR
+        @test m_up_info[:type] == (:generic, :dynamic)
+        @test isnothing(m_up_info[:docs])
+        @test m_up_info[:code] == funct_code
+        @test m_up_info[:argtypes] == (input = AbstractArray{<:AbstractFloat}, pred = AbstractArray{<:AbstractFloat})
+        @test m_up_info[:ret_type] == AbstractArray{<:AbstractFloat}
+
+        prev_func_length = length(CNM._BOUND_INFO_[:FUNCTION])
+
+        """
+        this is a test method doc
+        """
+        @bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}
+            return pred .- input
+        end 
+        func_code = "@bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}\n    return pred .- input\nend"
+        @test length(CNM._BOUND_INFO_[:FUNCTION]) == prev_func_length + 1
+        @test CNM.bound_symbol(lower) == :lower
+        m_low = methods(lower)
+        @test length(m_low) == 1
+        m_low = m_low[1]
+        @test CNM.bound_symbol(m_low) == :lower
+        @test CNM.bound_symbol(:lower) == :lower
+        @test CNM.is_valid_bound(lower)
+        @test CNM.is_valid_bound(m_low)
+        @test CNM.is_valid_bound(:lower)
+        @test !CNM.is_bound_type(:lower) #it is not a functor
+        @test CNM.get_bound_info(lower) == CNM._BOUND_INFO_[:FUNCTION][:lower]
+        low_info = CNM.get_bound_info(:lower)
+        m_low_info = first(values(CNM._BOUND_INFO_[:FUNCTION][:lower]))
+        @test CNM.get_bound_info(m_low) == m_low_info
+        @test m_low_info[:method] == m_low
+        @test m_low_info[:class] == :FUNCTION
+        @test m_low_info[:type] == (:generic, :dynamic)
+        @test m_low_info[:docs] == test_m_doc
+        @test m_low_info[:code] == func_code
+        @test m_low_info[:argtypes] == (input = AbstractArray{<:AbstractFloat}, pred = AbstractArray{<:AbstractFloat})
+        @test m_low_info[:ret_type] == AbstractArray{<:AbstractFloat}
+
+        inps, classes = CNM.get_bound_evaluation_modes(low_info)
+        @test inps == [:generic]
+        @test classes == [:dynamic]
+        @test isnothing(CNM.check_evaluation_mode(inps, m_low)) #generic bound should yield nothing
+        inps, classes = CNM.get_bound_evaluation_modes(up_info)
+        @test inps == [:generic]
+        @test classes == [:dynamic]
+        @test isnothing(CNM.check_evaluation_mode(inps, m_up)) #generic bound should yield nothing
+
+        up_const = CNM.buildUpper(upper_funct)
+        @test typeof(up_const) <: CNM.UpperOnly
+        @test up_const.bound == upper_funct
+        low_const = CNM.buildLower(lower)
+        @test typeof(low_const) <: CNM.LowerOnly
+        @test low_const.bound == lower
+        both_const = CNM.buildTwoSided(upper_funct, lower)
+        @test typeof(both_const) <: CNM.TwoSided
+        @test both_const.upper_bound == upper_funct
+        @test both_const.lower_bound == lower
+
+        up_const2 = CNM.buildConstraints(upper_funct, nothing)
+        @test up_const2 == up_const
+        low_const2 = CNM.buildConstraints(nothing, lower)
+        @test low_const2 == low_const
+        both_const2 = CNM.buildConstraints(upper_funct, lower)
+        @test both_const2 == both_const
+
+        @test CNM.has_evaluation_mode(up_const2, :dynamic)
+        @test CNM.has_evaluation_mode(low_const2, :dynamic)
+        @test CNM.has_evaluation_mode(both_const2, :dynamic)
+        @test !CNM.has_evaluation_mode(up_const2, :static)
+        @test !CNM.has_evaluation_mode(low_const2, :static)
+        @test !CNM.has_evaluation_mode(both_const2, :static)
+
+        struct TestType
+            f1::Int
+            f2::FT
+        end
+        test_data = Dict(
+            :name => :TestType,
+            :code => "no code"
+        )
+        CNM.construct_type_info!(TestType, test_data)
+        test_info = CNM._BOUND_TYPES_[:TestType]
+        @test test_info[:code] == "no code"
+        Base.delete!(CNM._BOUND_TYPES_, :TestType)
+
+        @test CNM.get_methods(up_functor) == CNM.instancemethods(up_functor)
+        @test CNM.get_methods(lower) == methods(lower)
+
+        test_string_1 = "yip#= REPL[210]:1 =#pee"
+        test_string_2 = """yip#= c:\\Users\\bob\\Documents\\Caltech\\Research\\ClimaLandTesting.jl:10 =#pee"""
+        @test CNM._strip_location_comments(test_string_1) == "yippee"
+        @test CNM._strip_location_comments(test_string_2) == "yippee"
+
+        f1 = :(
+            function f1(x::DataType, y::Array{N})::G where {G, N, T <: Tuple}
+                return x*y
+            end
+        )
+        f2 = :(g(y,z::Float32) = 3)
+        f3 = :(
+            function (::MyType{Q,P})(a::Tuple{Tuple{G, N}, Array{K}}, b::Array)::A where {A<:AbstractFloat, G, N}
+                return a
+            end
+        )
+        n1, t1, out_1 = CNM._get_func_info(f1)
+        n2, t2, out_2 = CNM._get_func_info(f2)
+        n3, t3, out_3 = CNM._get_func_info(f3)
+        @test [n1, n2, n3] == [:f1, :g, :MyType]
+        @test [t1, t2, t3] == [:FUNCTION, :FUNCTION, :FUNCTOR]
+        @test eval(out_1) == Any
+        @test isnothing(eval(out_2))
+        @test eval(out_3) == AbstractFloat
+
+        """
+        I am making a variable called x
+        """
+        test_declare_var = 3
+
+        #Would probably appreciate some help in coming up with more pathological examples,
+        #to make sure this function is accomplishing what we want it to:
+        @test CNM._get_argtypes(m_low.sig) == (typeof(lower), AbstractArray{<:AbstractFloat}, AbstractArray{<:AbstractFloat})
+        #parametric types without explicitly defined T in codespace means we need to compare these as strings,
+        #but this tests the "transform" capability as well of the function:
+        @test CNM._get_argtypes(m_up.sig, string) == ("up_functor", "AbstractArray{T<:AbstractFloat}", "AbstractArray{T<:AbstractFloat}")
+        @test CNM._get_argtypes(Union{}) == ()
+        @test CNM._get_argtypes(up_functor) == fieldtypes(up_functor)
+        @test CNM._get_declarative_docs(up_functor) == test_dec_doc
+        @test CNM._get_declarative_docs(:test_declare_var) == "I am making a variable called x\n"
+
+        @test CNM._get_doc_from_method(m_low) == test_m_doc
+        @test isnothing(CNM._get_doc_from_method(m_up))
+
+        mt = SMatrix{1, N, <:AbstractFloat, N} where {N<:Int}
+
+        st_expr = :(function static(pred::mt, input::mt)::mt
+            return pred .* inp
+        end)
+        st_name, st_type, st_ret_expr = CNM._get_func_info(st_expr)
+        eval(st_expr) #make the function
+        static_m = methods(static)[1]
+
+        st_data = Dict(
+            :code => "no code again",
+            :name => st_name,
+            :class => st_type,
+            :ret_type => eval(st_ret_expr)
+        )
+
+        CNM.construct_method_info!(static_m.name, static_m, st_data)
+        @test CNM.is_valid_bound(static_m)
+        grab_static = CNM.get_bound_info(static_m)
+        @test grab_static[:ret_type] == mt
+        @test grab_static[:code] == "no code again"
+        @test grab_static[:name] == :static
+        @test grab_static[:class] == :FUNCTION
+        @test grab_static[:type] == (:batched, :static) #validates eval_modes funcs again too
+        @test isnothing(grab_static[:docs])
+        @test grab_static[:argtypes].pred == mt
+        @test grab_static[:argtypes].input == mt
+        Base.delete!(CNM._BOUND_INFO_[:FUNCTION], :static)
+
+        @test CNM.get_val(Val{Float32}()) == FT
+        @test CNM.get_val(Val{true}())
+        @test CNM.get_val(Val{3}()) == 3
+
+        #TODO:
+        #ConstrainedNeuralModel type
+        #ConstrainedNeuralModel constructor
+        #ConstrainedNeuralModel Functor methods, both types
+        #Flux.trainable() on different CNMs
+        #set_predictive_model_out_scale!
+        #scale_model!
+        #save_model (how to test this one?)
+        #load_model in various forms (requires the NeuralSnow artifacts to be saved)
+        #inspect_model_metadata
+        #make_static_model
+        #make_mutable_dynamic_model
+        #make_mutable_fixed_model
+        #trainmodel
+
+        #get_modules
+        #_check_children
+        #build_parameter_metadata
+        #assess_model_transferability
+        #build_API
+        #get_fixed_layer_info
+        #build_bound_docs
+        #build_model_metadata
+
+        #clear the test types from the _BOUND_INFO_, _BOUND_TYPES_ when you are done testing
+        #Delete/fix relevant NeuralSnow tests
     end
 
     @testset "Testing NeuralSnow module" begin

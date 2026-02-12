@@ -936,4 +936,4 @@ end
 
 #move all error strings to the end and make custom error types?
 #get rid of Adapt or not, since we only use it for one function?
-#fix remaining allocation issues
+#remaining allocations all from the elu() activation function?
