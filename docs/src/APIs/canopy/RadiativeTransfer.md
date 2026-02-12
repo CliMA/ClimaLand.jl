@@ -32,7 +32,8 @@ ClimaLand.Canopy.CLMGFunction
 ## Methods
 
 ```@docs
-ClimaLand.Canopy.canopy_radiant_energy_fluxes!
+ClimaLand.Canopy.canopy_shortwave_fluxes!
+ClimaLand.Canopy.canopy_longwave_fluxes!
 ClimaLand.Canopy.ground_albedo_PAR
 ClimaLand.Canopy.ground_albedo_NIR
 ClimaLand.Canopy.compute_fractional_absorbances!

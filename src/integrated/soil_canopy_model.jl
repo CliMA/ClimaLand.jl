@@ -260,14 +260,7 @@ function make_update_boundary_fluxes(
         # update root extraction
         update_root_extraction!(p, Y, t, land)
         # Radiation
-        lsm_radiant_energy_fluxes!(
-            p,
-            land,
-            land.canopy.radiative_transfer,
-            Y,
-            t,
-        )
-
+        update_radiation_fluxes!(p, land, land.canopy.radiative_transfer, Y, t)
         update_soil_bf!(p, Y, t)
         update_canopy_bf!(p, Y, t)
         update_soilco2_bf!(p, Y, t)
@@ -291,8 +284,8 @@ function make_update_implicit_cache(
     function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
-        # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
+        # Canopy LW
+        implicit_radiation_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
@@ -311,23 +304,21 @@ function make_update_implicit_cache(
 end
 
 """
-    lsm_radiant_energy_fluxes!(p, land::SoilCanopyModel{FT},
+    update_radiation_fluxes!(p, land::SoilCanopyModel{FT},
                                 canopy_radiation::Canopy.AbstractRadiationModel{FT},
                                 Y,
                                 t,
                                 ) where {FT}
 
 
-A function which computes the net radiation at the ground surface
+A function which computes radiative fluxes at the ground surface
 given the canopy radiation model, as well as the upwelling radiation - and hence
-effective albedo, emissivity, and temperature -  and the net canopy radiation.
+effective albedo, emissivity, and temperature.
 
-Returns the correct radiative fluxes for bare ground in the case
-where the canopy LAI is zero. Note also that this serves the role of
-`canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
-when the Canopy is run in standalone mode.
+The only exception is canopy shortwave (absorbed, reflected, transmitted) which is computed
+in advance of this function being called.
 """
-function lsm_radiant_energy_fluxes!(
+function update_radiation_fluxes!(
     p,
     land::SoilCanopyModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
@@ -338,10 +329,7 @@ function lsm_radiant_energy_fluxes!(
     earth_param_set = canopy.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
-    SW_d = p.drivers.SW_d
-
     T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
-
     α_soil_PAR = p.soil.PAR_albedo
     α_soil_NIR = p.soil.NIR_albedo
     ϵ_soil = land.soil.parameters.emissivity
@@ -350,43 +338,79 @@ function lsm_radiant_energy_fluxes!(
     # in W/m^2
     LW_d_canopy = p.scratch1
     LW_u_soil = p.scratch2
-    LW_net_canopy = p.canopy.radiative_transfer.LW_n
-    SW_net_canopy = p.canopy.radiative_transfer.SW_n
-    R_net_soil = p.soil.R_n
     LW_u = p.LW_u
-    SW_u = p.SW_u
+    LW_net_canopy = p.canopy.radiative_transfer.LW_n
     par_d = p.canopy.radiative_transfer.par_d
     nir_d = p.canopy.radiative_transfer.nir_d
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    f_abs_nir = p.canopy.radiative_transfer.nir.abs
     f_refl_par = p.canopy.radiative_transfer.par.refl
     f_refl_nir = p.canopy.radiative_transfer.nir.refl
     f_trans_par = p.canopy.radiative_transfer.par.trans
     f_trans_nir = p.canopy.radiative_transfer.nir.trans
-    # in total: d - u = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
-    # SW upwelling  = reflected par + reflected nir
-    @. SW_u = par_d * f_refl_par + f_refl_nir * nir_d
-
-    # net canopy
-    @. SW_net_canopy = f_abs_par * par_d + f_abs_nir * nir_d
 
     # net soil = (1-α)*trans for par and nir
-    @. R_net_soil .=
+    @. p.soil.SW_n .= -(
         f_trans_nir * nir_d * (1 - α_soil_NIR) +
         f_trans_par * par_d * (1 - α_soil_PAR)
+    )
 
-    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4)
+    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    @. p.soil.LW_n = -(ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4)
+    @. LW_net_canopy = -(
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
+    )
+
+    @. LW_u = p.drivers.LW_d + p.canopy.radiative_transfer.LW_n + p.soil.LW_n
+    # SW upwelling  = reflected par + reflected nir
+    @. p.SW_u = par_d * f_refl_par + f_refl_nir * nir_d
+
+end
+
+"""
+    implicit_radiation_fluxes!(p, land::SoilCanopyModel{FT},
+                                canopy_radiation::Canopy.AbstractRadiationModel{FT},
+                                Y,
+                                t,
+                                ) where {FT}
+
+
+A function which computes the radiative fluxes which must be treated implicitly
+given the canopy radiation model, as well as the upwelling radiation - and hence
+effective albedo, emissivity, and temperature.
+"""
+function implicit_radiation_fluxes!(
+    p,
+    land::SoilCanopyModel{FT},
+    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    Y,
+    t,
+) where {FT}
+    canopy = land.canopy
+    earth_param_set = canopy.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    LW_d = p.drivers.LW_d
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
+    ϵ_soil = land.soil.parameters.emissivity
+    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+
+    # in W/m^2
+    LW_d_canopy = p.scratch1
+    LW_u_soil = p.scratch2
+    LW_net_canopy = p.canopy.radiative_transfer.LW_n
+
+    # Working through the math, this satisfies: LW_u - LW_d = LW_c + LW_soil
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
-    @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
-    @. LW_net_canopy =
+    @. LW_net_canopy = -(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
+    )
 
-    @. LW_u = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
+    #LW_u = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
+    @. p.LW_u = p.drivers.LW_d + p.canopy.radiative_transfer.LW_n + p.soil.LW_n
+
 end
-
 
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
@@ -413,6 +437,7 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
+    # Turbulent Fluxes
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =
@@ -442,7 +467,8 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        -p.soil.R_n +
+        p.soil.LW_n +
+        p.soil.SW_n +
         p.soil.turbulent_fluxes.lhf +
         p.soil.turbulent_fluxes.shf +
         infiltration_energy_flux

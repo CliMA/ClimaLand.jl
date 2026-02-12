@@ -15,6 +15,7 @@ domain =
 forcing = (; atmos, radiation)
 Δt = FT(180.0)
 land_model = ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt)
+soil_model = ClimaLand.EnergyHydrology{FT}(domain, forcing, toml_dict)
 
 Y, p, coords = ClimaLand.initialize(land_model)
 p_soil_alone = deepcopy(p)
@@ -74,7 +75,7 @@ set_initial_cache!(p, Y, t)
 @test all(parent(p.snow.total_energy_flux) .≈ 0)
 @test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
-set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
+set_soil_initial_cache! = make_set_initial_cache(soil_model)
 set_soil_initial_cache!(p_soil_alone, Y, t)
 @test p.soil.top_bc == p_soil_alone.soil.top_bc
 dY_soil_snow = deepcopy(Y) .* 0
@@ -84,7 +85,7 @@ ClimaLand.source!(
     ClimaLand.Soil.SoilSublimation{FT}(),
     Y,
     p_soil_alone,
-    land_model.soil,
+    soil_model,
 )
 ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
 @test dY_soil_alone.soil == dY_soil_snow.soil

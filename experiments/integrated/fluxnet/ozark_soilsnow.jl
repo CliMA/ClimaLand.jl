@@ -276,13 +276,15 @@ function compute_atmos_energy_fluxes(p)
     return @. (1 - p.snow.snow_cover_fraction) * (
                   p.soil.turbulent_fluxes.lhf +
                   p.soil.turbulent_fluxes.shf +
-                  p.soil.R_n +
+                  p.soil.LW_n +
+                  p.soil.SW_n +
                   e_flux_falling_rain
               ) +
               p.snow.snow_cover_fraction * (
                   p.snow.turbulent_fluxes.lhf +
                   p.snow.turbulent_fluxes.shf +
-                  p.snow.R_n +
+                  p.snow.LW_n +
+                  p.snow.SW_n +
                   e_flux_falling_rain
               ) +
               e_flux_falling_snow
