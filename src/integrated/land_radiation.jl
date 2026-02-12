@@ -19,7 +19,7 @@ end
     Canopy.canopy_longwave_fluxes!(p::NamedTuple,
                                          s::PrognosticGroundConditions,
                                          canopy,
-                                         radiation::PrescribedRadiativeFluxes,
+                                         radiation::AbstractRadiativeDrivers,
                                          earth_param_set::PSE,
                                          Y::ClimaCore.Fields.FieldVector,
                                          t,
