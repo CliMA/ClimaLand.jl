@@ -144,7 +144,8 @@ Handles various argtypes (a specific submethod, a name, the object itself, etc.)
 Note: Will not work if trying to pass an instance of a callable type as a symbol.
 """
 function is_valid_bound(bound)
-    return haskey(_BOUND_INFO_[:FUNCTION], bound_symbol(bound)) || haskey(_BOUND_INFO_[:FUNCTOR], bound_symbol(bound))
+    return haskey(_BOUND_INFO_[:FUNCTION], bound_symbol(bound)) ||
+           haskey(_BOUND_INFO_[:FUNCTOR], bound_symbol(bound))
 end
 
 """

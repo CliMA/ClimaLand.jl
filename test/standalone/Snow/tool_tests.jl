@@ -26,7 +26,7 @@ if !isnothing(ConstrainedNeuralModelExt)
     CNM = ConstrainedNeuralModelExt.ConstrainedNeuralModels
     import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound as @bound
     import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound_type as @bound_type
-    mt = SMatrix{1, N, <:AbstractFloat, N} where {N<:Int} #to deal with one eval() call in testing
+    mt = SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} #to deal with one eval() call in testing
 end
 
 if !isnothing(SNOTELScraperExt)
@@ -363,8 +363,11 @@ if !isnothing(SNOTELScraperExt)
             b::DataType
             c::FT
         end
-        
-        @bound function (b::up_functor)(pred::AbstractArray{T}, input::AbstractArray{T})::AbstractArray{T} where {T <: AbstractFloat}
+
+        @bound function (b::up_functor)(
+            pred::AbstractArray{T},
+            input::AbstractArray{T},
+        )::AbstractArray{T} where {T <: AbstractFloat}
             return pred .+ input
         end
 
@@ -401,7 +404,8 @@ if !isnothing(SNOTELScraperExt)
         @test CNM.bound_symbol(:upper_funct) == :upper_funct
         @test !CNM.is_valid_bound(:upper_funct) #can't pass an instance of a callable type as a symbol.
         @test CNM.is_valid_bound(m_up)
-        @test CNM.get_bound_info(up_functor) == CNM._BOUND_INFO_[:FUNCTOR][:up_functor]
+        @test CNM.get_bound_info(up_functor) ==
+              CNM._BOUND_INFO_[:FUNCTOR][:up_functor]
         up_info = CNM.get_bound_info(upper_funct)
         m_up_info = first(values(CNM._BOUND_INFO_[:FUNCTOR][:up_functor]))
         @test CNM.get_bound_info(m_up) == m_up_info
@@ -410,7 +414,10 @@ if !isnothing(SNOTELScraperExt)
         @test m_up_info[:type] == (:generic, :dynamic)
         @test isnothing(m_up_info[:docs])
         @test m_up_info[:code] == funct_code
-        @test m_up_info[:argtypes] == (input = AbstractArray{<:AbstractFloat}, pred = AbstractArray{<:AbstractFloat})
+        @test m_up_info[:argtypes] == (
+            input = AbstractArray{<:AbstractFloat},
+            pred = AbstractArray{<:AbstractFloat},
+        )
         @test m_up_info[:ret_type] == AbstractArray{<:AbstractFloat}
 
         prev_func_length = length(CNM._BOUND_INFO_[:FUNCTION])
@@ -418,9 +425,12 @@ if !isnothing(SNOTELScraperExt)
         """
         this is a test method doc
         """
-        @bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}
+        @bound function lower(
+            pred::AbstractArray{<:AbstractFloat},
+            input::AbstractArray{<:AbstractFloat},
+        )::AbstractArray{<:AbstractFloat}
             return pred .- input
-        end 
+        end
         func_code = "@bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}\n    return pred .- input\nend"
         @test length(CNM._BOUND_INFO_[:FUNCTION]) == prev_func_length + 1
         @test CNM.bound_symbol(lower) == :lower
@@ -442,7 +452,10 @@ if !isnothing(SNOTELScraperExt)
         @test m_low_info[:type] == (:generic, :dynamic)
         @test m_low_info[:docs] == test_m_doc
         @test m_low_info[:code] == func_code
-        @test m_low_info[:argtypes] == (input = AbstractArray{<:AbstractFloat}, pred = AbstractArray{<:AbstractFloat})
+        @test m_low_info[:argtypes] == (
+            input = AbstractArray{<:AbstractFloat},
+            pred = AbstractArray{<:AbstractFloat},
+        )
         @test m_low_info[:ret_type] == AbstractArray{<:AbstractFloat}
 
         inps, classes = CNM.get_bound_evaluation_modes(low_info)
@@ -483,10 +496,7 @@ if !isnothing(SNOTELScraperExt)
             f1::Int
             f2::FT
         end
-        test_data = Dict(
-            :name => :TestType,
-            :code => "no code"
-        )
+        test_data = Dict(:name => :TestType, :code => "no code")
         CNM.construct_type_info!(TestType, test_data)
         test_info = CNM._BOUND_TYPES_[:TestType]
         @test test_info[:code] == "no code"
@@ -500,14 +510,15 @@ if !isnothing(SNOTELScraperExt)
         @test CNM._strip_location_comments(test_string_1) == "yippee"
         @test CNM._strip_location_comments(test_string_2) == "yippee"
 
-        f1 = :(
-            function f1(x::DataType, y::Array{N})::G where {G, N, T <: Tuple}
-                return x*y
-            end
-        )
-        f2 = :(g(y,z::Float32) = 3)
+        f1 = :(function f1(x::DataType, y::Array{N})::G where {G, N, T <: Tuple}
+            return x * y
+        end)
+        f2 = :(g(y, z::Float32) = 3)
         f3 = :(
-            function (::MyType{Q,P})(a::Tuple{Tuple{G, N}, Array{K}}, b::Array)::A where {A<:AbstractFloat, G, N}
+            function (::MyType{Q, P})(
+                a::Tuple{Tuple{G, N}, Array{K}},
+                b::Array,
+            )::A where {A <: AbstractFloat, G, N}
                 return a
             end
         )
@@ -527,19 +538,28 @@ if !isnothing(SNOTELScraperExt)
 
         #Would probably appreciate some help in coming up with more pathological examples,
         #to make sure this function is accomplishing what we want it to:
-        @test CNM._get_argtypes(m_low.sig) == (typeof(lower), AbstractArray{<:AbstractFloat}, AbstractArray{<:AbstractFloat})
+        @test CNM._get_argtypes(m_low.sig) == (
+            typeof(lower),
+            AbstractArray{<:AbstractFloat},
+            AbstractArray{<:AbstractFloat},
+        )
         #parametric types without explicitly defined T in codespace means we need to compare these as strings,
         #but this tests the "transform" capability as well of the function:
-        @test CNM._get_argtypes(m_up.sig, string) == ("up_functor", "AbstractArray{T<:AbstractFloat}", "AbstractArray{T<:AbstractFloat}")
+        @test CNM._get_argtypes(m_up.sig, string) == (
+            "up_functor",
+            "AbstractArray{T<:AbstractFloat}",
+            "AbstractArray{T<:AbstractFloat}",
+        )
         @test CNM._get_argtypes(Union{}) == ()
         @test CNM._get_argtypes(up_functor) == fieldtypes(up_functor)
         @test CNM._get_declarative_docs(up_functor) == test_dec_doc
-        @test CNM._get_declarative_docs(:test_declare_var) == "I am making a variable called x\n"
+        @test CNM._get_declarative_docs(:test_declare_var) ==
+              "I am making a variable called x\n"
 
         @test CNM._get_doc_from_method(m_low) == test_m_doc
         @test isnothing(CNM._get_doc_from_method(m_up))
 
-        mt = SMatrix{1, N, <:AbstractFloat, N} where {N<:Int}
+        mt = SMatrix{1, N, <:AbstractFloat, N} where {N <: Int}
 
         st_expr = :(function static(pred::mt, input::mt)::mt
             return pred .* inp
@@ -552,7 +572,7 @@ if !isnothing(SNOTELScraperExt)
             :code => "no code again",
             :name => st_name,
             :class => st_type,
-            :ret_type => eval(st_ret_expr)
+            :ret_type => eval(st_ret_expr),
         )
 
         CNM.construct_method_info!(static_m.name, static_m, st_data)
