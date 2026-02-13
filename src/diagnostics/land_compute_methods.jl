@@ -394,9 +394,9 @@ function compute_vegetation_carbon!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     canopy = get_canopy(land_model)
-    
+
     # Check if required components exist
-    if !isdefined(canopy, :autotrophic_respiration) || 
+    if !isdefined(canopy, :autotrophic_respiration) ||
        !isdefined(canopy, :biomass)
         if isnothing(out)
             out = zeros(land_model.soil.domain.space.surface)
@@ -406,7 +406,7 @@ function compute_vegetation_carbon!(
         end
         return out
     end
-    
+
     # Get parameters
     σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
     ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
@@ -440,7 +440,7 @@ function compute_vegetation_carbon!(
     canopy::CanopyModel{FT},
 ) where {FT}
     # Check if required components exist
-    if !isdefined(canopy, :autotrophic_respiration) || 
+    if !isdefined(canopy, :autotrophic_respiration) ||
        !isdefined(canopy, :biomass)
         if isnothing(out)
             out = zeros(canopy.domain.space.surface)
@@ -450,7 +450,7 @@ function compute_vegetation_carbon!(
         end
         return out
     end
-    
+
     # Get parameters
     σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
     ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
