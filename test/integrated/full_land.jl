@@ -271,7 +271,7 @@ land = LandModel{FT}(
 @test ClimaComms.context(land) == ClimaComms.context()
 @test ClimaComms.device(land) == ClimaComms.device()
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
-@testset "Initial condition functions" begin
+@testset "Initial condition function from file" begin
     Y, p, cds = initialize(land)
     t0 = ITime(0, Second(1), start_date)
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
@@ -322,6 +322,49 @@ land = LandModel{FT}(
     @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
     @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
 end
+
+@testset "Initial condition from parameters" begin
+    Y, p, cds = initialize(land)
+    binary_mask = parent(land.soil.domain.space.surface.grid.mask.is_active)[:]
+
+    t0 = ITime(0, Second(1), start_date)
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            land;
+        )
+    set_ic!(Y, p, t0, land)
+    @test Y.canopy.energy.T == p.drivers.T
+    (; θ_r, ν, ρc_ds) = land.soil.parameters
+
+    @test all(
+        abs.(parent(Y.soil.ϑ_l .- (θ_r .+ (ν .- θ_r) ./ 2)))[
+            :,
+            1,
+            1,
+            1,
+            Array(binary_mask),
+        ] .< eps(FT),
+    )
+    @test all(parent(Y.soil.θ_i)[:, 1, 1, 1, Array(binary_mask)] .≈ 0)
+    @test all(
+        parent(Y.canopy.hydraulics.ϑ_l.:1)[1, 1, 1, Array(binary_mask)] .-
+        land.canopy.hydraulics.parameters.ν .≈ 0,
+    )
+    @test all(parent(Y.snow.U)[1, 1, 1, Array(binary_mask)] .≈ 0)
+    @test all(parent(Y.snow.S)[1, 1, 1, Array(binary_mask)] .≈ 0)
+    @test all(parent(Y.snow.S_l)[1, 1, 1, Array(binary_mask)] .≈ 0)
+    @test all(
+        parent(Y.soilco2.CO2)[:, 1, 1, 1, Array(binary_mask)] .- FT(0.000412) .≈
+        0,
+    )
+    @test all(
+        parent(Y.soilco2.O2_f)[:, 1, 1, 1, Array(binary_mask)] .- FT(0.21) .≈ 0,
+    )
+    @test all(
+        parent(Y.soilco2.SOC)[:, 1, 1, 1, Array(binary_mask)] .- FT(5) .≈ 0,
+    )
+end
+
 
 @testset "Total energy and water" begin
     Y, p, cds = initialize(land)

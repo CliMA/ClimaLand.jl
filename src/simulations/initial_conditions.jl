@@ -566,3 +566,154 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
         )
     return nothing
 end
+
+"""
+    make_set_initial_state_from_file(ic_path, model::ClimaLand.Bucket.BucketModel)
+
+Returns a function which takes (Y,p,t0,model) as arguments, and updates
+the state Y of the `BucketModel` in place with initial conditions from 
+`ic_path`, a path to a netCDF file with variables `W`, `Ws`, `T`, and `S`.
+
+The returned function is a closure for `ic_path` and `model`.
+"""
+function make_set_initial_state_from_file(
+    ic_path,
+    land::ClimaLand.Bucket.BucketModel,
+)
+    function set_ic!(Y, p, t0, land)
+        ds = NCDataset(ic_path)
+        has_all_variables = all(key -> haskey(ds, key), ["W", "Ws", "T", "S"])
+        @assert has_all_variables "The bucket iniital condition file is expected to contain the variables W, Ws, T, and S (read documentation about requirements)."
+        close(ds)
+
+        domain = land.domain
+        surface_space = domain.space.surface
+        subsurface_space = domain.space.subsurface
+
+        Y.bucket.W .= SpaceVaryingInput(
+            ic_path,
+            "W",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.Ws .= SpaceVaryingInput(
+            ic_path,
+            "Ws",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.T .= SpaceVaryingInput(
+            ic_path,
+            "T",
+            subsurface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.σS .= SpaceVaryingInput(
+            ic_path,
+            "S",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        FT = eltype(Y.bucket.W)
+        # clip negative values from horizontal regridding
+        Y.bucket.σS .= max.(Y.bucket.σS, FT(0))
+        Y.bucket.W .= max.(Y.bucket.W, FT(0))
+        Y.bucket.Ws .= max.(Y.bucket.Ws, FT(0))
+        # ensure initial storage < bucket capacity
+        Y.bucket.W .= min.(Y.bucket.W, land.parameters.W_f)
+    end
+    return set_ic!
+end
+
+
+""" 
+    make_set_initial_state_from_atmos_and_parameters(
+               land::ClimaLand.Bucket.BucketModel
+    )
+
+Returns a function set_ic!(Y,p,t0,bucket) which sets the bucket initial conditions like:
+Y.bucket.W .= bucket.parameters.W_f
+Y.bucket.Ws .= 0
+Y.bucket.σS .= 0
+Y.bucket.T .= p.drivers.T # at every level
+
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+been updated already.
+"""
+function make_set_initial_state_from_atmos_and_parameters(
+    land::ClimaLand.Bucket.BucketModel,
+)
+    function set_ic!(Y, p, t0, land)
+        if land.atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, land.atmos.T, t0)
+        end
+        Y.bucket.W .= land.parameters.W_f
+        Y.bucket.Ws .= 0
+        Y.bucket.σS .= 0
+        n_levels = ClimaCore.Spaces.nlevels(land.domain.space.subsurface)
+        for i in 1:n_levels
+            ClimaCore.Fields.level(Y.bucket.T, i) .= p.drivers.T
+        end
+    end
+    return set_ic!
+end
+
+
+"""
+    make_set_initial_state_from_atmos_and_parameters(land::LandModel{FT}) where {FT}
+
+Returns a function which takes (Y,p,t0,land) as arguments, and updates
+the state Y in place with initial conditions from parameter values and the
+atmospheric temperature. 
+
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+been updated already.
+"""
+function make_set_initial_state_from_atmos_and_parameters(
+    land::LandModel{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        atmos = ClimaLand.get_drivers(land)[1]
+        earth_param_set = ClimaLand.get_earth_param_set(land.soil)
+        if atmos isa ClimaLand.PrescribedAtmosphere
+            evaluate!(p.drivers.T, atmos.T, t0)
+        end
+        # SoilCO2 IC
+        if !isnothing(land.soilco2)
+            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        end
+        (; θ_r, ν, ρc_ds) = land.soil.parameters
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+        Y.soil.θ_i .= FT(0.0)
+        ρc_s =
+            ClimaLand.Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            )
+        Y.soil.ρe_int .=
+            ClimaLand.Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                p.drivers.T,
+                earth_param_set,
+            )
+
+        Y.snow.S .= FT(0)
+        Y.snow.S_l .= FT(0)
+        Y.snow.U .= FT(0)
+        if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
+            Y.canopy.energy.T .= p.drivers.T
+        end
+        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+
+    end
+    return set_ic!
+end
