@@ -67,6 +67,34 @@ const ILAMB_VARIABLES = Dict(
         "kg m-2 s-1", # kg C
         "mol CO2 m^-2 s^-1",
     ),
+    "ra" => ILAMBMapping(
+        "ra",
+        "Autotrophic Respiration",
+        0.01201,
+        "kg m-2 s-1", # kg C
+        "mol CO2 m^-2 s^-1",
+    ),
+    "hr" => ILAMBMapping(
+        "rh",
+        "Heterotrophic Respiration",
+        0.01201,
+        "kg m-2 s-1", # kg C
+        "mol CO2 m^-2 s^-1",
+    ),
+    "soc" => ILAMBMapping(
+        "cSoil",
+        "Soil Carbon",
+        1.0,
+        "kg m-2", # kg C
+        "kg C m^-3",
+    ),
+    "cveg" => ILAMBMapping(
+        "cVeg",
+        "Vegetation Carbon",
+        1.0,
+        "kg m-2", # kg C
+        "kg C m^-2",
+    ),
     "et" => ILAMBMapping(
         "evspsbl",
         "Evapotranspiration",

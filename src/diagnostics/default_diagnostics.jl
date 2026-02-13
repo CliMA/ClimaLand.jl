@@ -646,6 +646,11 @@ function get_short_diagnostics(model::LandModel)
         "lwp",
         "iwc",
         "sdr",
+        "nee",
+        "ra",
+        "hr",
+        "soc",
+        "cveg",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
