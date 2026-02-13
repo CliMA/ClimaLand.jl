@@ -772,7 +772,7 @@ function build_parameter_metadata(
         creator_metadata,
     )
     ps_meta = """
-    "Flattened vector of trainable parameters of the predictive model for a ConstrainedNeuralModel type.
+    Flattened vector of trainable parameters of the predictive model for a ConstrainedNeuralModel type.
     The model structure looks like:
         $(string.(build_func.model.predictive_model))
     Index markers for the different model pieces (using Flux layer notation) are as follows:
@@ -891,7 +891,7 @@ function get_fixed_layer_info(m::ConstrainedNeuralModel)
     else
         fixed_meta *= "The creator used custom fixed layers, defined as follows:\n"
         for l in m.fixed_layers.layers
-            fixed_meta *= "LAYER: $(l)\n$(Flux.params(l))\n"
+            fixed_meta *= "LAYER: $(l)\n$(join(Flux.trainables(l), ", "))\n"
         end
     end
     return fixed_meta
@@ -930,7 +930,7 @@ function build_API(data::Dict{Module, Dict{Type, Vector{Method}}})
             type_doc = _get_declarative_docs(type)
             api *= isnothing(type_doc) ? "" : type_doc
             api *= "\n"
-            for m in method_list
+            for m in sort(collect(method_list), by = x -> string(x.sig))
                 d = _get_doc_from_method(m)
                 if !isnothing(d)
                     api *= "\"\"\"\n" * d * "\n\"\"\"\n"
@@ -963,7 +963,7 @@ the saved model.
 """
 function build_bound_docs(m::ConstrainedNeuralModel)
     doc = ""
-    were_trainable = get_val(m.traininable_constraints)
+    were_trainable = get_val(m.trainable_constraints)
     for bound in get_bounds(m.constraints)
         doc *= "BOUND: $(bound)\n"
         bound_info = get_bound_info(bound)
@@ -991,7 +991,8 @@ function build_bound_docs(m::ConstrainedNeuralModel)
         else
             doc *= "Bound is a function, with the following bound methods:\n"
         end
-        for (method, method_data) in bound_info
+        for (method, method_data) in
+            sort(collect(bound_info), by = x -> string(x.first.sig))
             if !isnothing(method_data[:docs])
                 doc *= "\"\"\"\n"
                 doc *= method_data[:docs] * "\"\"\"\n"
@@ -1069,7 +1070,7 @@ function build_model_metadata(
 
         To build this ConstrainedNeuralModel with this setup, call `load_model()` on
         the path to this file or the data dictionary itself, and a Vector of floats 
-        (same type as FLOAT TYPE) `params` of size $(sum(length, Flux.params(m.predictive_model))), as follows:
+        (same type as FLOAT TYPE) `params` of size $(sum(length, Flux.trainables(m.predictive_model))), as follows:
             
             model = load_model(params, (THIS DATA, OR FILEPATH))
 

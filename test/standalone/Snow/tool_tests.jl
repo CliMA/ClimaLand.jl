@@ -23,10 +23,22 @@ ConstrainedNeuralModelExt =
 NeuralSnowExt = Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt)
 
 if !isnothing(ConstrainedNeuralModelExt)
+    #some macro and/or eval() calls require a definition in top-level scope for testing
     CNM = ConstrainedNeuralModelExt.ConstrainedNeuralModels
     import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound as @bound
     import .ConstrainedNeuralModelExt.ConstrainedNeuralModels.@bound_type as @bound_type
-    mt = SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} #to deal with one eval() call in testing
+    mt = SMatrix{1, N, <:AbstractFloat, N} where {N <: Int}
+end
+
+#Function for comparing chains, as == and === do not work for them:
+function isEqual_chains(c1::Chain, c2::Chain)
+    length(c1.layers) == length(c2.layers) &&
+        all(zip(c1.layers, c2.layers)) do (l1, l2)
+            typeof(l1) === typeof(l2) && all(
+                f -> getfield(l1, f) == getfield(l2, f),
+                fieldnames(typeof(l1)),
+            )
+        end
 end
 
 if !isnothing(SNOTELScraperExt)
@@ -216,10 +228,12 @@ if !isnothing(SNOTELScraperExt)
         FT = Float32
         no_scale = CNM.NoScaling{FT}()
         use_in_scales = ones(FT, 7)
-        c_scale = CNM.ConstScaling(use_in_scales)
+        c_scale = CNM.buildConstScaling(use_in_scales)
         @test typeof(no_scale) <: CNM.InputWeighting{FT}
         @test typeof(c_scale) <: CNM.InputWeighting{FT}
         @test c_scale.in_scales == use_in_scales
+        @test typeof(no_scale) <: CNM.NoScaling{FT}
+        @test typeof(c_scale) <: CNM.ConstScaling{FT, typeof(use_in_scales)}
 
         testfunc1(x, y) = x .^ 2 .+ y
         ub = CNM.UpperOnly{typeof(testfunc1)}(testfunc1)
@@ -307,6 +321,18 @@ if !isnothing(SNOTELScraperExt)
         @test eltype(lb_3) == FT
         @test eltype(ts_3) == FT
 
+        sc_out1 = CNM.buildScaleOutput(FT(3))
+        sc_out2 = CNM.ScaleOutput{FT, SVector{1, FT}}(SVector{1, FT}(4))
+        @test sc_out1.sc == [3]
+        @test sc_out2.sc == SVector{1, FT}(4)
+        @test eltype(sc_out1.sc) == FT
+        @test eltype(sc_out2.sc) == FT
+        @test CNM._get_scale(sc_out1) == 3
+        @test CNM._get_scale(sc_out2) == 4
+        @test sc_out1(FT.([1, 2, 3])) == [3, 6, 9]
+        @test sc_out2(inp_3) == SVector{1, FT}(12)
+        @test sc_out2(ans_3) == SMatrix{2, 1, FT}([24; 12])
+
         test_matrix = Matrix{FT}([1 -1])
         ml = CNM.MulLayer(test_matrix)
         @test eltype(ml.W) == FT
@@ -322,6 +348,7 @@ if !isnothing(SNOTELScraperExt)
         @test ml_conv(Float64.([-1; 1]))[1] == -2
         @test ml_conv(SMatrix{2, 1, Float64}([-1; 2]))[1] == -3
 
+        #= #don't use this anymore due to ScaleOutput
         gm_1 = CNM.get_scaling_matrix(ub, FT(-1))
         gm_2 = CNM.get_scaling_matrix(lb, Float64(-1))
         gm_3 = CNM.get_scaling_matrix(ts, FT(-1))
@@ -331,6 +358,7 @@ if !isnothing(SNOTELScraperExt)
         @test eltype(gm_2) == Float64
         @test gm_3 == [1 0 0; 0 1 0; 0 0 -1]
         @test eltype(gm_3) == FT
+        =#
 
         def_l = Matrix{FT}([1 0; -1 0; -1 1])
         def_u = Matrix{FT}([1 0; -1 0; 1 -1])
@@ -360,7 +388,7 @@ if !isnothing(SNOTELScraperExt)
         """
         @bound_type struct up_functor
             a::Int
-            b::DataType
+            b::AbstractMatrix{FT}
             c::FT
         end
 
@@ -368,13 +396,13 @@ if !isnothing(SNOTELScraperExt)
             pred::AbstractArray{T},
             input::AbstractArray{T},
         )::AbstractArray{T} where {T <: AbstractFloat}
-            return pred .+ input
+            return pred .+ input[1]
         end
 
-        upper_funct = up_functor(1, Tuple{FT(2), FT(3)}, FT(4))
+        upper_funct = up_functor(1, Matrix{FT}([1;;]), FT(4))
 
-        test_code = "@bound_type struct up_functor\n    a::Int\n    b::DataType\n    c::FT\nend"
-        funct_code = "@bound function ((b::up_functor)(pred::AbstractArray{T}, input::AbstractArray{T})::AbstractArray{T}) where T <: AbstractFloat\n    return pred .+ input\nend"
+        test_code = "@bound_type struct up_functor\n    a::Int\n    b::AbstractMatrix{FT}\n    c::FT\nend"
+        funct_code = "@bound function ((b::up_functor)(pred::AbstractArray{T}, input::AbstractArray{T})::AbstractArray{T}) where T <: AbstractFloat\n    return pred .+ input[1]\nend"
         @test length(CNM._BOUND_TYPES_) == prev_length + 1
         @test CNM.is_bound_type(:up_functor)
         @test CNM.is_bound_type(up_functor)
@@ -387,7 +415,7 @@ if !isnothing(SNOTELScraperExt)
         @test CNM.get_bound_type_info(up_functor) == new_info
         @test new_info[:doc] == test_dec_doc
         @test new_info[:supertype] == Any
-        @test new_info[:typevars] == (Int, DataType, FT)
+        @test new_info[:typevars] == (Int, AbstractMatrix{FT}, FT)
         @test new_info[:code] == test_code
         @test getindex.(new_info[:params], 1) == [:a, :b, :c]
         @test CNM.bound_symbol(up_functor) == :up_functor
@@ -429,9 +457,9 @@ if !isnothing(SNOTELScraperExt)
             pred::AbstractArray{<:AbstractFloat},
             input::AbstractArray{<:AbstractFloat},
         )::AbstractArray{<:AbstractFloat}
-            return pred .- input
+            return pred .- input[1]
         end
-        func_code = "@bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}\n    return pred .- input\nend"
+        func_code = "@bound function lower(pred::AbstractArray{<:AbstractFloat}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}\n    return pred .- input[1]\nend"
         @test length(CNM._BOUND_INFO_[:FUNCTION]) == prev_func_length + 1
         @test CNM.bound_symbol(lower) == :lower
         m_low = methods(lower)
@@ -559,8 +587,6 @@ if !isnothing(SNOTELScraperExt)
         @test CNM._get_doc_from_method(m_low) == test_m_doc
         @test isnothing(CNM._get_doc_from_method(m_up))
 
-        mt = SMatrix{1, N, <:AbstractFloat, N} where {N <: Int}
-
         st_expr = :(function static(pred::mt, input::mt)::mt
             return pred .* inp
         end)
@@ -592,32 +618,214 @@ if !isnothing(SNOTELScraperExt)
         @test CNM.get_val(Val{true}())
         @test CNM.get_val(Val{3}()) == 3
 
+        this_mod_set = Set([StaticArrays, Adapt, JLD2, Flux, Base, Core])
+        @test Set(CNM.get_modules(CNM)) == this_mod_set
+
+        ones_64_3 = Matrix{Float64}([1 1 1])
+        ones_64_2 = Matrix{Float64}([1 1])
+
+        c_scaling_test = 2 * ones(FT, 3)
+        p_l = Chain(Dense(ones_64_3, false))
+        f_l_3 = Chain(Dense(ones_64_3, false, relu))
+        f_l_2 = Chain(Dense(ones_64_2, false, relu))
+        CNM1 = CNM.ConstrainedNeuralModel(
+            p_l,
+            CNM.buildUpper(upper_funct),
+            CNM.buildConstScaling(Float64.(c_scaling_test)),
+            CNM.buildScaleOutput(Float64(2)),
+            f_l_2,
+            Float64.(copy(f_l_2.layers[1].weight)),
+            false,
+            Val{true}(),
+        )
+
+        CNM2 =
+            CNM.ConstrainedNeuralModel(FT, deepcopy(p_l), lower_bound = lower)
+
+        CNM3 = CNM.ConstrainedNeuralModel(
+            FT,
+            deepcopy(p_l),
+            upper_bound = upper_funct,
+            lower_bound = deepcopy(upper_funct),
+            trainable_constraints = true,
+            fixed_layers = deepcopy(f_l_3),
+        )
+
+        @test CNM1.scaling isa CNM.ConstScaling
+        @test CNM1.constraints isa CNM.UpperOnly
+        @test CNM1.initial_fixed_layer == f_l_2.layers[1].weight
+        @test isEqual_chains(CNM1.predictive_model, p_l)
+        @test CNM.get_val(CNM1.trainable_constraints)
+        @test !CNM1.using_defualt_fixed_layers
+        @test isEqual_chains(CNM1.fixed_layers, f_l_2)
+        @test CNM1.out_scale.sc[1] == 2
+        @test eltype(CNM1.predictive_model[1].weight) == Float64
+
+        @test CNM2.scaling isa CNM.NoScaling{FT}
+        @test CNM2.constraints isa CNM.LowerOnly
+        @test isEqual_chains(CNM2.predictive_model, fmap(Flux.f32, p_l))
+        @test !CNM.get_val(CNM2.trainable_constraints)
+        @test CNM2.using_defualt_fixed_layers
+        @test isEqual_chains(
+            CNM2.fixed_layers,
+            CNM.default_fixed_layers(CNM2.constraints, FT),
+        )
+        @test CNM2.out_scale.sc[1] == 1
+        @test eltype(CNM2.predictive_model[1].weight) == FT
+
+        @test CNM3.scaling isa CNM.NoScaling{FT}
+        @test CNM3.constraints isa CNM.TwoSided
+        @test CNM3.initial_fixed_layer == FT.(f_l_3.layers[1].weight)
+        @test isEqual_chains(CNM3.predictive_model, fmap(Flux.f32, p_l))
+        @test CNM.get_val(CNM3.trainable_constraints)
+        @test !CNM3.using_defualt_fixed_layers
+        @test isEqual_chains(CNM3.fixed_layers, fmap(Flux.f32, f_l_3))
+        @test CNM3.out_scale.sc[1] == 1
+        @test eltype(CNM3.predictive_model[1].weight) == FT
+
+        #test the functor methods of the ConstrainedNeuralModel
+        inp = Float64.([1, 1, 1])
+        #CNM1 -> gets scaled by 2, summed along row -> 6, output_scale*2 = 12 upper_bound = 13 -> fixed_layer sums them = 25
+        @test CNM1(inp) == Float64.([25]) #
+        #CNM2 -> no scaling, summed along row -> 3, no output scale, lower bound = 2, default fixed layer bounds below by 2 -> stays 3
+        @test CNM2(FT.(inp)) == FT.([3])
+        #CNM3 -> no scaling, summed along row -> 3, no output scale, lower bound (copy of upper bound) = 4, upper_bound = 4, fixed_layer sums them = 11
+        @test CNM3(FT.(inp)) == FT.([11])
+
+        @test propertynames(Flux.trainable(CNM1)) == (:predictive_model, :bound)
+        @test propertynames(Flux.trainable(CNM2)) == (:predictive_model,)
+        @test propertynames(Flux.trainable(CNM3)) ==
+              (:predictive_model, :upper_bound, :lower_bound)
+        @test Flux.trainables(CNM1) == [[1.0 1.0 1.0], FT[1.0;;]] #FT, not Float64, from how we initialized up_functor
+        @test Flux.trainables(CNM2) == [FT[1.0 1.0 1.0]]
+        @test Flux.trainables(CNM3) == [FT[1.0 1.0 1.0], FT[1.0;;], FT[1.0;;]]
+
+        CNM.set_predictive_model_out_scale!(CNM2, 14)
+        @test CNM2.out_scale.sc[1] == 14
+        @test CNM2(FT.(inp)) == FT.([42]) #multiplies the output from before by 14, still unaffected by bound
+
+        CNM.scale_model!(CNM2, :scaled_train)
+        @test CNM2(FT.(inp)) ≈ FT.([3]) #removes scaling while you train without changing out_scale
+        @test CNM2.out_scale.sc[1] == 14
+        CNM.scale_model!(CNM2, :reset)
+        @test CNM2(FT.(inp)) == FT.([42]) #returns to original behavior
+
+        #make static bounds versions:
+        @bound function lower(
+            pred::SVector{1, T},
+            input::SVector{3, T},
+        )::T where {T <: AbstractFloat}
+            return pred[1] - input[1]
+        end
+
+        @bound function (b::up_functor)(
+            pred::SVector{1, T},
+            input::SVector{3, T},
+        )::T where {T <: AbstractFloat}
+            return pred[1] + input[1]
+        end
+
+        CNM2_static = CNM.make_static_model(CNM2)
+        CNM2_dynam = CNM.make_dynamic_model(CNM2_static)
+        @test eltype(CNM2_static.out_scale.sc) == FT
+        @test eltype(CNM2_dynam.out_scale.sc) == FT
+        @test typeof(CNM2_static.predictive_model[1].weight) <: SMatrix
+        @test typeof(CNM2_dynam.predictive_model[1].weight) <: Matrix{FT}
+
+        test_dict = Dict{Any, Any}()
+        test_tree = (
+            a = (b = (c = Tuple{Int64, Array}, d = 3), e = TestType(3, 4.5)),
+            f = [1, 2, 3],
+        )
+        test_list = [Flux, Base, Core] #should grab Main for the TestType, with one method, but that's it
+        CNM._check_children(test_tree, test_dict, test_list)
+        @test collect(keys(test_dict)) == [Main]
+        @test collect(keys(test_dict[Main])) == [TestType]
+        @test Set(test_dict[Main][TestType]) == Set(collect(methods(TestType)))
+
+        trans_data = CNM.assess_model_transferability(CNM3)
+        @test collect(keys(trans_data)) == [Main]
+        @test collect(keys(trans_data[Main])) == [up_functor]
+        up_methods = Set(trans_data[Main][up_functor])
+        @test length(up_methods) == 4 #2 constructors, 1 static method, 1 generic method
+        @test m_up in up_methods
+
+        api_str = "API:\n Note that not every method listed \
+        will have documentation or available code.\n*IN MODULE - \
+        Main:\nTYPE: up_functor\nthis is a test declarative \
+        doc\n\nup_functor(a, b, c) \n\nup_functor(a::Int64, b::\
+        AbstractMatrix{Float32}, c::Float32) \n\n(b::up_functor)(pred::\
+        AbstractArray{T}, input::AbstractArray{T}) where T<:AbstractFloat \
+        \n\n(b::up_functor)(pred::SVector{1, T}, input::SVector{3, T}) \
+        where T<:AbstractFloat \n\n\n"
+        check_api = CNM.build_API(trans_data)
+        @test api_str == check_api
+
+        fl_1_str = CNM.get_fixed_layer_info(CNM1)
+        fl_2_str = CNM.get_fixed_layer_info(CNM2)
+        fl_1_comp = "FIXED LAYERS: The creator used custom fixed \
+        layers, defined as follows:\nLAYER: Dense(2 => 1, relu; bias=false)\n[1.0 1.0]\n"
+        fl_2_comp = "FIXED LAYERS: The creator used the default fixed layers for this model.\n"
+        @test fl_1_str == fl_1_comp
+        @test fl_2_str == fl_2_comp
+
+        ps, res = Flux.Optimisers.destructure(CNM2)
+        @test ps == FT[1, 1, 1]
+        @test res.length == 3
+        @test res.model == CNM2
+        @test res.offsets.predictive_model ==
+              (layers = ((weight = 0, bias = (), σ = ()),),)
+        new_model = res(ps)
+        @test typeof(new_model) <: CNM.ConstrainedNeuralModel
+        @test new_model.constraints.bound == lower
+
+        ps_metadata_str = "Flattened vector of trainable parameters of \
+        the predictive model for a ConstrainedNeuralModel type.\nThe \
+        model structure looks like:\n    [\"Dense(3 => 1; bias=false)\"]\nIndex \
+        markers for the different model pieces (using Flux layer notation) are as \
+        follows:\n    (\"(weight = 0, bias = (), σ = ())\",)\n\nThe creator has not \
+        specified any custom metadata for these parameters.\n\nMODEL BUILDING: model \
+        structure info was saved in \"\" when creating this file.\n\nTo build the associated \
+        ConstrainedNeuralModel with these parameters, call `load_function()` with these\nparameters \
+        and the data of the model structure as follows:\n    model = load_model(THIS_DATA_\
+        OBJECT[\"trainable_params\"], \"filepath/to/structure/data\")\n"
+        check_ps_metadata = CNM.build_parameter_metadata(res, "", "")
+        @test check_ps_metadata == ps_metadata_str
+
+        bound_docs_str = "BOUND: lower\nBound is a function, with the \
+        following bound methods:\n\"\"\"\nthis is a test method \
+        doc\n\"\"\"\n@bound function lower(pred::AbstractArray{<:AbstractFloat}\
+        , input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat\
+        }\n    return pred .- input[1]\nend\n\n@bound function (lower(pred::SVe\
+        ctor{1, T}, input::SVector{3, T})::T) where T <: AbstractFloat\n    \
+        return pred[1] - input[1]\nend\n\n"
+        check_bound_docs = CNM.build_bound_docs(CNM2)
+        @test check_bound_docs == bound_docs_str
+
+        xs = rand(FT, 3, 1100)
+        ys = (3 .* xs[1, :] .+ 1 .+ xs[2, :] .- xs[3, :])
+        x_train = copy(xs[:, 1:1000])
+        x_test = copy(xs[:, 1001:1100])
+        y_train = copy(ys[1:1000])'
+        y_test = copy(ys[1001:1100])'
+        loss(m, x, y) = sqrt(sum(abs.(m(x) .- y) .^ 2) / length(y))
+        curr_loss = loss(CNM2, x_train, y_train)
+        CNM.trainmodel!(CNM2, x_train, y_train, loss)
+        new_loss = loss(CNM2, x_train, y_train)
+        @test curr_loss != new_loss #difference means weights updated.
+
         #TODO:
-        #ConstrainedNeuralModel type
-        #ConstrainedNeuralModel constructor
-        #ConstrainedNeuralModel Functor methods, both types
-        #Flux.trainable() on different CNMs
-        #set_predictive_model_out_scale!
-        #scale_model!
-        #save_model (how to test this one?)
         #load_model in various forms (requires the NeuralSnow artifacts to be saved)
-        #inspect_model_metadata
-        #make_static_model
-        #make_mutable_dynamic_model
-        #make_mutable_fixed_model
-        #trainmodel
-
-        #get_modules
-        #_check_children
-        #build_parameter_metadata
-        #assess_model_transferability
-        #build_API
-        #get_fixed_layer_info
-        #build_bound_docs
-        #build_model_metadata
-
-        #clear the test types from the _BOUND_INFO_, _BOUND_TYPES_ when you are done testing
         #Delete/fix relevant NeuralSnow tests
+
+        Base.delete!(CNM._BOUND_TYPES_, :up_functor)
+        Base.delete!(CNM._BOUND_INFO_[:FUNCTION], :lower)
+        Base.delete!(CNM._BOUND_INFO_[:FUNCTOR], :up_functor)
+
+        #LEFT UNTESTED:
+        # - build_model_metadata (only string interpolation of tested methods, plus version numbers that'll inevitably change)
+        # - save_model() (we don't need to write files as part of the test?)
+        # - inspect_model_metadata (just calls print() on a dictionary element)
     end
 
     @testset "Testing NeuralSnow module" begin

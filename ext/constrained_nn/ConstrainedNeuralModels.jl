@@ -9,8 +9,7 @@ export ConstrainedNeuralModel,
     save_model,
     load_model,
     make_static_model,
-    make_mutable_dynamic_model,
-    make_mutable_fixed_model,
+    make_dynamic_model,
     trainmodel!,
     inspect_model_metadata,
     @bound,
@@ -36,17 +35,18 @@ struct NoScaling{FT} <: InputWeighting{FT} end
 
 Establishes the style of input weighting where each input is scaled by a specified constant.
 """
-struct ConstScaling{FT} <: InputWeighting{FT}
-    in_scales::AbstractArray{FT}
+struct ConstScaling{FT <: AbstractFloat, T <: AbstractArray{FT}} <:
+       InputWeighting{FT}
+    in_scales::T
 end
 
 """
-    ConstScaling(v::AbstractArray{FT}) where {FT <: AbstractFloat}
+    buildConstScaling(v::AbstractArray{FT}) where {FT <: AbstractFloat}
 
 Constructs a ConstScaling type from a provided vector of input scalings.
 """
-function ConstScaling(v::AbstractArray{FT}) where {FT <: AbstractFloat}
-    return ConstScaling{FT}(v)
+function buildConstScaling(v::AbstractArray{FT}) where {FT <: AbstractFloat}
+    return ConstScaling{FT, typeof(v)}(v)
 end
 
 """
@@ -157,6 +157,72 @@ function buildTwoSided(upper_bound, lower_bound)
 end
 
 """
+    ScaleOutput{FT<:AbstractFloat, T <: AbstractVector{FT}}
+
+Establishes a custom type to be used for the output scaling of a ConstrainedNeuralModel.
+Consists of a 1-element Vector, in order to preserve allocation-less multiplication
+when working with a fixed model.
+"""
+struct ScaleOutput{FT <: AbstractFloat, T <: AbstractVector{FT}}
+    sc::T
+end
+
+"""
+    buildScaleOutput(x::FT) where {FT <: AbstractFloat}
+
+Constructs a ScaleOutput layer from the provided scaling constant.
+"""
+function buildScaleOutput(x::FT) where {FT <: AbstractFloat}
+    sc = [x]
+    return ScaleOutput{FT, typeof(sc)}(sc)
+end
+
+"""
+    function _get_scale(x::ScaleOutput{FT})::FT where {FT<:AbstractFloat}
+
+Internal function for returning the ScaleOuput's scaling constant.
+"""
+@inline function _get_scale(x::ScaleOutput{FT})::FT where {FT <: AbstractFloat}
+    return x.sc[1]
+end
+
+"""
+    (layer::ScaleOutput{FT})(x::AbstractArray{FT})::AbstractArray{FT} where {FT <: AbstractFloat}
+
+Establishes the behavior of a ScaleOuput layer for generic inputs.
+"""
+@inline function (layer::ScaleOutput{FT})(
+    x::AbstractArray{FT},
+)::AbstractArray{FT} where {FT <: AbstractFloat}
+    return _get_scale(layer) * x
+end
+
+"""
+    (layer::ScaleOutput{FT})(x::AbstractArray{FT})::AbstractArray{FT} where {FT <: AbstractFloat}
+
+Establishes the behavior of a ScaleOuput layer for a fixed model in a batched-input setting.
+"""
+@inline function (layer::ScaleOutput{FT, SVector{1, FT}})(
+    x::SMatrix{K, N, FT},
+)::SMatrix{K, N, FT} where {K, N, FT <: AbstractFloat}
+    return _get_scale(layer) * x
+end
+
+"""
+    (layer::ScaleOutput{FT})(x::AbstractArray{FT})::AbstractArray{FT} where {FT <: AbstractFloat}
+
+Establishes the behavior of a ScaleOuput layer for a fixed model in a single-input setting.
+"""
+@inline function (layer::ScaleOutput{FT, SVector{1, FT}})(
+    x::SVector{N, FT},
+)::SVector{N, FT} where {N, FT <: AbstractFloat}
+    return _get_scale(layer) * x
+end
+
+#Establishes the ScaleOuput type as a valid Flux layer:
+Flux.@layer ScaleOutput
+
+"""
     MulLayer{FT<:AbstractFloat, T <: AbstractMatrix{FT}}
 
 Defines a Flux model layer (a functor) for weight multiplication when no bias term is
@@ -183,7 +249,7 @@ end
 Defines MulLayer behavior specifically for its usage in the final reduction of model outputs to apply constraints,
 when given StaticArray inputs, for increased performance.
 """
-#is this brittle?
+#is this brittle? I only use them as the last fixed layer, but I guess its possible others could use them elsewhere? I don't export this though.
 @inline function (layer::MulLayer{FT})(
     x::SMatrix{K, N, FT},
 )::SMatrix{1, N, FT} where {K, N, FT <: AbstractFloat}
@@ -209,9 +275,9 @@ themselves, not their evaluations for a given prediction and input.
 """
     boundary_connection(
         constraints::ConstraintType,
-        pred::Union{Matrix{FT}, Vector{FT}},
+        pred::VecOrMat{FT},
         input::AbstractArray{FT},
-    )::Matrix{FT} where {FT <: AbstractFloat}
+    )::VecOrMat{FT} where {FT <: AbstractFloat}
 
 Defines the behavior connecting the output of a predictive model to the fixed layers which apply the constraints.
 Analagous to defining a custom output function for a Flux SkipConnection, instead of the default "vcat" or "+" operations.
@@ -219,9 +285,9 @@ This generic version works for many possible input types for the user, defined f
 """
 @inline function boundary_connection(
     constraints::ConstraintType,
-    pred::Union{Matrix{FT}, Vector{FT}},
+    pred::VecOrMat{FT},
     input::AbstractArray{FT},
-)::Matrix{FT} where {FT <: AbstractFloat}
+)::VecOrMat{FT} where {FT <: AbstractFloat}
     return [
         get_bounds(constraints, pred, input)...
         pred
@@ -318,11 +384,11 @@ struct ConstrainedNeuralModel{
     predictive_model::NN1
     constraints::C
     scaling::S
-    out_scale::Ref{FT}
+    out_scale::ScaleOutput{FT}
     fixed_layers::NN2
     initial_fixed_layer::AbstractMatrix{FT}
     using_defualt_fixed_layers::Bool
-    traininable_constraints::TP
+    trainable_constraints::TP
 end
 
 """
@@ -338,7 +404,9 @@ function (model::ConstrainedNeuralModel{C})(
     return model.fixed_layers(
         boundary_connection(
             model.constraints,
-            model.predictive_model(x .* model.scaling.in_scales),
+            model.out_scale(
+                model.predictive_model(x .* model.scaling.in_scales),
+            ),
             x,
         ),
     )
@@ -355,7 +423,11 @@ function (model::ConstrainedNeuralModel{C})(
     x::AbstractArray{<:AbstractFloat},
 )::AbstractArray{<:AbstractFloat} where {C <: NoScaling}
     return model.fixed_layers(
-        boundary_connection(model.constraints, model.predictive_model(x), x),
+        boundary_connection(
+            model.constraints,
+            model.out_scale(model.predictive_model(x)),
+            x,
+        ),
     )
 end
 
@@ -415,6 +487,7 @@ function buildConstraints(upper_bound, lower_bound)::ConstraintType
     end
 end
 
+#= are not necessary now that we use ScaleOuput as a layer:
 """
     get_scaling_matrix(constraint::Union{LowerOnly, UpperOnly}, use_out::FT)::Matrix{FT} where {FT <: AbstractFloat}
 
@@ -422,10 +495,7 @@ Returns the necessary scaling matrix to scale the output of a ConstrainedNeuralM
 type. In these cases, matrices are applied to model outputs which take the form [f, p]ᵀ, where f is the bound function output
 and p is the output of the predictive model.
 """
-function get_scaling_matrix(
-    constraint::Union{LowerOnly, UpperOnly},
-    use_out::FT,
-)::Matrix{FT} where {FT <: AbstractFloat}
+function get_scaling_matrix(constraint::Union{LowerOnly, UpperOnly}, use_out::FT)::Matrix{FT} where {FT <: AbstractFloat}
     return Matrix{FT}([1 0; 0 use_out])
 end
 
@@ -436,12 +506,10 @@ Returns the necessary scaling matrix to scale the output of a ConstrainedNeuralM
 type. In this case, matrices are applied to model outputs which take the form [f_upper, f_lower, p]ᵀ, where f_upper is the upper
 bound function output, f_lower is the lower bound function output, and p is the output of the predictive model.
 """
-function get_scaling_matrix(
-    constraint::TwoSided,
-    use_out::FT,
-)::Matrix{FT} where {FT <: AbstractFloat}
+function get_scaling_matrix(constraint::TwoSided, use_out::FT)::Matrix{FT} where {FT <: AbstractFloat}
     return Matrix{FT}([1 0 0; 0 1 0; 0 0 use_out])
 end
+=#
 
 """
     default_fixed_layers(constraint::LowerOnly, FT::Type{<:AbstractFloat})::Chain
@@ -520,11 +588,9 @@ end
 
 Constructs a ConstrainedNeuralModel type, from a provided predictive model and any specified bounds. The options to supply a
 vector of input scaling factors, a known model output scaling, or custom fixed layers are provided, as well as indicate whether
-the parameters of the supplied constraints are trainable or not. The model's output scaling
-(if supplied) is combined with the first fixed-layer matrix to accomplish model scaling without increased computational cost.
-If no fixed layers are supplied, the appropriate default fixed layers for the supplied bounds are used. See the NeuralDepthModel
-paper (https://doi.org/10.1175/AIES-D-24-0040.1) for discussion on how to reduce these for particular boundary functions for
-reduced computational cost.
+the parameters of the supplied constraints are trainable or not. If no fixed layers are supplied, the appropriate default 
+fixed layers for the supplied bounds are used. See the NeuralDepthModel paper (https://doi.org/10.1175/AIES-D-24-0040.1) 
+for discussion on how to reduce these for particular boundary functions for reduced computational cost.
 
 The predictive model need not be a Flux Layer/Chain or even a neural network, though Flux contains many optimizations for models defined as such.
 Just ensure the passed predictive model is of a callable type (a functor), with a defined method for (model::YourModelType)(x::YourInput)
@@ -540,8 +606,8 @@ make sure the right returns are defined for Flux.trainable() of your constraint 
 
 If supplying your own fixed layers, note the ordering of outputs for your constraint type - [f, p]ᵀ for single upper- or lower- bounds,
 where f is the bound function output and p is the output of the predictive model, or [f_upper, f_lower, p]ᵀ for both bounds, where f_upper
-and f_lower specify the upper and lower bounds, respectively. As the output-scaling is already internally combined, do not specify
-custom fixed layers which already include output scaling; either specify it at construction or make use of the
+and f_lower specify the upper and lower bounds, respectively. As the output-scaling is already internally handled, do not specify
+custom fixed layers which already include output scaling; either specify the output scaling at construction or make use of the
 `set_predictive_model_out_scale!()` function.
 """
 function ConstrainedNeuralModel(
@@ -580,22 +646,26 @@ function ConstrainedNeuralModel(
     if any(has_evaluation_mode.(Ref(constraints), [:static, :dynamic]))
         use_scaling =
             isnothing(in_scales) ? NoScaling{FT}() :
-            ConstScaling(FT.(in_scales))
-        use_out = isnothing(out_scale) ? FT(1) : FT(out_scale)
+            buildConstScaling(FT.(in_scales))
+        use_out =
+            isnothing(out_scale) ? buildScaleOutput(FT(1)) :
+            buildScaleOutput(FT(out_scale))
         use_layers =
             isnothing(fixed_layers) ? default_fixed_layers(constraints, FT) :
-            fixed_layers
+            convert_model(fixed_layers, FT)
+
+        use_pred = convert_model(pred, FT)
+
         model = ConstrainedNeuralModel(
-            convert_model(pred, FT),
+            use_pred,
             constraints,
             use_scaling,
-            Ref(use_out),
-            convert_model(use_layers, FT),
+            use_out,
+            use_layers,
             deepcopy(use_layers[1].weight), #base fixed layer matrix for resets after training-based scaling
             isnothing(fixed_layers),
             Val{trainable_constraints}(),
         )
-        set_predictive_model_out_scale!(model)
         return model
     else
         error(
@@ -611,17 +681,15 @@ end
 """
     set_predictive_model_out_scale!(model::ConstrainedNeuralModel, scale::Real = model.out_scale[])
 
-Sets the ouptut scaling constant (field `out_scale`) of a ConstrainedNeuralModel, as well as the
-appropriate scaling within the fixed layers applying the specified constraints. Such scaling can
-be used in scaled training for better convergence and performance (see `scale_model!()`).
-If no scale is provided, the output scaling is set by the model's specified output scaling constant.
+Sets the ouptut scaling constant (field `out_scale`) of a ConstrainedNeuralModel.
+Such scaling can be used in scaled training for better convergence and performance (see `scale_model!()`).
 Note: This method cannot be used for a fixed (static) model where weights/parameter values are final.
 """
 function set_predictive_model_out_scale!(
     model::ConstrainedNeuralModel,
-    scale::Real = model.out_scale[],
+    scale::Real,
 )
-    FT = eltype(model.out_scale)
+    FT = eltype(model.out_scale.sc)
     @assert scale != 0 """
     set_predictive_model_out_scale!(): Cannot set the predictive model's scaling constant to 0.
     """
@@ -630,9 +698,7 @@ function set_predictive_model_out_scale!(
             "Cannot set the output scaling of a fixed (static) model.",
         )
     end
-    scaling_matrix = get_scaling_matrix(model.constraints, FT(scale))
-    model.fixed_layers[1].weight .= model.initial_fixed_layer * scaling_matrix
-    model.out_scale[] = FT(scale)
+    model.out_scale.sc[1] = FT(scale)
 end
 
 """
@@ -643,22 +709,22 @@ using the output scaling value specified (or set, see `set_predictive_model_out_
 the model. When using mode `:scaled_train` for a model with output scaling C, a constrained model
 (where predictive model output is usually multiplied by C) instead multiplies the output by 1
 and scales the constraints by 1/C, which can map outputs into a more conducive training range (the
-utilized training data should then also have the targets multiplied by 1/C, see the tutorial).
+utilized training data should then also have the targets multiplied by 1/C; see the tutorial).
 After training, this scaling can be reset to the correct system-applicable scaling using this function
 with mode `:reset`.
 Note: This method cannot be used for a fixed (static) model where weights/parameter values are final.
+We recommend saving a model (see: `save_model()`) after applying a :reset instead of saving the
+scaled form.
 """
 function scale_model!(model::ConstrainedNeuralModel, mode::Symbol)
-    sc = model.out_scale[]
+    sc = model.out_scale.sc[1]
     if nameof(typeof(model.fixed_layers[1].weight)) == :SArray
         ArgumentError("Cannot scale a fixed (static) model.")
     end
-    new_weight =
-        model.initial_fixed_layer * get_scaling_matrix(model.constraints, sc)
     if mode == :scaled_train
-        model.fixed_layers[1].weight .= new_weight .* 1 / sc
+        model.fixed_layers[1].weight .= model.initial_fixed_layer .* 1 / sc
     elseif mode == :reset
-        model.fixed_layers[1].weight .= new_weight
+        model.fixed_layers[1].weight .= model.initial_fixed_layer
     else
         ArgumentError(
             "scale_model!(): Possible modes are :reset or :scaled_train, mode `$(mode)` not recognized.",
@@ -681,9 +747,9 @@ files allows the reconstruction of the same model using slightly different param
 case of fine-tuning a trained ConstrainedNeuralModel online within a larger climate simulation, where all
 sub-model parameter updates are calculated togther).
 
-Fixed (SArray or MArray parameters) can be saved as well as more generic models, though we recommend
+Fixed (SArray parameters) models can be saved as well as more generic models, though we recommend
 saving the more generic/dynamic (Array) form of a model and calling `make_static_model()` on the loaded
-generic model, rather than saving the fixed model and calling `make_mutable_dynamic_model()` on the loaded form.
+generic model, rather than saving the fixed model and calling `make_dynamic_model()` on the loaded form.
 
 NOTE: ConstrainedNeuralModels and any relevant user-specified functions/types for the model's constraints
 must be already defined in the importing codespace for a given model to load correctly. To aid with this,
@@ -832,29 +898,7 @@ function make_static_model(m::ConstrainedNeuralModel)
 end
 
 """
-    make_mutable_fixed_model(m::ConstrainedNeuralModel)
-
-Returns a mutable form of a more generic ConstrainedNeuralModel, for more optimal
-computational performance (using MArray parameters and SArray inputs, if using gradient-based 
-training in a compute-limited environment). Requires the model's constraints to be capable
-for static evaluation mode, which are assessed prior to returning the static model.
-"""
-function make_mutable_fixed_model(m::ConstrainedNeuralModel)
-    if has_evaluation_mode(m.constraints, :static)
-        return Adapt.adapt_structure(MArray, m)
-    else
-        error(
-            """
-  Insufficient bounds to make a fixed model for this model type.
-  Make sure adequate methods for StaticArray inputs have been defined
-  with the @bound macro for all model bounds (fixed mutable models take SVector/SMatrix inputs).
-      """,
-        )
-    end
-end
-
-"""
-    make_mutable_fixed_model(m::ConstrainedNeuralModel)
+    make_dynamic_model(m::ConstrainedNeuralModel)
 
 Returns a more generic form of a static ConstrainedNeuralModel, in order to permit
 further prototyping on an otherwise static model (e.g., a saved/loaded fixed model,
@@ -862,7 +906,7 @@ though we recommend saving the generic model and calling make_static_model after
 Requires the model's constraints to be capable for dynamic evaluation mode, which are assessed
 prior to returning the dynamic model.
 """
-function make_mutable_dynamic_model(m::ConstrainedNeuralModel)
+function make_dynamic_model(m::ConstrainedNeuralModel)
     if has_evaluation_mode(m.constraints, :dynamic)
         return Adapt.adapt_structure(Array, m)
     else
