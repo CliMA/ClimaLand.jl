@@ -394,28 +394,41 @@ function compute_vegetation_carbon!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     canopy = get_canopy(land_model)
+    
+    # Check if required components exist
+    if !isdefined(canopy, :autotrophic_respiration) || 
+       !isdefined(canopy, :biomass)
+        if isnothing(out)
+            out = zeros(land_model.soil.domain.space.surface)
+            fill!(field_values(out), NaN)
+        else
+            fill!(out, NaN)
+        end
+        return out
+    end
+    
     # Get parameters
     σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
     ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
-    
+
     # Get area indices
     LAI = p.canopy.biomass.area_index.leaf
     SAI = p.canopy.biomass.area_index.stem
-    
+
     # Get canopy height from biomass model
     h = canopy.biomass.height
-    
+
     if isnothing(out)
         out = zeros(land_model.soil.domain.space.surface)
         fill!(field_values(out), NaN)
     end
-    
+
     # Compute vegetation carbon
     # cLeaf = σl * LAI (kg C/m^2)
     # cStem = ηsl * h * SAI (kg C/m^2) 
     # Note: Only compute cStem where SAI > 0
     @. out = σl * LAI + ηsl * h * SAI * ClimaLand.heaviside(SAI)
-    
+
     return out
 end
 
@@ -426,25 +439,37 @@ function compute_vegetation_carbon!(
     t,
     canopy::CanopyModel{FT},
 ) where {FT}
+    # Check if required components exist
+    if !isdefined(canopy, :autotrophic_respiration) || 
+       !isdefined(canopy, :biomass)
+        if isnothing(out)
+            out = zeros(canopy.domain.space.surface)
+            fill!(field_values(out), NaN)
+        else
+            fill!(out, NaN)
+        end
+        return out
+    end
+    
     # Get parameters
     σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
     ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
-    
+
     # Get area indices
     LAI = p.canopy.biomass.area_index.leaf
     SAI = p.canopy.biomass.area_index.stem
-    
+
     # Get canopy height from biomass model
     h = canopy.biomass.height
-    
+
     if isnothing(out)
         out = zeros(canopy.domain.space.surface)
         fill!(field_values(out), NaN)
     end
-    
+
     # Compute vegetation carbon
     @. out = σl * LAI + ηsl * h * SAI * ClimaLand.heaviside(SAI)
-    
+
     return out
 end
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
