@@ -607,7 +607,7 @@ function get_short_diagnostics(model::EnergyHydrology)
     return ["swc", "si", "sie", "tsoil", "et"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2"]
+    return ["sco2", "hr", "soc"]
 end
 function get_short_diagnostics(model::CanopyModel)
     return ["gpp", "ct", "lai", "trans", "er", "sif"]
@@ -648,8 +648,6 @@ function get_short_diagnostics(model::LandModel)
         "sdr",
         "nee",
         "ra",
-        "hr",
-        "soc",
         "cveg",
     ]
 
@@ -660,6 +658,7 @@ function get_short_diagnostics(model::LandModel)
         model.soil,
         model.soil.boundary_conditions.top.runoff,
     )
+
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 function get_short_diagnostics(model::BucketModel)
