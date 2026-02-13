@@ -69,13 +69,12 @@ function setup_model(
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
-    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    atmos, radiation = ClimaLand.prescribed_forcing_crujra(
         start_date,
         stop_date,
         surface_space,
         toml_dict,
         FT;
-        max_wind_speed = 25.0,
         context,
     )
     forcing = (; atmos, radiation)
