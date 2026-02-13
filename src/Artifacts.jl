@@ -581,4 +581,41 @@ function era5_surface_data_1979_2024_path(; context = nothing)
     )
 end
 
+"""
+    crujra_forcing_data_folder_path(; context = nothing)
+
+Return the path to the directory that contains the forty years of CRU-JRA forcing
+data.
+"""
+function crujra_forcing_data_folder_path(; context = nothing)
+    @clima_artifact("crujra_forcing_data", context)
+end
+
+"""
+    find_crujra_year_paths(start_date, stop_date; context = nothing)
+
+Find the appropriate files of CRU-JRA forcing data to run a simuation starting on
+`start_date` and ending on `stop_date`. These will be returned as a list of paths,
+one for each year of data needed. The artifact contains data from 1901 to 2023.
+
+We add 1 year to the final date to ensure that everything between
+start_date and stop_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
+"""
+function find_crujra_year_paths(start_date, stop_date; context = nothing)
+    year0 = Dates.year(start_date)
+    yearf = Dates.year(stop_date)
+    crujra_path = crujra_forcing_data_folder_path(context = context)
+    years = collect(
+        joinpath(crujra_path, "crujra_forcing_data_$(year)_0.5x0.5.nc") for
+        year in year0:yearf
+    )
+    for year in years
+        isfile(year) || error(
+            "The year $year does not exist in the CRU-JRA forcing data artifact; please use dates between 1901 and 2023.",
+        )
+    end
+    return years
+end
+
 end
