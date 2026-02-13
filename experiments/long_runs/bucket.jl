@@ -93,18 +93,8 @@ toml_dict = LP.create_toml_dict(FT)
 
 # Model
 model = setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
-
-# IC function
-function set_ic!(Y, p, t, bucket)
-    temp_anomaly_amip(coord) = 40 * cosd(coord.lat)^4
-    # Set temperature IC including anomaly, based on atmospheric setup
-    T_sfc_0 = 271.0
-    cds = ClimaCore.Fields.coordinate_field(Y.bucket.T)
-    @. Y.bucket.T = T_sfc_0 + temp_anomaly_amip(cds)
-    Y.bucket.W .= 0.15
-    Y.bucket.Ws .= 0.0
-    Y.bucket.σS .= 0.0
-end
+# Initialize at saturated with the air temperature as bucket temperature
+set_ic!(Y,p,t,bucket) = ClimaLand.Simulations.set_bucket_saturated_ic_and_temperature!(Y, p, bucket)
 
 # Define timestepper and ODE algorithm
 timestepper = CTS.RK4()

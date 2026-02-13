@@ -566,3 +566,84 @@ function set_soil_initial_conditions_from_temperature_and_total_water!(
         )
     return nothing
 end
+
+"""
+    make_set_initial_state_from_file(ic_path, model::ClimaLand.Bucket.BucketModel)
+
+Returns a function which takes (Y,p,t0,model) as arguments, and updates
+the state Y of the `BucketModel` in place with initial conditions from 
+`ic_path`, a path to a netCDF file with variables `W`, `Ws`, `T`, and `S`.
+
+The returned function is a closure for `ic_path` and `model`.
+"""
+function make_set_initial_state_from_file(
+    ic_path,
+    land::ClimaLand.Bucket.BucketModel,
+)
+    function set_ic!(Y, p, t0, land)
+        ds = NCDataset(ic_path)
+        has_all_variables = all(key -> haskey(ds, key), ["W", "Ws", "T", "S"])
+        @assert has_all_variables "The bucket iniital condition file is expected to contain the variables W, Ws, T, and S (read documentation about requirements)."
+        close(ds)
+
+        domain = land.domain
+        surface_space = domain.space.surface
+        subsurface_space = domain.space.subsurface
+
+        Y.bucket.W .= SpaceVaryingInput(
+            ic_path,
+            "W",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.Ws .= SpaceVaryingInput(
+            ic_path,
+            "Ws",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.T .= SpaceVaryingInput(
+            ic_path,
+            "T",
+            subsurface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        Y.bucket.σS .= SpaceVaryingInput(
+            ic_path,
+            "S",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+    end
+    return set_ic!
+end
+
+
+"""
+    set_bucket_saturated_ic_and_temperature!(Y, p, land::ClimaLand.Bucket.BucketModel)
+
+Sets the bucket initial conditions like:
+Y.bucket.W .= bucket.parameters.W_f
+Y.bucket.Ws .= 0
+Y.bucket.σS .= 0
+Y.bucket.T .= p.drivers.T # at every level
+
+Therefore this assumes that p.drivers.T has been updated already.
+"""
+function set_bucket_saturated_ic_and_temperature!(
+    Y,
+    p,
+    land::ClimaLand.Bucket.BucketModel,
+)
+    Y.bucket.W .= land.parameters.W_f
+    Y.bucket.Ws .= 0
+    Y.bucket.σS .= 0
+    n_levels = ClimaCore.Spaces.nlevels(land.domain.space.subsurface)
+    for i in 1:n_levels
+        ClimaCore.Fields.level(Y.bucket.T, i) .= p.drivers.T
+    end
+end
