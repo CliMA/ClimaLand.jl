@@ -352,6 +352,7 @@ function default_diagnostics(
 
     if conservation
         additional_diags = ["epa", "epac", "wvpa", "wvpac"]
+        define_diagnostics!(land_model, additional_diags)
         additional_outputs = vcat(
             map(additional_diags) do short_name
                 output_schedule_func =
