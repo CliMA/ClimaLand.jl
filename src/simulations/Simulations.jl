@@ -101,10 +101,13 @@ end
 Creates a `LandSimulation` object for `model` with the  `_integrator` field initialized
 with a problem from `t0` to `tf`, a time step of `Δt`, and with `timestepper` as the
 time-stepping algorithm. During the construction process, the initial conditions
-are set using `set_ic!`, the initial cache is set using `make_set_initial_cache(model)`,
-and driver and diagnostic callbacks are created. If `updateat` is a vector, the drivers
-will be updated at those times; if it is a single time, the drivers will be updated
-at that interval. The order the callbacks are called while stepping the simulation is:
+are set using `set_ic!`, and driver and diagnostic callbacks are created.
+If running with a `PrescribedAtmsophere`, the initial cache is set using `make_set_initial_cache(model)`;
+when running with a `CoupledAtmosphere`, the cache is expected to be initialized by the coupler.
+If `updateat` is a vector, the drivers will be updated at those times; if it is a single time,
+the drivers will be updated at that interval.
+
+The order the callbacks are called while stepping the simulation is:
 1. user_callbacks
 2. driver update callback
 3. diagnostics callback
@@ -168,8 +171,13 @@ function LandSimulation(
     # set initial conditions
     Y, p, cds = initialize(model)
     set_ic!(Y, p, t0, model)
-    set_initial_cache! = make_set_initial_cache(model)
-    set_initial_cache!(p, Y, t0)
+
+    # Initialize the cache for offline simulations (no drivers or non-coupled atmosphere)
+    if isempty(ClimaLand.get_drivers(model)) ||
+       !(ClimaLand.get_drivers(model)[1] isa ClimaLand.CoupledAtmosphere)
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, t0)
+    end
 
     # Create tendencies and jacobian update function
     exp_tendency! = make_exp_tendency(model)
