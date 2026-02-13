@@ -96,7 +96,6 @@ end
         diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
         updateat = ITime(3600 * 3),
         solver_kwargs = (;),
-        initialize_cache = true,
     )
 
 Creates a `LandSimulation` object for `model` with the  `_integrator` field initialized

@@ -225,7 +225,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -360,7 +360,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -464,7 +464,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -494,6 +494,81 @@ function make_set_initial_state_from_file(
         )
     end
     return set_ic!
+end
+
+"""
+    set_subseasonal_initial_conditions!(Y, p, t0, model)
+
+Sets the initial conditions for a subseasonal simulation, which are
+analytical for some variables and read in from file for others.
+
+The input file `ic_path` is expected to contain the following variables:
+- "tsn": snow temperature
+- "swe": snow water equivalent
+- "skt": skin temperature of the land surface
+- "swvl": soil total water content
+- "stl": soil temperature
+"""
+function set_subseasonal_initial_conditions!(
+    Y,
+    p,
+    model,
+    ic_path;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+)
+    @info "ClimaLand: using land IC file" ic_path
+    surface_space = model.domain.space.surface
+    subsurface_space = model.domain.space.subsurface
+
+    # Set initial conditions that aren't read in from file
+    Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+    Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+    Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
+
+    # Set snow T first to use in computing snow internal energy from IC file
+    p.snow.T .= SpaceVaryingInput(
+        ic_path,
+        "tsn",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    # Set canopy temperature to skin temperature
+    Y.canopy.energy.T .= SpaceVaryingInput(
+        ic_path,
+        "skt",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    CL.Simulations.set_snow_initial_conditions!(
+        Y,
+        p,
+        surface_space,
+        ic_path,
+        model.snow.parameters;
+        regridder_type = regridder_type,
+        extrapolation_bc = extrapolation_bc,
+        interpolation_method = interpolation_method,
+    )
+
+    CL.Simulations.set_soil_initial_conditions_from_temperature_and_total_water!(
+        Y,
+        subsurface_space,
+        ic_path,
+        model.soil;
+        regridder_type = regridder_type,
+        extrapolation_bc = extrapolation_bc,
+        interpolation_method = interpolation_method,
+    )
 end
 
 function set_soil_initial_conditions_from_temperature_and_total_water!(
