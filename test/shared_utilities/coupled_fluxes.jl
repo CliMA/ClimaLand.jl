@@ -132,8 +132,11 @@ p.drivers.SW_d .= FT(500)
 p.drivers.LW_d .= FT(100)
 
 t0 = ITime(0, Second(1), start_date)
-Y.bucket.W .= FT(0.1)
-Y.bucket.T .= FT(290)
+set_bucket_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        bucket,
+    )
+set_bucket_ic!(Y, p, t0, bucket)
 set_initial_cache! = make_set_initial_cache(bucket)
 set_initial_cache!(p, Y, t0)
 

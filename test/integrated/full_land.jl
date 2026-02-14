@@ -271,7 +271,7 @@ land = LandModel{FT}(
 @test ClimaComms.context(land) == ClimaComms.context()
 @test ClimaComms.device(land) == ClimaComms.device()
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
-@testset "Initial condition functions" begin
+@testset "Initial condition function from file" begin
     Y, p, cds = initialize(land)
     t0 = ITime(0, Second(1), start_date)
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context)
@@ -322,6 +322,29 @@ land = LandModel{FT}(
     @test minimum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) >= T_bounds[1]
     @test maximum(parent(T)[:, 1, 1, 1, Array(binary_mask)]) <= T_bounds[2]
 end
+
+@testset "Initial condition from parameters" begin
+    Y, p, cds = initialize(land)
+    t0 = ITime(0, Second(1), start_date)
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            land;
+        )
+    set_ic!(Y, p, t0, land)
+    @test Y.canopy.energy.T == p.drivers.T
+    (; θ_r, ν, ρc_ds) = land.soil.parameters
+    @test all(parent(Y.soil.ϑ_l .- (θ_r .+ (ν .- θ_r) ./ 2)) .≈ 0)
+    @test all(parent(Y.soil.θ_i) .≈ 0)
+    @test unique(parent(Y.canopy.hydraulics.ϑ_l.:1)) ==
+          [FT(0), land.canopy.hydraulics.parameters.ν]# zero over ocean
+    @test all(parent(Y.snow.U) .≈ 0)
+    @test all(parent(Y.snow.S) .≈ 0)
+    @test all(parent(Y.snow.S_l) .≈ 0)
+    @test unique(parent(Y.soilco2.CO2)) == [FT(0), FT(0.000412)]# zero over ocean
+    @test unique(parent(Y.soilco2.O2_f)) == [FT(0), FT(0.21)] # zero over ocean
+    @test unique(parent(Y.soilco2.SOC)) == [FT(0), FT(5)] # zero over ocean
+end
+
 
 @testset "Total energy and water" begin
     Y, p, cds = initialize(land)
