@@ -1283,17 +1283,17 @@ function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
 end
 
 """
-     get_model_callbacks(model::CanopyModel{FT}; start_date, Δt) where {FT}
+     get_model_callbacks(model::CanopyModel{FT}; kwargs...) where {FT}
 
 Creates the tuple of model callbacks for a CanopyModel
 by calling `get_model_callbacks` on each component model.
 """
-function get_model_callbacks(model::CanopyModel{FT}; t0, Δt) where {FT}
+function get_model_callbacks(model::CanopyModel{FT}; kwargs...) where {FT}
     components = canopy_components(model)
     callbacks = ()
     callback_list = map(components) do (component)
         submodel = getproperty(model, component)
-        cb = get_model_callbacks(submodel, model; t0, Δt)
+        cb = get_model_callbacks(submodel, model; kwargs...)
         callbacks = (callbacks..., cb...)
     end
     return callbacks

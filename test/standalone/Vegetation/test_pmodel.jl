@@ -231,7 +231,7 @@ end
     end
 end
 
-@testset "Test P-model callback initialization" begin
+@testset "Test P-model callback initialization - ITime" begin
     FT = Float32
 
     lat = FT(38.7441)
@@ -260,6 +260,39 @@ end
     pmodel_callback = make_PModel_callback(FT, t0, dt, canopy)
     @test typeof(get_model_callbacks(canopy; t0, Δt = dt)[1]) ==
           typeof(pmodel_callback)
+end
+
+@testset "Test P-model callback initialization - Floating point time" begin
+    FT = Float32
+
+    lat = FT(38.7441)
+    long = FT(-92.2000)
+    t0 = FT(60 * 12)
+    start_date = DateTime(2025)
+    dt = FT(600)
+    # Canopy domain
+    canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
+
+    # Dummy atmospheric and radiation forcing
+    toml_dict = LP.create_toml_dict(FT)
+    atmos, radiation = prescribed_analytic_forcing(FT; toml_dict)
+    ground = PrescribedGroundConditions{FT}()
+    forcing = (; atmos = atmos, radiation = radiation, ground = ground)
+    LAI = TimeVaryingInput(t -> FT(0.0))
+    toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
+
+    canopy = CanopyModel{FT}(
+        canopy_domain,
+        forcing,
+        LAI,
+        toml_dict;
+        photosynthesis = PModel{FT}(canopy_domain, toml_dict),
+        conductance = PModelConductance{FT}(toml_dict),
+    )
+    pmodel_callback = make_PModel_callback(FT, t0, start_date, dt, canopy)
+    @test typeof(get_model_callbacks(canopy; t0, start_date, Δt = dt)[1]) ==
+          typeof(pmodel_callback)
+
 end
 
 

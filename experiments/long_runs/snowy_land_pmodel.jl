@@ -36,6 +36,13 @@ using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
+using ClimaTimeSteppers
+using SciMLBase
+using Dates
+import ClimaUtilities.TimeManager: ITime, date
+import ClimaDiagnostics
+using ClimaLand
+using NCDatasets
 
 using Dates
 
@@ -161,23 +168,67 @@ domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
-@info "Run: Global Soil-Canopy-Snow Model"
-@info "Resolution: $(domain.nelements)"
-@info "Timestep: $Δt s"
-@info "Start Date: $start_date"
-@info "Stop Date: $stop_date"
-CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
-ClimaLand.Simulations.solve!(simulation)
+Y, p, cds = initialize(model)
+exp_tendency! = make_exp_tendency(model)
+imp_tendency! = ClimaLand.make_imp_tendency(model)
+jacobian! = ClimaLand.make_jacobian(model)
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!)
+T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...)
+problem = SciMLBase.ODEProblem(
+    ClimaTimeSteppers.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = T_imp!,
+        dss! = ClimaLand.dss!,
+    ),
+    Y,
+    (0.0, 100000.0),
+    p,
+)
 
-LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
-LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+drivers = ClimaLand.get_drivers(model)
+updatefunc = ClimaLand.make_update_drivers(drivers)
+driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0, 0.0; dt = Δt)
+model_callbacks = ClimaLand.get_model_callbacks(model; t0 = 0.0, start_date, Δt)# everything else you need should be in the model!
 
-if LONGER_RUN
-    include("../ilamb/ilamb_conversion.jl")
-    make_compatible_with_ILAMB(
-        joinpath(root_path, "global_diagnostics", "output_active"),
-        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
-    )
-end
+required_callbacks = (driver_cb, model_callbacks...)
+callbacks = SciMLBase.CallbackSet(required_callbacks...)
+
+
+timestepper = ClimaTimeSteppers.IMEXAlgorithm(
+    ClimaTimeSteppers.ARS111(),
+    ClimaTimeSteppers.NewtonsMethod(
+        max_iters = 3,
+        update_j = ClimaTimeSteppers.UpdateEvery(
+            ClimaTimeSteppers.NewNewtonIteration,
+        ),
+    ),
+)
+_integrator = SciMLBase.init(
+    problem,
+    timestepper;
+    dt = Δt,
+    callback = callbacks,
+    (; adaptive = false)...,
+);
+SciMLBase.solve!(_integrator)
+# simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+# @info "Run: Global Soil-Canopy-Snow Model"
+# @info "Resolution: $(domain.nelements)"
+# @info "Timestep: $Δt s"
+# @info "Start Date: $start_date"
+# @info "Stop Date: $stop_date"
+# CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
+# ClimaLand.Simulations.solve!(simulation)
+
+# LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
+# LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+# LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+
+# if LONGER_RUN
+#     include("../ilamb/ilamb_conversion.jl")
+#     make_compatible_with_ILAMB(
+#         joinpath(root_path, "global_diagnostics", "output_active"),
+#         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
+#     )
+# end
