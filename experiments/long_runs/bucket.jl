@@ -94,7 +94,10 @@ toml_dict = LP.create_toml_dict(FT)
 # Model
 model = setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
 # Initialize at saturated with the air temperature as bucket temperature
-set_ic!(Y,p,t,bucket) = ClimaLand.Simulations.set_bucket_saturated_ic_and_temperature!(Y, p, bucket)
+set_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        model,
+    )
 
 # Define timestepper and ODE algorithm
 timestepper = CTS.RK4()
