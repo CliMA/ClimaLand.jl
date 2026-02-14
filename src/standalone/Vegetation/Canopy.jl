@@ -52,6 +52,7 @@ using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export CanopyModel
 include("./component_models.jl")
+include("./optimal_lai.jl")  # Must be before biomass.jl (defines OptimalLAIParameters used by ZhouOptimalLAIModel)
 include("./biomass.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
@@ -419,6 +420,65 @@ function PrescribedBiomassModel{FT}(
     )
 end
 
+"""
+    ZhouOptimalLAIModel{FT}(
+        domain,
+        toml_dict::CP.ParamDict;
+        optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+        SAI::FT = toml_dict["SAI"],
+        RAI::FT = toml_dict["RAI"],
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"],
+    ) where {FT <: AbstractFloat}
+
+Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the provided domain,
+using parameters from `toml_dict`.
+
+The optimal LAI model computes LAI dynamically based on optimality principles, balancing
+energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf`.
+
+# Arguments
+- `domain`: The model domain
+- `toml_dict`: Parameter dictionary containing optimal LAI parameters
+
+# Keyword Arguments
+- `optimal_lai_inputs`: NamedTuple with spatially varying initial conditions (GSL, A0_annual,
+  precip_annual, vpd_gs, lai_init, f0). Default loads from `optimal_lai_initial_conditions`.
+- `SAI`: Stem area index (m2/m2), default from toml_dict
+- `RAI`: Root area index (m2/m2), default from toml_dict
+- `rooting_depth`: Rooting depth (m), default from CLM data
+- `height`: Canopy height (m), default spatially varying from CLM data
+
+# Example
+```julia
+biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict)
+canopy = CanopyModel{FT}(...; biomass, ...)
+```
+
+# References
+Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
+Global Change Biology. https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
+"""
+function ZhouOptimalLAIModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict;
+    optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+    SAI::FT = toml_dict["SAI"],
+    RAI::FT = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = clm_canopy_height(domain.space.surface),
+) where {FT <: AbstractFloat}
+    parameters = OptimalLAIParameters{FT}(toml_dict)
+    return ZhouOptimalLAIModel{FT}(
+        parameters,
+        optimal_lai_inputs;
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+    )
+end
+
 ## Radiative transfer models
 """
     TwoStreamModel{FT}(
@@ -684,7 +744,7 @@ function CanopyModel{FT}(;
     soil_moisture_stress::AbstractSoilMoistureStressModel{FT},
     sif::AbstractSIFModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
-    biomass::PrescribedBiomassModel{FT},
+    biomass::AbstractBiomassModel{FT},
     boundary_conditions::B,
     earth_param_set::PSE,
     domain::Union{
@@ -808,6 +868,103 @@ function CanopyModel{FT}(
 
     # Confirm that the LAI passed agrees with the LAI of the biomass model
     @assert biomass.plant_area_index.LAI == LAI
+    boundary_conditions = AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        ground,
+        turbulent_flux_parameterization,
+        prognostic_land_components,
+    )
+
+    earth_param_set = LP.LandParameters(toml_dict)
+    args = (
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+        hydraulics,
+        energy,
+        sif,
+        biomass,
+        boundary_conditions,
+        earth_param_set,
+        domain,
+    )
+    return CanopyModel{FT, typeof.(args)...}(args...)
+end
+
+"""
+    function CanopyModel{FT}(
+        domain,
+        forcing::NamedTuple,
+        toml_dict::CP.ParamDict;
+        prognostic_land_components = (:canopy,),
+        biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+        ...
+    ) where {FT}
+
+Creates a `CanopyModel` with the provided `domain`, `forcing`, and `toml_dict`,
+using the optimal LAI model (ZhouOptimalLAIModel) by default.
+
+This constructor does not require `LAI` as a positional argument, making it suitable
+for use with prognostic LAI models like `ZhouOptimalLAIModel`.
+
+Defaults are provided for each canopy component model, which can be overridden
+by passing in a different instance of that type of model.
+
+The required argument `forcing` should be a NamedTuple with the following fields:
+- `atmos`: a `PrescribedAtmosphere` or `CoupledAtmosphere` object
+- `radiation`: a `PrescribedRadiativeFluxes` or `CoupledRadiativeFluxes` object
+- `ground`: a `PrescribedGroundConditions` or `PrognosticGroundConditions` object
+
+When running the canopy model in standalone mode, set `prognostic_land_components = (:canopy,)`,
+while for running integrated land models, this should be a list of the individual models.
+"""
+function CanopyModel{FT}(
+    domain::Union{
+        ClimaLand.Domains.Point,
+        ClimaLand.Domains.Plane,
+        ClimaLand.Domains.SphericalSurface,
+    },
+    forcing::NamedTuple,
+    toml_dict::CP.ParamDict;
+    prognostic_land_components = (:canopy,),
+    autotrophic_respiration = AutotrophicRespirationModel{FT}(toml_dict),
+    radiative_transfer = TwoStreamModel{FT}(domain, toml_dict),
+    photosynthesis = PModel{FT}(domain, toml_dict),
+    conductance = MedlynConductanceModel{FT}(domain, toml_dict),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(toml_dict),
+    hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
+    energy = BigLeafEnergyModel{FT}(toml_dict),
+    biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
+        toml_dict,
+        biomass.height,
+    ),
+    sif = Lee2015SIFModel{FT}(toml_dict),
+) where {FT}
+    (; atmos, radiation, ground) = forcing
+
+    # Confirm that each spatially-varying parameter is on the correct domain
+    for component in [
+        autotrophic_respiration,
+        radiative_transfer,
+        photosynthesis,
+        conductance,
+        soil_moisture_stress,
+        hydraulics,
+        energy,
+        biomass,
+        sif,
+    ]
+        # For component models without parameters, skip the check
+        !hasproperty(component, :parameters) && continue
+
+        @assert !(component.parameters isa ClimaCore.Fields.Field) ||
+                axes(component.parameters) == domain.space.surface
+    end
+
     boundary_conditions = AtmosDrivenCanopyBC(
         atmos,
         radiation,
@@ -1253,6 +1410,9 @@ end
 Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
 is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
 sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
+
+For ZhouOptimalLAIModel, this also initializes the LAI and A0 fields via
+`set_historical_cache!(p, Y0, model.biomass, model)`.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     drivers = get_drivers(model)
@@ -1262,6 +1422,7 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
+        set_historical_cache!(p, Y0, model.biomass, model)
         # Make sure that the hydraulics scheme and the biomass scheme are compatible
         hydraulics = model.hydraulics
         n_stem = hydraulics.n_stem
@@ -1269,6 +1430,16 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
     end
     return set_initial_cache!
+end
+
+"""
+    set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
+
+For most biomass models, no historical cache initialization is needed. This is the default
+fallback that does nothing.
+"""
+function set_historical_cache!(p, Y0, m::AbstractBiomassModel, canopy)
+    return nothing
 end
 
 """

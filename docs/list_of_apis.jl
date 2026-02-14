@@ -13,6 +13,7 @@ apis = [
         "Canopy Models" => "APIs/canopy/Canopy.md",
         "Plant Hydraulics" => "APIs/canopy/PlantHydraulics.md",
         "Leaf, stem, root dynamics" => "APIs/canopy/Biomass.md",
+        "Optimal LAI" => "APIs/canopy/LAI.md",
         "Photosynthesis" => "APIs/canopy/Photosynthesis.md",
         "Radiative Transfer" => "APIs/canopy/RadiativeTransfer.md",
         "Energy" => "APIs/canopy/CanopyEnergy.md",

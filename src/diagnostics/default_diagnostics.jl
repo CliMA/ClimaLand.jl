@@ -439,6 +439,14 @@ function add_diagnostics!(
     append!(diagnostics, ["ws"])
     return nothing
 end
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::ZhouOptimalLAIModel,
+)
+    append!(diagnostics, ["a0d", "a0a"])
+    return nothing
+end
 
 ## Possible diagnostics for standalone models
 """
@@ -516,6 +524,8 @@ function get_possible_diagnostics(model::CanopyModel)
 
     # Add conditional diagnostics based on atmosphere type
     add_diagnostics!(diagnostics, model, model.boundary_conditions.atmos)
+    # Add conditional diagnostics based on biomass model type
+    add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
@@ -611,7 +621,9 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    return ["gpp", "ct", "lai", "trans", "er", "sif"]
+    diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]
+    add_diagnostics!(diagnostics, model, model.biomass)
+    return diagnostics
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)

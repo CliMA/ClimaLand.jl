@@ -10,7 +10,8 @@ export BeerLambertParameters,
     canopy_sw_rt_beer_lambert,
     canopy_sw_rt_two_stream,
     extinction_coeff,
-    compute_G
+    compute_G,
+    compute_PPFD
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
@@ -818,4 +819,21 @@ function update_radiative_transfer!(
             t,
         ),
     )
+end
+
+"""
+    compute_PPFD(par_d::FT, λ_γ_PAR::FT, lightspeed::FT, planck_h::FT, N_a::FT) where {FT}
+
+Compute photosynthetic photon flux density (PPFD) from PAR downwelling flux.
+This is the total incoming PAR (not absorbed), in units of mol photons m^-2 s^-1.
+"""
+function compute_PPFD(
+    par_d::FT,
+    λ_γ_PAR::FT,
+    lightspeed::FT,
+    planck_h::FT,
+    N_a::FT,
+) where {FT}
+    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR
+    return par_d / energy_per_mole_photon_par
 end

@@ -4,7 +4,8 @@ export PModelParameters,
     compute_full_pmodel_outputs,
     set_historical_cache!,
     update_optimal_EMA,
-    make_PModel_callback
+    make_PModel_callback,
+    compute_A0_daily
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -1359,6 +1360,117 @@ function compute_LUE(ϕ0::FT, β::FT, mprime::FT, Mc::FT) where {FT}
     return ϕ0 * β * mprime * Mc
 end
 
+"""
+    compute_A0_daily(is_c3, parameters, constants, T_air, P_air, VPD, ca, PPFD, βm)
+
+Compute daily potential GPP (A0) used in the optimal LAI model (Zhou et al. 2025).
+
+This function computes the potential GPP assuming fAPAR = 1 (full light absorption),
+which represents the maximum carbon assimilation possible under given environmental
+conditions. The result is in units of kg C m^-2 s^-1.
+
+# Arguments
+- `is_c3::FT`: Photosynthesis mechanism (1 for C3, 0 for C4)
+- `parameters`: PModelParameters containing cstar, beta, etc.
+- `constants`: PModelConstants containing physical constants
+- `T_air::FT`: Air temperature (K)
+- `P_air::FT`: Atmospheric pressure (Pa)
+- `VPD::FT`: Vapor pressure deficit (Pa)
+- `ca::FT`: Ambient CO2 concentration (mol/mol)
+- `PPFD::FT`: Photosynthetic photon flux density (mol photons m^-2 s^-1)
+- `βm::FT`: Soil moisture stress factor (dimensionless, 0-1)
+
+# Returns
+- `A0_daily::FT`: Potential GPP with fAPAR=1 (kg C m^-2 s^-1)
+
+# Notes
+Used by the optimal LAI model to drive LAI dynamics. The moisture stress factor βm
+is included to capture water limitation effects on photosynthetic capacity.
+Air temperature is used (rather than canopy temperature) because A0 represents
+potential GPP under reference conditions, independent of energy balance feedbacks.
+"""
+function compute_A0_daily(
+    is_c3::FT,
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_air::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    PPFD::FT,
+    βm::FT,
+) where {FT}
+    (; cstar, β) = parameters
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
+        constants
+
+    # Convert ca from mol/mol to partial pressure (Pa)
+    ca_pp = ca * P_air
+
+    # Compute P-model intermediate values
+    ϕ0 = intrinsic_quantum_yield(is_c3, T_air, parameters)
+    Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T_air, To, ρ_water)
+    Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+
+    # Compute optimal ξ and intercellular CO2
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
+
+    # Compute mj and m' (with Jmax limitation)
+    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
+    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+
+    # Compute LUE with actual βm (soil moisture stress)
+    LUE_daily = compute_LUE(ϕ0, βm, mprime, Mc)
+
+    # Daily potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD)
+    return PPFD * LUE_daily
+end
+
+"""
+    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+
+Compute the optimal ratio of intercellular to ambient CO2 (chi = ci/ca) using P-model.
+
+# Arguments
+- `pmodel_parameters`: P-model parameters (including beta)
+- `pmodel_constants`: P-model constants (including Gamma_star25, Kc25, Ko25, etc.)
+- `T::FT`: Temperature (K)
+- `P_air::FT`: Atmospheric pressure (Pa)
+- `VPD::FT`: Vapor pressure deficit (Pa)
+- `ca::FT`: Ambient CO2 mixing ratio (mol/mol)
+
+# Returns
+- `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85
+"""
+function compute_chi(
+    pmodel_parameters,
+    pmodel_constants,
+    T::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+) where {FT}
+    (; β) = pmodel_parameters
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi, ρ_water) =
+        pmodel_constants
+
+    ca_pp = ca * P_air
+
+    # Compute P-model intermediates
+    Γstar = co2_compensation_pmodel(T, To, P_air, R, ΔHΓstar, Γstar25)
+    ηstar = compute_viscosity_ratio(T, To, ρ_water)
+    Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+
+    # Compute xi (sensitivity to dryness)
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+
+    # Compute ci and chi
+    VPD_safe = max(VPD, eps(FT))
+    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD_safe)
+    return clamp(ci / ca_pp, FT(0), FT(1))
+end
 
 """
     vcmax_pmodel(
