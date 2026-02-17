@@ -28,6 +28,8 @@ include("fluxnet_simulations/US-Ha1.jl")
 include("fluxnet_simulations/US-NR1.jl")
 include("fluxnet_simulations/US-Var.jl")
 include("fluxnet_simulations/NEON-cper.jl")
+include("fluxnet_simulations/NEON-ster.jl")
+include("fluxnet_simulations/NEON-srer.jl")
 
 # Include the data processing, forcing, and initial conditions utilities.
 include("fluxnet_simulations/data_processing.jl")

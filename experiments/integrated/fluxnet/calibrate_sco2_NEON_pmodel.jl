@@ -13,7 +13,7 @@ parameter lookup from data files (soil properties, albedo, etc.) matching
 what a global simulation would use for this pixel.
 
 Usage:
-    julia --project=.buildkite experiments/integrated/fluxnet/calibrate_sco2_cper.jl
+    julia --project=.buildkite experiments/integrated/fluxnet/calibrate_sco2_NEON_pmodel.jl
 """
 
 # ── 1. Environment & Imports ──────────────────────────────────────────────────
@@ -58,6 +58,7 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
+savefolder = "20260211_initial_pmodel"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
 
@@ -377,10 +378,10 @@ println("\n=== Setting up UKI calibration ===")
 
 # 4 constrained Gaussian priors
 priors = [
-    PD.constrained_gaussian("α_sx", 40000.0, 20000.0, 1000.0, 200000.0), #23835.0, 12000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("Ea_sx", 66858.0, 10000.0, 40000.0, 80000.0), #61000.0, 10000.0, 40000.0, 80000.0),
-    PD.constrained_gaussian("kM_sx", 0.001, 0.0008, 1e-5, 0.1), #0.005, 0.003, 1e-5, 0.1),
-    PD.constrained_gaussian("kM_o2", 0.08, 0.01, 1e-5, 0.1), #0.004, 0.002, 1e-5, 0.1),
+    PD.constrained_gaussian("α_sx", 23835.0, 12000.0, 1000.0, 200000.0),
+    PD.constrained_gaussian("Ea_sx", 61000.0, 10000.0, 40000.0, 80000.0),
+    PD.constrained_gaussian("kM_sx", 0.005, 0.003, 1e-5, 0.1),
+    PD.constrained_gaussian("kM_o2", 0.004, 0.002, 1e-5, 0.1),
 ]
 prior = PD.combine_distributions(priors)
 
@@ -418,8 +419,8 @@ println("  kM_sx = ", round(final_params[3], sigdigits = 4))
 println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
-savedir = joinpath(@__DIR__, "calibrate_sco2_cper_output")
-savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_NEON-CPER/20260211_moreExtreme_pmodel/"
+savedir = joinpath(@__DIR__, "calibrate_sco2_$(site_ID)_output")
+savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_$(site_ID)/$(savefolder)/"
 mkpath(savedir)
 
 # Write final parameters to file
@@ -513,17 +514,6 @@ println("\nDone.")
   println("Best params: α_sx=$(round(best_params[1],sigdigits=5)), Ea_sx=$(round(best_params[2],sigdigits=5)),
   kM_sx=$(round(best_params[3],sigdigits=4)), kM_o2=$(round(best_params[4],sigdigits=4))")
 
-  
-
-  # Plot best member vs obs
-  fig = Figure(size=(1000, 500))
-  ax = Axis(fig[1,1]; xlabel="Day index", ylabel="Soil CO₂ (ppm)", title="Best ensemble member vs NEON obs (502)")
-  lines!(ax, 1:n_obs, y_obs; color=:black, linewidth=2, label="NEON obs")
-  lines!(ax, 1:n_obs, last_G_ensemble[:, best_idx]; color=:blue, linewidth=1.5, label="Best member ($(best_idx))")
-  axislegend(ax; position=:rt)
-  save(joinpath(savedir, "sco2_best_vs_obs.png"), fig)
-  println("Saved: sco2_best_vs_obs.png")
-
   # Write best parameters to file
   best_params_file = joinpath(savedir, "best_parameters.txt")
   open(best_params_file, "w") do io
@@ -539,6 +529,15 @@ println("\nDone.")
       println(io, "  kM_o2 = $(round(best_params[4], sigdigits=4))")
   end
   println("Saved best parameters to: $best_params_file")
+
+  # Plot best member vs obs
+  fig = Figure(size=(1000, 500))
+  ax = Axis(fig[1,1]; xlabel="Day index", ylabel="Soil CO₂ (ppm)", title="Best ensemble member vs NEON obs (502)")
+  lines!(ax, 1:n_obs, y_obs; color=:black, linewidth=2, label="NEON obs")
+  lines!(ax, 1:n_obs, last_G_ensemble[:, best_idx]; color=:blue, linewidth=1.5, label="Best member ($(best_idx))")
+  axislegend(ax; position=:rt)
+  save(joinpath(savedir, "sco2_best_vs_obs.png"), fig)
+  println("Saved: sco2_best_vs_obs.png")
 
 # ── 11. Run final model with best parameters and create timeseries plots ─────
 println("\n=== Generating timeseries plots with best parameters ===")
