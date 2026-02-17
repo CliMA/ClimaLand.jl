@@ -60,6 +60,7 @@ function setup_model(FT, start_date, stop_date, domain, Δt, toml_dict, context)
         max_wind_speed = 25.0,
         regridder_type,
         context,
+        use_lowres_forcing = true,
     )
 
     albedo = PrescribedBaregroundAlbedo(toml_dict, surface_space)

@@ -77,6 +77,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -158,7 +159,7 @@ start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 domain =
-    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99), nelements = (15, 30, 15))
 toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)

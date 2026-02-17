@@ -197,7 +197,7 @@ end
 Creates a FarquharModel using default parameters of type FT.
 
 The `photosynthesis_parameters` argument is a NamedTuple that contains
-- `is_c3`: a Float or Field indicating if plants are C3 (1) or C4 (0) (unitless)
+- `fractional_c3`: a Float or Field indicating the proportion of plants that are C3
 - `Vcmax25`: a Float or Field representing the maximum carboxylation rate at 25C (mol m^-2 s^-1)
 By default, these parameters are set by the `clm_photosynthesis_parameters` function,
 which reads in CLM data onto the surface space as ClimaUtilities SpaceVaryingInputs.
@@ -209,8 +209,8 @@ function FarquharModel{FT}(
         domain.space.surface,
     ),
 ) where {FT <: AbstractFloat}
-    (; is_c3, Vcmax25) = photosynthesis_parameters
-    parameters = FarquharParameters(toml_dict; is_c3, Vcmax25)
+    (; fractional_c3, Vcmax25) = photosynthesis_parameters
+    parameters = FarquharParameters(toml_dict; fractional_c3, Vcmax25)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
 
@@ -219,7 +219,7 @@ end
     function PModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
+        fractional_c3 = clm_photosynthesis_parameters(domain.space.surface).fractional_c3,
         cstar = toml_dict["pmodel_cstar"],
         β = toml_dict["pmodel_β"],
         temperature_dep_yield = true,
@@ -252,7 +252,7 @@ The following default parameters (from the TOML file) are used:
 function PModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
+    fractional_c3 = clm_photosynthesis_parameters(domain.space.surface).fractional_c3,
     cstar = toml_dict["pmodel_cstar"],
     β = toml_dict["pmodel_β"],
     temperature_dep_yield = true,
@@ -281,7 +281,7 @@ function PModel{FT}(
         α,
     )
 
-    return PModel{FT}(is_c3, toml_dict, parameters)
+    return PModel{FT}(fractional_c3, toml_dict, parameters)
 end
 
 
