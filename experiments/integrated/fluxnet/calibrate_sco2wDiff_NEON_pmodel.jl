@@ -58,11 +58,11 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
-savefolder = "20260211_initial_changeCanopySettings_pmodel"
+savefolder = "20260211_initial_optCO2diffv3_pmodel"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
 
-spinup_days = 20# 365
+spinup_days = 365
 SOC_init = FT(2.0)
 dt = Float64(450)  # 7.5 minutes
 
@@ -71,13 +71,13 @@ dt = Float64(450)  # 7.5 minutes
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
-#start_date = start_date - Day(spinup_days)  # include spinup period
+start_date = start_date - Day(spinup_days)  # include spinup period
 spinup_date = start_date + Day(spinup_days)
 
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 5
+N_iterations = 11
 
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
@@ -208,7 +208,7 @@ target_layer = argmin(abs.(z_vals .- target_depth))
 println("Target layer index: $target_layer (z = $(z_vals[target_layer]) m, target = $target_depth m)")
 
 # ── 6. Model Function ────────────────────────────────────────────────────────
-function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
+function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val, D_co2_val)
     # Write temporary TOML override for calibrated DAMM parameters
     toml_content = """
     [soilCO2_pre_exponential_factor]
@@ -225,6 +225,10 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 
     [O2_michaelis_constant]
     value = $kM_o2_val
+    type = "float"
+
+    [CO2_diffusion_coefficient]
+    value = $D_co2_val
     type = "float"
     """
     tmp_toml_path = tempname() * ".toml"
@@ -337,8 +341,8 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 end
 
 # ── 7. Forward Model G ───────────────────────────────────────────────────────
-function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
+function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val, D_co2_val)
+    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val, D_co2_val)
 
     # Extract sco2_ppm at target layer
     (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
@@ -387,10 +391,11 @@ priors = [
     PD.constrained_gaussian("Ea_sx", 61000.0, 10000.0, 40000.0, 80000.0),
     PD.constrained_gaussian("kM_sx", 0.005, 0.003, 1e-5, 0.1),
     PD.constrained_gaussian("kM_o2", 0.004, 0.002, 1e-5, 0.1),
+    PD.constrained_gaussian("D_co2", 3e-5, 2e-5, 0.1e-5, 6e-5),
 ]
 prior = PD.combine_distributions(priors)
 
-# Create EKP object with Unscented process (ensemble size = 2n+1 = 9 for 4 params)
+# Create EKP object with Unscented process (ensemble size = 2n+1 = 11 for 5 params)
 ensemble_kalman_process = EKP.EnsembleKalmanProcess(
     y_obs,
     noise_cov,
@@ -422,6 +427,7 @@ println("  α_sx  = ", round(final_params[1], sigdigits = 5))
 println("  Ea_sx = ", round(final_params[2], sigdigits = 5))
 println("  kM_sx = ", round(final_params[3], sigdigits = 4))
 println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
+println("  D_co2 = ", round(final_params[5], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
 savedir = joinpath(@__DIR__, "calibrate_sco2_$(site_ID)_output")
@@ -437,6 +443,7 @@ open(params_file, "w") do io
     println(io, "  Ea_sx = ", round(final_params[2], sigdigits = 5))
     println(io, "  kM_sx = ", round(final_params[3], sigdigits = 4))
     println(io, "  kM_o2 = ", round(final_params[4], sigdigits = 4))
+    println(io, "  D_co2 = ", round(final_params[5], sigdigits = 4))
 end
 println("Saved final parameters to: $params_file")
 
@@ -517,7 +524,7 @@ println("\nDone.")
   final_params_all = EKP.get_ϕ_final(prior, ensemble_kalman_process)
   best_params = final_params_all[:, best_idx]
   println("Best params: α_sx=$(round(best_params[1],sigdigits=5)), Ea_sx=$(round(best_params[2],sigdigits=5)),
-  kM_sx=$(round(best_params[3],sigdigits=4)), kM_o2=$(round(best_params[4],sigdigits=4))")
+  kM_sx=$(round(best_params[3],sigdigits=4)), kM_o2=$(round(best_params[4],sigdigits=4)), D_co2=$(round(best_params[5],sigdigits=4))")
 
   # Write best parameters to file
   best_params_file = joinpath(savedir, "best_parameters.txt")
@@ -532,6 +539,7 @@ println("\nDone.")
       println(io, "  Ea_sx = $(round(best_params[2], sigdigits=5))")
       println(io, "  kM_sx = $(round(best_params[3], sigdigits=4))")
       println(io, "  kM_o2 = $(round(best_params[4], sigdigits=4))")
+      println(io, "  D_co2 = $(round(best_params[5], sigdigits=4))")
   end
   println("Saved best parameters to: $best_params_file")
 
