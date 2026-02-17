@@ -427,7 +427,7 @@ function compute_vegetation_carbon!(
     # cLeaf = σl * LAI (kg C/m^2)
     # cStem = ηsl * h * SAI (kg C/m^2) 
     # Note: Only compute cStem where SAI > 0
-    @. out = σl * LAI + ηsl * h * SAI * ClimaLand.heaviside(SAI)
+    @. out = σl * LAI + ηsl * h * SAI
 
     return out
 end
