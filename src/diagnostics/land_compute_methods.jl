@@ -412,11 +412,8 @@ function compute_vegetation_carbon!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface)
         fill!(field_values(out), NaN)
-        @. out = σl * LAI + ηsl * h * SAI
-        return out
-    else
-        @. out = σl * LAI + ηsl * h * SAI
     end
+    @. out = σl * LAI + ηsl * h * SAI
 end
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
 @diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
