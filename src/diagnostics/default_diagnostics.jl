@@ -411,7 +411,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
 )
-    append!(diagnostics, ["sr"])
+    append!(diagnostics, ["sr", "tr"])
     return nothing
 end
 function add_diagnostics!(
@@ -419,7 +419,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
 )
-    append!(diagnostics, ["sr", "ssr", "sfsat", "sath", "infc"])
+    append!(diagnostics, ["sr", "ssr", "tr", "sfsat", "sath", "infc"])
     return nothing
 end
 function add_diagnostics!(

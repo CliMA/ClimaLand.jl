@@ -137,16 +137,26 @@ const ILAMB_VARIABLES = Dict(
     "lai" => ILAMBMapping("lai", "Leaf Area Index", 1.0, "1", "m^2 m^-2"),
     # Assuming the native range is 0–100 %
     "snowc" => ILAMBMapping("scf", "Snow Cover Fraction", 1.0, "1", ""),
+    # Fixed: CF conventions state mrros is surface runoff, not mrro
     "sr" => ILAMBMapping(
-        "mrro",
+        "mrros",
         "Surface Runoff",
         1000.0,
         "kg m-2 s-1",
         "m s^-1",
     ),
+    # Fixed: Subsurface runoff uses ssro (no standard CF convention name)
     "ssr" => ILAMBMapping(
-        "mrros",
+        "ssro",
         "Subsurface Runoff",
+        1000.0,
+        "kg m-2 s-1",
+        "m s^-1",
+    ),
+    # Total runoff (surface + subsurface)
+    "tr" => ILAMBMapping(
+        "mrro",
+        "Total Runoff",
         1000.0,
         "kg m-2 s-1",
         "m s^-1",
@@ -176,6 +186,7 @@ const ILAMB_VARIABLES = Dict(
         "kg m^-2 s^-1",
     ),
     "tair" => ILAMBMapping("tas", "Air Temperature", 1.0, "K", "K"),
+    "tsoil" => ILAMBMapping("tsl", "Temperature of Soil", 1.0, "K", "K"),
 )
 
 """
@@ -219,31 +230,76 @@ function make_ilamb_netcdf_file(filepath, save_dir)
         make_ilamb_file_name(clima_short_name, start_date, end_date)
     NCDatasets.NCDataset(joinpath(save_dir, ilamb_file_name), "c") do ilamb_ds
         add_temporal_dimension(ilamb_ds, clima_ds, dates)
-        add_nontemporal_dimensions(ilamb_ds, clima_ds)
+        add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
         define_var(ilamb_ds, clima_ds, clima_short_name)
     end
     close(clima_ds)
 end
 
 """
-    add_nontemporal_dimensions(ilamb_ds, clima_ds)
+    add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
 
 Add the nontemporal dimensions to `ilamb_ds` using `clima_ds`, where both are
 open NetCDF files.
 
-The nontemporal dimensions are longitude and latitude.
+The nontemporal dimensions are longitude, latitude, and depth (for depth-dependent variables).
 """
-function add_nontemporal_dimensions(ilamb_ds, clima_ds)
+function add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
     non_temporal_dimnames = ["lon", "lat"]
+    # Add depth dimension for tsoil (map z -> depth for ILAMB/CMIP6 conventions)
+    if clima_short_name == "tsoil" && haskey(clima_ds, "z")
+        push!(non_temporal_dimnames, "z")
+    end
     for dimname in non_temporal_dimnames
-        ilamb_ds.dim[dimname] = clima_ds.dim[dimname]
-        NCDatasets.defVar(
-            ilamb_ds,
-            dimname,
-            Array(clima_ds[dimname]),
-            NCDatasets.dimnames(clima_ds[dimname]),
-            attrib = clima_ds[dimname].attrib,
-        )
+        # Map z coordinate to depth for ILAMB/CMIP6 conventions
+        output_dimname = (dimname == "z") ? "depth" : dimname
+        ilamb_ds.dim[output_dimname] = clima_ds.dim[dimname]
+        
+        # For depth, convert from negative z (depth below surface) to positive depth
+        if dimname == "z"
+            depth_values = -Array(clima_ds[dimname])  # Convert z (negative) to depth (positive)
+            attrib = Dict(
+                "standard_name" => "depth",
+                "long_name" => "depth",
+                "units" => "m",
+                "positive" => "down",
+                "axis" => "Z",
+                "bounds" => "depth_bnds"
+            )
+            NCDatasets.defVar(
+                ilamb_ds,
+                output_dimname,
+                depth_values,
+                (output_dimname,),
+                attrib = attrib,
+            )
+            
+            # Add depth bounds if z_bnds exists
+            if haskey(clima_ds, "z_bnds")
+                if !haskey(ilamb_ds.dim, "bnds")
+                    ilamb_ds.dim["bnds"] = clima_ds.dim["bnds"]
+                end
+                # Convert negative z_bnds to positive depth_bnds
+                # ClimaLand z_bnds is (bnds, z), need to transpose to (depth, bnds) for CMIP6
+                z_bnds = Array(clima_ds["z_bnds"])
+                depth_bnds = -z_bnds'  # Negate and transpose
+                NCDatasets.defVar(
+                    ilamb_ds,
+                    "depth_bnds",
+                    depth_bnds,
+                    ("depth", "bnds"),
+                    attrib = Dict("units" => "m"),
+                )
+            end
+        else
+            NCDatasets.defVar(
+                ilamb_ds,
+                output_dimname,
+                Array(clima_ds[dimname]),
+                NCDatasets.dimnames(clima_ds[dimname]),
+                attrib = clima_ds[dimname].attrib,
+            )
+        end
     end
     return nothing
 end
@@ -298,14 +354,27 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     ilamb_mapping = ILAMB_VARIABLES[clima_short_name]
     (; short_name, long_name, conversion_factor, ilamb_units, clima_units) =
         ilamb_mapping
+    
+    # Use CF standard names where they differ from variable names
+    cf_standard_name = if short_name == "tsl"
+        "soil_temperature"
+    else
+        short_name
+    end
+    
     var_attribs = Dict(
         "_FillValue" => FT(1.0e20),
-        "standard_name" => short_name,
+        "standard_name" => cf_standard_name,
         "long_name" => long_name,
         "units" => ilamb_units,
     )
     # For ILAMB, the order of dimensions should be lon, lat, and time
-    expected_dims = ["lon", "lat", "time"]
+    # For depth-dependent variables like tsoil, CMIP6 convention is (time, depth, lat, lon)
+    if clima_short_name == "tsoil"
+        expected_dims = ["time", "depth", "lat", "lon"]
+    else
+        expected_dims = ["lon", "lat", "time"]
+    end
     data = get_data(
         clima_ds,
         clima_short_name,
@@ -349,8 +418,9 @@ function get_data(
 )
     data = Array(clima_ds[clima_short_name])
 
-    # Special cases for tsoil and swc to extract top 10 cm (z >= -0.1)
-    if clima_short_name in ("tsoil", "swc")
+    # Special case for swc to extract top 10 cm (z >= -0.1)
+    # Note: tsoil needs full depth profile for permafrost analysis (0-3.5m)  
+    if clima_short_name == "swc"
         z = Array(clima_ds["z"])
         all_dimnames = NCDatasets.dimnames(clima_ds[clima_short_name])
         top_layer_indices = findall(val -> val >= -0.1, z)
@@ -364,10 +434,10 @@ function get_data(
     end
 
     # Permute dimensions to match ILAMB
-    dimnames = filter(
-        dimname -> dimname in expected_dims,
-        NCDatasets.dimnames(clima_ds[clima_short_name]),
-    )
+    # Map z -> depth for dimension matching
+    dimnames_raw = NCDatasets.dimnames(clima_ds[clima_short_name])
+    dimnames = [d == "z" ? "depth" : d for d in dimnames_raw]
+    dimnames = filter(dimname -> dimname in expected_dims, dimnames)
     perm = indexin(expected_dims, collect(dimnames))
     clima_ds[clima_short_name].attrib["units"] != clima_units && error(
         "Units in the simulation-output NetCDF do not match the expected CliMA units for $clima_short_name. Update the conversion factor and units in the mapping and run this script again",
