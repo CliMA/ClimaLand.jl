@@ -226,7 +226,7 @@ function add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
         # Map z coordinate to depth for ILAMB/CMIP6 conventions
         output_dimname = (dimname == "z") ? "depth" : dimname
         ilamb_ds.dim[output_dimname] = clima_ds.dim[dimname]
-        
+
         # For depth, convert from negative z (depth below surface) to positive depth
         if dimname == "z"
             depth_values = -Array(clima_ds[dimname])  # Convert z (negative) to depth (positive)
@@ -236,7 +236,7 @@ function add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
                 "units" => "m",
                 "positive" => "down",
                 "axis" => "Z",
-                "bounds" => "depth_bnds"
+                "bounds" => "depth_bnds",
             )
             NCDatasets.defVar(
                 ilamb_ds,
@@ -245,7 +245,7 @@ function add_nontemporal_dimensions(ilamb_ds, clima_ds, clima_short_name)
                 (output_dimname,),
                 attrib = attrib,
             )
-            
+
             # Add depth bounds if z_bnds exists
             if haskey(clima_ds, "z_bnds")
                 if !haskey(ilamb_ds.dim, "bnds")
@@ -326,14 +326,14 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     ilamb_mapping = ILAMB_VARIABLES[clima_short_name]
     (; short_name, long_name, conversion_factor, ilamb_units, clima_units) =
         ilamb_mapping
-    
+
     # Use CF standard names where they differ from variable names
     cf_standard_name = if short_name == "tsl"
         "soil_temperature"
     else
         short_name
     end
-    
+
     var_attribs = Dict(
         "_FillValue" => FT(1.0e20),
         "standard_name" => cf_standard_name,
