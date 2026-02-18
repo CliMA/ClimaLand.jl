@@ -389,6 +389,37 @@ end
     LandModel,
     SoilCO2Model,
 } Y.soilco2.SOC # SOC is now prognostic
+
+# Vegetation carbon (derived from prescribed biomass)
+function compute_vegetation_carbon!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, CanopyModel{FT}},
+) where {FT}
+    canopy = get_canopy(land_model)
+
+    # Get parameters
+    σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
+    ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
+
+    # Get area indices
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
+
+    # Get canopy height from biomass model
+    h = canopy.biomass.height
+
+    # Compute vegetation carbon
+    # cLeaf = σl * LAI (kg C/m^2)
+    # cStem = ηsl * h * SAI (kg C/m^2)
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    @. out = σl * LAI + ηsl * h * SAI
+end
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
 @diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
 @diagnostic_compute "radiation_longwave_down" Union{

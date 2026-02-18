@@ -618,7 +618,7 @@ function get_short_diagnostics(model::EnergyHydrology)
     return ["swc", "si", "sie", "tsoil", "et"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2"]
+    return ["sco2", "hr", "soc"]
 end
 function get_short_diagnostics(model::CanopyModel)
     diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]
@@ -659,6 +659,9 @@ function get_short_diagnostics(model::LandModel)
         "lwp",
         "iwc",
         "sdr",
+        "nee",
+        "ra",
+        "cveg",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
@@ -668,6 +671,7 @@ function get_short_diagnostics(model::LandModel)
         model.soil,
         model.soil.boundary_conditions.top.runoff,
     )
+
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 function get_short_diagnostics(model::BucketModel)

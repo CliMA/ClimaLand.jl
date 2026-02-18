@@ -613,6 +613,19 @@ function define_diagnostics!(land_model, possible_diags)
             compute_soil_organic_carbon!(out, Y, p, t, land_model),
     )
 
+    ### Canopy - Vegetation carbon (derived from prescribed biomass)
+    # Vegetation carbon
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "cveg",
+        long_name = "Vegetation carbon",
+        standard_name = "vegetation_carbon_content",
+        units = "kg C m^-2",
+        comments = "Total above-ground vegetation carbon per unit ground area, derived from prescribed LAI and SAI using specific carbon densities. cVeg = σl*LAI + ηsl*h*SAI, where σl is specific leaf density (kg C/m^2 leaf), ηsl is live stem wood coefficient (kg C/m^3), h is canopy height (m).",
+        compute! = (out, Y, p, t) ->
+            compute_vegetation_carbon!(out, Y, p, t, land_model),
+    )
+
     # Air pressure
     conditional_add_diagnostic_variable!(
         possible_diags;
