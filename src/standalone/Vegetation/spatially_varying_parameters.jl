@@ -354,3 +354,118 @@ function clm_canopy_height(
         return min.(canopy_height, max_height)
     end
 end
+
+"""
+    optimal_lai_initial_conditions(
+        surface_space,
+        data_path = Artifacts.optimal_lai_initial_conditions_path(; context = ClimaComms.context(surface_space));
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant(),
+    )
+
+Reads spatially varying initial conditions for the optimal LAI model from a NetCDF file,
+and regrids them to the grid defined by the `surface_space` of the Clima simulation.
+Returns a NamedTuple of ClimaCore Fields suitable for passing to `ZhouOptimalLAIModel`.
+
+This function returns fields for:
+- `GSL`: Growing season length (days)
+- `A0_annual`: Annual potential GPP (mol CO2 m^-2 yr^-1)
+- `precip_annual`: Mean annual precipitation (mol H2O m^-2 yr^-1)
+- `vpd_gs`: Average VPD during growing season (Pa)
+- `lai_init`: Initial LAI from MODIS (m^2 m^-2)
+- `f0`: Spatially varying fraction of precipitation for transpiration (dimensionless)
+
+The NetCDF file should contain variables `gsl`, `a0_annual`, `precip_annual`, `vpd_gs`,
+`lai_init`, and `f0` on a (lon, lat) grid.
+
+# Arguments
+- `surface_space`: The ClimaCore surface space to regrid to
+- `data_path`: Path to the NetCDF file containing the data (default: from ClimaArtifacts)
+
+# Keyword Arguments
+- `regridder_type`: Type of regridder to use (default: `:InterpolationsRegridder`)
+- `extrapolation_bc`: Boundary conditions for extrapolation (default: Periodic in lon, Flat in lat)
+- `interpolation_method`: Interpolation method (default: `Interpolations.Constant()`)
+
+# Example
+```julia
+ic_data = optimal_lai_initial_conditions(surface_space)
+biomass = ZhouOptimalLAIModel{FT}(parameters, ic_data; SAI, RAI, rooting_depth, height)
+```
+
+# Notes
+- The file is expected to have lon and lat coordinates
+- All variables (gsl, a0_annual, precip_annual, vpd_gs, lai_init, f0) are required
+- lai_init is used to initialize LAI from MODIS instead of uniform value, reducing spin-up
+- f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
+"""
+function optimal_lai_initial_conditions(
+    surface_space,
+    data_path::AbstractString = Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(surface_space),
+    );
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat()),
+    interpolation_method = Interpolations.Constant(),
+)
+    GSL = SpaceVaryingInput(
+        data_path,
+        "gsl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    A0_annual = SpaceVaryingInput(
+        data_path,
+        "a0_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    precip_annual = SpaceVaryingInput(
+        data_path,
+        "precip_annual",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    vpd_gs = SpaceVaryingInput(
+        data_path,
+        "vpd_gs",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    lai_init = SpaceVaryingInput(
+        data_path,
+        "lai_init",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    f0 = SpaceVaryingInput(
+        data_path,
+        "f0",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    return (;
+        GSL = GSL,
+        A0_annual = A0_annual,
+        precip_annual = precip_annual,
+        vpd_gs = vpd_gs,
+        lai_init = lai_init,
+        f0 = f0,
+    )
+end

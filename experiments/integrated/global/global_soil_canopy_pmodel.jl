@@ -85,21 +85,21 @@ ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_domain = ClimaLand.obtain_surface_domain(domain)
 canopy_forcing = (; atmos, radiation, ground)
 
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-
 # Construct the P model manually since it is not a default
 photosynthesis = PModel{FT}(canopy_domain, toml_dict)
 conductance = PModelConductance{FT}(toml_dict)
 
+# Use optimal LAI model (Zhou et al. 2025) instead of prescribed LAI
+biomass = Canopy.ZhouOptimalLAIModel{FT}(canopy_domain, toml_dict)
+
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain,
     canopy_forcing,
-    LAI,
     toml_dict;
     prognostic_land_components,
     photosynthesis,
     conductance,
+    biomass,
 )
 
 # Combine the soil and canopy models into a single prognostic land model
