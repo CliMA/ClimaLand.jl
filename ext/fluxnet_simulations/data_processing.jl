@@ -1,6 +1,6 @@
-import ClimaUtilities.TimeVaryingInputs:
-    LinearInterpolation,
-    PeriodicCalendar
+#import ClimaUtilities.TimeVaryingInputs:
+#    LinearInterpolation,
+#    PeriodicCalendar
 
 """
     var_missing(x; val = -9999)
@@ -84,8 +84,9 @@ function time_varying_input_from_data(
     # The time varying input object interpolates over gaps
     # as needed, so we remove data that is marked as missing here
     t, v = mask_data(time_in_seconds, var_data; val)
-    # return TimeVaryingInput(t, preprocess_func.(v))
-    return TimeVaryingInput(t, preprocess_func.(v); method = LinearInterpolation(PeriodicCalendar()))
+    return TimeVaryingInput(t, preprocess_func.(v))
+    #println("test confirmed")
+    #return TimeVaryingInput(t, preprocess_func.(v); method = LinearInterpolation(PeriodicCalendar()))
 end
 
 """

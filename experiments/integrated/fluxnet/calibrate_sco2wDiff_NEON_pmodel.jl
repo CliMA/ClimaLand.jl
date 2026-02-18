@@ -58,11 +58,11 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
-savefolder = "20260211_initial_optCO2diffv3_pmodel"
+savefolder = "20260211_optCO2diff_onlysummer20175it_90DaySU_pmodel"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
 
-spinup_days = 365
+spinup_days = 20 # 365 #365
 SOC_init = FT(2.0)
 dt = Float64(450)  # 7.5 minutes
 
@@ -71,15 +71,29 @@ dt = Float64(450)  # 7.5 minutes
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
-start_date = start_date - Day(spinup_days)  # include spinup period
+#start_date = start_date - Day(spinup_days)  # include spinup period
+#stop_date = stop_date - Day(80)  # ensure last day has full data for daily averaging
+#start_date = DateTime(2017, 1, 1)  # fixed start date for consistency
 spinup_date = start_date + Day(spinup_days)
-
+#stop_date = DateTime(2017, 9, 30)  # fixed stop date for consistency and to ensure full data coverage for daily averaging
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 11
+N_iterations = 5 
 
+println("=== Configuration ===")
+println("Site ID: $site_ID")
+println("Simulation period: $(Date(start_date)) to $(Date(stop_date)) (spinup until $(Date(spinup_date)))")
+println("UKI iterations: $N_iterations")
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
+#=(; dz_tuple, nelements, zmin, zmax) =
+    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+land_domain = Column(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = dz_tuple,
+    longlat = (long, lat),
+)=#
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
 zmin = FT(-15.0)
 zmax = FT(0.0)
@@ -386,14 +400,41 @@ end
 println("\n=== Setting up UKI calibration ===")
 
 # 4 constrained Gaussian priors
-priors = [
+#=priors = [
     PD.constrained_gaussian("α_sx", 23835.0, 12000.0, 1000.0, 200000.0),
     PD.constrained_gaussian("Ea_sx", 61000.0, 10000.0, 40000.0, 80000.0),
     PD.constrained_gaussian("kM_sx", 0.005, 0.003, 1e-5, 0.1),
     PD.constrained_gaussian("kM_o2", 0.004, 0.002, 1e-5, 0.1),
     PD.constrained_gaussian("D_co2", 3e-5, 2e-5, 0.1e-5, 6e-5),
+]=#
+# Prior specifications: (name, mean, std, lower, upper)
+prior_specs = [
+    ("α_sx", 23835.0, 12000.0, 1000.0, 200000.0),
+    ("Ea_sx", 70000.0, 20000.0, 40000.0, 100000.0),
+    ("kM_sx", 0.02, 0.01, 1e-5, 0.1),
+    ("kM_o2", 0.004, 0.002, 1e-5, 0.1),
+    ("D_co2", 1e-5, 0.5e-5, 0.1e-5, 6e-5),
 ]
+
+# Create constrained Gaussian priors
+priors = [PD.constrained_gaussian(name, μ, σ, lb, ub) for (name, μ, σ, lb, ub) in prior_specs]
 prior = PD.combine_distributions(priors)
+
+savedir = joinpath(@__DIR__, "calibrate_sco2_$(site_ID)_output")
+savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_$(site_ID)/$(savefolder)/"
+mkpath(savedir)
+
+# Write priors to file
+priors_file = joinpath(savedir, "prior_parameters.txt")
+open(priors_file, "w") do io
+    println(io, "=== Prior distributions ===")
+    println(io, "Format: PD.constrained_gaussian(\"name\", mean, std, lower, upper)")
+    println(io, "")
+    for (name, μ, σ, lb, ub) in prior_specs
+        println(io, "PD.constrained_gaussian(\"$name\", $μ, $σ, $lb, $ub)")
+    end
+end
+println("Saved priors to: $priors_file")
 
 # Create EKP object with Unscented process (ensemble size = 2n+1 = 11 for 5 params)
 ensemble_kalman_process = EKP.EnsembleKalmanProcess(
@@ -430,9 +471,6 @@ println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
 println("  D_co2 = ", round(final_params[5], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
-savedir = joinpath(@__DIR__, "calibrate_sco2_$(site_ID)_output")
-savedir = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/Calibrations_$(site_ID)/$(savefolder)/"
-mkpath(savedir)
 
 # Write final parameters to file
 params_file = joinpath(savedir, "final_parameters.txt")

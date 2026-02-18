@@ -40,6 +40,9 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
+outpath = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260217_$(site_ID)_2019_pmodel_v3/output/"
+mkpath(outpath)
+
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
 toml_dict = LP.create_toml_dict(FT)
@@ -198,7 +201,7 @@ diags = ClimaLand.default_diagnostics(
 diags = ClimaLand.default_diagnostics(
     land,
     start_date;
-    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260217_$(site_ID)_pmodel/output/"),
+    output_writer = ClimaDiagnostics.Writers.NetCDFWriter(land_domain.space.subsurface, outpath),
     output_vars,
     reduction_period = :halfhourly,
 );
