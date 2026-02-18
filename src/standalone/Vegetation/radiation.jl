@@ -2,7 +2,8 @@ export BeerLambertParameters,
     BeerLambertModel,
     TwoStreamParameters,
     TwoStreamModel,
-    canopy_radiant_energy_fluxes!,
+    canopy_shortwave_fluxes!,
+    canopy_longwave_fluxes!,
     ConstantGFunction,
     CLMGFunction,
     ground_albedo_PAR,
@@ -207,29 +208,27 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
-    canopy_radiant_energy_fluxes!(p::NamedTuple,
-                                  ground::PrescribedGroundConditions
+    canopy_shortwave_fluxes!(p::NamedTuple,
+                                  ground,
                                   canopy,
-                                  radiation::PrescribedRadiativeFluxes,
+                                  radiation,
                                   earth_param_set::PSE,
                                   Y::ClimaCore.Fields.FieldVector,
                                   t,
                                  ) where {PSE}
 
 
-Computes and stores the net long and short wave radiation, in W/m^2, over all bands,
-absorbed by the canopy when the canopy is run in standalone mode, with only
-a :canopy model as a prognostic component,
-with PrescribedGroundConditions.
+Computes and stores the net short wave radiation, in W/m^2, over all bands,
+absorbed by the canopy. Currently this function is able to be used in canopy
+standalone runs and in runs with integrated models.
 
-LW and SW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
-and `p.canopy.radiative_transfer.SW_n`.
+SW net radiation is stored `p.canopy.radiative_transfer.SW_n`.
 """
-function canopy_radiant_energy_fluxes!(
+function canopy_shortwave_fluxes!(
     p::NamedTuple,
-    ground::PrescribedGroundConditions,
+    ground,
     canopy,
-    radiation::PrescribedRadiativeFluxes,
+    radiation,
     earth_param_set::PSE,
     Y::ClimaCore.Fields.FieldVector,
     t,
@@ -239,7 +238,38 @@ function canopy_radiant_energy_fluxes!(
     nir_d = p.canopy.radiative_transfer.nir_d
     f_abs_par = p.canopy.radiative_transfer.par.abs
     f_abs_nir = p.canopy.radiative_transfer.nir.abs
-    @. p.canopy.radiative_transfer.SW_n = f_abs_par * par_d + f_abs_nir * nir_d
+    @. p.canopy.radiative_transfer.SW_n =
+        -(f_abs_par * par_d + f_abs_nir * nir_d)
+end
+
+"""
+    canopy_longwave_fluxes!(p::NamedTuple,
+                                  ground::PrescribedGroundConditions
+                                  canopy,
+                                  radiation,
+                                  earth_param_set::PSE,
+                                  Y::ClimaCore.Fields.FieldVector,
+                                  t,
+                                 ) where {PSE}
+
+
+Computes and stores the net long wave radiation, in W/m^2, over all bands,
+absorbed by the canopy when the canopy is run in standalone mode, with only
+a :canopy model as a prognostic component,
+i.e., with PrescribedGroundConditions.
+
+LW net radiation is stored in `p.canopy.radiative_transfer.LW_n`.
+"""
+function canopy_longwave_fluxes!(
+    p::NamedTuple,
+    ground::PrescribedGroundConditions,
+    canopy,
+    radiation,
+    earth_param_set::PSE,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {PSE}
+    FT = eltype(earth_param_set)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver
     T_ground = p.drivers.T_ground
@@ -249,9 +279,10 @@ function canopy_radiant_energy_fluxes!(
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
     LW_u_ground = @. ϵ_ground * _σ * T_ground^4 + (1 - ϵ_ground) * LW_d_canopy
-    @. p.canopy.radiative_transfer.LW_n =
+    @. p.canopy.radiative_transfer.LW_n = -(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_ground
+    )
 end
 
 

@@ -140,7 +140,6 @@ evaporation = [
     Array(parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux))[1] for
     k in 1:length(sol.t)
 ];
-R_n = [Array(parent(sv.saveval[k].snow.R_n))[1] for k in 1:length(sol.t)];
 water_runoff =
     [Array(parent(sv.saveval[k].snow.water_runoff))[1] for k in 1:length(sol.t)];
 phase_change_flux = [
