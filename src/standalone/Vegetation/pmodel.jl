@@ -371,7 +371,10 @@ function compute_full_pmodel_outputs(
     ca_pp = ca * P_air
 
     # Compute intermediate values
-    ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
+    ϕ0_c3 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
+    ϕ0_c4 = intrinsic_quantum_yield(1 - is_c3, T_canopy, parameters)
+    ϕ0 = is_c3 * ϕ0_c3 + (1 - is_c3) * ϕ0_c4
+
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
@@ -382,6 +385,9 @@ function compute_full_pmodel_outputs(
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
     Vcmax = βm * ϕ0 * APAR * mprime / mc
+
+    # compared to Vcmax βm * ϕ0 * APAR * mprime / mc
+
     inst_temp_scaling_vcmax25 = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -396,6 +402,8 @@ function compute_full_pmodel_outputs(
 
     # check for negative arg before taking sqrt
     arg = (mj / (βm * mprime))^2 - 1
+    Jmax_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg, 0)) + eps(FT))
+    Jmax_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg, 0)) + eps(FT))
     Jmax = 4 * ϕ0 * APAR / (sqrt(max(arg, 0)) + eps(FT))
     Jmax25 =
         Jmax / inst_temp_scaling(
@@ -408,7 +416,12 @@ function compute_full_pmodel_outputs(
             bS_Jmax,
             R,
         )
-    J = electron_transport_pmodel(ϕ0, APAR, Jmax)
+    # J = electron_transport_pmodel(ϕ0, APAR, Jmax)
+    J_c3c3 = electron_transport_pmodel(ϕ0_c3, APAR, Jmax_c3)
+    J_c3c4 = electron_transport_pmodel(ϕ0_c3, APAR, Jmax_c4)
+    J_c4c3 = electron_transport_pmodel(ϕ0_c4, APAR, Jmax_c3)
+    J_c4c4 = electron_transport_pmodel(ϕ0_c4, APAR, Jmax_c4)
+    J = (c3^2 * J_c3c3) + (c3 * c4 * J_c3c4) + (c4 * c3 * J_c4c3) + (c4^2 * J_c4c4)
 
     Ac = Vcmax * mc
     Aj = J * mj / FT(4)
