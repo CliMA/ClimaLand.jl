@@ -139,7 +139,16 @@ function set_soilco2_initial_conditions!(Y, p, land)
 
     @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
     Y.soilco2.O2_f .= FT(0.21)
-    Y.soilco2.SOC .= FT(5.0)
+
+    # SOC from SoilGrids organic matter fraction:
+    # SOC = ν_ss_om × (1 - ν) × ρ_om × f_C
+    # where ρ_om = 1300 kg/m³ (organic matter density),
+    # f_C = 0.58 (Van Bemmelen carbon fraction of OM),
+    # ν = porosity, ν_ss_om = volume fraction of OM in soil solids
+    ρ_om = FT(1300.0)  # kg/m³
+    f_C = FT(0.58)     # Van Bemmelen factor
+    ν_ss_om = soil.parameters.ν_ss_om
+    @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
     return nothing
 end
 
@@ -733,7 +742,13 @@ function make_set_initial_state_from_atmos_and_parameters(
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
             Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+            # SOC from SoilGrids organic matter fraction:
+            # SOC = ν_ss_om × (1 - ν) × ρ_om × f_C
+            ρ_om = FT(1300.0)  # kg/m³
+            f_C = FT(0.58)     # Van Bemmelen factor
+            ν_ss_om = land.soil.parameters.ν_ss_om
+            ν = land.soil.parameters.ν
+            @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
         end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
