@@ -159,6 +159,55 @@ pred_model = Chain(
 # | **`:static`** | - `SVector{1, FT} <: typeof(pred)`<br>-`typeof(input) <: StaticArray{S, FT} where {S}`<br>- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`<br>- `typeof(input) <: StaticArray{S, FT} where {S}`<br>- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
 # | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`<br>- `typeof(input) <: AbstractArray{FT}`<br>- `return::FT` | - `pred :< Matrix{FT}`<br>- `input <: AbstractArray{FT}`<br>- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`<br>- `typeof(input) <: AbstractArray{FT}`<br>- `return::AbstractArray{FT}` |  |
 
+# <table>
+# <tr>
+#   <th></th>
+#   <th><code>:single</code></th>
+#   <th><code>:batched</code></th>
+#   <th><code>:generic</code></th>
+#   <th></th>
+# </tr>
+#
+# <tr>
+#   <td><b><code>:static</code></b></td>
+#   <td>
+#     - <code>SVector{1, FT} <: typeof(pred)</code><br/>
+#     - <code>typeof(input) <: StaticArray{S, FT} where {S}</code><br/>
+#     - <code>return::FT</code>
+#   </td>
+#   <td>
+#     - <code>SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)</code><br/>
+#     - <code>typeof(input) <: StaticArray{S, FT} where {S}</code><br/>
+#     - <code>return::typeof(pred)</code>
+#   </td>
+#   <td>
+#     <b>X</b><br/>
+#     <i>(Cannot have arbitrarily sized static arrays)</i>
+#   </td>
+#   <td></td>
+# </tr>
+#
+# <tr>
+#   <td><b><code>:dynamic</code></b></td>
+#   <td>
+#     - <code>typeof(pred) <: Vector{FT}</code><br/>
+#     - <code>typeof(input) <: AbstractArray{FT}</code><br/>
+#     - <code>return::FT</code>
+#   </td>
+#   <td>
+#     - <code>pred <: Matrix{FT}</code><br/>
+#     - <code>input <: AbstractArray{FT}</code><br/>
+#     - <code>return::typeof(pred)</code>
+#   </td>
+#   <td>
+#     - <code>typeof(pred) <: AbstractArray{FT}</code><br/>
+#     - <code>typeof(input) <: AbstractArray{FT}</code><br/>
+#     - <code>return::AbstractArray{FT}</code>
+#   </td>
+#   <td></td>
+# </tr>
+# </table>
+
 # In all cells above, `FT<:AbstractFloat` to indicate that the `eltype` of `pred` and `input` and the function return must be the same.
 # When making `:generic` functions, make sure any batched returns (of multiple inputs) are returned as a row vector (a 1×N `Matrix`),
 # not a column `Vector`.
