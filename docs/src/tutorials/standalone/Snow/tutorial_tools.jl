@@ -156,4 +156,5 @@ function siteplot(
     if !isnothing(savename)
         savefig(out, savename)
     end
+    return nothing
 end

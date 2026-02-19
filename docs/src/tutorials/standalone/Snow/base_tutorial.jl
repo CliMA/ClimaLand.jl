@@ -307,7 +307,7 @@ siteplot(
 # ![](base_tutorial_plot1.png)
 
 # Or, alternatively, SNOTEL site 1070 (Anchorage Hillside, Alaska) from the testing data:
-site_id = "1070" #string format for the testing ids is due to non-numerical testing site codes.
+site_id = 1070
 sitedata = valdata[valdata[!, :id] .== site_id, :]
 true_series = sitedata[!, :z]
 pred_series, _, _ =
@@ -336,16 +336,16 @@ siteplot(
 # [``SWE`` network](https://caltech.box.com/v/paper-model-swe) utilized in [Charbonneau2025](@citet).
 # Note that the SWE network uses `n=5` instead of the snow depth network's `n = 4`.
 
-# Saved model metadata will also contain an API (but not the actual code syntax; this perk is reserved
+# Saved model metadata will also contain an API (but not the actual code syntax; this property is exclusive
 # only for code specified with the `@bound` and `@bound_type` macros) of any
 # methods related to utilized custom bound functor types, or types/methods/modules utilized by the `ConstrainedNeuralModel`
-# that are not already available in `ClimaLand` and this module.This is to aid in reproducibility on other systems,
+# that are not already available in `ClimaLand` and this module. This is to aid in reproducibility on other systems,
 # even if the original script to generate the model is lost. This is why it is important to include
 # documentation for such extraneous functions or internals, so that in a new codespace the same model can
-# be effectively reconstructed. We note that putting the code syntax into the docstring completely
-# mitigates this issue. For loading models, all necessary code must be already loaded into the codespace -
-# you can use `inspect_model_metadata()` on the loaded model data object to view saved code syntax before
-# actually reconstructing the model.
+# be effectively reconstructed. We note that pasting the code syntax into the docstring of such methods completely
+# mitigates this issue, as the API captures documentation. For loading models, all necessary code must be
+# already loaded into the codespace - you can use `inspect_model_metadata()` on the loaded model
+# data object to view saved code syntax before actually reconstructing the model.
 
 # Additional functionality can be explored through the [optional arguments](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/constrained_nn/ConstrainedNeuralModels.jl)
 # to the module utilities. Creating timeseries for other datasets/systems with other models
