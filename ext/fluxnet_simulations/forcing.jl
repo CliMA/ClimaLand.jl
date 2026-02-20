@@ -226,6 +226,162 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
 end
 
 """
+    prescribed_forcing_netcdf(
+        met_nc_path,
+        lat,
+        long,
+        time_offset,
+        atmos_h,
+        start_date,
+        toml_dict::CP.ParamDict,
+        FT;
+        gustiness = 1,
+    )
+
+Constructs `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` from a
+NetCDF meteorological forcing file (e.g., PLUMBER2 / CalLMIP format).
+
+Expected variables in the NetCDF file (dims `(x, y, time)` or `(time,)`):
+- `Tair`: air temperature (K)
+- `SWdown`: downwelling shortwave radiation (W/m²)
+- `LWdown`: downwelling longwave radiation (W/m²)
+- `Qair`: specific humidity (kg/kg)
+- `Psurf`: surface pressure (Pa)
+- `Precip`: precipitation rate (kg/m²/s)
+- `Wind`: wind speed (m/s)
+- `CO2air`: CO2 concentration (ppm)
+
+Time is in seconds since a reference date (read from the `time` variable).
+"""
+function FluxnetSimulations.prescribed_forcing_netcdf(
+    met_nc_path,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    toml_dict::CP.ParamDict,
+    FT;
+    gustiness = 1,
+)
+    earth_param_set = LP.LandParameters(toml_dict)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    ds = NCDataset(met_nc_path, "r")
+    times_dt = ds["time"][:]  # Vector{DateTime}
+
+    # Convert NetCDF local times to UTC and compute seconds since start_date
+    period_offset = hour_offset_to_period(time_offset)
+    UTC_datetimes = times_dt .- period_offset
+    seconds_since_start = [Float64(Second(dt - start_date).value) for dt in UTC_datetimes]
+
+    # Helper to read a variable (handles (x,y,time) or (time,) dims)
+    function read_var(varname)
+        v = ds[varname]
+        if ndims(v) == 3
+            return Float64.(coalesce.(v[1, 1, :], NaN))
+        elseif ndims(v) == 1
+            return Float64.(coalesce.(v[:], NaN))
+        else
+            error("Unexpected dims for $varname: $(ndims(v))")
+        end
+    end
+
+    T_data = read_var("Tair")        # K
+    SW_data = read_var("SWdown")     # W/m²
+    LW_data = read_var("LWdown")     # W/m²
+    q_data = read_var("Qair")        # kg/kg
+    P_data = read_var("Psurf")       # Pa
+    precip_data = read_var("Precip") # kg/m²/s
+    wind_data = read_var("Wind")     # m/s
+    co2_data = read_var("CO2air")    # ppm
+
+    close(ds)
+
+    # Fill value mask: remove NaN entries
+    fill_val = NaN
+    function make_tvi(t, v; preprocess = identity)
+        valid = .!isnan.(v)
+        t_valid = t[valid]
+        v_valid = preprocess.(v[valid])
+        return TimeVaryingInput(t_valid, v_valid)
+    end
+
+    atmos_T = make_tvi(seconds_since_start, T_data)
+    atmos_P = make_tvi(seconds_since_start, P_data)
+    atmos_u = make_tvi(seconds_since_start, wind_data)
+    atmos_q = make_tvi(seconds_since_start, q_data)
+    LW_d = make_tvi(seconds_since_start, LW_data)
+    SW_d = make_tvi(seconds_since_start, SW_data)
+    c_co2 = make_tvi(seconds_since_start, co2_data; preprocess = x -> x * FT(1e-6))
+
+    # Precipitation: split into rain and snow using Jennings et al. (2018) logistic model
+    # (same approach as prescribed_forcing_fluxnet)
+    # Precip is already a flux (kg/m²/s); ClimaLand convention is negative = downward
+    function compute_rain_snow(T_K, q, P, precip_flux)
+        T_C = T_K - 273.15
+        # Compute RH from specific humidity, pressure, and temperature
+        esat = Thermodynamics.saturation_vapor_pressure(
+            thermo_params, T_K, Thermodynamics.Liquid(),
+        )
+        # Vapor pressure from specific humidity: e = q * P / (ε + q*(1-ε)), ε ≈ 0.622
+        e = q * P / (0.622 + q * (1.0 - 0.622))
+        RH = clamp(e / esat, 0.0, 1.0)
+        # Jennings et al. (2018) logistic rain/snow split
+        snow_frac = 1.0 / (1.0 + exp(-10.04 + 1.41 * T_C + 0.09 * RH))
+        rain = -precip_flux * (1.0 - snow_frac)
+        snow = -precip_flux * snow_frac
+        return (rain, snow)
+    end
+
+    # Build paired rain/snow arrays
+    valid_precip = .!isnan.(precip_data) .& .!isnan.(T_data) .& .!isnan.(q_data) .& .!isnan.(P_data)
+    t_precip = seconds_since_start[valid_precip]
+    rain_vals = Float64[]
+    snow_vals = Float64[]
+    for i in eachindex(t_precip)
+        idx = findall(valid_precip)[i]
+        r, s = compute_rain_snow(T_data[idx], q_data[idx], P_data[idx], precip_data[idx])
+        push!(rain_vals, r)
+        push!(snow_vals, s)
+    end
+    atmos_P_liq = TimeVaryingInput(t_precip, rain_vals)
+    atmos_P_snow = TimeVaryingInput(t_precip, snow_vals)
+
+    atmos = ClimaLand.PrescribedAtmosphere(
+        atmos_P_liq,
+        atmos_P_snow,
+        atmos_T,
+        atmos_u,
+        atmos_q,
+        atmos_P,
+        start_date,
+        atmos_h,
+        toml_dict;
+        c_co2,
+        gustiness = FT(gustiness),
+    )
+
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            longitude = long,
+            latitude = lat,
+        )
+    radiation = ClimaLand.PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date,
+        cosθs = cos_zenith_angle,
+        toml_dict = toml_dict,
+    )
+    return (; atmos, radiation)
+end
+
+"""
     get_maxLAI_at_site(date, lat, long;
                        ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Dates.year(date)))
 

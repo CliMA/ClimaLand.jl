@@ -66,6 +66,17 @@ function set_fluxnet_ic!(
     for component in ClimaLand.land_components(model)
         set_fluxnet_ic!(Y, data, columns, Δ_date, getproperty(model, component))
     end
+
+    # Set SOC from soil organic matter fraction (requires soil params):
+    # SOC = ν_ss_om × (1 - ν) × ρ_om × f_C
+    if :soilco2 in ClimaLand.land_components(model)
+        FT = eltype(Y.soilco2.SOC)
+        ρ_om = FT(1300.0)  # organic matter density (kg/m³)
+        f_C = FT(0.58)     # Van Bemmelen carbon fraction of OM
+        ν_ss_om = model.soil.parameters.ν_ss_om
+        ν = model.soil.parameters.ν
+        @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
+    end
 end
 
 """
@@ -99,9 +110,9 @@ function set_fluxnet_ic!(
     )
     FT = eltype(Y.soil.ρe_int)
     if isnothing(column_name_map["SWC_F_MDS_1"])
-        θ_l_0 = model.parameters.ν / 2
+        θ_l_0 = model.parameters.ν ./ 2
     elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
-        θ_l_0 = model.parameters.ν / 2
+        θ_l_0 = model.parameters.ν ./ 2
     else
         θ_l_0 =
             min.(
@@ -247,5 +258,7 @@ function set_fluxnet_ic!(
 )
     Y.soilco2.CO2 .= 0.000412
     Y.soilco2.O2_f .= 0.21  # Atmospheric O2 volumetric fraction
-    Y.soilco2.SOC .= 5.0    # Default SOC concentration (kg C/m³)
+    # SOC is set from soil parameters at the land model level
+    # (in set_fluxnet_ic! for AbstractLandModel, after per-component loop)
+    Y.soilco2.SOC .= 0.0
 end

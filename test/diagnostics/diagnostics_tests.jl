@@ -279,6 +279,7 @@ end
         dt;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     )
+    expected_co2 = Ref{FT}()
 
     function set_ic!(Y, p, t0, model)
         Y.soil.ϑ_l .= FT(0.24)
@@ -299,7 +300,22 @@ end
                 model.soil.parameters.earth_param_set,
             )
 
-        Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        # Set CO2 as carbon mass per soil volume consistent with atmospheric forcing
+        θ_w = Y.soil.ϑ_l .+ Y.soil.θ_i
+        ν = model.soil.parameters.ν
+        θ_a = ClimaLand.Soil.Biogeochemistry.volumetric_air_content.(θ_w, ν)
+        params = model.soilco2.parameters
+        R = FT(ClimaLand.Parameters.gas_constant(params.earth_param_set))
+        M_C = FT(params.M_C)
+        K_H = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
+            params.K_H_co2_298,
+            params.dln_K_H_co2_dT,
+            T,
+        )
+        β = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H, R, T)
+        θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, Y.soil.ϑ_l, β)
+        @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T)
+        expected_co2[] = ClimaCore.Fields.field2array(Y.soilco2.CO2)[1]
 
         Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(297.5)
@@ -360,7 +376,7 @@ end
     @test all(
         ClimaCore.Fields.field2array(
             simulation.diagnostics[1].output_writer.dict["sco2_1000s_inst"].vals[1],
-        ) .== FT(0.000412),
+        ) .== expected_co2[],
     )
 end
 
