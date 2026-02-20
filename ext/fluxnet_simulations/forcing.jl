@@ -315,25 +315,33 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
     SW_d = make_tvi(seconds_since_start, SW_data)
     c_co2 = make_tvi(seconds_since_start, co2_data; preprocess = x -> x * FT(1e-6))
 
-    # Precipitation: split into rain and snow based on temperature
+    # Precipitation: split into rain and snow using Jennings et al. (2018) logistic model
+    # (same approach as prescribed_forcing_fluxnet)
     # Precip is already a flux (kg/m²/s); ClimaLand convention is negative = downward
-    function compute_rain_snow(T_K, precip_flux)
+    function compute_rain_snow(T_K, q, P, precip_flux)
         T_C = T_K - 273.15
-        # Simple temperature-based rain/snow split
-        snow_frac = T_C < 0.0 ? 1.0 : (T_C < 2.5 ? 1.0 - T_C / 2.5 : 0.0)
+        # Compute RH from specific humidity, pressure, and temperature
+        esat = Thermodynamics.saturation_vapor_pressure(
+            thermo_params, T_K, Thermodynamics.Liquid(),
+        )
+        # Vapor pressure from specific humidity: e = q * P / (ε + q*(1-ε)), ε ≈ 0.622
+        e = q * P / (0.622 + q * (1.0 - 0.622))
+        RH = clamp(e / esat, 0.0, 1.0)
+        # Jennings et al. (2018) logistic rain/snow split
+        snow_frac = 1.0 / (1.0 + exp(-10.04 + 1.41 * T_C + 0.09 * RH))
         rain = -precip_flux * (1.0 - snow_frac)
         snow = -precip_flux * snow_frac
         return (rain, snow)
     end
 
     # Build paired rain/snow arrays
-    valid_precip = .!isnan.(precip_data) .& .!isnan.(T_data)
+    valid_precip = .!isnan.(precip_data) .& .!isnan.(T_data) .& .!isnan.(q_data) .& .!isnan.(P_data)
     t_precip = seconds_since_start[valid_precip]
     rain_vals = Float64[]
     snow_vals = Float64[]
     for i in eachindex(t_precip)
         idx = findall(valid_precip)[i]
-        r, s = compute_rain_snow(T_data[idx], precip_data[idx])
+        r, s = compute_rain_snow(T_data[idx], q_data[idx], P_data[idx], precip_data[idx])
         push!(rain_vals, r)
         push!(snow_vals, s)
     end

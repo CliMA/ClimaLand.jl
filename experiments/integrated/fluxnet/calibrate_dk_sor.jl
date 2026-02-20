@@ -12,6 +12,9 @@ Soil moisture stress: PiecewiseMoistureStressModel
             canopy_K_lw, canopy_emissivity
   3 soilco2 (DAMM): α_sx, kM_sx, kM_o2
 
+Calibration window: summer only (Jun–Aug) to target the active growing season.
+The full simulation (with 60-day spinup) still runs Jan–Dec.
+
 Forcing: NetCDF meteorological data (PLUMBER2/CalLMIP format)
 Observations: Daily aggregated NEE (gC/m²/d), Qle (W/m²), Qh (W/m²)
 LAI: Copernicus LAI from the met NetCDF
@@ -69,8 +72,7 @@ flux_nc_path = joinpath(climaland_dir, "DK_Sor", "DK-Sor_daily_aggregated_1997-2
 spinup_days = 60
 dt = Float64(450)  # 7.5 minutes
 
-# Simulation period: use 2 years (2004-2005) that overlap with good flux obs data
-# The met NetCDF covers 1997-2014, the flux file covers 1997-2013
+# Simulation period
 sim_start_year = 2004
 sim_end_year = 2005
 
@@ -83,9 +85,16 @@ sim_end_year = 2005
 start_date = DateTime(sim_start_year, 1, 1) - Day(spinup_days)
 stop_date = DateTime(sim_end_year + 1, 1, 1)  # end of sim_end_year
 spinup_date = start_date + Day(spinup_days)
+
+# Summer calibration windows (Jun 1 – Aug 31 of each year)
+summer_ranges = [
+    (Date(yr, 6, 1), Date(yr, 8, 31))
+    for yr in sim_start_year:sim_end_year
+]
+
 println("Simulation: $start_date to $stop_date")
 println("Spinup until: $spinup_date")
-println("Calibration period: $(Date(spinup_date)) to $(Date(stop_date))")
+println("Calibration windows: $(["$s to $e" for (s,e) in summer_ranges])")
 
 # UKI settings
 rng_seed = 1234
@@ -129,7 +138,7 @@ lai_seconds = [Float64(Second(t - Dates.Hour(time_offset) - start_date).value) f
 valid_lai = .!isnan.(lai_data)
 LAI = TimeVaryingInput(lai_seconds[valid_lai], lai_data[valid_lai])
 
-# ── 4. Load & Process Flux Observations ──────────────────────────────────────
+# ── 4. Load & Process Flux Observations (summer only) ────────────────────────
 flux_ds = NCDataset(flux_nc_path, "r")
 flux_times_dt = flux_ds["time"][:]
 
@@ -144,14 +153,13 @@ qle_uc_raw = Float64.(coalesce.(flux_ds["Qle_uc_daily"][:], NaN))
 qh_uc_raw = Float64.(coalesce.(flux_ds["Qh_uc_daily"][:], NaN))
 close(flux_ds)
 
-# Convert times to Dates (flux file times are local, same reference as met)
 flux_dates = Date.(flux_times_dt)
 
-# Filter: keep only dates within simulation window (after spinup, before stop)
-# with valid data for ALL three fluxes
-spinup_date_d = Date(spinup_date)
-stop_date_d = Date(stop_date)
-valid_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .&
+# Filter: summer windows + valid data for all three fluxes
+is_summer = map(flux_dates) do d
+    any(s <= d <= e for (s, e) in summer_ranges)
+end
+valid_mask = is_summer .&
              .!isnan.(nee_raw) .& .!isnan.(qle_raw) .& .!isnan.(qh_raw) .&
              (abs.(nee_raw) .< 1e10) .& (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10)
 
@@ -164,7 +172,7 @@ qle_uc = qle_uc_raw[valid_mask]
 qh_uc = qh_uc_raw[valid_mask]
 
 n_obs = length(obs_dates)
-println("Observation vector length: $n_obs daily values (NEE+Qle+Qh)")
+println("Summer observation days: $n_obs (NEE+Qle+Qh)")
 
 # Stack observations: [NEE_1,...,NEE_n, Qle_1,...,Qle_n, Qh_1,...,Qh_n]
 y_obs = vcat(nee_obs, qle_obs, qh_obs)
@@ -173,7 +181,6 @@ y_obs = vcat(nee_obs, qle_obs, qh_obs)
 nee_var = mean(filter(!isnan, nee_uc .^ 2))
 qle_var = mean(filter(!isnan, qle_uc .^ 2))
 qh_var = mean(filter(!isnan, qh_uc .^ 2))
-# Use mean uncertainty as noise variance for each flux type
 noise_diag = vcat(
     fill(nee_var, n_obs),
     fill(qle_var, n_obs),
@@ -287,7 +294,6 @@ function run_model(params_vec)
         canopy,
     )
 
-    # DK-Sor uses NetCDF, not CSV — set IC from parameters directly
     function custom_set_ic!(Y, p, t, model)
         earth_param_set = ClimaLand.get_earth_param_set(model.soil)
         evaluate!(p.drivers.T, atmos.T, t)
@@ -326,11 +332,12 @@ function run_model(params_vec)
         if !isnothing(model.soilco2)
             Y.soilco2.CO2 .= FT(0.000412)
             Y.soilco2.O2_f .= FT(0.21)
-            # SOC from soil organic matter fraction
-            ρ_om = FT(1300.0)
-            f_C = FT(0.58)
-            ν_ss_om = model.soil.parameters.ν_ss_om
-            @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
+            # Prescribed SOC profile: 15 kgC/m³ at surface, 0.5 kgC/m³ at 1m depth
+            SOC_top = FT(15.0)
+            SOC_bot = FT(0.5)
+            τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
+            z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+            @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
         end
     end
 
@@ -378,7 +385,6 @@ function G(params_vec)
     first_G_call = false
 
     # Convert NEE from model units (mol CO₂/m²/s) to gC/m²/d
-    # 1 mol CO₂ = 12 g C, 1 day = 86400 s
     nee_gC = nee_result .* 12.0 .* 86400.0
 
     # Stack: [NEE, Qle, Qh]
@@ -403,7 +409,6 @@ function extract_daily_diag(simulation, diag_name, target_dates; verbose = false
         end
     end
     if isnothing(writer)
-        # List available diagnostics for debugging
         available = String[]
         for d in simulation.diagnostics
             append!(available, collect(keys(d.output_writer.dict)))
@@ -439,12 +444,11 @@ function extract_daily_diag(simulation, diag_name, target_dates; verbose = false
 end
 
 # ── 7. UKI Calibration ───────────────────────────────────────────────────────
-println("\n=== Setting up UKI calibration ===")
+println("\n=== Setting up UKI calibration (12 params, summer only) ===")
 
 # 12 constrained Gaussian priors
 priors = [
-    # Canopy parameters (centered on defaults from default_parameters.toml)
-    # Ensure μ is well within [lower, upper] and σ doesn't push near bounds
+    # Canopy parameters
     PD.constrained_gaussian("moisture_stress_c", 0.5, 0.3, 0.01, 5.0),
     PD.constrained_gaussian("pmodel_cstar", 0.43, 0.15, 0.05, 2.0),
     PD.constrained_gaussian("pmodel_β", 51.0, 20.0, 5.0, 500.0),
@@ -534,8 +538,8 @@ for (fi, flux_label) in enumerate(flux_labels)
 
     ax = Axis(
         fig2[fi, 1];
-        title = "$flux_label: first vs last UKI iteration",
-        xlabel = "Day index (after spinup)",
+        title = "$flux_label: first vs last UKI iteration (summer only)",
+        xlabel = "Day index (Jun–Aug)",
         ylabel = flux_label,
     )
 
