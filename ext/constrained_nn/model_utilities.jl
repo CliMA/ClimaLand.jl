@@ -710,7 +710,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
       Insufficient bound function.
       Please make sure you define a return type for $(m.name) taking
       argtypes $((pred_type, inp_type)) in accordance to the style of desired bound:
-      - For generic bounds, return type should be <:AbstractArray{<:AbstractFloat}
+      - For generic bounds, return type should be <: typeof(pred)
       - For GPU-performant bounds with batched inputs, return type should match that of `pred`.
       - For GPU-performant bounds with single inputs, return type should be <:AbstractFloat.
       """,
@@ -744,7 +744,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
     end
     #start with generic bound-type until conditions indicate otherwise:
     bound_type = (:generic, :dynamic)
-    if nameof(pred_type) == nameof(SArray)
+    if pred_type <: SArray
         #5) Check if compliant with single-input :static evaluation:
         if pred_type <: SVector
             inp_check = SVector{1, <:AbstractFloat} <: pred_type
@@ -759,35 +759,24 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
         #6) Check if compliant with batched-input :static evaluation:
             inp_check =
                 SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} <: pred_type
-            out_check = data[:ret_type] <: pred_type
-            @assert SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} <:
-                    pred_type """
-Insufficient bound function. Ensure your arg `pred` of `$(m.name)`
-satisfies SMatrix{1, N, <:AbstractFloat, N} where {N<:Int} <: typeof(pred),
-and that the return type is the same type as `pred`.
-"""
+            @assert inp_check """
+            Insufficient bound function. Ensure your arg `pred` of `$(m.name)`
+            satisfies (SMatrix{1, N, <:AbstractFloat, N} where {N<:Int}) <: typeof(pred),
+            and that the return type is the same type as `pred`.
+            """
             bound_type = (:batched, :static)
         end
     else
-        #7) If not generic but not :static, determine :dynamic type:
-        if !(nameof(pred_type) in [nameof(AbstractArray), nameof(Array)])
-            single_form = pred_type <: Vector{<:AbstractFloat}
-            batched_form = pred_type <: Matrix{<:AbstractFloat}
-            bound_type =
-                batched_form ? (:batched, :dynamic) : (:single, :dynamic)
-            if !(single_form) && !(batched_form)
-                error(
-                    """
-                  Insufficient bound function. Ensure your arg `pred` of `$(m.name)`
-                  taking argtypes $((pred_type, inp_type)) can receive either a Vector 
-                  (single inputs) or Matrix (batched inputs) of floats, and that the
-                  return type is a float (single inputs) or the same as `pred` (batched inputs).
-                  """,
-                )
-            end
+        #7) If not-static and single, check compliance:
+        if pred_type <: Vector{<:AbstractFloat}
+            @assert data[:ret_type] <: AbstractFloat "Ensure dynamic single-input function $(m.name) returns a float."
+            bound_type = (:single, :dynamic)
+        #8) If not-static and batched, check compliance:
+        elseif pred_type <: Matrix{<:AbstractFloat}
+            bound_type = (:batched, :dynamic)
         end
     end
-    #8) Ensure return-type is compliant with the discovered bound-type (floats for :single, vs typeof(pred) for :batched)
+    #9) Ensure return-type is compliant with the discovered bound-type (handled :single above already)
     if bound_type[1] != :single && !(data[:ret_type] <: pred_type)
         error(
             """
@@ -796,13 +785,16 @@ and that the return type is the same type as `pred`.
      """,
         )
     end
-    #9) Ensure eltype of all args is the same
+    #10) Ensure eltype of all args is the same
     t1 = eltype(pred_type) <: eltype(inp_type)
     t2 = eltype(data[:ret_type]) <: eltype(pred_type)
     @assert all([t1, t2]) """
     Insufficient bound function. Make sure return type of $(m.name) taking argtypes
     $((pred_type, inp_type)) satifies all args and return type having the same float type.
     """
+
+    #Without an instance of the specified argtypes, we cannot run any more
+    #assessments for :generic types, or if :dynamic outputs are row-like.
 
     #With a fully compliant bound, get the necessary info from the bound
     #and add it to _BOUND_INFO_.
@@ -963,7 +955,7 @@ custom fixed layers.
 """
 function get_fixed_layer_info(m::ConstrainedNeuralModel)
     fixed_meta = "FIXED LAYERS: "
-    if m.using_defualt_fixed_layers
+    if m.using_default_fixed_layers
         fixed_meta *= "The creator used the default fixed layers for this model.\n"
     else
         fixed_meta *= "The creator used custom fixed layers, defined as follows:\n"
@@ -1167,7 +1159,7 @@ function build_model_metadata(
             
             model = load_model(params, (THIS DATA, OR FILEPATH))
 
-        See `load_model()` documentation for more details."
+        See `load_model()` documentation for more details.
         """
     return m_meta
 end

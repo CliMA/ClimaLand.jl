@@ -282,7 +282,7 @@ Flux.@layer MulLayer
 """
     get_bounds(c::ConstraintType, pred, input)
 
-Returns the output of a ConstraintType for a given model prediction and input, an internal utiilty
+Returns the output of a ConstraintType for a given model prediction and input, an internal utility
 in defining the information flow of an input through a ConstrainedNeuralModel.
 Note: if pred, input are not passed, this function is additionally defined to just return the bounds
 themselves, not their evaluations for a given prediction and input.
@@ -305,7 +305,7 @@ This generic version works for many possible input types for the user, defined f
 """
 @inline function boundary_connection(
     constraints::ConstraintType,
-    pred::VecOrMat{FT},
+    pred::Union{FT, <:VecOrMat{FT}},
     input::AbstractArray{FT},
 )::VecOrMat{FT} where {FT <: AbstractFloat}
     return [
@@ -375,9 +375,9 @@ function convert_model(model, FT::Type{<:AbstractFloat})
         throw(
             ArgumentError(
                 """
-    "convert_model(): Conversion of parameters to the desired float-type is
-     not supported. Please implement the desired conversion in ConstrainedNeuralModels.convert_model()
-     or a custom constructor for the desired type.
+    convert_model(): Conversion of parameters to the desired float-type is
+    not supported. Please implement the desired conversion in ConstrainedNeuralModels.convert_model()
+    or a custom constructor for the desired type.
     """,
             ),
         )
@@ -385,7 +385,16 @@ function convert_model(model, FT::Type{<:AbstractFloat})
 end
 
 """
-    ConstrainedNeuralModel{S <: InputWeighting, FT<:AbstractFloat, NN1<:Chain, C <: ConstraintType, NN2<:Chain}
+    ConstrainedNeuralModel{
+    FT <: AbstractFloat,
+    S <: InputWeighting{FT},
+    TP <: Val,
+    C <: ConstraintType,
+    NN1,
+    NN2 <: Chain,
+    IL <: AbstractMatrix{FT},
+    OS <: ScaleOutput{FT}
+    }
 
 Defines the ConstrainedNeuralModel type, taking an InputWeighting and a ConstraintType, as well as a predictive model
 as well as a Flux Chain to act as the fixed layers that apply the constraints. An output scaling
@@ -409,7 +418,7 @@ struct ConstrainedNeuralModel{
     out_scale::OS
     fixed_layers::NN2
     initial_fixed_layer::IL
-    using_defualt_fixed_layers::Bool
+    using_default_fixed_layers::Bool
     trainable_constraints::TP
 end
 
@@ -438,7 +447,7 @@ end
     (model::ConstrainedNeuralModel{<:NoScaling})(x::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}
 
 Defines the behavior of a ConstrainedNeuralModel type for an input, when no scaling is required. This serves to
-reduce computational cost compared to rescailng inputs by a factor of 1. The output of the boundary functions
+reduce computational cost compared to rescaling inputs by a factor of 1. The output of the boundary functions
 and predictive model are combined and passed through the fixed layer which applies the constraints.
 """
 function (model::ConstrainedNeuralModel{FT, C})(
@@ -722,9 +731,9 @@ function set_predictive_model_out_scale!(
     set_predictive_model_out_scale!(): Cannot set the predictive model's scaling constant to 0.
     """
     if nameof(typeof(model.fixed_layers[1].weight)) == :SArray
-        ArgumentError(
+        throw(ArgumentError(
             "Cannot set the output scaling of a fixed (static) model.",
-        )
+        ))
     end
     model.out_scale.sc[1] = FT(scale)
     return nothing
@@ -748,16 +757,16 @@ scaled form.
 function scale_model!(model::ConstrainedNeuralModel, mode::Symbol)
     sc = model.out_scale.sc[1]
     if nameof(typeof(model.fixed_layers[1].weight)) == :SArray
-        ArgumentError("Cannot scale a fixed (static) model.")
+        throw(ArgumentError("Cannot scale a fixed (static) model."))
     end
     if mode == :scaled_train
         model.fixed_layers[1].weight .= model.initial_fixed_layer .* 1 / sc
     elseif mode == :reset
         model.fixed_layers[1].weight .= model.initial_fixed_layer
     else
-        ArgumentError(
+        throw(ArgumentError(
             "scale_model!(): Possible modes are :reset or :scaled_train, mode `$(mode)` not recognized.",
-        )
+        ))
     end
     return nothing
 end
@@ -1058,7 +1067,7 @@ function trainmodel!(
         for (x, y) in train_loader
             Flux.train!(loss, model, [(x, y)], opt_state)
         end
-        if verbose & (epoch % 10 == 0)
+        if verbose && (epoch % 10 == 0)
             print(
                 "Epoch: ",
                 epoch,

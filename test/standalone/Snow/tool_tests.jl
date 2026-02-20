@@ -655,7 +655,7 @@ if !isnothing(SNOTELScraperExt)
         @test CNM1.initial_fixed_layer == f_l_2.layers[1].weight
         @test isEqual_chains(CNM1.predictive_model, p_l)
         @test CNM.get_val(CNM1.trainable_constraints)
-        @test !CNM1.using_defualt_fixed_layers
+        @test !CNM1.using_default_fixed_layers
         @test isEqual_chains(CNM1.fixed_layers, f_l_2)
         @test CNM1.out_scale.sc[1] == 2
         @test eltype(CNM1.predictive_model[1].weight) == Float64
@@ -664,7 +664,7 @@ if !isnothing(SNOTELScraperExt)
         @test CNM2.constraints isa CNM.LowerOnly
         @test isEqual_chains(CNM2.predictive_model, fmap(Flux.f32, p_l))
         @test !CNM.get_val(CNM2.trainable_constraints)
-        @test CNM2.using_defualt_fixed_layers
+        @test CNM2.using_default_fixed_layers
         @test isEqual_chains(
             CNM2.fixed_layers,
             CNM.default_fixed_layers(CNM2.constraints, FT),
@@ -677,7 +677,7 @@ if !isnothing(SNOTELScraperExt)
         @test CNM3.initial_fixed_layer == FT.(f_l_3.layers[1].weight)
         @test isEqual_chains(CNM3.predictive_model, fmap(Flux.f32, p_l))
         @test CNM.get_val(CNM3.trainable_constraints)
-        @test !CNM3.using_defualt_fixed_layers
+        @test !CNM3.using_default_fixed_layers
         @test isEqual_chains(CNM3.fixed_layers, fmap(Flux.f32, f_l_3))
         @test CNM3.out_scale.sc[1] == 1
         @test eltype(CNM3.predictive_model[1].weight) == FT

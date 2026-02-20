@@ -149,97 +149,67 @@ pred_model = Chain(
     l3 = Dense(nfeatures, 1),
 );
 
-# Constraint functions must only take two arguments, `pred` and `input`, and have a specified output type.
-# Acceptable types can be classified as `static` (fixed models, for optimal performance when applying them 
-# in simulations on GPUs) or `dynamic` (mutable models where weights can be changed, for training or prototyping)
-# types, as well as `batched` or `single` evaluation modes (or a `generic` type able to handle both), based on input types:
+# Constraint functions must only take two arguments, `pred` (the output of the predictive model) and `input`
+# (the input to the predictive model), and have a declared output type. Explicitly supported constraint types can be
+# classified as `static` (fixed models, for optimal performance when applying them in simulations
+# on GPUs) or `dynamic` (mutable models where weights can be changed, for training or prototyping)
+# types, as well as `batched` or `single` evaluation modes, based on declared arg types:
 
-#md |  | **`:single`** | **`:batched`** | **`:generic`** |  |
-#md |---|---|---|---|---|
-#md | **`:static`** | - `SVector{1, FT} <: typeof(pred)` \n-`typeof(input) <: StaticArray{S, FT} where {S}`  \n- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`  \n- `typeof(input) <: StaticArray{S, FT} where {S}`  \n- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
-#md | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`  \n- `typeof(input) <: AbstractArray{FT}`  \n- `return::FT` | - `pred :< Matrix{FT}`  \n- `input <: AbstractArray{FT}`  \n- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`  \n- `typeof(input) <: AbstractArray{FT}`  \n- `return::AbstractArray{FT}` |  |
+# | **:dynamic** Mode | **`:single`** | **`:batched`** |
+# |---|---|---|
+# | `pred::T1` | `T1 <: Vector{FT}` (length 1) | `T1 <: Matrix{FT}` (size (1, N)) |
+# | `input::T2` | `T2 <: AbstractArray{FT}` | `T2 <: AbstractArray{FT}` |
+# | return | `::FT` | ::T1 |
 
-# html```
-# <table>
-# <tr>
-#   <th></th>
-#   <th><code>:single</code></th>
-#   <th><code>:batched</code></th>
-#   <th><code>:generic</code></th>
-#   <th></th>
-# </tr>
-#
-# <tr>
-#   <td><b><code>:static</code></b></td>
-#   <td>
-#     - <code>SVector{1, FT} <: typeof(pred)</code><br/>
-#     - <code>typeof(input) <: StaticArray{S, FT} where {S}</code><br/>
-#     - <code>return::FT</code>
-#   </td>
-#   <td>
-#     - <code>SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)</code><br/>
-#     - <code>typeof(input) <: StaticArray{S, FT} where {S}</code><br/>
-#     - <code>return::typeof(pred)</code>
-#   </td>
-#   <td>
-#     <b>X</b><br/>
-#     <i>(Cannot have arbitrarily sized static arrays)</i>
-#   </td>
-#   <td></td>
-# </tr>
-#
-# <tr>
-#   <td><b><code>:dynamic</code></b></td>
-#   <td>
-#     - <code>typeof(pred) <: Vector{FT}</code><br/>
-#     - <code>typeof(input) <: AbstractArray{FT}</code><br/>
-#     - <code>return::FT</code>
-#   </td>
-#   <td>
-#     - <code>pred <: Matrix{FT}</code><br/>
-#     - <code>input <: AbstractArray{FT}</code><br/>
-#     - <code>return::typeof(pred)</code>
-#   </td>
-#   <td>
-#     - <code>typeof(pred) <: AbstractArray{FT}</code><br/>
-#     - <code>typeof(input) <: AbstractArray{FT}</code><br/>
-#     - <code>return::AbstractArray{FT}</code>
-#   </td>
-#   <td></td>
-# </tr>
-# </table>
-# ```
+# | **:static** Mode | **`:single`** | **`:batched`** |
+# |---|---|---|---|
+# | `pred::T1` | `T1 >: SVector{1, FT}` | `T1 >: SMatrix{1, N, FT, N} where {N<:Int}` |
+# | `input::T2` | `T2 <: StaticArray{S, FT} where {S}` | `T2 <: StaticArray{S, FT} where {S}` |
+# | return | `::FT` | `::T1` |
 
-# In all cells above, `FT<:AbstractFloat` to indicate that the `eltype` of `pred` and `input` and the function return must be the same.
-# When making `:generic` functions, make sure any batched returns (of multiple inputs) are returned as a row vector (a 1×N `Matrix`),
-# not a column `Vector`.
+# Anything not satisfying the above is considered a `:generic` type, but could potentially not find full support in this
+# module without extension. In all cells above, a `where {FT<:AbstractFloat}` is implied to 
+# indicate that the `eltype` of `pred` and `input` and the function return must be the same. `T1`, `T2` do not
+# need to be specified in the function specifically like the above, but are instead shown to indicate viable types
+# for each class or broadest/minimal specification. When working with `:generic` systems, to work with the module it is recommended that:
 
-# The internals of the function do not matter as long as these argtype and return type requirements are met, enabling a wide variety of
+# - The predictive model output a float scalar, or a type satisfying `<: VecOrMat{FT}` in a flattened row-like manner,
+# (e.g., a length-1 `Vector`, or a single-row 1×N `Matrix`, instead of column (N×1, or like a length-N `Vector`) or many-dimension types.
+
+# - The constraint function be able to receive the input and output types of your predictive model, and output a similar type to
+# that of the predictive model
+
+# - The eltype of the predictive model input, output, and constraint model output be the same.
+
+# The internals of the function do not truly matter as long as the output configuration is compliant and eltypes are consistent, enabling a wide variety of
 # possible functions. Functions that require additional parameters, or are a function of external data, etc., are also possible though
 # the creation of functor methods (create a type `MyConstraintType` with the necessary fields, and create a functor method `function (x::MyType)(pred, input)`
-# that calls on and makes use of the necessary internal fields). For optimal performance on GPUs when creating static methods,
+# that calls on and makes use of the necessary internal fields). For optimal performance on GPUs when creating `static` methods,
 # we recommend minimizing or eliminating any allocations in your functional form. If supplying both an upper and a lower bound as your
 # constraints, for any given input `x` the value of the upper bound function at `x`must be greater or equal to the value of the lower bound function at `x`,
 # though this does not necessarily mean that the upper bound at any input `x` must be higher than the lower bound at any other input `y!=x`.
 
 # This tutorial details a case study for the creation of a 1D model with small `Vector` inputs, however,
-# `ConstrainedNeuralModels` can be used for functions of any multidimensional input and output - just make sure to have a flattening layer/operation at the end of
-# your prediction model to send all outputs to a `1×N` `Matrix` (and a corresponding flattening/ordering inside of your constraint
-# functions), with constraint functions compliant for `:batched` evaluation, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
+# `ConstrainedNeuralModels` can be used for multidimensional input and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
+# your prediction model to send all outputs to a 1×N `Matrix` (and a corresponding flattening/ordering inside of your constraint
+# functions), with compliant constraint functions, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
 
 # With this in mind, we pick an upper boundary value that leaves the prediction unchanged
 # if snowfall is present, but clamps the prediction to be nonpositive if no snowfall is present.
 # We also pick a lower boundary boundary defining ``\frac{dz}{dt} \leq -z/Δt`` to prevent the
 # snowpack from ever becoming a negative value. 
 
-# It is not required, but one can specify bound methods with the `@bound`
-# macro from `ConstrainedNeuralModels`, which checks function compliance for usage within `ClimaLand`, and stores any function
-# information useful for generating metadata when saving a `ConstrainedNeuralModel`:
+# It is not required, but one can declare bound methods with the `@bound`
+# macro from `ConstrainedNeuralModels`, which runs some automated function compliance checks to ensure its usability within `ClimaLand`, and stores any function
+# information useful for generating metadata when saving a `ConstrainedNeuralModel`. In this case, the below initial attempt will
+# be deemed `:generic` bounds that are supported by the module - they work for our `Flux.Chain` predictive network
+# both when receiving either single (`Vector` input, outputting `Vector`) or batched (`Matrix` input, outputting `Matrix`) inputs,
+# (A great first start for prototyping, but we could do more to optimize performance):
 @bound function upper_bound(
     pred::AbstractArray{T},
     input::AbstractArray{T},
 )::AbstractArray{T} where {T <: AbstractFloat}
-    return @. (input[p_idx:p_idx, :] > 0) * relu(pred) #outputs as a row matrix, or do "input[p_idx, :]'"
+    return @. (input[p_idx:p_idx, :] > 0) * relu(pred) #outputs as a row `Matrix`, could do "input[p_idx, :]' as well"
 end
 
 const dt::Float32 = FT(Dates.value(Δt))
@@ -247,49 +217,64 @@ const dt::Float32 = FT(Dates.value(Δt))
     pred::AbstractArray{T},
     input::AbstractArray{T},
 )::AbstractArray{T} where {T <: AbstractFloat}
-    return -input[z_idx:z_idx, :] ./ dt  #outputs as a row matrix
-end;
+    return -input[z_idx, :]' ./ dt  #outputs as a row matrix
+end
+
+classes, CNM.get_bound_evaluation_modes(CNM.get_bound_info(SDLowerBound))
 
 # > *NOTE*: the functions here are specified with argtypes AND return types of `AbstractArray{T}` instead of
 # > each being specified as `AbstractArray{<:AbstractFloat}`, so that the compiler knows all arg and
 # > return types will have the SAME float-type. Failing to specify this way can result in an immense
-# > slow-downs during training.
+# > slow-downs during gradient-based training.
 
 # In this tutorial, the indices are known beforehand and hard-coded as `const`ants so that our `:generic` function
 # definition is compiled equivalently to writing `input[1, :]'` or `input[7, :]`; extracting the right
-# feature from the single-vector input or the batched Matrix input. In general, constraint functions do not have to
+# feature from the single-`Vector` input or the batched `Matrix` input. In general, constraint functions do not have to
 # index into `pred` or `input` (or even use them at all), and functions including
 # variables of any type defined in global scope are fine, though it is often better practice
 # to define these as functor methods over a custom type storing all necessary information in a
-# performance-optimized manner. For instance, we could have instead created the following for the lower bound
+# more performance-optimized manner. For instance, we could have instead created the following for the lower bound
 # instead, optionally declaring our custom constraint functor with the `ConstrainedNeuralModels` `@bound_type`
-# macro to again check its compliance for usage within `ClimaLand`:
+# macro to again check its compliance for usage within `ClimaLand` and store useful metadata:
 
 @bound_type struct SDLowerBound{FT <: AbstractFloat}
     z_idx::Int
-    negative_one_over_Δt::FT #reduces cost, reducing all operations to one multiplication
+    negative_one_over_Δt::Ref{FT} #reduces cost, reducing all operations to one multiplication
 end
 
 function make_lower_bound(FT::Type{<:AbstractFloat}, z_idx::Int, Δt::Period)
-    return SDLowerBound{FT}(z_idx, FT(-1 / Dates.value(Dates.Second(Δt))))
+    return SDLowerBound{FT}(z_idx, Ref(FT(-1 / Dates.value(Dates.Second(Δt)))))
+end
+## could dispatch on type: here is a `:batched` version
+@bound function (b::SDLowerBound)(
+    pred::Matrix{T},
+    input::Matrix{T},
+)::Matrix{T} where {T <: AbstractFloat}
+    return b.negative_one_over_Δt * view(input, (b.z_idx):(b.z_idx), :)
 end
 
+## and a `:single` version
 @bound function (b::SDLowerBound)(
-    pred::AbstractArray{T},
-    input::AbstractArray{T},
-)::AbstractArray{T} where {T <: AbstractFloat}
-    return b.negative_one_over_Δt * view(input, (b.z_idx):(b.z_idx), :)
+    pred::Vector{T},
+    input::Vector{T},
+)::T where {T <: AbstractFloat}
+    return b.negative_one_over_Δt * input[b.z_idx]
+end
+
+##could make methods to set the time-step value:
+function set_time_step!(b::SDLowerBound{T}, dt::Real) where {T<:AbstractFloat}
+    b.negative_one_over_Δt[] = T(-1/dt)
 end
 
 lowerb = make_lower_bound(Float32, z_idx, Δt);
 
 # With functor type constraints, the possibilities of constraint types for `ConstrainedNeuralModels` is greatly expanded,
-# with virtually no limits to the types of data, mutable or fixed types, parameters, and additional methods (for example, a method
-# to set/change the ``Δt`` time-step used in the `SDLowerBound` to a different value, so it can be altered before/during/after training) for
-# abstract constraint functionality and form. In this case, we highly suggest such additional methods are well-documented, so that
+# with virtually no limits to the types of data, mutable or fixed types, parameters, and additional methods (like `set_time_step!()`,
+# so it could be altered before/during/after training) for abstract constraint functionality and form.
+# In this case, we highly suggest such additional methods are well-documented, so that if using `@bound` and `@bound_type`
 # their internals can be made explicit and reproducible upon saving/transfering the `ConstrainedNeuralModel` to another system (see below).
 
-# We then create the `ConstrainedNeuralModel`, by specifying a `Float` type for the model 
+# We then create the `ConstrainedNeuralModel`, by specifying a float-type for the model 
 # (`Float32` will run faster than `Float64`), and create the model by specifying the
 # predictive component, any upper or lower boundary constraints, and the input and/or output
 # scaling:
