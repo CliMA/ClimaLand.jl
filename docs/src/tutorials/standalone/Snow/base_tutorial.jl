@@ -187,10 +187,10 @@ pred_model = Chain(
 # constraints, for any given input `x` the value of the upper bound function at `x`must be greater or equal to the value of the lower bound function at `x`,
 # though this does not necessarily mean that the upper bound at any input `x` must be higher than the lower bound at any other input `y!=x`.
 
-# This tutorial details a case study for the creation of a 1D model with small `Vector` inputs, however,
-# `ConstrainedNeuralModels` can be used for multidimensional inputs and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
-# your prediction model to send all outputs to a 1×N `Matrix` (and a corresponding flattening/ordering inside of your constraint
-# functions), with compliant constraint functions, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
+# > *MORE THAN 1D*: This tutorial details a case study for the creation of a 1D model with small `Vector` inputs, however,
+# > `ConstrainedNeuralModels` can be used for multidimensional inputs and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
+# > your prediction model to send all outputs to a 1×N `Matrix` (and a corresponding flattening/ordering inside of your constraint
+# > functions), with compliant constraint functions, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
 
 # With this in mind, we pick an upper boundary value that leaves the prediction unchanged
 # if snowfall is present, but clamps the prediction to be nonpositive if no snowfall is present.
