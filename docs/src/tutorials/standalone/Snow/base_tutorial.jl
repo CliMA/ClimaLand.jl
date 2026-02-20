@@ -150,15 +150,16 @@ pred_model = Chain(
 );
 
 # Constraint functions must only take two arguments, `pred` and `input`, and have a specified output type.
-# Acceptable types are internally matched to `static` (fixed models, for optimal performance when applying them 
+# Acceptable types can be classified as `static` (fixed models, for optimal performance when applying them 
 # in simulations on GPUs) or `dynamic` (mutable models where weights can be changed, for training or prototyping)
 # types, as well as `batched` or `single` evaluation modes (or a `generic` type able to handle both), based on input types:
 
-# |  | **`:single`** | **`:batched`** | **`:generic`** |  |
-# |---|---|---|---|---|
-# | **`:static`** | - `SVector{1, FT} <: typeof(pred)`<br>-`typeof(input) <: StaticArray{S, FT} where {S}`<br>- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`<br>- `typeof(input) <: StaticArray{S, FT} where {S}`<br>- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
-# | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`<br>- `typeof(input) <: AbstractArray{FT}`<br>- `return::FT` | - `pred :< Matrix{FT}`<br>- `input <: AbstractArray{FT}`<br>- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`<br>- `typeof(input) <: AbstractArray{FT}`<br>- `return::AbstractArray{FT}` |  |
+#md |  | **`:single`** | **`:batched`** | **`:generic`** |  |
+#md |---|---|---|---|---|
+#md | **`:static`** | - `SVector{1, FT} <: typeof(pred)` /  \n-`typeof(input) <: StaticArray{S, FT} where {S}`<br/>\n- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`\n- `typeof(input) <: StaticArray{S, FT} where {S}`\n- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
+#md | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`\  \n- `typeof(input) <: AbstractArray{FT}`\n- `return::FT` | - `pred :< Matrix{FT}`\n- `input <: AbstractArray{FT}`\n- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`\n- `typeof(input) <: AbstractArray{FT}`\n- `return::AbstractArray{FT}` |  |
 
+# html```
 # <table>
 # <tr>
 #   <th></th>
@@ -207,6 +208,7 @@ pred_model = Chain(
 #   <td></td>
 # </tr>
 # </table>
+# ```
 
 # In all cells above, `FT<:AbstractFloat` to indicate that the `eltype` of `pred` and `input` and the function return must be the same.
 # When making `:generic` functions, make sure any batched returns (of multiple inputs) are returned as a row vector (a 1×N `Matrix`),
@@ -228,9 +230,11 @@ pred_model = Chain(
 # With this in mind, we pick an upper boundary value that leaves the prediction unchanged
 # if snowfall is present, but clamps the prediction to be nonpositive if no snowfall is present.
 # We also pick a lower boundary boundary defining ``\frac{dz}{dt} \leq -z/Δt`` to prevent the
-# snowpack from ever becoming a negative value. All bounds must be spcified with the `@bound`
-# macro from `ConstrainedNeuralModels`, which checks function compliance and stores any function
-# information for transcription into metadata when saving a `ConstrainedNeuralModel`:
+# snowpack from ever becoming a negative value. 
+
+# It is not required, but one can specify bound methods with the `@bound`
+# macro from `ConstrainedNeuralModels`, which checks function compliance for usage within `ClimaLand`, and stores any function
+# information useful for generating metadata when saving a `ConstrainedNeuralModel`:
 @bound function upper_bound(
     pred::AbstractArray{T},
     input::AbstractArray{T},
@@ -246,10 +250,10 @@ const dt::Float32 = FT(Dates.value(Δt))
     return -input[z_idx:z_idx, :] ./ dt  #outputs as a row matrix
 end;
 
-# *NOTE*: the functions here are specified with argtypes AND return types of AbstractArray{T} instead of
-# each being specified as AbstractArray{<:AbstractFloat}, so that the compiler knows all arg and
-# return types will have the SAME float-type. Failing to specify this way can result in an immense
-# slow-downs during training.
+# > *NOTE*: the functions here are specified with argtypes AND return types of `AbstractArray{T}` instead of
+# > each being specified as `AbstractArray{<:AbstractFloat}`, so that the compiler knows all arg and
+# > return types will have the SAME float-type. Failing to specify this way can result in an immense
+# > slow-downs during training.
 
 # In this tutorial, the indices are known beforehand and hard-coded as `const`ants so that our `:generic` function
 # definition is compiled equivalently to writing `input[1, :]'` or `input[7, :]`; extracting the right
@@ -258,8 +262,8 @@ end;
 # variables of any type defined in global scope are fine, though it is often better practice
 # to define these as functor methods over a custom type storing all necessary information in a
 # performance-optimized manner. For instance, we could have instead created the following for the lower bound
-# instead, making sure to declare our custom constraint functor with the `ConstrainedNeuralModels` `@bound_type`
-# macro:
+# instead, optionally declaring our custom constraint functor with the `ConstrainedNeuralModels` `@bound_type`
+# macro to again check its compliance for usage within `ClimaLand`:
 
 @bound_type struct SDLowerBound{FT <: AbstractFloat}
     z_idx::Int
@@ -283,7 +287,7 @@ lowerb = make_lower_bound(Float32, z_idx, Δt);
 # with virtually no limits to the types of data, mutable or fixed types, parameters, and additional methods (for example, a method
 # to set/change the ``Δt`` time-step used in the `SDLowerBound` to a different value, so it can be altered before/during/after training) for
 # abstract constraint functionality and form. In this case, we highly suggest such additional methods are well-documented, so that
-# their internals are made explicit and reproducible upon saving/transfering the `ConstrainedNeuralModel` to another system (see below).
+# their internals can be made explicit and reproducible upon saving/transfering the `ConstrainedNeuralModel` to another system (see below).
 
 # We then create the `ConstrainedNeuralModel`, by specifying a `Float` type for the model 
 # (`Float32` will run faster than `Float64`), and create the model by specifying the
@@ -311,7 +315,7 @@ model = ConstrainedNeuralModel(
 # make sure the `Flux.trainable()` function is defined for your bound functor type.
 
 # As training updates are better with the scaled data, we can put a
-# ConstrainedNeuralModel into :scaled_train mode, which maintains
+# ConstrainedNeuralModel into `:scaled_train` mode, which maintains
 # the output scaling with regards to the predicted values as they are passed to the
 # constraint functions, but rescales the final output as if there was
 # no output scaling:
@@ -373,11 +377,16 @@ siteplot(
 );
 # ![](base_tutorial_plot2.png)
 
+# Additional functionality can be explored through the [optional arguments](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/constrained_nn/ConstrainedNeuralModels.jl)
+# to the module utilities. Creating timeseries for other datasets/systems with other models
+# can be handled with a similar call to this tutorial's `make_timeseries()` function.
+# In this system, the timestep `Δt` could also be changed to different values
+# to evaluate the network's capability on validation data with different temporal resolutions, without the need
+# for retraining of the predictive network (or, the functor type `SDLowerBound` edited to enable changing the timescale on-the-fly).
+# # Saving and Loading Models
+
 # The `save_model()` function can be used to save a `ConstrainedNeuralModel`
-# to two JLD2 files, one for its structure and one for its weights. Both files
-# contain metadata, the actual code syntax for constraints defined with the `@bound`
-# and `@bound_type` macros, and other model metadata, to aid in reproducibility and
-# transferability across systems and codespaces. Models can be loaded using the
+# to two JLD2 files, one for its structure and one for its weights. Models can be loaded using the
 # `load_model()` functionality, which combines a model structure file with a provided
 # vector of model parameters (this functionality, for instance, could also be used to handle online
 # model parameter updates, if tuning their weights externally as part of a larger ensemble).
@@ -385,7 +394,14 @@ siteplot(
 # [``SWE`` network](https://caltech.box.com/v/paper-model-swe) utilized in [Charbonneau2025](@citet).
 # Note that the SWE network uses `n=5` instead of the snow depth network's `n = 4`.
 
-# Saved model metadata will also contain an API (but not the actual code syntax; this property is exclusive
+# User-desired custom metadata can be passed as a string to the `save_model()` function via the
+# optional `String` arguments `user_param_metadata` and `user_model_metadata`. To aid in this,
+# the `build_model_bound_documentation()` and `build_model_API()` functions also exist,
+# if you have chosen to specify your bound methods/types with the `@bound` and/or `@bound_type` macros.
+# `build_model_bound_documentation()` generates a metadata string containing the actual code syntax for constraints defined with the 
+# macros, and other model metadata, to aid in reproducibility and transferability across systems and codespaces. 
+
+# `build_model_API()` will also construct an API (but not the actual code syntax; this property is exclusive
 # only for code specified with the `@bound` and `@bound_type` macros) of any
 # methods related to utilized custom bound functor types, or types/methods/modules utilized by the `ConstrainedNeuralModel`
 # that are not already available in `ClimaLand` and this module. This is to aid in reproducibility on other systems,
@@ -395,10 +411,3 @@ siteplot(
 # mitigates this issue, as the API captures documentation. For loading models, all necessary code must be
 # already loaded into the codespace - you can use `inspect_model_metadata()` on the loaded model
 # data object to view saved code syntax before actually reconstructing the model.
-
-# Additional functionality can be explored through the [optional arguments](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/constrained_nn/ConstrainedNeuralModels.jl)
-# to the module utilities. Creating timeseries for other datasets/systems with other models
-# can be handled with a similar call to this tutorial's `make_timeseries()` function.
-# In this system, the timestep `Δt` could also be changed to different values
-# to evaluate the network's capability on validation data with different temporal resolutions, without the need
-# for retraining of the predictive network (or, the functor type `SDLowerBound` edited to enable changing the timescale on-the-fly).

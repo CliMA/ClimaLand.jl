@@ -1,4 +1,8 @@
 #=
+**NOTE**: It is possible that the required forms of a bound function could evolve over time as ClimaLand
+develops, though all utilities functionality should be preserved solely with adequate
+changes to the compliance checks carried out within `construct_method_info!()`, should this occur.
+
 The following functions are primarily used for automated handling, checking,
 and documenting of different bounds and types that are compliant with the ConstrainedNeuralModel
 architecture, and not their operation. This automates many bound compliance nuances away from the user, and enables
@@ -14,7 +18,7 @@ and model documentation for model saving/storage via a call to `build_model_meta
 
 Automated documentation assesses what modules are necessary (if any) beyond ClimaLand
 to rebuild the same model in another codespace, creates an API of any affiliated
-functions, and provides the actual written code for model bounds or any custom bound-types,
+functions, and/or provides the actual written code for model bounds or any custom bound-types,
 allowing for straightforward reproduction and reproducibility when sending saved models
 to new users, or implementing models in different languages/systems.
 
@@ -276,17 +280,20 @@ is then processed after declaring the type to create the _BOUND_TYPES_ entry for
 the functor type; see `construct_type_info!()`
 """
 macro bound_type(expr::Expr)
-    code_lines = string(Base.remove_linenums!(deepcopy(expr)))
-    code_str = "@bound_type " * _strip_location_comments(code_lines)
+    #get the string of the actual type's code:
+    code_lines = string(expr) #get the string
+    code_str = "@bound_type " * _strip_location_comments(code_lines) #strip out julia-added tags to the string
+
     @assert expr.head == :struct "@bound_type can only be applied to type declaration."
     type_name = expr.args[2] #skip mutability arg
-    while type_name isa Expr
+    #the name is always the base of the nested expression as a Symbol, so just iterate into expression until its not an expression anymore:
+    while type_name isa Expr 
         type_name = type_name.args[1]
     end
     type_data = :(Dict(:name => $(QuoteNode(type_name)), :code => $code_str))
     quote
-        Base.@__doc__ ($(esc(expr)))
-        ConstrainedNeuralModels.construct_type_info!(
+        Base.@__doc__ ($(esc(expr))) #declares the type, associating the provided docstring with it, if any
+        ConstrainedNeuralModels.construct_type_info!( #processes the type into _BOUND_TYPES_
             $(esc(type_name)),
             $(esc(type_data)),
         )
@@ -296,7 +303,7 @@ end
 """
    construct_type_info!(type::Type, data::Dict)
 
-Used by the @bound_type macro to process the information about
+Used by the `@bound_type` macro to process the information about
 a bound type and build its entry in _BOUND_TYPES_ after the type
 is declared and its docstring bound to the type. Collects and
 stores information like the types and names of the fields of
@@ -363,10 +370,12 @@ the needs of ConstrainedNeuralModels; see `construct_method_info!()`
 """
 macro bound(expr::Expr)
     func_expr = expr
-    code_lines = string(Base.remove_linenums!(deepcopy(func_expr)))
-    code_str = "@bound " * _strip_location_comments(code_lines)
+    #get the function's code as a string:
+    code_lines = string(expr)
+    code_str = "@bound " * _strip_location_comments(code_lines) #strip julia-added tags off the code string
 
     @assert func_expr.head in [:function, :(=)] "@bound can only be used on function definitions."
+    #get the name of the thing being defined, whether its a functor or method, and the declared return type:
     func_name, bound_type, ret_type_expr = _get_func_info(func_expr)
 
     func_data = :(Dict(
@@ -376,17 +385,21 @@ macro bound(expr::Expr)
         :ret_type => $ret_type_expr,
     ))
 
+    # Actually declare the function, and get the method associated with it and pass it to the check function:
+    # Methods are not necessarily added to Julia's function tables in order (i.e. not appended to the end), so
+    # the way to do this in a stable way (even if julia Base changes) is to compare what methods exist for the
+    # name before and after the function declaration (the odd one out is the new one):
     quote
         local _before = try
-            Set(get_methods($(esc(func_name))))
+            Set(get_methods($(esc(func_name)))) #get methods of the name before declaration (empty if no associated methods)
         catch
             Set{Method}()
         end
-        @inline Base.@__doc__ ($(esc(func_expr)))
-        local _after = Set(get_methods($(esc(func_name))))
-        local _new_method = setdiff(_after, _before)
+        @inline Base.@__doc__ ($(esc(func_expr))) #declare the function and make sure associated docstring is attached to it, if it exists
+        local _after = Set(get_methods($(esc(func_name)))) #find the methods after declaration
+        local _new_method = setdiff(_after, _before) #get the actual method
         @assert length(_new_method) == 1 "Expected exactly one new method"
-        ConstrainedNeuralModels.construct_method_info!(
+        ConstrainedNeuralModels.construct_method_info!( #run the check function on the new method
             $(QuoteNode(func_name)),
             first(_new_method),
             $(esc(func_data)),
@@ -401,7 +414,7 @@ Returns the list of methods of instances of a provided type (i.e. the
 functor methods of a given functor type), either in the entire codespace
 or within a specified module `mod`. This allows determination of the
 methods of a callable type without needing to first instantiate an example,
-which is otherwise necessary to see such methods with the Base.methods()
+which is otherwise necessary to see such methods with the `methods()`
 function and not visible with the methodswith() function.
 
 This is analagous to `methods()` for function names with multiple methods,
@@ -411,13 +424,13 @@ releases, at which point this function can be removed. For now, this implements
 a simplified version specifically for the needs of the module.
 """
 function instancemethods(t::Type, mod = nothing)
+    searchtype = Tuple{t, Vararg{Any}} #search for all methods involving this type and any other args
     world = Base.get_world_counter()
-    searchtype = Tuple{t, Vararg{Any}}
     m_list = Base._methods_by_ftype(searchtype, -1, world)
     ms = Method[]
+    #filter results by specified module:
     for m in m_list::Vector
-        m = m::Core.MethodMatch
-        (mod === nothing || parentmodule(m.method) ∈ mod) && push!(ms, m.method)
+        (isnothing(mod) || m.method.module ∈ mod) && push!(ms, m.method)
     end
     return ms
 end
@@ -446,19 +459,19 @@ end
     _strip_location_comments(str::AbstractString)
 
 A simple utility to filter out the the line and location
-numbers inherent to the string form of a code's abstract
-syntax tree (AST) via regex, leaving behind the same
-code as typed by the user. Used by @bound and @bound_type.
+numbers in the string form of a function's code
+via regex (i.e. just a regex filter on a string), leaving
+behind the same code as typed by the user. Used by
+`@bound` and `@bound_type`.
 """
 function _strip_location_comments(str::AbstractString)
-    replace(str, r"#=\s*[^=]*?:\d+\s*=#" => "")
+    replace(str, r"[ \t]*#=\s*[^=]*?:\d+\s*=#[ \t]*\n?" => "")
 end
 
 """
     _get_func_info(expr::Expr)
 
-Parses the abstract syntax tree (AST) of a declared
-function, to determine if a function declaration is
+Reads a declared function to determine if a function declaration is
 a function method (:FUNCTION) or a method of a callable
 type (:FUNCTOR), determine the declared return type of
 the function, and the name of the function (or callable
@@ -466,27 +479,36 @@ type) the method is declared for.
 """
 function _get_func_info(expr::Expr)
     sig = expr.args[1]
+    #defines return-type defaults if user hasn't declared it
     where_params = [:(nothing)]
     ret_type = :(nothing)
 
+    #All functions in julia with a parametric "where" will begin with the "where" Expr:
     if sig isa Expr && (sig.head == :where)
+        #get the "where" declaraton so the return-type is fully known
+        #(sig.args[1] is the actual function definition and return type, the rest pertains to the where)
         where_params = sig.args[2:end]
+        #go to the next part of the function:
         sig = sig.args[1]
     end
 
+    #If return type is delcared, all functions n julia will have that first as a head (func()::return_type, we look for the "::"):
     if sig isa Expr && (sig.head == :(::))
-        ret_type = Expr(:where, sig.args[2], where_params...)
+        #get the return type and combine it with the "where" if it exists (all but first arg pertain to this type)
+        ret_type = Expr(:where, sig.args[2:end]..., where_params...)
+        # go to the next part of the function (the actual name/args)
         sig = sig.args[1]
     end
 
+    #All declared functions in julia have all their names/args expressed as a :call expression:
     @assert sig isa Expr && sig.head == :call
-    if sig.args[1] isa Symbol #its a function method
+    if sig.args[1] isa Symbol #its a function method (the symbol is the function name)
         return sig.args[1], :FUNCTION, ret_type
-    elseif sig.args[1] isa Expr && sig.args[1].head == :(::) #functor
-        sig = sig.args[1].args[end]
-        if sig isa Symbol #basic type
+    elseif sig.args[1] isa Expr && sig.args[1].head == :(::) #its a functor, the head is not a name but instead a certain type (i.e. name is like "(::MyType)")
+        sig = sig.args[1].args[end] #skips the local name of the type's instance, if its defined, i.e. skips the "m" of `function (m::MyType)(pred, input)` since it is the first arg in a "::" expression
+        if sig isa Symbol #its a basic type (no parametric types at the end)
             return sig, :FUNCTOR, ret_type
-        else #parametric type, just need head type
+        else #its a parametric type (like "MyType{FT}"), in which case we just need the first part to get the type name
             return sig.args[1], :FUNCTOR, ret_type
         end
     else
@@ -509,20 +531,24 @@ be applied to each Type. Necessary in comparing method argument
 types or the signatures for particular docstrings.
 """
 function _get_argtypes(x::UnionAll, transform = nothing)
-    u = Base.unwrap_unionall(x)
+    u = x
+    #move the external parametric types into each arg:
+    while u isa UnionAll
+        u = u.body
+    end
     #get to the arg tuple (at the end)
     while u isa Union
-        u = u.b
+        u = u.b #unions are stored as nested {{a, b}, b}... so you get to the end
     end
     #now get the fieldtypes from the resulting data type
-    return _get_argtypes(u, transform)
+    return _get_argtypes(u, transform) #not recursive, just dispatched for readability (see below)
 end
 
 """
     _get_argtypes(x::Core.TypeofBottom, transform = nothing)
 
 Dispatched form of _get_argtypes() for the case of an empty
-signature (an instance Union{} of type Core.TypeofBottom).
+signature (an instance Union{}, which is type Core.TypeofBottom).
 """
 _get_argtypes(x::Core.TypeofBottom, transform = nothing) = ()
 
@@ -566,7 +592,7 @@ or working with Symbol inputs, when working in a subsidiary module of Main
 (e.g., you are running Main on a GPU), you will likely need to pass in_module = @__MODULE__
 to achieve the desired result.
 
-This is included since the @docs macro or Base.Docs module always returns
+This is included since the @docs macro or Docs module always returns
 ALL documentation associated with a particular binding, and does
 not build in the capability to grab the specific documentation of a particular
 signature. This is important in ConstrainedNeuralModels for attaching the
@@ -582,9 +608,9 @@ while no-arg nullary functions have signature Tuple{}).
 """
 function _get_declarative_docs(x; in_module::Union{Module, Nothing} = nothing)
     return try
-        cond_1 = x isa Type || x isa Module || x isa Function
+        cond_1 = x isa Type || x isa Module || x isa Function #parentmodule() only exists for these types
         cond_2 = isnothing(in_module)
-        mod = cond_2 ? (cond_1 ? parentmodule(x) : Main) : in_module #Can I replace "Main" and use the module from where the function was called from without using the in_module argument? Is that possible?
+        mod = cond_2 ? (cond_1 ? parentmodule(x) : Main) : in_module
         b = Docs.Binding(mod, bound_symbol(x))
         Docs.meta(mod)[b].docs[Union{}].text[1]
     catch
@@ -598,7 +624,7 @@ end
 Returns the documentation string pertaining specifically to the passed
 method, if it exists (and `nothing` otherwise).
 
-This method is included since the @docs macro or Base.Docs module always returns
+This method is included since the @docs macro or Docs module always returns
 ALL documentation relevant to a specified binding, even when specifying
 a particular signature type. `Docs.doc(binding, signature)` attempts to give
 ALL docs that might be relevant to the signature type, which can return
@@ -618,14 +644,14 @@ strings is consistent for finding the right docstring match.
 """
 function _get_doc_from_method(m::Method)
     mod = parentmodule(m)
-    binding = Docs.Binding(mod, m.name)
-    if haskey(Docs.meta(mod), binding)
-        docs_dict = Docs.meta(mod)[binding].docs
+    binding = Docs.Binding(mod, m.name) #get how Docs stores this item
+    if haskey(Docs.meta(mod), binding) #find it in that module's Docs
+        docs_dict = Docs.meta(mod)[binding].docs #return all docs associated with that item
     else
         return nothing
     end
     #strings to avoid comparison nuances bewteen identical UnionAll types
-    m_args = _get_argtypes(m.sig, string)[2:end] #self-arg is first for a method
+    m_args = _get_argtypes(m.sig, string)[2:end] #self-arg is first for a method, which is not in the Docs signature
     argtypes = _get_argtypes.(keys(docs_dict), string) #no self-args here
 
     idx = findfirst(==(m_args), argtypes)
@@ -641,7 +667,11 @@ end
     construct_method_info!(fname::Symbol, m::Method, data::Dict)
 
 Used by the @bound macro to check and process the user's declared bound
-method, before creating a corresponding entry in _BOUND_INFO_. 
+method and check compliance for usage in ClimaLand simulations,
+before creating a corresponding entry in _BOUND_INFO_. It is possible
+that the required forms of a bound function could evolve over time as ClimaLand
+develops, though all utilities functinoalities should be preserved with adequate
+changes to the compliance checks carried out within this function.
 
 Function args, as well as their input, output, and
 return types are checked, as well as their eltypes. Functor methods are first
@@ -650,14 +680,17 @@ method's associated docstring (if it exists), inferred evaluation mode, and
 other information are bundled and added to the valid methods in _BOUND_INFO_.
 """
 function construct_method_info!(fname::Symbol, m::Method, data::Dict)
-    #Test if bound method is sufficent
+    #Tests if bound method is compliant for usage in ClimaLand:
+    #1) check if the type is a valid bound, if its a FUNCTOR:
     if data[:class] == :FUNCTOR && !is_bound_type(fname)
         error("""
         Type `$(fname)` is not a valid bound functor type.
         Please make to define it with the @bound_type macro.
         """)
     end
-    if Base.method_argnames(m)[2:end] != [:pred, :input]
+    m_argnames = split(m.slot_syms, "\0", keepempty = false) #instead of using the (undocumented) Base.method_argnames()
+    #2) make sure the only args to the function are "pred" and "input":
+    if m_argnames[2:end] != ["pred", "input"]
         error(
             """
       Insufficient bound function. 
@@ -670,6 +703,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
         )
     end
     pred_type, inp_type = fieldtypes(m.sig)[2:3]
+    #3) Ensure user specified a return-type of their function:
     if isnothing(data[:ret_type])
         error(
             """
@@ -682,6 +716,8 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
       """,
         )
     end
+    #4) Check if user-specifed argtypes that will ruin the compiler's ability
+    # to specialize their float-type, making training immensely slow:
     generic_pred_check =
         occursin("<:AbstractFloat", string(pred_type)) &&
         !occursin("where", string(pred_type))
@@ -691,7 +727,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
     if generic_pred_check || generic_return_check
         @warn """
         Detected non-parametric generic float-type arg in $(m.name) args/return. Using 
-        generic types for the args and returns, like 
+        generic types for the args and returns, such as 
 
             (pred::AbstractArray{<:AbstractArray}, input::AbstractArray{<:AbstractFloat})::AbstractArray{<:AbstractFloat}
 
@@ -706,8 +742,10 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
 
         """
     end
+    #start with generic bound-type until conditions indicate otherwise:
     bound_type = (:generic, :dynamic)
     if nameof(pred_type) == nameof(SArray)
+        #5) Check if compliant with single-input :static evaluation:
         if pred_type <: SVector
             inp_check = SVector{1, <:AbstractFloat} <: pred_type
             out_check = data[:ret_type] <: AbstractFloat
@@ -718,6 +756,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
             """
             bound_type = (:single, :static)
         else
+        #6) Check if compliant with batched-input :static evaluation:
             inp_check =
                 SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} <: pred_type
             out_check = data[:ret_type] <: pred_type
@@ -730,6 +769,7 @@ and that the return type is the same type as `pred`.
             bound_type = (:batched, :static)
         end
     else
+        #7) If not generic but not :static, determine :dynamic type:
         if !(nameof(pred_type) in [nameof(AbstractArray), nameof(Array)])
             single_form = pred_type <: Vector{<:AbstractFloat}
             batched_form = pred_type <: Matrix{<:AbstractFloat}
@@ -747,6 +787,7 @@ and that the return type is the same type as `pred`.
             end
         end
     end
+    #8) Ensure return-type is compliant with the discovered bound-type (floats for :single, vs typeof(pred) for :batched)
     if bound_type[1] != :single && !(data[:ret_type] <: pred_type)
         error(
             """
@@ -755,6 +796,7 @@ and that the return type is the same type as `pred`.
      """,
         )
     end
+    #9) Ensure eltype of all args is the same
     t1 = eltype(pred_type) <: eltype(inp_type)
     t2 = eltype(data[:ret_type]) <: eltype(pred_type)
     @assert all([t1, t2]) """
@@ -762,6 +804,8 @@ and that the return type is the same type as `pred`.
     $((pred_type, inp_type)) satifies all args and return type having the same float type.
     """
 
+    #With a fully compliant bound, get the necessary info from the bound
+    #and add it to _BOUND_INFO_.
     docstring = _get_doc_from_method(m)
     data[:method] = m
     data[:docs] = docstring
@@ -837,11 +881,11 @@ get_modules(m::Module) = ccall(:jl_module_usings, Any, (Any,), m)
     assess_model_transferability(model::ConstrainedNeuralModel)
 
 Recursively checks all subcomponents of a passed ConstrainedNeuralModel
-to determine what modules and methods are needed for the model that
-are not capable within ClimaLand or this module. Makes use of the
-recursive `_check_children()` utility.
+to determine what modules (and methods, if `get_api_data = true`) are
+needed for the model that are not capable within ClimaLand or this module.
+Makes use of the recursive `_check_children()` utility.
 """
-function assess_model_transferability(model::ConstrainedNeuralModel)
+function assess_model_transferability(model::ConstrainedNeuralModel; get_api_data = false)
     base_list = vcat(
         Base,
         Core,
@@ -858,7 +902,7 @@ function assess_model_transferability(model::ConstrainedNeuralModel)
     )
     func_dict = Dict{Module, Dict{Type, Vector{Method}}}()
     for child in Flux.Functors.children(model)
-        _check_children(child, func_dict, compare_list)
+        _check_children(child, func_dict, compare_list, get_api_data)
     end
     #without knowing a concrete example of the input type, we can't
     #check @code_typed to see if other modules' methods get called
@@ -869,23 +913,23 @@ function assess_model_transferability(model::ConstrainedNeuralModel)
 end
 
 """
-    _check_children(child, data, comp_list)
+    _check_children(child, data, comp_list, get_api_data)
 
 Recursive function which assesses the modules associated with the
 types of all present fields and compares them to a provided
 comparison list. Any fieldtype not in the list makes a note for 
-the type and/or the module, along with noting all methods of that type,
-methods using that type, and instancemethods (see `instancemethods()`)
+the type and/or the module, and, if `get_api_data = true`,
+all methods of that type, methods using that type, and instancemethods (see `instancemethods()`)
 of the type. All subcomponents of the component are then additionally
 checked. These entries are aggregated downstream into an API provided in
 the ConstrainedNeuralModel structural save file for reproducibility (see
 `build_API()`).
 """
-function _check_children(child, data, comp_list)
+function _check_children(child, data, comp_list, get_api_data)
     child_type_source = parentmodule(typeof(child))
     if !(child_type_source in comp_list)
         child_data = typeof(child).name.wrapper
-        child_info = collect(
+        child_info = get_api_data ? collect(
             Set(
                 vcat(
                     collect(methods(child_data)),
@@ -893,7 +937,7 @@ function _check_children(child, data, comp_list)
                     collect(instancemethods(child_data)),
                 ),
             ),
-        )
+        ) : []
         if haskey(data, child_type_source)
             if !haskey(data[child_type_source], child_data)
                 data[child_type_source][child_data] = child_info
@@ -903,7 +947,7 @@ function _check_children(child, data, comp_list)
         end
     end
     for sub_child in Flux.Functors.children(child)
-        _check_children(sub_child, data, comp_list)
+        _check_children(sub_child, data, comp_list, get_api_data)
     end
     return nothing
 end
@@ -1079,20 +1123,18 @@ function build_model_metadata(
     needed_modules = filter(m -> !_is_under_main(m), keys(transfer_data))
     module_metadata = ifelse(
         length(needed_modules) > 0,
-        "The following modules in addition to ClimaLand are needed to load this model: $(join(needed_modules, ", "))",
-        "This model can be loaded directly with ClimaLand.ConstrainedNeuralModels without the addition of extra modules.",
+        "MODULE INFO: The following modules in addition to ClimaLand are needed to load this model: $(join(needed_modules, ", "))",
+        "MODULE INFO: This model can be loaded directly with ClimaLand.ConstrainedNeuralModels without the addition of extra modules.",
     )
     api_metadata = ifelse(
         need_api,
-        "No additional API necessary for this model.\n",
-        "An API for associated methods with this model exists in this file under the tag `:API`.\n",
+        "CUSTOM TYPES: No additional methods or types are necessary for loading this model.\n",
+        "CUSTOM TYPES: Additional methods or types are necessary for the loading of this ConstrainedNeuralModel. If user did not specify any custom metadata, contact them about necessary steps for loading the model.\n",
     )
-    api = need_api ? nothing : build_API(transfer_data)
-    bound_docs = build_bound_docs(m)
     custom_metadata = ifelse(
         creator_metadata == "",
-        "The creator has not specified any custom metadata for this model type.",
-        "The creator has specified the additional metadata for this model type:\n" *
+        "CREATOR METADATA: The creator has not specified any custom metadata for this model type.",
+        "CREATOR METADATA: The creator has specified the additional metadata for this model type:\n" *
         creator_metadata,
     )
     fixed_meta = get_fixed_layer_info(m)
@@ -1105,7 +1147,6 @@ function build_model_metadata(
         FLOAT TYPE: $(eltype(m.out_scale.sc))
         CONSTRAINT TYPE: $(nameof(typeof(m.constraints)))
 
-        $(bound_docs)
         $(fixed_meta)
 
         PREDICTIVE MODEL STRUCTURE:
@@ -1128,5 +1169,5 @@ function build_model_metadata(
 
         See `load_model()` documentation for more details."
         """
-    return m_meta, api
+    return m_meta
 end

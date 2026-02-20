@@ -13,6 +13,8 @@ export ConstrainedNeuralModel,
     make_dynamic_model,
     trainmodel!,
     inspect_model_metadata,
+    build_model_bound_documentation,
+    build_model_API,
     @bound,
     @bound_type
 
@@ -80,10 +82,13 @@ Sets the dimension output size for an UpperOnly constraint (for model output con
 """
     UpperOnly(bound)
 
-Constructs an UpperOnly constraint from a provided bound, first ensuring the bound
-has been designated as a bound and compliant for usage within the module.
+Constructs an UpperOnly constraint from a provided bound.
+If desired, one should try running with the `@bound` macro on their bound definition,
+to ensure the bound is compliant for usage within ClimaLand.
 """
 function buildUpper(bound)::UpperOnly
+    return UpperOnly{typeof(bound)}(bound)
+    #= remove valid bound check for construction:
     if is_valid_bound(bound)
         return UpperOnly{typeof(bound)}(bound)
     else
@@ -91,6 +96,7 @@ function buildUpper(bound)::UpperOnly
             "Valid upper bound functions must be specified with @bound macro.",
         )
     end
+    =#
 end
 
 """
@@ -113,15 +119,19 @@ Sets the dimension output size for an LowerOnly constraint (for model output con
 """
     LowerOnly(bound)
 
-Constructs an LowerOnly constraint from a provided bound, first ensuring the bound
-has been designated as a bound and compliant for usage within the module.
+Constructs an LowerOnly constraint from a provided bound.
+If desired, one should try running with the `@bound` macro on their bound definition,
+to ensure the bound is compliant for usage within ClimaLand.
 """
 function buildLower(bound)::LowerOnly
+    return LowerOnly{typeof(bound)}(bound)
+    #= remove valid bound check for construction:
     if is_valid_bound(bound)
         return LowerOnly{typeof(bound)}(bound)
     else
         error("Valid lower bound function must be specified with @bound macro.")
     end
+    =#
 end
 
 """
@@ -145,10 +155,16 @@ Sets the dimension output size for an TwoSided constraint (for model output cons
 """
     TwoSided(bound)
 
-Constructs a TwoSided constraint from provided bounds, first ensuring both bounds
-have been designated as a bound and compliant for usage within the module.
+Constructs a TwoSided constraint from provided bounds.
+If desired, one should try running with the `@bound` macro on their bound definitions,
+to ensure the bounds are compliant for usage within ClimaLand.
 """
 function buildTwoSided(upper_bound, lower_bound)::TwoSided
+    return TwoSided{typeof(upper_bound), typeof(lower_bound)}(
+            upper_bound,
+            lower_bound,
+        )
+    #= remove valid bound check for construction:
     if is_valid_bound(upper_bound) && is_valid_bound(lower_bound)
         return TwoSided{typeof(upper_bound), typeof(lower_bound)}(
             upper_bound,
@@ -157,6 +173,7 @@ function buildTwoSided(upper_bound, lower_bound)::TwoSided
     else
         error("Valid bound functions must be specified with @bound macro")
     end
+    =#
 end
 
 """
@@ -651,7 +668,19 @@ function ConstrainedNeuralModel(
     end
 
     constraints = buildConstraints(upper_bound, lower_bound)
-    if any(has_evaluation_mode.(Ref(constraints), [:static, :dynamic]))
+    #turn-off the bound compliance checking, leaving it optional to user:
+    #= if any(has_evaluation_mode.(Ref(constraints), [:static, :dynamic]))
+        below code...
+    else
+        error(
+            """
+      Provided constraint system is not sufficient for either static or dynamic usage.
+      Make sure provided bounds permit consistent evaluation type. See tutorial on
+      designing bounds for more details.
+      """,
+        )
+    end
+    =#
         use_scaling =
             isnothing(in_scales) ? NoScaling{FT}() :
             buildConstScaling(FT.(in_scales))
@@ -675,15 +704,6 @@ function ConstrainedNeuralModel(
             Val{trainable_constraints}(),
         )
         return model
-    else
-        error(
-            """
-      Provided constraint system is not sufficient for either static or dynamic usage.
-      Make sure provided bounds permit consistent evaluation type. See tutorial on
-      designing bounds for more details.
-      """,
-        )
-    end
 end
 
 """
@@ -743,6 +763,65 @@ function scale_model!(model::ConstrainedNeuralModel, mode::Symbol)
 end
 
 """
+    build_model_API(m::ConstrainedNeuralModel)
+
+Allows user to build the API of methods and types associated
+with a ConstrainedNeuralModel that are not immediately available within
+ClimaLand or this module. Could be used to pass as a custom metadata string
+within `save_model()`.
+
+Note: for this to work, one must make sure all method definitions of
+associated bounds are defined with the `@bound` macro, and all affiliated
+custom bound functor types are specified with the `@bound_type` macro.
+"""
+function build_model_API(m::ConstrainedNeuralModel)
+    #first check if bounds are valid for building an API:
+    bounds = get_bounds(m.constraints)
+    if all(is_valid_bound, bounds)
+        transfer_data = assess_model_transferability(m; get_api_data = true)
+        api = build_API(transfer_data)
+        return api
+    else
+        error(
+            """
+            This model's constraints must be specified with the @bound
+            and/or @bound_type macro to use this functionality. Specify
+            all bound methods with @bound and all custom types with @bound_type.
+            """
+        )        
+    end
+end
+
+"""
+    build_model_bound_documentation(m::ConstrainedNeuralModel)
+
+Allows user to build the documentation regarding the bounds of a 
+ConstrainedNeuralModel, to allow reproducibility if working with custom types
+that are not already defined within ClimaLand or this module. Could be
+used to pass as a custom metadata string within `save_model()`.
+
+Note: for this to work, one must make sure all method definitions of
+associated bounds are defined with the @bound macro, and all affiliated
+custom bound functor types are specified with the @bound_type macro.
+"""
+function build_model_bound_documentation(m::ConstrainedNeuralModel)
+    #first check if bounds are valid for building docs:
+    bounds = get_bounds(m.constraints)
+    if all(is_valid_bound, bounds)
+        bound_docs = build_bound_docs(m)
+        return bound_docs
+    else
+        error(
+            """
+            This model's constraints must be specified with the @bound
+            and/or @bound_type macro to use this functionality. Specify
+            all bound methods with @bound and all custom types with @bound_type.
+            """
+        ) 
+    end
+end
+
+"""
     save_model(
         model::ConstrainedNeuralModel,
         param_filepath::String
@@ -755,7 +834,8 @@ Saves the ConstrainedNeuralModel structure and parameters (separately) into JLD2
 to be saved and sent, or loaded into new systems. The splitting of parameters and structure into separate
 files allows the reconstruction of the same model using slightly different parameters (for example, in the
 case of fine-tuning a trained ConstrainedNeuralModel online within a larger climate simulation, where all
-sub-model parameter updates are calculated togther).
+sub-model parameter updates are calculated togther). The saved metadata also specifies any modules beyond
+ClimaLand and this module that are needed for the model to work.
 
 Fixed (SArray parameters) models can be saved as well as more generic models, though we recommend
 saving the more generic/dynamic (Array) form of a model and calling `make_static_model()` on the loaded
@@ -763,14 +843,15 @@ generic model, rather than saving the fixed model and calling `make_dynamic_mode
 
 NOTE: ConstrainedNeuralModels and any relevant user-specified functions/types for the model's constraints
 must be already defined in the importing codespace for a given model to load correctly. To aid with this,
-the model save files contain metadata explicitly articulating the code of their constraints (marked via
-the @bound and/or @bound_type macros), so such text could be pasted into the codepsace and permit model construction even
-if the original script that built it has been lost. The metadata also specifies any modules beyond ClimaLand
-and this module that need to be loaded for the model to work, as well as a generated API which identifies any nested/custom
-function calls or types (and their documentation) the model requires which do not exist in base julia, this module, and
-the ClimaLand modules. However, the code syntax for such additional API entries is not included, so we recommend informative
-docstrings be written for such methods (which will be captured in the save file) or supplying user-necessary information
-via the custom metadata string argument.
+one can use the `build_model_bound_documentation()` function to create metadata explicitly articulating 
+the code of their constraints (marked via the @bound and/or @bound_type macros), so such code (as text)
+could be pasted into the codepsace and permit model construction even if the original script that built
+it has been lost. One can also use the `build_model_API()` functionality to identify any nested/custom
+function calls or types (and their documentation) the model requires which do not exist in base julia,
+this module, and the ClimaLand modules, though this will not include code syntax. However, since the API
+stores documentation, we recommend circumventing this by including the code syntax or informative descriptions
+in their documentation. The API, bound documentation, and any custom user metadata can be combined to supply
+the string of either the `user_param_metadata` or `user_model_metadata` arguments.
 """
 function save_model(
     model::ConstrainedNeuralModel,
@@ -787,14 +868,13 @@ function save_model(
     )
     jldsave(param_filepath, trainable_params = ps, metadata = ps_metadata)
 
-    model_metadata, api =
+    model_metadata =
         build_model_metadata(model, user_model_metadata, param_filepath)
     jldsave(
         model_struct_filepath,
         build_func = build_func,
         metadata = model_metadata,
         accept_num_params = build_func.length,
-        API = api,
     )
     return nothing
 end
@@ -808,14 +888,15 @@ allowing one to inspect the file's metadata, or access the model's parameters or
 
 NOTE: ConstrainedNeuralModels and any relevant user-specified functions/types for the model's constraints
 must be already defined in the importing codespace for a given model to load correctly. To aid with this,
-the model save files contain metadata explicitly articulating the code of their constraints (marked via
-the @bound and/or @bound_type macros), so such text could be pasted into the codepsace and permit model construction even
-if the original script that built it has been lost. The metadata also specifies any modules beyond ClimaLand
-and this module that need to be loaded for the model to work, as well as a generated API which identifies any nested/custom
-function calls or types (and their documentation) the model requires which do not exist in base julia, this module, and
-the ClimaLand modules. However, the code for such additional API entries is not included, so we recommend informative
-docstrings be written for such methods (which will be captured in the structural save file) or supplying user-necessary
-information via the custom metadata string argument when saving a model.
+one can use the `build_model_bound_documentation()` function to create metadata explicitly articulating 
+the code of their constraints (marked via the @bound and/or @bound_type macros), so such code (as text)
+could be pasted into the codepsace and permit model construction even if the original script that built
+it has been lost. One can also use the `build_model_API()` functionality to identify any nested/custom
+function calls or types (and their documentation) the model requires which do not exist in base julia,
+this module, and the ClimaLand modules, though this will not include code syntax. However, since the API
+stores documentation, we recommend circumventing this by including the code syntax or informative descriptions
+in their documentation. The API, bound documentation, and any custom user metadata can be combined to supply
+the string of either the `user_param_metadata` or `user_model_metadata` arguments.
 """
 function load_model(filepath::String)
     return JLD2.load(filepath)
@@ -886,45 +967,51 @@ function inspect_model_metadata(data::Dict)
 end
 
 """
-    make_static_model(m::ConstrainedNeuralModel)
+    make_static_model(m::ConstrainedNeuralModel; skip_check = false)
 
 Returns a static (fixed) form of a more generic ConstrainedNeuralModel, for more optimal
-computational performance (using SArray parameters and inputs). Requires the model's
-constraints to be capable for static evaluation mode, which are assessed prior
-to returning the static model.
+computational performance (using SArray parameters and inputs).
+
+The default method mode requires the model's constraints to be capable for :static
+evaluation mode, which are assessed prior to returning the static model. This requires
+usage of the `@bound`/`@bound_type` macros around affiliated bounds and bound-types,
+though this check can be skipped by specifying `skip_check = true`.
 """
-function make_static_model(m::ConstrainedNeuralModel)
-    if has_evaluation_mode(m.constraints, :static)
+function make_static_model(m::ConstrainedNeuralModel; skip_check = false)
+    if skip_check || has_evaluation_mode(m.constraints, :static)
         return Adapt.adapt_structure(SArray, m)
     else
         error(
             """
   Insufficient bounds to make a static model for this model type.
   Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
-  with the @bound for all model bounds.
+  with the @bound for all model bounds, or specify `skip_check = true` to skip this step.
       """,
         )
     end
 end
 
 """
-    make_dynamic_model(m::ConstrainedNeuralModel)
+    make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
 
 Returns a more generic form of a static ConstrainedNeuralModel, in order to permit
 further prototyping on an otherwise static model (e.g., a saved/loaded fixed model,
 though we recommend saving the generic model and calling make_static_model after loading).
-Requires the model's constraints to be capable for dynamic evaluation mode, which are assessed
-prior to returning the dynamic model.
+
+The default method mode requires the model's constraints to be capable for :dynamic
+evaluation mode, which are assessed prior to returning the dynamic model. This requires
+usage of the `@bound`/`@bound_type` macros around affiliated bounds and bound-types,
+though this check can be skipped by specifying `skip_check = true`.
 """
-function make_dynamic_model(m::ConstrainedNeuralModel)
-    if has_evaluation_mode(m.constraints, :dynamic)
+function make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
+    if skip_check || has_evaluation_mode(m.constraints, :dynamic)
         return Adapt.adapt_structure(Array, m)
     else
         error(
             """
   Insufficient bounds to make a static model for this model type.
   Make sure adequate methods for Array or AbstractArray inputs have been defined
-  with the @bound macro for all model bounds.
+  with the @bound macro for all model bounds, or specify `skip_check = true` to skip this step.
       """,
         )
     end

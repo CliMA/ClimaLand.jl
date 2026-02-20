@@ -400,8 +400,6 @@ if !isnothing(SNOTELScraperExt)
             return pred .+ input[1]
         end
 
-        #show the docs dict at this point
-
         upper_funct = up_functor(1, Matrix{FT}([1;;]), FT(4))
 
         test_code = "@bound_type struct up_functor\n    a::Int\n    b::AbstractMatrix{FT}\n    c::FT\nend"
@@ -565,8 +563,6 @@ if !isnothing(SNOTELScraperExt)
         """
         test_declare_var = 3
 
-        #Would probably appreciate some help in coming up with more pathological examples,
-        #to make sure this function is accomplishing what I want it to:
         @test CNM._get_argtypes(m_low.sig) ==
               (typeof(lower), AbstractArray{Float32}, AbstractArray{Float32})
         #parametric types without explicitly defined T in codespace means we need to compare these as strings,
@@ -741,13 +737,13 @@ if !isnothing(SNOTELScraperExt)
             f = [1, 2, 3],
         )
         test_list = [Flux, Base, Core] #the test should return whatever @__MODULE__ is, on account of TestType, with one method, but that's it
-        CNM._check_children(test_tree, test_dict, test_list)
+        CNM._check_children(test_tree, test_dict, test_list, true)
         @test collect(keys(test_dict)) == [in_module]
         @test collect(keys(test_dict[in_module])) == [TestType]
         @test Set(test_dict[in_module][TestType]) ==
               Set(collect(methods(TestType)))
 
-        trans_data = CNM.assess_model_transferability(CNM3)
+        trans_data = CNM.assess_model_transferability(CNM3, get_api_data = true)
         @test collect(keys(trans_data)) == [in_module]
         @test collect(keys(trans_data[in_module])) == [up_functor]
         up_methods = Set(trans_data[in_module][up_functor])
@@ -776,6 +772,7 @@ if !isnothing(SNOTELScraperExt)
         use_api_str = in_module == Main ? api_str_cpu : api_str_gpu
         check_api = CNM.build_API(trans_data)
         @test use_api_str == check_api
+        @test CNM.build_model_API(CNM3) == use_api_str
 
         fl_1_str = CNM.get_fixed_layer_info(CNM1)
         fl_2_str = CNM.get_fixed_layer_info(CNM2)
@@ -819,7 +816,10 @@ if !isnothing(SNOTELScraperExt)
         return pred[1] - input[1]\nend\n\n"
         check_bound_docs = CNM.build_bound_docs(CNM2)
         @test check_bound_docs == bound_docs_str
+        @test CNM.build_model_bound_documentation(CNM2) == bound_docs_str
         temp_1 = CNM.build_model_metadata(CNM3, "", "") #don't need to check the output, but call it to make sure it doesn't error.
+
+
 
         xs = rand(FT, 3, 1100)
         ys = (3 .* xs[1, :] .+ 1 .+ xs[2, :] .- xs[3, :])
