@@ -5,7 +5,7 @@ changes to the compliance checks carried out within `construct_method_info!()`, 
 
 The following functions are primarily used for automated handling, checking,
 and documenting of different bounds and types that are compliant with the ConstrainedNeuralModel
-architecture, and not their operation. This automates many bound compliance nuances away from the user, and enables
+architecture, and not their operation. This automates some bound compliance nuances away from the user, and enables
 straightforward and reproducible model types and documentation in accordance with
 our new conventions regarding neural parameterizations (see: https://github.com/CliMA/ClimaParams.jl/issues/277)
 
@@ -14,7 +14,8 @@ macros, respectively, which handle automated assessment of bound capabilities wi
 configurations of ConstrainedNeuralModel types, and can inform the user on how to edit
 bounds if specified bounds are non-compliant. The resulting info is stored in the module's
 _BOUND_INFO_ or _BOUND_TYPES_ dictionaries, which are queried to build model metadata
-and model documentation for model saving/storage via a call to `build_model_metadata()`.
+and model documentation for model saving/storage via calls to
+build_model_bound_documentation() or build_model_API().
 
 Automated documentation assesses what modules are necessary (if any) beyond ClimaLand
 to rebuild the same model in another codespace, creates an API of any affiliated

@@ -190,7 +190,7 @@ pred_model = Chain(
 # though this does not necessarily mean that the upper bound at any input `x` must be higher than the lower bound at any other input `y!=x`.
 
 # This tutorial details a case study for the creation of a 1D model with small `Vector` inputs, however,
-# `ConstrainedNeuralModels` can be used for multidimensional input and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
+# `ConstrainedNeuralModels` can be used for multidimensional inputs and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
 # your prediction model to send all outputs to a 1×N `Matrix` (and a corresponding flattening/ordering inside of your constraint
 # functions), with compliant constraint functions, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
 
@@ -219,8 +219,6 @@ const dt::Float32 = FT(Dates.value(Δt))
 )::AbstractArray{T} where {T <: AbstractFloat}
     return -input[z_idx, :]' ./ dt  #outputs as a row matrix
 end
-
-classes, CNM.get_bound_evaluation_modes(CNM.get_bound_info(SDLowerBound))
 
 # > *NOTE*: the functions here are specified with argtypes AND return types of `AbstractArray{T}` instead of
 # > each being specified as `AbstractArray{<:AbstractFloat}`, so that the compiler knows all arg and
