@@ -420,14 +420,14 @@ function and not visible with the methodswith() function.
 
 This is analagous to `methods()` for function names with multiple methods,
 except with functor types. This has been a much-requested addition to Base julia
-(https://github.com/JuliaLang/julia/pull/52304) and will likely exist in future
+(https://github.com/JuliaLang/julia/pull/52304) and might exist in future
 releases, at which point this function can be removed. For now, this implements
 a simplified version specifically for the needs of the module.
 """
 function instancemethods(t::Type, mod = nothing)
     searchtype = Tuple{t, Vararg{Any}} #search for all methods involving this type and any other args
     world = Base.get_world_counter()
-    m_list = Base._methods_by_ftype(searchtype, -1, world)
+    m_list = Base._methods_by_ftype(searchtype, -1, world) #same underlying syntax used by `methods()` but using a different search-type, so it should be a relatively stable function
     ms = Method[]
     #filter results by specified module:
     for m in m_list::Vector
@@ -493,7 +493,7 @@ function _get_func_info(expr::Expr)
         sig = sig.args[1]
     end
 
-    #If return type is delcared, all functions n julia will have that first as a head (func()::return_type, we look for the "::"):
+    #If return type is delcared, all functions in julia will have that return type next as a head (func()::return_type, we look for the "::"):
     if sig isa Expr && (sig.head == :(::))
         #get the return type and combine it with the "where" if it exists (all but first arg pertain to this type)
         ret_type = Expr(:where, sig.args[2:end]..., where_params...)
@@ -671,7 +671,7 @@ Used by the @bound macro to check and process the user's declared bound
 method and check compliance for usage in ClimaLand simulations,
 before creating a corresponding entry in _BOUND_INFO_. It is possible
 that the required forms of a bound function could evolve over time as ClimaLand
-develops, though all utilities functinoalities should be preserved with adequate
+develops, though all utilities functionality should be preserved with adequate
 changes to the compliance checks carried out within this function.
 
 Function args, as well as their input, output, and
@@ -917,9 +917,9 @@ comparison list. Any fieldtype not in the list makes a note for
 the type and/or the module, and, if `get_api_data = true`,
 all methods of that type, methods using that type, and instancemethods (see `instancemethods()`)
 of the type. All subcomponents of the component are then additionally
-checked. These entries are aggregated downstream into an API provided in
-the ConstrainedNeuralModel structural save file for reproducibility (see
-`build_API()`).
+checked. These entries are aggregated downstream into an API should it be
+added to the ConstrainedNeuralModel structural save file for
+reproducibility (see `build_API()`, `build_model_API()`).
 """
 function _check_children(child, data, comp_list, get_api_data)
     child_type_source = parentmodule(typeof(child))
@@ -1127,7 +1127,7 @@ function build_model_metadata(
     api_metadata = ifelse(
         need_api,
         "CUSTOM TYPES: No additional methods or types are necessary for loading this model.\n",
-        "CUSTOM TYPES: Additional methods or types are necessary for the loading of this ConstrainedNeuralModel. If user did not specify any custom metadata, contact them about necessary steps for loading the model.\n",
+        "CUSTOM TYPES: Additional methods or types are necessary for the loading of this ConstrainedNeuralModel. If creator did not specify any custom metadata, contact them about necessary steps for loading the model.\n",
     )
     custom_metadata = ifelse(
         creator_metadata == "",

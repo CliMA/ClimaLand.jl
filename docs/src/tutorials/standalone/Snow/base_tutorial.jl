@@ -159,10 +159,10 @@ pred_model = Chain(
 # |---|---|---|
 # | `pred::T1` | `T1 <: Vector{FT}` (length 1) | `T1 <: Matrix{FT}` (size (1, N)) |
 # | `input::T2` | `T2 <: AbstractArray{FT}` | `T2 <: AbstractArray{FT}` |
-# | return | `::FT` | ::T1 |
+# | return | `::FT` | `::T1` |
 
 # | **:static** Mode | **`:single`** | **`:batched`** |
-# |---|---|---|---|
+# |---|---|---|
 # | `pred::T1` | `T1 >: SVector{1, FT}` | `T1 >: SMatrix{1, N, FT, N} where {N<:Int}` |
 # | `input::T2` | `T2 <: StaticArray{S, FT} where {S}` | `T2 <: StaticArray{S, FT} where {S}` |
 # | return | `::FT` | `::T1` |
@@ -173,15 +173,13 @@ pred_model = Chain(
 # need to be specified in the function specifically like the above, but are instead shown to indicate viable types
 # for each class or broadest/minimal specification. When working with `:generic` systems, to work with the module it is recommended that:
 
-# - The predictive model output a float scalar, or a type satisfying `<: VecOrMat{FT}` in a flattened row-like manner,
-# (e.g., a length-1 `Vector`, or a single-row 1×N `Matrix`, instead of column (N×1, or like a length-N `Vector`) or many-dimension types.
+# - The predictive model output a float scalar, or a type satisfying `<: VecOrMat{FT}` in a flattened row-like manner, (e.g., a length-1 `Vector`, or a single-row 1×N `Matrix`, instead of column (N×1, or like a length-N `Vector`) or many-dimension types.
 
-# - The constraint function be able to receive the input and output types of your predictive model, and output a similar type to
-# that of the predictive model
+# - The constraint function be able to receive the input and output types of your predictive model, and output a similar type to that of the predictive model
 
 # - The eltype of the predictive model input, output, and constraint model output be the same.
 
-# The internals of the function do not truly matter as long as the output configuration is compliant and eltypes are consistent, enabling a wide variety of
+# The internals of the function do not truly matter as long as the output configuration is compliant and `eltype`s are consistent, enabling a wide variety of
 # possible functions. Functions that require additional parameters, or are a function of external data, etc., are also possible though
 # the creation of functor methods (create a type `MyConstraintType` with the necessary fields, and create a functor method `function (x::MyType)(pred, input)`
 # that calls on and makes use of the necessary internal fields). For optimal performance on GPUs when creating `static` methods,
@@ -243,6 +241,7 @@ end
 function make_lower_bound(FT::Type{<:AbstractFloat}, z_idx::Int, Δt::Period)
     return SDLowerBound{FT}(z_idx, Ref(FT(-1 / Dates.value(Dates.Second(Δt)))))
 end
+
 ## could dispatch on type: here is a `:batched` version
 @bound function (b::SDLowerBound)(
     pred::Matrix{T},
@@ -266,7 +265,7 @@ end
 
 lowerb = make_lower_bound(Float32, z_idx, Δt);
 
-# With functor type constraints, the possibilities of constraint types for `ConstrainedNeuralModels` is greatly expanded,
+# With functor constraints, the possibilities of constraint types for `ConstrainedNeuralModels` is greatly expanded,
 # with virtually no limits to the types of data, mutable or fixed types, parameters, and additional methods (like `set_time_step!()`,
 # so it could be altered before/during/after training) for abstract constraint functionality and form.
 # In this case, we highly suggest such additional methods are well-documented, so that if using `@bound` and `@bound_type`
