@@ -978,16 +978,16 @@ usage of the `@bound`/`@bound_type` macros around affiliated bounds and bound-ty
 though this check can be skipped by specifying `skip_check = true`.
 """
 function make_static_model(m::ConstrainedNeuralModel; skip_check = false)
-    if skip_check || has_evaluation_mode(m.constraints, :static)
-        return Adapt.adapt_structure(SArray, m)
-    else
-        error(
-            """
-  Insufficient bounds to make a static model for this model type.
-  Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
-  with the @bound for all model bounds, or specify `skip_check = true` to skip this step.
-      """,
-        )
+    try
+        if skip_check || has_evaluation_mode(m.constraints, :static)
+            return Adapt.adapt_structure(SArray, m)
+        end
+    catch e
+        error("""
+    Uncertainty in constraints for making a static model for this model type.
+    Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
+    with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
+        """)
     end
 end
 
@@ -1004,16 +1004,16 @@ usage of the `@bound`/`@bound_type` macros around affiliated bounds and bound-ty
 though this check can be skipped by specifying `skip_check = true`.
 """
 function make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
-    if skip_check || has_evaluation_mode(m.constraints, :dynamic)
-        return Adapt.adapt_structure(Array, m)
-    else
-        error(
-            """
-  Insufficient bounds to make a static model for this model type.
-  Make sure adequate methods for Array or AbstractArray inputs have been defined
-  with the @bound macro for all model bounds, or specify `skip_check = true` to skip this step.
-      """,
-        )
+    try
+        if skip_check || has_evaluation_mode(m.constraints, :dynamic)
+            return Adapt.adapt_structure(Array, m)
+        end
+    catch e
+        error("""
+    Uncertainty in constraints for making a dynamic model for this model type.
+    Make sure adequate methods for <:Array or AbstractArray inputs have been defined
+    with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
+        """)    
     end
 end
 

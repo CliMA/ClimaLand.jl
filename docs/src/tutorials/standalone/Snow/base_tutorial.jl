@@ -156,8 +156,8 @@ pred_model = Chain(
 
 #md |  | **`:single`** | **`:batched`** | **`:generic`** |  |
 #md |---|---|---|---|---|
-#md | **`:static`** | - `SVector{1, FT} <: typeof(pred)` /  \n-`typeof(input) <: StaticArray{S, FT} where {S}`<br/>\n- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`\n- `typeof(input) <: StaticArray{S, FT} where {S}`\n- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
-#md | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`\  \n- `typeof(input) <: AbstractArray{FT}`\n- `return::FT` | - `pred :< Matrix{FT}`\n- `input <: AbstractArray{FT}`\n- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`\n- `typeof(input) <: AbstractArray{FT}`\n- `return::AbstractArray{FT}` |  |
+#md | **`:static`** | - `SVector{1, FT} <: typeof(pred)` \n-`typeof(input) <: StaticArray{S, FT} where {S}`  \n- `return::FT` | - `SMatrix{1, N, FT, N} where {N<:Int} <: typeof(pred)`  \n- `typeof(input) <: StaticArray{S, FT} where {S}`  \n- `return::typeof(pred)` | **X** _(Cannot have arbitrarily sized static arrays)_ |  |
+#md | **`:dynamic`** | - `typeof(pred) <: Vector{FT}`  \n- `typeof(input) <: AbstractArray{FT}`  \n- `return::FT` | - `pred :< Matrix{FT}`  \n- `input <: AbstractArray{FT}`  \n- `return::typeof(pred)` | - `typeof(pred) <: AbstractArray{FT}`  \n- `typeof(input) <: AbstractArray{FT}`  \n- `return::AbstractArray{FT}` |  |
 
 # html```
 # <table>
