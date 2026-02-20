@@ -5,7 +5,7 @@ import LinearAlgebra
 import LinearAlgebra: I
 
 export make_jacobian,
-    make_compute_jacobian, set_dfluxBCdY!, FieldMatrixWithSolver
+    make_compute_jacobian, set_dfluxBCdY!, make_land_field_matrix
 
 """
     make_jacobian(model::AbstractModel)
@@ -68,11 +68,10 @@ function set_dfluxBCdY!(
 )::Union{ClimaCore.Fields.FieldVector, Nothing} end
 
 """
-    FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
+    make_land_field_matrix(Y::ClimaCore.Fields.FieldVector)
 
-Outer constructor for the FieldMatrixWithSolver Jacobian
-matrix struct. This extends the constructor from ClimaCore.FieldMatrix,
-filling the object with ClimaLand-specific values.
+Constructs a `MatrixFields.FieldMatrixWithSolver` Jacobian matrix
+populated with ClimaLand-specific values based on the state vector `Y`.
 
 For variables that will be stepped implicitly, the Jacobian matrix
 is a tridiagonal matrix. For variables that will be stepped explicitly,
@@ -84,7 +83,7 @@ All implicitly-stepped variables of the model should be added to the
 `implicit_names` tuple, and any explicitly-stepped variables should be added
 to the `explicit_names` tuple.
 """
-function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
+function make_land_field_matrix(Y::ClimaCore.Fields.FieldVector)
     FT = eltype(Y)
     # Only add jacobian blocks for fields that are in Y for this model
     is_in_Y(var) = MatrixFields.has_field(Y, var)

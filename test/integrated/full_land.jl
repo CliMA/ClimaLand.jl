@@ -539,7 +539,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         @info("testing Jacobian updates")
 
         jacobian! = ClimaLand.make_jacobian(land)
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y)
+        jac_prototype = ClimaLand.make_land_field_matrix(Y)
 
         # Check that the jacobian update respects the mask
         jacobian!(jac_prototype, Y, p, Δt, t0)

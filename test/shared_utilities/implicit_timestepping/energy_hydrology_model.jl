@@ -78,7 +78,7 @@ for FT in (Float32, Float64)
             params.earth_param_set,
         )
         # We do not set the initial aux state here because we want to test that it is updated correctly in the jacobian correctly.
-        jacobian = ClimaLand.FieldMatrixWithSolver(Y)
+        jacobian = ClimaLand.make_land_field_matrix(Y)
         jac_tendency! = make_jacobian(soil)
         update_cache! = make_update_cache(soil)
         dtγ = FT(1.0)

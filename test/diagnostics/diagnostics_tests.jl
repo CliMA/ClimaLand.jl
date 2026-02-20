@@ -316,7 +316,7 @@ end
         Returns(nothing)
     ClimaLand.make_compute_jacobian(::ClimaLand.LandModel) = Returns(nothing)
     Y, _, _ = initialize(model)
-    ClimaLand.FieldMatrixWithSolver(::typeof(Y)) =
+    ClimaLand.make_land_field_matrix(::typeof(Y)) =
         ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "ct", "sco2"]

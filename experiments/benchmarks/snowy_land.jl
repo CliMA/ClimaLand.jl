@@ -143,7 +143,7 @@ function setup_prob(
 
     # set up jacobian info
     jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+        jac_prototype = ClimaLand.make_land_field_matrix(Y),
         Wfact = jacobian!,
     )
 
