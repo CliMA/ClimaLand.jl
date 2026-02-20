@@ -163,9 +163,21 @@ end
 Reads Fluxnet CSV data for the provided site, and returns a tuple `(data, columns)`
 where `data` is a `n_rows x n_cols` Matrix of the data, and `columns` is a
 `1 x n_cols` Matrix of column names.
+
+This function now supports both standard Fluxnet sites and CalMIP sites.
+For CalMIP sites (e.g., "DK-Sor"), it uses the callmip_data_path function.
 """
 function read_fluxnet_data(site_ID)
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    # Check if this is a CalMIP site
+    callmip_sites = ("DK-Sor",)  # Add more CalMIP sites here as needed
+
+    if site_ID ∈ callmip_sites
+        fluxnet_csv_path = ClimaLand.Artifacts.callmip_data_path(site_ID)
+    else
+        fluxnet_csv_path =
+            ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+    end
+
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
 
     return (data, columns)
