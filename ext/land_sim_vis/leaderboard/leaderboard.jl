@@ -452,6 +452,33 @@ function compute_seasonal_leaderboard(
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),
     )
+
+    # Note: Changing the order things are added to this figure
+    # may result in an error depending on the GeoMakie version.
+    # See https://github.com/MakieOrg/GeoMakie.jl/issues/330
+
+    # Add a title
+    titlelayout = CairoMakie.GridLayout(
+        fig_sim_ann[-1, 1:length(groups)],
+        halign = :center,
+        tellwidth = false,
+    )
+    CairoMakie.Label(
+        titlelayout[1, 1],
+        "Time average for simulation and bias data\nexcluding spin up ($spin_up_months months)",
+        fontsize = 40,
+    )
+
+    # Plot the labels for the short names
+    for (col_idx, group) in enumerate(groups)
+        CairoMakie.Label(
+            fig_sim_ann[0, col_idx],
+            group,
+            tellwidth = false,
+            fontsize = 30,
+        )
+    end
+
     for (row_idx, short_name) in enumerate(short_names)
         CairoMakie.Label(
             fig_sim_ann[row_idx, 0],
@@ -484,28 +511,6 @@ function compute_seasonal_leaderboard(
             end
         end
     end
-
-    # Plot the labels for the short names
-    for (col_idx, group) in enumerate(groups)
-        CairoMakie.Label(
-            fig_sim_ann[0, col_idx],
-            group,
-            tellwidth = false,
-            fontsize = 30,
-        )
-    end
-
-    # Add a title
-    titlelayout = CairoMakie.GridLayout(
-        fig_sim_ann[-1, 1:length(groups)],
-        halign = :center,
-        tellwidth = false,
-    )
-    CairoMakie.Label(
-        titlelayout[1, 1],
-        "Time average for simulation and bias data\nexcluding spin up ($spin_up_months months)",
-        fontsize = 40,
-    )
 
     CairoMakie.save(
         joinpath(
