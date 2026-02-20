@@ -5,18 +5,18 @@
 # in training artificial intelligence models for seasonal snow forecasting.
 # The code below contains a basic version of the code used to produce
 # `training_data.csv`, which is used in the [base tutorial](base_tutorial.md) for snow forecasting,
-# as well as the [Charbonneau2024](@citet). However, exploration of the optional arguments
+# as well as the [Charbonneau2025](@citet) paper. However, exploration of the optional arguments
 # or requesting of alternative [SNOTEL data codes](https://www.nrcs.usda.gov/wps/portal/wcc/home/dataAccessHelp/webService/webServiceReference#elementCodes) offers
 # additional utility in creating alternative data sets for further investigation.
 
 # We begin by importing all required packages:
 using ClimaLand
-using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, BSON
+using DataFrames, Downloads, Dates, Statistics
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "BSON", and "ClimaLand"
+# be loaded only if "DataFrames", "Downloads", "Statistics", and "ClimaLand"
 # are loaded.
-DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
+DataTools = Base.get_extension(ClimaLand, :SNOTELScraperExt).DataTools;
 
 # We first extract a `DataFrame` matching station ID to various station metadata,
 # in order to automate some of the scraping process and pass some station
@@ -88,7 +88,7 @@ scales = Dict{Symbol, Real}(
 # to yield the full dataset (if special cases are handled) found in
 # `training_data.csv` used in the [base tutorial](base_tutorial.md). Stations were
 # selected based upon their availability of the features utilized in
-# creating the model used in the [Charbonneau2024](@citet):
+# creating the model used in the [Charbonneau2025](@citet) paper:
 
 # - `*` Indicates alternative handling of the `rectify_daily_hourly()` function.
 
@@ -231,9 +231,9 @@ good_stations = Dict{Int, Tuple{String, String}}(
 # end
 # ```
 
-# and a final `CSV.write("data.csv", totaldata)` call will
+# and a final `DataTools.save_df(totaldata, "data.csv")` call will
 # save the file.
 
 # Many of the functions above contain default or optional arguments which can
 # be explored to obtain a richer set of functionality, or implement some of
-# the special cases mentioned above. Such options can be explored in the [code documentation](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/neural_snow/DataTools.jl).
+# the special cases mentioned above. Such options can be explored in the [code documentation](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/data_scraping/DataTools.jl).
