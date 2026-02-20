@@ -262,8 +262,8 @@ end
 end
 
 ##could make methods to set the time-step value:
-function set_time_step!(b::SDLowerBound{T}, dt::Real) where {T<:AbstractFloat}
-    b.negative_one_over_Δt[] = T(-1/dt)
+function set_time_step!(b::SDLowerBound{T}, dt::Real) where {T <: AbstractFloat}
+    b.negative_one_over_Δt[] = T(-1 / dt)
 end
 
 lowerb = make_lower_bound(Float32, z_idx, Δt);

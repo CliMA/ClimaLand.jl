@@ -287,7 +287,7 @@ macro bound_type(expr::Expr)
     @assert expr.head == :struct "@bound_type can only be applied to type declaration."
     type_name = expr.args[2] #skip mutability arg
     #the name is always the base of the nested expression as a Symbol, so just iterate into expression until its not an expression anymore:
-    while type_name isa Expr 
+    while type_name isa Expr
         type_name = type_name.args[1]
     end
     type_data = :(Dict(:name => $(QuoteNode(type_name)), :code => $code_str))
@@ -756,7 +756,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
             """
             bound_type = (:single, :static)
         else
-        #6) Check if compliant with batched-input :static evaluation:
+            #6) Check if compliant with batched-input :static evaluation:
             inp_check =
                 SMatrix{1, N, <:AbstractFloat, N} where {N <: Int} <: pred_type
             @assert inp_check """
@@ -771,7 +771,7 @@ function construct_method_info!(fname::Symbol, m::Method, data::Dict)
         if pred_type <: Vector{<:AbstractFloat}
             @assert data[:ret_type] <: AbstractFloat "Ensure dynamic single-input function $(m.name) returns a float."
             bound_type = (:single, :dynamic)
-        #8) If not-static and batched, check compliance:
+            #8) If not-static and batched, check compliance:
         elseif pred_type <: Matrix{<:AbstractFloat}
             bound_type = (:batched, :dynamic)
         end
@@ -877,7 +877,10 @@ to determine what modules (and methods, if `get_api_data = true`) are
 needed for the model that are not capable within ClimaLand or this module.
 Makes use of the recursive `_check_children()` utility.
 """
-function assess_model_transferability(model::ConstrainedNeuralModel; get_api_data = false)
+function assess_model_transferability(
+    model::ConstrainedNeuralModel;
+    get_api_data = false,
+)
     base_list = vcat(
         Base,
         Core,
@@ -921,15 +924,17 @@ function _check_children(child, data, comp_list, get_api_data)
     child_type_source = parentmodule(typeof(child))
     if !(child_type_source in comp_list)
         child_data = typeof(child).name.wrapper
-        child_info = get_api_data ? collect(
-            Set(
-                vcat(
-                    collect(methods(child_data)),
-                    collect(methodswith(child_data)),
-                    collect(instancemethods(child_data)),
+        child_info =
+            get_api_data ?
+            collect(
+                Set(
+                    vcat(
+                        collect(methods(child_data)),
+                        collect(methodswith(child_data)),
+                        collect(instancemethods(child_data)),
+                    ),
                 ),
-            ),
-        ) : []
+            ) : []
         if haskey(data, child_type_source)
             if !haskey(data[child_type_source], child_data)
                 data[child_type_source][child_data] = child_info

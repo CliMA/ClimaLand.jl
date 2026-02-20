@@ -161,9 +161,9 @@ to ensure the bounds are compliant for usage within ClimaLand.
 """
 function buildTwoSided(upper_bound, lower_bound)::TwoSided
     return TwoSided{typeof(upper_bound), typeof(lower_bound)}(
-            upper_bound,
-            lower_bound,
-        )
+        upper_bound,
+        lower_bound,
+    )
     #= remove valid bound check for construction:
     if is_valid_bound(upper_bound) && is_valid_bound(lower_bound)
         return TwoSided{typeof(upper_bound), typeof(lower_bound)}(
@@ -690,29 +690,29 @@ function ConstrainedNeuralModel(
         )
     end
     =#
-        use_scaling =
-            isnothing(in_scales) ? NoScaling{FT}() :
-            buildConstScaling(FT.(in_scales))
-        use_out =
-            isnothing(out_scale) ? buildScaleOutput(FT(1)) :
-            buildScaleOutput(FT(out_scale))
-        use_layers =
-            isnothing(fixed_layers) ? default_fixed_layers(constraints, FT) :
-            convert_model(fixed_layers, FT)
+    use_scaling =
+        isnothing(in_scales) ? NoScaling{FT}() :
+        buildConstScaling(FT.(in_scales))
+    use_out =
+        isnothing(out_scale) ? buildScaleOutput(FT(1)) :
+        buildScaleOutput(FT(out_scale))
+    use_layers =
+        isnothing(fixed_layers) ? default_fixed_layers(constraints, FT) :
+        convert_model(fixed_layers, FT)
 
-        use_pred = convert_model(pred, FT)
+    use_pred = convert_model(pred, FT)
 
-        model = ConstrainedNeuralModel(
-            use_pred,
-            constraints,
-            use_scaling,
-            use_out,
-            use_layers,
-            deepcopy(use_layers[1].weight), #base fixed layer matrix for resets after training-based scaling
-            isnothing(fixed_layers),
-            Val{trainable_constraints}(),
-        )
-        return model
+    model = ConstrainedNeuralModel(
+        use_pred,
+        constraints,
+        use_scaling,
+        use_out,
+        use_layers,
+        deepcopy(use_layers[1].weight), #base fixed layer matrix for resets after training-based scaling
+        isnothing(fixed_layers),
+        Val{trainable_constraints}(),
+    )
+    return model
 end
 
 """
@@ -731,9 +731,11 @@ function set_predictive_model_out_scale!(
     set_predictive_model_out_scale!(): Cannot set the predictive model's scaling constant to 0.
     """
     if nameof(typeof(model.fixed_layers[1].weight)) == :SArray
-        throw(ArgumentError(
-            "Cannot set the output scaling of a fixed (static) model.",
-        ))
+        throw(
+            ArgumentError(
+                "Cannot set the output scaling of a fixed (static) model.",
+            ),
+        )
     end
     model.out_scale.sc[1] = FT(scale)
     return nothing
@@ -764,9 +766,11 @@ function scale_model!(model::ConstrainedNeuralModel, mode::Symbol)
     elseif mode == :reset
         model.fixed_layers[1].weight .= model.initial_fixed_layer
     else
-        throw(ArgumentError(
-            "scale_model!(): Possible modes are :reset or :scaled_train, mode `$(mode)` not recognized.",
-        ))
+        throw(
+            ArgumentError(
+                "scale_model!(): Possible modes are :reset or :scaled_train, mode `$(mode)` not recognized.",
+            ),
+        )
     end
     return nothing
 end
@@ -796,8 +800,8 @@ function build_model_API(m::ConstrainedNeuralModel)
             This model's constraints must be specified with the @bound
             and/or @bound_type macro to use this functionality. Specify
             all bound methods with @bound and all custom types with @bound_type.
-            """
-        )        
+            """,
+        )
     end
 end
 
@@ -825,8 +829,8 @@ function build_model_bound_documentation(m::ConstrainedNeuralModel)
             This model's constraints must be specified with the @bound
             and/or @bound_type macro to use this functionality. Specify
             all bound methods with @bound and all custom types with @bound_type.
-            """
-        ) 
+            """,
+        )
     end
 end
 
@@ -992,11 +996,13 @@ function make_static_model(m::ConstrainedNeuralModel; skip_check = false)
             return Adapt.adapt_structure(SArray, m)
         end
     catch e
-        error("""
-    Uncertainty in constraints for making a static model for this model type.
-    Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
-    with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
-        """)
+        error(
+            """
+  Uncertainty in constraints for making a static model for this model type.
+  Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
+  with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
+      """,
+        )
     end
 end
 
@@ -1018,11 +1024,13 @@ function make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
             return Adapt.adapt_structure(Array, m)
         end
     catch e
-        error("""
-    Uncertainty in constraints for making a dynamic model for this model type.
-    Make sure adequate methods for <:Array or AbstractArray inputs have been defined
-    with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
-        """)    
+        error(
+            """
+  Uncertainty in constraints for making a dynamic model for this model type.
+  Make sure adequate methods for <:Array or AbstractArray inputs have been defined
+  with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
+      """,
+        )
     end
 end
 
