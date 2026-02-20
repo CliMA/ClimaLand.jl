@@ -73,10 +73,10 @@ for FT in (Float32, Float64)
 
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
-        @test model.soil == soil
-        @test model.soilco2 == soilco2
-        @test model.canopy == canopy
-        @test model.snow == snow
+        @test model.soil === soil
+        @test model.soilco2 === soilco2
+        @test model.canopy === canopy
+        @test model.snow === snow
     end
 
     @testset "LandModel with no soilco2 model constructor, FT=$FT" begin
@@ -123,10 +123,10 @@ for FT in (Float32, Float64)
 
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
-        @test model.soil == soil
+        @test model.soil === soil
         @test isnothing(model.soilco2)
-        @test model.canopy == canopy
-        @test model.snow == snow
+        @test model.canopy === canopy
+        @test model.snow === snow
         Y, p, cds = initialize(model)
         @test !hasproperty(Y, :soilco2)
         @test ClimaLand.land_components(model) == (:soil, :snow, :canopy)
@@ -539,7 +539,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         @info("testing Jacobian updates")
 
         jacobian! = ClimaLand.make_jacobian(land)
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y)
+        jac_prototype = ClimaLand.initialize_jacobian(Y)
 
         # Check that the jacobian update respects the mask
         jacobian!(jac_prototype, Y, p, Δt, t0)

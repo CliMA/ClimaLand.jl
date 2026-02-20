@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- Run tests on julia 1.12 instead of 1.11 PR[#1650](https://github.com/CliMA/ClimaLand.jl/pull/1650)
 - Create set ic functions for the bucket PR[#1644](https://github.com/CliMA/ClimaLand.jl/pull/1644)
 - Add CRUJRA forcing PR[#1624](https://github.com/CliMA/ClimaLand.jl/pull/1624)
 - ![breaking change][badge-💥breaking] Unify radiation for bucket and integrated land PR[#1630](https://github.com/CliMA/ClimaLand.jl/pull/1630)
