@@ -985,6 +985,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_subsurface_runoff!(out, Y, p, t, land_model),
     )
 
+    # Total runoff
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "tr",
+        long_name = "Total Runoff",
+        standard_name = "total_runoff",
+        units = "m s^-1",
+        comments = "Total water runoff (surface + subsurface)",
+        compute! = (out, Y, p, t) ->
+            compute_total_runoff!(out, Y, p, t, land_model),
+    )
+
     ## Stored in Y (prognostic or state variables) ##
 
     # Canopy temperature
