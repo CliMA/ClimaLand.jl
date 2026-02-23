@@ -31,6 +31,8 @@ ClimaLand.prescribed_perturbed_temperature_era5
 ClimaLand.prescribed_perturbed_rh_era5
 ClimaLand.prescribed_analytic_forcing
 ClimaLand.net_radiation!
+ClimaLand.net_sw_radiation!
+ClimaLand.net_lw_radiation!
 ClimaLand.get_drivers
 ClimaLand.make_update_drivers
 ```

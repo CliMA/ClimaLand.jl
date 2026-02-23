@@ -908,7 +908,7 @@ of `ClimaLand.source!` for soil sublimation; treated implicitly
 in ϑ_l, ρe_int but explicitly in θ_i.
 """
 @kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 """
     source!(dY::ClimaCore.Fields.FieldVector,
