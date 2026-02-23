@@ -317,7 +317,9 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
 
     # Precipitation: split into rain and snow using Jennings et al. (2018) logistic model
     # (same approach as prescribed_forcing_fluxnet)
-    # Precip is already a flux (kg/m²/s); ClimaLand convention is negative = downward
+    # Precip from NetCDF is a flux in kg/m²/s; PrescribedAtmosphere expects m/s.
+    # Convert: m/s = (kg/m²/s) / ρ_liq (kg/m³)
+    _ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
     function compute_rain_snow(T_K, q, P, precip_flux)
         T_C = T_K - 273.15
         # Compute RH from specific humidity, pressure, and temperature
@@ -329,8 +331,8 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
         RH = clamp(e / esat, 0.0, 1.0)
         # Jennings et al. (2018) logistic rain/snow split
         snow_frac = 1.0 / (1.0 + exp(-10.04 + 1.41 * T_C + 0.09 * RH))
-        rain = -precip_flux * (1.0 - snow_frac)
-        snow = -precip_flux * snow_frac
+        rain = -precip_flux / _ρ_liq * (1.0 - snow_frac)
+        snow = -precip_flux / _ρ_liq * snow_frac
         return (rain, snow)
     end
 
