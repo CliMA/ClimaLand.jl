@@ -33,7 +33,7 @@ end
       ClimaLand.Soil.AtmosDrivenFluxBC
 @test land_model.soil.boundary_conditions.top.prognostic_land_components ==
       (:snow, :soil)
-src = ClimaLand.SoilSublimationwithSnow{FT}()
+src = ClimaLand.PartialAreaSoilSublimation{FT}()
 @test src ∈ land_model.soil.sources
 @test ClimaLand.get_drivers(land_model) == (atmos, radiation)
 # Set initial conditions for a case with *no snow on ground*
@@ -79,6 +79,7 @@ set_initial_cache!(p, Y, t)
 @test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
 set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
+p_soil_alone.bare_soil_fraction .= 1 .- p_soil_alone.snow.snow_cover_fraction
 set_soil_initial_cache!(p_soil_alone, Y, t)
 @test p.soil.top_bc == p_soil_alone.soil.top_bc
 dY_soil_snow = deepcopy(Y) .* 0

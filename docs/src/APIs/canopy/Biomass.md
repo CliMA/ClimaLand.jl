@@ -27,4 +27,11 @@ ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
 ClimaLand.Canopy.prescribed_climatological_lai_modis
 ClimaLand.Canopy.update_biomass!
+ClimaLand.Canopy.mask_biomass!(p, prognostic_land_components)
+ClimaLand.Canopy.mask_biomass!(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},},
+   ) where {FT}
 ```
