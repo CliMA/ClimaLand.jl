@@ -188,12 +188,14 @@ function LandModel{FT}(
     },
     Δt;
     prognostic_land_components = (:canopy, :snow, :soil),
+    inland_water_mask = nothing,
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        inland_water_mask,
     ),
     soilco2 = :soilco2 in prognostic_land_components ?
               Soil.Biogeochemistry.SoilCO2Model{FT}(
@@ -262,12 +264,14 @@ function LandModel{FT}(
     },
     Δt;
     prognostic_land_components = (:canopy, :snow, :soil),
+    inland_water_mask = nothing,
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        inland_water_mask,
     ),
     soilco2 = :soilco2 in prognostic_land_components ?
               Soil.Biogeochemistry.SoilCO2Model{FT}(

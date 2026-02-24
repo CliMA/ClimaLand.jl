@@ -96,6 +96,51 @@ function set_soil_initial_conditions!(
 end
 
 """
+    apply_inland_water_ic!(Y, soil, inland_water_mask_subsurface)
+
+Override soil initial conditions at inland water grid points.
+Sets liquid water content to porosity (saturated) and ice content to zero.
+
+The `inland_water_mask_subsurface` must be a ClimaCore Field on the
+subsurface space (same as `Y.soil`).
+"""
+function apply_inland_water_ic!(Y, soil, inland_water_mask_subsurface)
+    (; ν) = soil.parameters
+    water_ic(val, mask, replacement) =
+        mask == 1.0 ? eltype(val)(replacement) : val
+    # Saturate: ϑ_l = ν at water points
+    Y.soil.ϑ_l .=
+        water_ic.(Y.soil.ϑ_l, inland_water_mask_subsurface, ν)
+    # No ice at water points (start unfrozen; model will freeze if cold)
+    Y.soil.θ_i .=
+        water_ic.(Y.soil.θ_i, inland_water_mask_subsurface, eltype(Y.soil.θ_i)(0))
+    # Recompute internal energy for consistency at water points
+    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        soil.parameters.ρc_ds,
+        soil.parameters.earth_param_set,
+    )
+    T = ClimaLand.Soil.temperature_from_ρe_int.(
+        Y.soil.ρe_int,
+        Y.soil.θ_i,
+        ρc_s,
+        soil.parameters.earth_param_set,
+    )
+    Y.soil.ρe_int .= water_ic.(
+        Y.soil.ρe_int,
+        inland_water_mask_subsurface,
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            soil.parameters.earth_param_set,
+        ),
+    )
+    return nothing
+end
+
+"""
     clip_to_bounds(
     T::FT,
     lb::FT,
@@ -232,6 +277,7 @@ function make_set_initial_state_from_file(
     ic_path,
     land::LandModel{FT};
     enforce_constraints = false,
+    inland_water_mask = nothing,
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
@@ -261,6 +307,15 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # Apply inland water IC overrides (saturate soil at water points)
+        if !isnothing(inland_water_mask)
+            iw_subsurface = ClimaLand.Soil.surface_to_subsurface(
+                inland_water_mask,
+                land.soil.domain.space.subsurface,
+            )
+            apply_inland_water_ic!(Y, land.soil, iw_subsurface)
+        end
 
         # Snow IC
         # Use soil temperature at top to set IC
@@ -367,6 +422,7 @@ function make_set_initial_state_from_file(
     ic_path,
     land::SoilCanopyModel{FT};
     enforce_constraints = false,
+    inland_water_mask = nothing,
 ) where {FT}
     function set_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
@@ -394,6 +450,16 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # Apply inland water IC overrides (saturate soil at water points)
+        if !isnothing(inland_water_mask)
+            iw_subsurface = ClimaLand.Soil.surface_to_subsurface(
+                inland_water_mask,
+                land.soil.domain.space.subsurface,
+            )
+            apply_inland_water_ic!(Y, land.soil, iw_subsurface)
+        end
+
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
@@ -471,6 +537,7 @@ function make_set_initial_state_from_file(
     ic_path,
     model::ClimaLand.Soil.EnergyHydrology{FT};
     enforce_constraints = false,
+    inland_water_mask = nothing,
 ) where {FT}
     function set_ic!(Y, p, t0, model)
         atmos = model.boundary_conditions.top.atmos
@@ -492,6 +559,14 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+        # Apply inland water IC overrides (saturate soil at water points)
+        if !isnothing(inland_water_mask)
+            iw_subsurface = ClimaLand.Soil.surface_to_subsurface(
+                inland_water_mask,
+                model.domain.space.subsurface,
+            )
+            apply_inland_water_ic!(Y, model, iw_subsurface)
+        end
     end
     return set_ic!
 end

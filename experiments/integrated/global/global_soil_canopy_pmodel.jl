@@ -66,6 +66,12 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     use_lowres_forcing = true,
 )
 
+# Inland water mask — override soil parameters at lake/river grid points
+iw_mask = ClimaLand.Domains.inland_water_mask(
+    surface_space;
+    filepath = joinpath(pkgdir(ClimaLand), "IMERG_land_sea_mask.nc"),
+)
+
 soil_forcing = (; atmos, radiation)
 soil = Soil.EnergyHydrology{FT}(
     domain,
@@ -73,6 +79,7 @@ soil = Soil.EnergyHydrology{FT}(
     toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
+    inland_water_mask = iw_mask,
 )
 
 # Soil microbes model
