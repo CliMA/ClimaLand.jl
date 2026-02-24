@@ -872,7 +872,7 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "hr",
         long_name = "Heterotrophic Respiration",
         standard_name = "heterotrophic_respiration",
-        units = "mol m^-2 s^-1",
+        units = "mol CO2 m^-2 s^-1",
         comments = "The CO2 efflux at the soil surface due to microbial decomposition of soil organic matter. This is not necessarily equal to CO2 production by microbes, as co2 diffusion through the soil pores takes time.",
         compute! = (out, Y, p, t) ->
             compute_heterotrophic_respiration!(out, Y, p, t, land_model),
