@@ -20,6 +20,7 @@ apis = [
         "Stomatal Conductance" => "APIs/canopy/StomatalConductance.md",
         "Autotrophic Respiration" => "APIs/canopy/AutotrophicRespiration.md",
     ],
+    "Inland Water Models" => "APIs/InlandWater.md",
     "Surface Water Models" => "APIs/SurfaceWater.md",
     "Bucket Model" => "APIs/Bucket.md",
     "Snow Model" => "APIs/Snow.md",

@@ -113,6 +113,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(snow.Qrel_avg),
         @name(snow.u_avg),
         @name(snow.A),
+        @name(lake.U),
     )
 
     # Filter out the variables that are not in this model's state, `Y`

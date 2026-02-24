@@ -628,6 +628,12 @@ end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)
 end
+function get_possible_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
+    return ["lkie", "tlake", "qlake"]
+end
+function get_short_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
+    return ["tlake"]
+end
 function get_short_diagnostics(model::SoilCanopyModel)
     component_diagnostics =
         get_component_diagnostics(model, get_short_diagnostics)

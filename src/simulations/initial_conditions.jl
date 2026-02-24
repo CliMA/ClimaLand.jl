@@ -251,7 +251,7 @@ function make_set_initial_state_from_file(
     land::LandModel{FT};
     enforce_constraints = false,
 ) where {FT}
-    function set_ic!(Y, p, t0, land)
+    function set_land_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
@@ -354,8 +354,13 @@ function make_set_initial_state_from_file(
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
+
+        # Lake IC
+        if !isnothing(land.lake)
+            set_ic!(Y, p, t0, land.lake)
+        end
     end
-    return set_ic!
+    return set_land_ic!
 end
 
 """
@@ -412,6 +417,7 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
@@ -809,6 +815,35 @@ function make_set_initial_state_from_atmos_and_parameters(
         end
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
 
+        # Lake IC
+        if !isnothing(land.lake)
+            set_ic!(Y, p, t0, land.lake)
+        end
+
     end
     return set_ic!
+end
+
+"""
+    set_ic!(Y, p, t0, model::ClimaLand.InlandWater.SlabLakeModel{FT}) where {FT}
+
+Set initial conditions for the slab lake model.
+The lake energy is initialised from the atmospheric temperature (`p.drivers.T`),
+masked by the inland water fraction field stored in the model.
+"""
+function set_ic!(
+    Y,
+    p,
+    t0,
+    model::ClimaLand.InlandWater.SlabLakeModel{FT},
+) where {FT}
+    earth_param_set = model.parameters.earth_param_set
+    f = model.inland_water_mask
+    @. Y.lake.U =
+        f * ClimaLand.InlandWater.lake_energy_from_temperature(
+            p.drivers.T,
+            model.parameters,
+            earth_param_set,
+        )
+    return nothing
 end

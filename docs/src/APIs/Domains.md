@@ -21,4 +21,5 @@ ClimaLand.Domains.top_face_to_surface
 ClimaLand.Domains.linear_interpolation_to_surface!
 ClimaLand.Domains.get_Δz
 ClimaLand.Domains.average_horizontal_resolution_degrees
+ClimaLand.Domains.surface_to_subsurface
 ```
