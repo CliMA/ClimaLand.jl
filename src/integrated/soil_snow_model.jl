@@ -124,6 +124,7 @@ lsm_aux_vars(m::SoilSnowModel) = (
     :sfc_scratch,
     :subsfc_scratch,
     :effective_soil_sfc_depth,
+    :bare_soil_fraction,
 )
 """
     lsm_aux_types(m::SoilSnowModel)
@@ -131,7 +132,8 @@ lsm_aux_vars(m::SoilSnowModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilSnowModel{FT}) where {FT} =
+    (FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilSnowModel)
@@ -139,8 +141,16 @@ lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_domain_names(m::SoilSnowModel) =
-    (:surface, :surface, :surface, :surface, :surface, :subsurface, :surface)
+lsm_aux_domain_names(m::SoilSnowModel) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :subsurface,
+    :surface,
+    :surface,
+)
 
 """
     make_update_boundary_fluxes(
@@ -172,6 +182,7 @@ function make_update_boundary_fluxes(
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
+        @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
         # First compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
@@ -381,10 +392,9 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.water =
         p.soil.infiltration +
         p.excess_water_flux +
-        (1 - p.snow.snow_cover_fraction) *
-        p.soil.turbulent_fluxes.vapor_flux_liq
+        p.bare_soil_fraction * p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        (1 - p.snow.snow_cover_fraction) * (
+        p.bare_soil_fraction * (
             p.soil.R_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
@@ -412,7 +422,7 @@ function Soil.compute_liquid_influx(
 )
     return @. lazy(
         p.snow.water_runoff * p.snow.snow_cover_fraction +
-        (1 - p.snow.snow_cover_fraction) * p.drivers.P_liq,
+        p.bare_soil_fraction * p.drivers.P_liq,
     )
 end
 
@@ -456,7 +466,7 @@ function Soil.compute_infiltration_energy_flux(
     return @. lazy(
         infiltration_fraction * (
             p.drivers.P_liq *
-            (1 - p.snow.snow_cover_fraction) *
+            p.bare_soil_fraction *
             Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
             p.snow.energy_runoff * p.snow.snow_cover_fraction
         ),
@@ -464,26 +474,23 @@ function Soil.compute_infiltration_energy_flux(
 end
 
 function ClimaLand.Soil.sublimation_source(::Val{(:snow, :soil)}, FT)
-    return SoilSublimationwithSnow{FT}()
+    return PartialAreaSoilSublimation{FT}()
 end
 
 """
-    SoilSublimationwithSnow{FT} <: AbstractSoilSource{FT}
+    PartialAreaSoilSublimation{FT} <: AbstractSoilSource{FT}
 
 Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation with snow present;
-treated implicitly
-in ϑ_l, ρe_int but explicitly in θ_i.
-
+of `ClimaLand.source!` for soil sublimation with snow or lakes present.
 """
-@kwdef struct SoilSublimationwithSnow{FT} <:
+@kwdef struct PartialAreaSoilSublimation{FT} <:
               ClimaLand.Soil.AbstractSoilSource{FT}
     explicit::Bool = false
 end
 
 """
     source!(dY::ClimaCore.Fields.FieldVector,
-            src::SoilSublimationwithSnow{FT},
+            src::PartialAreaSoilSublimation{FT},
             Y::ClimaCore.Fields.FieldVector,
             p::NamedTuple,
             model
@@ -494,7 +501,7 @@ the surface layer of soil.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::SoilSublimationwithSnow{FT},
+    src::PartialAreaSoilSublimation{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     model,
@@ -504,12 +511,10 @@ function ClimaLand.source!(
     z = model.domain.fields.z
     Δz_top = model.domain.fields.Δz_top # this returns the center-face distance, not layer thickness
     @. dY.soil.θ_i +=
-        -p.soil.turbulent_fluxes.vapor_flux_ice *
-        (1 - p.snow.snow_cover_fraction) *
-        _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
+        -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction * _ρ_l /
+        _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
     @. dY.soil.∫F_vol_liq_water_dt +=
-        -p.soil.turbulent_fluxes.vapor_flux_ice *
-        (1 - p.snow.snow_cover_fraction) # The integral of the source is designed to be this
+        -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction # The integral of the source is designed to be this
     return nothing
 end
 

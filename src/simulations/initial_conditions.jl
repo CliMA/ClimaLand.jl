@@ -355,6 +355,10 @@ function make_set_initial_state_from_file(
             Y.canopy.energy.T .= p.drivers.T
         end
 
+        # Lake IC
+        if !isnothing(land.lake)
+            set_lake_initial_conditions!(Y, p, t0, land.lake)
+        end
     end
     return set_land_ic!
 end
@@ -810,6 +814,11 @@ function make_set_initial_state_from_atmos_and_parameters(
             Y.canopy.energy.T .= p.drivers.T
         end
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+
+        # Lake IC
+        if !isnothing(land.lake)
+            set_lake_initial_conditions!(Y, p, t0, land.lake)
+        end
     end
     return set_ic!
 end
@@ -820,7 +829,7 @@ end
 Set initial conditions for the slab lake model.
 
 The lake energy is initialised using the atmospheric temperature (`p.drivers.T`),
-masked by the inland water fraction field stored in the model; it assumes that this has already
+We assume that this has already
 been updated in the case where the atmosphere model is a CoupledAtmosphere.
 """
 function set_lake_initial_conditions!(

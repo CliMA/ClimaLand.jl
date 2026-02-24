@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- ![][badge-✨feature] Add slab lake model to integrated models PR[#1672](https://github.com/CliMA/ClimaLand.jl/pull/1672)
 - always use hi-resolution PFT maps and soil albedo map PR[#1697](https://github.com/CliMA/ClimaLand.jl/pull/1697)
 - change limits on leaderboard annual plots PR[#1698](https://github.com/CliMA/ClimaLand.jl/pull/1698)
 - add standalone lake model PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
@@ -23,7 +24,6 @@ v1.6.3
 
 v1.6.2
 -----
-
 - Update compat to SurfaceFluxes 1.0 PR[#1668](https://github.com/CliMA/ClimaLand.jl/pull/1668)
 - Clean up pkgversion checks and set ClimaDiagnostics in compat to 0.3 PR[#1676](https://github.com/CliMA/ClimaLand.jl/pull/1676)
 

@@ -29,8 +29,6 @@ include("shared_utilities/boundary_conditions.jl")
 include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_timestepping.jl")
 include("standalone/Bucket/Bucket.jl")
-include("standalone/InlandWater/InlandWater.jl")
-
 
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
@@ -424,6 +422,9 @@ import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
 import .Snow: snow_boundary_fluxes!
+include("standalone/InlandWater/InlandWater.jl")
+using .InlandWater
+import .InlandWater: lake_boundary_fluxes!
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics
@@ -433,7 +434,8 @@ import .Canopy:
     ground_albedo_NIR,
     canopy_radiant_energy_fluxes!,
     root_energy_flux_per_ground_area!,
-    update_piecewise_soil_moisture_stress!
+    update_piecewise_soil_moisture_stress!,
+    mask_biomass!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
@@ -441,6 +443,7 @@ include("integrated/pond_soil_model.jl")
 include("integrated/soil_canopy_model.jl")
 include("integrated/soil_snow_model.jl")
 include("integrated/land.jl")
+include("integrated/lake_land_interactions.jl")
 include("integrated/soil_canopy_root_interactions.jl")
 include("integrated/land_radiation.jl")
 

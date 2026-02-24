@@ -9,9 +9,8 @@ export prescribed_lai_era5,
     prescribed_lai_modis,
     PrescribedAreaIndices,
     update_biomass!,
-    ZhouOptimalLAIModel
-
-
+    ZhouOptimalLAIModel,
+    mask_biomass!
 
 """
      prescribed_lai_era5(era5_lai_ncdata_path,
@@ -302,7 +301,21 @@ function update_biomass!(
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
+    mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
 end
+
+"""
+    mask_biomass!(p, prognostic_land_components)
+
+Default method of setting LAI/RAI/SAI to zero where there
+cannot be canopy; does nothing.
+
+Currently, this is only does something when a lake model
+is included in integrated models, as we cannot have 
+vegetation over a lake, and the lake masks may not be consistent with
+the biomass model.
+"""
+mask_biomass!(p, prognostic_land_components) = nothing
 
 """
     root_distribution(z::FT, rooting_depth::FT)
@@ -498,6 +511,7 @@ function update_biomass!(
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
+    mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
 end
 
 """
