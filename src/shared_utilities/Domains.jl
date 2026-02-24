@@ -1243,6 +1243,87 @@ end
 
 
 """
+    inland_water_mask(
+        surface_space;
+        filepath,
+        varname = "landseamask",
+        threshold = 20.0,
+        landsea_mask = nothing,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+       interpolation_method = Interpolations.Constant()
+    )
+
+Reads a land fraction dataset from `filepath`, regrids to the
+`surface_space`, and identifies inland water points.
+
+A point is classified as inland water if its land fraction is below
+`threshold`. If a `landsea_mask` is provided (binary field: 1 = land,
+0 = ocean), only points that are classified as land in the `landsea_mask`
+but have a land fraction below `threshold` are marked as inland water.
+This ensures ocean points are not double-counted.
+
+For example, with the IMERG land-sea mask (0-100% land fraction), a
+`threshold` of 50 means any grid point with < 50% land fraction that
+is inside the simulation's land domain is treated as inland water.
+
+Returns a binary ClimaCore Field: 1 = inland water, 0 = land/ocean.
+Returns `nothing` for Point/Column domains (no horizontal extent).
+"""
+function inland_water_mask(
+    surface_space;
+    filepath,
+    varname = "landseamask",
+    threshold = 20.0,
+    landsea_mask = nothing,
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    land_frac = SpaceVaryingInput(
+        filepath,
+        varname,
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    # Points with low land fraction are water-like
+    is_low_land_frac = apply_threshold_below.(land_frac, threshold)
+    if isnothing(landsea_mask)
+        return is_low_land_frac
+    else
+        # Only mark as inland water if the simulation treats it as land
+        # (landsea_mask == 1) but the land fraction data says it's watery
+        return is_low_land_frac .* landsea_mask
+    end
+end
+
+apply_threshold_below(field, value) =
+    field < value ? eltype(field)(1) : eltype(field)(0)
+
+# Points and Columns do not have a horizontal dim, so a horizontal mask cannot be applied
+inland_water_mask(domain::Union{Point, Column}; kwargs...) = nothing
+
+function inland_water_mask(
+    domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
+    filepath,
+    kwargs...,
+)
+    # HybridBox and Plane domains might not have longlat, which is needed for the mask
+    (hasproperty(domain, :longlat) && isnothing(domain.longlat)) &&
+        return nothing
+    return inland_water_mask(domain.space.surface; filepath, kwargs...)
+end
+
+"""
     global_domain(
         FT;
         apply_mask = true,

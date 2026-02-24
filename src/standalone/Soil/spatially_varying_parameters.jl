@@ -368,3 +368,126 @@ function topmodel_fmax(
     f_max = masked_to_value.(f_max, topmodel_params_mask, FT(0))
     return f_max
 end
+
+"""
+    surface_to_subsurface(surface_field, subsurface_space)
+
+Extend a surface Field to all levels of the subsurface space,
+producing a subsurface Field where every vertical level has the
+same value as the surface field at that horizontal location.
+"""
+function surface_to_subsurface(surface_field, subsurface_space)
+    subsurface_field = ClimaCore.Fields.zeros(subsurface_space)
+    N = ClimaCore.Spaces.nlevels(subsurface_space)
+    for i in 1:N
+        ClimaCore.Fields.level(subsurface_field, i) .= surface_field
+    end
+    return subsurface_field
+end
+
+"""
+    apply_inland_water_overrides!(
+        retention_params,
+        composition_params,
+        inland_water_mask_subsurface,
+        FT,
+    )
+
+Override soil retention and composition parameters at inland water grid points
+(where `inland_water_mask_subsurface == 1`) so that the soil column mimics open
+water behavior.
+
+At inland water points:
+- `ν` → 0.95 (high porosity, water-like)
+- `K_sat` → 1e-3 m/s (ensures free drainage / stays saturated)
+- `θ_r` → 0.0 (no residual water)
+- `hydrology_cm` → van Genuchten with α=100.0, n=2.0 (minimal matric potential)
+- `ν_ss_om`, `ν_ss_quartz`, `ν_ss_gravel` → 0.0 (pure "mineral" skeleton)
+
+The `inland_water_mask_subsurface` must be a Field on the subsurface space
+(same as the parameter fields). The parameters are modified in-place.
+"""
+function apply_inland_water_overrides!(
+    retention_params::NamedTuple,
+    composition_params::NamedTuple,
+    inland_water_mask_subsurface,
+    FT,
+)
+    water_override(field, mask, value) =
+        mask == 1.0 ? eltype(field)(value) : field
+
+    # Override retention parameters
+    retention_params.ν .= water_override.(
+        retention_params.ν,
+        inland_water_mask_subsurface,
+        FT(0.95),
+    )
+    retention_params.K_sat .= water_override.(
+        retention_params.K_sat,
+        inland_water_mask_subsurface,
+        FT(1e-3),
+    )
+    retention_params.θ_r .= water_override.(
+        retention_params.θ_r,
+        inland_water_mask_subsurface,
+        FT(0.0),
+    )
+
+    # Override van Genuchten parameters: high α (large pores), low n
+    function vg_water(hcm::vanGenuchten{T}, mask) where {T}
+        mask == 1.0 ?
+            vanGenuchten{T}(; α = T(100.0), n = T(2.0)) : hcm
+    end
+    retention_params.hydrology_cm .= vg_water.(
+        retention_params.hydrology_cm,
+        inland_water_mask_subsurface,
+    )
+
+    # Override composition parameters (set to zero: pure mineral/water)
+    composition_params.ν_ss_om .= water_override.(
+        composition_params.ν_ss_om,
+        inland_water_mask_subsurface,
+        FT(0.0),
+    )
+    composition_params.ν_ss_quartz .= water_override.(
+        composition_params.ν_ss_quartz,
+        inland_water_mask_subsurface,
+        FT(0.0),
+    )
+    composition_params.ν_ss_gravel .= water_override.(
+        composition_params.ν_ss_gravel,
+        inland_water_mask_subsurface,
+        FT(0.0),
+    )
+    return nothing
+end
+
+"""
+    apply_inland_water_albedo_overrides!(albedo_params, inland_water_mask_surface, FT)
+
+Override soil albedo at inland water points to water albedo values (~0.06).
+`albedo_params` should be a NamedTuple with fields
+`PAR_albedo_dry`, `PAR_albedo_wet`, `NIR_albedo_dry`, `NIR_albedo_wet`.
+
+The `inland_water_mask_surface` must be a Field on the surface space
+(same as the albedo fields).
+"""
+function apply_inland_water_albedo_overrides!(
+    albedo_params::NamedTuple,
+    inland_water_mask_surface,
+    FT,
+)
+    water_override(field, mask, value) =
+        mask == 1.0 ? eltype(field)(value) : field
+
+    water_albedo = FT(0.06)
+    for key in
+        (:PAR_albedo_dry, :PAR_albedo_wet, :NIR_albedo_dry, :NIR_albedo_wet)
+        getfield(albedo_params, key) .= water_override.(
+            getfield(albedo_params, key),
+            inland_water_mask_surface,
+            water_albedo,
+        )
+    end
+    return nothing
+end
