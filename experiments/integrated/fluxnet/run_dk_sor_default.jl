@@ -47,7 +47,7 @@ spinup_days = 60
 dt = Float64(450)
 
 sim_start_year = 2004
-sim_end_year = 2004
+sim_end_year = 2006
 
 (; time_offset, lat, long) = FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
@@ -72,6 +72,11 @@ surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 toml_dict = LP.create_toml_dict(FT)
+#toml_dict.data["soil_momentum_roughness_length"]["value"] = FT(1.5)
+#toml_dict.data["soil_scalar_roughness_length"]["value"] = FT(1.5)
+#toml_dict.data["snow_momentum_roughness_length"]["value"] = FT(1.5)
+#toml_dict.data["snow_scalar_roughness_length"]["value"] = FT(1.5)
+
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_netcdf(
     met_nc_path, lat, long, time_offset, atmos_h, start_date, toml_dict, FT,
 )
@@ -110,25 +115,30 @@ println("Obs days: $n_obs")
 # ── 5. Build & run model with default parameters ─────────────────────────────
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 forcing_nt = (; atmos, radiation, ground = ClimaLand.PrognosticGroundConditions{FT}())
-
+ biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        land_domain,
+        LAI,
+        toml_dict;
+        height = FT(25))
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain, forcing_nt, LAI, toml_dict;
     prognostic_land_components,
     photosynthesis = Canopy.PModel{FT}(canopy_domain, toml_dict),
     conductance = Canopy.PModelConductance{FT}(toml_dict),
     soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict),
-)
+    biomass
+);
 
 land = LandModel{FT}(
     (; atmos, radiation), LAI, toml_dict, land_domain, dt;
     prognostic_land_components, canopy,
-)
+);
 
 function custom_set_ic!(Y, p, t, model)
     earth_param_set = ClimaLand.get_earth_param_set(model.soil)
     evaluate!(p.drivers.T, atmos.T, t)
     (; θ_r, ν, ρc_ds) = model.soil.parameters
-    @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+    @. Y.soil.ϑ_l = θ_r + (ν - θ_r) .* FT(0.95)
     Y.soil.θ_i .= FT(0.0)
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
         Y.soil.ϑ_l, Y.soil.θ_i, ρc_ds, earth_param_set,
@@ -161,22 +171,22 @@ function custom_set_ic!(Y, p, t, model)
     end
 end
 
-output_writer = ClimaDiagnostics.Writers.DictWriter()
+output_writer = ClimaDiagnostics.Writers.DictWriter();
 diags = ClimaLand.default_diagnostics(
     land, start_date;
     output_writer, output_vars = :long, reduction_period = :daily,
-)
+);
 
 simulation = LandSimulation(
     start_date, stop_date, dt, land;
     set_ic! = custom_set_ic!, updateat = Second(dt), diagnostics = diags,
-)
+);
 
 println("Running simulation...")
 io = open("logfile.txt", "w")
 logger = ConsoleLogger(io)
 with_logger(logger) do
-    solve!(simulation)
+    solve!(simulation);
 end
 close(io)
 println("Simulation complete.")
@@ -222,6 +232,10 @@ gpp_model = extract_daily_diag(simulation, "gpp_1d_average", obs_dates)
 er_model = extract_daily_diag(simulation, "er_1d_average", obs_dates)
 lhf_model = extract_daily_diag(simulation, "lhf_1d_average", obs_dates)
 shf_model = extract_daily_diag(simulation, "shf_1d_average", obs_dates)
+Tair = extract_daily_diag(simulation, "tair_1d_average", obs_dates)
+Tsoil = extract_daily_diag(simulation, "tsoil_1d_average", obs_dates)
+Tcanopy = extract_daily_diag(simulation, "ct_1d_average", obs_dates)
+scf = extract_daily_diag(simulation, "snowc_1d_average", obs_dates)
 
 # NEE = ER - GPP (both in mol CO₂/m²/s), convert to gC/m²/d
 nee_model_gC = (er_model .- gpp_model) .* 12.0 .* 86400.0
@@ -304,18 +318,18 @@ mkpath(savedir)
 fig = Figure(size = (1200, 900))
 
 ax1 = Axis(fig[1, 1]; ylabel = "NEE (gC/m²/d)", title = "DK-Sor 2004 — Default Parameters")
-lines!(ax1, 1:n_obs, nee_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax1, 1:n_obs, nee_model_gC; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax1, obs_dates, nee_obs; color = :black, linewidth = 1.5, label = "Obs")
+lines!(ax1, obs_dates, nee_model_gC; color = :blue, linewidth = 1.5, label = "Model")
 axislegend(ax1; position = :rt, framevisible = false)
 
 ax2 = Axis(fig[2, 1]; ylabel = "Latent Heat (W/m²)")
-lines!(ax2, 1:n_obs, qle_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax2, 1:n_obs, lhf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax2, obs_dates, qle_obs; color = :black, linewidth = 1.5, label = "Obs")
+lines!(ax2, obs_dates, lhf_model; color = :blue, linewidth = 1.5, label = "Model")
 axislegend(ax2; position = :rt, framevisible = false)
 
 ax3 = Axis(fig[3, 1]; xlabel = "Day of year", ylabel = "Sensible Heat (W/m²)")
-lines!(ax3, 1:n_obs, qh_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax3, 1:n_obs, shf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax3, obs_dates, qh_obs; color = :black, linewidth = 1.5, label = "Obs")
+lines!(ax3, obs_dates, shf_model; color = :blue, linewidth = 1.5, label = "Model")
 axislegend(ax3; position = :rt, framevisible = false)
 
 outpath = joinpath(savedir, "dk_sor_default_2004.png")
@@ -357,3 +371,21 @@ axislegend(ax_soc; position = :rt, framevisible = false)
 outpath2 = joinpath(savedir, "dk_sor_soilco2_2004.png")
 CairoMakie.save(outpath2, fig2)
 println("Saved: $outpath2")
+
+
+
+# Figure 3: Flux diags
+fig = Figure(size = (600, 900))
+
+ax1 = Axis(fig[1, 1]; ylabel = "Snow cover", title = "DK-Sor 2004 — Default Parameters")
+lines!(ax1, 1:n_obs, scf; color = :black, linewidth = 1.5, label = "Model")
+axislegend(ax1; position = :rt, framevisible = false)
+
+ax2 = Axis(fig[2, 1]; ylabel = "ΔT")
+lines!(ax2, 1:n_obs, -1 .*(Tair .- Tsoil); color = :black, linewidth = 1.5, label = "Tsoil-Tair")
+lines!(ax2, 1:n_obs, -1 .*(Tair .- Tcanopy); color = :blue, linewidth = 1.5, label = "Tcanopy-Tair")
+axislegend(ax2; position = :rt, framevisible = false)
+
+outpath = joinpath(savedir, "dk_sor_temps.png")
+CairoMakie.save(outpath, fig)
+println("Saved: $outpath")
