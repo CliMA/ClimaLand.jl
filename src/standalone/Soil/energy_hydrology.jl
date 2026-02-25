@@ -215,7 +215,7 @@ details.
 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
+struct EnergyHydrology{FT, PS, D, BCRH, S, M} <: AbstractSoilModel{FT}
     "The parameter sets"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
@@ -226,6 +226,10 @@ struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     sources::S
     "A boolean flag which, when false, turns off the horizontal flow of water and heat"
     lateral_flow::Bool
+    "Optional subsurface mask for inland water points (1 = inland water, 0 = land/ocean).
+    When provided, dY.soil.ϑ_l is zeroed at inland water grid points in the implicit tendency,
+    preventing Richards-equation drainage while still allowing ice formation/melting via PhaseChange."
+    inland_water_mask::M
 end
 
 """
@@ -235,6 +239,7 @@ end
         boundary_conditions::NamedTuple,
         sources::Tuple,
         lateral_flow::Bool = false,
+        inland_water_mask = nothing,
     ) where {FT, D, PS}
 
 A constructor for a `EnergyHydrology` model, which sets the default value
@@ -246,7 +251,8 @@ function EnergyHydrology{FT}(;
     boundary_conditions::NamedTuple,
     sources::Tuple,
     lateral_flow::Bool = false,
-) where {FT, D, PSE}
+    inland_water_mask::M = nothing,
+) where {FT, D, PSE, M}
     @assert !lateral_flow
     top_bc = boundary_conditions.top
     if typeof(top_bc) <: AtmosDrivenFluxBC
@@ -259,7 +265,7 @@ function EnergyHydrology{FT}(;
         sources = append_source(subl_source, sources)
     end
     args = (parameters, domain, boundary_conditions, sources)
-    EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
+    EnergyHydrology{FT, typeof.(args)..., M}(args..., lateral_flow, inland_water_mask)
 end
 
 function make_update_boundary_fluxes(model::EnergyHydrology)
@@ -337,6 +343,12 @@ function ClimaLand.make_compute_exp_tendency(
                 ClimaLand.source!(dY, src, Y, p, model)
             end
         end
+
+        # Inland water: prevent any explicit source from draining liquid water.
+        # (PhaseChange's θ_i contribution is left untouched so ice can still form/melt.)
+        if !isnothing(model.inland_water_mask)
+            @. dY.soil.ϑ_l *= (1 - model.inland_water_mask)
+        end
     end
     return compute_exp_tendency!
 end
@@ -411,6 +423,13 @@ function ClimaLand.make_compute_imp_tendency(
             if !src.explicit
                 ClimaLand.source!(dY, src, Y, p, model)
             end
+        end
+
+        # Inland water: prevent Richards-equation drainage by zeroing ϑ_l tendency.
+        # PhaseChange (explicit) still exchanges ϑ_l ↔ θ_i, so ice formation and
+        # melting proceed normally and the pore space stays filled.
+        if !isnothing(model.inland_water_mask)
+            @. dY.soil.ϑ_l *= (1 - model.inland_water_mask)
         end
     end
     return compute_imp_tendency!

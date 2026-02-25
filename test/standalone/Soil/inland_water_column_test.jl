@@ -1,9 +1,10 @@
-# Test that a full LandModel with inland-water soil parameter overrides
-# runs stably for 30 days without NaNs or crashes.
+# Test that a full LandModel with an inland_water_mask runs stably for
+# 30 days without NaNs and keeps ϑ_l saturated at a lake grid point.
 #
 # Uses a Column domain at a lake coordinate (Lake Michigan: 43.5°N, 87.0°W)
-# with ERA5 forcing, overriding soil parameters to water-like values
-# (ν=0.95, K_sat=1e-3, θ_r=0, low albedo) to simulate an inland water point.
+# with ERA5 forcing. The inland_water_mask applies water-like parameter overrides
+# (ν=0.95, K_sat=1e-3, θ_r=0, low albedo) AND zeros dY.soil.ϑ_l in the
+# tendency functions so the column cannot drain while ice can still form/melt.
 
 import SciMLBase
 import ClimaComms
@@ -62,23 +63,11 @@ forcing = (; atmos, radiation)
 # ==========================================
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
-# Soil with water-like parameters
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = FT(0.06),
-    NIR_albedo = FT(0.06),
-)
-
-retention_parameters = (;
-    ν = FT(0.95),
-    θ_r = FT(0.0),
-    K_sat = FT(1e-3),
-    hydrology_cm = vanGenuchten{FT}(; α = FT(100.0), n = FT(2.0)),
-)
-composition_parameters = (;
-    ν_ss_om = FT(0.0),
-    ν_ss_quartz = FT(0.0),
-    ν_ss_gravel = FT(0.0),
-)
+# Inland water mask: the whole column is inland water (value = 1)
+# The constructor applies water-like parameter overrides AND stores the mask
+# so that dY.soil.ϑ_l is zeroed in the tendency functions (keeping the
+# column saturated while still allowing ice to form/melt via PhaseChange).
+inland_water_mask = ClimaCore.Fields.zeros(FT, surface_space) .+ FT(1.0)
 
 soil = Soil.EnergyHydrology{FT}(
     land_domain,
@@ -86,10 +75,7 @@ soil = Soil.EnergyHydrology{FT}(
     toml_dict;
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
-    albedo = soil_albedo,
-    retention_parameters,
-    composition_parameters,
-    S_s = FT(1e-3),
+    inland_water_mask,
     z_0m = FT(0.001),
     z_0b = FT(0.0001),
     emissivity = FT(0.97),
@@ -121,8 +107,8 @@ function set_ic!(Y, p, t0, land)
     Y.soilco2.O2_f .= FT(0.21)
     Y.soilco2.SOC .= FT(5.0)
 
-    # Soil IC — saturated (water body)
-    Y.soil.ϑ_l .= FT(0.95)  # = ν
+    # Soil IC — saturated (water body), using ν from parameters (Field or scalar)
+    Y.soil.ϑ_l .= land.soil.parameters.ν
     Y.soil.θ_i .= FT(0.0)
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
         Y.soil.ϑ_l, Y.soil.θ_i,
@@ -173,11 +159,12 @@ simulation = LandSimulation(
     @test !any(isnan, parent(Y.soil.ρe_int))
     @info "  No NaNs in soil state"
 
-    # Soil should remain fairly saturated
+    # Soil should remain saturated — the inland_water_mask pins dY.soil.ϑ_l = 0
+    # so liquid water content cannot be drained by the Richards equation
     min_swc = minimum(parent(Y.soil.ϑ_l))
     max_swc = maximum(parent(Y.soil.ϑ_l))
     @info "  Soil water content range: [$min_swc, $max_swc] (ν = 0.95)"
-    @test min_swc > FT(-1.0)  # may dry somewhat without lateral inflow
+    @test min_swc > FT(0.9)  # should stay very close to ν = 0.95
 
     # Temperature should be physical
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(

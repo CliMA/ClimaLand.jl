@@ -636,3 +636,94 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         check_ocean_values_Y(u, binary_mask)
     end
 end
+
+@testset "LandModel with inland_water_mask and PiecewiseMoistureStressModel" begin
+    # This tests the pattern used in the global snowy_land_pmodel experiment:
+    # a PiecewiseMoistureStressModel is created before LandModel, which then
+    # applies inland water overrides to soil ν/θ_r. The convenience constructor
+    # must sync the canopy's moisture stress parameters with the overridden soil.
+    FT = Float64
+    context = ClimaComms.context()
+    toml_dict = LP.create_toml_dict(FT)
+
+    # Coarse global domain (~30° resolution)
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        nelements = (6, 12, 5),
+        mask_threshold = FT(0.99),
+        context,
+    )
+    surface_space = domain.space.surface
+
+    start_date = DateTime(2008)
+    stop_date = start_date + Second(450)
+    Δt = FT(450)
+
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        context,
+    )
+    forcing = (; atmos, radiation)
+
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
+
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+    # Build canopy with PiecewiseMoistureStressModel BEFORE LandModel
+    # (this reads original soil ν/θ_r, not yet overridden by inland water mask)
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    canopy_forcing = (; atmos, radiation, ground)
+    soil_moisture_stress =
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    canopy = Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        prognostic_land_components,
+        soil_moisture_stress,
+    )
+
+    # Inland water mask
+    iw_mask = ClimaLand.Domains.inland_water_mask(
+        surface_space;
+        filepath = joinpath(pkgdir(ClimaLand), "IMERG_land_sea_mask.nc"),
+    )
+
+    # This should NOT throw an AssertionError in check_land_equality
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+        canopy,
+        inland_water_mask = iw_mask,
+    )
+
+    @test land.soil isa Soil.EnergyHydrology
+    @test land.canopy.soil_moisture_stress isa
+          ClimaLand.Canopy.PiecewiseMoistureStressModel
+
+    # Verify the sync: canopy moisture stress params match soil params
+    ClimaLand.check_land_equality(
+        land.canopy.soil_moisture_stress.θ_high,
+        land.soil.parameters.ν,
+    )
+    ClimaLand.check_land_equality(
+        land.canopy.soil_moisture_stress.θ_low,
+        land.soil.parameters.θ_r,
+    )
+    @test true  # reached here without assertion errors
+end
