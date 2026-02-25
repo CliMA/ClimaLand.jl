@@ -39,7 +39,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
-# Set up the domain 
+# Set up the domain
 nelements = (50, 10)
 dz_tuple = (10.0, 0.1)
 domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
