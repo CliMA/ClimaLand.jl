@@ -422,10 +422,16 @@ function apply_inland_water_overrides!(
         inland_water_mask_subsurface,
         FT(0.95),
     )
+    # K_sat = 0: no hydraulic conductivity at inland water points.
+    # This prevents both Richards-equation drainage between layers AND the
+    # spurious advective heat flux  ρe_liq · K · ∇(ψ + z)  that would otherwise
+    # blow up with high K_sat under a purely gravitational head gradient.
+    # The tendency-zeroing in EnergyHydrology also pins dϑ_l/dt = 0 at those
+    # points, so surface evaporation cannot drain the column either.
     retention_params.K_sat .= water_override.(
         retention_params.K_sat,
         inland_water_mask_subsurface,
-        FT(1e-3),
+        FT(0.0),
     )
     retention_params.θ_r .= water_override.(
         retention_params.θ_r,

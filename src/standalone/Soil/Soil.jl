@@ -273,9 +273,12 @@ This sets the bottom boundary conditions to be no flux by default, but these can
 
 If `inland_water_mask` is provided (a binary ClimaCore Field on the surface space,
 where 1 = inland water and 0 = land), soil parameters at inland water grid points
-are overridden to mimic open water behavior: high porosity (0.95), high K_sat,
+are overridden to mimic open water behavior: high porosity (0.95), K_sat = 0
+(no internal drainage, which also eliminates the spurious advective heat flux),
 zero residual water content, water-like albedo (~0.06), and zero soil composition
-fractions.
+fractions. Additionally, dY.soil.ϑ_l is zeroed in the tendency functions at those
+points so that surface evaporation cannot drain the column, while ice formation and
+melting via PhaseChange still proceed normally.
 """
 function EnergyHydrology{FT}(
     domain,
@@ -311,6 +314,7 @@ function EnergyHydrology{FT}(
     ),
 ) where {FT <: AbstractFloat}
     # Apply inland water overrides to soil parameters if a mask is provided
+    iw_subsurface = nothing
     if !isnothing(inland_water_mask)
         iw_subsurface = surface_to_subsurface(
             inland_water_mask,
@@ -350,6 +354,7 @@ function EnergyHydrology{FT}(
         domain,
         boundary_conditions,
         sources,
+        inland_water_mask = iw_subsurface,
     )
 end
 
