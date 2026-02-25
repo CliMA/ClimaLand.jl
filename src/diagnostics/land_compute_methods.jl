@@ -196,20 +196,12 @@ function compute_stomatal_conductance!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = gs_h2o_pmodel(
-            clamp(ci / (c_co2_air * P_air), 0, 1),
-            c_co2_air,
-            An_leaf,
-            Drel,
-        )
+        @. out =
+            gs_h2o_pmodel(clamp(ci / (c_co2_air * P_air), 0, 1), c_co2_air, An_leaf, Drel)
         return out
     else
-        @. out = gs_h2o_pmodel(
-            clamp(ci / (c_co2_air * P_air), 0, 1),
-            c_co2_air,
-            An_leaf,
-            Drel,
-        )
+        @. out =
+            gs_h2o_pmodel(clamp(ci / (c_co2_air * P_air), 0, 1), c_co2_air, An_leaf, Drel)
     end
 end
 
@@ -698,24 +690,6 @@ function compute_subsurface_runoff!(
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
     end
     out .=
-        Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
-    return out
-end
-
-function compute_total_runoff!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
-)
-    soil = get_soil(land_model)
-    if isnothing(out)
-        out = zeros(soil.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-    end
-    out .=
-        Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p) .+
         Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
     return out
 end
