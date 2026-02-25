@@ -318,7 +318,7 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
     # Precipitation: split into rain and snow using protocol
     # (same approach as prescribed_forcing_fluxnet)
     # ClimaLand convention is negative = downward
-    function compute_rain_snow(T_K, q, P, precip_flux)
+    function compute_rain_snow(T_K, precip_flux)
         T_C = T_K - 273.15
         snow_frac = T_C < 0.0 ? 1.0 : (T_C < 2.5 ? 1.0 - T_C / 2.5 : 0.0)
         rain = -precip_flux * (1.0 - snow_frac)
@@ -333,7 +333,7 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
     snow_vals = Float64[]
     for i in eachindex(t_precip)
         idx = findall(valid_precip)[i]
-        r, s = compute_rain_snow(T_data[idx], q_data[idx], P_data[idx], precip_data[idx])
+        r, s = compute_rain_snow(T_data[idx], precip_data[idx])
         push!(rain_vals, r)
         push!(snow_vals, s)
     end

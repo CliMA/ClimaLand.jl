@@ -152,8 +152,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
     R = LP.gas_constant(earth_param_set)
     FT = eltype(model.parameters)
-
-    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
+    χ = @. lazy(clamp(ci / (c_co2_air * P_air), FT(0), FT(1)))      # ratio of intercellular to ambient CO2 concentration, unitless
+    
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
             conductance_molar_flux_to_m_per_s(
@@ -162,5 +162,6 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
                 R,
                 P_air,
             ) + eps(FT)
-        ) # avoids division by zero, since conductance is zero when An is zero 
+        ) # avoids division by zero, since conductance is zero when An is zero
+
 end
