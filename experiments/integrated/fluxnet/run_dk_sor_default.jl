@@ -204,6 +204,44 @@ end
 close(io)
 println("Simulation complete.")
 
+# ── 5b. Debug: check soilco2 state at end of simulation ──────────────────────
+let Y = simulation._integrator.u, p = simulation._integrator.p
+    println("\n=== SoilCO2 debug at end of simulation ===")
+    println("  Y.soilco2.CO2:  ", extrema(parent(Y.soilco2.CO2)))
+    println("  Y.soilco2.O2_f: ", extrema(parent(Y.soilco2.O2_f)))
+    println("  Y.soilco2.SOC:  ", extrema(parent(Y.soilco2.SOC)))
+    println("  p.soilco2.Sm:   ", extrema(parent(p.soilco2.Sm)))
+    println("  p.soilco2.T:    ", extrema(parent(p.soilco2.T)))
+    println("  p.soilco2.θ_a:  ", extrema(parent(p.soilco2.θ_a)))
+    println("  p.soilco2.D:    ", extrema(parent(p.soilco2.D)))
+    println("  p.soilco2.O2_avail: ", extrema(parent(p.soilco2.O2_avail)))
+    println("  p.soil.T:       ", extrema(parent(p.soil.T)))
+    println("  p.soil.θ_l:     ", extrema(parent(p.soil.θ_l)))
+    println("  Y.soil.θ_i:     ", extrema(parent(Y.soil.θ_i)))
+    println("  Y.soil.ϑ_l:     ", extrema(parent(Y.soil.ϑ_l)))
+    θ_l_vals = parent(p.soil.θ_l)
+    θ_i_vals = parent(Y.soil.θ_i)
+    println("  θ_w (θ_l+θ_i):  ", extrema(θ_l_vals .+ θ_i_vals))
+    println("  ν from PrognosticMet: ", land.soilco2.drivers.met.ν)
+    println("  ν from soil params:   ", land.soil.parameters.ν)
+    println("  p.soilco2.top_bc: ", extrema(parent(p.soilco2.top_bc)))
+
+    # Manually compute what Sm should be at the surface layer
+    params = land.soilco2.parameters
+    T_top = parent(p.soil.T)[end]
+    θ_l_top = parent(p.soil.θ_l)[end]
+    SOC_top = parent(Y.soilco2.SOC)[end]
+    O2_avail_top = parent(p.soilco2.O2_avail)[end]
+    R_gas = 8.314
+    Vmax = params.α_sx * exp(-params.Ea_sx / (R_gas * T_top))
+    Sx = params.p_sx * SOC_top * params.D_liq * max(θ_l_top, 0.0)^3
+    MM_sx = Sx / (params.kM_sx + Sx)
+    MM_o2 = O2_avail_top / (params.kM_o2 + O2_avail_top)
+    Sm_manual = Vmax * MM_sx * MM_o2
+    println("  Manual Sm at surface: Vmax=$Vmax, Sx=$Sx, MM_sx=$MM_sx, MM_o2=$MM_o2, Sm=$Sm_manual")
+    println("  Params: α_sx=$(params.α_sx), Ea_sx=$(params.Ea_sx), p_sx=$(params.p_sx), D_liq=$(params.D_liq), kM_sx=$(params.kM_sx), kM_o2=$(params.kM_o2)")
+end
+
 # ── 6. Extract diagnostics ────────────────────────────────────────────────────
 function extract_daily_diag(simulation, diag_name, target_dates)
     writer = nothing
@@ -281,7 +319,7 @@ sco2_writer = let w = nothing
     end
     w
 end
-first_field = first(values(sco2_writer["scos2_1d_average"]))
+first_field = first(values(sco2_writer["sco2_1d_average"]))
 n_layers = size(parent(first_field), 1)
 println("  Soil has $n_layers layers")
 
@@ -291,6 +329,7 @@ layer_ids = [n_layers, round(Int, n_layers * 3 ÷ 4), n_layers ÷ 2, 1]
 layer_labels = String[]
 
 sco2_by_layer = Dict{Int, Vector{Float64}}()
+sco2_ppm_by_layer = Dict{Int, Vector{Float64}}()
 scms_by_layer = Dict{Int, Vector{Float64}}()
 soc_by_layer = Dict{Int, Vector{Float64}}()
 
@@ -301,15 +340,19 @@ println("  Layer depths (center): ", [round(z_centers[i], digits=3) for i in lay
 for lid in layer_ids
     d, v = extract_daily_diag_layer(simulation, "sco2_1d_average", lid)
     sco2_by_layer[lid] = v
+    d, v = extract_daily_diag_layer(simulation, "sco2_ppm_1d_average", lid)
+    sco2_ppm_by_layer[lid] = v
     d, v = extract_daily_diag_layer(simulation, "scms_1d_average", lid)
     scms_by_layer[lid] = v
     d, v = extract_daily_diag_layer(simulation, "soc_1d_average", lid)
     soc_by_layer[lid] = v
     push!(layer_labels, "z=$(round(z_centers[lid], digits=2))m")
     println("  Layer $lid (z=$(round(z_centers[lid], digits=2))m): " *
-            "CO2=$(round(minimum(sco2_by_layer[lid]), sigdigits=4))..$(round(maximum(sco2_by_layer[lid]), sigdigits=4)), " *
-            "Sm=$(round(minimum(scms_by_layer[lid]), sigdigits=4))..$(round(maximum(scms_by_layer[lid]), sigdigits=4)), " *
-            "SOC=$(round(minimum(soc_by_layer[lid]), sigdigits=4))..$(round(maximum(soc_by_layer[lid]), sigdigits=4))")
+            "CO2=$(round(minimum(sco2_by_layer[lid]), sigdigits=4))..$(round(maximum(sco2_by_layer[lid]), sigdigits=4)) kgC/m³, " *
+            "CO2_ppm=$(round(minimum(sco2_ppm_by_layer[lid]), sigdigits=4))..$(round(maximum(sco2_ppm_by_layer[lid]), sigdigits=4)), " *
+            "Sm=$(round(minimum(scms_by_layer[lid]), sigdigits=4))..$(round(maximum(scms_by_layer[lid]), sigdigits=4)) kgC/m³/s " *
+            "(=$(round(minimum(scms_by_layer[lid])*1e6, sigdigits=4))..$(round(maximum(scms_by_layer[lid])*1e6, sigdigits=4)) mgC/m³/s), " *
+            "SOC=$(round(minimum(soc_by_layer[lid]), sigdigits=4))..$(round(maximum(soc_by_layer[lid]), sigdigits=4)) kgC/m³")
 end
 
 # Use hr_dates for the x-axis of soilco2 plots
@@ -347,29 +390,55 @@ println("Saved: $outpath")
 
 # Figure 2: Soil CO2 diagnostics
 colors = [:red, :orange, :blue, :purple]
-fig2 = Figure(size = (1400, 1200))
+fig2 = Figure(size = (1400, 1400))
 
 ax_hr = Axis(fig2[1, 1]; ylabel = "HR (gC/m²/d)",
     title = "DK-Sor 2004 — Soil CO₂ Diagnostics (post-spinup)")
 lines!(ax_hr, t_days_co2, hr_gC_ps; color = :brown, linewidth = 1.5)
 
-ax_co2 = Axis(fig2[2, 1]; ylabel = "CO₂ conc (kgC/m³ air-eq)")
+# CO₂ concentration in ppm (from the sco2_ppm diagnostic)
+ax_co2 = Axis(fig2[2, 1]; ylabel = "CO₂ (ppm)")
 for (i, lid) in enumerate(layer_ids)
-    vals = sco2_by_layer[lid][post_spinup]
+    vals = sco2_ppm_by_layer[lid][post_spinup]
     lines!(ax_co2, t_days_co2, vals; color = colors[i], linewidth = 1.2,
         label = layer_labels[i])
 end
 axislegend(ax_co2; position = :rt, framevisible = false)
 
-ax_sm = Axis(fig2[3, 1]; ylabel = "Microbe source (kgC/m³/s)")
+# Microbe source in mgC/m³/s (convert from kgC/m³/s)
+ax_sm = Axis(fig2[3, 1]; ylabel = "Microbe source (mgC/m³/s)")
 for (i, lid) in enumerate(layer_ids)
-    vals = scms_by_layer[lid][post_spinup]
+    vals = scms_by_layer[lid][post_spinup] .* 1e6  # kgC/m³/s → mgC/m³/s
     lines!(ax_sm, t_days_co2, vals; color = colors[i], linewidth = 1.2,
         label = layer_labels[i])
 end
 axislegend(ax_sm; position = :rt, framevisible = false)
 
-ax_soc = Axis(fig2[4, 1]; ylabel = "SOC (kgC/m³)", xlabel = "Days since Jan 1, 2004")
+# O2 fraction (extract if available)
+has_o2 = false
+so2_by_layer = Dict{Int, Vector{Float64}}()
+try
+    for lid in layer_ids
+        d, v = extract_daily_diag_layer(simulation, "so2_1d_average", lid)
+        so2_by_layer[lid] = v
+    end
+    global has_o2 = true
+catch e
+    println("  O2 diagnostic not available: $e")
+end
+
+if has_o2
+    ax_o2 = Axis(fig2[4, 1]; ylabel = "O₂ fraction (mol/mol)")
+    for (i, lid) in enumerate(layer_ids)
+        vals = so2_by_layer[lid][post_spinup]
+        lines!(ax_o2, t_days_co2, vals; color = colors[i], linewidth = 1.2,
+            label = layer_labels[i])
+    end
+    axislegend(ax_o2; position = :rt, framevisible = false)
+end
+
+ax_soc = Axis(fig2[has_o2 ? 5 : 4, 1]; ylabel = "SOC (kgC/m³)",
+    xlabel = "Days since Jan 1, 2004")
 for (i, lid) in enumerate(layer_ids)
     vals = soc_by_layer[lid][post_spinup]
     lines!(ax_soc, t_days_co2, vals; color = colors[i], linewidth = 1.2,
@@ -380,7 +449,6 @@ axislegend(ax_soc; position = :rt, framevisible = false)
 outpath2 = joinpath(savedir, "dk_sor_soilco2_2004.png")
 CairoMakie.save(outpath2, fig2)
 println("Saved: $outpath2")
-
 
 
 # Figure 3: Flux diags
@@ -413,9 +481,80 @@ lines!(ax3, lhf_obs_dates, clhf; color = :red, linewidth = 1.5, label = "Canopy"
 lines!(ax3, lhf_obs_dates, qle_obs; color = :blue, linewidth = 1.5, label = "Obs")
 axislegend(ax3; position = :rt, framevisible = false)
 
-outpath = joinpath(savedir, "dk_sor_temps.png")
+outpath = joinpath(savedir, "dk_sor_fluxes_debug.png")
 CairoMakie.save(outpath, fig)
 println("Saved: $outpath")
+    
+# ── 9. Figure 3: Water budget & soil moisture diagnostics ────────────────────
+# Extract precipitation (kg/m²/s) – surface only
+precip_dates, precip_vals = extract_daily_diag_layer(simulation, "precip_1d_average", nothing)
+# Convert kg/m²/s → mm/day  (1 kg/m²/s = 86400 mm/day)
+precip_mm = precip_vals .* 86400.0
+println("  precip: range $(round(minimum(precip_mm), sigdigits=4)) to $(round(maximum(precip_mm), sigdigits=4)) mm/d")
+
+# Extract ET (kg/m²/s) – surface only
+et_dates, et_vals = extract_daily_diag_layer(simulation, "et_1d_average", nothing)
+et_mm = et_vals .* 86400.0
+println("  ET: range $(round(minimum(et_mm), sigdigits=4)) to $(round(maximum(et_mm), sigdigits=4)) mm/d")
+
+# Extract depth-resolved soil water content (swc = ϑ_l) and soil ice (si = θ_i)
+swc_by_layer = Dict{Int, Vector{Float64}}()
+si_by_layer = Dict{Int, Vector{Float64}}()
+for lid in layer_ids
+    d, v = extract_daily_diag_layer(simulation, "swc_1d_average", lid)
+    swc_by_layer[lid] = v
+    d, v = extract_daily_diag_layer(simulation, "si_1d_average", lid)
+    si_by_layer[lid] = v
+    println("  Layer $lid (z=$(round(z_centers[lid], digits=2))m): " *
+            "θ_l=$(round(minimum(swc_by_layer[lid]), sigdigits=4))..$(round(maximum(swc_by_layer[lid]), sigdigits=4)), " *
+            "θ_i=$(round(minimum(si_by_layer[lid]), sigdigits=4))..$(round(maximum(si_by_layer[lid]), sigdigits=4))")
+end
+
+# Filter to post-spinup using precip_dates
+precip_post = precip_dates .>= spinup_date_d2
+precip_dates_ps = precip_dates[precip_post]
+t_days_water = [Dates.value(d - spinup_date_d2) for d in precip_dates_ps]
+_, msf = extract_daily_diag_layer(simulation, "msf_1d_average", nothing)
+
+fig3 = Figure(size = (1400, 1650))
+
+# Panel 1: Precipitation
+ax_p = Axis(fig3[1, 1]; ylabel = "Precip (mm/d)",
+    title = "DK-Sor 2004 — Water Budget & Soil Moisture (post-spinup)")
+barplot!(ax_p, t_days_water, precip_mm[precip_post]; color = :steelblue, gap = 0)
+
+# Panel 2: ET
+ax_et = Axis(fig3[2, 1]; ylabel = "ET (mm/d)")
+lines!(ax_et, t_days_water, et_mm[precip_post]; color = :green, linewidth = 1.5)
+
+# Panel 3: Soil liquid water content (θ_l) at multiple depths
+ax_swc = Axis(fig3[3, 1]; ylabel = "θ_l (m³/m³)")
+for (i, lid) in enumerate(layer_ids)
+    vals = swc_by_layer[lid][precip_post]
+    lines!(ax_swc, t_days_water, vals; color = colors[i], linewidth = 1.2,
+        label = layer_labels[i])
+end
+# Add porosity reference line
+ν_sfc = parent(ClimaLand.Domains.top_center_to_surface(land.soil.parameters.ν))[1]
+hlines!(ax_swc, [ν_sfc]; color = :black, linestyle = :dash,
+    linewidth = 0.8, label = "ν=$(round(ν_sfc, digits=3))")
+axislegend(ax_swc; position = :rt, framevisible = false)
+
+# Panel 4: Soil ice (θ_i) at multiple depths
+ax_si = Axis(fig3[4, 1]; ylabel = "θ_i (m³/m³)", xlabel = "Days since Jan 1, 2004")
+for (i, lid) in enumerate(layer_ids)
+    vals = si_by_layer[lid][precip_post]
+    lines!(ax_si, t_days_water, vals; color = colors[i], linewidth = 1.2,
+        label = layer_labels[i])
+end
+axislegend(ax_si; position = :rt, framevisible = false)
+# Panel 5: Canopy moisture stress
+ax_msf = Axis(fig3[5, 1]; ylabel = "β", xlabel = "Days since Jan 1, 2004")
+lines!(ax_msf, t_days_water, msf[precip_post]; color = colors[1], linewidth = 1.2)
+
+outpath3 = joinpath(savedir, "dk_sor_water_2004.png")
+CairoMakie.save(outpath3, fig3)
+println("Saved: $outpath3")
 
 # RMSE
 nee_model_at_obs = extract_daily_diag(simulation, "shf_1d_average", nee_obs_dates)
@@ -426,4 +565,3 @@ x = (shf_model_at_obs .- qh_obs)./qh_unc;
 @show sqrt(mean(x.^2)), mean(x)
 x = (nee_model_at_obs .- nee_obs)./nee_unc;
 @show sqrt(mean(x.^2)), mean(x)
-    

@@ -330,15 +330,17 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
     valid_precip = .!isnan.(precip_data) .& .!isnan.(T_data) .& .!isnan.(q_data) .& .!isnan.(P_data)
     t_precip = seconds_since_start[valid_precip]
     rain_vals = Float64[]
-    snow_vals = Float64[]
+        snow_vals = Float64[]
+        _ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
+
     for i in eachindex(t_precip)
         idx = findall(valid_precip)[i]
         r, s = compute_rain_snow(T_data[idx], precip_data[idx])
         push!(rain_vals, r)
         push!(snow_vals, s)
     end
-    atmos_P_liq = TimeVaryingInput(t_precip, rain_vals ./ 1000) # divide by rho_liq to get volume flux
-    atmos_P_snow = TimeVaryingInput(t_precip, snow_vals ./ 1000) # divide by rho_liq to get volume flux
+    atmos_P_liq = TimeVaryingInput(t_precip, rain_vals ./ _ρ_liq) # divide by rho_liq to get volume flux
+    atmos_P_snow = TimeVaryingInput(t_precip, snow_vals ./ _ρ_liq) # divide by rho_liq to get volume flux
 
     atmos = ClimaLand.PrescribedAtmosphere(
         atmos_P_liq,
