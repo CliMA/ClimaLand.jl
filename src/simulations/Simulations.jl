@@ -179,7 +179,7 @@ function LandSimulation(
         imp_tendency! = ClimaLand.make_imp_tendency(model)
         jacobian! = ClimaLand.make_jacobian(model)
         jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            jac_prototype = ClimaLand.initialize_jacobian(Y),
             Wfact = jacobian!,
         )
         T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...)

@@ -253,10 +253,8 @@ for float_type in (Float32, Float64)
     jacobian! = make_jacobian(land)
     set_initial_cache! = make_set_initial_cache(land)
     Y, p, cds = initialize(land)
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
-    )
+    jac_kwargs =
+        (; jac_prototype = ClimaLand.initialize_jacobian(Y), Wfact = jacobian!)
 
     set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
         site_ID,
@@ -323,7 +321,7 @@ for float_type in (Float32, Float64)
         cache_Tair =
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
-            abs.(radiation.cosθs.(sv.t, radiation.start_date) .- cache_cosθs,),
+            abs.(radiation.cosθs.(sv.t, radiation.start_date) .- cache_cosθs),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
         atmos_T = map(sv.t) do time
