@@ -72,13 +72,6 @@ surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 toml_dict = LP.create_toml_dict(FT)
-toml_dict.data["canopy_z_0m_coeff"]["value"] = FT(0.13)
-toml_dict.data["canopy_z_0b_coeff"]["value"] = FT(0.013)
-toml_dict.data["canopy_d_coeff"]["value"] = FT(0.67)
-toml_dict.data["leaf_Cd"]["value"] = FT(0.7)
-#toml_dict.data["soil_scalar_roughness_length"]["value"] = FT(1.5)
-#toml_dict.data["snow_momentum_roughness_length"]["value"] = FT(1.5)
-#toml_dict.data["snow_scalar_roughness_length"]["value"] = FT(1.5)
 
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_netcdf(
     met_nc_path, lat, long, time_offset, atmos_h, start_date, toml_dict, FT,
