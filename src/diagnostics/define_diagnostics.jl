@@ -1,12 +1,16 @@
-"""
-    define_diagnostics!(land_model)
 
-Calls `add_diagnostic_variable!` for all available variables specializing the
-compute function for `land_model`.
 """
-function define_diagnostics!(land_model)
+    define_diagnostics!(land_model, possible_diags)
+
+Calls `conditional_add_diagnostic_variable!` for all available variables, which adds a
+compute function specialized for `land_model` to `ALL_DIAGNOSTICS` if the variable's
+`short_name` is in `possible_diags`. If `possible_diags` is `Val{:all}()`, then all diagnostic
+variables are added regardless of their short name.
+"""
+function define_diagnostics!(land_model, possible_diags)
     ### Conservation ###
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "epa",
         long_name = "Energy per unit ground area",
         standard_name = "energy_per_area",
@@ -16,7 +20,8 @@ function define_diagnostics!(land_model)
             compute_energy_per_area!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "wvpa",
         long_name = "Water volume per unit ground area",
         standard_name = "water_volume_per_area",
@@ -26,7 +31,8 @@ function define_diagnostics!(land_model)
             compute_water_volume_per_area!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "epac",
         long_name = "Energy per unit ground area change",
         standard_name = "energy_per_area_change",
@@ -36,7 +42,8 @@ function define_diagnostics!(land_model)
             compute_energy_per_area_change!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "wvpac",
         long_name = "Water volume per unit ground area change",
         standard_name = "water_volume_per_area_change",
@@ -51,7 +58,8 @@ function define_diagnostics!(land_model)
     ## Stored in p (diagnostics variables stored in the cache) ##
 
     # Shortwave Albedo
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swa",
         long_name = "Shortwave Albedo",
         standard_name = "sw_albedo",
@@ -62,7 +70,8 @@ function define_diagnostics!(land_model)
     )
 
     # Net radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rn",
         long_name = "Net Radiation",
         standard_name = "net_radiation",
@@ -73,7 +82,8 @@ function define_diagnostics!(land_model)
     )
 
     # Bucket Surface temperature
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "tsfc",
         long_name = "Bucket Surface Temperature",
         standard_name = "surface_temperature",
@@ -84,7 +94,8 @@ function define_diagnostics!(land_model)
     )
 
     # Latent heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lhf",
         long_name = "Latent Heat Flux",
         standard_name = "latent_heat_flux",
@@ -95,7 +106,8 @@ function define_diagnostics!(land_model)
     )
 
     # Aerodynamic resistance
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rae",
         long_name = "Aerodynamic Resistance",
         standard_name = "aerodynamic_resistance",
@@ -106,7 +118,8 @@ function define_diagnostics!(land_model)
     )
 
     # Sensible heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "shf",
         long_name = "Sensible Heat Flux",
         standard_name = "sensible_heat_flux",
@@ -117,7 +130,8 @@ function define_diagnostics!(land_model)
     )
 
     # Vapor flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "vflux",
         long_name = "Liquid water evaporation",
         standard_name = "vapor_flux",
@@ -130,7 +144,8 @@ function define_diagnostics!(land_model)
     ## Stored in Y (prognostic or state variables) ##
 
     # Soil temperature (3D) at depth
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "tsoil",
         long_name = "Soil temperature",
         standard_name = "soil_temperature",
@@ -141,7 +156,8 @@ function define_diagnostics!(land_model)
     )
 
     # Surbsurface water storage
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "wsoil",
         long_name = "subsurface Water Storage",
         standard_name = "subsurface_water_storage",
@@ -152,7 +168,8 @@ function define_diagnostics!(land_model)
     )
 
     # Surface water content
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "wsfc",
         long_name = "Surface Water Content",
         standard_name = "surface_water_content",
@@ -163,7 +180,8 @@ function define_diagnostics!(land_model)
     )
 
     # Surface snow water content
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "ssfc",
         long_name = "Snow Water Equivalent",
         standard_name = "snow_water_equivalent",
@@ -181,7 +199,8 @@ function define_diagnostics!(land_model)
 
     ### Canopy - Solar Induced Fluorescence
     # Solar Induced Fluorescence
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sif",
         long_name = "Solar Induced Fluorescence",
         standard_name = "solar_induced_fluorescence",
@@ -193,7 +212,8 @@ function define_diagnostics!(land_model)
 
     ### Canopy - Autotrophic respiration
     # Autotrophic respiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "ra",
         long_name = "Autotrophic Respiration",
         standard_name = "autotrophic_respiration",
@@ -205,7 +225,8 @@ function define_diagnostics!(land_model)
 
     ### Canopy - Conductance
     # Stomatal conductance
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "gs",
         long_name = "Leaf stomatal Conductance",
         standard_name = "stomatal_conductance",
@@ -216,7 +237,8 @@ function define_diagnostics!(land_model)
     )
 
     # Canopy transpiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "trans",
         long_name = "Canopy Transpiration",
         standard_name = "canopy_transpiration",
@@ -229,7 +251,8 @@ function define_diagnostics!(land_model)
     ### Canopy - Energy
 
     # Canopy latent heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "clhf",
         long_name = "Canopy Latent Heat Flux",
         standard_name = "canopy_latent_heat_flux",
@@ -240,7 +263,8 @@ function define_diagnostics!(land_model)
     )
 
     # Canopy sensible heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "cshf",
         long_name = "Canopy Sensible Heat Flux",
         standard_name = "canopy_sensible_heat_flux",
@@ -254,7 +278,8 @@ function define_diagnostics!(land_model)
     # Leaf water potential
 
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lwp",
         long_name = "Leaf Water Potential",
         standard_name = "leaf_water_potential",
@@ -265,7 +290,7 @@ function define_diagnostics!(land_model)
     )
     #=
         # Flux per ground area
-        add_diagnostic_variable!(
+        conditional_add_diagnostic_variable!(possible_diags;
             short_name = "fa",
             long_name = "Flux Per Ground Area",
             standard_name = "flux_per_ground_area",
@@ -277,7 +302,8 @@ function define_diagnostics!(land_model)
         =#
 
     # Root flux per ground area
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "far",
         long_name = "Root flux per ground area",
         standard_name = "root_flux_per_ground_area",
@@ -288,7 +314,8 @@ function define_diagnostics!(land_model)
     )
 
     # Leaf area index
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lai",
         long_name = "Leaf area Index",
         standard_name = "leaf_area_index",
@@ -298,8 +325,31 @@ function define_diagnostics!(land_model)
             compute_leaf_area_index!(out, Y, p, t, land_model),
     )
 
-    # Moisture stress factor
+    # Daily potential GPP (from optimal LAI model)
     add_diagnostic_variable!(
+        short_name = "a0d",
+        long_name = "Daily Potential GPP",
+        standard_name = "daily_potential_gpp",
+        units = "mol CO2 m^-2 day^-1",
+        comments = "Cumulative sum of potential GPP (with fAPAR=1) over each day, used by the optimal LAI model.",
+        compute! = (out, Y, p, t) ->
+            compute_a0_daily!(out, Y, p, t, land_model),
+    )
+
+    # Annual potential GPP (from optimal LAI model)
+    add_diagnostic_variable!(
+        short_name = "a0a",
+        long_name = "Annual Potential GPP",
+        standard_name = "annual_potential_gpp",
+        units = "mol CO2 m^-2 yr^-1",
+        comments = "Cumulative sum of daily potential GPP (at local noon) over each year, used by the optimal LAI model.",
+        compute! = (out, Y, p, t) ->
+            compute_a0_annual!(out, Y, p, t, land_model),
+    )
+
+    # Moisture stress factor
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "msf",
         long_name = "Moisture Stress Factor",
         standard_name = "moisture_stress_factor",
@@ -310,7 +360,8 @@ function define_diagnostics!(land_model)
     )
 
     # Root area index
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rai",
         long_name = "Root area Index",
         standard_name = "root_area_index",
@@ -321,7 +372,8 @@ function define_diagnostics!(land_model)
     )
 
     # Stem area index
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sai",
         long_name = "Stem area Index",
         standard_name = "stem_area_index",
@@ -333,7 +385,8 @@ function define_diagnostics!(land_model)
 
     ### Canopy - Photosynthesis
     # GPP - Gross Primary Productivity
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "gpp",
         long_name = "Gross Primary Productivity",
         standard_name = "gross_primary_productivity",
@@ -344,7 +397,8 @@ function define_diagnostics!(land_model)
     )
 
     # NEE - Net Ecosystem Exchange
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "nee",
         long_name = "Net Ecosystem Exchange",
         standard_name = "net_ecosystem_exchange",
@@ -355,7 +409,8 @@ function define_diagnostics!(land_model)
     )
 
     # Leaf net photosynthesis
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "an",
         long_name = "Leaf Net Photosynthesis",
         standard_name = "leaf_net_photosynthesis",
@@ -366,7 +421,8 @@ function define_diagnostics!(land_model)
     )
 
     # Leaf respiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rd",
         long_name = "Leaf Respiration",
         standard_name = "leaf_dark_respiration",
@@ -377,7 +433,8 @@ function define_diagnostics!(land_model)
     )
 
     # Vcmax25
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "vcmax25",
         long_name = "Vcmax25",
         standard_name = "vcmax25",
@@ -388,7 +445,8 @@ function define_diagnostics!(land_model)
 
     ### Canopy - Radiative Transfer
     # NIR - near infrared radiaton
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "nir",
         long_name = "Near Infrared Radiation",
         standard_name = "near_infrared_radiation",
@@ -399,7 +457,8 @@ function define_diagnostics!(land_model)
     )
 
     # ANIR - absorbed near infrared radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "anir",
         long_name = "Absorbed Near Infrared Radiation",
         standard_name = "absorbed_near_infrared_radiation",
@@ -410,7 +469,8 @@ function define_diagnostics!(land_model)
     )
 
     # RNIR - reflected near infrared radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rnir",
         long_name = "Reflected Near Infrared Radiation",
         standard_name = "reflected_near_infrared_radiation",
@@ -427,7 +487,8 @@ function define_diagnostics!(land_model)
     )
 
     # TNIR - transmitted near infrared radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "tnir",
         long_name = "Transmitted Near Infrared Radiation",
         standard_name = "transmitted_near_infrared_radiation",
@@ -444,7 +505,8 @@ function define_diagnostics!(land_model)
     )
 
     # PAR - photosynthetically active radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "par",
         long_name = "Photosynthetically Active Radiation",
         standard_name = "photosynthetically_active_radiation",
@@ -461,7 +523,8 @@ function define_diagnostics!(land_model)
     )
 
     # APAR - absorbed photosynthetically active radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "apar",
         long_name = "Absorbed Photosynthetically Active Radiation",
         standard_name = "absorbed_photosynthetically_active_radiation",
@@ -478,7 +541,8 @@ function define_diagnostics!(land_model)
     )
 
     # RPAR - reflected photosynthetically active radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rpar",
         long_name = "Reflected Photosynthetically Active Radiation",
         standard_name = "reflected_photosynthetically_active_radiation",
@@ -495,7 +559,8 @@ function define_diagnostics!(land_model)
     )
 
     # TPAR - transmitted photosynthetically active radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "tpar",
         long_name = "Transmitted Photosynthetically Active Radiation",
         standard_name = "transmitted_photosynthetically_active_radiation",
@@ -512,7 +577,8 @@ function define_diagnostics!(land_model)
     )
 
     # Net longwave radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lwn",
         long_name = "Net Longwave Radiation",
         standard_name = "net_longwave_radiation",
@@ -523,7 +589,8 @@ function define_diagnostics!(land_model)
     )
 
     # Net shortwave radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swn",
         long_name = "Net Shortwave Radiation",
         standard_name = "net_shortwave_radiation",
@@ -535,7 +602,8 @@ function define_diagnostics!(land_model)
 
     ## Drivers Module ##
     # Soil organic carbon
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "soc",
         long_name = "Soil organic carbon",
         standard_name = "soil_organic_carbon",
@@ -545,8 +613,22 @@ function define_diagnostics!(land_model)
             compute_soil_organic_carbon!(out, Y, p, t, land_model),
     )
 
+    ### Canopy - Vegetation carbon (derived from prescribed biomass)
+    # Vegetation carbon
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "cveg",
+        long_name = "Vegetation carbon",
+        standard_name = "vegetation_carbon_content",
+        units = "kg C m^-2",
+        comments = "Total above-ground vegetation carbon per unit ground area, derived from prescribed LAI and SAI using specific carbon densities. cVeg = σl*LAI + ηsl*h*SAI, where σl is specific leaf density (kg C/m^2 leaf), ηsl is live stem wood coefficient (kg C/m^3), h is canopy height (m).",
+        compute! = (out, Y, p, t) ->
+            compute_vegetation_carbon!(out, Y, p, t, land_model),
+    )
+
     # Air pressure
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "airp",
         long_name = "Air pressure",
         standard_name = "air_pressure",
@@ -557,7 +639,8 @@ function define_diagnostics!(land_model)
     )
 
     # Rainfall
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "rain",
         long_name = "Rainfall",
         standard_name = "rainfall",
@@ -568,7 +651,8 @@ function define_diagnostics!(land_model)
     )
 
     # Net longwave radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lwd",
         long_name = "Down Longwave Radiation",
         standard_name = "down_longwave_radiation",
@@ -579,7 +663,8 @@ function define_diagnostics!(land_model)
     )
 
     # Net shortwave radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swd",
         long_name = "Shortwave Radiation Downwards",
         standard_name = "down_shortwave_radiation",
@@ -590,7 +675,8 @@ function define_diagnostics!(land_model)
     )
 
     # Snowfall
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "snow",
         long_name = "Snowfall",
         standard_name = "snowfall",
@@ -601,7 +687,8 @@ function define_diagnostics!(land_model)
     )
 
     # Total precip (mass flux)
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "precip",
         long_name = "Total precipitation",
         standard_name = "total_precipitation",
@@ -611,7 +698,8 @@ function define_diagnostics!(land_model)
     )
 
     #Air temperature
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "tair",
         long_name = "Air Temperature (K)",
         standard_name = "tair",
@@ -622,7 +710,8 @@ function define_diagnostics!(land_model)
 
 
     # Wind speed
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "ws",
         long_name = "Wind Speed",
         standard_name = "wind_speed",
@@ -634,7 +723,8 @@ function define_diagnostics!(land_model)
 
     ## Soil Module ##
     # Infiltration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "infil",
         long_name = "Infiltration",
         standard_name = "infiltration",
@@ -644,7 +734,8 @@ function define_diagnostics!(land_model)
             compute_infiltration!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sath",
         long_name = "Saturated height of soil",
         standard_name = "saturated_height",
@@ -654,7 +745,8 @@ function define_diagnostics!(land_model)
             compute_saturated_height!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "infc",
         long_name = "Infiltration Capacity",
         standard_name = "infiltration_capacity",
@@ -664,7 +756,8 @@ function define_diagnostics!(land_model)
             compute_infiltration_capacity!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sfsat",
         long_name = "Soil saturated fraction at the surface",
         standard_name = "soil_fsat",
@@ -674,7 +767,8 @@ function define_diagnostics!(land_model)
             compute_soil_fsat!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sdr",
         long_name = "Soil drainage",
         standard_name = "soil drainage",
@@ -685,7 +779,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil albedo
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "salb",
         long_name = "Soil Albedo",
         standard_name = "surface albedo",
@@ -697,7 +792,8 @@ function define_diagnostics!(land_model)
 
 
     # Soil hydraulic conductivity
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "shc",
         long_name = "Soil Hydraulic Conductivity",
         standard_name = "soil_hydraulic_conductivity",
@@ -708,7 +804,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil thermal conductivity
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "stc",
         long_name = "Soil Thermal Conductivity",
         standard_name = "soil_thermal_conductivity",
@@ -719,7 +816,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil Water Potential
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swp",
         long_name = "Soil Water Potential",
         standard_name = "soil_water_potential",
@@ -730,7 +828,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil net radiation
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "soilrn",
         long_name = "Soil Net Radiation",
         standard_name = "soil_net_radiation",
@@ -743,7 +842,8 @@ function define_diagnostics!(land_model)
     ### Soil - Turbulent Fluxes
 
     # Soil latent heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "soillhf",
         long_name = "Soil Latent Heat Flux",
         standard_name = "soil_Latent_Heat_Flux",
@@ -754,7 +854,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil sensible heat flux
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "soilshf",
         long_name = "Soil Sensible Heat Flux",
         standard_name = "soil_sensible_Heat_Flux",
@@ -766,7 +867,8 @@ function define_diagnostics!(land_model)
 
     ### Soil - SoilCO2
     # Heterotrophic respiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "hr",
         long_name = "Heterotrophic Respiration",
         standard_name = "heterotrophic_respiration",
@@ -777,7 +879,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil CO2 diffusivity
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "scd",
         long_name = "Soil CO2 Diffusivity",
         standard_name = "soil_co2_diffusivity",
@@ -788,7 +891,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil O2 diffusivity
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sod",
         long_name = "Soil O2 Diffusivity",
         standard_name = "soil_o2_diffusivity",
@@ -799,7 +903,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil CO2 microbial source
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "scms",
         long_name = "Soil CO2 Microbial Source",
         standard_name = "soil_co2_microbial_source",
@@ -811,7 +916,8 @@ function define_diagnostics!(land_model)
 
     ## Other ##
     # Longwave out
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "lwu",
         long_name = "Longwave Radiation Up",
         standard_name = "longwave_radiation_up",
@@ -821,7 +927,8 @@ function define_diagnostics!(land_model)
     )
 
     # Shortwave out
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swu",
         long_name = "Shortwave Radiation Up",
         standard_name = "shortwave_radiation_up",
@@ -831,7 +938,8 @@ function define_diagnostics!(land_model)
     )
 
     # Evapotranspiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "et",
         long_name = "Evapotranspiration",
         standard_name = "evapotranspiration",
@@ -842,7 +950,8 @@ function define_diagnostics!(land_model)
     )
 
     # Ecosystem respiration
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "er",
         long_name = "Ecosystem Respiration",
         standard_name = "ecosystem respiration",
@@ -853,7 +962,8 @@ function define_diagnostics!(land_model)
     )
 
     # Surface runoff
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sr",
         long_name = "Surface Runoff",
         standard_name = "surface_runoff",
@@ -864,7 +974,8 @@ function define_diagnostics!(land_model)
     )
 
     # Subsurface runoff
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "ssr",
         long_name = "Subsurface Runoff",
         standard_name = "subsurface_runoff",
@@ -877,7 +988,8 @@ function define_diagnostics!(land_model)
     ## Stored in Y (prognostic or state variables) ##
 
     # Canopy temperature
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "ct",
         long_name = "Canopy Temperature",
         standard_name = "canopy_temperature",
@@ -888,7 +1000,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil CO2
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sco2",
         long_name = "Soil CO2",
         standard_name = "soil_co2",
@@ -898,7 +1011,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil O2
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "so2",
         long_name = "Soil O2 Volumetric Fraction",
         standard_name = "soil_o2_volumetric_fraction",
@@ -908,7 +1022,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil Organic Carbon
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "soc",
         long_name = "Soil Organic Carbon",
         standard_name = "soil_organic_carbon",
@@ -918,6 +1033,7 @@ function define_diagnostics!(land_model)
     )
 
     # Soil CO2 in ppm (for NEON comparison)
+<<<<<<< HEAD
     add_diagnostic_variable!(
         short_name = "sco2_ppm",
         long_name = "Soil Pore Air CO2 Concentration",
@@ -928,7 +1044,20 @@ function define_diagnostics!(land_model)
     )
 
     # Soil water content
+=======
+>>>>>>> origin/ar/em/calibrate_neon
     add_diagnostic_variable!(
+        short_name = "sco2_ppm",
+        long_name = "Soil Pore Air CO2 Concentration",
+        standard_name = "soil_pore_air_co2_concentration",
+        units = "ppm",
+        comments = "CO2 concentration in soil pore air space, in parts per million by volume. Computed from air-equivalent CO2 concentration using ideal gas law. (depth resolved)",
+        compute! = (out, Y, p, t) -> compute_soilco2_ppm!(out, Y, p, t, land_model),
+    )
+
+    # Soil water content
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swc",
         long_name = "Soil Water Content",
         standard_name = "soil_water_content",
@@ -938,7 +1067,8 @@ function define_diagnostics!(land_model)
             compute_soil_water_content!(out, Y, p, t, land_model),
     )
 
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "iwc",
         long_name = "Integrated Soil Water Mass in first 10cm",
         standard_name = "soil_10cm_water_mass",
@@ -951,7 +1081,7 @@ function define_diagnostics!(land_model)
     # Plant water content
 
     #=
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(possible_diags;
         short_name = "pwc",
         long_name = "Plant Water Content",
         standard_name = "plant_water_content",
@@ -964,7 +1094,8 @@ function define_diagnostics!(land_model)
     # return a Tuple
 
     # Soil ice
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "si",
         long_name = "Soil Ice",
         standard_name = "soil_ice",
@@ -975,7 +1106,8 @@ function define_diagnostics!(land_model)
     )
 
     # Soil internal energy
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "sie",
         long_name = "Soil Internal Energy",
         standard_name = "soil_internal_energy",
@@ -986,7 +1118,8 @@ function define_diagnostics!(land_model)
     )
 
     # SWE
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "swe",
         long_name = "Snow water equivalent",
         standard_name = "snow_water_equivalent",
@@ -997,7 +1130,8 @@ function define_diagnostics!(land_model)
     )
 
     # Snow depth
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "snd",
         long_name = "Snow depth",
         standard_name = "snow_depth",
@@ -1008,7 +1142,8 @@ function define_diagnostics!(land_model)
     )
 
     # Snow cover fraction
-    add_diagnostic_variable!(
+    conditional_add_diagnostic_variable!(
+        possible_diags;
         short_name = "snowc",
         long_name = "Snow cover fraction",
         standard_name = "snow_cover_fraction",

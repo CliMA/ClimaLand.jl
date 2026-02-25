@@ -125,7 +125,7 @@ end
     domain = ClimaLand.Domains.global_domain(FT)
     coords = ClimaLand.Domains.coordinates(domain)
 
-    atmos = ClimaLand.CoupledAtmosphere{FT}()
+    atmos = ClimaLand.CoupledAtmosphere{FT, FT}(FT(1), FT(1))
     radiation = ClimaLand.CoupledRadiativeFluxes{FT}()
     p = (; drivers = ClimaLand.initialize_drivers((atmos, radiation), coords))
 

@@ -3,13 +3,23 @@ ClimaLand.jl Release Notes
 
 main
 ------
+- Create set ic functions for the bucket PR[#1644](https://github.com/CliMA/ClimaLand.jl/pull/1644)
+- Add CRUJRA forcing PR[#1624](https://github.com/CliMA/ClimaLand.jl/pull/1624)
+- ![breaking change][badge-💥breaking] Unify radiation for bucket and integrated land PR[#1630](https://github.com/CliMA/ClimaLand.jl/pull/1630)
+
+v1.5.3
+------
+- Updated parameters, quantum yield for C4, canopy LW PR[#1613](https://github.com/CliMA/ClimaLand.jl/pull/1613)
+- ![][badge-✨feature] Add prognostic optimal LAI model (Zhou et al. 2025) as a biomass model (`ZhouOptimalLAIModel`), computing LAI dynamically from energy and water constraints
+
 v1.5.2
 ------
 - Fix divide by zero bug
 
 v1.5.1
 ------
-- Adjust RootSolvers lower compat 
+- Adjust RootSolvers lower compat
+
 v1.5.0
 ------
 - Update to Insolation v1; use cosine zenith angle directly from Insolation.jl PR[#1617](https://github.com/CliMA/ClimaLand.jl/pull/1617)

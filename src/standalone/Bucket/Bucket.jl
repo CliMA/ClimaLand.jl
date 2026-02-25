@@ -415,7 +415,6 @@ function auxiliary_types(model::BucketModel{FT}) where {FT}
         FT,
         FT,
         FT,
-        FT,
         NamedTuple{(:F_melt, :F_into_snow, :G_under_snow), Tuple{FT, FT, FT}},
         FT,
         FT,
@@ -435,7 +434,6 @@ auxiliary_vars(::BucketModel) = (
     :scratch3,
     :T_sfc,
     :α_sfc,
-    :ρ_sfc,
     :snow_cover_fraction,
     :F_sfc,
     :partitioned_fluxes,
@@ -447,7 +445,6 @@ auxiliary_vars(::BucketModel) = (
     :total_water,
 )
 auxiliary_domain_names(::BucketModel) = (
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -527,22 +524,20 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
         h_sfc = ClimaLand.surface_height(model, Y, p)
         atmos = model.atmos
-        @. p.bucket.ρ_sfc = ClimaLand.compute_ρ_sfc(
-            surface_flux_params,
-            p.drivers.T,
-            p.drivers.P,
-            p.drivers.q,
-            atmos.h - h_sfc,
-            p.bucket.T_sfc,
-        )
-
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
         # here, otherwise we would need two values of q_sfc!
         p.bucket.q_sfc .=
             saturation_specific_humidity.(
                 p.bucket.T_sfc,
-                p.bucket.ρ_sfc,
+                ClimaLand.compute_ρ_sfc.(
+                    surface_flux_params,
+                    p.drivers.T,
+                    p.drivers.P,
+                    p.drivers.q,
+                    atmos.h .- h_sfc,
+                    p.bucket.T_sfc,
+                ),
                 Ref(
                     LP.thermodynamic_parameters(
                         model.parameters.earth_param_set,
@@ -687,29 +682,6 @@ end
 
 function ClimaLand.get_drivers(model::BucketModel)
     return (model.atmos, model.radiation)
-end
-
-"""
-    ClimaLand.surface_air_density(
-                    atmos::CoupledAtmosphere,
-                    model::BucketModel,
-                    Y,
-                    p,
-                    _...,
-                )
-Returns the air density at the surface in the case of a coupled simulation.
-
-This requires the field `ρ_sfc` to be present in the cache `p` under the name
-of the model.
-"""
-function surface_air_density(
-    atmos::CoupledAtmosphere,
-    model::BucketModel,
-    Y,
-    p,
-    _...,
-)
-    return p.bucket.ρ_sfc
 end
 
 """

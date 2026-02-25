@@ -72,7 +72,6 @@ get_soil(m::EnergyHydrology) = m
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n
 @diagnostic_compute "sensible_heat_flux" BucketModel p.bucket.turbulent_fluxes.shf
-@diagnostic_compute "surface_air_density" BucketModel p.bucket.ρ_sfc
 @diagnostic_compute "specific_humidity" BucketModel p.bucket.q_sfc
 @diagnostic_compute "surface_temperature" BucketModel p.bucket.T_sfc
 @diagnostic_compute "vapor_flux" BucketModel p.bucket.turbulent_fluxes.vapor_flux
@@ -275,6 +274,11 @@ end
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
 
+# Canopy - Optimal LAI model diagnostics
+@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_daily
+
+@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_annual
+
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
     SoilCanopyModel,
@@ -385,6 +389,37 @@ end
     LandModel,
     SoilCO2Model,
 } Y.soilco2.SOC # SOC is now prognostic
+
+# Vegetation carbon (derived from prescribed biomass)
+function compute_vegetation_carbon!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}, CanopyModel{FT}},
+) where {FT}
+    canopy = get_canopy(land_model)
+
+    # Get parameters
+    σl = canopy.autotrophic_respiration.parameters.σl  # specific leaf density (kg C/m^2 leaf)
+    ηsl = canopy.autotrophic_respiration.parameters.ηsl  # live stem wood coefficient (kg C/m^3)
+
+    # Get area indices
+    LAI = p.canopy.biomass.area_index.leaf
+    SAI = p.canopy.biomass.area_index.stem
+
+    # Get canopy height from biomass model
+    h = canopy.biomass.height
+
+    # Compute vegetation carbon
+    # cLeaf = σl * LAI (kg C/m^2)
+    # cStem = ηsl * h * SAI (kg C/m^2)
+    if isnothing(out)
+        out = zeros(canopy.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    @. out = σl * LAI + ηsl * h * SAI
+end
 @diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P
 @diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_liq
 @diagnostic_compute "radiation_longwave_down" Union{

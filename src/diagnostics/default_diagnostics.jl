@@ -250,9 +250,8 @@ function default_diagnostics(
     reduction_type = :average,
     dt = nothing,
 ) where {FT}
-    define_diagnostics!(model)
-
     possible_diags = get_possible_diagnostics(model)
+
     if output_vars == :long
         diagnostics = possible_diags
     elseif output_vars == :short
@@ -262,6 +261,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
+    define_diagnostics!(model, diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),
@@ -327,9 +327,8 @@ function default_diagnostics(
     dt = nothing,
 ) where {FT}
 
-    define_diagnostics!(land_model)
-
     possible_diags = get_possible_diagnostics(land_model)
+
     if output_vars == :long
         diagnostics = possible_diags
     elseif output_vars == :short
@@ -339,6 +338,7 @@ function default_diagnostics(
         @assert all([var in possible_diags for var in output_vars])
         diagnostics = output_vars
     end
+    define_diagnostics!(land_model, diagnostics)
 
     default_outputs = common_diagnostics(
         Val(reduction_period),
@@ -352,6 +352,7 @@ function default_diagnostics(
 
     if conservation
         additional_diags = ["epa", "epac", "wvpa", "wvpac"]
+        define_diagnostics!(land_model, additional_diags)
         additional_outputs = vcat(
             map(additional_diags) do short_name
                 output_schedule_func =
@@ -438,6 +439,14 @@ function add_diagnostics!(
     append!(diagnostics, ["ws"])
     return nothing
 end
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::ZhouOptimalLAIModel,
+)
+    append!(diagnostics, ["a0d", "a0a"])
+    return nothing
+end
 
 ## Possible diagnostics for standalone models
 """
@@ -515,6 +524,8 @@ function get_possible_diagnostics(model::CanopyModel)
 
     # Add conditional diagnostics based on atmosphere type
     add_diagnostics!(diagnostics, model, model.boundary_conditions.atmos)
+    # Add conditional diagnostics based on biomass model type
+    add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
@@ -610,7 +621,9 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "so2", "soc", "sco2_ppm"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    return ["gpp", "ct", "lai", "trans", "er", "sif"]
+    diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]
+    add_diagnostics!(diagnostics, model, model.biomass)
+    return diagnostics
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)
@@ -646,6 +659,9 @@ function get_short_diagnostics(model::LandModel)
         "lwp",
         "iwc",
         "sdr",
+        "nee",
+        "ra",
+        "cveg",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
@@ -655,6 +671,7 @@ function get_short_diagnostics(model::LandModel)
         model.soil,
         model.soil.boundary_conditions.top.runoff,
     )
+
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
 function get_short_diagnostics(model::BucketModel)

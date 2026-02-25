@@ -25,6 +25,7 @@ end
 end
 @safetestset "Driver tests" begin
     include("shared_utilities/drivers.jl")
+    include("shared_utilities/coupled_fluxes.jl")
 end
 
 # Standalone Bucket model tests

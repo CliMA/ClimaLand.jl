@@ -33,7 +33,8 @@ export AbstractAtmosphericDrivers,
     prescribed_perturbed_temperature_era5,
     prescribed_perturbed_rh_era5,
     prescribed_analytic_forcing,
-    default_cos_zenith_angle
+    default_cos_zenith_angle,
+    prescribed_forcing_crujra
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -286,7 +287,7 @@ function default_cos_zenith_angle(
 end
 
 """
-    CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
+    CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <: AbstractAtmosphericDrivers{FT}
 
 To be used when coupling to an atmosphere model. Contains fields that
 are used to compute surface fluxes in the coupled setup.
@@ -297,21 +298,12 @@ and don't need to be recomputed.
 When constructed with a space, the struct contains the fields needed to compute
 surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
 """
-struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
+struct CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <:
+       AbstractAtmosphericDrivers{FT}
     "Atmospheric reference height (m), relative to surface elevation"
-    h::Union{Nothing, Fields.Field}
+    h::T
     "Minimum wind speed (gustiness; m/s), which is always a spatial constant"
-    gustiness::Union{Nothing, FT}
-    "Create a `CoupledAtmosphere` with default values"
-    function CoupledAtmosphere{FT}() where {FT}
-        return new{FT}(nothing, nothing)
-    end
-    function CoupledAtmosphere{FT}(space, atmos_h) where {FT}
-        return new{FT}(
-            atmos_h, # Field of atmosphere height on `space`
-            FT(1), # gustiness is always a spatial constant, for now
-        )
-    end
+    gustiness::FT
 end
 
 """
@@ -639,7 +631,7 @@ end
 
 """
     net_radiation!(dest::ClimaCore.Fields.Field,
-                   radiation::PrescribedRadiativeFluxes{FT},
+                   radiation::AbstractRadiativeDrivers,
                    model::AbstractModel{FT},
                    Y::ClimaCore.Fields.FieldVector,
                    p::NamedTuple,
@@ -647,12 +639,15 @@ end
                    ) where {FT}
 
 
-Computes net radiative  fluxes for a prescribed incoming  longwave and shortwave
-radiation.
+Computes net radiative flux assuming that the incoming shortwave
+radiation is stored in `p.drivers.SW_d`, and the incoming longwave
+radiation is stored in `p.drivers.LW_d`.  This can be because
+- the prescribed functions are called to update these values
+- the coupler has updated these values.
 """
 function net_radiation!(
     dest::ClimaCore.Fields.Field,
-    radiation::PrescribedRadiativeFluxes,
+    radiation::AbstractRadiativeDrivers,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -665,37 +660,7 @@ function net_radiation!(
     T_sfc = component_temperature(model, Y, p)
     α_sfc = surface_albedo(model, Y, p)
     ϵ_sfc = surface_emissivity(model, Y, p)
-    # Recall that the user passed the LW and SW downwelling radiation,
-    # where positive values indicate toward surface, so we need a negative sign out front
-    # in order to inidicate positive R_n  = towards atmos.
     @. dest = -(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_sfc^4)
-    return nothing
-end
-
-
-"""
-    net_radiation!(dest,
-                  radiation::CoupledRadiativeFluxes,
-                  model::AbstractModel,
-                  Y,
-                  p,
-                  t)
-
-Computes the net radiative flux at the ground for a coupled simulation.
-Your model cache must contain the field `R_n`.
-"""
-function ClimaLand.net_radiation!(
-    dest,
-    radiation::CoupledRadiativeFluxes,
-    model::AbstractModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    # coupler has done its thing behind the scenes already
-    model_name = ClimaLand.name(model)
-    model_cache = getproperty(p, model_name)
-    dest .= model_cache.R_n
     return nothing
 end
 
@@ -1685,4 +1650,213 @@ function empirical_diffuse_fraction(
             FT(kₜ * (0.426 * kₜ + 0.256 * cosθs - 3.49e-3 * T + 0.0734 * RH))
     end
     return max(min(diff_frac, FT(1)), FT(0))
+end
+
+"""
+    prescribed_forcing_crujra(start_date,
+                              stop_date,
+                              surface_space,
+                              toml_dict::CP.ParamDict,
+                              FT;
+                              gustiness = 1,
+                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+                              time_interpolation_method = LinearInterpolation(),
+                              regridder_type = :InterpolationsRegridder,
+                              context = nothing,
+                             )
+
+Construct `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` drivers from
+the CRU-JRA reanalysis NetCDF data.
+
+Time handling
+- Defaults to `LinearInterpolation()` in time (no periodic extrapolation).
+
+How it differs from `prescribed_forcing_era5`
+- CRU-JRA provides scalar 10 m wind speed (`"wind"`), so no u/v combination is
+    needed (ERA5 combines `u10`/`v10`).
+- Only a single resolution is supported here; ERA5 exposes both high- and
+    low-resolution artifacts and switches interpolation strategies accordingly.
+- The default time interpolation is non-periodic; ERA5 defaults to
+    `LinearInterpolation(PeriodicCalendar())` to enable seamless multi-year
+    reuse of limited data (especially for low-res forcing).
+
+!!! note "Full dataset availability"
+        The full CRU-JRA dataset used by ClimaLand is only available on the clima
+        cluster.
+"""
+function prescribed_forcing_crujra(
+    start_date,
+    stop_date,
+    surface_space,
+    toml_dict::CP.ParamDict,
+    FT;
+    gustiness = 1,
+    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+    time_interpolation_method = LinearInterpolation(),
+    regridder_type = :InterpolationsRegridder,
+    context = nothing,
+)
+
+    crujra_ncdata_path = ClimaLand.Artifacts.find_crujra_year_paths(
+        start_date,
+        stop_date;
+        context,
+    )
+
+    interpolation_method = Interpolations.Constant()
+
+    crujra_ncdata_path isa String && (crujra_ncdata_path = [crujra_ncdata_path])
+
+    earth_param_set = LP.LandParameters(toml_dict)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+
+    # Replaces missing values with NaN.
+    clean_missing = data -> coalesce.(data, Float32(NaN))
+
+    # Precip is provided as a mass flux; convert to volume flux of liquid water with ρ = 1000 kg/m^3
+    precip = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path],
+        ["mtpr", "msr"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> -clean_missing(data) / _ρ_liq
+        ),
+        method = time_interpolation_method,
+        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
+    )
+
+    snow_precip = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msr",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> -clean_missing(data) / _ρ_liq
+        ),
+        method = time_interpolation_method,
+    )
+
+    u_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "wind",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+    specific_humidity(Td, T, P; params = earth_param_set) =
+        ClimaLand.specific_humidity_from_dewpoint.(Td, T, P, params)
+    q_atmos = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path, crujra_ncdata_path],
+        ["d2m", "t2m", "sp"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        compose_function = specific_humidity,
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+    P_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "sp",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+
+    T_atmos = TimeVaryingInput(
+        crujra_ncdata_path,
+        "t2m",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+    h_atmos = FT(10)
+
+    atmos = PrescribedAtmosphere(
+        precip,
+        snow_precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        start_date,
+        h_atmos,
+        toml_dict;
+        gustiness = FT(gustiness),
+        c_co2 = c_co2,
+    )
+
+    SW_d = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msdwswrf",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+    function compute_diffuse_fraction(total, direct)
+        diff = max(total - direct, Float32(0))
+        return min(diff / (total + eps(Float32)), Float32(1))
+    end
+    function compute_diffuse_fraction_broadcasted(total, direct)
+        return @. compute_diffuse_fraction(total, direct)
+    end
+
+    frac_diff = TimeVaryingInput(
+        [crujra_ncdata_path, crujra_ncdata_path],
+        ["msdwswrf", "msdrswrf"],
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+        compose_function = compute_diffuse_fraction_broadcasted,
+    )
+    LW_d = TimeVaryingInput(
+        crujra_ncdata_path,
+        "msdwlwrf",
+        surface_space;
+        start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        file_reader_kwargs = (; preprocess_func = clean_missing),
+        method = time_interpolation_method,
+    )
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
+            t,
+            s;
+            latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+            longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+            insol_params = earth_param_set.insol_params,
+        )
+
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        cosθs = cos_zenith_angle,
+        toml_dict = toml_dict,
+        frac_diff = frac_diff,
+    )
+    return (; atmos, radiation)
 end

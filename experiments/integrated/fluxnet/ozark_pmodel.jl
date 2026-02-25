@@ -181,12 +181,8 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
 )
 
 # Set up plant hydraulics
-# Read in LAI from MODIS data
-surface_space = land_domain.space.surface;
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
@@ -201,8 +197,14 @@ hydraulics = Canopy.PlantHydraulicsModel{FT}(
     retention_model,
 )
 height = h_stem + h_leaf
-biomass =
-    Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
+biomass = Canopy.ZhouOptimalLAIModel{FT}(
+    surface_domain,
+    toml_dict;
+    SAI,
+    RAI,
+    rooting_depth,
+    height,
+)
 
 # Set up the energy model
 energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
@@ -214,7 +216,6 @@ canopy_forcing = (; atmos, radiation, ground)
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
-    LAI,
     toml_dict;
     prognostic_land_components,
     radiative_transfer,
@@ -258,6 +259,7 @@ output_vars = [
     "so2",
     "soc",
     "scms",
+    "lai",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -300,7 +302,7 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe"],
+    short_names = ["swc", "tsoil", "swe", "lai"],
     spinup_date = start_date + Day(20),
     comparison_data,
 )

@@ -508,9 +508,9 @@ version = "0.4.6"
 
 [[deps.ClimaDiagnostics]]
 deps = ["Accessors", "ClimaComms", "ClimaCore", "ClimaUtilities", "Dates", "NCDatasets", "NVTX", "OrderedCollections", "SciMLBase"]
-git-tree-sha1 = "34afaa11e04d6d4f746b0d03cdbc83b543f77302"
+git-tree-sha1 = "ee9609d1c03d43bd09236ff9943df17f37db004c"
 uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
-version = "0.3.2"
+version = "0.3.1"
 
 [[deps.ClimaInterpolations]]
 deps = ["DocStringExtensions"]
@@ -526,7 +526,7 @@ weakdeps = ["CUDA"]
 deps = ["Adapt", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.5.2"
+version = "1.5.3"
 weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "DataFrames", "DelimitedFiles", "Flux", "GeoMakie", "HTTP", "Printf", "StatsBase"]
 
     [deps.ClimaLand.extensions]
@@ -536,9 +536,9 @@ weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "DataFrames", "Delimit
 
 [[deps.ClimaParams]]
 deps = ["Dates", "TOML"]
-git-tree-sha1 = "0e2ce2d5fb20a8a966707356c1f44402ebf79c2d"
+git-tree-sha1 = "5bd9de756aa2de036a225f0a65476edcad1c0d6d"
 uuid = "5c42b081-d73a-476f-9059-fd94b934656c"
-version = "1.0.13"
+version = "1.0.11"
 
 [[deps.ClimaTimeSteppers]]
 deps = ["ClimaComms", "DataStructures", "DiffEqBase", "KernelAbstractions", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "SciMLBase", "StaticArrays"]
@@ -777,9 +777,9 @@ version = "1.9.1"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "BracketingNonlinearSolve", "ConcreteStructs", "DocStringExtensions", "FastBroadcast", "FastClosures", "FastPower", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "PrecompileTools", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SciMLStructures", "Setfield", "Static", "StaticArraysCore", "SymbolicIndexingInterface", "TruncatedStacktraces"]
-git-tree-sha1 = "de890062c237c3ee640c119592996438c265072c"
+git-tree-sha1 = "c4707e6374210edbad5d2e1be1bd0e38d8106203"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.203.0"
+version = "6.200.0"
 
     [deps.DiffEqBase.extensions]
     DiffEqBaseCUDAExt = "CUDA"
@@ -1235,9 +1235,9 @@ version = "1.11.0"
 
 [[deps.GPUArrays]]
 deps = ["Adapt", "GPUArraysCore", "KernelAbstractions", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "ScopedValues", "Serialization", "SparseArrays", "Statistics"]
-git-tree-sha1 = "6487601563e4a1d1dab796e88b4548bf5544209e"
+git-tree-sha1 = "cf610e3149d6bd9d3dfb63b218869394c3ee819f"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "11.4.1"
+version = "11.4.0"
 weakdeps = ["JLD2"]
 
     [deps.GPUArrays.extensions]
@@ -2291,10 +2291,10 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
 [[deps.NonlinearSolveBase]]
-deps = ["ADTypes", "Adapt", "ArrayInterface", "CommonSolve", "Compat", "ConcreteStructs", "DifferentiationInterface", "EnzymeCore", "FastClosures", "LinearAlgebra", "LogExpFunctions", "Markdown", "MaybeInplace", "PreallocationTools", "Preferences", "Printf", "RecursiveArrayTools", "SciMLBase", "SciMLJacobianOperators", "SciMLLogging", "SciMLOperators", "SciMLStructures", "Setfield", "StaticArraysCore", "SymbolicIndexingInterface", "TimerOutputs"]
-git-tree-sha1 = "37fafbc6299df165db942a4f1dc057f6f688827c"
+deps = ["ADTypes", "Adapt", "ArrayInterface", "CommonSolve", "Compat", "ConcreteStructs", "DifferentiationInterface", "EnzymeCore", "FastClosures", "LinearAlgebra", "Markdown", "MaybeInplace", "Preferences", "Printf", "RecursiveArrayTools", "SciMLBase", "SciMLJacobianOperators", "SciMLLogging", "SciMLOperators", "SciMLStructures", "Setfield", "StaticArraysCore", "SymbolicIndexingInterface", "TimerOutputs"]
+git-tree-sha1 = "9323e063ce69851b28e5c96539b2e2024f9a7e4c"
 uuid = "be0214bd-f91f-a760-ac4e-3421ce2b2da0"
-version = "2.12.0"
+version = "2.11.2"
 
     [deps.NonlinearSolveBase.extensions]
     NonlinearSolveBaseBandedMatricesExt = "BandedMatrices"
@@ -2591,15 +2591,9 @@ version = "0.2.0"
 
 [[deps.PrettyTables]]
 deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "REPL", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "211530a7dc76ab59087f4d4d1fc3f086fbe87594"
+git-tree-sha1 = "c5a07210bd060d6a8491b0ccdee2fa0235fc00bf"
 uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "3.2.3"
-
-    [deps.PrettyTables.extensions]
-    PrettyTablesTypstryExt = "Typstry"
-
-    [deps.PrettyTables.weakdeps]
-    Typstry = "f0ed7684-a786-439e-b1e3-3b82803b501e"
+version = "3.1.2"
 
 [[deps.Primes]]
 deps = ["IntegerMathUtils"]
@@ -2790,9 +2784,9 @@ version = "0.5.17"
 
 [[deps.SCS]]
 deps = ["LinearAlgebra", "MathOptInterface", "OpenBLAS32_jll", "PrecompileTools", "SCS_jll", "SparseArrays"]
-git-tree-sha1 = "d30038359788ed12a81d7f884749b4f81568f416"
+git-tree-sha1 = "cfc9973a2fd1089fbd6c02b324f4ef189f9697e6"
 uuid = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
-version = "2.6.2"
+version = "2.6.1"
 
     [deps.SCS.extensions]
     SCSSCS_GPU_jllExt = ["SCS_GPU_jll"]

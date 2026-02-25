@@ -198,6 +198,23 @@ function modis_lai_multiyear_paths(; start_date, stop_date, context = nothing)
 end
 
 """
+    optimal_lai_initial_conditions_path(; context = nothing)
+
+Return the path to the NetCDF file containing spatially varying initial conditions
+for the prognostic optimal LAI model:
+- GSL: Growing season length (days)
+- A0_annual: Annual potential GPP (mol CO₂ m⁻² yr⁻¹)
+- precip_annual: Mean annual precipitation (mol H₂O m⁻² yr⁻¹)
+- vpd_gs: Growing season VPD (Pa)
+- lai_init: Initial LAI from MODIS (m² m⁻²)
+"""
+function optimal_lai_initial_conditions_path(; context = nothing)
+    dir = @clima_artifact("optimal_lai_inputs", context)
+    return joinpath(dir, "optimal_lai_inputs.nc")
+end
+
+
+"""
     clm_data__folder_path(; context, lowres = false)
 
 Return the path to the folder that contains the clm data. If the lowres flag is set to true,
@@ -594,6 +611,43 @@ function era5_surface_data_1979_2024_path(; context = nothing)
         "era5_monthly_averages_surface_single_level_1979_2024",
         context
     )
+end
+
+"""
+    crujra_forcing_data_folder_path(; context = nothing)
+
+Return the path to the directory that contains the forty years of CRU-JRA forcing
+data.
+"""
+function crujra_forcing_data_folder_path(; context = nothing)
+    @clima_artifact("crujra_forcing_data", context)
+end
+
+"""
+    find_crujra_year_paths(start_date, stop_date; context = nothing)
+
+Find the appropriate files of CRU-JRA forcing data to run a simuation starting on
+`start_date` and ending on `stop_date`. These will be returned as a list of paths,
+one for each year of data needed. The artifact contains data from 1901 to 2023.
+
+We add 1 year to the final date to ensure that everything between
+start_date and stop_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
+"""
+function find_crujra_year_paths(start_date, stop_date; context = nothing)
+    year0 = Dates.year(start_date)
+    yearf = Dates.year(stop_date)
+    crujra_path = crujra_forcing_data_folder_path(context = context)
+    years = collect(
+        joinpath(crujra_path, "crujra_forcing_data_$(year)_0.5x0.5.nc") for
+        year in year0:yearf
+    )
+    for year in years
+        isfile(year) || error(
+            "The year $year does not exist in the CRU-JRA forcing data artifact; please use dates between 1901 and 2023.",
+        )
+    end
+    return years
 end
 
 end

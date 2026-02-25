@@ -16,15 +16,25 @@ import ClimaCore
 using Dates
 using Statistics
 
-# This test must go first because it checks the global `ALL_DIAGNOSTICS`
+@testset "define_diagnostics! tests" begin
+    @test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
+    empty!(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)
+    ClimaLand.Diagnostics.define_diagnostics!(nothing, Val(:all))
+    short_names =
+        [d.short_name for d in values(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)]
+    long_names =
+        [d.long_name for d in values(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)]
+    @test allunique(short_names)
+    @test allunique(long_names)
+end
+
 @testset "Diagnostics writing and reading" begin
     FT = Float32
     @test isdefined(ClimaLand.Diagnostics, :compute_sw_albedo!)
 
     # Define some diagnostics for a DummyModel
 
-    @test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
+    empty!(ClimaLand.Diagnostics.ALL_DIAGNOSTICS)
     struct DummyModel end
     struct DummyModel2 end
     ClimaLand.Diagnostics.@diagnostic_compute "sw_albedo" Union{
@@ -32,7 +42,20 @@ using Statistics
         DummyModel2,
     } p.foo.bar
 
-    ClimaLand.Diagnostics.add_diagnostic_variable!(
+    # Test that the diagnostic is only added when the model is in the possible_diags list
+    ClimaLand.Diagnostics.conditional_add_diagnostic_variable!(
+        [];
+        short_name = "alpha",
+        long_name = "Albedo",
+        standard_name = "albedo",
+        units = "",
+        compute! = (out, Y, p, t) ->
+            compute_sw_albedo!(out, Y, p, t, land_model),
+    )
+    @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
+
+    ClimaLand.Diagnostics.conditional_add_diagnostic_variable!(
+        ["alpha"];
         short_name = "alpha",
         long_name = "Albedo",
         standard_name = "albedo",
@@ -41,7 +64,7 @@ using Statistics
             compute_sw_albedo!(out, Y, p, t, land_model),
     )
 
-    # @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
+    @test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
 
     # First, run a simulation for 1 hour
     seconds = 1.0
@@ -111,7 +134,7 @@ using Statistics
 
     # ClimaDiagnostics
 
-    ClimaLand.Diagnostics.define_diagnostics!(model)
+    ClimaLand.Diagnostics.define_diagnostics!(model, ["rn", "lhf"])
     diags = ["rn", "lhf"]
 
     tmpdir = mktempdir(".")
@@ -296,8 +319,21 @@ end
 
         Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(297.5)
+        p.canopy.biomass.area_index.leaf .= FT(0.3)
+        p.canopy.biomass.area_index.stem .= FT(0)
+        p.canopy.biomass.area_index.root .= FT(0.3)
+        return
     end
 
+    ClimaLand.make_imp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_exp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_update_aux(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_update_boundary_fluxes(::ClimaLand.LandModel) =
+        Returns(nothing)
+    ClimaLand.make_compute_jacobian(::ClimaLand.LandModel) = Returns(nothing)
+    Y, _, _ = initialize(model)
+    ClimaLand.FieldMatrixWithSolver(::typeof(Y)) =
+        ClimaCore.MatrixFields.FieldMatrixWithSolver([1.0], nothing)
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "ct", "sco2"]
     reduction_period = :every_dt
@@ -321,6 +357,7 @@ end
         set_ic!,
         diagnostics,
         user_callbacks = (),
+        updateat = nothing,
     )
 
     # Test that the diagnostics were correctly created and computed once at initialization
@@ -347,7 +384,7 @@ end
     # surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     atmos_h = ClimaCore.Fields.ones(surface_space) .* FT(50)
-    atmos = CoupledAtmosphere{FT}(surface_space, atmos_h)
+    atmos = CoupledAtmosphere{FT, typeof(atmos_h)}(atmos_h, FT(1))
     radiation = CoupledRadiativeFluxes{FT}()
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     LAI = TimeVaryingInput((t) -> FT(1.0))

@@ -42,7 +42,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using ClimaDiagnostics
 using ClimaUtilities
 import ClimaUtilities.TimeManager: date
-import ClimaLand.LandSimVis as LandSimVis
 
 import EnsembleKalmanProcesses as EKP
 import EnsembleKalmanProcesses.ParameterDistributions as PD
@@ -65,9 +64,10 @@ spinup_days = 20
 SOC_init = FT(2.0)
 dt = Float64(450)  # 7.5 minutes
 
-# Dates - get location from FLUXNET metadata, but use ERA5 forcing
+# Dates - get location and tower height from FLUXNET metadata
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
 spinup_date = start_date + Day(spinup_days)
@@ -75,7 +75,7 @@ spinup_date = start_date + Day(spinup_days)
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 5
+N_iterations = 10
 
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
@@ -94,9 +94,7 @@ land_domain = Column(;
 surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val)) #CHECK THAT
-
-# Build ERA5 forcing (global-style)
+# Build forcing from NEON CSV data (site-level meteorological observations)
 toml_dict_base = LP.create_toml_dict(FT)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -271,7 +269,6 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
         output_vars,
         reduction_period = :halfhourly,
     )
-    
 
     # Build and run simulation
     simulation = LandSimulation(
@@ -288,12 +285,12 @@ function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
     # Clean up temp file
     rm(tmp_toml_path; force = true)
 
-    return simulation, diags
+    return simulation
 end
 
 # ── 7. Forward Model G ───────────────────────────────────────────────────────
 function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
+    simulation = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 
     # Extract sco2_ppm at target layer
     (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
@@ -338,10 +335,10 @@ println("\n=== Setting up UKI calibration ===")
 
 # 4 constrained Gaussian priors
 priors = [
-    PD.constrained_gaussian("α_sx", 40000.0, 20000.0, 1000.0, 200000.0), #23835.0, 12000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("Ea_sx", 66858.0, 10000.0, 40000.0, 80000.0), #61000.0, 10000.0, 40000.0, 80000.0),
-    PD.constrained_gaussian("kM_sx", 0.001, 0.0008, 1e-5, 0.1), #0.005, 0.003, 1e-5, 0.1),
-    PD.constrained_gaussian("kM_o2", 0.08, 0.01, 1e-5, 0.1), #0.004, 0.002, 1e-5, 0.1),
+    PD.constrained_gaussian("α_sx", 23835.0, 12000.0, 1000.0, 200000.0),
+    PD.constrained_gaussian("Ea_sx", 61000.0, 10000.0, 40000.0, 80000.0),
+    PD.constrained_gaussian("kM_sx", 0.005, 0.003, 1e-5, 0.1),
+    PD.constrained_gaussian("kM_o2", 0.004, 0.002, 1e-5, 0.1),
 ]
 prior = PD.combine_distributions(priors)
 
@@ -475,7 +472,7 @@ println("\nDone.")
 println("\n=== Generating timeseries plots with best parameters ===")
 
 # Run model with best parameters to get diagnostics
-simulation_best, _ = run_model(best_params...)
+simulation_best = run_model(best_params...)
 
 # Plot SWC daily mean at target layer (similar to sco2_best_vs_obs)
 (times_swc, swc_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
