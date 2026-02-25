@@ -118,6 +118,23 @@ struct LandModel{
 end
 
 """
+    _sync_moisture_stress_params!(canopy, soil)
+
+When the soil model has had parameters overridden (e.g. by an inland water
+mask), the canopy's `PiecewiseMoistureStressModel` fields `θ_high` and `θ_low`
+may be stale. This function syncs them in-place from the soil parameters.
+"""
+function _sync_moisture_stress_params!(canopy, soil)
+    sms = canopy.soil_moisture_stress
+    if sms isa PiecewiseMoistureStressModel &&
+       sms.θ_high isa ClimaCore.Fields.Field
+        sms.θ_high .= soil.parameters.ν
+        sms.θ_low .= soil.parameters.θ_r
+    end
+    return nothing
+end
+
+"""
     LandModel{FT}(
         forcing,
         LAI,
@@ -226,6 +243,9 @@ function LandModel{FT}(
         prognostic_land_components,
     ),
 ) where {FT}
+    # When inland_water_mask overrides soil ν/θ_r, sync the canopy's
+    # PiecewiseMoistureStressModel parameters to match.
+    _sync_moisture_stress_params!(canopy, soil)
     return LandModel{FT}(canopy, snow, soil, soilco2)
 end
 
@@ -301,6 +321,9 @@ function LandModel{FT}(
         prognostic_land_components,
     ),
 ) where {FT}
+    # When inland_water_mask overrides soil ν/θ_r, sync the canopy's
+    # PiecewiseMoistureStressModel parameters to match.
+    _sync_moisture_stress_params!(canopy, soil)
     return LandModel{FT}(canopy, snow, soil, soilco2)
 end
 
