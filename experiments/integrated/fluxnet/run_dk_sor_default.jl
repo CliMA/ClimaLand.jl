@@ -47,7 +47,7 @@ spinup_days = 60
 dt = Float64(450)
 
 sim_start_year = 2004
-sim_end_year = 2006
+sim_end_year = 2004
 
 (; time_offset, lat, long) = FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
@@ -72,7 +72,10 @@ surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 toml_dict = LP.create_toml_dict(FT)
-#toml_dict.data["soil_momentum_roughness_length"]["value"] = FT(1.5)
+toml_dict.data["canopy_z_0m_coeff"]["value"] = FT(0.13)
+toml_dict.data["canopy_z_0b_coeff"]["value"] = FT(0.013)
+toml_dict.data["canopy_d_coeff"]["value"] = FT(0.67)
+toml_dict.data["leaf_Cd"]["value"] = FT(0.7)
 #toml_dict.data["soil_scalar_roughness_length"]["value"] = FT(1.5)
 #toml_dict.data["snow_momentum_roughness_length"]["value"] = FT(1.5)
 #toml_dict.data["snow_scalar_roughness_length"]["value"] = FT(1.5)
@@ -96,21 +99,31 @@ flux_times_dt = flux_ds["time"][:]
 nee_raw = Float64.(coalesce.(flux_ds["NEE_daily"][:], NaN))
 qle_raw = Float64.(coalesce.(flux_ds["Qle_daily"][:], NaN))
 qh_raw = Float64.(coalesce.(flux_ds["Qh_daily"][:], NaN))
+nee_unc_raw = Float64.(coalesce.(flux_ds["NEE_uc_daily"][:], NaN))
+qle_unc_raw = Float64.(coalesce.(flux_ds["Qle_uc_daily"][:], NaN))
+qh_unc_raw = Float64.(coalesce.(flux_ds["Qh_uc_daily"][:], NaN))
 close(flux_ds)
 
-flux_dates = Date.(flux_times_dt)
 spinup_date_d = Date(spinup_date)
 stop_date_d = Date(stop_date)
-valid_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .&
-             .!isnan.(nee_raw) .& .!isnan.(qle_raw) .& .!isnan.(qh_raw) .&
-             (abs.(nee_raw) .< 1e10) .& (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10)
+flux_dates = Date.(flux_times_dt)
+sim_dates = flux_dates[(flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d)]
+valid_nee_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(nee_raw) .& (abs.(nee_raw) .< 1e10)
+valid_lhf_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .&
+              .!isnan.(qle_raw)  .& (abs.(qle_raw) .< 1e10) 
+valid_shf_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(qh_raw) .& (abs.(qh_raw) .< 1e10)
 
-obs_dates = flux_dates[valid_mask]
-nee_obs = nee_raw[valid_mask]
-qle_obs = qle_raw[valid_mask]
-qh_obs = qh_raw[valid_mask]
-n_obs = length(obs_dates)
-println("Obs days: $n_obs")
+nee_obs_dates = flux_dates[valid_nee_mask]
+lhf_obs_dates = flux_dates[valid_lhf_mask]
+shf_obs_dates = flux_dates[valid_shf_mask]
+nee_obs = nee_raw[valid_nee_mask]
+qle_obs = qle_raw[valid_lhf_mask]
+qh_obs = qh_raw[valid_shf_mask]
+nee_unc = nee_unc_raw[valid_nee_mask]
+qle_unc = qle_unc_raw[valid_lhf_mask]
+qh_unc = qh_unc_raw[valid_shf_mask]
+#n_obs = length(obs_dates)
+#println("Obs days: $n_obs")
 
 # ── 5. Build & run model with default parameters ─────────────────────────────
 prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
@@ -186,7 +199,7 @@ println("Running simulation...")
 io = open("logfile.txt", "w")
 logger = ConsoleLogger(io)
 with_logger(logger) do
-    solve!(simulation);
+    @time solve!(simulation);
 end
 close(io)
 println("Simulation complete.")
@@ -228,14 +241,10 @@ function extract_daily_diag(simulation, diag_name, target_dates)
     return result
 end
 
-gpp_model = extract_daily_diag(simulation, "gpp_1d_average", obs_dates)
-er_model = extract_daily_diag(simulation, "er_1d_average", obs_dates)
-lhf_model = extract_daily_diag(simulation, "lhf_1d_average", obs_dates)
-shf_model = extract_daily_diag(simulation, "shf_1d_average", obs_dates)
-Tair = extract_daily_diag(simulation, "tair_1d_average", obs_dates)
-Tsoil = extract_daily_diag(simulation, "tsoil_1d_average", obs_dates)
-Tcanopy = extract_daily_diag(simulation, "ct_1d_average", obs_dates)
-scf = extract_daily_diag(simulation, "snowc_1d_average", obs_dates)
+gpp_model = extract_daily_diag(simulation, "gpp_1d_average", sim_dates)
+er_model = extract_daily_diag(simulation, "er_1d_average", sim_dates)
+lhf_model = extract_daily_diag(simulation, "lhf_1d_average", sim_dates)
+shf_model = extract_daily_diag(simulation, "shf_1d_average", sim_dates)
 
 # NEE = ER - GPP (both in mol CO₂/m²/s), convert to gC/m²/d
 nee_model_gC = (er_model .- gpp_model) .* 12.0 .* 86400.0
@@ -272,7 +281,7 @@ sco2_writer = let w = nothing
     end
     w
 end
-first_field = first(values(sco2_writer["sco2_1d_average"]))
+first_field = first(values(sco2_writer["scos2_1d_average"]))
 n_layers = size(parent(first_field), 1)
 println("  Soil has $n_layers layers")
 
@@ -318,18 +327,18 @@ mkpath(savedir)
 fig = Figure(size = (1200, 900))
 
 ax1 = Axis(fig[1, 1]; ylabel = "NEE (gC/m²/d)", title = "DK-Sor 2004 — Default Parameters")
-lines!(ax1, obs_dates, nee_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax1, obs_dates, nee_model_gC; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax1, sim_dates, nee_model_gC; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax1, nee_obs_dates, nee_obs; color = :green, linewidth = 1.5, label = "Obs")
 axislegend(ax1; position = :rt, framevisible = false)
 
 ax2 = Axis(fig[2, 1]; ylabel = "Latent Heat (W/m²)")
-lines!(ax2, obs_dates, qle_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax2, obs_dates, lhf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax2, sim_dates, lhf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax2, lhf_obs_dates, qle_obs; color = :green, linewidth = 1.5, label = "Obs")
 axislegend(ax2; position = :rt, framevisible = false)
 
 ax3 = Axis(fig[3, 1]; xlabel = "Day of year", ylabel = "Sensible Heat (W/m²)")
-lines!(ax3, obs_dates, qh_obs; color = :black, linewidth = 1.5, label = "Obs")
-lines!(ax3, obs_dates, shf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax3, sim_dates, shf_model; color = :blue, linewidth = 1.5, label = "Model")
+lines!(ax3, shf_obs_dates, qh_obs; color = :green, linewidth = 1.5, label = "Obs")
 axislegend(ax3; position = :rt, framevisible = false)
 
 outpath = joinpath(savedir, "dk_sor_default_2004.png")
@@ -375,17 +384,46 @@ println("Saved: $outpath2")
 
 
 # Figure 3: Flux diags
+
+shf_model_at_obs = extract_daily_diag(simulation, "shf_1d_average", shf_obs_dates)
+cshf = extract_daily_diag(simulation, "cshf_1d_average", shf_obs_dates)
+soilshf = extract_daily_diag(simulation, "soilshf_1d_average", shf_obs_dates)
+clhf = extract_daily_diag(simulation, "clhf_1d_average", lhf_obs_dates)
+soillhf = extract_daily_diag(simulation, "soillhf_1d_average", lhf_obs_dates)
+Tair = extract_daily_diag(simulation, "tair_1d_average", shf_obs_dates)
+Tsoil = extract_daily_diag(simulation, "tsoil_1d_average", shf_obs_dates)
+Tcanopy = extract_daily_diag(simulation, "ct_1d_average", shf_obs_dates)
+scf = extract_daily_diag(simulation, "snowc_1d_average", shf_obs_dates)
+
 fig = Figure(size = (600, 900))
 
 ax1 = Axis(fig[1, 1]; ylabel = "Snow cover", title = "DK-Sor 2004 — Default Parameters")
-lines!(ax1, 1:n_obs, scf; color = :black, linewidth = 1.5, label = "Model")
+lines!(ax1, shf_obs_dates, scf; color = :black, linewidth = 1.5, label = "Model")
 axislegend(ax1; position = :rt, framevisible = false)
 
-ax2 = Axis(fig[2, 1]; ylabel = "ΔT")
-lines!(ax2, 1:n_obs, -1 .*(Tair .- Tsoil); color = :black, linewidth = 1.5, label = "Tsoil-Tair")
-lines!(ax2, 1:n_obs, -1 .*(Tair .- Tcanopy); color = :blue, linewidth = 1.5, label = "Tcanopy-Tair")
+ax2 = Axis(fig[2, 1]; ylabel = "SHF components")
+lines!(ax2, shf_obs_dates, soilshf; color = :green, linewidth = 1.5, label = "Soil")
+lines!(ax2, shf_obs_dates, cshf; color = :red, linewidth = 1.5, label = "Canopy")
+lines!(ax2, shf_obs_dates, qh_obs; color = :blue, linewidth = 1.5, label = "Obs")
 axislegend(ax2; position = :rt, framevisible = false)
+
+ax3 = Axis(fig[3, 1]; ylabel = "LHF components")
+lines!(ax3, lhf_obs_dates, soillhf; color = :green, linewidth = 1.5, label = "Soil")
+lines!(ax3, lhf_obs_dates, clhf; color = :red, linewidth = 1.5, label = "Canopy")
+lines!(ax3, lhf_obs_dates, qle_obs; color = :blue, linewidth = 1.5, label = "Obs")
+axislegend(ax3; position = :rt, framevisible = false)
 
 outpath = joinpath(savedir, "dk_sor_temps.png")
 CairoMakie.save(outpath, fig)
 println("Saved: $outpath")
+
+# RMSE
+nee_model_at_obs = extract_daily_diag(simulation, "shf_1d_average", nee_obs_dates)
+lhf_model_at_obs = extract_daily_diag(simulation, "shf_1d_average", lhf_obs_dates)
+x = (lhf_model_at_obs .- qle_obs)./qle_unc;
+@show sqrt(mean(x.^2)), mean(x)
+x = (shf_model_at_obs .- qh_obs)./qh_unc;
+@show sqrt(mean(x.^2)), mean(x)
+x = (nee_model_at_obs .- nee_obs)./nee_unc;
+@show sqrt(mean(x.^2)), mean(x)
+    
