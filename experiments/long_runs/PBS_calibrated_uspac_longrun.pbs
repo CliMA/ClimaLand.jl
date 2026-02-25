@@ -1,0 +1,52 @@
+#!/bin/bash
+#PBS -N calibrated_uspac_longrun
+#PBS -o longrun_output.txt
+#PBS -e longrun_error.txt
+#PBS -l walltime=12:00:00
+#PBS -l select=1:ncpus=4:ngpus=1:mem=50GB
+
+## Account number for CliMA
+#PBS -A UCIT0011
+#PBS -q main
+
+export PBS_ACCOUNT="UCIT0011"
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+
+export CLIMACOMMS_DEVICE="CUDA"
+export CLIMACOMMS_CONTEXT="SINGLETON"
+
+# Set LONGER_RUN environment variable for 19-year run
+# Comment out the next line for a 2-year test run
+export LONGER_RUN=""
+
+echo "======================================"
+echo "Calibrated uSPAC Long Run"
+echo "======================================"
+echo "Job started at: $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Running in: $(pwd)"
+if [ -z ${LONGER_RUN+x} ]; then
+    echo "Run duration: 2 years (test run)"
+else
+    echo "Run duration: 19 years (full run)"
+fi
+echo "======================================"
+echo "Instantiating Julia environment..."
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)' || { echo "Package instantiation failed"; exit 1; }
+
+echo "Starting calibrated uSPAC long run..."
+julia --project=. experiments/long_runs/calibrated_uspac_longrun.jl
+
+exit_code=$?
+
+echo "======================================"
+echo "Job finished at: $(date)"
+if [ $exit_code -eq 0 ]; then
+    echo "Status: SUCCESS"
+else
+    echo "Status: FAILED (exit code: $exit_code)"
+fi
+echo "======================================"
+
+exit $exit_code

@@ -836,3 +836,345 @@ function extract_model_coords_from_space(surface_space, land_mask_field)
         land_mask = land_mask_vec
     )
 end
+
+"""
+    load_smap_grid_with_quality(
+        filepath::String; 
+        period_preference=["AM", "PM"]
+    )
+
+Load full SMAP soil moisture grid WITH quality flags.
+Returns (lons, lats, soil_moisture, quality_flags) on EASE-Grid 2.0 (9 km).
+
+# Arguments
+- `filepath::String`: Path to SMAP HDF5 file
+- `period_preference::Vector{String}`: Order of preference for AM/PM retrievals
+
+# Returns
+- `Tuple{Array{Float64}, Array{Float64}, Array{Float64}, Array{Int}}`: (lons, lats, soil_moisture, quality_flags)
+  Each is a 1D array. Missing/bad data is filled with NaN for SM and -1 for quality flags.
+"""
+function load_smap_grid_with_quality(
+    filepath::String; 
+    period_preference::Vector{String} = ["AM", "PM"]
+)
+    try
+        NCDataset(filepath, "r") do ds
+            for period in period_preference
+                group_name = "Soil_Moisture_Retrieval_Data_$(period)"
+                
+                if haskey(ds.group, group_name)
+                    group = ds.group[group_name]
+                    
+                    # Load coordinate grids
+                    if haskey(group, "latitude") && haskey(group, "longitude")
+                        lats_raw = group["latitude"][:]
+                        lons_raw = group["longitude"][:]
+                        lats = replace(lats_raw, missing => NaN) |> x -> convert(Vector{Float64}, x)
+                        lons = replace(lons_raw, missing => NaN) |> x -> convert(Vector{Float64}, x)
+                        
+                        # Load soil moisture
+                        if haskey(group, "soil_moisture")
+                            sm_raw = group["soil_moisture"][:]
+                            sm = replace(sm_raw, missing => NaN) |> x -> convert(Array{Float64}, x)
+                            
+                            # Filter fill values (SMAP uses -9999.0)
+                            sm[sm .< -1000] .= NaN
+                            
+                            # Load quality flags
+                            qual = if haskey(group, "retrieval_qual_flag")
+                                qual_raw = group["retrieval_qual_flag"][:]
+                                replace(qual_raw, missing => -1) |> x -> convert(Array{Int}, x)
+                            else
+                                fill(-1, size(sm))  # -1 indicates quality flag not available
+                            end
+                            
+                            @info "Loaded SMAP grid with quality flags" period size(sm) valid_pixels=count(.!isnan.(sm)) qual_available=haskey(group, "retrieval_qual_flag")
+                            
+                            return (lons, lats, sm, qual)
+                        end
+                    end
+                end
+            end
+            
+            error("No valid SMAP data found in file: $filepath")
+        end
+        
+    catch e
+        @error "Error reading SMAP grid from file: $filepath" exception=(e, catch_backtrace())
+        rethrow(e)
+    end
+end
+
+"""
+    quality_flag_to_weight(quality_flag::Int; scheme::Symbol=:inverse)
+
+Convert SMAP quality flag to a weight for averaging.
+
+SMAP quality flags (0-3 scale typically):
+- 0: Recommended quality
+- 1: Good quality (some correction needed)  
+- 2: Marginal quality
+- 3: Poor quality (not recommended)
+
+# Arguments
+- `quality_flag::Int`: SMAP retrieval quality flag (0-3)
+- `scheme::Symbol`: Weighting scheme
+  - `:inverse` - weights = [1.0, 0.5, 0.25, 0.1] for flags [0,1,2,3]
+  - `:exponential` - weights = exp(-flag) for smoother decay
+  - `:quadratic` - weights = (max_flag - flag)^2
+  - `:binary` - weights = [1.0, 0.0, 0.0, 0.0] (keep only best quality)
+
+# Returns
+- `Float64`: Weight value (0.0 to 1.0)
+"""
+function quality_flag_to_weight(quality_flag::Int; scheme::Symbol=:inverse)
+    # Handle missing quality flags
+    if quality_flag < 0
+        return 0.0  # No weight for missing quality info
+    end
+    
+    if scheme == :inverse
+        # Inverse weighting: best quality gets weight 1.0
+        weights_map = Dict(0 => 1.0, 1 => 0.5, 2 => 0.25, 3 => 0.1)
+        return get(weights_map, quality_flag, 0.0)
+        
+    elseif scheme == :exponential
+        # Exponential decay: e^(-flag)
+        return exp(-Float64(quality_flag))
+        
+    elseif scheme == :quadratic
+        # Quadratic decay from max flag (assuming 3 is max)
+        max_flag = 3
+        return quality_flag <= max_flag ? ((max_flag - quality_flag) / max_flag)^2 : 0.0
+        
+    elseif scheme == :binary
+        # Binary: only use best quality
+        return quality_flag == 0 ? 1.0 : 0.0
+        
+    else
+        error("Unknown weighting scheme: $scheme. Choose from [:inverse, :exponential, :quadratic, :binary]")
+    end
+end
+
+"""
+    calculate_smap_weighted_temporal_mean(
+        files::Vector{String}; 
+        quality_flag_threshold::Int = 3,
+        weighting_scheme::Symbol = :inverse
+    )
+
+Calculate quality-weighted temporal mean soil moisture from multiple SMAP files.
+
+# Arguments
+- `files::Vector{String}`: List of SMAP file paths
+- `quality_flag_threshold::Int`: Maximum quality flag to accept (default: 3 = include all)
+- `weighting_scheme::Symbol`: How to weight by quality (see `quality_flag_to_weight`)
+
+# Returns
+- `NamedTuple`: (lons, lats, sm_mean, sm_std, total_weight, n_obs)
+  - `sm_mean`: Quality-weighted temporal mean (1D)
+  - `sm_std`: Standard deviation (unweighted)
+  - `total_weight`: Sum of weights per pixel
+  - `n_obs`: Number of observations per pixel
+"""
+function calculate_smap_weighted_temporal_mean(
+    files::Vector{String}; 
+    quality_flag_threshold::Int = 3,
+    weighting_scheme::Symbol = :inverse
+)
+    if isempty(files)
+        error("No SMAP files provided")
+    end
+    
+    # Load first file to get grid dimensions
+    lons_ref, lats_ref, sm_first, qual_first = load_smap_grid_with_quality(files[1])
+    n_pixels = length(sm_first)
+    
+    # Initialize accumulators for weighted mean
+    weighted_sum = zeros(Float64, n_pixels)
+    total_weight = zeros(Float64, n_pixels)
+    count_obs = zeros(Int, n_pixels)
+    
+    # For standard deviation calculation (store all values)
+    all_values = [Float64[] for _ in 1:n_pixels]
+    
+    @info "Calculating quality-weighted SMAP temporal mean" n_files=length(files) n_pixels threshold=quality_flag_threshold scheme=weighting_scheme
+    
+    # Process each file
+    for (idx, file) in enumerate(files)
+        try
+            lons, lats, sm, qual = load_smap_grid_with_quality(file)
+            
+            # Verify grid consistency
+            if length(sm) != n_pixels
+                @warn "Grid size mismatch, skipping file" file expected=n_pixels got=length(sm)
+                continue
+            end
+            
+            # Process each pixel
+            for i in 1:n_pixels
+                if !isnan(sm[i]) && qual[i] >= 0 && qual[i] <= quality_flag_threshold
+                    weight = quality_flag_to_weight(qual[i]; scheme=weighting_scheme)
+                    
+                    if weight > 0.0
+                        weighted_sum[i] += weight * sm[i]
+                        total_weight[i] += weight
+                        count_obs[i] += 1
+                        push!(all_values[i], sm[i])
+                    end
+                end
+            end
+            
+            # Progress update
+            if idx % 100 == 0
+                avg_coverage = mean(count_obs) / idx
+                @info "Progress: $idx/$(length(files)) files" avg_valid_pixels_per_file=round(Int, avg_coverage * n_pixels)
+            end
+            
+        catch e
+            @warn "Error loading SMAP file, skipping" file exception=e
+            continue
+        end
+    end
+    
+    # Calculate weighted mean and std
+    sm_mean = [total_weight[i] > 0 ? weighted_sum[i] / total_weight[i] : NaN for i in 1:n_pixels]
+    sm_std = [length(all_values[i]) > 0 ? std(all_values[i]) : NaN for i in 1:n_pixels]
+    
+    n_valid = count(total_weight .> 0)
+    mean_obs = mean(count_obs[count_obs .> 0])
+    mean_weight = mean(total_weight[total_weight .> 0])
+    
+    @info "Quality-weighted temporal mean complete" n_files=length(files) n_valid_pixels=n_valid mean_obs_per_pixel=round(mean_obs, digits=1) mean_total_weight=round(mean_weight, digits=2) coverage_pct=round(100*n_valid/n_pixels, digits=2)
+    
+    return (
+        lons = lons_ref,
+        lats = lats_ref,
+        sm_mean = sm_mean,
+        sm_std = sm_std,
+        total_weight = total_weight,
+        n_obs = count_obs
+    )
+end
+
+"""
+    create_valid_observation_mask_weighted(
+        lons_smap::Vector{Float64},
+        lats_smap::Vector{Float64},
+        sm_smap::Vector{Float64},
+        weights::Vector{Float64},
+        model_coords::NamedTuple;
+        min_weight::Float64 = 0.1
+    )
+
+Create observation mask with quality weights for calibration.
+
+# Arguments
+- `lons_smap, lats_smap, sm_smap`: SMAP data
+- `weights`: Quality-based weights per pixel
+- `model_coords`: Model coordinates with land_mask
+- `min_weight`: Minimum weight threshold to include observation
+
+# Returns
+- NamedTuple with observation_vector, weights, pixel assignments, etc.
+"""
+function create_valid_observation_mask_weighted(
+    lons_smap::Vector{Float64},
+    lats_smap::Vector{Float64},
+    sm_smap::Vector{Float64},
+    weights::Vector{Float64},
+    model_coords::NamedTuple;
+    min_weight::Float64 = 0.1
+)
+    n_model = length(model_coords.lons)
+    
+    @info "Assigning model points to SMAP pixels with quality weights..." n_model n_smap=length(sm_smap)
+    
+    # For each model point, find nearest SMAP pixel
+    smap_assignments = fill(0, n_model)
+    
+    # SMAP resolution is ~9km
+    max_distance_deg = 0.15  # degrees
+    max_dist_sq = max_distance_deg^2
+    
+    for i in 1:n_model
+        !model_coords.land_mask[i] && continue
+        
+        lon_model = model_coords.lons[i]
+        lat_model = model_coords.lats[i]
+        
+        dist_sq = (lons_smap .- lon_model).^2 .+ (lats_smap .- lat_model).^2
+        min_dist_sq = minimum(dist_sq)
+        
+        if min_dist_sq <= max_dist_sq
+            nearest_idx = argmin(dist_sq)
+            smap_assignments[i] = nearest_idx
+        end
+    end
+    
+    # Group model indices by SMAP pixel
+    smap_pixel_groups = Dict{Int, Vector{Int}}()
+    
+    for i in 1:n_model
+        smap_idx = smap_assignments[i]
+        smap_idx == 0 && continue
+        
+        if !haskey(smap_pixel_groups, smap_idx)
+            smap_pixel_groups[smap_idx] = Int[]
+        end
+        push!(smap_pixel_groups[smap_idx], i)
+    end
+    
+    # Filter to SMAP pixels with valid data AND sufficient weight
+    valid_smap_pixels = Int[]
+    valid_model_groups = Vector{Vector{Int}}()
+    valid_pixel_coords = Vector{NamedTuple{(:lons, :lats), Tuple{Vector{Float64}, Vector{Float64}}}}()
+    valid_smap_values = Float64[]
+    valid_weights = Float64[]
+    
+    for (smap_idx, model_indices) in smap_pixel_groups
+        sm_val = sm_smap[smap_idx]
+        weight = weights[smap_idx]
+        
+        # Include if valid data AND weight above threshold
+        if !isnan(sm_val) && weight >= min_weight
+            push!(valid_smap_pixels, smap_idx)
+            push!(valid_model_groups, model_indices)
+            push!(valid_smap_values, sm_val)
+            push!(valid_weights, weight)
+            
+            pixel_lons = model_coords.lons[model_indices]
+            pixel_lats = model_coords.lats[model_indices]
+            push!(valid_pixel_coords, (lons = pixel_lons, lats = pixel_lats))
+        end
+    end
+    
+    @info "Valid weighted SMAP pixels identified" n_valid=length(valid_smap_pixels) mean_weight=round(mean(valid_weights), digits=3)
+    
+    # Calculate coverage statistics
+    n_land = sum(model_coords.land_mask)
+    n_model_in_valid_smap = sum(length(group) for group in valid_model_groups)
+    
+    coverage_stats = Dict(
+        "total_model_points" => n_model,
+        "land_model_points" => n_land,
+        "valid_smap_pixels" => length(valid_smap_pixels),
+        "model_points_in_valid_smap" => n_model_in_valid_smap,
+        "land_coverage_pct" => round(100 * n_model_in_valid_smap / max(n_land, 1), digits=2),
+        "mean_weight" => round(mean(valid_weights), digits=3),
+        "min_weight" => round(minimum(valid_weights), digits=3),
+        "max_weight" => round(maximum(valid_weights), digits=3)
+    )
+    
+    @info "Weighted coverage statistics" coverage_stats...
+    
+    return (
+        observation_vector = valid_smap_values,
+        observation_weights = valid_weights,  # NEW: weights for each observation
+        smap_pixel_groups = valid_model_groups,
+        smap_pixel_coords = valid_pixel_coords,
+        smap_pixel_indices = valid_smap_pixels,
+        coverage_stats = coverage_stats
+    )
+end

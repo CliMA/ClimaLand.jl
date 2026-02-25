@@ -39,104 +39,104 @@
 │   wall_time_spent = 0 seconds
 │   percent_complete = 10.0%
 │   estimated_sypd = Inf
-│   date_now = 2026-01-28T13:02:35.080
-│   estimated_finish_date = 2026-01-28T13:02:35.080
+│   date_now = 2026-02-04T18:51:40.916
+│   estimated_finish_date = 2026-02-04T18:51:40.916
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 33 weeks, 6 days
 │   n_steps_completed = 45544
-│   wall_time_per_step = 33 milliseconds, 423 microseconds
+│   wall_time_per_step = 33 milliseconds, 438 microseconds
 │   wall_time_total = 2 hours, 6 minutes
 │   wall_time_remaining = 1 hour, 41 minutes
 │   wall_time_spent = 25 minutes, 22 seconds
 │   percent_complete = 20.0%
-│   estimated_sypd = 36.862
-│   date_now = 2026-01-28T13:15:16.120
-│   estimated_finish_date = 2026-01-28T14:56:45.120
+│   estimated_sypd = 36.845
+│   date_now = 2026-02-04T19:04:22.264
+│   estimated_finish_date = 2026-02-04T20:45:54.264
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 50 weeks, 5 days
 │   n_steps_completed = 68316
-│   wall_time_per_step = 33 milliseconds, 508 microseconds
+│   wall_time_per_step = 33 milliseconds, 528 microseconds
 │   wall_time_total = 2 hours, 7 minutes
 │   wall_time_remaining = 1 hour, 29 minutes
-│   wall_time_spent = 38 minutes, 9 seconds
+│   wall_time_spent = 38 minutes, 10 seconds
 │   percent_complete = 30.0%
-│   estimated_sypd = 36.768
-│   date_now = 2026-01-28T13:28:02.922
-│   estimated_finish_date = 2026-01-28T14:57:04.922
+│   estimated_sypd = 36.745
+│   date_now = 2026-02-04T19:17:09.757
+│   estimated_finish_date = 2026-02-04T20:46:14.756
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 67 weeks, 5 days
 │   n_steps_completed = 91088
-│   wall_time_per_step = 33 milliseconds, 473 microseconds
+│   wall_time_per_step = 33 milliseconds, 684 microseconds
 │   wall_time_total = 2 hours, 7 minutes
 │   wall_time_remaining = 1 hour, 16 minutes
-│   wall_time_spent = 50 minutes, 49 seconds
+│   wall_time_spent = 51 minutes, 8 seconds
 │   percent_complete = 40.0%
-│   estimated_sypd = 36.806
-│   date_now = 2026-01-28T13:40:42.766
-│   estimated_finish_date = 2026-01-28T14:56:56.766
+│   estimated_sypd = 36.576
+│   date_now = 2026-02-04T19:30:07.447
+│   estimated_finish_date = 2026-02-04T20:46:50.447
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 84 weeks, 5 days
 │   n_steps_completed = 113860
-│   wall_time_per_step = 33 milliseconds, 227 microseconds
-│   wall_time_total = 2 hours, 6 minutes
-│   wall_time_remaining = 1 hour, 3 minutes
-│   wall_time_spent = 1 hour, 3 minutes
+│   wall_time_per_step = 35 milliseconds, 64 microseconds
+│   wall_time_total = 2 hours, 13 minutes
+│   wall_time_remaining = 1 hour, 6 minutes
+│   wall_time_spent = 1 hour, 6 minutes
 │   percent_complete = 50.0%
-│   estimated_sypd = 37.078
-│   date_now = 2026-01-28T13:52:57.079
-│   estimated_finish_date = 2026-01-28T14:56:01.078
+│   estimated_sypd = 35.136
+│   date_now = 2026-02-04T19:45:31.644
+│   estimated_finish_date = 2026-02-04T20:52:04.644
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 101 weeks, 4 days
 │   n_steps_completed = 136632
-│   wall_time_per_step = 33 milliseconds, 122 microseconds
-│   wall_time_total = 2 hours, 5 minutes
-│   wall_time_remaining = 50 minutes, 16 seconds
-│   wall_time_spent = 1 hour, 15 minutes
+│   wall_time_per_step = 36 milliseconds, 95 microseconds
+│   wall_time_total = 2 hours, 16 minutes
+│   wall_time_remaining = 54 minutes, 47 seconds
+│   wall_time_spent = 1 hour, 22 minutes
 │   percent_complete = 60.0%
-│   estimated_sypd = 37.196
-│   date_now = 2026-01-28T14:05:19.350
-│   estimated_finish_date = 2026-01-28T14:55:36.350
+│   estimated_sypd = 34.133
+│   date_now = 2026-02-04T20:01:10.967
+│   estimated_finish_date = 2026-02-04T20:55:58.967
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 118 weeks, 4 days
 │   n_steps_completed = 159404
-│   wall_time_per_step = 33 milliseconds, 86 microseconds
-│   wall_time_total = 2 hours, 5 minutes
-│   wall_time_remaining = 37 minutes, 40 seconds
-│   wall_time_spent = 1 hour, 27 minutes
+│   wall_time_per_step = 36 milliseconds, 960 microseconds
+│   wall_time_total = 2 hours, 20 minutes
+│   wall_time_remaining = 42 minutes, 4 seconds
+│   wall_time_spent = 1 hour, 38 minutes
 │   percent_complete = 70.0%
-│   estimated_sypd = 37.237
-│   date_now = 2026-01-28T14:17:47.874
-│   estimated_finish_date = 2026-01-28T14:55:28.874
+│   estimated_sypd = 33.333
+│   date_now = 2026-02-04T20:17:10.923
+│   estimated_finish_date = 2026-02-04T20:59:15.923
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 135 weeks, 3 days
 │   n_steps_completed = 182176
-│   wall_time_per_step = 32 milliseconds, 959 microseconds
-│   wall_time_total = 2 hours, 5 minutes
-│   wall_time_remaining = 25 minutes, 861 milliseconds
-│   wall_time_spent = 1 hour, 40 minutes
+│   wall_time_per_step = 37 milliseconds, 580 microseconds
+│   wall_time_total = 2 hours, 22 minutes
+│   wall_time_remaining = 28 minutes, 31 seconds
+│   wall_time_spent = 1 hour, 54 minutes
 │   percent_complete = 80.0%
-│   estimated_sypd = 37.38
-│   date_now = 2026-01-28T14:29:58.239
-│   estimated_finish_date = 2026-01-28T14:54:59.239
+│   estimated_sypd = 32.784
+│   date_now = 2026-02-04T20:33:05.506
+│   estimated_finish_date = 2026-02-04T21:01:37.506
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 152 weeks, 3 days
 │   n_steps_completed = 204948
-│   wall_time_per_step = 32 milliseconds, 720 microseconds
-│   wall_time_total = 2 hours, 4 minutes
-│   wall_time_remaining = 12 minutes, 24 seconds
-│   wall_time_spent = 1 hour, 51 minutes
+│   wall_time_per_step = 37 milliseconds, 229 microseconds
+│   wall_time_total = 2 hours, 21 minutes
+│   wall_time_remaining = 14 minutes, 7 seconds
+│   wall_time_spent = 2 hours, 7 minutes
 │   percent_complete = 90.0%
-│   estimated_sypd = 37.653
-│   date_now = 2026-01-28T14:41:39.726
-│   estimated_finish_date = 2026-01-28T14:54:04.726
+│   estimated_sypd = 33.093
+│   date_now = 2026-02-04T20:46:09.345
+│   estimated_finish_date = 2026-02-04T21:00:17.345
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Loading aridity from /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/aridity.jld2
 └ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:83
@@ -174,237 +174,237 @@
 │   wall_time_spent = 0 seconds
 │   percent_complete = 10.0%
 │   estimated_sypd = Inf
-│   date_now = 2026-01-28T15:27:45.110
-│   estimated_finish_date = 2026-01-28T15:27:45.110
+│   date_now = 2026-02-04T21:26:58.723
+│   estimated_finish_date = 2026-02-04T21:26:58.723
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 33 weeks, 6 days
 │   n_steps_completed = 45544
-│   wall_time_per_step = 32 milliseconds, 181 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 1 hour, 37 minutes
-│   wall_time_spent = 24 minutes, 25 seconds
+│   wall_time_per_step = 33 milliseconds, 100 microseconds
+│   wall_time_total = 2 hours, 5 minutes
+│   wall_time_remaining = 1 hour, 40 minutes
+│   wall_time_spent = 25 minutes, 7 seconds
 │   percent_complete = 20.0%
-│   estimated_sypd = 38.284
-│   date_now = 2026-01-28T15:39:57.941
-│   estimated_finish_date = 2026-01-28T17:17:40.941
+│   estimated_sypd = 37.221
+│   date_now = 2026-02-04T21:39:32.494
+│   estimated_finish_date = 2026-02-04T23:20:02.494
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 50 weeks, 5 days
 │   n_steps_completed = 68316
-│   wall_time_per_step = 32 milliseconds, 322 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 1 hour, 25 minutes
-│   wall_time_spent = 36 minutes, 48 seconds
+│   wall_time_per_step = 33 milliseconds, 129 microseconds
+│   wall_time_total = 2 hours, 5 minutes
+│   wall_time_remaining = 1 hour, 28 minutes
+│   wall_time_spent = 37 minutes, 43 seconds
 │   percent_complete = 30.0%
-│   estimated_sypd = 38.117
-│   date_now = 2026-01-28T15:52:20.426
-│   estimated_finish_date = 2026-01-28T17:18:13.426
+│   estimated_sypd = 37.189
+│   date_now = 2026-02-04T21:52:08.212
+│   estimated_finish_date = 2026-02-04T23:20:09.212
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 67 weeks, 5 days
 │   n_steps_completed = 91088
-│   wall_time_per_step = 32 milliseconds, 332 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 1 hour, 13 minutes
-│   wall_time_spent = 49 minutes, 5 seconds
+│   wall_time_per_step = 33 milliseconds, 130 microseconds
+│   wall_time_total = 2 hours, 5 minutes
+│   wall_time_remaining = 1 hour, 15 minutes
+│   wall_time_spent = 50 minutes, 17 seconds
 │   percent_complete = 40.0%
-│   estimated_sypd = 38.105
-│   date_now = 2026-01-28T16:04:37.392
-│   estimated_finish_date = 2026-01-28T17:18:15.392
+│   estimated_sypd = 37.187
+│   date_now = 2026-02-04T22:04:42.745
+│   estimated_finish_date = 2026-02-04T23:20:09.745
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 84 weeks, 5 days
 │   n_steps_completed = 113860
-│   wall_time_per_step = 32 milliseconds, 310 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 1 hour, 1 minute
-│   wall_time_spent = 1 hour, 1 minute
-│   percent_complete = 50.0%
-│   estimated_sypd = 38.131
-│   date_now = 2026-01-28T16:16:51.134
-│   estimated_finish_date = 2026-01-28T17:18:10.134
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 101 weeks, 4 days
-│   n_steps_completed = 136632
-│   wall_time_per_step = 32 milliseconds, 254 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 48 minutes, 57 seconds
-│   wall_time_spent = 1 hour, 13 minutes
-│   percent_complete = 60.0%
-│   estimated_sypd = 38.197
-│   date_now = 2026-01-28T16:28:59.284
-│   estimated_finish_date = 2026-01-28T17:17:57.284
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 118 weeks, 4 days
-│   n_steps_completed = 159404
-│   wall_time_per_step = 32 milliseconds, 179 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 36 minutes, 38 seconds
-│   wall_time_spent = 1 hour, 25 minutes
-│   percent_complete = 70.0%
-│   estimated_sypd = 38.286
-│   date_now = 2026-01-28T16:41:01.871
-│   estimated_finish_date = 2026-01-28T17:17:40.871
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 135 weeks, 3 days
-│   n_steps_completed = 182176
-│   wall_time_per_step = 32 milliseconds, 266 microseconds
-│   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 24 minutes, 29 seconds
-│   wall_time_spent = 1 hour, 37 minutes
-│   percent_complete = 80.0%
-│   estimated_sypd = 38.183
-│   date_now = 2026-01-28T16:53:30.501
-│   estimated_finish_date = 2026-01-28T17:18:00.501
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 152 weeks, 3 days
-│   n_steps_completed = 204948
-│   wall_time_per_step = 32 milliseconds, 144 microseconds
-│   wall_time_total = 2 hours, 1 minute
-│   wall_time_remaining = 12 minutes, 11 seconds
-│   wall_time_spent = 1 hour, 49 minutes
-│   percent_complete = 90.0%
-│   estimated_sypd = 38.329
-│   date_now = 2026-01-28T17:05:20.131
-│   estimated_finish_date = 2026-01-28T17:17:32.131
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Loading aridity from /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/aridity.jld2
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:83
-┌ Info: Transferring aridity field to GPU
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:103
-┌ Info: Applying land/sea mask to aridity field...
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:112
-┌ Info: Ocean masking complete: 30721/61206 points are ocean (50.2%)
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:123
-┌ Info: Land points: 30485 (49.8%)
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:124
-┌ Info: uSPAC conductance active with trait distribution integration
-│   use_trait_distribution = false
-│   n_quad = 3
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:238
-┌ Info: Run: Global Soil-Canopy-Snow Model
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:343
-┌ Info: Resolution: (101, 15)
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:344
-┌ Info: Timestep: 450.0 seconds (2016-09-01T00:07:30) [counter = 450, period = 1 second, epoch = 2016-09-01T00:00:00] s
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
-┌ Info: Start Date: 2016-09-01T00:00:00
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:346
-┌ Info: Stop Date: 2019-12-01T00:00:00
-└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:347
-┌ Warning: Keys are present in parameter file but not used in the simulation. 
-│  Typically this is due to a mismatch in parameter name in toml and in source. Offending keys: Any["bucket_z_0m", "canopy_momentum_roughness_length", "pmodel_Ha_Vcmax", "pmodel_ϕ0_c3", "molar_mass_oxygen", "pmodel_ϕ0_c4", "pmodel_ϕa1_c4", "pmodel_bRd", "bucket_z_0b", "critical_snow_fraction", "molar_mass_carbon", "michaelis_constant", "soil_C_substrate_diffusivity", "oxygen_diffusion_coefficient", "moisture_stress_c", "βψx50_slope", "pmodel_oi", "βΠR_slope", "βΠR_base", "bucket_beta_decay_exponent", "bucket_capacity_fraction", "soilCO2_activation_energy", "pmodel_ΔHko", "βkx_base", "alpha_snow", "pmodel_α", "pmodel_ΔHkc", "pmodel_aRd", "pmodel_ϕa0_c3", "pmodel_Kc25", "pmodel_ϕa2_c4", "pmodel_Hd_Vcmax", "pmodel_Γstar25", "pmodel_ϕa1_c3", "pmodel_Ha_Jmax", "pmodel_Hd_Jmax", "pmodel_aS_Vcmax", "pmodel_bS_Vcmax", "bucket_soil_conductivity", "O2_michaelis_constant", "pmodel_aS_Jmax", "CO2_diffusion_coefficient", "soilCO2_pre_exponential_factor", "critical_snow_water_equivalent", "pmodel_fC3", "pmodel_cstar", "canopy_scalar_roughness_length", "pmodel_ΔHΓstar", "βkx_coord", "βψx50_base", "pmodel_bS_Jmax", "pmodel_ϕa2_c3", "land_bucket_capacity", "bucket_soil_heat_capacity", "pmodel_Ko25", "soluble_soil_carbon_fraction", "pmodel_β", "pmodel_ϕa0_c4"]
-└ @ ClimaParams /glade/u/home/reich/.julia/packages/ClimaParams/K8azm/src/ClimaParams.jl:370
-┌ Info: Progress
-│   simulation_time = 16 weeks, 6 days
-│   n_steps_completed = 22772
-│   wall_time_per_step = 0 seconds
-│   wall_time_total = 0 seconds
-│   wall_time_remaining = 0 seconds
-│   wall_time_spent = 0 seconds
-│   percent_complete = 10.0%
-│   estimated_sypd = Inf
-│   date_now = 2026-01-28T17:54:23.470
-│   estimated_finish_date = 2026-01-28T17:54:23.470
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 33 weeks, 6 days
-│   n_steps_completed = 45544
-│   wall_time_per_step = 32 milliseconds, 678 microseconds
-│   wall_time_total = 2 hours, 4 minutes
-│   wall_time_remaining = 1 hour, 39 minutes
-│   wall_time_spent = 24 minutes, 48 seconds
-│   percent_complete = 20.0%
-│   estimated_sypd = 37.702
-│   date_now = 2026-01-28T18:06:47.627
-│   estimated_finish_date = 2026-01-28T19:46:00.627
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 50 weeks, 5 days
-│   n_steps_completed = 68316
-│   wall_time_per_step = 32 milliseconds, 683 microseconds
-│   wall_time_total = 2 hours, 4 minutes
-│   wall_time_remaining = 1 hour, 26 minutes
-│   wall_time_spent = 37 minutes, 12 seconds
-│   percent_complete = 30.0%
-│   estimated_sypd = 37.695
-│   date_now = 2026-01-28T18:19:12.146
-│   estimated_finish_date = 2026-01-28T19:46:02.146
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 67 weeks, 5 days
-│   n_steps_completed = 91088
-│   wall_time_per_step = 32 milliseconds, 804 microseconds
-│   wall_time_total = 2 hours, 4 minutes
-│   wall_time_remaining = 1 hour, 14 minutes
-│   wall_time_spent = 49 minutes, 48 seconds
-│   percent_complete = 40.0%
-│   estimated_sypd = 37.557
-│   date_now = 2026-01-28T18:31:47.374
-│   estimated_finish_date = 2026-01-28T19:46:29.374
-└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
-┌ Info: Progress
-│   simulation_time = 84 weeks, 5 days
-│   n_steps_completed = 113860
-│   wall_time_per_step = 32 milliseconds, 791 microseconds
-│   wall_time_total = 2 hours, 4 minutes
+│   wall_time_per_step = 33 milliseconds, 80 microseconds
+│   wall_time_total = 2 hours, 5 minutes
 │   wall_time_remaining = 1 hour, 2 minutes
 │   wall_time_spent = 1 hour, 2 minutes
 │   percent_complete = 50.0%
-│   estimated_sypd = 37.572
-│   date_now = 2026-01-28T18:44:12.951
-│   estimated_finish_date = 2026-01-28T19:46:26.951
+│   estimated_sypd = 37.244
+│   date_now = 2026-02-04T22:17:11.477
+│   estimated_finish_date = 2026-02-04T23:19:58.477
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 101 weeks, 4 days
 │   n_steps_completed = 136632
-│   wall_time_per_step = 32 milliseconds, 977 microseconds
+│   wall_time_per_step = 33 milliseconds, 87 microseconds
 │   wall_time_total = 2 hours, 5 minutes
-│   wall_time_remaining = 50 minutes, 3 seconds
+│   wall_time_remaining = 50 minutes, 13 seconds
 │   wall_time_spent = 1 hour, 15 minutes
 │   percent_complete = 60.0%
-│   estimated_sypd = 37.36
-│   date_now = 2026-01-28T18:57:05.111
-│   estimated_finish_date = 2026-01-28T19:47:09.111
+│   estimated_sypd = 37.236
+│   date_now = 2026-02-04T22:29:45.735
+│   estimated_finish_date = 2026-02-04T23:19:59.735
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 118 weeks, 4 days
 │   n_steps_completed = 159404
-│   wall_time_per_step = 32 milliseconds, 769 microseconds
+│   wall_time_per_step = 32 milliseconds, 901 microseconds
 │   wall_time_total = 2 hours, 4 minutes
-│   wall_time_remaining = 37 minutes, 18 seconds
+│   wall_time_remaining = 37 minutes, 27 seconds
 │   wall_time_spent = 1 hour, 27 minutes
 │   percent_complete = 70.0%
-│   estimated_sypd = 37.597
-│   date_now = 2026-01-28T19:09:02.858
-│   estimated_finish_date = 2026-01-28T19:46:21.858
+│   estimated_sypd = 37.446
+│   date_now = 2026-02-04T22:41:49.549
+│   estimated_finish_date = 2026-02-04T23:19:17.549
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 135 weeks, 3 days
 │   n_steps_completed = 182176
-│   wall_time_per_step = 32 milliseconds, 604 microseconds
-│   wall_time_total = 2 hours, 3 minutes
-│   wall_time_remaining = 24 minutes, 44 seconds
-│   wall_time_spent = 1 hour, 38 minutes
+│   wall_time_per_step = 32 milliseconds, 765 microseconds
+│   wall_time_total = 2 hours, 4 minutes
+│   wall_time_remaining = 24 minutes, 52 seconds
+│   wall_time_spent = 1 hour, 39 minutes
 │   percent_complete = 80.0%
-│   estimated_sypd = 37.787
-│   date_now = 2026-01-28T19:20:59.116
-│   estimated_finish_date = 2026-01-28T19:45:44.116
+│   estimated_sypd = 37.601
+│   date_now = 2026-02-04T22:53:54.047
+│   estimated_finish_date = 2026-02-04T23:18:47.047
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
 ┌ Info: Progress
 │   simulation_time = 152 weeks, 3 days
 │   n_steps_completed = 204948
-│   wall_time_per_step = 32 milliseconds, 400 microseconds
+│   wall_time_per_step = 32 milliseconds, 504 microseconds
+│   wall_time_total = 2 hours, 3 minutes
+│   wall_time_remaining = 12 minutes, 19 seconds
+│   wall_time_spent = 1 hour, 51 minutes
+│   percent_complete = 90.0%
+│   estimated_sypd = 37.903
+│   date_now = 2026-02-04T23:05:26.685
+│   estimated_finish_date = 2026-02-04T23:17:46.685
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Loading aridity from /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/aridity.jld2
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:83
+┌ Info: Transferring aridity field to GPU
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:103
+┌ Info: Applying land/sea mask to aridity field...
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:112
+┌ Info: Ocean masking complete: 30721/61206 points are ocean (50.2%)
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:123
+┌ Info: Land points: 30485 (49.8%)
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:124
+┌ Info: uSPAC conductance active with trait distribution integration
+│   use_trait_distribution = false
+│   n_quad = 3
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:238
+┌ Info: Run: Global Soil-Canopy-Snow Model
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:343
+┌ Info: Resolution: (101, 15)
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:344
+┌ Info: Timestep: 450.0 seconds (2016-09-01T00:07:30) [counter = 450, period = 1 second, epoch = 2016-09-01T00:00:00] s
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:345
+┌ Info: Start Date: 2016-09-01T00:00:00
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:346
+┌ Info: Stop Date: 2019-12-01T00:00:00
+└ @ Main /glade/derecho/scratch/reich/ClimaLand.jl/experiments/calibration/model_interface.jl:347
+┌ Warning: Keys are present in parameter file but not used in the simulation. 
+│  Typically this is due to a mismatch in parameter name in toml and in source. Offending keys: Any["bucket_z_0m", "canopy_momentum_roughness_length", "pmodel_Ha_Vcmax", "pmodel_ϕ0_c3", "molar_mass_oxygen", "pmodel_ϕ0_c4", "pmodel_ϕa1_c4", "pmodel_bRd", "bucket_z_0b", "critical_snow_fraction", "molar_mass_carbon", "michaelis_constant", "soil_C_substrate_diffusivity", "oxygen_diffusion_coefficient", "moisture_stress_c", "βψx50_slope", "pmodel_oi", "βΠR_slope", "βΠR_base", "bucket_beta_decay_exponent", "bucket_capacity_fraction", "soilCO2_activation_energy", "pmodel_ΔHko", "βkx_base", "alpha_snow", "pmodel_α", "pmodel_ΔHkc", "pmodel_aRd", "pmodel_ϕa0_c3", "pmodel_Kc25", "pmodel_ϕa2_c4", "pmodel_Hd_Vcmax", "pmodel_Γstar25", "pmodel_ϕa1_c3", "pmodel_Ha_Jmax", "pmodel_Hd_Jmax", "pmodel_aS_Vcmax", "pmodel_bS_Vcmax", "bucket_soil_conductivity", "O2_michaelis_constant", "pmodel_aS_Jmax", "CO2_diffusion_coefficient", "soilCO2_pre_exponential_factor", "critical_snow_water_equivalent", "pmodel_fC3", "pmodel_cstar", "canopy_scalar_roughness_length", "pmodel_ΔHΓstar", "βkx_coord", "βψx50_base", "pmodel_bS_Jmax", "pmodel_ϕa2_c3", "land_bucket_capacity", "bucket_soil_heat_capacity", "pmodel_Ko25", "soluble_soil_carbon_fraction", "pmodel_β", "pmodel_ϕa0_c4"]
+└ @ ClimaParams /glade/u/home/reich/.julia/packages/ClimaParams/K8azm/src/ClimaParams.jl:370
+┌ Info: Progress
+│   simulation_time = 16 weeks, 6 days
+│   n_steps_completed = 22772
+│   wall_time_per_step = 0 seconds
+│   wall_time_total = 0 seconds
+│   wall_time_remaining = 0 seconds
+│   wall_time_spent = 0 seconds
+│   percent_complete = 10.0%
+│   estimated_sypd = Inf
+│   date_now = 2026-02-05T00:02:23.885
+│   estimated_finish_date = 2026-02-05T00:02:23.885
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 33 weeks, 6 days
+│   n_steps_completed = 45544
+│   wall_time_per_step = 33 milliseconds, 568 microseconds
+│   wall_time_total = 2 hours, 7 minutes
+│   wall_time_remaining = 1 hour, 41 minutes
+│   wall_time_spent = 25 minutes, 28 seconds
+│   percent_complete = 20.0%
+│   estimated_sypd = 36.702
+│   date_now = 2026-02-05T00:15:08.318
+│   estimated_finish_date = 2026-02-05T01:57:04.318
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 50 weeks, 5 days
+│   n_steps_completed = 68316
+│   wall_time_per_step = 33 milliseconds, 305 microseconds
+│   wall_time_total = 2 hours, 6 minutes
+│   wall_time_remaining = 1 hour, 28 minutes
+│   wall_time_spent = 37 minutes, 55 seconds
+│   percent_complete = 30.0%
+│   estimated_sypd = 36.992
+│   date_now = 2026-02-05T00:27:34.743
+│   estimated_finish_date = 2026-02-05T01:56:03.742
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 67 weeks, 5 days
+│   n_steps_completed = 91088
+│   wall_time_per_step = 33 milliseconds, 153 microseconds
+│   wall_time_total = 2 hours, 5 minutes
+│   wall_time_remaining = 1 hour, 15 minutes
+│   wall_time_spent = 50 minutes, 19 seconds
+│   percent_complete = 40.0%
+│   estimated_sypd = 37.161
+│   date_now = 2026-02-05T00:39:59.365
+│   estimated_finish_date = 2026-02-05T01:55:29.365
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 84 weeks, 5 days
+│   n_steps_completed = 113860
+│   wall_time_per_step = 33 milliseconds, 27 microseconds
+│   wall_time_total = 2 hours, 5 minutes
+│   wall_time_remaining = 1 hour, 2 minutes
+│   wall_time_spent = 1 hour, 2 minutes
+│   percent_complete = 50.0%
+│   estimated_sypd = 37.303
+│   date_now = 2026-02-05T00:52:19.992
+│   estimated_finish_date = 2026-02-05T01:55:00.992
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 101 weeks, 4 days
+│   n_steps_completed = 136632
+│   wall_time_per_step = 32 milliseconds, 905 microseconds
+│   wall_time_total = 2 hours, 4 minutes
+│   wall_time_remaining = 49 minutes, 57 seconds
+│   wall_time_spent = 1 hour, 14 minutes
+│   percent_complete = 60.0%
+│   estimated_sypd = 37.442
+│   date_now = 2026-02-05T01:04:35.387
+│   estimated_finish_date = 2026-02-05T01:54:33.387
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 118 weeks, 4 days
+│   n_steps_completed = 159404
+│   wall_time_per_step = 32 milliseconds, 617 microseconds
+│   wall_time_total = 2 hours, 3 minutes
+│   wall_time_remaining = 37 minutes, 8 seconds
+│   wall_time_spent = 1 hour, 26 minutes
+│   percent_complete = 70.0%
+│   estimated_sypd = 37.772
+│   date_now = 2026-02-05T01:16:18.815
+│   estimated_finish_date = 2026-02-05T01:53:27.815
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 135 weeks, 3 days
+│   n_steps_completed = 182176
+│   wall_time_per_step = 32 milliseconds, 433 microseconds
+│   wall_time_total = 2 hours, 3 minutes
+│   wall_time_remaining = 24 minutes, 36 seconds
+│   wall_time_spent = 1 hour, 38 minutes
+│   percent_complete = 80.0%
+│   estimated_sypd = 37.987
+│   date_now = 2026-02-05T01:28:07.969
+│   estimated_finish_date = 2026-02-05T01:52:44.969
+└ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207
+┌ Info: Progress
+│   simulation_time = 152 weeks, 3 days
+│   n_steps_completed = 204948
+│   wall_time_per_step = 32 milliseconds, 218 microseconds
 │   wall_time_total = 2 hours, 2 minutes
-│   wall_time_remaining = 12 minutes, 17 seconds
+│   wall_time_remaining = 12 minutes, 13 seconds
 │   wall_time_spent = 1 hour, 50 minutes
 │   percent_complete = 90.0%
-│   estimated_sypd = 38.025
-│   date_now = 2026-01-28T19:32:39.691
-│   estimated_finish_date = 2026-01-28T19:44:57.691
+│   estimated_sypd = 38.239
+│   date_now = 2026-02-05T01:39:42.651
+│   estimated_finish_date = 2026-02-05T01:51:56.651
 └ @ ClimaUtilities.OnlineLogging /glade/u/home/reich/.julia/packages/ClimaUtilities/5ClV5/src/OnlineLogging.jl:207

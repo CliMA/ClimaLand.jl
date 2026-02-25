@@ -1,11 +1,11 @@
 #!/bin/bash
-# Run this script ON TOFU to pull changes from derecho
+# Sync ClimaLand.jl to derecho including git repository
 
-SOURCE="reich@derecho.hpc.ucar.edu:/glade/derecho/scratch/reich/ClimaLand.jl/"
-TARGET="/home/egreich/Projects/Climaexplore/ClimaLand.jl/"
+SOURCE="/home/egreich/Projects/Climaexplore/ClimaLand.jl/"
+TARGET="reich@derecho.hpc.ucar.edu:/glade/derecho/scratch/reich/ClimaLand.jl/"
 
 echo "=========================================="
-echo "Syncing ClimaLand.jl from derecho to tofu"
+echo "Syncing ClimaLand.jl to derecho"
 echo "=========================================="
 echo "Source: $SOURCE"
 echo "Target: $TARGET"
@@ -23,9 +23,6 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-# Create target directory if it doesn't exist
-mkdir -p "$TARGET"
-
 # Sync everything including .git
 rsync -avz --progress \
     --exclude='*.swp' \
@@ -38,7 +35,3 @@ echo "=========================================="
 echo "✓ Sync complete!"
 echo "=========================================="
 echo ""
-echo "Next steps:"
-echo "  cd $TARGET"
-echo "  git status"
-echo "  git push origin er/uspac"

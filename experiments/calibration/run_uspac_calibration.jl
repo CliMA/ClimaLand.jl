@@ -35,18 +35,18 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 if abspath(PROGRAM_FILE) == @__FILE__
     # -------------------- PRIORS: 6 uSPAC trait parameters --------------------
     # θ = [βkx_base, βkx_coord, βψx50_base, βψx50_slope, βΠR_base, βΠR_slope]
-    # Recentered on iteration_002 mean values (best performing iteration)
+    # Recentered on iteration_002 mean values from land_model calibration
     # Transformations ensure physically realistic ranges:
     # - kx: log-normal → absolute conductivity (m day⁻¹ MPa⁻¹)
     # - ψx50: exponential → negative water tension (MPa)
     # - ΠR: logistic → [0, 1] (isohydric to anisohydric)
     priors = EKP.ParameterDistribution[  
-        EKP.constrained_gaussian("βkx_base", -3.477, 0.45, -10.0, -2.0),     # Baseline conductivity
-        EKP.constrained_gaussian("βkx_coord", -0.014, 0.24, -2.0, 0.5),      # kx-P50 coordination
-        EKP.constrained_gaussian("βψx50_base", 1.540, 0.64, -4.0, 4.0),      # ψx50 baseline
-        EKP.constrained_gaussian("βψx50_slope", 1.525, 0.51, 0.0, 10.0),     # ψx50 slope
-        EKP.constrained_gaussian("βΠR_base", -5.034, 0.71, -8.0, -2.0),      # ΠR baseline
-        EKP.constrained_gaussian("βΠR_slope", 6.795, 1.21, 2.0, 15.0)        # ΠR slope (isohydric-anisohydric transition)
+        EKP.constrained_gaussian("βkx_base", 1.916, 0.45, -2.0, 5.0),        # Baseline conductivity
+        EKP.constrained_gaussian("βkx_coord", 0.745, 0.24, -0.5, 2.0),       # kx-P50 coordination
+        EKP.constrained_gaussian("βψx50_base", 1.371, 0.64, -1.0, 4.0),      # ψx50 baseline
+        EKP.constrained_gaussian("βψx50_slope", -1.765, 0.51, -5.0, 1.0),    # ψx50 slope
+        EKP.constrained_gaussian("βΠR_base", 0.334, 0.71, -2.0, 3.0),        # ΠR baseline
+        EKP.constrained_gaussian("βΠR_slope", -0.892, 1.21, -5.0, 3.0)       # ΠR slope (isohydric-anisohydric transition)
     ]
     prior = EKP.combine_distributions(priors)
 

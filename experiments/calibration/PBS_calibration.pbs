@@ -28,6 +28,9 @@ echo "Job ID: $PBS_JOBID"
 echo "Running in: $(pwd)"
 echo "======================================"
 
+echo "Resolving Julia environment for current Julia version..."
+julia --project=.buildkite -e 'using Pkg; Pkg.resolve()' || { echo "Package resolve failed"; exit 1; }
+
 echo "Instantiating Julia environment..."
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)' || { echo "Package instantiation failed"; exit 1; }
 

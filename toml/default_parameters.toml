@@ -100,6 +100,44 @@ type = "float"
 description = "Storativity (m3/m3). Computed by 1e-2 * 0.0098."
 tag = "PlantHydraulicsParameters"
 
+# Hydraulic Trait Coordination (calibrated from SMAP soil moisture)
+
+["βkx_base"]
+value = 1.916
+type = "float"
+description = "Base coordination parameter for hydraulic conductivity index (unitless)"
+tag = "HydraulicTraitCoordination"
+
+["βkx_coord"]
+value = 0.745
+type = "float"
+description = "Coordination slope parameter relating hydraulic conductivity to P50 (unitless)"
+tag = "HydraulicTraitCoordination"
+
+["βψx50_base"]
+value = 1.371
+type = "float"
+description = "Base parameter for P50 water potential at 50% conductance loss (unitless, exponentiated to get MPa)"
+tag = "HydraulicTraitCoordination"
+
+["βψx50_slope"]
+value = -1.765
+type = "float"
+description = "Aridity slope parameter for P50 water potential (unitless)"
+tag = "HydraulicTraitCoordination"
+
+["βΠR_base"]
+value = 0.334
+type = "float"
+description = "Base parameter for osmotic potential at full turgor (unitless, exponentiated to get MPa)"
+tag = "HydraulicTraitCoordination"
+
+["βΠR_slope"]
+value = -0.892
+type = "float"
+description = "Aridity slope parameter for osmotic potential at full turgor (unitless)"
+tag = "HydraulicTraitCoordination"
+
 # ZenithAngleAlbedoModel parameters
 
 ["alpha_0"]

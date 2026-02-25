@@ -36,14 +36,14 @@ aridity = parent(cwd_field)  # Global Aridity Index (P/ET0)
 lats = parent(lats_field)
 lons = parent(lons_field)
 
-# Load parameter estimates from calibration iteration 3
+# Load parameter estimates from calibration iteration_002
 parameters = (
-    βkx_base        =  2.1482,  # Baseline log conductivity
-    βkx_coord       =  2.6110,  # kx-P50 coordination (safety-efficiency trade-off)
-    βψx50_base      =  1.9949,  # P50 baseline
-    βψx50_slope     = -1.4886,  # P50 climate sensitivity
-    βΠR_base        =  0.9763,  # Stomatal strategy baseline (isohydric-anisohydric)
-    βΠR_slope       = -0.4456   # Stomatal strategy climate sensitivity
+    βkx_base        =  1.916,   # Baseline log conductivity
+    βkx_coord       =  0.745,   # kx-P50 coordination (safety-efficiency trade-off)
+    βψx50_base      =  1.371,   # P50 baseline
+    βψx50_slope     = -1.765,   # P50 climate sensitivity
+    βΠR_base        =  0.334,   # Stomatal strategy baseline (isohydric-anisohydric)
+    βΠR_slope       = -0.892    # Stomatal strategy climate sensitivity
 )
 
 println("\nCalibrated parameters:")
@@ -62,17 +62,16 @@ land_aridity = filter(!isnan, aridity)
 println("  Global Aridity Index (P/ET0) - min: $(minimum(land_aridity)), max: $(maximum(land_aridity)), mean: $(mean(land_aridity))")
 
 # Normalize aridity for trait calculations
-# This matches the normalization in src/standalone/Vegetation/stomatalconductance.jl (line 374)
 # For Global Aridity Index (P/ET0):
 # 0 = hyper-arid, 0.03-0.2 = arid, 0.2-0.5 = semi-arid, 0.5-0.65 = dry sub-humid
 # 0.65-1.0 = humid, >1.0 = very humid, >2.0 = extremely humid
-# We INVERT so that: high norm = dry, low norm = wet
-# Clamp to reasonable range (2.0 = very humid reference)
+# Normalization: scale by reference value (2.0 = very humid), clamp to [0,1]
+# This gives: low norm = dry, high norm = wet
 # NOTE: Ocean points are already NaN in the aridity field
-aridity_norm = @. 1.0 - clamp(aridity / 2.0, 0.0, 1.0)
+aridity_norm = @. clamp(aridity / 2.0, 0.0, 1.0)
 # Result: 
-#   aridity=0 (hyper-arid) → norm=1.0 (very dry)
-#   aridity=2.0 (very humid) → norm=0.0 (very wet)
+#   aridity=0 (hyper-arid) → norm=0.0 (very dry)
+#   aridity=2.0 (very humid) → norm=1.0 (very wet)
 #   NaN (ocean) stays NaN and propagates through calculations
 
 land_norm = filter(!isnan, aridity_norm)
@@ -82,22 +81,23 @@ println("  Median: $(median(land_norm)), 25%: $(quantile(land_norm, 0.25)), 75%:
 # --- Calculate functional traits from calibrated parameters ---
 # This matches the computation in src/standalone/Vegetation/stomatalconductance.jl (lines 393-415)
 
-#     WET ←─────────── aridity_norm ─────────→ DRY
+#     DRY ←─────────── aridity_norm ─────────→ WET
 # 0.0                                       1.0
-# (aridity_norm: 0 = wet, 1 = dry)
+# (aridity_norm: 0 = dry, 1 = wet)
 
-# ψx50:  ╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (exponential, always negative, DECREASES with aridity_norm)
-#     -0.5 MPa (wet) → -10 MPa (dry)
+# ψx50:  ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  (exponential, always negative, INCREASES with aridity_norm)
+#     -10 MPa (dry) → -0.5 MPa (wet)
 
-# kx:    ╲╲╲╲╲╲╲╲╲╲╲╲╲╲  (decreases with aridity_norm via coordination with ψx50)
-#     high → low
+# kx:    ╱╱╱╱╱╱╱╱╱╱╱╱╱╱  (increases with aridity_norm via coordination with ψx50)
+#     low → high
 
-# ΠR:    ───╮
-#           ╰──────  (sigmoid S-curve)
-#     0 (isohydric, wet) → 1 (anisohydric, dry)
+# ΠR:    ──────╮
+#              ╰───  (sigmoid S-curve)
+#     1 (anisohydric, dry) → 0 (isohydric, wet)
 
 # ψx50: Negative water potential using exponential
-# Higher aridity_norm (dry) → more negative P50 (cavitation-resistant)
+# Higher aridity_norm (wet) → less negative P50 (less resistant)
+# Lower aridity_norm (dry) → more negative P50 (cavitation-resistant)
 # Clamp the exponent to prevent extreme values in hyperarid regions
 # Use ifelse to skip ocean points (aridity_norm = NaN)
 ψx50_exponent = @. ifelse(isnan(aridity_norm), 0.0, 
@@ -130,7 +130,8 @@ println("\nkx (hydraulic conductance) statistics (land only):")
 println("  min: $(minimum(land_kx)), max: $(maximum(land_kx)), mean: $(mean(land_kx)), median: $(median(land_kx))")
 
 # ΠR: Logistic sigmoid (0 to 1)
-# Higher aridity_norm (dry) → higher ΠR (anisohydric strategy)
+# Higher aridity_norm (wet) → lower ΠR (isohydric strategy)
+# Lower aridity_norm (dry) → higher ΠR (anisohydric strategy)
 # Clamp the sigmoid argument to prevent overflow in exp()
 ΠR_logit = @. parameters.βΠR_base + parameters.βΠR_slope * aridity_norm
 ΠR = @. ifelse(isnan(aridity_norm), NaN,
