@@ -40,8 +40,10 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
-outpath = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260217_$(site_ID)_2019_pmodel_v3/output/"
+outpath = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260225_$(site_ID)_2017_porosity0.3/output/"
 mkpath(outpath)
+
+soil_ν = FT(0.3)
 
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
@@ -103,6 +105,11 @@ forcing = (; atmos, radiation)
 # - Canopy: pmodel photosynthesis and conductance, soil moisture stress
 # - Snow: snow model with default parameters but α_snow
 # - SoilCO2: soil CO2 model (included via prognostic_land_components)
+
+#change some canopy parameters
+toml_dict.data["canopy_d_coeff"]["value"] = FT(0.67)
+toml_dict.data["canopy_z_0b_coeff"]["value"] = FT(0.013)
+toml_dict.data["canopy_z_0m_coeff"]["value"] = FT(0.13)
 
 # LAI from MODIS (global-style spatial data)
 LAI = ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
