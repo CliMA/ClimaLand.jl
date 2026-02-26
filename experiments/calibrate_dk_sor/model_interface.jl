@@ -109,6 +109,13 @@ function ClimaCalibrate.forward_model(iteration, member)
         ground = ClimaLand.PrognosticGroundConditions{FT}(),
     )
 
+    biomass = Canopy.PrescribedBiomassModel{FT}(
+        canopy_domain,
+        LAI,
+        toml_dict;
+        height = FT(25),
+    )
+
     canopy = Canopy.CanopyModel{FT}(
         canopy_domain,
         forcing_nt,
@@ -121,6 +128,7 @@ function ClimaCalibrate.forward_model(iteration, member)
             land_domain,
             toml_dict,
         ),
+        biomass,
     )
 
     land = LandModel{FT}(
@@ -325,13 +333,6 @@ function ClimaCalibrate.observation_map(iteration)
                 append!(result, nee_yr)
                 append!(result, qle_yr)
                 append!(result, qh_yr)
-            end
-
-            # Replace NaN/Inf with 0
-            n_bad = count(x -> isnan(x) || isinf(x), result)
-            if n_bad > 0
-                @warn "Member $m: $n_bad / $(length(result)) NaN/Inf values, replacing with 0"
-                replace!(x -> isnan(x) || isinf(x) ? 0.0 : x, result)
             end
 
             G_ens[:, m] = result
