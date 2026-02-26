@@ -196,12 +196,20 @@ function compute_stomatal_conductance!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An_leaf, Drel)
+        @. out = gs_h2o_pmodel(
+            clamp(ci / (c_co2_air * P_air), 0, 1),
+            c_co2_air,
+            An_leaf,
+            Drel,
+        )
         return out
     else
-        @. out =
-            gs_h2o_pmodel(ci / (c_co2_air * P_air), c_co2_air, An_leaf, Drel)
+        @. out = gs_h2o_pmodel(
+            clamp(ci / (c_co2_air * P_air), 0, 1),
+            c_co2_air,
+            An_leaf,
+            Drel,
+        )
     end
 end
 

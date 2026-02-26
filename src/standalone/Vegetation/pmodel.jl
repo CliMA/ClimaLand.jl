@@ -419,7 +419,7 @@ function compute_full_pmodel_outputs(
 
     # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
     iWUE = (ca_pp - ci) / Drel
-    χ = ci / ca_pp
+    χ = clamp(ci / ca_pp, FT(0), FT(1))
     gs = gs_co2_pmodel(χ, ca, Ac)
 
     # dark respiration
