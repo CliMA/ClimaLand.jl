@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 ------
+
+v1.6.0
+------
+- Initialize the cache in LandSimulation constructor only for offline runs PR[#1641](https://github.com/CliMA/ClimaLand.jl/pull/1641)
 - Run tests on julia 1.12 instead of 1.11 PR[#1650](https://github.com/CliMA/ClimaLand.jl/pull/1650)
 - Create set ic functions for the bucket PR[#1644](https://github.com/CliMA/ClimaLand.jl/pull/1644)
 - Add CRUJRA forcing PR[#1624](https://github.com/CliMA/ClimaLand.jl/pull/1624)
