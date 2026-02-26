@@ -18,7 +18,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
 import ClimaLand.LandSimVis as LandSimVis
 
 const FT = Float64

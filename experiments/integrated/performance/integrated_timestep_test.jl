@@ -41,7 +41,6 @@ using ClimaCore
 using Dates
 using Insolation
 using Statistics
-import StatsBase: percentile
 using CairoMakie
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -355,8 +354,8 @@ for dt in dts
 
         ΔT = abs.(T .- ref_T)
         push!(mean_err, FT(mean(ΔT)))
-        push!(p95_err, FT(percentile(ΔT, 95)))
-        push!(p99_err, FT(percentile(ΔT, 99)))
+        push!(p95_err, FT(quantile(ΔT, 0.95)))
+        push!(p99_err, FT(quantile(ΔT, 0.99)))
         push!(sol_err, ΔT[end])
         push!(T_states, T)
         push!(times, sol.t)

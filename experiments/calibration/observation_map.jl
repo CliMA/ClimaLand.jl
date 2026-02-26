@@ -8,7 +8,7 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/calibration/observation_utils.jl"),
 )
 
-using CairoMakie, GeoMakie, Printf, StatsBase
+using CairoMakie, GeoMakie, Printf, Statistics
 
 # Need access to get_era5_obs_var_dict and get_sim_var_dict
 ext = Base.get_extension(ClimaLand, :LandSimulationVisualizationExt)

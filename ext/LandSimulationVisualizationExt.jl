@@ -10,7 +10,7 @@ import ClimaUtilities.TimeManager: ITime, date
 using Dates
 import NCDatasets
 using ClimaLand
-using StatsBase
+using Statistics
 using Printf
 
 include("land_sim_vis/plotting_utils.jl")

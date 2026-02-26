@@ -23,7 +23,7 @@ import ClimaParams
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, StatsBase
+using CairoMakie, Statistics
 
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
