@@ -119,7 +119,7 @@ restart.
     If you care about accurate accumulated diagnostics, make sure to line up your
     checkpoint and diagnostic frequencies.
 
-Similarly, `ClimaLand` does not guarantee drivers values will be set consistently
+Similarly, `ClimaLand` does not guarantee driver values will be set consistently
 across restarts. That is, the values of the forcing variables from the last step
 of the original run will not coincide with the values of the forcing variables
 upon the initial step of the restart run, unless the frequencies of
