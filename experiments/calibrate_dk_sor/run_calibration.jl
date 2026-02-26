@@ -25,7 +25,7 @@ using LinearAlgebra
 
 const SITE_ID = "DK-Sor"
 const N_ITERATIONS = 10
-const MINIBATCH_SIZE = 2
+const N_YEARS_PER_MINIBATCH = 2
 const DT = Float64(450)
 
 const climaland_dir = pkgdir(ClimaLand)
@@ -76,7 +76,7 @@ obs_series = EKP.ObservationSeries(
         "names" => [string(yr) for yr in cal_years],
         "minibatcher" => ClimaCalibrate.minibatcher_over_samples(
             n_samples,
-            MINIBATCH_SIZE,
+            N_YEARS_PER_MINIBATCH,
         ),
     ),
 )
@@ -93,7 +93,7 @@ ekp = EKP.EnsembleKalmanProcess(
 
 N_ens = EKP.get_N_ens(ekp)
 println("Ensemble size: $N_ens (for $(length(priors)) parameters)")
-println("Minibatch size: $MINIBATCH_SIZE years → $(div(n_samples, MINIBATCH_SIZE)) batches/epoch")
+println("Minibatch size: $N_YEARS_PER_MINIBATCH years → $(div(n_samples, N_YEARS_PER_MINIBATCH)) batches/epoch")
 
 # ── Add SLURM Workers ───────────────────────────────────────────────────────
 
