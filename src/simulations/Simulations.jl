@@ -172,6 +172,15 @@ function LandSimulation(
     Y, p, cds = initialize(model)
     set_ic!(Y, p, t0, model)
 
+    # Apply inland water IC overrides (saturate soil at water points).
+    # The mask is stored on the subsurface space by EnergyHydrology.
+    iw_mask = hasproperty(model, :soil) &&
+              hasproperty(model.soil, :inland_water_mask) ?
+              model.soil.inland_water_mask : nothing
+    if !isnothing(iw_mask)
+        apply_inland_water_ic!(Y, model.soil, iw_mask)
+    end
+
     # Initialize the cache for offline simulations (no drivers or non-coupled atmosphere)
     if isempty(ClimaLand.get_drivers(model)) ||
        !(ClimaLand.get_drivers(model)[1] isa ClimaLand.CoupledAtmosphere)
