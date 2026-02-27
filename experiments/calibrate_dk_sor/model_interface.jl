@@ -303,12 +303,6 @@ function ClimaCalibrate.observation_map(iteration)
         )
         diag_path = joinpath(member_path, "daily_diagnostics.jld2")
 
-        if !isfile(diag_path)
-            @warn "Missing diagnostics for member $m, filling with NaN"
-            G_ens[:, m] .= NaN
-            continue
-        end
-
         try
             member_data = JLD2.load(diag_path)
             model_dates = member_data["dates"]
