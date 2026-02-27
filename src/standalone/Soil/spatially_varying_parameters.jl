@@ -499,3 +499,37 @@ function apply_inland_water_albedo_overrides!(
     end
     return nothing
 end
+
+"""
+    apply_inland_water_thermal_overrides!(parameters, inland_water_mask_subsurface, FT)
+
+Override soil thermal conductivity at inland water points to an effective
+conductivity (~50 W/m/K) that accounts for wind-driven mixing in lakes.
+With the standard soil thermal conductivity model, water-filled pores give
+κ ≈ 0.5 W/m/K (pure conduction), but real lakes have effective κ of 10–100 W/m/K.
+"""
+function apply_inland_water_thermal_overrides!(
+    parameters,
+    inland_water_mask_subsurface,
+    FT,
+)
+    water_override(field, mask, value) =
+        mask == 1.0 ? eltype(field)(value) : field
+    κ_water_eff = FT(10000.0)  # W/m/K — very high to emulate convective mixing in lakes
+    parameters.κ_dry .= water_override.(
+        parameters.κ_dry,
+        inland_water_mask_subsurface,
+        κ_water_eff,
+    )
+    parameters.κ_sat_frozen .= water_override.(
+        parameters.κ_sat_frozen,
+        inland_water_mask_subsurface,
+        κ_water_eff,
+    )
+    parameters.κ_sat_unfrozen .= water_override.(
+        parameters.κ_sat_unfrozen,
+        inland_water_mask_subsurface,
+        κ_water_eff,
+    )
+    return nothing
+end

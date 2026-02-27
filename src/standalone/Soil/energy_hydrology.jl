@@ -348,6 +348,16 @@ function ClimaLand.make_compute_exp_tendency(
         # (PhaseChange's θ_i contribution is left untouched so ice can still form/melt.)
         if !isnothing(model.inland_water_mask)
             @. dY.soil.ϑ_l *= (1 - model.inland_water_mask)
+            # Once a water point reaches freezing, prevent further energy loss
+            # (simulates ice-lid insulation).  Energy *gain* is still allowed so
+            # the lake can warm in spring/summer.
+            @. dY.soil.ρe_int = ifelse(
+                model.inland_water_mask > FT(0.5) &&
+                p.soil.T <= FT(273.15) &&
+                dY.soil.ρe_int < FT(0),
+                FT(0),
+                dY.soil.ρe_int,
+            )
         end
     end
     return compute_exp_tendency!
@@ -430,6 +440,16 @@ function ClimaLand.make_compute_imp_tendency(
         # melting proceed normally and the pore space stays filled.
         if !isnothing(model.inland_water_mask)
             @. dY.soil.ϑ_l *= (1 - model.inland_water_mask)
+            # Once a water point reaches freezing, prevent further energy loss
+            # (simulates ice-lid insulation).  Energy *gain* is still allowed so
+            # the lake can warm in spring/summer.
+            @. dY.soil.ρe_int = ifelse(
+                model.inland_water_mask > FT(0.5) &&
+                p.soil.T <= FT(273.15) &&
+                dY.soil.ρe_int < FT(0),
+                FT(0),
+                dY.soil.ρe_int,
+            )
         end
     end
     return compute_imp_tendency!
@@ -663,6 +683,8 @@ ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :T,
     :κ,
     :Tf_depressed,
+    :z_0m_sfc,
+    :z_0b_sfc,
     :bidiag_matrix_scratch,
     :full_bidiag_matrix_scratch,
     boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
@@ -679,6 +701,8 @@ A function which returns the types of the auxiliary variables
 of `EnergyHydrology`.
 """
 ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
+    FT,
+    FT,
     FT,
     FT,
     FT,
@@ -710,6 +734,8 @@ ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     :subsurface,
     :subsurface,
+    :surface,
+    :surface,
     :subsurface_face,
     :subsurface_face,
     boundary_var_domain_names(
@@ -755,6 +781,16 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             albedo,
         ) = model.parameters
 
+        # Spatially varying roughness — default to scalar params, override at water points
+        p.soil.z_0m_sfc .= model.parameters.z_0m
+        p.soil.z_0b_sfc .= model.parameters.z_0b
+        if !isnothing(model.inland_water_mask)
+            FT_iw = eltype(Y.soil.ϑ_l)
+            iw_sfc = ClimaLand.Domains.top_center_to_surface(model.inland_water_mask)
+            @. p.soil.z_0m_sfc = ifelse(iw_sfc > FT_iw(0.5), FT_iw(0.001), p.soil.z_0m_sfc)
+            @. p.soil.z_0b_sfc = ifelse(iw_sfc > FT_iw(0.5), FT_iw(0.0001), p.soil.z_0b_sfc)
+        end
+
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
 
@@ -791,6 +827,19 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             ),
             earth_param_set,
         )
+
+        # At inland water points, clamp T to ≥ 273.15 K.  A lake surface
+        # stays near freezing because ice forms an insulating lid; without a
+        # dedicated lake model we enforce this as a floor on the effective
+        # temperature seen by radiation & turbulent-flux calculations.
+        if !isnothing(model.inland_water_mask)
+            FT_iw = eltype(Y.soil.ϑ_l)
+            @. p.soil.T = ifelse(
+                model.inland_water_mask > FT_iw(0.5),
+                max(p.soil.T, FT_iw(273.15)),
+                p.soil.T,
+            )
+        end
 
         @. p.soil.K =
             impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
@@ -1211,7 +1260,8 @@ function turbulent_fluxes!(
 
     T_sfc = component_temperature(model, Y, p)
     q_sfc = component_specific_humidity(model, Y, p)
-    roughness_model = surface_roughness_model(model, Y, p)
+    z_0m_sfc = p.soil.z_0m_sfc
+    z_0b_sfc = p.soil.z_0b_sfc
     update_T_sfc = get_update_surface_temperature_function(model, Y, p)
     update_q_sfc = get_update_surface_humidity_function(model, Y, p)
     h_sfc = surface_height(model, Y, p)
@@ -1234,7 +1284,8 @@ function turbulent_fluxes!(
             atmos.h,
             T_sfc,
             q_sfc,
-            roughness_model,
+            z_0m_sfc,
+            z_0b_sfc,
             update_T_sfc,
             update_q_sfc,
             h_sfc,
@@ -1265,10 +1316,20 @@ or due to ice sublimating.
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{false},
     is_liquid,
-    args...,
-)
+    P_atmos, T_atmos, q_tot, u_atmos, h_atmos,
+    T_sfc, q_sfc,
+    z_0m::FT, z_0b::FT,
+    update_T_sfc, update_q_sfc, h_sfc, displ,
+    update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, earth_param_set,
+) where {FT}
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
     (lhf, shf, vapor_flux, _, _, _, _, _) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(args...)
+        ClimaLand.compute_turbulent_fluxes_at_a_point(
+            P_atmos, T_atmos, q_tot, u_atmos, h_atmos,
+            T_sfc, q_sfc, roughness_model,
+            update_T_sfc, update_q_sfc, h_sfc, displ,
+            update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, earth_param_set,
+        )
     return (;
         lhf,
         shf,
@@ -1279,10 +1340,20 @@ end
 function soil_turbulent_fluxes_at_a_point(
     return_extra_fluxes::Val{true},
     is_liquid,
-    args...,
-)
+    P_atmos, T_atmos, q_tot, u_atmos, h_atmos,
+    T_sfc, q_sfc,
+    z_0m::FT, z_0b::FT,
+    update_T_sfc, update_q_sfc, h_sfc, displ,
+    update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, earth_param_set,
+) where {FT}
+    roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
     (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
-        ClimaLand.compute_turbulent_fluxes_at_a_point(args...)
+        ClimaLand.compute_turbulent_fluxes_at_a_point(
+            P_atmos, T_atmos, q_tot, u_atmos, h_atmos,
+            T_sfc, q_sfc, roughness_model,
+            update_T_sfc, update_q_sfc, h_sfc, displ,
+            update_∂T_sfc∂T, update_∂q_sfc∂T, gustiness, earth_param_set,
+        )
     return (;
         lhf,
         shf,
