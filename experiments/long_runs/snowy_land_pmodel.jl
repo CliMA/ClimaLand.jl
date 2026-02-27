@@ -159,7 +159,9 @@ stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
-toml_dict = LP.create_toml_dict(FT)
+override_params_path = "../toml/uncalibrated_parameters.toml"
+toml_dict =
+    LP.create_toml_dict(FT, override_files = [override_params_path])
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"

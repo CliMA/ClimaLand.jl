@@ -1,0 +1,593 @@
+# Moisture stress models
+[moisture_stress_c]
+value = 1.0
+type = "float"
+description = "unitless"
+tag = "SoilMoistureStress"
+
+[moisture_stress_sc]
+value = 5.0e-6
+type = "float"
+description = "1/Pa"
+tag = "SoilMoistureStress"
+
+[moisture_stress_pc]
+value = -2.0e6
+type = "float"
+description = "Pa"
+tag = "SoilMoistureStress"
+# TOPMODELRunoff model
+
+["f_over"]
+value = 3.28
+type = "float"
+description = "Units are 1/m"
+tag = "TOPMODELRunoff"
+
+["R_sb"]
+value = 1.484e-7
+type = "float"
+description = "Units are m/s"
+tag = "TOPMODELRunoff"
+
+# Big leaf energy parameters
+
+["ac_canopy"]
+value = 2.5e3
+type = "float"
+description = "Specific heat per emitting area [J/m^2/K]"
+tag = "BigLeafEnergyModel"
+
+# Weibull model
+
+["K_sat_plant"]
+value = 7e-8
+type = "float"
+description = "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation. Units are m / s."
+tag = "Weibull"
+
+["psi_63"]
+value = -408.163265306122448
+type = "float"
+description = "The absolute water potential in xylem (or xylem water potential) at which ∼63% of maximum xylem conductance is lost (Liu, 2020). Computed by -4 / 0.0098. Holtzman's original parameter value is -4 MPa"
+tag = "Weibull"
+
+["Weibull_c"]
+value = 4
+type = "float"
+description = "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016). Unitless. Holtzman's original c param value."
+tag = "Weibull"
+
+# Linear Retention Curve
+
+["a"]
+value = 0.00196
+type = "float"
+description = "Units are 1/m. Bulk modulus of elasticity and slope of potential to volume curve. See also Corcuera, 2002, and Christoffersen, 2016. Computed by 0.2 * 0.0098."
+tag = "LinearRetentionCurve"
+
+# PrescribedSiteAreaIndex
+
+["SAI"]
+value = 0.0
+type = "float"
+description = "The constant stem area index (SAI; m2/m2)"
+tag = "PrescribedAreaIndices"
+
+["RAI"]
+value = 1.0
+type = "float"
+description = "The constant root area index (RAI; m2/m2)"
+tag = "PrescribedAreaIndices"
+
+[canopy_height]
+value = 1.0
+type = "float"
+description = "The constant canopy height (m)"
+tag = "PrescribedBiomassModel"
+
+# Optimal LAI Model (Zhou et al. 2025)
+
+["optimal_lai_k"]
+value = 0.5
+type = "float"
+description = "Light extinction coefficient (dimensionless)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z"]
+value = 12.227
+type = "float"
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma"]
+value = 1.1
+type = "float"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
+tag = "OptimalLAIModel"
+
+["optimal_lai_alpha"]
+value = 0.067
+type = "float"
+description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0"]
+value = 0.65
+type = "float"
+description = "Fraction of annual precipitation available for transpiration (dimensionless). Following Zhou et al. (2025), f0 = 0.65 at the energy-water limitation transition."
+tag = "OptimalLAIModel"
+
+# Plant Hydraulics Parameters
+
+["plant_nu"]
+value = 1.44e-4
+type = "float"
+description = "Porosity (m3/m3)"
+tag = "PlantHydraulicsParameters"
+
+["plant_S_s"]
+value = 9.8e-5
+type = "float"
+description = "Storativity (m3/m3). Computed by 1e-2 * 0.0098."
+tag = "PlantHydraulicsParameters"
+
+# ZenithAngleAlbedoModel parameters
+
+["alpha_0"]
+value = 0.8
+type = "float"
+description = "Free parameter controlling the minimum snow albedo"
+tag = "ZenithAngleAlbedoModel"
+
+["delta_alpha"]
+value = 0.0
+type = "float"
+description = "Free parameter controlling the snow albedo when θs = 90∘"
+tag = "ZenithAngleAlbedoModel"
+
+["k"]
+value = 0.0
+type = "float"
+description = "Rate at which albedo drops to its minimum value with zenith angle"
+tag = "ZenithAngleAlbedoModel"
+
+["beta"]
+value = 0.0
+type = "float"
+description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
+tag = "ZenithAngleAlbedoModel"
+
+["x0"]
+value = 0.2
+type = "float"
+description = "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
+tag = "ZenithAngleAlbedoModel"
+
+["delta_S"]
+value = 0.1
+type = "float"
+description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
+
+# WuWuSnowCoverFractionModel parameters
+
+["gamma"]
+value = 0.08
+type = "float"
+description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
+tag = "WuWuSnowCoverFractionModel"
+
+["beta_0"]
+value = 1.77
+type = "float"
+description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
+tag = "WuWuSnowCoverFractionModel"
+
+["beta_min"]
+value = 1.0
+type = "float"
+description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
+tag = "WuWuSnowCoverFractionModel"
+
+["z0"]
+value = 0.106
+type = "float"
+description = "The value used to normalize snow depth when computing snow cover fraction (m)"
+tag = "WuWuSnowCoverFractionModel"
+
+# P model parameters
+["pmodel_cstar"]
+value = 0.41
+type = "float"
+description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_β"]
+value = 146
+type = "float"
+description = "Unit cost ratio of Vcmax to transpiration (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_ϕ0_c3"]
+value = 0.052
+type = "float"
+description = "Constant intrinsic quantum yield. Skillman (2008)."
+tag = "PModelParameters"
+
+["pmodel_ϕ0_c4"]
+value = 0.057
+type = "float"
+description = "Constant intrinsic quantum yield. Skillman (2008)."
+tag = "PModelParameters"
+
+["pmodel_ϕa0_c3"]
+value = 0.044
+type = "float"
+description = "Constant term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.352/8."
+tag = "PModelParameters"
+
+["pmodel_ϕa1_c3"]
+value = 0.00275
+type = "float"
+description = "First order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by 0.022/8."
+tag = "PModelParameters"
+
+["pmodel_ϕa2_c3"]
+value = -0.0000425
+type = "float"
+description = "Second order term in quadratic intrinsic quantum yield (Stocker 2020). Computed by -0.00034/8."
+tag = "PModelParameters"
+
+["pmodel_ϕa0_c4"]
+value = -0.008
+type = "float"
+description = "Constant term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+tag = "PModelParameters"
+
+["pmodel_ϕa1_c4"]
+value = 0.00375
+type = "float"
+description = "First order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+tag = "PModelParameters"
+
+["pmodel_ϕa2_c4"]
+value = -0.000058
+type = "float"
+description = "Second order term in quadratic intrinsic quantum yield (Cai and Prentice 2020)."
+tag = "PModelParameters"
+
+["pmodel_α"]
+value = 0.933
+type = "float"
+description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
+tag = "PModelParameters"
+
+# P Model constants (see Stocker et al. (2020) Table A2 and references within for more information)
+["pmodel_Kc25"]
+value = 39.97
+type = "float"
+description = "Michaelis-Menten parameter for oxygenation at 25°C (Pa)."
+tag = "PModelConstants"
+
+["pmodel_Ko25"]
+value = 27480
+type = "float"
+description = "Reference temperature equal to 25˚C (K)."
+tag = "PModelConstants"
+
+["pmodel_ΔHkc"]
+value = 79430
+type = "float"
+description = "Energy of activation for Ko (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_ΔHko"]
+value = 36380
+type = "float"
+description = "Relative diffusivity of CO2 in the stomatal pores, equal to 1.6."
+tag = "PModelConstants"
+
+["pmodel_ΔHΓstar"]
+value = 37830
+type = "float"
+description = "Effective energy of activation for Γstar (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_Γstar25"]
+value = 4.332
+type = "float"
+description = "Photorespiratory compensation point at 25°C (Pa)."
+tag = "PModelConstants"
+
+["pmodel_Ha_Vcmax"]
+value = 71513
+type = "float"
+description = "Effective energy of activation for Vcmax (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_Hd_Vcmax"]
+value = 200000
+type = "float"
+description = "Effective energy of deactivation for Vcmax (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_aS_Vcmax"]
+value = 668.39
+type = "float"
+description = "Intercept term for dS in Vcmax deactivation factor (J K^-1 mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_bS_Vcmax"]
+value = 1.07
+type = "float"
+description = "Slope term for dS in Vcmax deactivation factor (J K^-2 mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_Ha_Jmax"]
+value = 49884
+type = "float"
+description = "Effective energy of activation for Jmax (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_Hd_Jmax"]
+value = 200000
+type = "float"
+description = "Effective energy of deactivation for Jmax (J mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_aS_Jmax"]
+value = 659.70
+type = "float"
+description = "Intercept term for dS in Jmax deactivation factor (J K^-1 mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_bS_Jmax"]
+value = 0.75
+type = "float"
+description = "Slope term for dS in Jmax deactivation factor (J K^-2 mol^-1)."
+tag = "PModelConstants"
+
+["pmodel_oi"]
+value = 0.2095
+type = "float"
+description = "Intercellular O2 mixing ratio (unitless)."
+tag = "PModelConstants"
+
+["pmodel_aRd"]
+value = 0.1012
+type = "float"
+description = "First order coefficient for temp-dependent Rd (K^-1)."
+tag = "PModelConstants"
+
+["pmodel_bRd"]
+value = -0.0005
+type = "float"
+description = "Second order coefficient for temp-dependent Rd (K^-2)."
+tag = "PModelConstants"
+
+["pmodel_fC3"]
+value = 0.015
+type = "float"
+description = "Constant factor appearing the dark respiration term for C3 plants (unitless)."
+tag = "PModelConstants"
+
+[canopy_K_lw]
+value = 1.0
+type = "float"
+description = "The long wave extinction coeff"
+tag = "AbstractRadiationModel"
+
+[canopy_emissivity]
+value = 0.98
+type = "float"
+description = "Emissivity of the canopy (unitless)."
+tag = "AbstractRadiationModel"
+
+# Bucket model parameters
+
+["land_bucket_capacity"]
+value = 0.2
+type = "float"
+description = "Capacity of the land bucket (m)"
+tag = "BucketModelParameters"
+
+["bucket_capacity_fraction"]
+value = 0.75
+type = "float"
+description = "Fraction of bucket capacity at which evaporation β begins to decay to zero (unitless)"
+tag = "BucketModelParameters"
+
+["bucket_z_0b"]
+value = 0.001
+type = "float"
+description = "Roughness length for scalars (m)"
+tag = "BucketModelParameters"
+
+["bucket_soil_heat_capacity"]
+value = 2.0e6
+type = "float"
+description = "Volumetric heat capacity of the soil (J/m^3/K); constant"
+tag = "BucketModelParameters"
+
+["critical_snow_fraction"]
+value = 0.0
+type = "float"
+description = "Fraction of critical amount of snow at which sublimation β begins to decay to zero (unitless)"
+tag = "BucketModelParameters"
+
+["bucket_z_0m"]
+value = 0.01
+type = "float"
+description = "Roughness length for momentum (m)"
+tag = "BucketModelParameters"
+
+["critical_snow_water_equivalent"]
+value = 0.2
+type = "float"
+description = "Critical σSWE amount (m) where surface transitions from to snow-covered"
+tag = "BucketModelParameters"
+
+["bucket_beta_decay_exponent"]
+value = 1.0
+type = "float"
+description = "Exponent used in β decay (unitless)"
+tag = "BucketModelParameters"
+
+["bucket_soil_conductivity"]
+value = 1.5
+type = "float"
+description = "Conductivity of the soil (W/K/m); constant"
+tag = "BucketModelParameters"
+
+["alpha_snow"]
+value = 0.8
+type = "float"
+tag = "PrescribedBaregroundAlbedo"
+
+# Lee 2015 SIF model parameters
+["kf"]
+value = 0.05
+type = "float"
+description = "The rate coefficient for florescence, unitless"
+tag = "SIFParameters"
+
+["kd_p1"]
+value = 0.03
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["kd_p2"]
+value = 0.0273
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["min_kd"]
+value = 0.087
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
+tag = "SIFParameters"
+
+["kn_p1"]
+value = 6.2473
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+tag = "SIFParameters"
+
+["kn_p2"]
+value = 0.5944
+type = "float"
+description = "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
+tag = "SIFParameters"
+
+["kp"]
+value = 4.0
+type = "float"
+description = "Rate coefficient for photochemical quenching"
+tag = "SIFParameters"
+
+["kappa_p1"]
+value = 0.045
+type = "float"
+description = "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+tag = "SIFParameters"
+
+["kappa_p2"]
+value = 7.85
+type = "float"
+description = "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25 (leaf level). Lee et al 2015."
+tag = "SIFParameters"
+
+# Canopy roughness
+["canopy_z_0min"]
+value = 0.01
+type = "float"
+description = "Minimum roughness"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0m_coeff"]
+value = 0.13
+type = "float"
+description = "Scalar multipling canopy height to get z_0m"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_z_0b_coeff"]
+value = 0.013
+type = "float"
+description = "Scalar multipling canopy height to get z_0b"
+tag = "MoninObukhovCanopyFluxes"
+
+["canopy_d_coeff"]
+value = 0.67
+type = "float"
+description = "Scalar multipling canopy height to get displacement height"
+tag = "MoninObukhovCanopyFluxes"
+
+["leaf_Cd"]
+value = 0.1
+type = "float"
+description = ""
+tag = "MoninObukhovCanopyFluxes"
+
+# Soil CO2 biogeochemistry parameters
+
+["CO2_diffusion_coefficient"]
+value = 1.39e-5
+type = "float"
+description = "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
+tag = "SoilCO2Parameters"
+
+["soil_C_substrate_diffusivity"]
+value = 3.17
+type = "float"
+description = "Diffusivity of soil C substrate in liquid (unitless)"
+tag = "SoilCO2Parameters"
+
+["soilCO2_pre_exponential_factor"]
+value = 194000.0
+type = "float"
+description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
+tag = "SoilCO2Parameters"
+
+["soilCO2_activation_energy"]
+value = 61000.0
+type = "float"
+description = "Activation energy for DAMM model (J mol⁻¹)"
+tag = "SoilCO2Parameters"
+
+["michaelis_constant"]
+value = 0.005
+type = "float"
+description = "Michaelis constant for substrate (kg C m⁻³)"
+tag = "SoilCO2Parameters"
+
+["O2_michaelis_constant"]
+value = 0.004
+type = "float"
+description = "Michaelis constant for O₂ (m³ m⁻³)"
+tag = "SoilCO2Parameters"
+
+["oxygen_diffusion_coefficient"]
+value = 1.67
+type = "float"
+description = "Diffusion coefficient of oxygen in air, dimensionless"
+tag = "SoilCO2Parameters"
+
+["soluble_soil_carbon_fraction"]
+value = 0.024
+type = "float"
+description = "Fraction of soil carbon that is considered soluble, dimensionless"
+tag = "SoilCO2Parameters"
+
+["molar_mass_carbon"]
+value = 12.0e-3
+type = "float"
+description = "Molar mass of carbon (kg/mol)"
+tag = "SoilCO2Parameters"
+
+["molar_mass_oxygen"]
+value = 0.032
+type = "float"
+description = "Molar mass of oxygen (kg/mol)"
+tag = "SoilCO2Parameters"
