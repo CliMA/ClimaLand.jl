@@ -349,6 +349,9 @@ function EnergyHydrology{FT}(
         z_0b,
         emissivity,
     )
+    if !isnothing(iw_subsurface)
+        apply_inland_water_thermal_overrides!(parameters, iw_subsurface, FT)
+    end
     return EnergyHydrology{FT}(;
         parameters,
         domain,

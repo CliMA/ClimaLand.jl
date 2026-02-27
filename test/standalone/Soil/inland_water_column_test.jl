@@ -2,9 +2,12 @@
 # 30 days without NaNs and keeps ϑ_l saturated at a lake grid point.
 #
 # Uses a Column domain at a lake coordinate (Lake Michigan: 43.5°N, 87.0°W)
-# with ERA5 forcing. The inland_water_mask applies water-like parameter overrides
-# (ν=0.95, K_sat=1e-3, θ_r=0, low albedo) AND zeros dY.soil.ϑ_l in the
-# tendency functions so the column cannot drain while ice can still form/melt.
+# with ERA5 forcing. The inland_water_mask applies:
+#   - water-like parameter overrides (ν=0.95, K_sat=1e-3, θ_r=0, low albedo)
+#   - very high κ (~10000 W/m/K) for well-mixed water body
+#   - low roughness lengths (z_0m=0.001, z_0b=0.0001)
+#   - energy-loss limiter at 273.15 K (ice-lid insulation)
+#   - zeroed dY.soil.ϑ_l so the column cannot drain
 
 import SciMLBase
 import ClimaComms
@@ -76,8 +79,6 @@ soil = Soil.EnergyHydrology{FT}(
     prognostic_land_components,
     additional_sources = (ClimaLand.RootExtraction{FT}(),),
     inland_water_mask,
-    z_0m = FT(0.001),
-    z_0b = FT(0.0001),
     emissivity = FT(0.97),
 )
 
@@ -115,7 +116,7 @@ function set_ic!(Y, p, t0, land)
         land.soil.parameters.ρc_ds,
         land.soil.parameters.earth_param_set,
     )
-    T_init = FT(270.0)  # January in Lake Michigan
+    T_init = FT(277.0)  # 4°C — typical late-fall lake temperature
     Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
         Y.soil.θ_i, ρc_s, T_init,
         land.soil.parameters.earth_param_set,
@@ -166,25 +167,30 @@ simulation = LandSimulation(
     @info "  Soil water content range: [$min_swc, $max_swc] (ν = 0.95)"
     @test min_swc > FT(0.9)  # should stay very close to ν = 0.95
 
-    # Temperature should be physical
-    ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l, Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        land.soil.parameters.earth_param_set,
-    )
-    T_final = ClimaLand.Soil.temperature_from_ρe_int.(
-        Y.soil.ρe_int, Y.soil.θ_i, ρc_s,
-        land.soil.parameters.earth_param_set,
-    )
-    min_T = minimum(parent(T_final))
-    max_T = maximum(parent(T_final))
-    @info "  Temperature range: [$min_T, $max_T] K"
-    @test min_T > FT(200)
+    # Temperature should be physical and near freezing (energy-loss limiter
+    # prevents the column from cooling below 273.15 K in winter).
+    T_cache = parent(simulation._integrator.p.soil.T)
+    min_T = minimum(T_cache)
+    max_T = maximum(T_cache)
+    @info "  Cache temperature range: [$min_T, $max_T] K"
+    @test min_T > FT(270)   # should stay near freezing, not plummet
     @test max_T < FT(350)
 
     # Snow state should be valid
     @test !any(isnan, parent(Y.snow.S))
     @info "  No NaNs in snow state"
+
+    # Thermal conductivity overrides at inland water points
+    κ_sat_unfrozen_vals = parent(land.soil.parameters.κ_sat_unfrozen)
+    @info "  κ_sat_unfrozen range: [$(minimum(κ_sat_unfrozen_vals)), $(maximum(κ_sat_unfrozen_vals))]"
+    @test minimum(κ_sat_unfrozen_vals) > FT(10)  # effective lake κ >> soil κ
+
+    # Roughness cache should have water values after update_aux!
+    z_0m_vals = parent(simulation._integrator.p.soil.z_0m_sfc)
+    z_0b_vals = parent(simulation._integrator.p.soil.z_0b_sfc)
+    @info "  z_0m_sfc = $(z_0m_vals[1]), z_0b_sfc = $(z_0b_vals[1])"
+    @test z_0m_vals[1] ≈ FT(0.001)    # water roughness
+    @test z_0b_vals[1] ≈ FT(0.0001)   # water scalar roughness
 
     # Saved values available
     sv = saving_cb.affect!.saved_values
