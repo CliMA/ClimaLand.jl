@@ -27,17 +27,14 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - name: Cache Julia depot
-        uses: actions/cache@v4
+      - name: Restore cached Julia depot
+        uses: actions/cache/restore@v4
         with:
-          # Cache Julia's depot
+          # load cached Julia depot, without scratchspaces, logs, and artifacts
           path: |
             ~/.julia/packages
             ~/.julia/compiled
-            ~/.julia/artifacts
-            ~/.julia/scratchspaces
             ~/.julia/registries
-            ~/.julia/logs
           # The cache key includes the OS, Julia version, and the project's dependencies
           key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
           # Fallback keys to use if the primary key isn't found
@@ -45,11 +42,17 @@ jobs:
             ${{ matrix.os }}-julia-${{ matrix.version }}-
             ${{ matrix.os }}-julia-
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-      - uses: julia-actions/julia-processcoverage@v1
+      - name: Run tests
+        uses: julia-actions/julia-runtest@v1
+        with:
+          coverage: ${{ matrix.version == '1.10' && matrix.os == 'ubuntu-latest' }}
+      - if: ${{ matrix.version == '1.10' && matrix.os == 'ubuntu-latest' }}
+        uses: julia-actions/julia-processcoverage@v1
         with:
           file: lcov.info
       - uses: codecov/codecov-action@v5
+        if: ${{ matrix.version == '1.10' && matrix.os == 'ubuntu-latest' }}
         with:
-          file: lcov.info
-          token: ${{secrets.CODECOV_TOKEN}}
+          files: lcov.info
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
