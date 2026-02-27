@@ -168,6 +168,16 @@ function LandSimulation(
     # set initial conditions
     Y, p, cds = initialize(model)
     set_ic!(Y, p, t0, model)
+
+    # Apply inland water IC overrides (saturate soil at water points).
+    # The mask is stored on the subsurface space by EnergyHydrology.
+    iw_mask = hasproperty(model, :soil) &&
+              hasproperty(model.soil, :inland_water_mask) ?
+              model.soil.inland_water_mask : nothing
+    if !isnothing(iw_mask)
+        apply_inland_water_ic!(Y, model.soil, iw_mask)
+    end
+
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, t0)
 

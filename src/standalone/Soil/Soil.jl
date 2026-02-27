@@ -199,6 +199,20 @@ include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
 
 
+"""
+    _default_soil_albedo(FT, surface_space, inland_water_mask)
+
+Helper that builds the default `CLMTwoBandSoilAlbedo`, optionally applying
+inland water albedo overrides when `inland_water_mask` is not `nothing`.
+"""
+function _default_soil_albedo(FT, surface_space, inland_water_mask)
+    albedo_params = clm_soil_albedo_parameters(surface_space)
+    if !isnothing(inland_water_mask)
+        apply_inland_water_albedo_overrides!(albedo_params, inland_water_mask, FT)
+    end
+    return CLMTwoBandSoilAlbedo{FT}(; albedo_params...)
+end
+
 # Soil model constructor useful for working with simulations forced by
 # the atmosphere
 """
@@ -254,16 +268,28 @@ component models.
 Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
 by kwarg; otherwise the default values are used.
 
-This sets the bottom boundary conditions to be no flux by default, but these can be changed using the 
+This sets the bottom boundary conditions to be no flux by default, but these can be changed using the
 `bottom_bc` kwarg.
+
+If `inland_water_mask` is provided (a binary ClimaCore Field on the surface space,
+where 1 = inland water and 0 = land), soil parameters at inland water grid points
+are overridden to mimic open water behavior: high porosity (0.95), K_sat = 0
+(no internal drainage, which also eliminates the spurious advective heat flux),
+zero residual water content, water-like albedo (~0.06), and zero soil composition
+fractions. Additionally, dY.soil.ϑ_l is zeroed in the tendency functions at those
+points so that surface evaporation cannot drain the column, while ice formation and
+melting via PhaseChange still proceed normally.
 """
 function EnergyHydrology{FT}(
     domain,
     forcing,
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:soil,),
-    albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
-        clm_soil_albedo_parameters(domain.space.surface)...,
+    inland_water_mask = nothing,
+    albedo::AbstractSoilAlbedoParameterization = _default_soil_albedo(
+        FT,
+        domain.space.surface,
+        inland_water_mask,
     ),
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
         toml_dict,
@@ -287,6 +313,21 @@ function EnergyHydrology{FT}(
         heat = HeatFluxBC((p, t) -> 0.0),
     ),
 ) where {FT <: AbstractFloat}
+    # Apply inland water overrides to soil parameters if a mask is provided
+    iw_subsurface = nothing
+    if !isnothing(inland_water_mask)
+        iw_subsurface = surface_to_subsurface(
+            inland_water_mask,
+            domain.space.subsurface,
+        )
+        apply_inland_water_overrides!(
+            retention_parameters,
+            composition_parameters,
+            iw_subsurface,
+            FT,
+        )
+    end
+
     # TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
     #  roughness, and emissivity.
     top_bc = AtmosDrivenFluxBC(
@@ -308,11 +349,15 @@ function EnergyHydrology{FT}(
         z_0b,
         emissivity,
     )
+    if !isnothing(iw_subsurface)
+        apply_inland_water_thermal_overrides!(parameters, iw_subsurface, FT)
+    end
     return EnergyHydrology{FT}(;
         parameters,
         domain,
         boundary_conditions,
         sources,
+        inland_water_mask = iw_subsurface,
     )
 end
 
