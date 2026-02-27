@@ -428,6 +428,8 @@ function apply_inland_water_overrides!(
     # blow up with high K_sat under a purely gravitational head gradient.
     # The tendency-zeroing in EnergyHydrology also pins dϑ_l/dt = 0 at those
     # points, so surface evaporation cannot drain the column either.
+    # NOTE: K_sfc is overridden separately in get_update_surface_humidity_function
+    # so that the β evaporation-resistance factor remains ≈ 1 (open water).
     retention_params.K_sat .= water_override.(
         retention_params.K_sat,
         inland_water_mask_subsurface,

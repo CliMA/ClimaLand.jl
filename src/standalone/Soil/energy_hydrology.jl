@@ -1142,6 +1142,13 @@ function ClimaLand.get_update_surface_humidity_function(
             effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc),
         ) *
         _ρ_liq # as a mass flux
+    # At inland water points K_sat = 0 (to suppress the advective heat flux),
+    # but that zeroes β and kills evaporation.  Override K_sfc so β ≈ 1
+    # (open-water, unrestricted evaporation).
+    if !isnothing(model.inland_water_mask)
+        iw_sfc = ClimaLand.Domains.top_center_to_surface(model.inland_water_mask)
+        @. K_sfc = ifelse(iw_sfc > FT(0.5), _ρ_liq * FT(1e-3), K_sfc)
+    end
     K_c = @. lazy(
         max(
             hydraulic_conductivity(
