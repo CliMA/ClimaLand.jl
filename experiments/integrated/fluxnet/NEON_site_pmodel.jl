@@ -40,10 +40,10 @@ using TOML
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
 site_ID = "NEON-cper"
-outpath = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260225_$(site_ID)_2017_porosity0.3/output/"
+outpath = "/Users/evametz/Documents/PostDoc/Projekte/CliMA/Siteruns/$(site_ID)/20260225_$(site_ID)_2017_noSOCprofil5kg/output/"
 mkpath(outpath)
 
-soil_ν = FT(0.3)
+#soil_ν = FT(0.3)
 
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
@@ -51,7 +51,7 @@ toml_dict = LP.create_toml_dict(FT)
 
 # Simulation parameters
 spinup_days = 20
-SOC_init = FT(2.0)  # Initial soil organic carbon [kg/m²]
+SOC_init = FT(5.0)  # Initial soil organic carbon [kg/m²]
 dt = Float64(450)   # Time step: 7.5 minutes
 
 # Domain information and site location from FLUXNET metadata
@@ -62,6 +62,7 @@ dt = Float64(450)   # Time step: 7.5 minutes
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
 spinup_date = start_date + Day(spinup_days)
+
 
 # Spatial domain with lon/lat coordinates (enables spatial parameter lookup)
 land_domain = Column(;
@@ -173,8 +174,59 @@ base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
 )
 function custom_set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
-    Y.soilco2.SOC .= SOC_init  # Set SOC to 2.0 kg/m²
+    Y.soilco2.SOC .= SOC_init  # Set SOC to 5.0 kg/m²
 end
+#=
+function custom_set_ic!(Y, p, t, model)
+    #=
+    earth_param_set = ClimaLand.get_earth_param_set(model.soil)
+    evaluate!(p.drivers.T, atmos.T, t)
+
+    (; θ_r, ν, ρc_ds) = model.soil.parameters
+    @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+    Y.soil.θ_i .= FT(0.0)
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            ρc_ds,
+            earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            p.drivers.T,
+            earth_param_set,
+        )
+
+    Y.snow.S .= FT(0)
+    Y.snow.S_l .= FT(0)
+    Y.snow.U .= FT(0)
+    if model.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
+        Y.canopy.energy.T .= p.drivers.T
+    end
+    n_stem = model.canopy.hydraulics.n_stem
+    n_leaf = model.canopy.hydraulics.n_leaf
+    for i in 1:(n_stem + n_leaf)
+        Y.canopy.hydraulics.ϑ_l.:($i) .= model.canopy.hydraulics.parameters.ν
+    end
+    =#
+    base_set_ic!(Y, p, t, model)
+
+    # SoilCO2 IC
+    #if !isnothing(model.soilco2)
+    Y.soilco2.CO2 .= FT(0.000412)
+    Y.soilco2.O2_f .= FT(0.21)
+    # Prescribed SOC profile: 15 kgC/m³ at surface, 0.5 kgC/m³ at 1m depth
+    SOC_top = FT(18.0)
+    SOC_bot = FT(0.5)
+    τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+    @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
+    #end
+end =#
+
 
 # Diagnostics: sco2_ppm at halfhourly resolution
 output_writer = ClimaDiagnostics.Writers.DictWriter()

@@ -315,7 +315,10 @@ function make_set_initial_state_from_file(
 
         # SoilCO2 IC (requires soil state)
         if !isnothing(land.soilco2)
-            set_soilco2_initial_conditions!(Y, p, land)
+            #set_soilco2_initial_conditions!(Y, p, land)
+            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
         end
 
         # Snow IC
@@ -448,7 +451,7 @@ function make_set_initial_state_from_file(
         )
 
         # SoilCO2 IC (requires soil state)
-        set_soilco2_initial_conditions!(Y, p, land)
+        #set_soilco2_initial_conditions!(Y, p, land)
 
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use

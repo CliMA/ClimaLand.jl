@@ -1033,7 +1033,6 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Soil CO2 in ppm (for NEON comparison)
-<<<<<<< HEAD
     add_diagnostic_variable!(
         short_name = "sco2_ppm",
         long_name = "Soil Pore Air CO2 Concentration",
@@ -1044,8 +1043,6 @@ function define_diagnostics!(land_model, possible_diags)
     )
 
     # Soil water content
-=======
->>>>>>> origin/ar/em/calibrate_neon
     add_diagnostic_variable!(
         short_name = "sco2_ppm",
         long_name = "Soil Pore Air CO2 Concentration",
