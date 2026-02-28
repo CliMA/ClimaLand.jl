@@ -394,12 +394,11 @@ function LandSimVis.make_diurnal_timeseries(
                 data_dates[spinup_idx:end],
                 data[spinup_idx:end],
             )
-            RMSD = @sprintf "%.2e" StatsBase.rmsd(
-                model_diurnal_cycle,
-                data_diurnal_cycle,
+            RMSD = @sprintf "%.2e" sqrt(
+                mean(abs2, model_diurnal_cycle .- data_diurnal_cycle),
             )
 
-            R² = StatsBase.cor(model_diurnal_cycle, data_diurnal_cycle)^2
+            R² = cor(model_diurnal_cycle, data_diurnal_cycle)^2
             CairoMakie.lines!(
                 ax,
                 hour_of_day,

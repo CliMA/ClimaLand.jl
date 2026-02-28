@@ -512,10 +512,6 @@ function ceres_albedo_dataset_path(; context = nothing)
     )
 end
 
-# TODO: This should be a ClimaArtifact
-neural_snow_znetwork_link() =
-    "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
-
 """
     ilamb_dataset_path(filename; context = nothing)
 
@@ -633,6 +629,54 @@ function find_crujra_year_paths(start_date, stop_date; context = nothing)
         )
     end
     return years
+end
+
+"""
+    neural_depth_model_structure_path(;context = nothing)
+
+Return the path to the NeuralDepthModel structure object. This is combined
+with the parameters object (see `neural_depth_model_params_path`) to build
+the NeuralDepthModel as it appears in Charbonneau et. al. (2025) (https://doi.org/10.1175/AIES-D-24-0040.1)
+"""
+function neural_depth_model_structure_path(; context = nothing)
+    dir = @clima_artifact("neural_snow", context)
+    return joinpath(dir, "NeuralDepthModelStructure.jld2")
+end
+
+"""
+    neural_depth_model_params_path(;context = nothing)
+
+Return the path to the NeuralDepthModel parameters object. This is combined
+with the structure object (see `neural_depth_model_structure_path`) to build
+the NeuralDepthModel as it appears in Charbonneau et. al. (2025) (https://doi.org/10.1175/AIES-D-24-0040.1)
+"""
+function neural_depth_model_params_path(; context = nothing)
+    dir = @clima_artifact("neural_snow", context)
+    return joinpath(dir, "NeuralDepthModelParameters.jld2")
+end
+
+"""
+    neural_albedo_model_structure_path(;context = nothing)
+
+Return the path to the NeuralAlbedoModel structure object. This is combined
+with the parameters object (see `neural_albedo_model_params_path`) to build
+the NeuralAlbedoModel as it appears in Charbonneau et. al. (2026) (under review)
+"""
+function neural_albedo_model_structure_path(; context = nothing)
+    dir = @clima_artifact("neural_snow", context)
+    return joinpath(dir, "NeuralAlbedoModelStructure.jld2")
+end
+
+"""
+    neural_albedo_model_params_path(;context = nothing)
+
+Return the path to the NeuralAlbedoModel parameters object. This is combined
+with the structure object (see `neural_albedo_model_structure_path`) to build
+the NeuralAlbedoModel as it appears in Charbonneau et. al. (2026) (under review)
+"""
+function neural_albedo_model_params_path(; context = nothing)
+    dir = @clima_artifact("neural_snow", context)
+    return joinpath(dir, "NeuralAlbedoModelParameters.jld2")
 end
 
 end

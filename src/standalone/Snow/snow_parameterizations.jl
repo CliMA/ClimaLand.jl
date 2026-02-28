@@ -55,7 +55,7 @@ end
 """
     update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
 
-Returns the snow cover fraction from snow depth `z`, from
+Returns the snow cover fraction from ground-area snow depth `z`, from
 Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
@@ -68,7 +68,7 @@ function update_snow_cover_fraction!(
     t,
     earth_param_set,
 )
-    z = p.snow.z_snow
+    z = p.snow.z_snow #ground-area snow depth in this case
     @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
 end
 
@@ -277,7 +277,9 @@ end
     surface_temp_scaling_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
 
 Provides the scaling length scale for calculation of the surface temperature, which is stable
-in the small-snowpack limit.
+in the small-snowpack limit (it becomes (output) -> (input z) as (input z) -> 0).
+We recomment inputting the z-per-ground-area (i.e. averaged over the grid by the snow cover fraction) to this function,
+since 0 < z-per-ground-area <= z-per-snow-area, which means the reference depth will always remain inside the snowpack as (true z) -> 0.
 """
 function surface_temp_scaling_length(
     κ::FT,
@@ -337,17 +339,19 @@ end
     snow_bulk_density(SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
 
 Returns the snow density given the current model state when depth and SWE are available.
+Ensure the passed values are consistent in whether both have been multiplied by the snow-cover-fraction
+or not (both must be per-snow-area or per-ground-area.)
 """
 function snow_bulk_density(
-    SWE::FT,
-    z::FT,
+    SWE_area::FT,
+    z_area::FT,
     parameters::SnowParameters{FT},
 )::FT where {FT}
     _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
     ε = eps(FT) #for preventing dividing by zero
     #return SWE/z * ρ_l but tend to ρ_l as SWE → 0
     #also handle instabilities when z, SWE both near machine precision
-    return max(SWE, ε) / max(z, SWE, ε) * _ρ_l
+    return max(SWE_area, ε) / max(z_area, SWE_area, ε) * _ρ_l
 end
 
 """
@@ -375,6 +379,8 @@ end
 
 Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
+the passed "z" should be p.snow.z; that of the snow depth averaged over
+the ground area (not the snow area), as it is in a ratio with Y.snow.S.
 """
 function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
     τ = max(Δt, z / Ksat)
@@ -538,6 +544,24 @@ function energy_flux_falling_rain(atmos, p, parameters)
 end
 
 """
+    swe_per_snow_area(swe::FT, scf::FT) where {FT}
+
+Provides the SWE of the actual snow-covered area, as opposed to the
+value as averaged over the grid cell. Remains numerically stable as
+SWE and snow cover fraction both go to zero, and ensures the snow-
+covered area SWE goes to zero as grid-cell SWE goes to zero.
+"""
+function swe_per_snow_area(swe::FT, scf::FT, z::FT) where {FT}
+    # need to return swe/scf, but in a way satisfying:
+    # 1. numerically stable when both are small
+    # 2. preserves output -> 0 as swe -> 0
+    # 3. maintains realistic height compared to z
+    scf_min = 0.05
+    #output -> swe -> 0 as swe -> 0:
+    return max(z, swe / max(scf, scf_min))
+end
+
+"""
     update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, params::SnowParameters)
 
 Extends the update_density_and_depth! function for the MinimumDensityModel type; updates the snow density and depth in place.
@@ -552,7 +576,7 @@ function update_density_and_depth!(
 ) where {FT}
     _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
-    @. z_snow = _ρ_l * Y.snow.S / ρ_snow
+    @. z_snow = _ρ_l * Y.snow.S / ρ_snow #z_snow is per ground area, matching Y.snow.S
 end
 
 """

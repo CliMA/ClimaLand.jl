@@ -26,7 +26,7 @@ using ClimaUtilities
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
 import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)

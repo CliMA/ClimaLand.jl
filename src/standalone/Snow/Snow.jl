@@ -64,7 +64,8 @@ for use within an `AbstractSnowModel` type. Currently we support a
 Since depth and bulk density are related via SWE, and SWE is a prognostic variable
 of the snow model, only depth or bulk density can be independently modeled at one time.
 This is why they are treated as a single "density model" even if the parameterization is actually
-a model for snow depth.
+a model for snow depth. One must also account for Y.snow.S and p.snow.z_snow within ClimaLand.Snow as representing the
+SWE (or z) over the whole grid cell area (ground-area) instead of just the snow-covered area itself, when building density/depth models.
 The snow depth/density model can be diagnostic or introduce additional prognostic variables.
 
 """
@@ -280,9 +281,9 @@ leftover energy flux serves to warm up the bulk snow temperature.
 """
 struct EquilibriumGradientTemperatureModel{FT} <:
        AbstractSnowSurfaceTemperatureModel{FT}
-    "Allowable tolerance in the root-solve algorithm"
+    "Allowable tolerance in the root-solve algorithm (K)"
     tol::FT
-    "Number of iterations to perform in the root-solve algorithm"
+    "Max number of iterations to perform in the root-solve algorithm"
     N_iters::Int
 end
 
@@ -586,7 +587,7 @@ density_prog_vars(::AbstractDensityModel) = ()
     prognostic_types(::SnowModel{FT})
 
 Returns the prognostic variable types of the snow model;
-both snow water equivalent and energy per unit area
+both snow water equivalent and energy per unit ground area
 are scalars.
 """
 prognostic_types(m::SnowModel{FT}) where {FT} =
@@ -604,7 +605,7 @@ density_prog_types(::AbstractDensityModel{FT}) where {FT} = ()
     prognostic_domain_names(::SnowModel)
 
 Returns the prognostic variable domain names of the snow model;
-both snow water equivalent and energy per unit area
+both snow water equivalent and energy per unit ground area
 are modeling only as a function of (x,y), and not as a function
 of depth. Therefore their domain name is ":surface".
 """
@@ -629,7 +630,7 @@ include
 - the thermal conductivity (`κ`, W/m/K),
 - the bulk temperature (`T`, K),
 - the surface temperature (`T_sfc`, K),
-- the snow depth (`z_snow`, m),
+- the snow depth (averaged over the ground area, like Y.snow.S) (`z_snow`, m),
 - the bulk snow density (`ρ_snow`, kg/m^3)
 - the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
 - the net radiation (`R_n, J/m^2/s)`,

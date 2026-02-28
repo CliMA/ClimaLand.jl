@@ -19,7 +19,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
 import ClimaLand.LandSimVis as LandSimVis;
 
 # Set the simulation float type, determine the

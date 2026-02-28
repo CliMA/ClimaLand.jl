@@ -11,7 +11,7 @@
 
 # ``` julia
 # using ClimaLand
-# using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+# using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
 # import ClimaLand.LandSimVis as LandSimVis;
 # ```
 
