@@ -1279,7 +1279,7 @@ function inland_water_mask(
     surface_space;
     filepath,
     varname = "landseamask",
-    threshold = 50.0,
+    threshold = 80.0,
     landsea_mask = nothing,
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
