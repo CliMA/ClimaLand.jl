@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Single site observations · ClimaLand.jl</title><meta name="title" content="Single site observations · ClimaLand.jl"/><meta property="og:title" content="Single site observations · ClimaLand.jl"/><meta property="twitter:title" content="Single site observations · ClimaLand.jl"/><meta name="description" content="Documentation for ClimaLand.jl."/><meta property="og:description" content="Documentation for ClimaLand.jl."/><meta property="twitter:description" content="Documentation for ClimaLand.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="ClimaLand.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">ClimaLand.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../getting_started/">Running your first simulation</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorials</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">Running standalone component simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/bucket_tutorial/">Bucket</a></li><li><input class="collapse-toggle" id="menuitem-3-1-2" type="checkbox"/><label class="tocitem" for="menuitem-3-1-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/boundary_conditions/">Boundary conditions</a></li><li><a class="tocitem" href="../../standalone/Soil/richards_equation/">Richards Equation</a></li><li><a class="tocitem" href="../../standalone/Soil/soil_energy_hydrology/">Energy and Hydrology</a></li><li><input class="collapse-toggle" id="menuitem-3-1-2-4" type="checkbox"/><label class="tocitem" for="menuitem-3-1-2-4"><span class="docs-label">Phase Changes</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/freezing_front/">Modeling a freezing front in unsaturated soil</a></li><li><a class="tocitem" href="../../standalone/Soil/phase_change_analytic/">The Stefan problem</a></li></ul></li><li><a class="tocitem" href="../../standalone/Soil/layered_soil/">Layered Soil</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation/">Coarse Sand Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation_gilat_loess/">Gilat Loess Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/sublimation/">Bare soil site</a></li><li><a class="tocitem" href="../../standalone/Soil/changing_soil_parameterizations/">Changing soil parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-1-3" type="checkbox"/><label class="tocitem" for="menuitem-3-1-3"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Canopy/default_canopy/">Default canopy</a></li><li><a class="tocitem" href="../../standalone/Canopy/canopy_tutorial/">Default canopy fluxtower simulation </a></li><li><a class="tocitem" href="../../standalone/Canopy/changing_canopy_parameterizations/">Changing canopy parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-1-4" type="checkbox"/><label class="tocitem" for="menuitem-3-1-4"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Snow/base_tutorial/">Base tutorial</a></li><li><a class="tocitem" href="../../standalone/Snow/data_tutorial/">Data tutorial</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Running Fluxnet simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../integrated/soil_canopy_fluxnet_tutorial/">Canopy and soil</a></li><li><a class="tocitem" href="../../integrated/snowy_land_fluxnet_tutorial/">Canopy, soil, and snow</a></li><li><a class="tocitem" href="../../integrated/changing_snowy_land_parameterizations/">Changing LandModel parameterizations</a></li><li><a class="tocitem" href="../../integrated/fluxnet_data/">Data processing</a></li><li><a class="tocitem" href="../../integrated/fluxnet_vis/">Visualization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-3" type="checkbox"/><label class="tocitem" for="menuitem-3-3"><span class="docs-label">Running global simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../global/bucket/">Bucket</a></li><li><a class="tocitem" href="../../global/snowy_land/">Snow, soil, canopy</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-4" type="checkbox" checked/><label class="tocitem" for="menuitem-3-4"><span class="docs-label">Calibrating a ClimaLand model</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../perfect_model_site_level_calibration/">Single site perfect model</a></li><li class="is-active"><a class="tocitem" href>Single site observations</a><ul class="internal"><li><a class="tocitem" href="#Overview"><span>Overview</span></a></li><li><a class="tocitem" href="#Setup-and-Imports"><span>Setup and Imports</span></a></li><li><a class="tocitem" href="#Configuration-and-Site-Setup"><span>Configuration and Site Setup</span></a></li><li><a class="tocitem" href="#Domain-and-Forcing-Setup"><span>Domain and Forcing Setup</span></a></li><li><a class="tocitem" href="#Model-Setup"><span>Model Setup</span></a></li><li><a class="tocitem" href="#Observation-and-Helper-Functions"><span>Observation and Helper Functions</span></a></li><li><a class="tocitem" href="#Experiment-Setup"><span>Experiment Setup</span></a></li><li><a class="tocitem" href="#Prior-Distribution-and-Calibration-Configuration"><span>Prior Distribution and Calibration Configuration</span></a></li><li><a class="tocitem" href="#Ensemble-Kalman-Inversion"><span>Ensemble Kalman Inversion</span></a></li><li><a class="tocitem" href="#Results-Analysis-and-Visualization"><span>Results Analysis and Visualization</span></a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-5" type="checkbox"/><label class="tocitem" for="menuitem-3-5"><span class="docs-label">Running coupled simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/coupled_bucket/">Coupled bucket model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">For model developers</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/model_tutorial/">Intro to standalone models</a></li><li><input class="collapse-toggle" id="menuitem-3-6-2" type="checkbox"/><label class="tocitem" for="menuitem-3-6-2"><span class="docs-label">Intro to multi-component models</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/LSM_single_column_tutorial/">Single column tutorial</a></li><li><a class="tocitem" href="../../integrated/handling_soil_fluxes/">Adjusting boundary conditions for the soil</a></li><li><a class="tocitem" href="../../integrated/handling_snow_fluxes/">Adjusting boundary conditions for the snow</a></li></ul></li><li><a class="tocitem" href="../../standalone/Usage/domain_tutorial/">Intro to ClimaLand Domains</a></li><li><a class="tocitem" href="../../shared_utilities/driver_tutorial/">Intro to forced site-level runs</a></li><li><a class="tocitem" href="../../shared_utilities/timestepping/">Intro to implicit/explicit timestepping</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Model Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">Vegetation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-1-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1-1"><span class="docs-label">Radiative transfer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/beer_model/">Beer model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/twostream_model/">Two-Stream model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-2" type="checkbox"/><label class="tocitem" for="menuitem-4-1-2"><span class="docs-label">Photosynthesis</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/farquhar_model/">Farquhar model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/optimality_model/">Optimality model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-3" type="checkbox"/><label class="tocitem" for="menuitem-4-1-3"><span class="docs-label">Stomatal conductance</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/stomatal_conductance/medlyn_model/">Medlyn model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-1-4" type="checkbox"/><label class="tocitem" for="menuitem-4-1-4"><span class="docs-label">Plant hydraulics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/plant_hydraulics/van_genuchten_model/">Van Genuchten model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-2-1" type="checkbox"/><label class="tocitem" for="menuitem-4-2-1"><span class="docs-label">Physics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/physics/richards_model/">Richards model</a></li><li><a class="tocitem" href="../../../standalone/pages/soil/physics/energy_model/">Energy+Hydrology model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2-2"><span class="docs-label">Biogeochemistry</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/biogeochemistry/DAMM_model/">DAMM model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/><label class="tocitem" for="menuitem-4-3"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/snow/snow_model/">Snow model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">Additional resources</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../model_structure/">Model structure</a></li><li><a class="tocitem" href="../../../repo_structure/">Repository structure</a></li><li><input class="collapse-toggle" id="menuitem-5-3" type="checkbox"/><label class="tocitem" for="menuitem-5-3"><span class="docs-label">Analyzing model output</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-5-3-1" type="checkbox"/><label class="tocitem" for="menuitem-5-3-1"><span class="docs-label">Diagnostics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../diagnostics/users_diagnostics/">For users</a></li><li><a class="tocitem" href="../../../diagnostics/developers_diagnostics/">For developers</a></li><li><a class="tocitem" href="../../../diagnostics/available_diagnostics/">Available diagnostics</a></li></ul></li><li><a class="tocitem" href="../../../leaderboard/leaderboard/">Leaderboard</a></li></ul></li><li><a class="tocitem" href="../../../architectures/">Running on GPU or with MPI</a></li><li><a class="tocitem" href="../../../calibration/">Calibration</a></li><li><a class="tocitem" href="../../../restarts/">Restarting a simulation</a></li><li><input class="collapse-toggle" id="menuitem-5-7" type="checkbox"/><label class="tocitem" for="menuitem-5-7"><span class="docs-label">Software utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../itime/">ITime type</a></li><li><a class="tocitem" href="../../../shared_utilities/">Shared utilities</a></li></ul></li><li><a class="tocitem" href="../../../physical_units/">Physical units</a></li><li><a class="tocitem" href="../../../julia/">Julia background</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">APIs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1" type="checkbox"/><label class="tocitem" for="menuitem-6-1"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/Soil/">Soil Energy and Hydrology</a></li><li><a class="tocitem" href="../../../APIs/SoilBiogeochemistry/">Soil Biogeochemistry</a></li><li><a class="tocitem" href="../../../APIs/SoilAlbedo/">Soil Albedo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/canopy/Canopy/">Canopy Models</a></li><li><a class="tocitem" href="../../../APIs/canopy/PlantHydraulics/">Plant Hydraulics</a></li><li><a class="tocitem" href="../../../APIs/canopy/Photosynthesis/">Canopy Photosynthesis</a></li><li><a class="tocitem" href="../../../APIs/canopy/RadiativeTransfer/">Canopy Radiative Transfer</a></li><li><a class="tocitem" href="../../../APIs/canopy/CanopyEnergy/">Canopy Energy</a></li><li><a class="tocitem" href="../../../APIs/canopy/StomatalConductance/">Canopy Stomatal Conductance</a></li><li><a class="tocitem" href="../../../APIs/canopy/AutotrophicRespiration/">Canopy Autotrophic Respiration</a></li></ul></li><li><a class="tocitem" href="../../../APIs/SurfaceWater/">Surface Water Models</a></li><li><a class="tocitem" href="../../../APIs/Bucket/">Bucket Model</a></li><li><a class="tocitem" href="../../../APIs/Snow/">Snow Model</a></li><li><a class="tocitem" href="../../../APIs/ClimaLand/">Integrated Models</a></li><li><input class="collapse-toggle" id="menuitem-6-7" type="checkbox"/><label class="tocitem" for="menuitem-6-7"><span class="docs-label">Shared Utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/AbstractModels/">Abstract Models and Functions</a></li><li><a class="tocitem" href="../../../APIs/Simulations/">Simulations</a></li><li><a class="tocitem" href="../../../APIs/Domains/">Domains</a></li><li><a class="tocitem" href="../../../APIs/Drivers/">Drivers</a></li></ul></li><li><a class="tocitem" href="../../../APIs/parameters/">Parameters</a></li></ul></li><li><a class="tocitem" href="../../../contributing/">Contributor guide</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Calibrating a ClimaLand model</a></li><li class="is-active"><a href>Single site observations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Single site observations</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl/../../../.." title="View source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Model-Site-Level-Calibration-Tutorial-Using-Observations"><a class="docs-heading-anchor" href="#Model-Site-Level-Calibration-Tutorial-Using-Observations">Model Site-Level Calibration Tutorial Using Observations</a><a id="Model-Site-Level-Calibration-Tutorial-Using-Observations-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Site-Level-Calibration-Tutorial-Using-Observations" title="Permalink"></a></h1><p>In this tutorial we will calibrate the Vcmax25 and g1 parameters using latent heat flux observations from the FLUXNET site (US-MOz).</p><h2 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h2><p>The tutorial covers:</p><ol><li>Setting up a land surface model for a FLUXNET site (US-MOz)</li><li>Obtaining the observation dataset</li><li>Implementing Ensemble Kalman Inversion to calibrate Vcmax25 and g1</li><li>Analyzing the calibration results</li></ol><h2 id="Setup-and-Imports"><a class="docs-heading-anchor" href="#Setup-and-Imports">Setup and Imports</a><a id="Setup-and-Imports-1"></a><a class="docs-heading-anchor-permalink" href="#Setup-and-Imports" title="Permalink"></a></h2><p>Load all the necessary packages for land surface modeling, diagnostics, plotting, and ensemble methods:</p><pre><code class="language-julia hljs">using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Canopy
+using ClimaLand.Simulations
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
+import ClimaLand.Parameters as LP
+import ClimaLand.LandSimVis as LandSimVis
+import ClimaDiagnostics
+import ClimaUtilities.TimeManager: date
+import EnsembleKalmanProcesses as EKP
+import EnsembleKalmanProcesses.ParameterDistributions as PD
+using CairoMakie
+CairoMakie.activate!()
+using Statistics
+using Logging
+import Random
+using Dates
+using ClimaAnalysis, GeoMakie, Printf, StatsBase</code></pre><h2 id="Configuration-and-Site-Setup"><a class="docs-heading-anchor" href="#Configuration-and-Site-Setup">Configuration and Site Setup</a><a id="Configuration-and-Site-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Configuration-and-Site-Setup" title="Permalink"></a></h2><p>Configure the experiment parameters and set up the FLUXNET site (US-MOz) with its specific location, time settings, and atmospheric conditions.</p><p>Set random seed for reproducibility and floating point precision</p><pre><code class="language-julia hljs">rng_seed = 1234
+rng = Random.MersenneTwister(rng_seed)
+const FT = Float32</code></pre><pre><code class="nohighlight hljs">Float32</code></pre><p>Initialize land parameters and site configuration.</p><pre><code class="language-julia hljs">earth_param_set = LP.LandParameters(FT)
+default_params_filepath =
+    joinpath(pkgdir(ClimaLand), &quot;toml&quot;, &quot;default_parameters.toml&quot;)
+toml_dict = LP.create_toml_dict(FT, default_params_filepath)
+site_ID = &quot;US-MOz&quot;
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);</code></pre><p>Get site-specific information: location coordinates, time offset, and sensor height.</p><pre><code class="language-julia hljs">(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));</code></pre><p>Get simulation start and stop dates in UTC; these must be included in the forcing data range Here we calibrate with only two months of data.</p><pre><code class="language-julia hljs">start_date = DateTime(2010, 5, 1)
+stop_date = DateTime(2010, 7, 1)
+Δt = 450.0; # seconds</code></pre><h2 id="Domain-and-Forcing-Setup"><a class="docs-heading-anchor" href="#Domain-and-Forcing-Setup">Domain and Forcing Setup</a><a id="Domain-and-Forcing-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Domain-and-Forcing-Setup" title="Permalink"></a></h2><p>Create the computational domain and load the necessary forcing data for the land surface model. ClimaLand includes the domain, forcing, and LAI as part of the model, but here we will need to recreate a model many times (for each parameter value tried), while the domain, forcing, and LAI are held fixed. Because of that, we define them here, once, outside of the function that is called to make the model.</p><p>Create a column domain representing a 2-meter deep soil column with 10 vertical layers.</p><pre><code class="language-julia hljs">zmin = FT(-2)  # 2m depth
+zmax = FT(0)   # surface
+domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));</code></pre><p>Load prescribed atmospheric and radiative forcing from FLUXNET data</p><pre><code class="language-julia hljs">forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    earth_param_set,
+    FT,
+);</code></pre><p>Get Leaf Area Index (LAI) data from MODIS satellite observations.</p><pre><code class="language-julia hljs">LAI = ClimaLand.Canopy.prescribed_lai_modis(
+    domain.space.surface,
+    start_date,
+    stop_date,
+);</code></pre><h2 id="Model-Setup"><a class="docs-heading-anchor" href="#Model-Setup">Model Setup</a><a id="Model-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Setup" title="Permalink"></a></h2><p>Create an integrated land model that couples canopy, snow, soil, and soil CO2 components. This comprehensive model allows us to simulate the full land surface system and its interactions.</p><pre><code class="language-julia hljs">function model(Vcmax25, g1)
+    Vcmax25 = FT(Vcmax25)
+    g1 = FT(g1)
+
+    #md # Set up models; note: we are not using the default soil, which relies on global
+    #md # maps of parameters to estimate the parameters at the site.
+    #md # Instead we use parameter more tailored to this site.
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+    #md # Create soil model
+    retention_parameters = (;
+        ν = FT(0.55),
+        θ_r = FT(0.04),
+        K_sat = FT(4e-7),
+        hydrology_cm = ClimaLand.Soil.vanGenuchten{FT}(;
+            α = FT(0.05),
+            n = FT(2.0),
+        ),
+    )
+    composition_parameters =
+        (; ν_ss_om = FT(0.1), ν_ss_quartz = FT(0.1), ν_ss_gravel = FT(0.0))
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+        retention_parameters,
+        composition_parameters,
+        S_s = FT(1e-2),
+    )
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    canopy_forcing = (;
+        atmos = forcing.atmos,
+        radiation = forcing.radiation,
+        ground = ClimaLand.PrognosticGroundConditions{FT}(),
+    )
+    #md # Set up photosynthesis using the Farquhar model
+    photosyn_defaults =
+        Canopy.clm_photosynthesis_parameters(surface_domain.space.surface)
+    photosynthesis = Canopy.FarquharModel{FT}(
+        surface_domain;
+        photosynthesis_parameters = (;
+            is_c3 = photosyn_defaults.is_c3,
+            Vcmax25,
+        ),
+    )
+    #md # Set up stomatal conductance using the Medlyn model
+    conductance = Canopy.MedlynConductanceModel{FT}(surface_domain; g1)
+
+    #md # Create canopy model
+    canopy = Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        photosynthesis,
+        conductance,
+        prognostic_land_components,
+    )
+
+    #md # Create integrated land model
+    land_model =
+        LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; soil, canopy)
+
+    #md # Set initial conditions from FLUXNET data
+    set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        time_offset,
+        land_model,
+    )
+
+    #md # Configure diagnostics to output sensible and latent heat fluxes half-hourly
+    #md # Since fluxnet data is recorded every half hour, with the average of the half hour,
+    #md # we need to be consistent here.
+    output_vars = [&quot;lhf&quot;]
+    diagnostics = ClimaLand.default_diagnostics(
+        land_model,
+        start_date;
+        output_writer = ClimaDiagnostics.Writers.DictWriter(),
+        output_vars,
+        reduction_period = :halfhourly,
+    )
+
+    #md # Create and run the simulation
+    data_dt = Second(FluxnetSimulations.get_data_dt(site_ID))
+    updateat = Array(start_date:Second(Δt):stop_date)
+    #md # Create and run the simulation
+    simulation = Simulations.LandSimulation(
+        start_date,
+        stop_date,
+        Δt,
+        land_model;
+        set_ic!,
+        updateat,
+        user_callbacks = (),
+        diagnostics,
+    )
+    solve!(simulation)
+    return simulation
+end;</code></pre><h2 id="Observation-and-Helper-Functions"><a class="docs-heading-anchor" href="#Observation-and-Helper-Functions">Observation and Helper Functions</a><a id="Observation-and-Helper-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Observation-and-Helper-Functions" title="Permalink"></a></h2><p>Define the observation function <code>G</code> that maps from parameter space to observation space, along with supporting functions for data processing:</p><p>This function runs the model and computes diurnal average of latent heat flux</p><pre><code class="language-julia hljs">function G(Vcmax25, g1)
+    simulation = model(Vcmax25, g1)
+    lhf = get_lhf(simulation)
+    observation =
+        Float64.(
+            get_diurnal_average(
+                lhf,
+                simulation.start_date,
+                simulation.start_date + Day(20),
+                stop_date,
+            ),
+        )
+    return observation
+end;</code></pre><p>Helper function: Extract latent heat flux from simulation diagnostics</p><pre><code class="language-julia hljs">function get_lhf(simulation)
+    return ClimaLand.Diagnostics.diagnostic_as_vectors(
+        simulation.diagnostics[1].output_writer,
+        &quot;lhf_30m_average&quot;,
+    )
+end;</code></pre><p>Helper function: Compute diurnal average of a variable</p><pre><code class="language-julia hljs">function get_diurnal_average(var, start_date, spinup_date, stop_date)
+    (times, data) = var
+    model_dates = if times isa Vector{DateTime}
+        times
+    else
+        date.(times)
+    end
+    spinup_idx = findfirst(spinup_date .&lt;= model_dates)
+    stop_idx = findlast(model_dates .&lt; stop_date)
+    model_dates = model_dates[spinup_idx:stop_idx]
+    data = data[spinup_idx:stop_idx]
+
+    hour_of_day = Hour.(model_dates)
+    mean_by_hour = [mean(data[hour_of_day .== Hour(i)]) for i in 0:23]
+    return mean_by_hour
+end;</code></pre><h2 id="Experiment-Setup"><a class="docs-heading-anchor" href="#Experiment-Setup">Experiment Setup</a><a id="Experiment-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Experiment-Setup" title="Permalink"></a></h2><p>We obtain observations from the FLUXNET site. The dataset contains multiple variables, but we will just use latent heat flux in this calibration.</p><pre><code class="language-julia hljs">dataset = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
+observations = get_diurnal_average(
+    (dataset.UTC_datetime, dataset.lhf),
+    start_date,
+    start_date + Day(20),
+    stop_date,
+);</code></pre><p>Define observation noise covariance for the ensemble Kalman process. A flat covariance matrix is used here for simplicity.</p><pre><code class="language-julia hljs">noise_covariance = 0.05 * EKP.I;</code></pre><h2 id="Prior-Distribution-and-Calibration-Configuration"><a class="docs-heading-anchor" href="#Prior-Distribution-and-Calibration-Configuration">Prior Distribution and Calibration Configuration</a><a id="Prior-Distribution-and-Calibration-Configuration-1"></a><a class="docs-heading-anchor-permalink" href="#Prior-Distribution-and-Calibration-Configuration" title="Permalink"></a></h2><p>Set up the prior distribution for the parameter and configure the ensemble Kalman inversion:</p><p>Constrained Gaussian prior for Vcmax25 with bounds [0, 1e-3], and g1 with bounds [0, 1000]. The first two arguments of each prior are the mean and standard deviation of the Gaussian function.</p><pre><code class="language-julia hljs">priors = [
+    PD.constrained_gaussian(&quot;Vcmax25&quot;, 1e-4, 5e-5, 0, 1e-3),
+    PD.constrained_gaussian(&quot;g1&quot;, 150, 90, 0, 1000),
+]
+prior = PD.combine_distributions(priors);</code></pre><p>Set the ensemble size and number of iterations</p><pre><code class="language-julia hljs">ensemble_size = 10
+N_iterations = 4;</code></pre><h2 id="Ensemble-Kalman-Inversion"><a class="docs-heading-anchor" href="#Ensemble-Kalman-Inversion">Ensemble Kalman Inversion</a><a id="Ensemble-Kalman-Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Ensemble-Kalman-Inversion" title="Permalink"></a></h2><p>Initialize and run the ensemble Kalman process:</p><p>Sample the initial parameter ensemble from the prior distribution</p><pre><code class="language-julia hljs">initial_ensemble = EKP.construct_initial_ensemble(rng, prior, ensemble_size)
+
+ensemble_kalman_process = EKP.EnsembleKalmanProcess(
+    initial_ensemble,
+    observations,
+    noise_covariance,
+    EKP.Inversion();
+    scheduler = EKP.DataMisfitController(
+        terminate_at = Inf,
+        on_terminate = &quot;continue&quot;,
+    ),
+    rng,
+);</code></pre><pre><code class="nohighlight hljs">┌ Warning: For 2 parameters, the recommended minimum ensemble size (`N_ens`) is 20. Got `N_ens` = 10`.
+└ @ EnsembleKalmanProcesses ~/.julia/packages/EnsembleKalmanProcesses/Avr8u/src/EnsembleKalmanProcess.jl:266
+</code></pre><p>Run the ensemble of forward models to iteratively update the parameter ensemble</p><pre><code class="language-julia hljs">Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+    for i in 1:N_iterations
+        println(&quot;Iteration $i&quot;)
+        params_i = EKP.get_ϕ_final(prior, ensemble_kalman_process)
+        G_ens = hcat([G(params_i[:, j]...) for j in 1:ensemble_size]...)
+        EKP.update_ensemble!(ensemble_kalman_process, G_ens)
+    end
+end;</code></pre><pre><code class="nohighlight hljs">Iteration 1
+Iteration 2
+Iteration 3
+Iteration 4
+</code></pre><h2 id="Results-Analysis-and-Visualization"><a class="docs-heading-anchor" href="#Results-Analysis-and-Visualization">Results Analysis and Visualization</a><a id="Results-Analysis-and-Visualization-1"></a><a class="docs-heading-anchor-permalink" href="#Results-Analysis-and-Visualization" title="Permalink"></a></h2><p>Get the mean of the final parameter ensemble:</p><pre><code class="language-julia hljs">EKP.get_ϕ_mean_final(prior, ensemble_kalman_process);</code></pre><p>Now, let&#39;s analyze the calibration results by examining parameter evolution and comparing model outputs across iterations.</p><p>Plot the parameter ensemble evolution over iterations to visualize convergence:</p><pre><code class="language-julia hljs">dim_size = sum(length.(EKP.batch(prior)))
+fig = CairoMakie.Figure(size = ((dim_size + 1) * 500, 500))
+
+for i in 1:dim_size
+    EKP.Visualize.plot_ϕ_over_iters(
+        fig[1, i],
+        ensemble_kalman_process,
+        prior,
+        i,
+    )
+end
+
+EKP.Visualize.plot_error_over_iters(
+    fig[1, dim_size + 1],
+    ensemble_kalman_process,
+)
+CairoMakie.save(&quot;constrained_params_and_error.png&quot;, fig)
+fig</code></pre><p><img src="../obs_site_level_calibration-46.png" alt/></p><p>Compare the model output between the first and last iterations to assess improvement:</p><pre><code class="language-julia hljs">fig = CairoMakie.Figure(size = (900, 400))
+
+first_G_ensemble = EKP.get_g(ensemble_kalman_process, 1)
+last_iter = EKP.get_N_iterations(ensemble_kalman_process)
+last_G_ensemble = EKP.get_g(ensemble_kalman_process, last_iter)
+n_ens = EKP.get_N_ens(ensemble_kalman_process)
+
+ax = Axis(
+    fig[1, 1];
+    title = &quot;G ensemble: first vs last iteration (n = $(n_ens), iters 1 vs $(last_iter))&quot;,
+    xlabel = &quot;Observation index&quot;,
+    ylabel = &quot;G&quot;,
+)</code></pre><pre><code class="nohighlight hljs">Axis with 0 plots:
+</code></pre><p>Plot model output of first vs last iteration ensemble</p><pre><code class="language-julia hljs">for g in eachcol(first_G_ensemble)
+    lines!(ax, 1:length(g), g; color = (:red, 0.6), linewidth = 1.5)
+end
+
+for g in eachcol(last_G_ensemble)
+    lines!(ax, 1:length(g), g; color = (:blue, 0.6), linewidth = 1.5)
+end
+
+lines!(
+    ax,
+    1:length(observations),
+    observations;
+    color = (:black, 0.6),
+    linewidth = 3,
+)
+
+axislegend(
+    ax,
+    [
+        LineElement(color = :red, linewidth = 2),
+        LineElement(color = :blue, linewidth = 2),
+        LineElement(color = :black, linewidth = 4),
+    ],
+    [&quot;First ensemble&quot;, &quot;Last ensemble&quot;, &quot;Observations&quot;];
+    position = :rb,
+    framevisible = false,
+)
+
+CairoMakie.resize_to_layout!(fig)
+CairoMakie.save(&quot;G_first_and_last.png&quot;, fig)
+fig</code></pre><p><img src="../obs_site_level_calibration-50.png" alt/></p><p>Here we can see that the calibration has improved the fit to the data; but this it not the fully story. If other parameters have been set to unrealistic values, the parameters here may be compensating to achieve a lower loss. Moreover, we have only calibrated with two months of data. Production-level calibration runs require careful choice of free parameters and target observations.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../perfect_model_site_level_calibration/">« Single site perfect model</a><a class="docs-footer-nextpage" href="../../standalone/Bucket/coupled_bucket/">Coupled bucket model »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 17 September 2025 18:01">Wednesday 17 September 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
