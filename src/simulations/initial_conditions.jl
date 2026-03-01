@@ -191,9 +191,25 @@ function set_snow_initial_conditions!(
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)
     Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(Y.snow.S, p.snow.T, params)
+        ClimaLand.Snow.energy_from_T_and_swe.(
+            Y.snow.S,
+            p.snow.T,
+            params.ΔS,
+            params.earth_param_set,
+        )
+    FT = eltype(Y.snow.U)
+    if :Z in propertynames(Y.snow)
+        #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
+        Y.snow.Z .= FT(3) .* Y.snow.S
+    end
+    if :A in propertynames(Y.snow)
+        FT = eltype(Y.snow.S)
+        #no albedo field in spin-up file: start with reasonable guess
+        Y.snow.A .= FT(0.8)
+    end
     return nothing
 end
+
 """
     enforce_snow_temperature_constraint(S::FT, T::FT)
 

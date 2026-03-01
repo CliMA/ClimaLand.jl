@@ -195,6 +195,32 @@ type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"
 
+# NeuralDepthModel Parameters
+[minimum_NDM_density]
+value = 0.05
+type = "float"
+description = "The minimum allowable snow density by the NeuralDepthModel, expressed as unitless fraction of liquid water density."
+tag = "NeuralDepthModel"
+
+# ConstantResetAlbedo Parameters
+[snow_initial_albedo]
+value = 0.8
+type = "float"
+description = "The value used for new albedo whenever the reset is triggered (0-1)"
+tag = "ConstantResetAlbedo"
+
+[albedo_psnow_reset_rate]
+value = 3.47222222e-8
+type = "float"
+description = "The threshold rate of liquid-equivalent snowfall (m/s) to trigger an albedo reset in a new snowpack"
+tag = "ConstantResetAlbedo"
+
+[new_snowpack_S_threshold]
+value = 0.001
+type = "float"
+description = "The SWE for which a snowpack is considered gone (m), or the starting SWE for which (with sufficient precipitation) a previously no-snowpack state is considered new"
+tag = "ConstantResetAlbedo"
+
 # P model parameters
 ["pmodel_cstar"]
 value = 0.43

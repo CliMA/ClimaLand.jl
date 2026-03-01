@@ -178,7 +178,7 @@ pred_model = Chain(
 # Anything not satisfying the table above is considered a `:generic` type, which depending on the construction might not find full support in this module.
 
 # > `:generic` Mode: If creating `:generic` constraints, to avoid issues we recommend:
-# > * The predictive model output a scalar (float), or a type satisfying `<: VecOrMat{FT}` in a flattened row-like manner, (e.g., a length-1 `Vector`, or a single-row 1×N `Matrix`, instead of column (N×1, or like a length-N `Vector`) or many-dimension types.
+# > * The predictive model output a scalar (float), or a type satisfying `<: VecOrMat{FT}` in a flattened row-like manner, e.g., a length-1 `Vector`, or a single-row 1×N `Matrix`, instead of column (N×1, or like a length-N `Vector`) or many-dimension types.
 # > * The constraint function be able to handle the input and output types of your predictive model, and output a similar type to that of the predictive model
 # > * The `eltype` of the predictive model input, output, and constraint model output be the same.
 
@@ -196,7 +196,7 @@ pred_model = Chain(
 
 # > *MORE THAN 1D?*: This tutorial details a case study for the creation of a 1D model with small `Vector` inputs, however,
 # > `ConstrainedNeuralModels` can be used for multidimensional inputs and outputs as well (CNN's on images/tensors, etc.) - just make sure to have a flattening layer/operation at the end of
-# > your prediction model to send all outputs to a 1×N `Matrix` (and a corresponding flattening/ordering inside of your constraint
+# > your prediction model to send all outputs to a 1×N `Matrix`-like (and a corresponding flattening/ordering of your inputs inside of your constraint
 # > functions), with compliant constraint functions, and a restructuring operation after the output of the `ConstrainedNeuralModel`.
 
 # ### Function-type Constraint Example -
@@ -212,7 +212,7 @@ pred_model = Chain(
 # both when receiving either single (`Vector` input, outputting `Vector`) or batched (`Matrix` input, outputting `Matrix`) inputs,
 # (This is a good first start for prototyping, but we could do more to optimize performance):
 
-@bound function upper_bound(
+@bound function upper_bound_function(
     pred::AbstractArray{T},
     input::AbstractArray{T},
 )::AbstractArray{T} where {T <: AbstractFloat}
@@ -220,7 +220,7 @@ pred_model = Chain(
 end
 
 const dt::Float32 = FT(Dates.value(Δt))
-@bound function lower_bound(
+@bound function lower_bound_function(
     pred::AbstractArray{T},
     input::AbstractArray{T},
 )::AbstractArray{T} where {T <: AbstractFloat}
@@ -259,7 +259,7 @@ end
     pred::Matrix{T},
     input::Matrix{T},
 )::Matrix{T} where {T <: AbstractFloat}
-    return b.negative_one_over_Δt * view(input, (b.z_idx):(b.z_idx), :)
+    return b.negative_one_over_Δt[] * view(input, (b.z_idx):(b.z_idx), :)
 end
 
 ## and a :single dynamic version
@@ -267,7 +267,7 @@ end
     pred::Vector{T},
     input::Vector{T},
 )::T where {T <: AbstractFloat}
-    return b.negative_one_over_Δt * input[b.z_idx]
+    return b.negative_one_over_Δt[] * input[b.z_idx]
 end
 
 ## could also make additional methods to interact with the bound and set the time-step value:
@@ -292,8 +292,8 @@ lowerb = make_lower_bound(Float32, z_idx, Δt);
 model = ConstrainedNeuralModel(
     FT,
     pred_model,
-    upper_bound = upper_bound,
-    lower_bound = lower_bound, #or `lowerb`
+    upper_bound = upper_bound_function,
+    lower_bound = lower_bound_function, #or `lowerb`
     in_scales = in_scales,
     out_scale = out_scale,
 )
@@ -334,7 +334,7 @@ scale_model!(model, :reset);
 
 # # Results:
 # We make use of the `make_timeseries()` function defined for this tutorial,
-# which allows us to pass the model a dataframe for a given SNOTEL site, and
+# which allows us to pass the model a `DataFrame` for a given SNOTEL site, and
 # compare the result to actual data.
 
 # For instance, let's show the results on SNOTEL site 1286 (Slagamount Lakes site, Montana):

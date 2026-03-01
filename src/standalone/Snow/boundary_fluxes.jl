@@ -135,9 +135,9 @@ function snow_boundary_fluxes!(
         ) * p.snow.snow_cover_fraction
 
     e_flux_falling_snow =
-        energy_flux_falling_snow(bc.atmos, p, model.parameters)
+        energy_flux_falling_snow(bc.atmos, p, model.parameters.earth_param_set)
     e_flux_falling_rain =
-        energy_flux_falling_rain(bc.atmos, p, model.parameters)
+        energy_flux_falling_rain(bc.atmos, p, model.parameters.earth_param_set)
 
     # positive fluxes are TOWARDS atmos
     p.snow.total_energy_flux .=
