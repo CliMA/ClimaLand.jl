@@ -27,13 +27,17 @@ ClimaComms.@import_required_backends
 NeuralSnow =
     Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
+# no albedo in oas, ojp, rme, sap, sod, wfj
+#"cdp" "obs" "snb" "swa"
+#SITE_NAME = "swa" #=
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+   @error("Please provide a site name as command line argument")
 else
-    SITE_NAME = ARGS[1]
+   SITE_NAME = ARGS[1]
 end
+# =#
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float32
@@ -47,19 +51,35 @@ include(
     joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl"),
 )
 
-savedir = generate_output_path(
-    "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)",
-)
 t0 = FT(0.0)
 tf = FT(seconds[end])
 ndays = (tf - t0) / 3600 / 24
 Δt = FT(60 * 60)
 
-domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
-
-density = NeuralSnow.NeuralDepthModel(FT)
+surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+#surf_temp = Snow.BulkSurfaceTemperatureModel{FT}()
+density = NeuralSnow.NeuralDepthModel(FT, Δt = Δt)
 #density = Snow.MinimumDensityModel(ρ)
-α_snow = Snow.ConstantAlbedoModel(α)
+α_snow = NeuralSnow.NeuralAlbedoModel(
+    FT,
+    FT(lat),
+    FT(long),
+    earth_param_set,
+    Δt = Δt,
+)
+#α_snow = Snow.ConstantAlbedoModel(α)
+
+TEMP_MODEL =
+    surf_temp isa Snow.EquilibriumGradientTemperatureModel ? "gradtemp" :
+    "surftemp"
+ALB_MODEL = α_snow isa Snow.ConstantAlbedoModel ? "constalb" : "albnetwork"
+DENS_MODEL = density isa Snow.MinimumDensityModel ? "mindens" : "znetwork"
+
+savedir = generate_output_path(
+    "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(TEMP_MODEL)_$(ALB_MODEL)_$(DENS_MODEL)",
+)
+
+domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((long, lat)))
 
 model = ClimaLand.Snow.SnowModel(
     FT,
@@ -69,6 +89,7 @@ model = ClimaLand.Snow.SnowModel(
     Δt;
     density,
     α_snow,
+    surf_temp,
 )
 
 Y, p, coords = ClimaLand.initialize(model)
@@ -77,8 +98,13 @@ Y, p, coords = ClimaLand.initialize(model)
 Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
 Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
-Y.snow.U .=
-    ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
+Y.snow.A .= FT(first(collect(skipmissing(albedo)))) #first depth value - comment out if using non-NeuralAlbedoModel 
+Y.snow.U .= ClimaLand.Snow.energy_from_q_l_and_swe(
+    FT(SWE[1]),
+    FT(0),
+    model.parameters.ΔS,
+    model.parameters.earth_param_set,
+) # with q_l = 0
 
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)
@@ -156,6 +182,8 @@ scf = [
 ];
 ρ = [Array(parent(sv.saveval[k].snow.ρ_snow))[1] for k in 1:length(sol.t)];
 z = [Array(parent(sv.saveval[k].snow.z_snow))[1] for k in 1:length(sol.t)];
+α_snow = [Array(parent(sv.saveval[k].snow.α_snow))[1] for k in 1:length(sol.t)];
+α_surf = scf .* α_snow .+ (1 .- scf) .* (0.2) #where could I get the ground albedo value to combine with this?
 S = [Array(parent(sol.u[k].snow.S))[1] for k in 1:length(sol.t)];
 S_l = [Array(parent(sol.u[k].snow.S_l))[1] for k in 1:length(sol.t)];
 U = [Array(parent(sol.u[k].snow.U))[1] for k in 1:length(sol.t)];
@@ -188,6 +216,33 @@ mean_obs_df = combine(
     renamecols = false,
 )
 daily = t ./ 24 ./ 3600
+
+fig = CairoMakie.Figure(size = (1000, 1300), fontsize = 26)
+ax_alb = CairoMakie.Axis(fig[1, 1], ylabel = "Albedo")
+alb_available = (!).(ismissing.(albedo))
+CairoMakie.scatter!(
+    ax_alb,
+    timestamp[mask][alb_available],
+    albedo[alb_available],
+    color = :orange,
+    label = "Data",
+)
+CairoMakie.lines!(
+    ax_alb,
+    timestamp[mask],
+    α_snow,
+    color = :blue,
+    label = "Snow albedo",
+)
+CairoMakie.lines!(
+    ax_alb,
+    timestamp[mask],
+    α_surf,
+    color = :black,
+    label = "Surface Albedo",
+)
+CairoMakie.axislegend(ax_alb, position = :rt)
+CairoMakie.save(joinpath(savedir, "snow_albedo_$(SITE_NAME).png"), fig)
 
 fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
 # set limits

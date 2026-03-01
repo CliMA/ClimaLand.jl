@@ -572,16 +572,21 @@ For this model, we track the snow water equivalent S in meters (liquid
 water volume per ground area) and
 the energy per unit ground area U [J/m^2] prognostically.
 """
-prognostic_vars(m::SnowModel) =
-    (:S, :S_l, :U, density_prog_vars(m.parameters.density)...)
+prognostic_vars(m::SnowModel) = (
+    :S,
+    :S_l,
+    :U,
+    extra_prog_vars(m.parameters.density)..., #Note - this/below would need to change if model choices share variables
+    extra_prog_vars(m.parameters.α_snow)...,
+)
 
 """
-    density_prog_vars(::AbstractDensityModel)
+    extra_prog_vars(::AbstractDensityModel, ::AbstractAlbedoModel)
 
 A default method for adding prognostic variables to the snow model as required
-by the density model choice.
+by the density and albedo model choices.
 """
-density_prog_vars(::AbstractDensityModel) = ()
+extra_prog_vars(::Union{AbstractDensityModel, AbstractAlbedoModel}) = ()
 
 """
     prognostic_types(::SnowModel{FT})
@@ -590,16 +595,23 @@ Returns the prognostic variable types of the snow model;
 both snow water equivalent and energy per unit ground area
 are scalars.
 """
-prognostic_types(m::SnowModel{FT}) where {FT} =
-    (FT, FT, FT, density_prog_types(m.parameters.density)...)
+prognostic_types(m::SnowModel{FT}) where {FT} = (
+    FT,
+    FT,
+    FT,
+    extra_prog_types(m.parameters.density)...,
+    extra_prog_types(m.parameters.α_snow)...,
+)
 
 """
-    density_prog_types(::AbstractDensityModel)
+    extra_prog_types(::AbstractDensityModel, ::AbstractAlbedoModel)
 
 A default method for specifying variable types of the prognostic variables required
-by the density model choice, similar to `prognostic_types()`.
+by the density and albedo model choices, similar to `prognostic_types()`.
 """
-density_prog_types(::AbstractDensityModel{FT}) where {FT} = ()
+extra_prog_types(
+    ::Union{AbstractDensityModel{FT}, AbstractAlbedoModel{FT}},
+) where {FT} = ()
 
 """
     prognostic_domain_names(::SnowModel)
@@ -609,16 +621,21 @@ both snow water equivalent and energy per unit ground area
 are modeling only as a function of (x,y), and not as a function
 of depth. Therefore their domain name is ":surface".
 """
-prognostic_domain_names(m::SnowModel) =
-    (:surface, :surface, :surface, density_prog_names(m.parameters.density)...)
+prognostic_domain_names(m::SnowModel) = (
+    :surface,
+    :surface,
+    :surface,
+    extra_prog_names(m.parameters.density)...,
+    extra_prog_names(m.parameters.α_snow)...,
+)
 
 """
-    density_prog_names(::AbstractDensityModel)
+    extra_prog_names(::AbstractDensityModel, ::AbstractAlbedoModel)
 
 A default method for specifying variable domain names of the prognostic variables required
-by the density model choice, similar to `prognostic_domain_names()`.
+by the density and albedo model choices, similar to `prognostic_domain_names()`.
 """
-density_prog_names(::AbstractDensityModel) = ()
+extra_prog_names(::Union{AbstractDensityModel, AbstractAlbedoModel}) = ()
 
 """
     auxiliary_vars(::SnowModel)
@@ -769,7 +786,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             parameters.density,
             Y,
             p,
-            parameters,
+            parameters.earth_param_set,
         )
 
         update_snow_albedo!(
@@ -781,10 +798,19 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             parameters.earth_param_set,
         ) # This could depend on ρ_snow
 
-        @. p.snow.κ = snow_thermal_conductivity(p.snow.ρ_snow, parameters)
+        @. p.snow.κ = snow_thermal_conductivity(
+            p.snow.ρ_snow,
+            parameters.κ_ice,
+            parameters.earth_param_set,
+        )
 
-        @. p.snow.T =
-            snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
+        @. p.snow.T = snow_bulk_temperature(
+            Y.snow.U,
+            Y.snow.S,
+            p.snow.q_l,
+            parameters.ΔS,
+            parameters.earth_param_set,
+        )
 
         @. p.snow.water_runoff = compute_water_runoff(
             Y.snow.S,
@@ -792,12 +818,15 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             p.snow.T,
             p.snow.ρ_snow,
             p.snow.z_snow,
-            parameters,
+            parameters.Ksat,
+            parameters.Δt,
+            parameters.θ_r,
+            parameters.earth_param_set,
         )
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff *
-            volumetric_internal_energy_liq(p.snow.T, parameters)
+            volumetric_internal_energy_liq(p.snow.T, parameters.earth_param_set)
         update_snow_cover_fraction!(
             p.snow.snow_cover_fraction,
             parameters.scf,
@@ -834,7 +863,9 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
             Y.snow.S,
             p.snow.q_l,
             p.snow.applied_energy_flux,
-            model.parameters,
+            model.parameters.Δt,
+            model.parameters.ΔS,
+            model.parameters.earth_param_set,
         )
         @. p.snow.liquid_water_flux +=
             p.snow.phase_change_flux * p.snow.snow_cover_fraction
@@ -854,7 +885,8 @@ function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
         @. dY.snow.S = -p.snow.applied_water_flux
         @. dY.snow.S_l = -p.snow.liquid_water_flux
         @. dY.snow.U = -p.snow.applied_energy_flux
-        update_density_prog!(model.parameters.density, model, dY, Y, p)
+        update_extra_prog!(model.parameters.density, model, dY, Y, p, t)
+        update_extra_prog!(model.parameters.α_snow, model, dY, Y, p, t)
     end
     return compute_exp_tendency!
 end

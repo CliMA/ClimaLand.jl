@@ -191,7 +191,12 @@ function set_snow_initial_conditions!(
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)
     Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(Y.snow.S, p.snow.T, params)
+        ClimaLand.Snow.energy_from_T_and_swe.(
+            Y.snow.S,
+            p.snow.T,
+            params.ΔS,
+            params.earth_param_set,
+        )
     return nothing
 end
 """
