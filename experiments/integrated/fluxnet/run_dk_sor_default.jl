@@ -44,7 +44,7 @@ met_nc_path = joinpath(climaland_dir, "DK_Sor", "DK-Sor_1997-2014_FLUXNET2015_Me
 flux_nc_path = joinpath(climaland_dir, "DK_Sor", "DK-Sor_daily_aggregated_1997-2013_FLUXNET2015_Flux.nc")
 
 spinup_days = 60
-dt = Float64(450)
+dt = Float64(900)
 
 sim_start_year = 2004
 sim_end_year = 2004
@@ -72,9 +72,6 @@ surface_space = land_domain.space.surface
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 toml_dict = LP.create_toml_dict(FT)
-toml_dict.data["canopy_z_0m_coeff"]["value"] = FT(0.13)
-toml_dict.data["canopy_z_0b_coeff"]["value"] = FT(0.013)
-toml_dict.data["canopy_d_coeff"]["value"] = FT(0.67)
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_netcdf(
     met_nc_path, lat, long, time_offset, atmos_h, start_date, toml_dict, FT,
 )
@@ -82,11 +79,49 @@ toml_dict.data["canopy_d_coeff"]["value"] = FT(0.67)
 met_ds = NCDataset(met_nc_path, "r")
 lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
 lai_times = met_ds["time"][:]
+unique_days = unique(Dates.Date.(lai_times));
+dates = Dates.Date.(lai_times);
+u = met_ds["Wind"][1,1,:]
+mean_u = [mean(u[dt .== dates]) for dt in unique_days];
 close(met_ds)
 
 lai_seconds = [Float64(Second(t - Dates.Hour(time_offset) - start_date).value) for t in lai_times]
 valid_lai = .!isnan.(lai_data)
 LAI = TimeVaryingInput(lai_seconds[valid_lai], lai_data[valid_lai])
+
+# ── 4. Load observations ─────────────────────────────────────────────────────
+flux_ds = NCDataset(flux_nc_path, "r")
+flux_times_dt = flux_ds["time"][:]
+nee_raw = Float64.(coalesce.(flux_ds["NEE_daily"][:], NaN))
+qle_raw = Float64.(coalesce.(flux_ds["Qle_daily"][:], NaN))
+qh_raw = Float64.(coalesce.(flux_ds["Qh_daily"][:], NaN))
+nee_unc_raw = Float64.(coalesce.(flux_ds["NEE_uc_daily"][:], NaN))
+qle_unc_raw = Float64.(coalesce.(flux_ds["Qle_uc_daily"][:], NaN))
+qh_unc_raw = Float64.(coalesce.(flux_ds["Qh_uc_daily"][:], NaN))
+close(flux_ds)
+
+spinup_date_d = Date(spinup_date)
+stop_date_d = Date(stop_date)
+flux_dates = Date.(flux_times_dt)
+@assert flux_dates == unique_days[1:length(flux_dates)]
+mean_u = mean_u[1:length(flux_dates)]
+sim_dates = flux_dates[(flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d)]
+valid_nee_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(nee_raw) .& (abs.(nee_raw) .< 1e10) .&& mean_u .< 6
+valid_lhf_mask = (flux_dates .>= spinup_date_d) .&& (flux_dates .<= stop_date_d) .&
+              .!isnan.(qle_raw)  .& (abs.(qle_raw) .< 1e10)  .&& mean_u .< 6
+valid_shf_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(qh_raw) .& (abs.(qh_raw) .< 1e10) .&& mean_u .< 6
+
+nee_obs_dates = flux_dates[valid_nee_mask]
+lhf_obs_dates = flux_dates[valid_lhf_mask]
+shf_obs_dates = flux_dates[valid_shf_mask]
+nee_obs = nee_raw[valid_nee_mask]
+qle_obs = qle_raw[valid_lhf_mask]
+qh_obs = qh_raw[valid_shf_mask]
+nee_unc = nee_unc_raw[valid_nee_mask]
+qle_unc = qle_unc_raw[valid_lhf_mask]
+qh_unc = qh_unc_raw[valid_shf_mask]
+#n_obs = length(obs_dates)
+#println("Obs days: $n_obs")
 
 
 # ── 5. Build & run model with adjusted parameters ─────────────────────────────
@@ -104,7 +139,7 @@ rooting_depth = FT(0.3)
         LAI,
      toml_dict;
      rooting_depth,
-     height = FT(0.5))
+     height = FT(25))
 radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
@@ -144,10 +179,9 @@ canopy = Canopy.CanopyModel{FT}(
     radiative_transfer
 );
 
-#runoff = ClimaLand.Soil.Runoff.SurfaceRunoff();
 forcing = (;atmos, radiation);
 S_s = FT(1e-3)
-soil = ClimaLand.Soil.EnergyHydrology{FT}(land_domain, forcing, toml_dict; prognostic_land_components, retention_parameters, composition_parameters, S_s, additional_sources = (ClimaLand.RootExtraction{FT}(),))#, runoff)
+soil = ClimaLand.Soil.EnergyHydrology{FT}(land_domain, forcing, toml_dict; prognostic_land_components, retention_parameters, composition_parameters, S_s, additional_sources = (ClimaLand.RootExtraction{FT}(),))
 
 land = LandModel{FT}(
     forcing, LAI, toml_dict, land_domain, dt;
@@ -210,37 +244,6 @@ with_logger(logger) do
 end
 close(io)
 println("Simulation complete.")
-# ── 4. Load observations ─────────────────────────────────────────────────────
-flux_ds = NCDataset(flux_nc_path, "r")
-flux_times_dt = flux_ds["time"][:]
-nee_raw = Float64.(coalesce.(flux_ds["NEE_daily"][:], NaN))
-qle_raw = Float64.(coalesce.(flux_ds["Qle_daily"][:], NaN))
-qh_raw = Float64.(coalesce.(flux_ds["Qh_daily"][:], NaN))
-nee_unc_raw = Float64.(coalesce.(flux_ds["NEE_uc_daily"][:], NaN))
-qle_unc_raw = Float64.(coalesce.(flux_ds["Qle_uc_daily"][:], NaN))
-qh_unc_raw = Float64.(coalesce.(flux_ds["Qh_uc_daily"][:], NaN))
-close(flux_ds)
-
-spinup_date_d = Date(spinup_date)
-stop_date_d = Date(stop_date)
-flux_dates = Date.(flux_times_dt)
-sim_dates = flux_dates[(flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d)]
-valid_nee_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(nee_raw) .& (abs.(nee_raw) .< 1e10)
-valid_lhf_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .&
-              .!isnan.(qle_raw)  .& (abs.(qle_raw) .< 1e10) 
-valid_shf_mask = (flux_dates .>= spinup_date_d) .& (flux_dates .<= stop_date_d) .& .!isnan.(qh_raw) .& (abs.(qh_raw) .< 1e10)
-
-nee_obs_dates = flux_dates[valid_nee_mask]
-lhf_obs_dates = flux_dates[valid_lhf_mask]
-shf_obs_dates = flux_dates[valid_shf_mask]
-nee_obs = nee_raw[valid_nee_mask]
-qle_obs = qle_raw[valid_lhf_mask]
-qh_obs = qh_raw[valid_shf_mask]
-nee_unc = nee_unc_raw[valid_nee_mask]
-qle_unc = qle_unc_raw[valid_lhf_mask]
-qh_unc = qh_unc_raw[valid_shf_mask]
-#n_obs = length(obs_dates)
-#println("Obs days: $n_obs")
 
 # ── 5b. Debug: check soilco2 state at end of simulation ──────────────────────
 let Y = simulation._integrator.u, p = simulation._integrator.p
@@ -528,11 +531,6 @@ gs_model = extract_daily_diag(simulation, "gs_1d_average", sim_dates)
 ax5 = Axis(fig[5, 1]; ylabel = "gs")
 lines!(ax5, sim_dates, clamp.(gs_model, 0, 0.1); color = :green, linewidth = 1.5)
 
-VPD =met_ds["VPD"][1,1,:]
-forcing_dates = met_ds["time"][:]
-ax6 = Axis(fig[6, 1]; ylabel = "VPD")
-lines!(ax6, forcing_dates[forcing_dates .< stop_date .&& forcing_dates .>= start_date], VPD[forcing_dates .< stop_date .&& forcing_dates .>= start_date]; color = :green, linewidth = 1.5)
-
 outpath = joinpath(savedir, "dk_sor_fluxes_debug.png")
 CairoMakie.save(outpath, fig)
 println("Saved: $outpath")
@@ -587,7 +585,7 @@ for (i, lid) in enumerate(layer_ids)
         label = layer_labels[i])
 end
 # Add porosity reference line
-ν_sfc = parent(ClimaLand.Domains.top_center_to_surface(land.soil.parameters.ν))[1]
+ν_sfc = ν#parent(ClimaLand.Domains.top_center_to_surface(land.soil.parameters.ν))[1]
 hlines!(ax_swc, [ν_sfc]; color = :black, linestyle = :dash,
     linewidth = 0.8, label = "ν=$(round(ν_sfc, digits=3))")
 axislegend(ax_swc; position = :rt, framevisible = false)
