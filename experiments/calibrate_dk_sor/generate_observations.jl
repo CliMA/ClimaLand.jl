@@ -55,51 +55,56 @@ println(
     "Qh: $(round(qh_var, sigdigits=3)) (W/m²)²",
 )
 
-# ── Compute common valid day-of-year set across ALL calibration years ────────
+# ── Fixed-length observations (365 days per year) ───────────────────────────
 # EKP's minibatching requires all Observations to have the same dimension.
-# Each year may have different missing data, so we intersect valid day-of-year
-# indices to guarantee uniform observation vector length across years.
-md(d::Date) = (month(d), day(d))
-valid_mds_per_year = Dict{Int, Set{Tuple{Int,Int}}}()
-for yr in cal_years
-    yr_start = Date(yr, 1, 1)
-    yr_end = Date(yr, 12, 31)
-    in_year = yr_start .<= flux_dates .<= yr_end
-    valid_mask =
-        in_year .& .!isnan.(nee_raw) .& .!isnan.(qle_raw) .&
-        .!isnan.(qh_raw) .& (abs.(nee_raw) .< 1e10) .&
-        (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10)
-    valid_mds_per_year[yr] = Set(md.(flux_dates[valid_mask]))
-end
-# Exclude Feb 29 (only exists in leap years) to keep all years equal
-common_mds = sort(collect(setdiff(intersect(values(valid_mds_per_year)...), Set([(2, 29)]))))
-println("Common valid (month,day) count: $(length(common_mds)) (from $(length(cal_years)) years)")
+# Each year may have different missing data, so we use a fixed 365-day calendar
+# (Jan 1 – Dec 31, excluding Feb 29). Missing days get fill value 0 with very
+# large noise variance so EKP effectively ignores them.
+N_DAYS = 365  # fixed calendar (no Feb 29)
+LARGE_VAR = 1e12  # noise variance for missing days — makes them uninformative
+
+# Build a reference calendar (non-leap year dates as (month, day))
+ref_calendar = [(month(d), day(d)) for d in Date(2001, 1, 1):Day(1):Date(2001, 12, 31)]
+@assert length(ref_calendar) == N_DAYS
+
+# Build per-year lookup: flux_date → index in raw arrays
+flux_date_to_idx = Dict(flux_dates[i] => i for i in eachindex(flux_dates))
 
 # Build one EKP.Observation per year + save per-year dates
 observation_vector = EKP.Observation[]
 year_dates_dict = Dict{Int, Vector{Date}}()
 
 for yr in cal_years
-    yr_start = Date(yr, 1, 1)
-    yr_end = Date(yr, 12, 31)
-    in_year = yr_start .<= flux_dates .<= yr_end
-    # Use only days whose (month, day) is in the common set
-    common_md_mask = [md(d) in common_mds for d in flux_dates]
-    valid_mask =
-        in_year .& .!isnan.(nee_raw) .& .!isnan.(qle_raw) .&
-        .!isnan.(qh_raw) .& (abs.(nee_raw) .< 1e10) .&
-        (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10) .&
-        common_md_mask
+    # Map reference calendar to actual dates in this year
+    yr_dates = [Date(yr, m, d) for (m, d) in ref_calendar if
+                try Date(yr, m, d); true catch; false end]
+    # For leap years, ref_calendar already excludes Feb 29, so length is 365
 
-    dates_yr = flux_dates[valid_mask]
-    n_yr = length(dates_yr)
+    nee_yr = zeros(N_DAYS)
+    qle_yr = zeros(N_DAYS)
+    qh_yr = zeros(N_DAYS)
+    nee_noise = fill(LARGE_VAR, N_DAYS)
+    qle_noise = fill(LARGE_VAR, N_DAYS)
+    qh_noise = fill(LARGE_VAR, N_DAYS)
 
-    y_obs_yr = vcat(nee_raw[valid_mask], qle_raw[valid_mask], qh_raw[valid_mask])
-    noise_diag_yr = vcat(
-        fill(nee_var, n_yr),
-        fill(qle_var, n_yr),
-        fill(qh_var, n_yr),
-    )
+    n_valid = 0
+    for (i, d) in enumerate(yr_dates)
+        idx = get(flux_date_to_idx, d, nothing)
+        if !isnothing(idx) &&
+           !isnan(nee_raw[idx]) && !isnan(qle_raw[idx]) && !isnan(qh_raw[idx]) &&
+           abs(nee_raw[idx]) < 1e10 && abs(qle_raw[idx]) < 1e10 && abs(qh_raw[idx]) < 1e10
+            nee_yr[i] = nee_raw[idx]
+            qle_yr[i] = qle_raw[idx]
+            qh_yr[i] = qh_raw[idx]
+            nee_noise[i] = nee_var
+            qle_noise[i] = qle_var
+            qh_noise[i] = qh_var
+            n_valid += 1
+        end
+    end
+
+    y_obs_yr = vcat(nee_yr, qle_yr, qh_yr)
+    noise_diag_yr = vcat(nee_noise, qle_noise, qh_noise)
 
     obs = EKP.Observation(
         Dict(
@@ -109,9 +114,9 @@ for yr in cal_years
         ),
     )
     push!(observation_vector, obs)
-    year_dates_dict[yr] = dates_yr
+    year_dates_dict[yr] = yr_dates
 
-    println("  $yr: $n_yr valid days, obs vector length $(length(y_obs_yr))")
+    println("  $yr: $n_valid valid days ($(N_DAYS - n_valid) padded), obs vector length $(length(y_obs_yr))")
 end
 
 println("\nTotal observations: $(length(observation_vector)) years ($(first(cal_years))-$(last(cal_years)))")
