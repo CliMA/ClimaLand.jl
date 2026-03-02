@@ -55,10 +55,12 @@ println(
     "Qh: $(round(qh_var, sigdigits=3)) (W/m²)²",
 )
 
-# Build one EKP.Observation per year + save per-year dates
-observation_vector = EKP.Observation[]
-year_dates_dict = Dict{Int, Vector{Date}}()
-
+# ── Compute common valid day-of-year set across ALL calibration years ────────
+# EKP's minibatching requires all Observations to have the same dimension.
+# Each year may have different missing data, so we intersect valid day-of-year
+# indices to guarantee uniform observation vector length across years.
+md(d::Date) = (month(d), day(d))
+valid_mds_per_year = Dict{Int, Set{Tuple{Int,Int}}}()
 for yr in cal_years
     yr_start = Date(yr, 1, 1)
     yr_end = Date(yr, 12, 31)
@@ -67,6 +69,27 @@ for yr in cal_years
         in_year .& .!isnan.(nee_raw) .& .!isnan.(qle_raw) .&
         .!isnan.(qh_raw) .& (abs.(nee_raw) .< 1e10) .&
         (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10)
+    valid_mds_per_year[yr] = Set(md.(flux_dates[valid_mask]))
+end
+# Exclude Feb 29 (only exists in leap years) to keep all years equal
+common_mds = sort(collect(setdiff(intersect(values(valid_mds_per_year)...), Set([(2, 29)]))))
+println("Common valid (month,day) count: $(length(common_mds)) (from $(length(cal_years)) years)")
+
+# Build one EKP.Observation per year + save per-year dates
+observation_vector = EKP.Observation[]
+year_dates_dict = Dict{Int, Vector{Date}}()
+
+for yr in cal_years
+    yr_start = Date(yr, 1, 1)
+    yr_end = Date(yr, 12, 31)
+    in_year = yr_start .<= flux_dates .<= yr_end
+    # Use only days whose (month, day) is in the common set
+    common_md_mask = [md(d) in common_mds for d in flux_dates]
+    valid_mask =
+        in_year .& .!isnan.(nee_raw) .& .!isnan.(qle_raw) .&
+        .!isnan.(qh_raw) .& (abs.(nee_raw) .< 1e10) .&
+        (abs.(qle_raw) .< 1e10) .& (abs.(qh_raw) .< 1e10) .&
+        common_md_mask
 
     dates_yr = flux_dates[valid_mask]
     n_yr = length(dates_yr)
