@@ -617,3 +617,16 @@ value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
+
+# Soil Parameters
+["evaporation_exponent"]
+value = 1.0
+type = "float"
+description = "Exponent of dry soil layer factor in evaporation"
+tag = "EnergyHydrologyParameters"
+
+["evaporation_scalar"]
+value = 1.0
+type = "float"
+description = "Scalar multiplying soil critical moisture for evaporation"
+tag = "EnergyHydrologyParameters"
