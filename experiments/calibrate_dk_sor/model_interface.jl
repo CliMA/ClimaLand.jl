@@ -278,7 +278,7 @@ function ClimaCalibrate.observation_map(iteration)
     # Which year indices are in the current minibatch?
     minibatch_indices = EKP.get_current_minibatch(ekp)
 
-    # Load per-year dates
+    # Load per-year dates (fixed 365-day calendar per year)
     obs_data = JLD2.load(OBS_FILEPATH)
     year_dates = obs_data["year_dates"]
     cal_years = obs_data["cal_years"]
@@ -287,10 +287,9 @@ function ClimaCalibrate.observation_map(iteration)
     minibatch_years = [cal_years[idx] for idx in minibatch_indices]
     minibatch_year_dates = [year_dates[yr] for yr in minibatch_years]
 
-    # Total G_ens size: each year contributes 3 * n_yr_dates entries
-    # EKP stacks by concatenating full year vectors:
-    # [yr1_nee, yr1_qle, yr1_qh, yr2_nee, yr2_qle, yr2_qh, ...]
-    g_len = sum(3 * length(ds) for ds in minibatch_year_dates)
+    # Each year contributes 3 * 365 entries (fixed calendar)
+    N_DAYS = 365
+    g_len = 3 * N_DAYS * length(minibatch_years)
     @info "Observation map: minibatch years $minibatch_years, G length $g_len"
 
     G_ens = zeros(g_len, ensemble_size)
@@ -317,11 +316,12 @@ function ClimaCalibrate.observation_map(iteration)
 
             # Build G vector year-by-year matching EKP stacking order:
             # [yr1_nee, yr1_qle, yr1_qh, yr2_nee, yr2_qle, yr2_qh, ...]
+            # Use 0 for missing model days (matched by large noise in obs)
             result = Float64[]
             for yr_dates in minibatch_year_dates
-                nee_yr = [get(model_dict_nee, d, NaN) for d in yr_dates]
-                qle_yr = [get(model_dict_qle, d, NaN) for d in yr_dates]
-                qh_yr = [get(model_dict_qh, d, NaN) for d in yr_dates]
+                nee_yr = [get(model_dict_nee, d, 0.0) for d in yr_dates]
+                qle_yr = [get(model_dict_qle, d, 0.0) for d in yr_dates]
+                qh_yr = [get(model_dict_qh, d, 0.0) for d in yr_dates]
                 # Convert NEE from mol CO2/m2/s to gC/m2/d
                 nee_yr .*= 12.0 * 86400.0
                 append!(result, nee_yr)
