@@ -114,7 +114,7 @@ S_s = FT(1e-3)
 emissivity = FT(1.0)
 z_0m = FT(1e-2)
 z_0b = FT(1e-2)
-d_ds = FT(0.01)
+d_ds = FT(0.015)
 params = ClimaLand.Soil.EnergyHydrologyParameters(
     toml_dict;
     ν,
