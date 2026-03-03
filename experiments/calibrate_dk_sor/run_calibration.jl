@@ -2,10 +2,10 @@
 ClimaCalibrate driver for DK-Sor single-site calibration.
 
 Calibrates 12 parameters (9 canopy + 3 DAMM soilCO2) against daily NEE, Qle, Qh
-using TransformUnscented Kalman Inversion with ObservationSeries (minibatched by
-year) and WorkerBackend + SlurmManager for parallel ensemble members.
+using TransformUnscented Kalman Inversion. All ~10 years of observations
+(2004-2013, wind-filtered) are used at each iteration (no minibatching).
 
-10 years of observations (2004-2013), minibatch_size=2 → 5 batches/epoch.
+MODIS LAI is used for the vegetation forcing.
 
 Usage:
     julia --project=.buildkite experiments/calibrate_dk_sor/run_calibration.jl
@@ -25,7 +25,6 @@ using LinearAlgebra
 
 const SITE_ID = "DK-Sor"
 const N_ITERATIONS = 10
-const N_YEARS_PER_MINIBATCH = 2
 const DT = Float64(450)
 
 const climaland_dir = pkgdir(ClimaLand)
@@ -61,31 +60,24 @@ priors = [
 ]
 prior = PD.combine_distributions(priors)
 
-# ── Load Observations & Build ObservationSeries ──────────────────────────────
+# ── Load Observations ────────────────────────────────────────────────────────
 
 obs_data = JLD2.load(OBS_FILEPATH)
-observation_vector = obs_data["observation_vector"]
+y_obs = obs_data["y_obs"]
+noise_cov = obs_data["noise_cov"]
+obs_dates = obs_data["obs_dates"]
 cal_years = obs_data["cal_years"]
 
-n_samples = length(observation_vector)
-println("Loaded $n_samples yearly observations ($(first(cal_years))-$(last(cal_years)))")
-
-obs_series = EKP.ObservationSeries(
-    Dict(
-        "observations" => observation_vector,
-        "names" => [string(yr) for yr in cal_years],
-        "minibatcher" => ClimaCalibrate.minibatcher_over_samples(
-            n_samples,
-            N_YEARS_PER_MINIBATCH,
-        ),
-    ),
-)
+n_obs = length(obs_dates)
+println("Loaded $n_obs valid observation days ($(first(cal_years))-$(last(cal_years)))")
+println("Observation vector length: $(length(y_obs)) (3 × $n_obs)")
 
 # ── Create EKP ───────────────────────────────────────────────────────────────
 
 rng = Random.MersenneTwister(1234)
 ekp = EKP.EnsembleKalmanProcess(
-    obs_series,
+    y_obs,
+    noise_cov,
     EKP.TransformUnscented(prior; impose_prior = true),
     verbose = true,
     rng = rng,
@@ -93,7 +85,6 @@ ekp = EKP.EnsembleKalmanProcess(
 
 N_ens = EKP.get_N_ens(ekp)
 println("Ensemble size: $N_ens (for $(length(priors)) parameters)")
-println("Minibatch size: $N_YEARS_PER_MINIBATCH years → $(div(n_samples, N_YEARS_PER_MINIBATCH)) batches/epoch")
 
 # ── Add SLURM Workers ───────────────────────────────────────────────────────
 
@@ -124,7 +115,8 @@ println("\n=== Starting ClimaCalibrate calibration ===")
 println("  Backend: WorkerBackend")
 println("  Iterations: $N_ITERATIONS")
 println("  Ensemble size: $N_ens")
-println("  Calibration years: $(first(cal_years))-$(last(cal_years))")
+println("  Observation days: $n_obs (wind-filtered, $(first(cal_years))-$(last(cal_years)))")
+println("  LAI: MODIS")
 println("  Output: $OUTPUT_DIR")
 
 eki = ClimaCalibrate.calibrate(

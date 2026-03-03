@@ -3,6 +3,8 @@ ClimaCalibrate model interface for DK-Sor single-site calibration.
 
 Defines `forward_model(iteration, member)` and `observation_map(iteration)`.
 This file is `@everywhere include`d on all workers.
+
+Uses MODIS LAI and all 10 years of observations (no minibatching).
 """
 
 import ClimaCalibrate
@@ -36,18 +38,10 @@ function ClimaCalibrate.forward_model(iteration, member)
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = pkgdir(ClimaLand)
 
-    # Determine simulation window from current minibatch
-    ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
-    minibatch_indices = EKP.get_current_minibatch(ekp)
-
-    obs_data = JLD2.load(OBS_FILEPATH)
-    cal_years = obs_data["cal_years"]
-    minibatch_years = [cal_years[idx] for idx in minibatch_indices]
-
-    # 1-year spinup before first minibatch year, end after last minibatch year
-    sim_start = DateTime(minimum(minibatch_years), 1, 1) - Year(1)
-    sim_stop = DateTime(maximum(minibatch_years) + 1, 1, 1)
-    @info "Member $member: simulating $sim_start to $sim_stop (minibatch years $minibatch_years)"
+    # Fixed simulation window: 1-year spinup before 2004, run through end of 2013
+    sim_start = DateTime(2003, 1, 1)
+    sim_stop = DateTime(2014, 1, 1)
+    @info "Member $member: simulating $sim_start to $sim_stop"
 
     # Load calibrated parameters from TOML written by ClimaCalibrate
     calibrate_params_path =
@@ -88,18 +82,13 @@ function ClimaCalibrate.forward_model(iteration, member)
         FT,
     )
 
-    # LAI from met NetCDF
-    met_ds = NCDataset(met_nc_path, "r")
-    lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
-    lai_times = met_ds["time"][:]
-    close(met_ds)
-
-    lai_seconds = [
-        Float64(Second(t - Dates.Hour(time_offset) - sim_start).value)
-        for t in lai_times
-    ]
-    valid_lai = .!isnan.(lai_data)
-    LAI = TimeVaryingInput(lai_seconds[valid_lai], lai_data[valid_lai])
+    # MODIS LAI
+    surface_space = canopy_domain.space.surface
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        sim_start,
+        sim_stop,
+    )
 
     # Build model
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
@@ -265,32 +254,22 @@ end
 """
     ClimaCalibrate.observation_map(iteration)
 
-Return G ensemble matrix for the current minibatch's observation years.
+Return G ensemble matrix matching the filtered observation dates.
 
-The minibatch indices select which yearly Observations are active. We extract
-model predictions only for those years' dates, concatenated in the same order
-as the stacked observation vector.
+The observation vector layout is [NEE_1,...,NEE_n, Qle_1,...,Qle_n, Qh_1,...,Qh_n]
+where n = number of valid observation days (wind-filtered, non-NaN).
 """
 function ClimaCalibrate.observation_map(iteration)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    # Which year indices are in the current minibatch?
-    minibatch_indices = EKP.get_current_minibatch(ekp)
-
-    # Load per-year dates (fixed 365-day calendar per year)
+    # Load valid observation dates
     obs_data = JLD2.load(OBS_FILEPATH)
-    year_dates = obs_data["year_dates"]
-    cal_years = obs_data["cal_years"]
+    obs_dates = obs_data["obs_dates"]
+    n_obs = length(obs_dates)
+    g_len = 3 * n_obs
 
-    # Collect per-year date vectors for minibatch years (preserving order)
-    minibatch_years = [cal_years[idx] for idx in minibatch_indices]
-    minibatch_year_dates = [year_dates[yr] for yr in minibatch_years]
-
-    # Each year contributes 3 * 365 entries (fixed calendar)
-    N_DAYS = 365
-    g_len = 3 * N_DAYS * length(minibatch_years)
-    @info "Observation map: minibatch years $minibatch_years, G length $g_len"
+    @info "Observation map: $n_obs valid days, G length $g_len"
 
     G_ens = zeros(g_len, ensemble_size)
 
@@ -314,22 +293,15 @@ function ClimaCalibrate.observation_map(iteration)
             model_dict_qle = Dict(zip(model_dates, qle_model))
             model_dict_qh = Dict(zip(model_dates, qh_model))
 
-            # Build G vector year-by-year matching EKP stacking order:
-            # [yr1_nee, yr1_qle, yr1_qh, yr2_nee, yr2_qle, yr2_qh, ...]
-            # Use 0 for missing model days (matched by large noise in obs)
-            result = Float64[]
-            for yr_dates in minibatch_year_dates
-                nee_yr = [get(model_dict_nee, d, 0.0) for d in yr_dates]
-                qle_yr = [get(model_dict_qle, d, 0.0) for d in yr_dates]
-                qh_yr = [get(model_dict_qh, d, 0.0) for d in yr_dates]
-                # Convert NEE from mol CO2/m2/s to gC/m2/d
-                nee_yr .*= 12.0 * 86400.0
-                append!(result, nee_yr)
-                append!(result, qle_yr)
-                append!(result, qh_yr)
-            end
+            # Extract model values at observation dates
+            nee_out = [get(model_dict_nee, d, NaN) for d in obs_dates]
+            qle_out = [get(model_dict_qle, d, NaN) for d in obs_dates]
+            qh_out = [get(model_dict_qh, d, NaN) for d in obs_dates]
 
-            G_ens[:, m] = result
+            # Convert NEE from mol CO2/m2/s to gC/m2/d
+            nee_out .*= 12.0 * 86400.0
+
+            G_ens[:, m] = vcat(nee_out, qle_out, qh_out)
         catch e
             @error "Error processing member $m" exception = e
             G_ens[:, m] .= NaN
