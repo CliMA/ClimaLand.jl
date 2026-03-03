@@ -92,11 +92,11 @@ function setup_model(
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
     # Construct the P model manually since it is not a default
-    photosynthesis = PModel{FT}(domain, toml_dict)
-    conductance = PModelConductance{FT}(toml_dict)
+ #   photosynthesis = PModel{FT}(domain, toml_dict)
+ #   conductance = PModelConductance{FT}(toml_dict)
     # Use the soil moisture stress function based on soil moisture only
-    soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+ #   soil_moisture_stress =
+ #       ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
     biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
         domain,
         LAI,
@@ -112,10 +112,10 @@ function setup_model(
         LAI,
         toml_dict;
         prognostic_land_components,
-        photosynthesis,
-        conductance,
-        soil_moisture_stress,
         biomass,
+  #      photosynthesis,
+  #      conductance,
+  #      soil_moisture_stress,
     )
 
     # Snow model setup
