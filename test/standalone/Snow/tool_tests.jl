@@ -730,11 +730,8 @@ if !isnothing(SNOTELScraperExt)
         end
 
         CNM2_static = CNM.make_static_model(CNM2)
-        CNM2_dynam = CNM.make_dynamic_model(CNM2_static)
         @test eltype(CNM2_static.out_scale.sc) == FT
-        @test eltype(CNM2_dynam.out_scale.sc) == FT
         @test typeof(CNM2_static.predictive_model[1].weight) <: SMatrix
-        @test typeof(CNM2_dynam.predictive_model[1].weight) <: Matrix{FT}
 
         test_dict = Dict{Any, Any}()
         test_tree = (

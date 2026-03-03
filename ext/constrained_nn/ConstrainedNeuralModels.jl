@@ -10,7 +10,6 @@ export ConstrainedNeuralModel,
     save_model,
     load_model,
     make_static_model,
-    make_dynamic_model,
     trainmodel!,
     inspect_model_metadata,
     build_model_bound_documentation,
@@ -778,7 +777,7 @@ ClimaLand and this module that are needed for the model to work.
 
 Fixed (SArray parameters) models can be saved as well as more generic models, though we recommend
 saving the more generic/dynamic (Array) form of a model and calling `make_static_model()` on the loaded
-generic model, rather than saving the fixed model and calling `make_dynamic_model()` on the loaded form.
+generic model, rather than saving the fixed model.
 
 NOTE: ConstrainedNeuralModels and any relevant user-specified functions/types for the model's constraints
 must be already defined in the importing codespace for a given model to load correctly. To aid with this,
@@ -930,34 +929,6 @@ function make_static_model(m::ConstrainedNeuralModel; skip_check = false)
             """
   Uncertainty in constraints for making a static model for this model type.
   Make sure adequate methods for StaticArray SVector/SMatrix inputs have been defined
-  with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
-      """,
-        )
-    end
-end
-
-"""
-    make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
-
-Returns a more generic form of a static ConstrainedNeuralModel, in order to permit
-further prototyping on an otherwise static model (e.g., a saved/loaded fixed model,
-though we recommend saving the generic model and calling make_static_model after loading).
-
-The default method mode requires the model's constraints to be capable for :dynamic
-evaluation mode, which are assessed prior to returning the dynamic model. This requires
-usage of the `@bound`/`@bound_type` macros around affiliated bounds and bound-types,
-though this check can be skipped by specifying `skip_check = true`.
-"""
-function make_dynamic_model(m::ConstrainedNeuralModel; skip_check = false)
-    try
-        if skip_check || has_evaluation_mode(m.constraints, :dynamic)
-            return Adapt.adapt_structure(Array, m)
-        end
-    catch e
-        error(
-            """
-  Uncertainty in constraints for making a dynamic model for this model type.
-  Make sure adequate methods for <:Array or AbstractArray inputs have been defined
   with the `@bound` macro for all model bounds, or specify `skip_check = true` to skip this check.
       """,
         )
