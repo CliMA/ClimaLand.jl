@@ -139,7 +139,9 @@ rooting_depth = FT(0.3)
         LAI,
      toml_dict;
      rooting_depth,
-     height = FT(25))
+     height = FT(25),
+     SAI = FT(1.0),
+     RAI = FT(17.5))
 radiation_parameters = (;
     Ω,
     G_Function = CLMGFunction(χl),
@@ -169,6 +171,12 @@ composition_parameters =  (;
         ν_ss_quartz = ν_ss_sand,
         ν_ss_gravel = ν_ss_cf
                            )
+hydraulics = Canopy.PlantHydraulicsModel{FT}(
+    canopy_domain, toml_dict;
+    n_stem = 1,
+    h_stem = FT(24),
+    h_leaf = FT(1),
+)
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain, forcing_nt, LAI, toml_dict;
     prognostic_land_components,
@@ -176,7 +184,8 @@ canopy = Canopy.CanopyModel{FT}(
     conductance = Canopy.PModelConductance{FT}(toml_dict),
     soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict; soil_params = (; ν, θ_r)),
     biomass,
-    radiative_transfer
+    radiative_transfer,
+    hydraulics,
 );
 
 forcing = (;atmos, radiation);
@@ -240,7 +249,12 @@ println("Running simulation...")
 io = open("logfile.txt", "w")
 logger = ConsoleLogger(io)
 with_logger(logger) do
-    @time solve!(simulation);
+    try
+        @time solve!(simulation)
+    catch e
+        @error "Simulation crashed" exception=(e, catch_backtrace())
+        rethrow()
+    end
 end
 close(io)
 println("Simulation complete.")

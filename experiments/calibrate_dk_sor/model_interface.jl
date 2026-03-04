@@ -103,8 +103,16 @@ function ClimaCalibrate.forward_model(iteration, member)
         LAI,
         toml_dict;
         height = FT(25),
+        SAI = FT(1.0),
+        RAI = FT(17.5),
     )
 
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(
+        canopy_domain, toml_dict;
+        n_stem = 1,
+        h_stem = FT(24),
+        h_leaf = FT(1),
+    )
     canopy = Canopy.CanopyModel{FT}(
         canopy_domain,
         forcing_nt,
@@ -118,6 +126,7 @@ function ClimaCalibrate.forward_model(iteration, member)
             toml_dict,
         ),
         biomass,
+        hydraulics,
     )
 
     land = LandModel{FT}(
