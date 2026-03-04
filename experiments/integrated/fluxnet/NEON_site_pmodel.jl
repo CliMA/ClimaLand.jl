@@ -172,11 +172,12 @@ base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     time_offset,
     land,
 )
+#=
 function custom_set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
     Y.soilco2.SOC .= SOC_init  # Set SOC to 5.0 kg/m²
 end
-#=
+=#
 function custom_set_ic!(Y, p, t, model)
     #=
     earth_param_set = ClimaLand.get_earth_param_set(model.soil)
@@ -225,7 +226,7 @@ function custom_set_ic!(Y, p, t, model)
     z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
     @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
     #end
-end =#
+end 
 
 
 # Diagnostics: sco2_ppm at halfhourly resolution
