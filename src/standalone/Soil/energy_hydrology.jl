@@ -1378,5 +1378,5 @@ this is used when computing the soil resistance to vapor flux according to
 Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """
 function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
-    return S_w < S_c ? d_ds * ((S_c - S_w) / S_c)^2 : FT(0)
+    return S_w < S_c ? d_ds * ((S_c - S_w) / S_c)^4 : FT(0)
 end
