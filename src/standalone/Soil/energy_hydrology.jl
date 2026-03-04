@@ -1137,7 +1137,6 @@ function ClimaLand.get_update_surface_humidity_function(
                 ν_sfc,
                 θ_r_sfc,
                 d_ds,
-                model.domain.fields.Δz_top,
                 earth_param_set,
             ),
             (θ_i_sfc / ν_sfc)^4,
@@ -1360,7 +1359,6 @@ function soil_conductance(
     ν::FT,
     θ_r::FT,
     d_ds::FT,
-    Δz_top::FT,
     earth_param_set::EP,
 ) where {FT, EP, C}
     (; S_c) = hydrology_cm
@@ -1368,7 +1366,7 @@ function soil_conductance(
     S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
     #τ_a = soil_tortuosity(θ_l, θ_i, ν)
     dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
-    g_soil =  (_D_vapor * Δz_top * ν)/ max(dsl, eps(FT)) # [m/s]
+    g_soil =  (_D_vapor * ν)/ max(dsl, eps(FT)) # [m/s]
     return g_soil
 end
 
@@ -1380,5 +1378,5 @@ this is used when computing the soil resistance to vapor flux according to
 Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """
 function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
-    return S_w < S_c ? d_ds * ((S_c - S_w) / S_c)^4 : FT(0)
+    return S_w < S_c ? d_ds * ((S_c - S_w) / S_c)^2 : FT(0)
 end

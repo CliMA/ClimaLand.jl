@@ -161,7 +161,7 @@ end
 # Domain - single column
 zmax = FT(0)
 zmin = FT(-0.35)
-nelems = 28
+nelems = 14
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
@@ -206,7 +206,7 @@ sol_hr = solve!(simulation);
 # Repeat at lower resolution
 zmax = FT(0)
 zmin = FT(-0.35)
-nelems = 7
+nelems = 3
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
@@ -316,7 +316,7 @@ CairoMakie.lines!(
     ax,
     FT.(sol_lr.t) ./ 3600 ./ 24,
     evap_lr,
-    label = "Model, 7 elements",
+    label = "Model, 3 elements",
     color = :blue,
     linewidth = 3,
 )
@@ -324,7 +324,7 @@ CairoMakie.lines!(
     ax,
     FT.(sol_hr.t) ./ 3600 ./ 24,
     evap_hr,
-    label = "Model, 28 elements",
+    label = "Model, 14 elements",
     color = :blue,
     linestyle = :dash,
     linewidth = 3,
