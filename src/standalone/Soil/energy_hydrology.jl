@@ -1083,7 +1083,7 @@ function ClimaLand.get_update_surface_humidity_function(
             if q_air < qsat_sfc # water loss to atmosphere, adjust β
                 return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
             else
-                return q_sat_sfc
+                return qsat_sfc
             end
         else
             return (g_liq / g_h * qsat_sfc + q_air) / (1 + g_liq / g_h)
