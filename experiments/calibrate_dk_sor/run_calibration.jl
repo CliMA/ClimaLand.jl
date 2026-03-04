@@ -1,9 +1,9 @@
 """
 ClimaCalibrate driver for DK-Sor single-site calibration.
 
-Calibrates 12 parameters (9 canopy + 3 DAMM soilCO2) against daily NEE, Qle, Qh
-using TransformUnscented Kalman Inversion. All ~10 years of observations
-(2004-2013, wind-filtered) are used at each iteration (no minibatching).
+Calibrates 14 parameters (9 canopy + 2 autotrophic respiration + 3 DAMM soilCO2)
+against daily NEE, Qle, Qh using TransformUnscented Kalman Inversion. All ~10 years
+of observations (2004-2013, wind-filtered) are used at each iteration (no minibatching).
 
 MODIS LAI is used for the vegetation forcing.
 
@@ -47,6 +47,9 @@ priors = [
     PD.constrained_gaussian("canopy_d_coeff", 0.1, 0.05, 0.001, 0.95),
     PD.constrained_gaussian("canopy_K_lw", 0.85, 0.25, 0.1, 2.0),
     PD.constrained_gaussian("canopy_emissivity", 0.97, 0.02, 0.9, 1.0),
+    # Autotrophic respiration parameters
+    PD.constrained_gaussian("root_leaf_nitrogen_ratio", 1.0, 0.5, 0.1, 5.0),
+    PD.constrained_gaussian("stem_leaf_nitrogen_ratio", 0.1, 0.07, 0.01, 0.5),
     # DAMM soilCO2 parameters (renamed to match TOML keys)
     PD.constrained_gaussian(
         "soilCO2_pre_exponential_factor",
@@ -116,6 +119,7 @@ println("  Backend: WorkerBackend")
 println("  Iterations: $N_ITERATIONS")
 println("  Ensemble size: $N_ens")
 println("  Observation days: $n_obs (wind-filtered, $(first(cal_years))-$(last(cal_years)))")
+println("  Parameters: $(length(priors)) (9 canopy + 2 autotrophic respiration + 3 DAMM)")
 println("  LAI: MODIS")
 println("  Output: $OUTPUT_DIR")
 
