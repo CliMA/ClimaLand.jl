@@ -46,7 +46,7 @@ SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 
 [compat]
 Adapt = "4.3.0"
-CairoMakie = "0.12.5, 0.13, 0.14, 0.15"
+CairoMakie = "0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.17"
 ClimaComms = "0.6.2"
 ClimaCore = "0.14.46"
