@@ -202,7 +202,8 @@ function set_snow_initial_conditions!(
         #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
         Y.snow.Z .= FT(3) .* Y.snow.S
         if :P_avg in propertynames(Y.snow) #EMA is present, set all the vars
-            #drivers are not set yet - how to initialize this?
+            #drivers are not set yet - how to initialize these?
+            #even with all-0 inputs, depth network outputs 0, so should be numerically safe
             #=
             Y.snow.P_avg .= abs.(p.drivers.P_snow)
             Y.snow.T_avg .= p.drivers.T

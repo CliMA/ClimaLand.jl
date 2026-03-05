@@ -123,14 +123,14 @@ function setup_model(
 
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    α_snow = NS.NeuralAlbedoModel(
-        FT,
-        surface_space,
-        LP.LandParameters(toml_dict),
-        Δt = Δt,
-    )
-    #density = NS.NeuralDepthModel(FT, Δt = Δt)
-    #α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
+    #α_snow = NS.NeuralAlbedoModel(
+    #    FT,
+    #    surface_space,
+    #    LP.LandParameters(toml_dict),
+    #    Δt = Δt,
+    #)
+    density = NS.NeuralDepthModel(FT, Δt = Δt)
+    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
@@ -142,7 +142,7 @@ function setup_model(
         Δt;
         prognostic_land_components,
         α_snow,
-        #density,
+        density,
         scf,
     )
 
