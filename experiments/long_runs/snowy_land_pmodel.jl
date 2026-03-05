@@ -129,7 +129,7 @@ function setup_model(
         LP.LandParameters(toml_dict),
         Δt = Δt,
     )
-    density = NS.NeuralDepthModel(FT, Δt = Δt)
+    #density = NS.NeuralDepthModel(FT, Δt = Δt)
     #α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
@@ -142,7 +142,7 @@ function setup_model(
         Δt;
         prognostic_land_components,
         α_snow,
-        density,
+        #density,
         scf,
     )
 
@@ -165,8 +165,10 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+#start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
+#stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+start_date = DateTime("2008-03-01")
+stop_date = DateTime("2008-04-26")
 Δt = 450.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))

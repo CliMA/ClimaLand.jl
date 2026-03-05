@@ -28,7 +28,7 @@ NeuralSnow =
     Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
 # no albedo in oas, ojp, rme, sap, sod, wfj
-#"cdp" "obs" "snb" "swa"
+# cdp, obs, snb, swa have albedo
 #SITE_NAME = "swa" #=
 # Site-specific quantities
 # Error if no site argument is provided

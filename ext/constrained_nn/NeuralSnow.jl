@@ -34,7 +34,7 @@ An instance of this type must have at least:
     1) one functor method defined, (::T)(model, Y, p)
        for T <: AlbedoInitialValueModel that returns the initial albedo value,
        which will be called in `albedo_reset_rate()`
-    2) a float "reset_limit" (m/s) of critical preciptiation rate,
+    2) a float field "reset_limit" (m/s) of the critical liquid-equivalent snowfall preciptiation rate,
        which will also get used in resetting the snow albedo.
 """
 abstract type AlbedoInitialValueModel{FT <: AbstractFloat} end
@@ -425,8 +425,8 @@ function eval_z_nn(
     # use SVector for GPU compatibility
 
     #See above comment - assume model predicts per-ground-area from per-ground-area inputs, since we'd need to find a `swe_per_snow_area(SWE, scf)` function
-    #that is physically consistent in the small snowpack limit AND doesn't:
-    # - either make the snowpack start to grow again as scf gets smaller faster than z or SWE gets smaller
+    #that is physically consistent in the small snowpack limit AND doesn't either:
+    # - make the snowpack start to grow again as scf gets smaller faster than z or SWE gets smaller
     # - make SWE-per-snow-area >> z-per-snow-area within some regime
     return z_model(SVector(z, swe, qrel, R, u, T, P))[]
 end
@@ -471,16 +471,16 @@ function ema_value(w::FT, new::FT, old::FT)::FT where {FT}
 end
 
 """
-    snow_surf_SW_down(mtype::Val{(:snow,)}, p)
+    snow_surf_SW_down(model_type::Val{(:snow,)}, p)
 
 Obtains the correct downward shortwave radiation magnitude for a snow model without an
 overlying canopy (standalone or just coupled with soil).
 """
-@inline snow_surf_SW_down(mtype::Union{Val{(:snow,)}, Val{(:snow, :soil)}}, p) =
+@inline snow_surf_SW_down(model_type::Union{Val{(:snow,)}, Val{(:snow, :soil)}}, p) =
     p.drivers.SW_d
 
 """
-    snow_surf_SW_down(mtype::Union{
+    snow_surf_SW_down(model_type::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
         Val{(:canopy, :snow, :soil)},
         }, p)
@@ -489,7 +489,7 @@ Obtains the correct downward shortwave radiation magnitude for a snow model with
 an overlying canopy.
 """
 @inline function snow_surf_SW_down(
-    mtype::Union{
+    model_type::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
         Val{(:canopy, :snow, :soil)},
     },
@@ -552,7 +552,7 @@ function update_dzdt!(dzdt, density::NeuralDepthModel, model, Y, p)
     #=
     the input for the step from time t to t+1 should include the variable information
     from time t (especially considering precipiation), even though the EMA prognostic vars will not have been
-    updated with the dY information from time t yet. This means we need
+    updated with the dY information from time t yet by the point this is called. This means we need
     to get that value here:
     =#
     prog_comp = model.boundary_conditions.prognostic_land_components
@@ -593,7 +593,7 @@ Updates the dY.snow.A field in places with the predicted change in snow albedo g
 albedo paramterization.
 """
 function update_dαdt!(dαdt, albedo::NeuralAlbedoModel, model, Y, p, t)
-    start_date = model.boundary_conditions.radiation.start_date #is there a better way to reference this?
+    start_date = model.boundary_conditions.radiation.start_date #is there a better place to reference this?
     dαdt .=
         reset_condition.(
             Y.snow.S,
@@ -703,7 +703,6 @@ end
 
 end
 
-#fix tests for lat/lon constructor and add tests for snow_surf_SW_down
 # try clamping without complex canopy value (fix it after that test is done), see if NaNs go away
 
 # sodankyla latitude is wrong in the artifact

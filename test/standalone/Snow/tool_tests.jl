@@ -829,7 +829,7 @@ if !isnothing(SNOTELScraperExt)
         y_test = copy(ys[1001:1100])'
         loss(m, x, y) = sqrt(sum(abs.(m(x) .- y) .^ 2) / length(y))
         curr_loss = loss(CNM2, x_train, y_train)
-        CNM.trainmodel!(CNM2, x_train, y_train, loss)
+        CNM.trainmodel!(CNM2, x_train, y_train, loss, nepochs = 2)
         new_loss = loss(CNM2, x_train, y_train)
         @test curr_loss != new_loss #difference means weights updated.
 
@@ -956,8 +956,11 @@ if !isnothing(SNOTELScraperExt)
         @test dens_model2.z_model.predictive_model[1].weight[1, 1] ==
               rand_params[1]
 
+        test_lat = 34
+        test_lon = -123
+        domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((test_lon, test_lat)))
         alb_model1 =
-            NeuralSnow.NeuralAlbedoModel(FT, FT(34), FT(-123), earth_param_set) #lat, lon with FT
+            NeuralSnow.NeuralAlbedoModel(FT, domain.space.surface, earth_param_set)
         @test alb_model1.alb_model.constraints.upper_bound isa
               NeuralSnow.Snow_Albedo_Bound
         @test alb_model1.alb_model.constraints.lower_bound isa
@@ -967,12 +970,11 @@ if !isnothing(SNOTELScraperExt)
         @test alb_model1.new_alb.init_α == 0.8f0
         @test alb_model1.new_alb.reset_limit == 0.003f0 / 86400
         @test alb_model1.za_solarnoon isa Function
-        @test alb_model1.za_solarnoon(0, DateTime("2010-01-01T01:23")) ≈
-              0.5450495f0
+        @test all(parent(alb_model1.za_solarnoon(0, DateTime("2010-01-01T01:23"))) .≈
+              0.5450495f0)
         alb_model2 = NeuralSnow.NeuralAlbedoModel(
             FT,
-            FT(34), #lat
-            FT(-123), #lon
+            domain.space.surface,
             earth_param_set,
             Δt = Δt,
             model_params = rand_params[1:325],
@@ -990,12 +992,12 @@ if !isnothing(SNOTELScraperExt)
         @test NeuralSnow.reset_condition(1.0, 1.0, 0.001, 1.0, 2.0) == 2.0
 
         start_date = DateTime(2005)
-        domain = Point(; z_sfc = FT(0))
+        lat = FT(38.8047)
+        lon = FT(-77.0435)
+        domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((lon, lat)))
         "Radiation"
         SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
         LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
-        lat = FT(38.8047)
-        lon = FT(-77.0435)
         cos_zenith_angle =
             (t, s) -> ClimaLand.default_cos_zenith_angle(
                 t,
@@ -1033,7 +1035,7 @@ if !isnothing(SNOTELScraperExt)
         depthmodel = NeuralSnow.NeuralDepthModel(FT, Δt = Δt)
         depth_alternate = Snow.MinimumDensityModel(FT(0.3))
         albmodel =
-            NeuralSnow.NeuralAlbedoModel(FT, lat, lon, earth_param_set, Δt = Δt)
+            NeuralSnow.NeuralAlbedoModel(FT, domain.space.surface, earth_param_set, Δt = Δt)
         alb_alternate = Snow.ConstantAlbedoModel(FT(0.8))
 
         @test Snow.extra_prog_vars(depthmodel) ==
@@ -1076,6 +1078,7 @@ if !isnothing(SNOTELScraperExt)
         set_initial_cache! = ClimaLand.make_set_initial_cache(model)
         t0 = FT(0.0)
         set_initial_cache!(p, Y, t0)
+        @test NeuralSnow.snow_surf_SW_down(Val(model.boundary_conditions.prognostic_land_components), p) == p.drivers.SW_d
 
         oldρ = p.snow.ρ_snow
         Snow.update_density_and_depth!(
