@@ -116,10 +116,10 @@ function setup_model(
         LAI,
         toml_dict;
         prognostic_land_components,
-        biomass,
         photosynthesis,
         conductance,
-        #      soil_moisture_stress,
+        soil_moisture_stress,
+        biomass
     )
 
     # Snow model setup
