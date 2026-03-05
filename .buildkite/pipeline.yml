@@ -88,8 +88,8 @@ steps:
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
       - label: "emr_test"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_any_fluxnet.jl AU-EMr"
-        artifact_paths: "experiments/integrated/fluxnet/AU-EMr/out/*png"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_any_fluxnet.jl AU-Emr"
+        artifact_paths: "experiments/integrated/fluxnet/AU-Emr/out/*png"
 
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
