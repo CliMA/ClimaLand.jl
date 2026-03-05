@@ -49,6 +49,10 @@ const FT = Float64;
 # as an environment variable. In both cases, the value of `LONGER_RUN` does not
 # matter.
 const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
+# If you want to do run the simulation with uncalibrated parameters, type
+# UNCALIRBATED=""` in the terminal and run this script, or
+# pass `UNCALIBRATED=""` as an environment variable on buildkite.
+const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -92,11 +96,11 @@ function setup_model(
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
     # Construct the P model manually since it is not a default
- #   photosynthesis = PModel{FT}(domain, toml_dict)
- #   conductance = PModelConductance{FT}(toml_dict)
+    photosynthesis = PModel{FT}(domain, toml_dict)
+    conductance = PModelConductance{FT}(toml_dict)
     # Use the soil moisture stress function based on soil moisture only
- #   soil_moisture_stress =
- #       ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    soil_moisture_stress =
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
     biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
         domain,
         LAI,
@@ -113,9 +117,9 @@ function setup_model(
         toml_dict;
         prognostic_land_components,
         biomass,
-  #      photosynthesis,
-  #      conductance,
-  #      soil_moisture_stress,
+        photosynthesis,
+        conductance,
+        #      soil_moisture_stress,
     )
 
     # Snow model setup
@@ -159,9 +163,14 @@ stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
-override_params_path = "toml/uncalibrated_parameters.toml"
-toml_dict =
-    LP.create_toml_dict(FT, override_files = [override_params_path])
+
+if UNCALIBRATED
+    override_params_path = "toml/uncalibrated_parameters.toml"
+    toml_dict = LP.create_toml_dict(FT, override_files = [override_params_path])
+else
+    toml_dict = LP.create_toml_dict(FT)
+end
+
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
