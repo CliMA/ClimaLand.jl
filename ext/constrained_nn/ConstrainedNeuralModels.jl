@@ -193,7 +193,7 @@ Internal function for returning the ScaleOuput's scaling constant.
 end
 
 @inline function fclamp(x::FT)::FT where {FT <: AbstractFloat}
-    return clamp(x, -floatmax(FT), floatmax(FT))
+    return clamp(x, -100f0, 100f0)
 end
 
 """
