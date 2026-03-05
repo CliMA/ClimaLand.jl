@@ -314,48 +314,6 @@ end
 """
     NeuralAlbedoModel(
         ::Type{FT},
-        lat::Real,
-        lon::Real,
-        earth_param_set;
-        initial_albedo = ConstantInitialAlbedo(FT),
-        model_params::Union{Vector{<:Real}, Nothing} = nothing,
-        Δt::Union{<:Real, Nothing} = nothing,
-    ) where {FT <: AbstractFloat}
-
-An outer constructor for the NeuralAlbedoModel albedo parameterization for usage in a snow model. This particular constructor is
-for single-point models where the model domain does not inherently contain any lat/lon information; supplying them to the albedo model itself.
-
-This model utilizes the neural network develped by Charbonneau et. al. (2025) to predict the rate of change of snow albedo dα/dt.
-The user should also specify a model timestep Δt in seconds which sets the model scaling in order to guarantee the snow albedo remains physical.
-If unspecified, the initial albedo value of a new snowpack is dictated by a ConstantInitialAlbedo parameterization of 0.8.
-"""
-#GET RID OF THIS ONE!!
-function NeuralAlbedoModel(
-    ::Type{FT},
-    lat::Real,
-    lon::Real,
-    earth_param_set;
-    initial_albedo = ConstantInitialAlbedo(FT),
-    model_params::Union{Vector{<:Real}, Nothing} = nothing,
-    Δt::Union{<:Real, Nothing} = nothing,
-) where {FT <: AbstractFloat}
-    usemodel = get_albnetwork(FT, params = model_params)
-    !isnothing(Δt) && _set_timescale!(usemodel, Δt)
-    insol_ps = earth_param_set.insol_params
-    zaf =
-        (t, start_date) -> ClimaLand.solar_noon_zenith_cosine(
-            t,
-            start_date,
-            lat = FT(lat),
-            lon = FT(lon),
-            insol_params = insol_ps,
-        )
-    return NeuralAlbedoModel(usemodel, initial_albedo, zaf)
-end
-
-"""
-    NeuralAlbedoModel(
-        ::Type{FT},
         surface_space,
         earth_param_set;
         initial_albedo = ConstantInitialAlbedo(FT),
@@ -363,8 +321,8 @@ end
         Δt::Union{<:Real, Nothing} = nothing,
     ) where {FT <: AbstractFloat}
 
-An outer constructor for the NeuralAlbedoModel albedo parameterization for usage in a snow model. This particular constructor is
-for models with domains that contain latitude and longitude information, requiring the passing of the model's surface space to the constructor.
+An outer constructor for the NeuralAlbedoModel albedo parameterization for usage in a snow model. It requires model domains that 
+contain latitude and longitude information, requiring the passing of the model's surface space to the constructor.
 
 This model utilizes the neural network develped by Charbonneau et. al. (2025) to predict the rate of change of snow albedo dα/dt.
 The user should also specify a model timestep Δt in seconds which sets the model scaling in order to guarantee the snow albedo remains physical.
@@ -530,14 +488,15 @@ overlying canopy (standalone or just coupled with soil).
 Obtains the correct downward shortwave radiation magnitude for a snow model with
 an overlying canopy.
 """
-function snow_surf_SW_down(
+@inline function snow_surf_SW_down(
     mtype::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
         Val{(:canopy, :snow, :soil)},
     },
     p,
 )
-    return @. -(
+    return p.drivers.SW_d
+    #=@. -(
         p.canopy.radiative_transfer.nir.trans *
         p.canopy.radiative_transfer.nir_d *
         (1 - p.snow.α_snow) +
@@ -545,6 +504,7 @@ function snow_surf_SW_down(
         p.canopy.radiative_transfer.par_d *
         (1 - p.snow.α_snow)
     )
+        =#
 end
 
 """
@@ -743,9 +703,8 @@ end
 
 end
 
-# get rid of lat/lon point constructor, fix tests
-# write test for snow_surf_SW_down
-# fix sinh to be safesinh or something like that, use abs() < 80
+#fix tests for lat/lon constructor and add tests for snow_surf_SW_down
+# try clamping without complex canopy value (fix it after that test is done), see if NaNs go away
 
 # sodankyla latitude is wrong in the artifact
 # how to make the sinh()/model NaN safe? / does model not work at really-high latitude sites where solar zenith angles don't do what's expected in training data?
