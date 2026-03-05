@@ -29,7 +29,7 @@ NeuralSnow =
 
 # no albedo in oas, ojp, rme, sap, sod, wfj
 # cdp, obs, snb, swa have albedo
-#SITE_NAME = "swa" #=
+#SITE_NAME = "snb" #=
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
