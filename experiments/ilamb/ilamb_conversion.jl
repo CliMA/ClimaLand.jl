@@ -399,19 +399,26 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     # ordering is reversed compared to Python/NetCDF C-order convention.
     # Julia ("lon", "lat", "time") -> Python reads ('time', 'lat', 'lon')
     # For tsoil: Julia ("lon", "lat", "depth", "time") -> Python reads ('time', 'depth', 'lat', 'lon')
+    # For soc: Need to integrate over depth to convert from kg C m^-3 to kg C m^-2
     if clima_short_name == "tsoil"
         expected_dims = ["lon", "lat", "depth", "time"]
     else
         expected_dims = ["lon", "lat", "time"]
     end
-    data = get_data(
-        clima_ds,
-        clima_short_name,
-        clima_units,
-        conversion_factor,
-        expected_dims,
-        FT,
-    )
+    
+    # Handle SOC specially - need to integrate over depth
+    if clima_short_name == "soc" && haskey(clima_ds, "z")
+        data = integrate_soc_over_depth(clima_ds, FT)
+    else
+        data = get_data(
+            clima_ds,
+            clima_short_name,
+            clima_units,
+            conversion_factor,
+            expected_dims,
+            FT,
+        )
+    end
     NCDatasets.defVar(
         ilamb_ds,
         short_name,
@@ -420,6 +427,69 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
         attrib = var_attribs,
     )
     return nothing
+end
+
+"""
+    integrate_soc_over_depth(clima_ds, FT)
+
+Integrate soil organic carbon (SOC) over depth to convert from volumetric
+concentration (kg C m^-3) to column-integrated carbon stock (kg C m^-2).
+
+The integration accounts for layer thickness by computing the sum:
+    cSoil[lon,lat,time] = sum(SOC[time,lon,lat,z] * dz[z]) over all z
+
+Returns data with dimensions (lon, lat, time) in ILAMB order.
+"""
+function integrate_soc_over_depth(clima_ds, FT)
+    # Read SOC data and z coordinates
+    # Actual ClimaLand dimensions: (time, lon, lat, z)
+    soc_data = Array(clima_ds["soc"])  # kg C m^-3
+    z_values = Array(clima_ds["z"])    # negative values, surface at z ≈ 0
+    
+    # Verify dimension order
+    dim_names = NCDatasets.dimnames(clima_ds["soc"])
+    z_dim_idx = findfirst(==("z"), dim_names)
+    if isnothing(z_dim_idx)
+        error("SOC variable does not have z dimension")
+    end
+    
+    # Compute layer thicknesses (dz)
+    # ClimaLand stores z from deepest to shallowest (most negative to least negative)
+    n_layers = length(z_values)
+    dz = zeros(n_layers)
+    
+    for i in 1:n_layers
+        if i == 1
+            # Deepest layer: extend downward from z[1]
+            if n_layers > 1
+                dz[i] = abs(z_values[2] - z_values[1]) / 2 + abs(z_values[1])
+            else
+                dz[i] = abs(z_values[1]) * 2
+            end
+        elseif i == n_layers
+            # Shallowest layer: extend to surface (z=0)
+            dz[i] = abs(z_values[i] - z_values[i-1]) / 2 + abs(z_values[i])
+        else
+            # Middle layers: thickness = distance to midpoints on both sides
+            dz[i] = abs(z_values[i+1] - z_values[i-1]) / 2
+        end
+    end
+    
+    # Integrate over z dimension (dimension 4 in (time, lon, lat, z))
+    # Input: (time, lon, lat, z) = (228, 360, 180, 15)
+    # Output: (time, lon, lat) = (228, 360, 180)
+    integrated_soc = zeros(FT, size(soc_data)[1:end-1]...)
+    
+    for iz in 1:n_layers
+        @views integrated_soc .+= soc_data[:, :, :, iz] .* FT(dz[iz])
+    end
+    
+    # Permute to ILAMB order: (lon, lat, time)
+    # Current: (time, lon, lat)
+    # Target: (lon, lat, time)
+    integrated_soc = permutedims(integrated_soc, (2, 3, 1))
+    
+    return integrated_soc
 end
 
 """
