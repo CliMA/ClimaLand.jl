@@ -1110,17 +1110,7 @@ function ClimaLand.get_update_surface_humidity_function(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    #@. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT)))
-    #@. θ_i_sfc = max(θ_i_sfc, FT(0))
-   # g_liq = @. lazy(soil_conductance(
-   #     max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT))),
-   #     max(θ_i_sfc, FT(0)),
-   #     hydrology_cm_sfc,
-   #     ν_sfc,
-   ##     θ_r_sfc,
-    #    d_ds,
-    #    earth_param_set,
-    #))
+
     update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed) =
         (args...) -> update_q_vap_sfc_at_a_point(
             args...,
@@ -1317,25 +1307,6 @@ function ClimaLand.total_energy_per_area!(
     return nothing
 end
 
-
-"""
-    soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
-
-Computes the tortuosity of water vapor in a porous medium,
-as a function of porosity `ν` and the volumetric liquid water
-and ice contents, `θ_l` and `θ_i`.
-
-See Equation (1) of : Shokri, N., P. Lehmann, and
-D. Or (2008), Effects of hydrophobic layers on evaporation from
-porous media, Geophys. Res. Lett., 35, L19407, doi:10.1029/
-2008GL035230.
-"""
-function soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
-    safe_θ_a = max(ν - θ_l - θ_i, eps(FT))
-    return safe_θ_a^(FT(2.5)) / ν
-end
-
-
 """
     soil_conductance(θ_l::FT,
                     θ_i::FT,
@@ -1364,19 +1335,20 @@ function soil_conductance(
     (; S_c) = hydrology_cm
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
-    #τ_a = soil_tortuosity(θ_l, θ_i, ν)
-    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
-    g_soil =  (_D_vapor * ν)/ max(dsl, eps(FT)) # [m/s]
+    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds, hydrology_cm)
+    g_soil =  _D_vapor / max(dsl, eps(FT)) # [m/s]
     return g_soil
 end
 
 """
-    dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
+    dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT, hcm)::FT where {FT}
 
 Returns the maximum dry soil layer thickness that can develop under vapor flux; 
-this is used when computing the soil resistance to vapor flux according to
+this is used when computing the soil resistance to vapor flux similar to
 Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """
-function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
-    return S_w < S_c ? d_ds * ((S_c - S_w) / S_c)^4 : FT(0)
+function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT, hcm)::FT where {FT}
+    K_c = hydraulic_conductivity(hcm,  FT(1), S_c)
+    K_w = hydraulic_conductivity(hcm, FT(1), S_w)
+    return S_w < S_c ? d_ds * (K_c - K_w)/K_w : FT(0)
 end
