@@ -33,9 +33,9 @@ NeuralSnow =
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-   @error("Please provide a site name as command line argument")
+    @error("Please provide a site name as command line argument")
 else
-   SITE_NAME = ARGS[1]
+    SITE_NAME = ARGS[1]
 end
 # =#
 climaland_dir = pkgdir(ClimaLand)
@@ -56,14 +56,15 @@ tf = FT(seconds[end])
 ndays = (tf - t0) / 3600 / 24
 Δt = FT(60 * 60)
 
+domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((long, lat)))
+
 surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
 #surf_temp = Snow.BulkSurfaceTemperatureModel{FT}()
 density = NeuralSnow.NeuralDepthModel(FT, Δt = Δt)
 #density = Snow.MinimumDensityModel(ρ)
 α_snow = NeuralSnow.NeuralAlbedoModel(
     FT,
-    FT(lat),
-    FT(long),
+    domain.space.surface,
     earth_param_set,
     Δt = Δt,
 )
@@ -78,8 +79,6 @@ DENS_MODEL = density isa Snow.MinimumDensityModel ? "mindens" : "znetwork"
 savedir = generate_output_path(
     "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(TEMP_MODEL)_$(ALB_MODEL)_$(DENS_MODEL)",
 )
-
-domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((long, lat)))
 
 model = ClimaLand.Snow.SnowModel(
     FT,

@@ -192,6 +192,10 @@ Internal function for returning the ScaleOuput's scaling constant.
     return x.sc[1]
 end
 
+@inline function fclamp(x::FT)::FT where {FT <: AbstractFloat}
+    return clamp(x, -floatmax(FT), floatmax(FT))
+end
+
 """
     (layer::ScaleOutput{FT})(x::AbstractArray{FT})::AbstractArray{FT} where {FT <: AbstractFloat}
 
@@ -200,7 +204,7 @@ Establishes the behavior of a ScaleOuput layer for generic inputs.
 @inline function (layer::ScaleOutput{FT})(
     x::T,
 )::T where {FT <: AbstractFloat, T <: AbstractArray{FT}}
-    return _get_scale(layer) .* x
+    return fclamp.(_get_scale(layer) .* x)
 end
 
 #Establishes the ScaleOuput type as a valid Flux layer:

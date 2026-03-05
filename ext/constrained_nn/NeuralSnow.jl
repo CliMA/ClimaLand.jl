@@ -380,7 +380,6 @@ function NeuralAlbedoModel(
 ) where {FT <: AbstractFloat}
     usemodel = get_albnetwork(FT, params = model_params)
     !isnothing(Δt) && _set_timescale!(usemodel, Δt)
-    #what is a valid isbits() form of lat/lon for the closure?
     model_lat = ClimaCore.Fields.coordinate_field(surface_space).lat
     model_lon = ClimaCore.Fields.coordinate_field(surface_space).long
     insol_ps = earth_param_set.insol_params
@@ -743,6 +742,10 @@ function ClimaLand.Snow.update_extra_prog!(
 end
 
 end
+
+# get rid of lat/lon point constructor, fix tests
+# write test for snow_surf_SW_down
+# fix sinh to be safesinh or something like that, use abs() < 80
 
 # sodankyla latitude is wrong in the artifact
 # how to make the sinh()/model NaN safe? / does model not work at really-high latitude sites where solar zenith angles don't do what's expected in training data?
