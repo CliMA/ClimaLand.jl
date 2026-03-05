@@ -396,7 +396,12 @@ end
     S0 = FT(0.5)
     S_l0 = FT(0.3)
     STemp0 = FT(270)
-    U0 = Snow.energy_from_T_and_swe(S0, STemp0, land.snow.parameters)
+    U0 = Snow.energy_from_T_and_swe(
+        S0,
+        STemp0,
+        land.snow.parameters.ΔS,
+        land.snow.parameters.earth_param_set,
+    )
 
     Y.snow.S .= S0
     Y.snow.S_l .= S_l0

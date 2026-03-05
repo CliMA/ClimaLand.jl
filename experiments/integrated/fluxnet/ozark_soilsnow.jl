@@ -268,10 +268,16 @@ _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 function compute_atmos_energy_fluxes(p)
-    e_flux_falling_snow =
-        Snow.energy_flux_falling_snow(atmos, p, land.snow.parameters)
-    e_flux_falling_rain =
-        Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
+    e_flux_falling_snow = Snow.energy_flux_falling_snow(
+        atmos,
+        p,
+        land.snow.parameters.earth_param_set,
+    )
+    e_flux_falling_rain = Snow.energy_flux_falling_rain(
+        atmos,
+        p,
+        land.snow.parameters.earth_param_set,
+    )
 
     return @. (1 - p.snow.snow_cover_fraction) * (
                   p.soil.turbulent_fluxes.lhf +

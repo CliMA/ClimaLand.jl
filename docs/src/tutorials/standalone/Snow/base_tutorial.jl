@@ -259,7 +259,7 @@ end
     pred::Matrix{T},
     input::Matrix{T},
 )::Matrix{T} where {T <: AbstractFloat}
-    return b.negative_one_over_Δt * view(input, (b.z_idx):(b.z_idx), :)
+    return b.negative_one_over_Δt[] * view(input, (b.z_idx):(b.z_idx), :)
 end
 
 ## and a :single dynamic version
@@ -267,7 +267,7 @@ end
     pred::Vector{T},
     input::Vector{T},
 )::T where {T <: AbstractFloat}
-    return b.negative_one_over_Δt * input[b.z_idx]
+    return b.negative_one_over_Δt[] * input[b.z_idx]
 end
 
 ## could also make additional methods to interact with the bound and set the time-step value:

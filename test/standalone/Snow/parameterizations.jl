@@ -109,45 +109,58 @@ for FT in (Float32, Float64)
         )
 
         T = FT.([275.0, 272, _T_freeze])
-        @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
-        @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
+        @test specific_heat_capacity(FT(1.0), param_set) == _cp_l
+        @test specific_heat_capacity(FT(0.0), param_set) == _cp_i
         ρ_snow = ρ_min
-        @test snow_thermal_conductivity(ρ_snow, parameters) ==
+        @test snow_thermal_conductivity(ρ_snow, parameters.κ_ice, param_set) ==
               κ_air +
               (FT(0.07) * (ρ_snow / _ρ_i) + FT(0.93) * (ρ_snow / _ρ_i)^2) *
               (κ_ice - κ_air)
         @test all(
-            maximum_liquid_mass_fraction.(ρ_min, T, Ref(parameters)) .-
+            maximum_liquid_mass_fraction.(ρ_min, T, θ_r, Ref(param_set)) .-
             [FT(0), θ_r * _ρ_l / ρ_snow, θ_r * _ρ_l / ρ_snow] .== 0,
         )
 
         SWE = cat(FT.(rand(10)), FT(0), dims = 1)
         z = SWE * _ρ_l ./ ρ_snow
         @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
-        ρ_calc = Snow.snow_bulk_density.(SWE, z, parameters)
+        ρ_calc = Snow.snow_bulk_density.(SWE, z, param_set)
         @test all(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
-        @test Snow.snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) ==
+        @test Snow.snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), param_set) ==
               _ρ_l
 
-        U = energy_from_q_l_and_swe(FT(1), FT(0.5), parameters)
-        T = snow_bulk_temperature(U, FT(1), FT(0.5), parameters)
+        U = energy_from_q_l_and_swe(FT(1), FT(0.5), ΔS, param_set)
+        T = snow_bulk_temperature(U, FT(1), FT(0.5), parameters.ΔS, param_set)
         @test T ≈ _T_freeze
 
-        U = energy_from_T_and_swe.(FT(1), FT.([272, 274]), parameters)
-        T = snow_bulk_temperature.(U, FT(1), FT.([0.0, 1.0]), parameters)
+        U =
+            energy_from_T_and_swe.(
+                FT(1),
+                FT.([272, 274]),
+                parameters.ΔS,
+                param_set,
+            )
+        T =
+            snow_bulk_temperature.(
+                U,
+                FT(1),
+                FT.([0.0, 1.0]),
+                parameters.ΔS,
+                param_set,
+            )
         @test all(T .≈ FT.([272, 274]))
 
         #Tests for surface_temp use unphysical args for straightforward formula checks:
         κ_surf_test = FT(pi * _cp_i)
         ρ_surf_test = FT(86400)
-        d0 = Snow.diurnal_damping_depth(κ_surf_test, ρ_surf_test, parameters)
+        d0 = Snow.diurnal_damping_depth(κ_surf_test, ρ_surf_test, param_set)
         @test d0 ≈ FT(1)
         d1 = Snow.surface_temp_scaling_length(
             κ_surf_test,
             ρ_surf_test,
             FT(log(2)),
-            parameters,
+            param_set,
         )
         @test d1 ≈ FT(0.5)
         resid_flux_1 = Snow.surface_residual_flux(
@@ -155,7 +168,7 @@ for FT in (Float32, Float64)
             κ_surf_test,
             ρ_surf_test,
             FT(log(2)),
-            parameters,
+            param_set,
         )
         @test resid_flux_1 == FT(0)
         resid_flux_2 = Snow.surface_residual_flux(
@@ -163,7 +176,7 @@ for FT in (Float32, Float64)
             κ_surf_test,
             ρ_surf_test,
             FT(log(2)),
-            parameters,
+            param_set,
         )
         @test resid_flux_2 ≈ FT(-4 * κ_surf_test)
         thermal_state = Thermodynamics.PhaseEquil_pTq(
@@ -195,7 +208,7 @@ for FT in (Float32, Float64)
             roughness_model,
             FT(1), #atmos_h,
             gustiness, #gustiness
-            parameters,
+            param_set,
         )
         @test flux_test_no_snow == κ_surf_test * (T_sfc_test - T_bulk_test)
 

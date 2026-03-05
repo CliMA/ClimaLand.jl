@@ -287,6 +287,57 @@ function default_cos_zenith_angle(
 end
 
 """
+    get_solar_noon_zenith(day_utc_noon::DateTime, lat::FT, lon::FT, params)::FT where {FT<:AbstractFloat}
+
+Utility function for using Insolation.jl to get the solar zenith angle at a particular coordinate's
+solar noon, deriving its solar noon time from UTC noon of that day using the longitude.
+"""
+function get_solar_noon_zenith(
+    day_utc_noon::Dates.DateTime,
+    lat::FT,
+    lon::FT,
+    params,
+)::FT where {FT <: AbstractFloat}
+    #Get the UTC time of solar noon: 1 degree of longitude is 4 minutes offset
+    # (There is an EquationOfTime component to this, but it will affect the output negligbly)
+    coord_noon = day_utc_noon - Minute(round(Int, FT(4) * lon))
+    return FT(Insolation.insolation(coord_noon, lat, lon, params).μ)
+end
+
+"""
+    solar_noon_zenith_cosine(
+        t::T,
+        start_date::Dates.DateTime;
+        latitude::LT,
+        longitude::LT,
+        insol_params::Insolation.Parameters.InsolationParameters{FT},
+    )
+
+Calculate cosine of the zenith angle with Insolation for solar noon of the given start date, insolation parameters, latitude,
+and longitude. Note that Insolation.jl returns 0 for the cosine when the
+sun is below the horizon.
+
+`lat` (latitude) and `lon` (longitude) can be a collections or a Number.
+"""
+function solar_noon_zenith_cosine(
+    t::T,
+    start_date::Dates.DateTime;
+    lat::LT,
+    lon::LT,
+    insol_params,
+) where {T, LT}
+    FT = eltype(lat)
+    current_datetime = if T <: ITime
+        # ITime may not have an epoch, so use start_date as fallback
+        isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+    else
+        start_date + Dates.Second(round(t))
+    end
+    day_utc_noon = floor(current_datetime, Day) + Hour(12)
+    return get_solar_noon_zenith.(day_utc_noon, lat, lon, Ref(insol_params))
+end
+
+"""
     CoupledAtmosphere{FT, T <: Union{FT, Fields.Field}} <: AbstractAtmosphericDrivers{FT}
 
 To be used when coupling to an atmosphere model. Contains fields that

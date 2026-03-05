@@ -192,6 +192,10 @@ Internal function for returning the ScaleOuput's scaling constant.
     return x.sc[1]
 end
 
+@inline function fclamp(x::FT)::FT where {FT <: AbstractFloat}
+    return clamp(x, -100.0f0, 100.0f0)
+end
+
 """
     (layer::ScaleOutput{FT})(x::AbstractArray{FT})::AbstractArray{FT} where {FT <: AbstractFloat}
 
