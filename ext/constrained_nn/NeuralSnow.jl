@@ -476,8 +476,10 @@ end
 Obtains the correct downward shortwave radiation magnitude for a snow model without an
 overlying canopy (standalone or just coupled with soil).
 """
-@inline snow_surf_SW_down(model_type::Union{Val{(:snow,)}, Val{(:snow, :soil)}}, p) =
-    p.drivers.SW_d
+@inline snow_surf_SW_down(
+    model_type::Union{Val{(:snow,)}, Val{(:snow, :soil)}},
+    p,
+) = p.drivers.SW_d
 
 """
     snow_surf_SW_down(model_type::Union{

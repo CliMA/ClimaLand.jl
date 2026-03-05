@@ -197,8 +197,46 @@ function set_snow_initial_conditions!(
             params.ΔS,
             params.earth_param_set,
         )
+    if :Z in propertynames(Y.snow)
+        FT = eltype(Y.snow.S)
+        #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
+        Y.snow.Z .= FT(3) .* Y.snow.S
+        if :P_avg in propertynames(Y.snow) #EMA is present, set all the vars
+            #drivers are not set yet - how to initialize this?
+            #=
+            Y.snow.P_avg .= abs.(p.drivers.P_snow)
+            Y.snow.T_avg .= p.drivers.T
+            Y.snow.R_avg .= p.drivers.SW_d
+            Y.snow.Qrel_avg .= Thermodynamics.relative_humidity.(
+                    params.earth_param_set.thermo_params,
+                    p.drivers.T,
+                    p.drivers.P,
+                    p.drivers.q,
+                )
+            Y.snow.u_avg .= p.drivers.u
+            =#
+        end
+    end
+    if :A in propertynames(Y.snow)
+        #for now just use a reasonable guess, do we want to bring in and use the extension here?:
+        Y.snow.A .= initial_albedo_constraint.(Y.snow.S)
+    end
     return nothing
 end
+
+"""
+    initial_albedo_constraint(S::FT)
+
+Enforces the constraint that A must be snowy only if snow exists:
+"""
+function initial_albedo_constraint(S::FT) where {FT}
+    if S > sqrt(eps(FT)) # if snow is on the ground
+        return FT(0.7)
+    else
+        return FT(0.3)
+    end
+end
+
 """
     enforce_snow_temperature_constraint(S::FT, T::FT)
 

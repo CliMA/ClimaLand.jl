@@ -204,7 +204,7 @@ Establishes the behavior of a ScaleOuput layer for generic inputs.
 @inline function (layer::ScaleOutput{FT})(
     x::T,
 )::T where {FT <: AbstractFloat, T <: AbstractArray{FT}}
-    return fclamp.(_get_scale(layer) .* x)
+    return _get_scale(layer) .* x
 end
 
 #Establishes the ScaleOuput type as a valid Flux layer:
