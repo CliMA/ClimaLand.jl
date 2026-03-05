@@ -621,7 +621,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "soc"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]
+    diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif", "vcmax25"]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end
