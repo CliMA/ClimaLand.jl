@@ -50,7 +50,7 @@ const FT = Float64;
 # matter.
 const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 # If you want to do run the simulation with uncalibrated parameters, type
-# UNCALIRBATED=""` in the terminal and run this script, or
+# `export UNCALIBRATED=""` in the terminal and run this script, or
 # pass `UNCALIBRATED=""` as an environment variable on buildkite.
 const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
 context = ClimaComms.context()
@@ -119,7 +119,7 @@ function setup_model(
         photosynthesis,
         conductance,
         soil_moisture_stress,
-        biomass
+        biomass,
     )
 
     # Snow model setup
