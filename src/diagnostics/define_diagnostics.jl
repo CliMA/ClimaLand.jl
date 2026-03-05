@@ -600,19 +600,6 @@ function define_diagnostics!(land_model, possible_diags)
             compute_radiation_shortwave_net!(out, Y, p, t, land_model),
     )
 
-    ## Drivers Module ##
-    # Soil organic carbon
-    conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "soc",
-        long_name = "Soil organic carbon",
-        standard_name = "soil_organic_carbon",
-        units = "kg C m^-3",
-        comments = "Mass of organic carbon per volume of soil. (depth resolved)",
-        compute! = (out, Y, p, t) ->
-            compute_soil_organic_carbon!(out, Y, p, t, land_model),
-    )
-
     ### Canopy - Vegetation carbon (derived from prescribed biomass)
     # Vegetation carbon
     conditional_add_diagnostic_variable!(
@@ -1039,9 +1026,19 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "soc",
         long_name = "Soil Organic Carbon",
         standard_name = "soil_organic_carbon",
-        units = "kg C m^3",
-        comments = "Concentration of soil organic carbon. (depth resolved)",
+        units = "kg C m^-3",
+        comments = "Mass concentration of soil organic carbon. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soc!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "soc_int",
+        long_name = "1m Depth Integrated Soil Organic Carbon",
+        standard_name = "integrated_soc",
+        units = "kg C m^-2",
+        comments = "1m Integrated Mass concentration of soil organic carbon",
+        compute! = (out, Y, p, t) ->
+            compute_integrated_soc!(out, Y, p, t, land_model),
     )
 
     # Soil water content
