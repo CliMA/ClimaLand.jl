@@ -78,8 +78,10 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # Get maximum simulation start and end dates
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+# Constrain to 2000-2020 (MODIS LAI availability) and skip first day
+# so TimeVaryingInputs have data before t=0 even if initial rows are missing
+start_date = max(data_start + Day(1), DateTime(2000, 1, 1))
 stop_date = DateTime(2010, 4, 1, 6, 30)  # Set the stop date manually
 Δt = 450.0  # seconds
 

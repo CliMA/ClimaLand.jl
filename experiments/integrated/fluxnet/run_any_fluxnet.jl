@@ -100,8 +100,11 @@ pft = ClimaLand.Canopy.clm_dominant_pft(land_domain.space.surface)
 dt = Float64(450) # 7.5 minutes
 
 # Get data dates and forcing from the flux tower site
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+# Constrain to 2000-2020 (MODIS LAI availability) and skip first day
+# so TimeVaryingInputs have data before t=0 even if initial rows are missing
+start_date = max(data_start + Day(1), DateTime(2000, 1, 1))
+stop_date = min(data_stop, DateTime(2020, 12, 31, 23, 59, 59))
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,

@@ -48,8 +48,11 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
 # It is also useful to know the bounds of the data,
 # in UTC, to use as the start and stop date of the simulation.
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
+# Constrain to 2000-2020 (MODIS LAI availability) and skip first day
+# so TimeVaryingInputs have data before t=0 even if initial rows are missing
+start_date = max(data_start + Day(1), DateTime(2000, 1, 1))
+stop_date = min(data_stop, DateTime(2020, 12, 31, 23, 59, 59))
 
 # Now we can construct the forcing objects. Under the hood, this
 # function finds the local path to the fluxtower data (and downloads it
