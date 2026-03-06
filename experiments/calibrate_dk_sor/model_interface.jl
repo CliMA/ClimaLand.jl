@@ -24,6 +24,7 @@ using ClimaDiagnostics
 using ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 import ClimaUtilities.TimeManager: date
+using Insolation
 
 import EnsembleKalmanProcesses as EKP
 import JLD2
@@ -82,15 +83,35 @@ function ClimaCalibrate.forward_model(iteration, member)
         FT,
     )
 
-    # MODIS LAI
+    # FLUXNET LAI — same as run_dk_sor_default.jl
     surface_space = canopy_domain.space.surface
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        surface_space,
-        sim_start,
-        sim_stop,
-    )
+    met_ds = NCDataset(met_nc_path, "r")
+    lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
+    lai_times = met_ds["time"][:]
+    close(met_ds)
+    lai_seconds = [Float64(Second(t - Hour(time_offset) - sim_start).value) for t in lai_times]
+    valid_lai = .!isnan.(lai_data)
+    LAI = TimeVaryingInput(lai_seconds[valid_lai], lai_data[valid_lai])
 
-    # Build model
+    # Explicit site parameters — same as run_dk_sor_default.jl
+    χl           = FT(0.25)
+    α_PAR_leaf   = FT(0.1)
+    α_NIR_leaf   = FT(0.45)
+    τ_PAR_leaf   = FT(0.05)
+    τ_NIR_leaf   = FT(0.25)
+    Ω            = FT(1)
+    rooting_depth = FT(0.3)
+    ν            = FT(0.45)
+    θ_r          = FT(0.07)
+    K_sat        = FT(1e-5)
+    vg_n         = FT(1.6)
+    vg_α         = FT(1.6)
+
+    hydrology_cm          = ClimaLand.Soil.vanGenuchten{FT}(; α = vg_α, n = vg_n)
+    retention_parameters  = (; ν, hydrology_cm, θ_r, K_sat)
+    composition_parameters = (; ν_ss_om = FT(0.03), ν_ss_quartz = FT(0.47), ν_ss_gravel = FT(0.12))
+
+    # Build model — same as run_dk_sor_default.jl
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
     forcing_nt = (;
         atmos = atmos,
@@ -99,14 +120,20 @@ function ClimaCalibrate.forward_model(iteration, member)
     )
 
     biomass = Canopy.PrescribedBiomassModel{FT}(
-        canopy_domain,
+        land_domain,
         LAI,
         toml_dict;
+        rooting_depth,
         height = FT(25),
         SAI = FT(1.0),
         RAI = FT(17.5),
     )
-
+    radiation_parameters = (;
+        Ω,
+        G_Function = CLMGFunction(χl),
+        α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf,
+    )
+    radiative_transfer = Canopy.TwoStreamModel{FT}(canopy_domain, toml_dict; radiation_parameters)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         canopy_domain, toml_dict;
         n_stem = 1,
@@ -123,10 +150,19 @@ function ClimaCalibrate.forward_model(iteration, member)
         conductance = Canopy.PModelConductance{FT}(toml_dict),
         soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
             land_domain,
-            toml_dict,
+            toml_dict;
+            soil_params = (; ν, θ_r),
         ),
         biomass,
+        radiative_transfer,
         hydraulics,
+    )
+
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        land_domain, (; atmos, radiation), toml_dict;
+        prognostic_land_components, retention_parameters, composition_parameters,
+        S_s = FT(1e-3),
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
     )
 
     land = LandModel{FT}(
@@ -137,6 +173,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         DT;
         prognostic_land_components,
         canopy,
+        soil,
     )
 
     # Initial conditions
@@ -145,7 +182,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         evaluate!(p.drivers.T, atmos.T, t)
 
         (; θ_r, ν, ρc_ds) = model.soil.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) .* FT(0.95)
         Y.soil.θ_i .= FT(0.0)
         ρc_s =
             ClimaLand.Soil.volumetric_heat_capacity.(
