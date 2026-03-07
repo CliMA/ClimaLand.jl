@@ -850,15 +850,6 @@ function surface_emissivity(model::AbstractModel, Y, p) end
 Estimates the specific humidity given the dewpoint temperature, temperature of the air
 in Kelvin, and air pressure in Pa, along with the ClimaLand earth_param_set. This is useful
 for creating the PrescribedAtmosphere - which needs specific humidity - from ERA5 reanalysis data.
-
-We first compute the relative humidity using the Magnus formula, then the saturated vapor pressure, and then
-we compute q from vapor pressure and saturated vapor pressure.
-
-For more information on the Magnus formula, see e.g.
-Lawrence, Mark G. (1 February 2005).
-"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air:
-A Simple Conversion and Applications".
-Bulletin of the American Meteorological Society. 86 (2): 225–234.
 """
 function specific_humidity_from_dewpoint(
     T_dew_air::data_FT,
@@ -867,43 +858,22 @@ function specific_humidity_from_dewpoint(
     earth_param_set,
 ) where {data_FT <: Real}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    _T_freeze = LP.T_freeze(earth_param_set)
-    sim_FT = typeof(_T_freeze)
-    # Obtain the relative humidity. This function requires temperatures in Celsius
-    rh::sim_FT = rh_from_dewpoint(
-        sim_FT(T_dew_air) - _T_freeze,
-        sim_FT(T_air) - _T_freeze,
-    )
-    q = Thermodynamics.q_vap_from_RH(
+    sim_FT = typeof(LP.T_freeze(earth_param_set))
+
+    # Calculate density from ideal gas law at current temperature and pressure
+    # Assuming dry air, which is acceptable since vapor pressure is a small fraction
+    ρ_air =
+        Thermodynamics.air_density(thermo_params, sim_FT(T_air), sim_FT(P_air))
+
+    # Calculate specific humidity which is `q_vap_saturation(T_dew, ρ_air)`
+    # Since dewpoint, by definition, is the point of saturation.
+    q = Thermodynamics.q_vap_saturation(
         thermo_params,
-        sim_FT(P_air),
-        sim_FT(T_air),
-        rh,
+        sim_FT(T_dew_air),
+        ρ_air,
         Thermodynamics.Liquid(),
     )
     return q
-end
-
-"""
-    rh_from_dewpoint(Td_C, T_C)
-
-Returns the relative humidity given the dewpoint temperature in Celsius and the
-air temperature in Celsius, using the Magnus formula.
-Since this formula is not restricted to the [0,1] range,
-we enforce it.
-
-For more information on the Magnus formula, see e.g.
-Lawrence, Mark G. (1 February 2005).
-"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air:
-A Simple Conversion and Applications".
-Bulletin of the American Meteorological Society. 86 (2): 225–234.
-"""
-function rh_from_dewpoint(Td_C::FT, T_C::FT) where {FT <: Real}
-    c = FT(243.04) # C
-    b = FT(17.625) # unitless
-    γ = Td_C * b / (c + Td_C)
-    rh = exp(γ - b * T_C / (c + T_C))
-    return max(FT(0), min(rh, FT(1.0)))
 end
 
 """

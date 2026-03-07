@@ -103,10 +103,7 @@ for FT in (Float32, Float64)
         @test parameters.κ_ice == κ_ice
         @test typeof(parameters.κ_ice) == FT
 
-        roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(
-            parameters.z_0m,
-            parameters.z_0b,
-        )
+        roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
 
         T = FT.([275.0, 272, _T_freeze])
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
@@ -166,12 +163,6 @@ for FT in (Float32, Float64)
             parameters,
         )
         @test resid_flux_2 ≈ FT(-4 * κ_surf_test)
-        thermal_state = Thermodynamics.PhaseEquil_pTq(
-            thermo_params,
-            FT(101325), #P
-            FT(290), #T
-            FT(0.0003), #q
-        )
         T_sfc_test = FT(272)
         T_bulk_test = FT(270)
         gustiness = SurfaceFluxes.ConstantGustinessSpec(FT(1))
