@@ -911,24 +911,17 @@ function specific_humidity_from_dewpoint(
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     sim_FT = typeof(LP.T_freeze(earth_param_set))
 
-    # Obtain true rh using vapor pressure
-    e_sat_dew = Thermodynamics.saturation_vapor_pressure(
+    # Calculate density from ideal gas law at current temperature and pressure
+    # Assuming dry air, which is acceptable since vapor pressure is a small fraction
+    ρ_air =
+        Thermodynamics.air_density(thermo_params, sim_FT(T_air), sim_FT(P_air))
+
+    # Calculate specific humidity which is `q_vap_saturation(T_dew, ρ_air)`
+    # Since dewpoint, by definition, is the point of saturation.
+    q = Thermodynamics.q_vap_saturation(
         thermo_params,
         sim_FT(T_dew_air),
-        Thermodynamics.Liquid(),
-    )
-    e_sat_T = Thermodynamics.saturation_vapor_pressure(
-        thermo_params,
-        sim_FT(T_air),
-        Thermodynamics.Liquid(),
-    )
-    rh::sim_FT = e_sat_dew / e_sat_T
-
-    q = Thermodynamics.q_vap_from_RH(
-        thermo_params,
-        sim_FT(P_air),
-        sim_FT(T_air),
-        rh,
+        ρ_air,
         Thermodynamics.Liquid(),
     )
 
