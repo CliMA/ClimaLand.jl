@@ -69,6 +69,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     z_0b::FT
     "Maximum dry soil layer thickness under evaporation (m)"
     d_ds::FT
+    ""
+    evap_p::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
@@ -119,6 +121,7 @@ function EnergyHydrologyParameters(
     z_0b = toml_dict["soil_scalar_roughness_length"],
     Ω = toml_dict["ice_impedance_omega"],
     d_ds = toml_dict["maximum_dry_soil_layer_depth"],
+    evap_p = toml_dict["evaporation_exponent"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
@@ -194,6 +197,7 @@ function EnergyHydrologyParameters(
         z_0b,
         Ω,
         d_ds,
+        evap_p,
         parameters...,
     )
 end
@@ -1000,6 +1004,7 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
     T_sfc = component_temperature(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     h_sfc = ClimaLand.surface_height(model, Y, p)
     atmos = model.boundary_conditions.top.atmos
     ρ_sfc = @.lazy(
@@ -1013,7 +1018,13 @@ function ClimaLand.component_specific_humidity(model::EnergyHydrology, Y, p)
         ),
     )
     q_sfc = @. lazy(
-        soil_specific_humidity(T_sfc, ρ_sfc, Tf_depressed_sfc, earth_param_set),
+        soil_specific_humidity(
+            T_sfc,
+            ρ_sfc,
+            ψ_sfc,
+            Tf_depressed_sfc,
+            earth_param_set,
+        ),
     )
     return q_sfc
 end
@@ -1021,18 +1032,23 @@ end
 function soil_specific_humidity(
     T_sfc::FT,
     ρ_sfc::FT,
+    ψ_sfc::FT,
     Tf_depressed_sfc::FT,
     earth_param_set,
 ) where {FT}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    g = LP.grav(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    M_w = LP.molar_mass_water(earth_param_set)
     # Compute q_soil using ice or liquid as appropriate
     if T_sfc > Tf_depressed_sfc # liquid water evaporation
-        q_sfc = Thermodynamics.q_vap_saturation(
-            thermo_params,
-            T_sfc,
-            ρ_sfc,
-            Thermodynamics.Liquid(),
-        )
+        q_sfc =
+            Thermodynamics.q_vap_saturation(
+                thermo_params,
+                T_sfc,
+                ρ_sfc,
+                Thermodynamics.Liquid(),
+            ) * exp(g * min(ψ_sfc, FT(0)) * M_w / (R * T_sfc))
     else
         q_sfc = Thermodynamics.q_vap_saturation(
             thermo_params,
@@ -1059,8 +1075,7 @@ function ClimaLand.get_update_surface_humidity_function(
         u_star::FT,
         z_0m::FT,
         z_0b::FT,
-        K_sfc::FT,
-        K_c::FT,
+        g_liq::FT,
         β_ice::FT,
         Tf_depressed::FT,
     )::FT where {FT}
@@ -1075,18 +1090,16 @@ function ClimaLand.get_update_surface_humidity_function(
         )
         q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
         qsat_sfc::FT = inputs.q_vap_sfc_guess
-        Ẽ_pot::FT = -inputs.ρ_int * g_h * (q_air - qsat_sfc)
-        β = FT(1)
-        if q_air < qsat_sfc # water loss to atmosphere, adjust β
-            if inputs.T_sfc_guess > Tf_depressed # T_sfc is not updated, so T_sfc = T_sfc_guess
-                x = 4 * K_sfc * (1 + Ẽ_pot / (4 * K_c))
-                β = x / (Ẽ_pot + x)
-            else # sublimation, set evaporation to zero
-                β = β_ice
+        if inputs.T_sfc_guess < Tf_depressed # sublimation
+            if q_air < qsat_sfc # water loss to atmosphere, adjust β
+                return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
+            else
+                return qsat_sfc
             end
+        else
+            return (g_liq / g_h * qsat_sfc + q_air) / (1 + g_liq / g_h)
         end
-        q = β * qsat_sfc + (1 - β) * q_air # q_vap_sfc_guess is already the saturated value
-        return q
+
     end
     # Closure
     FT = eltype(Y)
@@ -1095,9 +1108,7 @@ function ClimaLand.get_update_surface_humidity_function(
     T_sfc = component_temperature(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
-    (; K_sat, ν, θ_r, hydrology_cm, Ω, γ, γT_ref, earth_param_set) =
-        model.parameters
-    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
+    (; ν, θ_r, d_ds, evap_p, hydrology_cm, earth_param_set) = model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
@@ -1109,42 +1120,21 @@ function ClimaLand.get_update_surface_humidity_function(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT)))
-    @. θ_i_sfc = max(θ_i_sfc, FT(0))
-    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
 
-    K_sfc = p.soil.sfc_scratch
-    @. K_sfc =
-        impedance_factor(θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc), Ω) *
-        viscosity_factor(T_sfc, γ, γT_ref) *
-        hydraulic_conductivity(
-            hydrology_cm_sfc,
-            K_sat_sfc,
-            effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc),
-        ) *
-        _ρ_liq # as a mass flux
-    K_c = @. lazy(
-        max(
-            hydraulic_conductivity(
-                hydrology_cm_sfc,
-                K_sat_sfc,
-                hydrology_cm_sfc.S_c,
-            ),
-            sqrt(eps(FT)),
-        ) * _ρ_liq,
-    ) # as a mass flux
-    update_q_vap_sfc_field(K_sfc, K_c, β_ice, Tf_depressed) =
-        (args...) -> update_q_vap_sfc_at_a_point(
-            args...,
-            K_sfc,
-            K_c,
-            β_ice,
-            Tf_depressed,
-        )
+    update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed) =
+        (args...) ->
+            update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, Tf_depressed)
     return @. lazy(
         update_q_vap_sfc_field(
-            K_sfc,
-            K_c,
+            soil_conductance(
+                max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT))),
+                hydrology_cm_sfc,
+                ν_sfc,
+                θ_r_sfc,
+                d_ds,
+                evap_p,
+                earth_param_set,
+            ),
             (θ_i_sfc / ν_sfc)^4,
             Tf_depressed_sfc,
         ),
@@ -1321,4 +1311,51 @@ function ClimaLand.total_energy_per_area!(
 )
     ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
     return nothing
+end
+
+"""
+    soil_conductance(θ_l::FT,
+                    hydrology_cm::C,
+                    ν::FT,
+                    θ_r::FT,
+                    d_ds::FT,
+                    p::FT,
+                    earth_param_set::EP,
+                   ) where {FT, EP, C}
+
+Computes the resistance of the top of the soil column to
+water vapor diffusion, as a function of the surface 
+volumetric liquid water fraction `θ_l` and other soil parameters.
+"""
+function soil_conductance(
+    θ_l::FT,
+    hydrology_cm::C,
+    ν::FT,
+    θ_r::FT,
+    d_ds::FT,
+    p::FT,
+    earth_param_set::EP,
+) where {FT, EP, C}
+    (; S_c) = hydrology_cm
+    _D_vapor = FT(LP.D_vapor(earth_param_set))
+    S_l = effective_saturation(ν, θ_l, θ_r)
+    dsl::FT = dry_soil_layer_thickness(S_l, S_c, d_ds, p)
+    g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
+    return g_soil
+end
+
+"""
+    dry_soil_layer_thickness(S_l::FT, S_c::FT, d_ds::FT, p::FT)::FT where {FT}
+
+Returns the maximum dry soil layer thickness that can develop under vapor flux; 
+this is used when computing the soil resistance to vapor flux similar to
+Swenson et al (2012)/Sakaguchi and Zeng (2009).
+"""
+function dry_soil_layer_thickness(
+    S_l::FT,
+    S_c::FT,
+    d_ds::FT,
+    p::FT,
+)::FT where {FT}
+    return S_l < S_c ? d_ds * ((S_c - S_l) / S_l)^p : FT(0)
 end

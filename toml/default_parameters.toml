@@ -591,3 +591,10 @@ value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
+
+# Soil Parameters
+["evaporation_exponent"]
+value = 1.0
+type = "float"
+description = "Exponent of soil dry soil layer factor"
+tag = "EnergyHydrologyParameters"
