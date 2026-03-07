@@ -383,6 +383,16 @@ type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
 
+# CLM two-band soil albedo correction
+# CLM soil albedo is ~15-25% too bright globally (Braghiere et al. 2023, AGU Advances,
+# doi:10.1029/2023AV000910). This scale factor is a first-order correction pending
+# full hyperspectral soil albedo implementation. Applied to both VIS (PAR) and NIR bands.
+["soil_albedo_scale_factor"]
+value = 0.85
+type = "float"
+description = "Scale factor applied to CLM PAR and NIR soil albedo (both dry and wet)"
+tag = "CLMTwoBandSoilAlbedo"
+
 # Bucket model parameters
 
 ["land_bucket_capacity"]

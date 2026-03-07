@@ -1028,3 +1028,24 @@ end
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+
+# Ground heat flux: CF hfdsl convention (positive = downward into soil).
+# ClimaCore uses the outward-normal convention at the top soil boundary:
+# p.soil.top_bc.heat > 0 means heat leaving the soil upward.
+# Negating gives the CF-compliant downward-into-soil flux.
+function compute_ground_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, EnergyHydrology},
+)
+    if isnothing(out)
+        out = zeros(axes(p.soil.top_bc.heat)) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = -p.soil.top_bc.heat
+        return out
+    else
+        @. out = -p.soil.top_bc.heat
+    end
+end

@@ -50,6 +50,7 @@ function update_albedo!(
     @. p.soil.NIR_albedo = albedo.NIR_albedo
 end
 
+
 """
      CLMTwoBandSoilAlbedo{
         FT <: AbstractFloat,
@@ -84,6 +85,11 @@ struct CLMTwoBandSoilAlbedo{
     NIR_albedo_wet::SF
     "Thickness of top of soil used in albedo calculations (m)"
     albedo_calc_top_thickness::FT
+    "Scale factor applied to CLM PAR and NIR soil albedo (both dry and wet) before
+    passing to the Two-Stream RT model. CLM lookup-table albedos are ~15-25% too
+    bright globally (Braghiere et al. 2023, AGU Advances, doi:10.1029/2023AV000910).
+    Default 0.85 is a first-order correction pending full hyperspectral implementation."
+    soil_albedo_scale_factor::FT
 end
 
 function CLMTwoBandSoilAlbedo{FT}(;
@@ -92,6 +98,7 @@ function CLMTwoBandSoilAlbedo{FT}(;
     PAR_albedo_wet,
     NIR_albedo_wet,
     albedo_calc_top_thickness = FT(0.02),
+    soil_albedo_scale_factor = FT(0.85),
 ) where {FT}
     return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry)}(
         PAR_albedo_dry,
@@ -99,6 +106,7 @@ function CLMTwoBandSoilAlbedo{FT}(;
         PAR_albedo_wet,
         NIR_albedo_wet,
         albedo_calc_top_thickness,
+        soil_albedo_scale_factor,
     )
 end
 
@@ -190,10 +198,11 @@ function update_albedo!(
     ν_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.ν)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.θ_r)
     S_sfc = @. lazy(effective_saturation(ν_sfc, θ_sfc, θ_r_sfc))
+    scale = albedo.soil_albedo_scale_factor
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet) * scale
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet) * scale
 end
 
 """

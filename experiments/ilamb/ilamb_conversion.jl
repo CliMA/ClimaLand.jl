@@ -187,6 +187,16 @@ const ILAMB_VARIABLES = Dict(
     ),
     "tair" => ILAMBMapping("tas", "Air Temperature", 1.0, "K", "K"),
     "tsoil" => ILAMBMapping("tsl", "Temperature of Soil", 1.0, "K", "K"),
+    # Ground heat flux: CF hfdsl (downward heat flux in soil, positive = into soil).
+    # The model ghf diagnostic already applies the outward-normal sign correction
+    # (negation of p.soil.top_bc.heat), so conversion_factor = 1.0 is correct.
+    "ghf" => ILAMBMapping(
+        "hfdsl",
+        "Downward Heat Flux in Soil",
+        1.0,
+        "W m-2",
+        "W m^-2",
+    ),
 )
 
 """

@@ -57,7 +57,8 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)"
+run_name = get(ENV, "RUN_NAME", "snowy_land_pmodel_longrun")
+root_path = "$(run_name)_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)

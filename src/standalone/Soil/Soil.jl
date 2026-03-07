@@ -264,6 +264,7 @@ function EnergyHydrology{FT}(
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,
+        soil_albedo_scale_factor = FT(toml_dict["soil_albedo_scale_factor"]),
     ),
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
         toml_dict,

@@ -937,6 +937,21 @@ function define_diagnostics!(land_model, possible_diags)
         compute! = (out, Y, p, t) -> compute_sw_up!(out, Y, p, t, land_model),
     )
 
+    # Ground heat flux (CF: hfdsl — downward heat flux in soil)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ghf",
+        long_name = "Ground Heat Flux",
+        standard_name = "downward_heat_flux_in_soil",
+        units = "W m^-2",
+        comments = "Downward heat flux at the soil surface (positive = heat flowing
+        into the soil). CF standard name hfdsl. ClimaCore stores the top soil
+        boundary flux with the outward-normal convention (positive = upward), so
+        the CF-compliant diagnostic negates the internal field p.soil.top_bc.heat.",
+        compute! = (out, Y, p, t) ->
+            compute_ground_heat_flux!(out, Y, p, t, land_model),
+    )
+
     # Evapotranspiration
     conditional_add_diagnostic_variable!(
         possible_diags;
