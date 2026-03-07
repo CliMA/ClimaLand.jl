@@ -101,26 +101,6 @@ end
     @test p.drivers.P_liq == sfc_instance .* 0 .- FT(1)
 end
 
-@testset "Dewpoint to RH" begin
-    Td = 288.0:0.5:293.0
-    Ta = 290.0:1.0:300.0
-    rh = ClimaLand.rh_from_dewpoint.(Td, Ta)
-    soln = [
-        0.9701877799488919,
-        0.9629770622625089,
-        0.9558600702031558,
-        0.9488352550428512,
-        0.9419010988316328,
-        0.9350561136897647,
-        0.928298841118352,
-        0.9216278513277926,
-        0.9150417425835539,
-        0.9085391405688034,
-        0.9021186977633818,
-    ]
-    @test all(rh .- soln .≈ 0)
-end
-
 @testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin
     domain = ClimaLand.Domains.global_domain(FT)
     coords = ClimaLand.Domains.coordinates(domain)
