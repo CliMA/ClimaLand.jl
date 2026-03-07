@@ -523,8 +523,10 @@ function make_set_subseasonal_initial_conditions(
     interpolation_method = Interpolations.Linear(),
 )
     function set_ic!(Y, p, t, land)
-        surface_space = land.domain.space.surface
-        subsurface_space = land.domain.space.subsurface
+        domain = ClimaLand.get_domain(land)
+        surface_space = domain.space.surface
+        subsurface_space = domain.space.subsurface
+        FT = eltype(Y.soil.ϑ_l)
 
         # Set initial conditions that aren't read in from file
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
@@ -549,7 +551,7 @@ function make_set_subseasonal_initial_conditions(
             regridder_kwargs = (; extrapolation_bc, interpolation_method),
         )
 
-        CL.Simulations.set_snow_initial_conditions!(
+        set_snow_initial_conditions!(
             Y,
             p,
             surface_space,
@@ -560,7 +562,7 @@ function make_set_subseasonal_initial_conditions(
             interpolation_method = interpolation_method,
         )
 
-        CL.Simulations.set_soil_initial_conditions_from_temperature_and_total_water!(
+        set_soil_initial_conditions_from_temperature_and_total_water!(
             Y,
             subsurface_space,
             ic_path,
