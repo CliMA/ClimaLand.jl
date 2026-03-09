@@ -1,0 +1,14 @@
+[soilCO2_pre_exponential_factor]
+value = 2000.0
+type = "float"
+used_in = ["Land"]
+
+[michaelis_constant]
+value = 0.046
+type = "float"
+used_in = ["Land"]
+
+[O2_michaelis_constant]
+value = 0.066
+type = "float"
+used_in = ["Land"]
