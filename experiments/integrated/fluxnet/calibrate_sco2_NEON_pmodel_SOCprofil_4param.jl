@@ -57,10 +57,8 @@ using TOML
 
 # ── 2. Configuration ─────────────────────────────────────────────────────────
 const FT = Float64
-site_ID = "NEON-srer"
-#savefolder = "20260303_wSOCprofil_const_2017_localdomain_noEax_oldPrior_10it"
-savefolder = "20260303_wSOCprofil_const_10it_newPrior"
-
+site_ID = "NEON-cper"
+savefolder = "20260303_wSOCprofil_const_2017_localdomain_withEax_newPrior_comparison"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 climaland_dir = pkgdir(ClimaLand)
 
@@ -77,14 +75,14 @@ dt = Float64(450)  # 7.5 minutes
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
 #start_date = start_date - Day(spinup_days)  # include spinup period
 
-#start_date = DateTime(2017, 1, 1)
-#stop_date = DateTime(2017, 12, 31)
+start_date = DateTime(2019, 1, 1)
+stop_date = DateTime(2019, 12, 31)
 spinup_date = start_date + Day(spinup_days)
 
 # UKI settings
 rng_seed = 1234
 rng = Random.MersenneTwister(rng_seed)
-N_iterations = 10
+N_iterations = 5
 
 # ── 3. One-time Setup (domain, forcing, LAI) ─────────────────────────────────
 # Use global domain settings: 15m depth, 15 vertical elements, stretched grid
@@ -215,17 +213,17 @@ target_layer = argmin(abs.(z_vals .- target_depth))
 println("Target layer index: $target_layer (z = $(z_vals[target_layer]) m, target = $target_depth m)")
 
 # ── 6. Model Function ────────────────────────────────────────────────────────
-#function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-function run_model(α_sx_val, kM_sx_val, kM_o2_val)
+function run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
     # Write temporary TOML override for calibrated DAMM parameters
     
-    #[soilCO2_activation_energy]
-    #value = $Ea_sx_val
-    #type = "float"
     
     toml_content = """
     [soilCO2_pre_exponential_factor]
     value = $α_sx_val
+    type = "float"
+
+    [soilCO2_activation_energy]
+    value = $Ea_sx_val
     type = "float"
 
     [michaelis_constant]
@@ -397,10 +395,8 @@ end
 end
 
 # ── 7. Forward Model G ───────────────────────────────────────────────────────
-#function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-#    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
-function G(α_sx_val, kM_sx_val, kM_o2_val)
-    simulation, _ = run_model(α_sx_val, kM_sx_val, kM_o2_val)
+function G(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
+    simulation, _ = run_model(α_sx_val, Ea_sx_val, kM_sx_val, kM_o2_val)
 
     # Extract sco2_ppm at target layer
     (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
@@ -445,10 +441,10 @@ println("\n=== Setting up UKI calibration ===")
 
 # Prior configuration: (name, mean, std, lower, upper)
 prior_configs = [
-    (name = "α_sx",  mean = 2000.0, std = 1000.0, lower = 100.0,  upper = 20000.0),
-    #(name = "Ea_sx", mean = 61000.0, std = 10000.0, lower = 40000.0, upper = 80000.0),
-    (name = "kM_sx", mean = 0.046,    std = 0.020,    lower = 1e-5,    upper = 0.1),
-    (name = "kM_o2", mean = 0.066,   std = 0.03,   lower = 1e-5,    upper = 0.12),
+    (name = "α_sx",  mean = 10000.0, std = 6000.0, lower = 1000.0,  upper = 200000.0),
+    (name = "Ea_sx", mean = 61000.0, std = 10000.0, lower = 40000.0, upper = 80000.0),
+    (name = "kM_sx", mean = 0.04,    std = 0.02,    lower = 1e-5,    upper = 0.1),
+    (name = "kM_o2", mean = 0.002,   std = 0.001,   lower = 1e-5,    upper = 0.1),
 ]
 
 priors = [PD.constrained_gaussian(p.name, p.mean, p.std, p.lower, p.upper) for p in prior_configs]
@@ -483,9 +479,9 @@ final_params = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)
 println("\n=== Calibration Complete ===")
 println("Final parameter means:")
 println("  α_sx  = ", round(final_params[1], sigdigits = 5))
-#println("  Ea_sx = ", round(final_params[2], sigdigits = 5))
-println("  kM_sx = ", round(final_params[2], sigdigits = 4))
-println("  kM_o2 = ", round(final_params[3], sigdigits = 4))
+println("  Ea_sx = ", round(final_params[2], sigdigits = 5))
+println("  kM_sx = ", round(final_params[3], sigdigits = 4))
+println("  kM_o2 = ", round(final_params[4], sigdigits = 4))
 
 # ── 10. Visualization ────────────────────────────────────────────────────────
 savedir = joinpath(@__DIR__, "calibrate_sco2_$(site_ID)_output")
@@ -519,9 +515,9 @@ open(params_file, "w") do io
     println(io, "=== Calibration Complete ===")
     println(io, "Final parameter means:")
     println(io, "  α_sx  = ", round(final_params[1], sigdigits = 5))
-    #println(io, "  Ea_sx = ", round(final_params[2], sigdigits = 5))
-    println(io, "  kM_sx = ", round(final_params[2], sigdigits = 4))
-    println(io, "  kM_o2 = ", round(final_params[3], sigdigits = 4))
+    println(io, "  Ea_sx = ", round(final_params[2], sigdigits = 5))
+    println(io, "  kM_sx = ", round(final_params[3], sigdigits = 4))
+    println(io, "  kM_o2 = ", round(final_params[4], sigdigits = 4))
 end
 println("Saved final parameters to: $params_file")
 
@@ -602,9 +598,9 @@ println("\nDone.")
   final_params_all = EKP.get_ϕ_final(prior, ensemble_kalman_process)
   best_params = final_params_all[:, best_idx]
   println("Best params: α_sx=$(round(best_params[1],sigdigits=5)),") 
-  #println("Ea_sx=$(round(best_params[2],sigdigits=5)),")
-  println("kM_sx=$(round(best_params[2],sigdigits=4)),") 
-  println("kM_o2=$(round(best_params[3],sigdigits=4))")
+  println("Ea_sx=$(round(best_params[2],sigdigits=5)),")
+  println("kM_sx=$(round(best_params[3],sigdigits=4)),") 
+  println("kM_o2=$(round(best_params[4],sigdigits=4))")
 
   # Write best parameters to file
   best_params_file = joinpath(savedir, "best_parameters.txt")
@@ -616,9 +612,9 @@ println("\nDone.")
       println(io, "Worst RMSE: $(round(maximum(rmse_per_member), sigdigits=4)) ppm")
       println(io, "\nBest parameters:")
       println(io, "  α_sx  = $(round(best_params[1], sigdigits=5))")
-      #println(io, "  Ea_sx = $(round(best_params[2], sigdigits=5))")
-      println(io, "  kM_sx = $(round(best_params[2], sigdigits=4))")
-      println(io, "  kM_o2 = $(round(best_params[3], sigdigits=4))")
+      println(io, "  Ea_sx = $(round(best_params[2], sigdigits=5))")
+      println(io, "  kM_sx = $(round(best_params[3], sigdigits=4))")
+      println(io, "  kM_o2 = $(round(best_params[4], sigdigits=4))")
   end
   println("Saved best parameters to: $best_params_file")
 
