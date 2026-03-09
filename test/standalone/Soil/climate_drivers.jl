@@ -268,7 +268,6 @@ for FT in (Float32, Float64)
             #      S_i_sfc =  range(FT(0), ν, 5) ./ ν;
             #      log10_K_sfc = @. log10(hydraulic_conductivity( hcm, K_sat, S_sfc) .+ eps(FT))
             #      thermo_params = LP.thermodynamic_parameters(earth_param_set)
-            #      ts_in = Thermodynamics.PhaseEquil_ρTq(thermo_params,FT(1.235), FT(285),FT(0.005))
             #      fluxes = soil_turbulent_fluxes_at_a_point(
             #          parent(T_sfc)[1],
             #          parent(h_sfc)[1],
@@ -277,7 +276,9 @@ for FT in (Float32, Float64)
             #          hcm,
             #          K_sat,
             #          log10_K_sfc,
-            #          ts_in,
+            #          FT(101325),
+            #          FT(285),
+            #          FT(0.005),
             #          FT(3),
             #          atmos.h,
             #          FT(0),
