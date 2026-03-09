@@ -327,9 +327,18 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1","NEON-cper")
+    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1","NEON-cper","NEON-ster","NEON-srer")
     if occursin("NEON", site_ID)
-        data_path = "/home/alexis/GitHub/ClimaLand.jl/experiments/integrated/fluxnet/neon/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201712.csv"
+        datafolder = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon"
+        if site_ID == "NEON-cper"
+            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201912.csv"
+        elseif site_ID == "NEON-ster"
+            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_STER_201901_201912.csv"
+        elseif site_ID == "NEON-srer"
+            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_SRER_201901_201912.csv"
+        else
+            error("NEON site $site_ID not recognized. Please choose from NEON-cper, NEON-ster, or NEON-srer.")
+        end
     else
         folder_path = @clima_artifact("fluxnet_sites", context)
         data_path = joinpath(folder_path, "$(site_ID).csv")
