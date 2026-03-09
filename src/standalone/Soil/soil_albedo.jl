@@ -278,8 +278,8 @@ end
 
 """
     CompositionBasedSoilAlbedo{FT}(;
-        η₀_PAR = FT(-3.04),
-        η₀_NIR = FT(-3.10),
+        η₀_PAR = FT(-3.3),
+        η₀_NIR = FT(-3.4),
         c_om_PAR = FT(-0.13),
         c_om_NIR = FT(-0.14),
         c_vgn_PAR = FT(1.24),
@@ -306,13 +306,13 @@ Coefficients fitted via logistic regression on:
 # Expected albedo values
 
 **High vg_n desert (sandy)**: vg_n ≈ 2.5, cf ≈ 0.3, om ≈ 0
-- η ≈ -3.04 + 1.24*2.5 + 0.15*0.3 = 0.11 → α ≈ 0.33
+- η ≈ -3.3 + 1.24*2.5 + 0.15*0.3 = -0.15 → α ≈ 0.30
 
 **Rocky desert**: vg_n ≈ 1.5, cf ≈ 0.6, om ≈ 0
-- η ≈ -3.04 + 1.24*1.5 + 0.15*0.6 = -1.09 → α ≈ 0.21
+- η ≈ -3.3 + 1.24*1.5 + 0.15*0.6 = -1.35 → α ≈ 0.16
 
 **Organic soil**: vg_n ≈ 1.5, cf ≈ 0.1, om ≈ 0.1
-- η ≈ -3.04 + 1.24*1.5 - 0.13*0.1 + 0.15*0.1 = -1.18 → α ≈ 0.20
+- η ≈ -3.3 + 1.24*1.5 - 0.13*0.1 + 0.15*0.1 = -1.44 → α ≈ 0.15
 
 # Arguments
 - `η₀_PAR`, `η₀_NIR`: Base log-odds (intercept in logistic model)
@@ -325,8 +325,8 @@ Coefficients fitted via logistic regression on:
 - `albedo_calc_top_thickness`: Depth for surface moisture averaging (m)
 """
 function CompositionBasedSoilAlbedo{FT}(;
-    η₀_PAR = FT(-3.04),
-    η₀_NIR = FT(-3.10),
+    η₀_PAR = FT(-3.3),
+    η₀_NIR = FT(-3.4),
     c_om_PAR = FT(-0.13),
     c_om_NIR = FT(-0.14),
     c_vgn_PAR = FT(1.24),
