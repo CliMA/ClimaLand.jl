@@ -139,28 +139,16 @@ function setup_model(
         scf,
     )
 
-    # Construct soil model (uses CompositionBasedSoilAlbedo by default)
-    soil = Soil.EnergyHydrology{FT}(
-        domain,
-        forcing,
-        toml_dict;
-        prognostic_land_components,
-        additional_sources = (ClimaLand.RootExtraction{FT}(),),
-    )
-
-    # Construct the land model
+    # Construct the land model with all default components except for snow
     land = LandModel{FT}(
-        canopy,
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
         snow,
-        soil,
-        Soil.Biogeochemistry.SoilCO2Model{FT}(
-            domain,
-            Soil.Biogeochemistry.SoilDrivers(
-                ClimaLand.PrognosticMet(soil.parameters),
-                forcing.atmos,
-            ),
-            toml_dict,
-        ),
+        canopy,
     )
     return land
 end
