@@ -43,10 +43,10 @@ priors = [
     PD.constrained_gaussian("pmodel_β", 51.0, 20.0, 5.0, 500.0),
     PD.constrained_gaussian("leaf_Cd", 0.07, 0.04, 0.005, 1.0),
     PD.constrained_gaussian("canopy_z_0m_coeff", 0.02, 0.01, 0.001, 0.3),
-    PD.constrained_gaussian("canopy_z_0b_coeff", 0.0007, 0.0003, 1e-5, 0.01),
-    PD.constrained_gaussian("canopy_d_coeff", 0.007, 0.004, 0.001, 0.95),
+    PD.constrained_gaussian("canopy_z_0b_coeff", 0.0007, 0.0003, 1e-5, 0.005),
+    PD.constrained_gaussian("canopy_d_coeff", 0.007, 0.004, 0.001, 0.1),
     PD.constrained_gaussian("canopy_K_lw", 0.85, 0.25, 0.1, 2.0),
-    PD.constrained_gaussian("canopy_emissivity", 0.98, 0.02, 0.9, 1.0),
+    PD.constrained_gaussian("canopy_emissivity", 0.98, 0.01, 0.9, 1.0),
     # Autotrophic respiration parameters
     PD.constrained_gaussian("root_leaf_nitrogen_ratio", 1.0, 0.5, 0.1, 5.0),
     PD.constrained_gaussian("stem_leaf_nitrogen_ratio", 0.1, 0.07, 0.01, 0.5),
