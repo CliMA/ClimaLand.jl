@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=dk_sor_calibration
-#SBATCH --time=04:00:00
+#SBATCH --time=20:00:00
 #SBATCH --ntasks=29
 #SBATCH --cpus-per-task=1
 #SBATCH --output=dk_sor_calibration_%j.out
