@@ -472,16 +472,31 @@ for FT in (Float32, Float64)
         β = FT(0.5)
 
         # Dry soil (S_e = 0) should have full dry albedo
-        α_at_dry = ClimaLand.Soil.albedo_with_nonlinear_moisture(α_dry, FT(0), f_wet, β)
+        α_at_dry = ClimaLand.Soil.albedo_with_nonlinear_moisture(
+            α_dry,
+            FT(0),
+            f_wet,
+            β,
+        )
         @test α_at_dry ≈ α_dry
 
         # Wet soil should be darker than dry
-        α_at_wet = ClimaLand.Soil.albedo_with_nonlinear_moisture(α_dry, FT(1), f_wet, β)
+        α_at_wet = ClimaLand.Soil.albedo_with_nonlinear_moisture(
+            α_dry,
+            FT(1),
+            f_wet,
+            β,
+        )
         @test α_at_wet < α_dry
         @test α_at_wet ≈ α_dry * (FT(1) - f_wet)  # at full saturation
 
         # Intermediate moisture should be between dry and wet
-        α_at_mid = ClimaLand.Soil.albedo_with_nonlinear_moisture(α_dry, FT(0.5), f_wet, β)
+        α_at_mid = ClimaLand.Soil.albedo_with_nonlinear_moisture(
+            α_dry,
+            FT(0.5),
+            f_wet,
+            β,
+        )
         @test α_at_mid < α_dry
         @test α_at_mid > α_at_wet
 
