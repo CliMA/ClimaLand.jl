@@ -25,13 +25,13 @@ import JLD2
 using LinearAlgebra
 
 # ── Configuration ────────────────────────────────────────────────────────────
-
+outdir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/outputrun"
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
 const DT = Float64(450)
-
+SITE_ID = "NEON-cper"
 const climaland_dir = pkgdir(ClimaLand)
-const OUTPUT_DIR = joinpath(climaland_dir, "experiments/calibrate_neon/output")
+const OUTPUT_DIR = joinpath(outdir, "experiments/calibrate_neon/output")
 const OBS_FILEPATH =
     joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
 

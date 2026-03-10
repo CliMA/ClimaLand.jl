@@ -331,11 +331,11 @@ function experiment_fluxnet_data_path(site_ID; context = nothing)
     if occursin("NEON", site_ID)
         datafolder = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon"
         if site_ID == "NEON-cper"
-            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201912.csv"
+            data_path = joinpath(datafolder, "Neon_CliMA_Input_withERA_wCompData_wSoil_CPER_201701_201912.csv")
         elseif site_ID == "NEON-ster"
-            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_STER_201901_201912.csv"
+            data_path = joinpath(datafolder, "Neon_CliMA_Input_withERA_wCompData_wSoil_STER_201901_201912.csv")
         elseif site_ID == "NEON-srer"
-            data_path = datafolder + "/Neon_CliMA_Input_withERA_wCompData_wSoil_SRER_201901_201912.csv"
+            data_path = joinpath(datafolder, "Neon_CliMA_Input_withERA_wCompData_wSoil_SRER_201901_201912.csv")
         else
             error("NEON site $site_ID not recognized. Please choose from NEON-cper, NEON-ster, or NEON-srer.")
         end

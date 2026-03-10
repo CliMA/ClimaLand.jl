@@ -29,7 +29,7 @@ const climaland_dir = pkgdir(ClimaLand)
 # ── Configuration ────────────────────────────────────────────────────────────
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
-
+SITE_ID = "NEON-cper"
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 
 # Get dates from site metadata
@@ -37,6 +37,8 @@ site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
+start_date = DateTime(2019,1,1)
+
 spinup_date = start_date + Day(SPINUP_DAYS)
 
 println("Site: $SITE_ID")
