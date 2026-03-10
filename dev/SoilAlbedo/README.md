@@ -72,7 +72,7 @@ by ~0.3 to reduce the overall upwelling shortwave bias in coupled simulations.
 
 ### PAR Band
 ```julia
-η₀_PAR = -3.3      # Bias-corrected intercept (raw fit: -3.04)
+η₀_PAR = -2.95     # Bias-corrected intercept (raw fit: -3.04)
 c_om_PAR = -0.13   # Organic matter (darkening)
 c_vgn_PAR = 1.24   # van Genuchten n (texture)
 c_cf_PAR = 0.15    # Coarse fragments (rocks)
@@ -80,7 +80,7 @@ c_cf_PAR = 0.15    # Coarse fragments (rocks)
 
 ### NIR Band
 ```julia
-η₀_NIR = -3.4      # Bias-corrected intercept (raw fit: -3.10)
+η₀_NIR = -3.0      # Bias-corrected intercept (raw fit: -3.10)
 c_om_NIR = -0.14
 c_vgn_NIR = 1.28
 c_cf_NIR = 0.16
