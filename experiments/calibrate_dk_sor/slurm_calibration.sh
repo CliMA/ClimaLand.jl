@@ -12,6 +12,6 @@ export CLIMACOMMS_CONTEXT="SINGLETON"
 
 module load climacommon
 
-julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(; verbose=true)'
+julia --project=.buildkite -e 'using Pkg; Pkg.update(); Pkg.instantiate(; verbose=true)'
 julia --project=.buildkite experiments/calibrate_dk_sor/generate_observations.jl
 julia --project=.buildkite experiments/calibrate_dk_sor/run_calibration.jl
