@@ -694,6 +694,33 @@ function compute_subsurface_runoff!(
     return out
 end
 
+function compute_total_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    runoff = soil.boundary_conditions.top.runoff
+    surface = Runoff.get_surface_runoff(runoff, Y, p)
+    subsurface = Runoff.get_subsurface_runoff(runoff, Y, p)
+    if !isnothing(surface) && !isnothing(subsurface)
+        out .= surface .+ subsurface
+    elseif !isnothing(surface)
+        out .= surface
+    elseif !isnothing(subsurface)
+        out .= subsurface
+    else
+        fill!(out, 0)
+    end
+    return out
+end
+
 function compute_saturated_height!(
     out,
     Y,
