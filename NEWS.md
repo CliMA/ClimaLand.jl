@@ -6,7 +6,7 @@ main
 
 v1.6.1
 ------
-- Update compat to Thermodynamics 1.0 PR[#1641](https://github.com/CliMA/ClimaLand.jl/pull/1641)
+- Update compat to Thermodynamics 1.0 PR[#1667](https://github.com/CliMA/ClimaLand.jl/pull/1667)
 
 v1.6.0
 ------
