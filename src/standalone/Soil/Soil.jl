@@ -254,8 +254,8 @@ component models.
 
 For the albedo parameterization, the default is `CompositionBasedSoilAlbedo` which computes
 albedo from soil composition (organic matter, van Genuchten n, coarse fragments) using a
-physics-based approach with ~30% lower RMSE over desert regions compared to CLM soil color maps.
-An alternative is `CLMTwoBandSoilAlbedo` which uses traditional soil color maps:
+regression model fitted to desert regions. This model has been shown to have lower RMSE compared 
+to CLM soil color maps. An alternative is `CLMTwoBandSoilAlbedo` which uses traditional soil color maps:
 ```julia
 albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...)
 ```
