@@ -210,6 +210,8 @@ This model uses:
 - Van Genuchten n parameter: pore size distribution, related to texture
 - Coarse fragments (ν_ss_gravel): gravel/rock content
 
+(TODO: possibly add more variables)
+
 The dry albedo uses logistic regression:
     η = η₀ + c_om * ν_ss_om + c_vgn * vg_n + c_cf * ν_ss_gravel
     α_dry = α_min + (α_max - α_min) * σ(η)
@@ -225,14 +227,15 @@ rapid initial darkening as observed), and f_wet is the maximum moisture
 darkening factor.
 
 This model achieves **RMSE = 0.074** and **R² = 0.51** on desert regions,
-a 30% RMSE reduction compared to climatology. The improvement comes from:
+a 30% RMSE reduction compared to the spatial-mean albedo (TODO: Update numbers). 
+The improvement comes from:
 - vg_n correlates strongly with albedo (r = 0.71) as it captures texture
 - Coarse fragments (r = 0.35) indicate rocky/gravelly surfaces
 
 # Calibration
-Default coefficients fitted on CERES bareground albedo (1,432 grid points) in
-geographic desert regions (Sahara, Arabian, Australian, Gobi, Kalahari) using
-SoilGrids composition and van Genuchten soil parameters.
+Default coefficients fitted on bareground albedo in geographic desert regions 
+(Sahara, Arabian, Australian, Gobi, Kalahari) using SoilGrids composition and van 
+Genuchten soil parameters.
 
 # Physical basis
 - **Organic matter**: Strongly absorbs visible light (dark color), reduces albedo
@@ -245,6 +248,8 @@ SoilGrids composition and van Genuchten soil parameters.
 # References
 - Lobell, D. B., & Asner, G. P. (2002). Moisture effects on soil reflectance.
   Soil Science Society of America Journal, 66(3), 722-727.
+
+  # TODO: Make all of these coefficients calibratable ClimaParams
 """
 struct CompositionBasedSoilAlbedo{FT <: AbstractFloat} <:
        AbstractSoilAlbedoParameterization
@@ -297,7 +302,7 @@ Construct a `CompositionBasedSoilAlbedo` with calibrated coefficients.
 
 # Calibration details
 Coefficients fitted via logistic regression on:
-- Target: CERES bareground shortwave albedo (1,432 desert grid points)
+- Target: Bareground shortwave albedo (TODO: this is based on CERES; update with MODIS)
 - Predictors: ν_ss_om (SoilGrids), vg_n (van Genuchten), ν_ss_gravel (SoilGrids)
 - Training: Geographic desert regions (Sahara, Arabian, Australian, Gobi, Kalahari)
 - Validation RMSE: 0.074 (30% reduction vs climatology)
@@ -325,6 +330,7 @@ Coefficients fitted via logistic regression on:
 - `albedo_calc_top_thickness`: Depth for surface moisture averaging (m)
 """
 function CompositionBasedSoilAlbedo{FT}(;
+    # TODO: All of these coefficients should become calibratable ClimaParams
     η₀_PAR = FT(-2.25),
     η₀_NIR = FT(-2.3),
     c_om_PAR = FT(-0.13),
