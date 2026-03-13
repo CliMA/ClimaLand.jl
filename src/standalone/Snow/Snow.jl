@@ -260,6 +260,8 @@ EquilibriumGradientTemperatureModel model.
 """
 abstract type AbstractSnowSurfaceTemperatureModel{FT <: AbstractFloat} end
 
+Base.broadcastable(ps::AbstractSnowSurfaceTemperatureModel) = tuple(ps)
+
 """
     BulkSurfaceTemperatureModel{FT <: AbstractFloat} <: AbstractSnowSurfaceTemperatureModel{FT}
 
