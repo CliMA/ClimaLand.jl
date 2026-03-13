@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -----
 
+- Update compat to SurfaceFluxes 1.0 PR[#1668](https://github.com/CliMA/ClimaLand.jl/pull/1668)
+
 v1.6.1
 ------
 - Update compat to Thermodynamics 1.0 PR[#1667](https://github.com/CliMA/ClimaLand.jl/pull/1667)

@@ -330,9 +330,9 @@ version = "0.5.0"
 
 [[deps.CFTime]]
 deps = ["Dates", "Printf"]
-git-tree-sha1 = "0836c647014903bedccf23ba72b5ebb8c89a7db8"
+git-tree-sha1 = "91739701c122110c90ea22a721ca3c39331825c8"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
-version = "0.2.5"
+version = "0.2.6"
 
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Preferences", "Static"]
@@ -468,7 +468,7 @@ version = "0.1.1"
 deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.6.1"
+version = "1.6.2"
 weakdeps = ["Adapt", "CairoMakie", "ClimaAnalysis", "DataFrames", "DelimitedFiles", "Downloads", "Flux", "GeoMakie", "InteractiveUtils", "JLD2", "Printf", "Statistics"]
 
     [deps.ClimaLand.extensions]
@@ -2078,9 +2078,9 @@ version = "4.3.2+0"
 
 [[deps.MPIPreferences]]
 deps = ["Libdl", "Preferences"]
-git-tree-sha1 = "c105fe467859e7f6e9a852cb15cb4301126fac07"
+git-tree-sha1 = "8e98d5d80b87403c311fd51e8455d4546ba7a5f8"
 uuid = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
-version = "0.1.11"
+version = "0.1.12"
 
 [[deps.MPItrampoline_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
@@ -2231,9 +2231,9 @@ version = "1.6.7"
 
 [[deps.NCDatasets]]
 deps = ["CFTime", "CommonDataModel", "DataStructures", "Dates", "DiskArrays", "NetCDF_jll", "NetworkOptions", "Printf"]
-git-tree-sha1 = "43e840d07d643a71171ade0f6109d911186bbe10"
+git-tree-sha1 = "e697235598309272a053444dac7154b40a88b4a9"
 uuid = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-version = "0.14.12"
+version = "0.14.13"
 
     [deps.NCDatasets.extensions]
     NCDatasetsMPIExt = "MPI"
@@ -3181,9 +3181,9 @@ weakdeps = ["OffsetArrays", "StaticArrays"]
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "0f529006004a8be48f1be25f3451186579392d47"
+git-tree-sha1 = "246a8bb2e6667f832eea063c3a56aef96429a3db"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.17"
+version = "1.9.18"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -3286,9 +3286,9 @@ version = "7.2.1+1"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "830e95e01f1fc11ddbe4c4fcbabb017736c290aa"
+git-tree-sha1 = "f63a8a9eddd9d2efb229b421adda86437c8e230a"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "0.15.1"
+version = "1.0.0"
 weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]

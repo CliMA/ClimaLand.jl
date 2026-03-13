@@ -509,7 +509,7 @@ weakdeps = ["CUDA"]
 deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LazyBroadcast", "LinearAlgebra", "NCDatasets", "RootSolvers", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.6.1"
+version = "1.6.2"
 weakdeps = ["Adapt", "CairoMakie", "ClimaAnalysis", "DataFrames", "DelimitedFiles", "Downloads", "Flux", "GeoMakie", "InteractiveUtils", "JLD2", "Printf", "Statistics"]
 
     [deps.ClimaLand.extensions]
@@ -3135,9 +3135,9 @@ version = "7.2.1+1"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "830e95e01f1fc11ddbe4c4fcbabb017736c290aa"
+git-tree-sha1 = "f63a8a9eddd9d2efb229b421adda86437c8e230a"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "0.15.1"
+version = "1.0.0"
 weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]
