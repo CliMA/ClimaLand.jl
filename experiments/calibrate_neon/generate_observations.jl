@@ -37,7 +37,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
-start_date = DateTime(2019,1,1)
+stop_date = DateTime(2017,12,31)
 
 spinup_date = start_date + Day(SPINUP_DAYS)
 
@@ -137,7 +137,8 @@ println("Observation vector length: $n_obs")
 
 # ── Save ────────────────────────────────────────────────────────────────────
 obs_filepath =
-    joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
+    "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017/observations.jld2"
+    #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
 JLD2.jldsave(
     obs_filepath;
     observation = observation,

@@ -28,9 +28,9 @@ import ClimaLand
 
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const climaland_dir = pkgdir(ClimaLand)
-const EKI_PATH = joinpath(climaland_dir, "experiments/calibrate_neon/output/iteration_006/eki_file.jld2")
+const EKI_PATH = joinpath(climaland_dir, "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output/iteration_007/eki_file.jld2")
 const OBS_PATH = joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
-const OUTDIR   = joinpath(climaland_dir, "experiments/calibrate_neon")
+const OUTDIR   = joinpath(climaland_dir, "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output/")
 
 # ── Load all data from eki_file.jld2 ─────────────────────────────────────────
 

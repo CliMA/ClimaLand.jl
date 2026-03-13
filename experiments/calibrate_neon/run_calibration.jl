@@ -25,7 +25,7 @@ import JLD2
 using LinearAlgebra
 
 # ── Configuration ────────────────────────────────────────────────────────────
-outdir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/outputrun"
+outdir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017"
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
 const DT = Float64(450)
@@ -33,7 +33,9 @@ SITE_ID = "NEON-cper"
 const climaland_dir = pkgdir(ClimaLand)
 const OUTPUT_DIR = joinpath(outdir, "experiments/calibrate_neon/output")
 const OBS_FILEPATH =
-    joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
+    "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017/observations.jld2"
+    #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
+
 
 # ── Priors ───────────────────────────────────────────────────────────────────
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
@@ -42,13 +44,13 @@ const OBS_FILEPATH =
 priors = [
     PD.constrained_gaussian(
         "soilCO2_pre_exponential_factor",
-        2000.0,
+        2000,#2000
         1000.0,
         100.0,
         20000.0,
     ),
-    PD.constrained_gaussian("michaelis_constant", 0.046, 0.020, 1e-5, 0.1),
-    PD.constrained_gaussian("O2_michaelis_constant", 0.066, 0.03, 1e-5, 0.12),
+    PD.constrained_gaussian("michaelis_constant", 0.046, 0.020, 1e-5, 0.1),#0.096413, 0.002, 1e-5, 0.1),#0.046, 0.020, 1e-5, 0.1
+    PD.constrained_gaussian("O2_michaelis_constant",0.066, 0.03, 1e-5, 0.12),# 0.000398, 0.0002, 1e-5, 0.12),#0.066, 0.03, 1e-5, 0.12
 ]
 prior = PD.combine_distributions(priors)
 
@@ -76,15 +78,25 @@ ekp = EKP.EnsembleKalmanProcess(
 N_ens = EKP.get_N_ens(ekp)
 println("Ensemble size: $N_ens (for $(length(priors)) parameters)")
 
-# ── Add SLURM Workers ───────────────────────────────────────────────────────
+# ── Add Workers ──────────────────────────────────────────────────────────────
 
 curr_backend = ClimaCalibrate.get_backend()
 if curr_backend == ClimaCalibrate.CaltechHPCBackend ||
    curr_backend == ClimaCalibrate.GCPBackend
     @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
     addprocs(ClimaCalibrate.SlurmManager())
-elseif nworkers() == 1
-    @info "No SLURM detected and only 1 worker — running serially (JuliaBackend fallback)"
+#elseif nworkers() == 1
+#    @info "No SLURM detected and only 1 worker — running serially (JuliaBackend fallback)"
+else
+    # nworkers() returns 1 when nprocs()==1 (main process counted as worker),
+    # but after addprocs() the main process stops counting as a worker.
+    # Always add N_ens workers so every ensemble member runs in parallel.
+    current_workers = nprocs() == 1 ? 0 : nworkers()
+    n_add = max(0, N_ens - current_workers)
+    if n_add > 0
+        @info "No SLURM detected — adding $n_add local workers for $N_ens ensemble members"
+        addprocs(n_add)
+    end
 end
 
 # ── Broadcast Configuration to Workers ───────────────────────────────────────
