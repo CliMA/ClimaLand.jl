@@ -1,14 +1,35 @@
+# Calibration of the global land model
+
+# The code sets up and runs a calibration of the global land model or bucket
+# model depending on the `model_type` in the calibration config. To start a
+# simulation on Derecho or GCP, you run
+# `bash experiments/calibration/run_calibration.sh` in the root directory.
+
 using Dates
 using Distributed
 import Random
 import ClimaCalibrate
 import ClimaAnalysis
-import ClimaComms
 import ClimaLand
 import EnsembleKalmanProcesses as EKP
 import JLD2
 
-include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
+include(joinpath(pkgdir(ClimaLand), "experiments", "calibration", "api.jl"))
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "observation_map.jl",
+    ),
+)
+
+model_interface = joinpath(
+    pkgdir(ClimaLand),
+    "experiments",
+    "calibration",
+    "model_interface.jl",
+)
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
     short_names = ["lwu"],
@@ -59,9 +80,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # 3 * 2 + 1 = 7
     ekp = EKP.EnsembleKalmanProcess(
         obs_series,
-        EKP.TransformUnscented(prior, impose_prior = true),
+        EKP.TransformUnscented(prior, impose_prior = true);
         verbose = true,
-        rng = rng,
+        rng,
         scheduler = EKP.DataMisfitController(terminate_at = 100),
     )
 
@@ -69,42 +90,71 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # the PBSManager
     curr_backend = ClimaCalibrate.get_backend()
     N_ens = EKP.get_N_ens(ekp)
+
     if curr_backend == ClimaCalibrate.DerechoBackend
-        addprocs(
-            ClimaCalibrate.PBSManager(N_ens),
-            q = "main",
-            A = "UCIT0011",
-            l_select = "1:ngpus=1:ncpus=4",
-            l_walltime = "11:30:00",
+        # The HPC keyword arguments specify the resources for running a single
+        # ensemble member
+        backend = ClimaCalibrate.DerechoBackend(;
+            model_interface,
+            verbose = true,
+            hpc_kwargs = Dict(
+                :cpus_per_task => 4,
+                :gpus_per_task => 1,
+                # Options include "premium", "regular", "economy", "preempt"
+                :job_priority => "regular",
+                :ntasks => 1,
+                # 180 minutes is 3 hours
+                :time => 180,
+            ),
         )
-    elseif (curr_backend == ClimaCalibrate.CaltechHPCBackend) ||
-           (curr_backend == ClimaCalibrate.GCPBackend)
+    elseif curr_backend == ClimaCalibrate.GCPBackend
+        backend = ClimaCalibrate.GCPBackend(;
+            model_interface,
+            verbose = true,
+            hpc_kwargs = Dict(
+                :cpus_per_task => 4,
+                :gpus_per_task => 1,
+                :ntasks => 1,
+                :partition => "a3mega",
+                :time => 180,
+            ),
+        )
+    elseif curr_backend == ClimaCalibrate.ClimaGPUBackend
+        # This backend is used for testing. Since it is not easy to specify only
+        # one worker with ClimaGPUBackend, we use addprocs and the WorkerBackend
+        # instead.
         @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
         addprocs(ClimaCalibrate.SlurmManager())
+        @everywhere import ClimaLand
+        @everywhere experiment_dir = joinpath(pkgdir(ClimaLand), "experiments")
+        @everywhere include(
+            joinpath(pkgdir(ClimaLand), "experiments", "calibration", "api.jl"),
+        )
+        @everywhere const CALIBRATE_CONFIG = $CALIBRATE_CONFIG
+        @everywhere include(
+            joinpath(experiment_dir, "calibration", "model_interface.jl"),
+        )
+        (; n_iterations, output_dir) = CALIBRATE_CONFIG
+        eki = ClimaCalibrate.calibrate(
+            ClimaCalibrate.WorkerBackend(),
+            ekp,
+            n_iterations,
+            prior,
+            output_dir;
+        )
+        return nothing
+    else
+        error("Unsupported backend: $(ClimaCalibrate.get_backend())")
     end
 
-    include(
-        joinpath(
-            pkgdir(ClimaLand),
-            "experiments/calibration/observation_map.jl",
-        ),
-    )
-
-    @everywhere import ClimaLand
-    @everywhere experiment_dir = joinpath(pkgdir(ClimaLand), "experiments")
-    @everywhere include(
-        joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"),
-    )
-    @everywhere CALIBRATE_CONFIG = $CALIBRATE_CONFIG
-    @everywhere include(
-        joinpath(experiment_dir, "calibration", "model_interface.jl"),
-    )
-
-    eki = ClimaCalibrate.calibrate(
-        ClimaCalibrate.WorkerBackend,
-        ekp,
-        CALIBRATE_CONFIG.n_iterations,
-        prior,
-        CALIBRATE_CONFIG.output_dir,
-    )
+    if curr_backend != ClimaCalibrate.ClimaGPUBackend
+        (; n_iterations, output_dir) = CALIBRATE_CONFIG
+        eki = ClimaCalibrate.calibrate(
+            backend,
+            ekp,
+            n_iterations,
+            prior,
+            output_dir;
+        )
+    end
 end
