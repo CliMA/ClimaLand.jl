@@ -557,6 +557,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
             P_air,
             p.canopy.biomass.vpd_gs,
             ca,
+            is_c3,
         ),
     )
 

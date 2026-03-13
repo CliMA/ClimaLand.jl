@@ -222,7 +222,8 @@ end
         toml_dict::CP.ParamDict;
         is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
         cstar = toml_dict["pmodel_cstar"],
-        β = toml_dict["pmodel_β"],
+        β_c3 = toml_dict["pmodel_β_c3"],
+        β_c4 = toml_dict["pmodel_β_c4"],
         temperature_dep_yield = true,
         ϕ0_c3 = toml_dict["pmodel_ϕ0_c3"],
         ϕ0_c4 = toml_dict["pmodel_ϕ0_c4"],
@@ -239,7 +240,8 @@ Constructs a P-model (an optimality model for photosynthesis) using default para
 
 The following default parameters (from the TOML file) are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
-- β = 146 (unitless) - Unit cost ratio of Vcmax to transpiration (Stocker 2020)
+- β_c3 = 146 (unitless) - Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)
+- β_c4 = 146/9 ≈ 16.222 (unitless) - Unit cost ratio of Vcmax to transpiration for C4 plants (pyrealm)
 - ϕ0_c3 = 0.052 (unitless) - constant intrinsic quantum yield. Skillman (2008)
 - ϕ0_c4 = 0.057 (unitless) - constant intrinsic quantum yield. Skillman (2008)
 - ϕa0_c3 = 0.352*0.087 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
@@ -255,7 +257,8 @@ function PModel{FT}(
     toml_dict::CP.ParamDict;
     is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
     cstar = toml_dict["pmodel_cstar"],
-    β = toml_dict["pmodel_β"],
+    β_c3 = toml_dict["pmodel_β_c3"],
+    β_c4 = toml_dict["pmodel_β_c4"],
     temperature_dep_yield = true,
     ϕ0_c3 = toml_dict["pmodel_ϕ0_c3"],
     ϕ0_c4 = toml_dict["pmodel_ϕ0_c4"],
@@ -269,7 +272,8 @@ function PModel{FT}(
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar,
-        β,
+        β_c3,
+        β_c4,
         temperature_dep_yield,
         ϕ0_c3,
         ϕ0_c4,
