@@ -142,7 +142,7 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
         p.drivers.P,
         p.drivers.q,
         h_air - h_sfc,
-        model.parameters,
+        model.parameters.earth_param_set,
     )
 
     return p.snow.q_sfc
@@ -166,7 +166,7 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, parameters) where {FT}
+    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, earth_param_set) where {FT}
 
 Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
 of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
@@ -178,11 +178,10 @@ function snow_surface_specific_humidity(
     P_air::FT,
     q_air::FT,
     Δz::FT,
-    parameters,
+    earth_param_set,
 ) where {FT}
-    surface_flux_params =
-        LP.surface_fluxes_parameters(parameters.earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         T_air,
@@ -208,30 +207,27 @@ end
 
 """
     specific_heat_capacity(q_l::FT,
-                           parameters::SnowParameters{FT}
+                           earth_param_set
                            ) where {FT}
 
 Computes the specific heat capacity of the snow, neglecting
 any contribution from air in the pore spaces, given
 the liquid water mass fraction q_l and other parameters.
 """
-function specific_heat_capacity(
-    q_l::FT,
-    parameters::SnowParameters{FT},
-) where {FT}
+function specific_heat_capacity(q_l::FT, earth_param_set) where {FT}
     q_i = 1 - q_l
-    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
-
-    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-
+    _cp_i = FT(LP.cp_i(earth_param_set))
+    _cp_l = FT(LP.cp_l(earth_param_set))
     cp_s = q_l * _cp_l + q_i * _cp_i
     return cp_s
 end
 
 """
-    snow_thermal_conductivity(ρ_snow::FT,
-                         parameters::SnowParameters{FT},
-                         ) where {FT}
+    snow_thermal_conductivity(
+        ρ_snow::FT,
+        κ_ice::FT,
+        earth_param_set,
+    ) where {FT}
 
 Computes the thermal conductivity, given the density
 of the snow, according to Equation
@@ -246,35 +242,31 @@ When ρ\\_snow = ρ\\_ice, we recover κ\\_snow = κ\\_ice.
 """
 function snow_thermal_conductivity(
     ρ_snow::FT,
-    parameters::SnowParameters{FT},
+    κ_ice::FT,
+    earth_param_set,
 ) where {FT}
-    _κ_air = FT(LP.K_therm(parameters.earth_param_set))
-    _ρ_ice = FT(LP.ρ_cloud_ice(parameters.earth_param_set))
-    κ_ice = parameters.κ_ice
+    _κ_air = FT(LP.K_therm(earth_param_set))
+    _ρ_ice = FT(LP.ρ_cloud_ice(earth_param_set))
     return _κ_air +
            (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
            (κ_ice - _κ_air)
 end
 
 """
-    diurnal_damping_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+    diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
 
 Provides the characteristic depth for diurnal variations in temperature in snow, used in the
 calculation of the surface tempearture. Formula is replicated from the Utah Energy Balance (UEB) model.
 A paper describing the formula can be found at https://hess.copernicus.org/articles/18/5061/2014/.
 """
-function diurnal_damping_depth(
-    κ::FT,
-    ρ::FT,
-    parameters::SnowParameters{FT},
-)::FT where {FT}
-    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
-    _DT_ = FT(parameters.earth_param_set.insol_params.day)
+function diurnal_damping_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
+    _cp_i = FT(LP.cp_i(earth_param_set))
+    _DT_ = FT(earth_param_set.insol_params.day)
     return sqrt(κ * _DT_ / (pi * _cp_i * ρ))
 end
 
 """
-    surface_temp_scaling_depth(κ::FT, ρ::FT, parameters::SnowParameters{FT})::FT where {FT}
+    surface_temp_scaling_depth(κ::FT, ρ::FT, earth_param_set)::FT where {FT}
 
 Provides the scaling length scale for calculation of the surface temperature, which is stable
 in the small-snowpack limit (it becomes (output) -> (input z) as (input z) -> 0).
@@ -285,9 +277,9 @@ function surface_temp_scaling_length(
     κ::FT,
     ρ::FT,
     z::FT,
-    parameters::SnowParameters{FT},
+    earth_param_set,
 )::FT where {FT}
-    d0 = diurnal_damping_depth(κ, ρ, parameters)
+    d0 = diurnal_damping_depth(κ, ρ, earth_param_set)
     return d0 * (1 - exp(-z / d0))
 end
 
@@ -308,7 +300,8 @@ end
     snow_bulk_temperature(U::FT,
                           S::FT,
                           q_l::FT,
-                          parameters::SnowParameters{FT}) where {FT}
+                          _ΔS::FT,
+                          earth_param_set) where {FT}
 
 Computes the bulk snow temperature from the snow water equivalent S,
 energy per unit area U, liquid water fraction q_l, and specific heat
@@ -321,22 +314,21 @@ function snow_bulk_temperature(
     U::FT,
     S::FT,
     q_l::FT,
-    parameters::SnowParameters{FT},
+    _ΔS::FT,
+    earth_param_set,
 ) where {FT}
     S_safe = max(S, FT(0))
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LP.T_0(parameters.earth_param_set))
-    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
-    cp_s = specific_heat_capacity(q_l, parameters)
-    _ΔS = parameters.ΔS
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _T_ref = FT(LP.T_0(earth_param_set))
+    _LH_f0 = FT(LP.LH_f0(earth_param_set))
+    cp_s = specific_heat_capacity(q_l, earth_param_set)
     return _T_ref +
            (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
            (_ρ_l * cp_s * (S_safe + _ΔS))
 end
 
 """
-    snow_bulk_density(SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
+    snow_bulk_density(SWE::FT, z::FT, earth_param_set) where {FT}
 
 Returns the snow density given the current model state when depth and SWE are available.
 Ensure the passed values are consistent in whether both have been multiplied by the snow-cover-fraction
@@ -345,9 +337,9 @@ or not (both must be per-snow-area or per-ground-area.)
 function snow_bulk_density(
     SWE_area::FT,
     z_area::FT,
-    parameters::SnowParameters{FT},
+    earth_param_set,
 )::FT where {FT}
-    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
     ε = eps(FT) #for preventing dividing by zero
     #return SWE/z * ρ_l but tend to ρ_l as SWE → 0
     #also handle instabilities when z, SWE both near machine precision
@@ -355,7 +347,7 @@ function snow_bulk_density(
 end
 
 """
-    maximum_liquid_mass_fraction(ρ_snow::FT, T::FT, parameters::SnowParameters{FT}) where {FT}
+    maximum_liquid_mass_fraction(ρ_snow::FT, T::FT, θ_r::FT, earth_param_set) where {FT}
 
 Computes the maximum liquid water mass fraction, given
 the density of the snow ρ_snow and other parameters.
@@ -363,14 +355,15 @@ the density of the snow ρ_snow and other parameters.
 function maximum_liquid_mass_fraction(
     ρ_snow::FT,
     T::FT,
-    parameters::SnowParameters{FT},
+    θ_r::FT,
+    earth_param_set,
 ) where {FT}
-    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
-    _T_freeze = LP.T_freeze(parameters.earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
     if T > _T_freeze
         return FT(0)
     else
-        parameters.θ_r * _ρ_l / ρ_snow
+        θ_r * _ρ_l / ρ_snow
     end
 end
 
@@ -388,23 +381,32 @@ function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
 end
 
 """
-    volumetric_internal_energy_liq(T, parameters)
+    volumetric_internal_energy_liq(T, earth_param_set)
 
 Computes the volumetric internal energy of the liquid water
 in the snowpack at a point at temperature T.
 """
-function volumetric_internal_energy_liq(T, parameters)
-    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
-    _T_freeze = LP.T_freeze(parameters.earth_param_set)
-    _cp_l = LP.cp_l(parameters.earth_param_set)
-    _T_ref = LP.T_0(parameters.earth_param_set)
+function volumetric_internal_energy_liq(T::FT, earth_param_set) where {FT}
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _cp_l = LP.cp_l(earth_param_set)
+    _T_ref = LP.T_0(earth_param_set)
 
     I_liq = _ρ_l * _cp_l * (T .- _T_ref)
     return I_liq
 end
 
 """
-    compute_energy_runoff(S::FT, S_l::FT, T::FT, parameters) where {FT}
+    compute_water_runoff(
+        S::FT,
+        S_l::FT,
+        T::FT,
+        ρ_snow::FT,
+        z::FT,
+        Ksat::FT,
+        Δt::FT,
+        θ_r::FT,
+        earth_param_set,
+    )
 
 Computes the rate of change in the snow water equivalent S due to loss of
 liquid water (runoff) from the snowpack.
@@ -417,16 +419,19 @@ function compute_water_runoff(
     T::FT,
     ρ_snow::FT,
     z::FT,
-    parameters,
+    Ksat::FT,
+    Δt::FT,
+    θ_r::FT,
+    earth_param_set,
 ) where {FT}
-    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
-    q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, parameters)
+    τ = runoff_timescale(z, Ksat, Δt)
+    q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, θ_r, earth_param_set)
     S_safe = max(S, FT(0))
     return -(S_l - q_l_max * S_safe) / τ * heaviside(S_l - q_l_max * S_safe)
 end
 
 """
-     phase_change_flux(U::FT, S::FT, q_l::FT, energy_flux::FT, parameters) where {FT}
+     phase_change_flux(U::FT, S::FT, q_l::FT, energy_flux::FT, Δt::FT, ΔS::FT, earth_param_set) where {FT}
 
 Computes the volume flux of liquid water undergoing phase change, given the
 applied energy flux and current state of U,S,q_l.
@@ -436,22 +441,25 @@ function phase_change_flux(
     S::FT,
     q_l::FT,
     energy_flux::FT,
-    parameters,
+    Δt::FT,
+    ΔS::FT,
+    earth_param_set,
 ) where {FT}
     S_safe = max(S, FT(0))
 
-    energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
-    Upred = U - energy_flux * parameters.Δt
+    energy_at_T_freeze =
+        energy_from_q_l_and_swe(S_safe, q_l, ΔS, earth_param_set)
+    Upred = U - energy_flux * Δt
     energy_excess = Upred - energy_at_T_freeze
 
-    _LH_f0 = LP.LH_f0(parameters.earth_param_set)
-    _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
-    _cp_i = LP.cp_i(parameters.earth_param_set)
-    _cp_l = LP.cp_l(parameters.earth_param_set)
-    _T_ref = LP.T_0(parameters.earth_param_set)
-    _T_freeze = LP.T_freeze(parameters.earth_param_set)
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    _cp_i = LP.cp_i(earth_param_set)
+    _cp_l = LP.cp_l(earth_param_set)
+    _T_ref = LP.T_0(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
     if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / parameters.Δt / _ρ_liq /
+        return -energy_excess / Δt / _ρ_liq /
                ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
     else
         return FT(0)
@@ -459,41 +467,48 @@ function phase_change_flux(
 end
 
 """
-    energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
+    energy_from_q_l_and_swe(S::FT, q_l::FT, ΔS::FT, earth_param_set) where {FT}
 
 A helper function for compute the snow energy per unit area, given snow
 water equivalent S, liquid fraction q_l, and snow model parameters.
 
 This assumes that the snow is at the freezing point.
 """
-function energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LP.T_0(parameters.earth_param_set))
-    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
-    _ΔS = parameters.ΔS
-
-    c_snow = specific_heat_capacity(q_l, parameters)
+function energy_from_q_l_and_swe(
+    S::FT,
+    q_l::FT,
+    _ΔS::FT,
+    earth_param_set,
+) where {FT}
+    _T_freeze = FT(LP.T_freeze(earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _T_ref = FT(LP.T_0(earth_param_set))
+    _LH_f0 = FT(LP.LH_f0(earth_param_set))
+    c_snow = specific_heat_capacity(q_l, earth_param_set)
     return _ρ_l * (S + _ΔS) * c_snow * (_T_freeze - _T_ref) -
            _ρ_l * S * (1 - q_l) * _LH_f0
 end
 
 """
-    energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
+    energy_from_T_and_swe(S::FT, T::FT, _ΔS::FT, earth_param_set) where {FT}
 
 A helper function for compute the snow energy per unit area, given snow
 water equivalent S, bulk temperature T, and snow model parameters.
 
 The liquid mass fraction is assumed to be zero if T<=T_freeze, and 1 otherwise.
 """
-function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LP.T_0(parameters.earth_param_set))
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
-    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
-    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
-    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-    _ΔS = parameters.ΔS
+function energy_from_T_and_swe(
+    S::FT,
+    T::FT,
+    _ΔS::FT,
+    earth_param_set,
+) where {FT}
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _T_ref = FT(LP.T_0(earth_param_set))
+    _T_freeze = FT(LP.T_freeze(earth_param_set))
+    _LH_f0 = FT(LP.LH_f0(earth_param_set))
+    _cp_i = FT(LP.cp_i(earth_param_set))
+    _cp_l = FT(LP.cp_l(earth_param_set))
 
     if T <= _T_freeze
         return _ρ_l * _cp_i * (S + _ΔS) * (T - _T_ref) - _ρ_l * S * _LH_f0
@@ -504,7 +519,7 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 end
 
 """
-    energy_flux_falling_snow(atmos, p, parameters)
+    energy_flux_falling_snow(atmos, p, earth_param_set)
 
 Returns the energy flux of falling snow for a PrescribedAtmosphere,
 approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq.
@@ -518,15 +533,15 @@ This method can be extended to coupled simulations, where atmos is of type
 CoupledAtmosphere, and the energy flux of the falling snow is passed in the
 cache `p`. In that case, this should specify `atmos::PrescribedAtmosphere`.
 """
-function energy_flux_falling_snow(atmos, p, parameters)
-    _LH_f0 = LP.LH_f0(parameters.earth_param_set)
-    _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
+function energy_flux_falling_snow(atmos, p, earth_param_set)
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     ρe_snow = -_LH_f0 * _ρ_liq
     return @. lazy(ρe_snow * p.drivers.P_snow)
 end
 
 """
-    energy_flux_falling_rain(atmos, p, parameters)
+    energy_flux_falling_rain(atmos, p, earth_param_set)
 
 Returns the energy flux of falling rain for a PrescribedAtmosphere,
 approximated as ρ_l e_l(T_atmos) * P_liq. The energy is per unit volume of liquid water,
@@ -536,33 +551,15 @@ This method can be extended to coupled simulations, where atmos is of type
 CoupledAtmosphere, and the energy flux of the falling rain is passed in the
 cache `p`.  In that case, this should specify `atmos::PrescribedAtmosphere`.
 """
-function energy_flux_falling_rain(atmos, p, parameters)
+function energy_flux_falling_rain(atmos, p, earth_param_set)
     return @. lazy(
-        volumetric_internal_energy_liq(p.drivers.T, parameters) *
+        volumetric_internal_energy_liq(p.drivers.T, earth_param_set) *
         p.drivers.P_liq,
     )
 end
 
 """
-    swe_per_snow_area(swe::FT, scf::FT) where {FT}
-
-Provides the SWE of the actual snow-covered area, as opposed to the
-value as averaged over the grid cell. Remains numerically stable as
-SWE and snow cover fraction both go to zero, and ensures the snow-
-covered area SWE goes to zero as grid-cell SWE goes to zero.
-"""
-function swe_per_snow_area(swe::FT, scf::FT, z::FT) where {FT}
-    # need to return swe/scf, but in a way satisfying:
-    # 1. numerically stable when both are small
-    # 2. preserves output -> 0 as swe -> 0
-    # 3. maintains realistic height compared to z
-    scf_min = 0.05
-    #output -> swe -> 0 as swe -> 0:
-    return max(z, swe / max(scf, scf_min))
-end
-
-"""
-    update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, params::SnowParameters)
+    update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, earth_param_set)
 
 Extends the update_density_and_depth! function for the MinimumDensityModel type; updates the snow density and depth in place.
 """
@@ -572,26 +569,38 @@ function update_density_and_depth!(
     density::MinimumDensityModel{FT},
     Y,
     p,
-    params::SnowParameters{FT},
+    earth_param_set,
 ) where {FT}
-    _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
     @. z_snow = _ρ_l * Y.snow.S / ρ_snow #z_snow is per ground area, matching Y.snow.S
 end
 
 """
-    update_density_prog!(density::MinimumDensityModel, model::SnowModel, Y, p)
+    compute_extra_prog_tendency!(
+        parameterization::Union{MinimumDensityModel, ConstantAlbedoModel, ZenithAngleAlbedoModel},
+        model::SnowModel,
+        dY,
+        Y,
+        p,
+        t
+        )
 
-Updates all prognostic variables associated with density/depth given the current model state.
-This is the default method for the constant minimum density model,
- which has no prognostic variables.
+Updates all prognostic variables associated with the albedo and/or density models given the current model state.
+This is the default method for the constant minimum density model and ConstantAlbedoModel or ZenithAngleAlbedoModel,
+ which have no additional prognostic variables.
 """
-function update_density_prog!(
-    density::MinimumDensityModel,
+function compute_extra_prog_tendency!(
+    parameterization::Union{
+        MinimumDensityModel,
+        ConstantAlbedoModel,
+        ZenithAngleAlbedoModel,
+    },
     model::SnowModel,
     dY,
     Y,
     p,
+    t,
 )
     return nothing
 end
@@ -616,7 +625,7 @@ end
         roughness_model,
         atmos_h::FT,
         gustiness::FT,
-        parameters::SnowParameters{FT},
+        earth_param_set,
     )
 
 Returns the balance (difference) in surface energy fluxes between a conductive flux for
@@ -642,7 +651,7 @@ function flux_balance(
     roughness_model,
     atmos_h::FT,
     gustiness,
-    parameters::SnowParameters{FT},
+    earth_param_set,
 )::FT where {FT}
 
     # For some snowpack states, the SecantMethod can cause a nonpositive T_sfc to
@@ -653,9 +662,9 @@ function flux_balance(
         return κ * (T_sfc_guess - T_bulk)
     end
 
-    _σ = LP.Stefan(parameters.earth_param_set)
+    _σ = LP.Stefan(earth_param_set)
     LW_net = -ϵ_snow * (LW_d - _σ * T_sfc_guess^4) #match sign convention in ./shared_utilities/drivers.jl
-    d = surface_temp_scaling_length(κ, ρ_snow, z, parameters)
+    d = surface_temp_scaling_length(κ, ρ_snow, z, earth_param_set)
 
     q_sfc = snow_surface_specific_humidity(
         T_sfc_guess,
@@ -664,7 +673,7 @@ function flux_balance(
         P_atmos,
         q_atmos,
         atmos_h - h_sfc,
-        parameters,
+        earth_param_set,
     )
 
     #we only need the lhf, shf, so the derivative functions
@@ -688,7 +697,7 @@ function flux_balance(
             blank_deriv,
             blank_deriv,
             gustiness,
-            parameters.earth_param_set,
+            earth_param_set,
         )
 
     #For numerical stability, the scaling length of conductive flux
@@ -719,7 +728,8 @@ end
         roughness_model,
         atmos_h::FT,
         gustiness,
-        parameters::SnowParameters{FT},
+        earth_param_set,
+        surf_temp::EquilibriumGradientTemperatureModel,
     )
 
 Determines the surface temperature from the surface energy balance, at a point location.
@@ -743,7 +753,8 @@ function solve_for_surface_temp_at_a_point(
     roughness_model,
     atmos_h::FT,
     gustiness,
-    parameters::SnowParameters{FT},
+    earth_param_set,
+    surf_temp::EquilibriumGradientTemperatureModel,
 )::FT where {FT}
 
     flux_balance_closure(T_sfc_guess::FT)::FT = flux_balance(
@@ -765,11 +776,8 @@ function solve_for_surface_temp_at_a_point(
         roughness_model,
         atmos_h,
         gustiness,
-        parameters,
+        earth_param_set,
     )
-
-    tol = parameters.surf_temp.tol
-    N_iters = parameters.surf_temp.N_iters
 
     #Starting points picked to minimize number of failed convergences:
     method = SecantMethod(T_atmos, T_atmos - FT(1))
@@ -778,8 +786,8 @@ function solve_for_surface_temp_at_a_point(
         T -> flux_balance_closure(T),
         method,
         CompactSolution(),
-        ResidualTolerance(tol),
-        N_iters,
+        ResidualTolerance(surf_temp.tol),
+        surf_temp.N_iters,
     )
 
     return ifelse(sol.converged, sol.root, T_bulk)
@@ -791,7 +799,7 @@ end
         κ::FT,
         ρ::FT,
         z::FT,
-        parameters::SnowParameters{FT}
+        earth_param_set
     )
 
 Determines the residual surface energy flux to dump into the bulk energy whenever the correct surface
@@ -802,10 +810,10 @@ function surface_residual_flux(
     κ::FT,
     ρ::FT,
     z::FT,
-    parameters::SnowParameters{FT},
+    earth_param_set,
 )::FT where {FT}
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
-    d_safe = max(surface_temp_scaling_length(κ, ρ, z, parameters), eps(FT))
+    _T_freeze = FT(LP.T_freeze(earth_param_set))
+    d_safe = max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), eps(FT))
     return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
            FT(0)
 end
@@ -854,7 +862,8 @@ function update_surf_temp!(
             roughness_model,
             bc.atmos.h,
             gustiness,
-            model.parameters,
+            model.parameters.earth_param_set,
+            Ref(surf_temp),
         )
 
     #set residual flux using values if T_sfc > T_freeze:
@@ -864,7 +873,7 @@ function update_surf_temp!(
             p.snow.κ,
             p.snow.ρ_snow,
             p.snow.z_snow,
-            model.parameters,
+            model.parameters.earth_param_set,
         )
 
     #reset T_sfc accordingly:

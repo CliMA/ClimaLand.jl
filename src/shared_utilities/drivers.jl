@@ -268,7 +268,6 @@ function default_cos_zenith_angle(
     longitude::LT,
     insol_params,
 ) where {T, LT}
-    FT = eltype(latitude)
     current_datetime = if T <: ITime
         # ITime may not have an epoch, so use start_date as fallback
         isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
@@ -278,12 +277,64 @@ function default_cos_zenith_angle(
 
     # Reduces allocations by throwing away unwanted values
     zenith_only = (args...) -> Insolation.insolation(args...).μ
-    return zenith_only.(
-        current_datetime,
-        latitude,
-        longitude,
-        Ref(insol_params),
+    return @. lazy(
+        zenith_only(current_datetime, latitude, longitude, insol_params),
     )
+end
+
+"""
+    get_solar_noon_zenith(day_utc_noon::DateTime, lat::FT, lon::FT, params)::FT where {FT<:AbstractFloat}
+
+Utility function for using Insolation.jl to get the solar zenith angle at a particular coordinate's
+solar noon, deriving its solar noon time from UTC noon of that day using the longitude.
+"""
+function get_solar_noon_zenith(
+    day_utc_noon::Dates.DateTime,
+    lat::FT,
+    lon::FT,
+    params,
+)::FT where {FT <: AbstractFloat}
+    # Get the UTC time of solar noon: 1 degree of longitude is 4 minutes offset
+    # (There is an EquationOfTime component to this, but it will affect the output negligbly)
+    coord_noon = day_utc_noon - Minute(round(Int, FT(4) * lon))
+    return FT(Insolation.insolation(coord_noon, lat, lon, params).μ)
+end
+
+"""
+    solar_noon_zenith_cosine(
+        t::T,
+        start_date::Dates.DateTime;
+        latitude::LT,
+        longitude::LT,
+        insol_params::Insolation.Parameters.InsolationParameters{FT},
+    )
+
+Calculate cosine of the zenith angle with Insolation for solar noon of the given start date, insolation parameters, latitude,
+and longitude. Note that Insolation.jl returns 0 for the cosine when the
+sun is below the horizon.
+
+`lat` (latitude) and `lon` (longitude) can be a collections or a Number.
+"""
+function solar_noon_zenith_cosine(
+    t::T,
+    start_date::Dates.DateTime;
+    lat::LT,
+    lon::LT,
+    insol_params,
+) where {T, LT}
+    current_datetime = if T <: ITime
+        # ITime may not have an epoch, so use start_date as fallback
+        isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+    else
+        start_date + Dates.Second(round(t))
+    end
+    day_utc_noon = DateTime(
+        year(current_datetime),
+        month(current_datetime),
+        day(current_datetime),
+        12,
+    )
+    return @. lazy(get_solar_noon_zenith(day_utc_noon, lat, lon, insol_params))
 end
 
 """

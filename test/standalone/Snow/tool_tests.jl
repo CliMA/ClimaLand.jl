@@ -829,7 +829,7 @@ if !isnothing(SNOTELScraperExt)
         y_test = copy(ys[1001:1100])'
         loss(m, x, y) = sqrt(sum(abs.(m(x) .- y) .^ 2) / length(y))
         curr_loss = loss(CNM2, x_train, y_train)
-        CNM.trainmodel!(CNM2, x_train, y_train, loss)
+        CNM.trainmodel!(CNM2, x_train, y_train, loss, nepochs = 2)
         new_loss = loss(CNM2, x_train, y_train)
         @test curr_loss != new_loss #difference means weights updated.
 
@@ -878,13 +878,162 @@ if !isnothing(SNOTELScraperExt)
         #Model setup:
         FT = Float32
         toml_dict = LP.create_toml_dict(FT)
-        start_date = DateTime(2005)
+        earth_param_set = LP.LandParameters(toml_dict)
         Δt = FT(180.0)
-        domain = Point(; z_sfc = FT(0))
+
+        #Test types/functions:
+        cam = NeuralSnow.ConstantResetAlbedo(0.3, 0.1, 0.2)
+        @test typeof(cam) <: NeuralSnow.ConstantResetAlbedo{Float64}
+        @test cam.init_α == 0.3
+        @test cam.reset_limit == 0.1
+        @test cam.no_snowpack_S == 0.2
+        @test NeuralSnow.get_initial_albedo(cam, 0, 0) == 0.3 #functor method takes 2 unspecified args
+        cam = NeuralSnow.ConstantResetAlbedo(FT(0.4), FT(0.2), FT(0.1))
+        @test typeof(cam) <: NeuralSnow.ConstantResetAlbedo{FT}
+        @test cam.init_α == 0.4f0
+        @test cam.reset_limit == 0.2f0
+        @test cam.no_snowpack_S == 0.1f0
+        @test NeuralSnow.get_initial_albedo(cam, 0, 0) == 0.4f0 #functor method takes 2 unspecified args
+        cam = NeuralSnow.ConstantResetAlbedo(toml_dict)
+        @test eltype(cam.init_α) == FT
+        @test cam.init_α == 0.8f0
+        @test cam.reset_limit == 3.0f-3 / 86400
+        @test cam.no_snowpack_S == 1.0f-3
+
+        z_network_pred = SVector{1, FT}(0.1 / 86400)
+        z_input_snowing = SVector{7, FT}(0.5, 0.2, 0.3, 200, 0.5, -10, 0)
+        z_input_nosnow =
+            SVector{7, FT}(0.5, 0.2, 0.3, 200, 0.5, -10, 0.1 / 86400)
+        sdl = NeuralSnow.Snow_Depth_Lower_Bound(3)
+        sdu = NeuralSnow.Snow_Depth_Upper_Bound(4)
+        @test sdl.z_idx == 3
+        @test sdu.precip_idx == 4
+        @test sdl(z_network_pred, z_input_nosnow) == 0.3f0
+        @test sdu(z_network_pred, z_input_snowing) == 0.1f0 / 86400
+
+        alb_network_pred = SVector{1, FT}(-0.1 / 86400)
+        alb_network_input =
+            SVector{6, FT}(0.3, 0.1 / 86400, 0.2, -10, -3, 0.03 / 86400)
+        sab = NeuralSnow.Snow_Albedo_Bound(1, FT[3], FT[4])
+        @test typeof(sab) <: NeuralSnow.Snow_Albedo_Bound{FT}
+        @test sab.alb_idx == 1
+        @test sab.lim[1] == 3
+        @test sab.t_scale_factor[1] == 4
+        @test sab(alb_network_pred, alb_network_input) == 10.8f0
+
+        rand_params = rand(FT, 435)
+        z_model = NeuralSnow.get_znetwork(FT)
+        @test typeof(z_model) <: CNM.ConstrainedNeuralModel{FT}
+        @test eltype(z_model.predictive_model[1].weight) == FT
+        z64 = NeuralSnow.get_znetwork(Float64)
+        @test eltype(z64.predictive_model[1].weight) == Float64
+        z_load = NeuralSnow.get_znetwork(FT, params = rand_params)
+        @test z_load.predictive_model[1].weight[1, 1] == rand_params[1]
+        alb_model = NeuralSnow.get_albnetwork(FT)
+        @test typeof(alb_model) <: CNM.ConstrainedNeuralModel{FT}
+        @test eltype(alb_model.predictive_model[1].weight) == FT
+        alb64 = NeuralSnow.get_albnetwork(Float64)
+        @test eltype(alb64.predictive_model[1].weight) == Float64
+        alb_load = NeuralSnow.get_albnetwork(FT, params = rand_params[1:325])
+        @test alb_load.predictive_model[1].weight[1, 1] == rand_params[1]
+
+        NeuralSnow._set_timescale!(z_load, 0.25)
+        @test z_load.fixed_layers[1].weight[2, 2] == 4
+        @test z_load.initial_fixed_layer[2, 2] == 4
+        NeuralSnow._set_timescale!(alb_load, 0.25)
+        @test alb_load.constraints.upper_bound.t_scale_factor[1] == 4
+        @test alb_load.constraints.lower_bound.t_scale_factor[1] == 4
+
+        dens_model1 = NeuralSnow.NeuralDepthModel(toml_dict) #will be a fixed model
+        @test eltype(dens_model1.w) == FT
+        @test eltype(dens_model1.ρ_min_frac) == FT
+        @test dens_model1.z_model.constraints.upper_bound isa
+              NeuralSnow.Snow_Depth_Upper_Bound
+        @test dens_model1.z_model.constraints.lower_bound isa
+              NeuralSnow.Snow_Depth_Lower_Bound
+        @test typeof(dens_model1.z_model.fixed_layers[1].weight) <: SArray
+        test_w = 3 / 86400
+        dens_model2 = NeuralSnow.NeuralDepthModel(
+            toml_dict,
+            w = test_w,
+            Δt = Δt,
+            model_params = rand_params,
+            minimum_density_fraction = FT(0.01),
+        )
+        @test dens_model2.w == FT(test_w)
+        @test dens_model2.ρ_min_frac == FT(0.01)
+        @test dens_model2.z_model.fixed_layers[1].weight[2, 2] == FT(1 / Δt)
+        @test dens_model2.z_model.predictive_model[1].weight[1, 1] ==
+              rand_params[1]
+
+        test_lat = 34
+        test_lon = -123
+        domain = ClimaLand.Domains.Point(;
+            z_sfc = FT(0),
+            longlat = FT.((test_lon, test_lat)),
+        )
+        alb_model1 =
+            NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface)
+        @test alb_model1.alb_model.constraints.upper_bound isa
+              NeuralSnow.Snow_Albedo_Bound
+        @test alb_model1.alb_model.constraints.lower_bound isa
+              NeuralSnow.Snow_Albedo_Bound
+        @test typeof(alb_model1.alb_model.fixed_layers[1].weight) <: SArray
+        @test alb_model1.new_alb isa NeuralSnow.ConstantResetAlbedo{FT}
+        @test alb_model1.new_alb.init_α == 0.8f0
+        @test alb_model1.new_alb.reset_limit == 0.003f0 / 86400
+        @test alb_model1.za_solarnoon isa Function
+        @test all(
+            parent(
+                copy(alb_model1.za_solarnoon(0, DateTime("2010-01-01T01:23"))),
+            ) .≈ #copy() forces the lazy broadcast to evaluate
+            0.5450495f0,
+        )
+        alb_model2 = NeuralSnow.NeuralAlbedoModel(
+            toml_dict,
+            domain.space.surface,
+            Δt = Δt,
+            model_params = rand_params[1:325],
+        )
+        @test alb_model2.alb_model.constraints.upper_bound.t_scale_factor[1] ==
+              FT(1 / Δt)
+        @test alb_model2.alb_model.predictive_model[1].weight[1, 1] ==
+              rand_params[1]
+
+        @test NeuralSnow.ema_tendency(0.2, 3.0, 4.0) == -0.2
+        @test NeuralSnow.reset_alb_tendency(0.0, 0.0, 0.001, 0.001, 1.0, 2.0) ==
+              2.0
+        @test NeuralSnow.reset_alb_tendency(0.0, 1.0, 0.001, 0.001, 1.0, 2.0) ==
+              1.0
+        @test NeuralSnow.reset_alb_tendency(1.0, 0.0, 0.001, 0.001, 1.0, 2.0) ==
+              2.0
+        @test NeuralSnow.reset_alb_tendency(1.0, 1.0, 0.001, 0.001, 1.0, 2.0) ==
+              2.0
+
+        start_date = DateTime(2005)
+        lat = FT(38.8047)
+        lon = FT(-77.0435)
+        domain =
+            ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((lon, lat)))
         "Radiation"
         SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
         LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
-        rad = ClimaLand.PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date)
+        cos_zenith_angle =
+            (t, s) -> ClimaLand.default_cos_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                latitude = FT(lat),
+                longitude = FT(lon),
+            )
+        rad = ClimaLand.PrescribedRadiativeFluxes(
+            FT,
+            SW_d,
+            LW_d,
+            start_date;
+            cosθs = cos_zenith_angle,
+            toml_dict = toml_dict,
+        )
         "Atmos"
         precip = TimeVaryingInput((t) -> eltype(t)(0.01 / Δt))
         T_atmos = TimeVaryingInput((t) -> eltype(t)(278.0))
@@ -903,26 +1052,32 @@ if !isnothing(SNOTELScraperExt)
             h_atmos,
             toml_dict,
         )
+        depthmodel = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
+        depth_alternate = Snow.MinimumDensityModel(FT(0.3))
+        albmodel = NeuralSnow.NeuralAlbedoModel(
+            toml_dict,
+            domain.space.surface,
+            Δt = Δt,
+        )
+        alb_alternate = Snow.ConstantAlbedoModel(FT(0.8))
 
-        #Test extension utilities
-        z_model = NeuralSnow.get_znetwork(FT)
-        @test typeof(z_model) <: CNM.ConstrainedNeuralModel
-        @test eltype(z_model.predictive_model[1].weight) == FT
-        z64 = NeuralSnow.get_znetwork(Float64)
-        @test eltype(z64.predictive_model[1].weight) == Float64
-        dens_model1 = NeuralSnow.NeuralDepthModel(FT) #will be a fixed model
-        @test eltype(dens_model1.α) == FT
-        @test dens_model1.z_model.constraints.upper_bound isa
-              NeuralSnow.Snow_Depth_Upper_Bound
-        @test dens_model1.z_model.constraints.lower_bound isa
-              NeuralSnow.Snow_Depth_Lower_Bound
-        @test typeof(dens_model1.z_model.fixed_layers[1].weight) <: SArray
-        test_alph = 3 / 86400
-        dens_model2 = NeuralSnow.NeuralDepthModel(FT, α = test_alph, Δt = Δt;)
-        @test dens_model2.α == FT(test_alph)
-        @test dens_model2.z_model.fixed_layers[1].weight[2, 2] == FT(1 / Δt)
+        @test Snow.extra_prog_vars(depthmodel) ==
+              (:Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
+        @test Snow.extra_prog_vars(albmodel) == (:A,)
 
-        parameters = SnowParameters(toml_dict, Δt; density = dens_model2)
+        @test Snow.extra_prog_types(depthmodel) == (FT, FT, FT, FT, FT, FT)
+        @test Snow.extra_prog_types(albmodel) == (FT,)
+
+        @test Snow.extra_prog_domain_names(depthmodel) ==
+              (:surface, :surface, :surface, :surface, :surface, :surface)
+        @test Snow.extra_prog_domain_names(albmodel) == (:surface,)
+
+        parameters = SnowParameters(
+            toml_dict,
+            Δt;
+            density = depthmodel,
+            α_snow = albmodel,
+        )
         model = ClimaLand.Snow.SnowModel(
             parameters = parameters,
             domain = domain,
@@ -932,59 +1087,90 @@ if !isnothing(SNOTELScraperExt)
         drivers = ClimaLand.get_drivers(model)
         Y, p, coords = ClimaLand.initialize(model)
         @test (Y.snow |> propertynames) ==
-              (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
+              (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg, :A)
 
         Y.snow.S .= FT(0.1)
-        Y.snow.U .=
-            ClimaLand.Snow.energy_from_T_and_swe.(
-                Y.snow.S,
-                FT(273.0),
-                Ref(model.parameters),
-            )
+        Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe(
+            FT(0.1),
+            FT(273.0),
+            model.parameters.ΔS,
+            model.parameters.earth_param_set,
+        )
         Y.snow.Z .= FT(0.2)
+        Y.snow.A .= FT(0.9)
         set_initial_cache! = ClimaLand.make_set_initial_cache(model)
         t0 = FT(0.0)
         set_initial_cache!(p, Y, t0)
+        @test NeuralSnow.snow_SW_down(
+            Val(model.boundary_conditions.prognostic_land_components),
+            p,
+        ) == p.drivers.SW_d
+
         oldρ = p.snow.ρ_snow
-        NeuralSnow.update_density_and_depth!(
+        Snow.update_density_and_depth!(
             p.snow.ρ_snow,
             p.snow.z_snow,
             model.parameters.density,
             Y,
             p,
-            model.parameters,
+            model.parameters.earth_param_set,
         )
         @test p.snow.z_snow == Y.snow.Z
         @test p.snow.ρ_snow == oldρ
-        output1 = NeuralSnow.eval_nn(dens_model2, FT.([0, 0, 0, 0, 0, 0, 0])...)
-
+        output1 = NeuralSnow.eval_z_nn(
+            depthmodel.z_model,
+            FT.([0, 0, 0, 0, 0, 0, 0])...,
+        )
         @test eltype(output1) == FT
         @test output1 == 0.0f0
 
-        zerofield = similar(Y.snow.Z)
-        zerofield .= FT(0)
+        old_α = p.snow.α_snow
+        Snow.update_snow_albedo!(
+            p.snow.α_snow,
+            model.parameters.α_snow,
+            Y,
+            p,
+            t0,
+            model.parameters.earth_param_set,
+        )
+        @test p.snow.α_snow == Y.snow.A
+        @test p.snow.α_snow == old_α
+        output2 =
+            NeuralSnow.eval_alb_nn(albmodel.alb_model, FT.([0, 0, 0, 0])...)
+        @test eltype(output2) == FT
+        @test output2 ≈ 1.667f-3
+
+        rate = NeuralSnow.albedo_reset_rate(
+            albmodel.new_alb,
+            model.parameters.Δt,
+            Y,
+            p,
+        )
+        @test all(parent(rate) .≈ (0.8 - 0.9) / model.parameters.Δt)
+
         dY = similar(Y)
-        NeuralSnow.update_dzdt!(dY.snow.Z, dens_model2, Y)
-        @test dY.snow.Z == zerofield
+        NeuralSnow.update_dzdt!(dY.snow.Z, depthmodel, model, Y, p)
+        NeuralSnow.update_dαdt!(dY.snow.A, albmodel, model, Y, p, t0)
+        @test all(parent(dY.snow.Z) .≈ 0)
+        @test all(parent(dY.snow.A) .≈ -1.68224f-4)
 
         Z = FT(0.5)
         S = FT(0.1)
         dzdt = FT(1 / Δt)
         dsdt = FT(1 / Δt)
-        @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt) == dzdt
-
-        @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt) ≈ FT(1.4 / Δt)
-
-        @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt) ≈ FT(-Z / Δt)
-
+        min_frac = FT(0.001)
+        @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt, min_frac) == dzdt
+        @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt, min_frac) ≈
+              FT(1.4 / Δt)
+        @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt, min_frac) ≈
+              FT(-Z / Δt)
 
         dswe_by_precip = 0.1
         Y.snow.P_avg .= FT(dswe_by_precip / Δt)
         exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
-        exp_tendency!(dY, Y, p, FT(0.0))
+        exp_tendency!(dY, Y, p, t0)
         @test Array(parent(dY.snow.Z))[1] * Δt > dswe_by_precip
-        new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
+        new_dYP = FT(depthmodel.w) .* (abs.(p.drivers.P_snow) .- Y.snow.P_avg)
         @test dY.snow.P_avg == new_dYP
-
     end
 end
