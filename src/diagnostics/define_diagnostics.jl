@@ -600,6 +600,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_radiation_shortwave_net!(out, Y, p, t, land_model),
     )
 
+    # Energy flux of precipitation minus runoff
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "pmr_ef",
+        long_name = "Energy flux of precip minus runoff",
+        standard_name = "precip_minus_runoff_energy_flux",
+        units = "W m^-2",
+        comments = "The net energy flux (W/m^2) gained by land: energy of precipitation minus surface runoff",
+        compute! = (out, Y, p, t) ->
+            compute_pmr_ef!(out, Y, p, t, land_model),
+    )
+
     ## Drivers Module ##
     # Soil organic carbon
     conditional_add_diagnostic_variable!(

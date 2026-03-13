@@ -654,6 +654,7 @@ function get_short_diagnostics(model::LandModel)
         "lwd",
         "tair",
         "precip",
+        "pmr_ef"
         "lhf",
         "msf",
         "lwp",
