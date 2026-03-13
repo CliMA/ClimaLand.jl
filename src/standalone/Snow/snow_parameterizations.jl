@@ -863,7 +863,7 @@ function update_surf_temp!(
             bc.atmos.h,
             gustiness,
             model.parameters.earth_param_set,
-            Ref(surf_temp),
+            surf_temp,
         )
 
     #set residual flux using values if T_sfc > T_freeze:

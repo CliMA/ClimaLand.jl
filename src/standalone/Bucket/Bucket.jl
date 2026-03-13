@@ -527,6 +527,8 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
         # here, otherwise we would need two values of q_sfc!
+        thermo_params =
+            LP.thermodynamic_parameters(model.parameters.earth_param_set)
         p.bucket.q_sfc .=
             saturation_specific_humidity.(
                 p.bucket.T_sfc,
@@ -538,11 +540,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                     atmos.h .- h_sfc,
                     p.bucket.T_sfc,
                 ),
-                Ref(
-                    LP.thermodynamic_parameters(
-                        model.parameters.earth_param_set,
-                    ),
-                ),
+                thermo_params,
             )
         # Compute turbulent surface fluxes
         turbulent_fluxes!(
