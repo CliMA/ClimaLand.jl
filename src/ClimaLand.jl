@@ -9,8 +9,6 @@ include("shared_utilities/Parameters.jl")
 import .Parameters as LP
 import ClimaParams as CP
 
-include("shared_utilities/compat.jl")
-
 include("shared_utilities/Domains.jl")
 import ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.TimeVaryingInputs:
