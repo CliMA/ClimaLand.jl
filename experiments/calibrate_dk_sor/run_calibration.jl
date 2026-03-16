@@ -1,0 +1,142 @@
+"""
+ClimaCalibrate driver for DK-Sor single-site calibration.
+
+Calibrates 14 parameters (9 canopy + 2 autotrophic respiration + 3 DAMM soilCO2)
+against daily NEE, Qle, Qh using TransformUnscented Kalman Inversion. All ~10 years
+of observations (2004-2013, wind-filtered) are used at each iteration (no minibatching).
+
+MODIS LAI is used for the vegetation forcing.
+
+Usage:
+    julia --project=.buildkite experiments/calibrate_dk_sor/run_calibration.jl
+"""
+
+using Dates
+using Distributed
+import Random
+import ClimaCalibrate
+import ClimaLand
+import EnsembleKalmanProcesses as EKP
+import EnsembleKalmanProcesses.ParameterDistributions as PD
+import JLD2
+using LinearAlgebra
+
+# ── Configuration ────────────────────────────────────────────────────────────
+
+const SITE_ID = "DK-Sor"
+const N_ITERATIONS = 10
+const DT = Float64(450)
+
+const climaland_dir = pkgdir(ClimaLand)
+const OUTPUT_DIR = joinpath(climaland_dir, "experiments/calibrate_dk_sor/output")
+const OBS_FILEPATH =
+    joinpath(climaland_dir, "experiments/calibrate_dk_sor/observations.jld2")
+
+# ── Priors ───────────────────────────────────────────────────────────────────
+# Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
+# parameter TOMLs using these names and LP.create_toml_dict reads them.
+
+priors = [
+    # Canopy parameters — centers match ClimaLand toml/default_parameters.toml
+    PD.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.01, 5.0),
+    PD.constrained_gaussian("pmodel_cstar", 0.43, 0.15, 0.05, 2.0),
+    PD.constrained_gaussian("pmodel_β", 51.0, 20.0, 5.0, 500.0),
+    PD.constrained_gaussian("leaf_Cd", 0.07, 0.04, 0.005, 1.0),
+    PD.constrained_gaussian("canopy_z_0m_coeff", 0.02, 0.01, 0.001, 0.3),
+    PD.constrained_gaussian("canopy_z_0b_coeff", 0.0007, 0.0003, 1e-5, 0.005),
+    PD.constrained_gaussian("canopy_d_coeff", 0.007, 0.004, 0.001, 0.1),
+    PD.constrained_gaussian("canopy_K_lw", 0.85, 0.25, 0.1, 2.0),
+    PD.constrained_gaussian("canopy_emissivity", 0.98, 0.01, 0.9, 1.0),
+    # Autotrophic respiration parameters
+    PD.constrained_gaussian("root_leaf_nitrogen_ratio", 1.0, 0.5, 0.1, 5.0),
+    PD.constrained_gaussian("stem_leaf_nitrogen_ratio", 0.1, 0.07, 0.01, 0.5),
+    # DAMM soilCO2 parameters — centers match ClimaLand toml/default_parameters.toml
+    PD.constrained_gaussian(
+        "soilCO2_pre_exponential_factor",
+        23835.0,
+        10000.0,
+        1000.0,
+        200000.0,
+    ),
+    PD.constrained_gaussian("michaelis_constant", 0.005, 0.003, 1e-4, 0.1),
+    PD.constrained_gaussian("O2_michaelis_constant", 0.004, 0.002, 1e-4, 0.1),
+]
+prior = PD.combine_distributions(priors)
+
+# ── Load Observations ────────────────────────────────────────────────────────
+
+obs_data = JLD2.load(OBS_FILEPATH)
+y_obs = obs_data["y_obs"]
+noise_cov = obs_data["noise_cov"]
+obs_dates = obs_data["obs_dates"]
+cal_years = obs_data["cal_years"]
+
+n_obs = length(obs_dates)
+println("Loaded $n_obs valid observation days ($(first(cal_years))-$(last(cal_years)))")
+println("Observation vector length: $(length(y_obs)) (3 × $n_obs)")
+
+# ── Create EKP ───────────────────────────────────────────────────────────────
+
+rng = Random.MersenneTwister(1234)
+ekp = EKP.EnsembleKalmanProcess(
+    y_obs,
+    noise_cov,
+    EKP.TransformUnscented(prior; impose_prior = true),
+    verbose = true,
+    rng = rng,
+)
+
+N_ens = EKP.get_N_ens(ekp)
+println("Ensemble size: $N_ens (for $(length(priors)) parameters)")
+
+# ── Add SLURM Workers ───────────────────────────────────────────────────────
+
+curr_backend = ClimaCalibrate.get_backend()
+if curr_backend == ClimaCalibrate.CaltechHPCBackend ||
+   curr_backend == ClimaCalibrate.GCPBackend
+    @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
+    addprocs(ClimaCalibrate.SlurmManager())
+elseif nworkers() == 1
+    @info "No SLURM detected and only 1 worker — running serially (JuliaBackend fallback)"
+end
+
+# ── Broadcast Configuration to Workers ───────────────────────────────────────
+
+@everywhere using Distributed
+@everywhere import ClimaLand
+@everywhere const SITE_ID = $SITE_ID
+@everywhere const OUTPUT_DIR = $OUTPUT_DIR
+@everywhere const OBS_FILEPATH = $OBS_FILEPATH
+@everywhere const DT = $DT
+@everywhere include(
+    joinpath(pkgdir(ClimaLand), "experiments/calibrate_dk_sor/model_interface.jl"),
+)
+
+# ── Run Calibration ──────────────────────────────────────────────────────────
+
+println("\n=== Starting ClimaCalibrate calibration ===")
+println("  Backend: WorkerBackend")
+println("  Iterations: $N_ITERATIONS")
+println("  Ensemble size: $N_ens")
+println("  Observation days: $n_obs (wind-filtered, $(first(cal_years))-$(last(cal_years)))")
+println("  Parameters: $(length(priors)) (9 canopy + 2 autotrophic respiration + 3 DAMM)")
+println("  LAI: MODIS")
+println("  Output: $OUTPUT_DIR")
+
+eki = ClimaCalibrate.calibrate(
+    ClimaCalibrate.WorkerBackend,
+    ekp,
+    N_ITERATIONS,
+    prior,
+    OUTPUT_DIR,
+)
+
+# ── Print Final Results ──────────────────────────────────────────────────────
+
+final_params = EKP.get_ϕ_mean_final(prior, eki)
+param_names = [only(PD.get_name(d)) for d in priors]
+println("\n=== Calibration Complete ===")
+println("Final parameter means:")
+for (name, val) in zip(param_names, final_params)
+    println("  $name = $(round(val, sigdigits = 5))")
+end
