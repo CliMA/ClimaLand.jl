@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 -----
+
+v1.7.0
+-----
+- ![breaking change][badge-💥breaking] Don't compute bucket fluxes in coupled case PR[#1677](https://github.com/CliMA/ClimaLand.jl/pull/1677)
 - ![][badge-✨feature] Add slab lake model to integrated models PR[#1672](https://github.com/CliMA/ClimaLand.jl/pull/1672)
 
 v1.6.5

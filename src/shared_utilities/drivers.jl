@@ -487,13 +487,13 @@ end
         earth_param_set)
 
 Computes turbulent surface fluxes at a point on a surface given
-(1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`, 
+(1) the prescribed atmospheric conditions, `P_atmos`, `T_atmos`, `q_tot_atmos`,
     `u_atmos`, and `h_atmos` the absolute height at which these measurements are made.
     `u_atmos` is a can be a scalar if only the horizontal wind speed is known,
     otherwise a tuple can be passed with the (u,v) components of the wind.
 (2) the surface temperature (`T_sfc_guess`), specific humidity (`q_vap_sfc_guess`).
     If no `update_T_sfc` and `update_q_val_sfc` functions are passed, these ``guesses"
-    are the values used in the solve. Otherwise, the update functions are used to 
+    are the values used in the solve. Otherwise, the update functions are used to
     modify the ``guess" values to the actual surface values.
 (3) Other surface properties, such the roughness model (see SurfaceFluxes.jl
     for possible types), the surface height, relative to the same references as `h_atmos`,
@@ -549,7 +549,7 @@ function compute_turbulent_fluxes_at_a_point(
         surface_flux_params,
         T_atmos,
         q_tot_atmos,
-        FT(0),#phase_partition_atmos.liq, 
+        FT(0),#phase_partition_atmos.liq,
         FT(0),#,phase_partition_atmos.ice,
         ρ_atmos,
         T_sfc_guess,
@@ -796,8 +796,8 @@ function get_update_surface_humidity_function(model::AbstractModel, Y, p) end
     get_∂T_sfc∂T_function(model::AbstractModel, Y, p)
 
 Returns a function which computes the partial derivative of the surface temperature
-using in turbulent_fluxes! with respect to the component temperature. The expected
-arguments are (u_star, g_h, earth_param_set).
+used in `turbulent_fluxes!` with respect to the component temperature. The expected
+arguments are (`u_star`, `g_h`, `earth_param_set`).
 
 This is only required if the output of `component_temperature` does not coincide
 with the temperature that should be used to compute turbulent fluxes, and if your
@@ -818,8 +818,8 @@ end
     get_∂q_sfc∂T_function(model::AbstractModel, Y, p)
 
 Returns a function which computes the partial derivative of the surface humidity
-using in turbulent_fluxes! with respect to the component temperature. The expected
-arguments are (u_star, g_h, T_sfc, P_sfc, earth_param_set).
+used in `turbulent_fluxes!` with respect to the component temperature. The expected
+arguments are (`u_star`, `g_h`, `T_sfc`, `P_sfc`, `earth_param_set`).
 
 This is only required if the output of `component_specific_humidity` does not coincide
 with the humidity that should be used to compute turbulent fluxes, and if your
@@ -1635,7 +1635,7 @@ See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible he
 and latent heat as a function of aerosol optical depth over the course of deforestation
 in the Brazilian Amazon" 2013.
 
-Note that cosθs is a coefficient of k₀, which we divide by in this expression. 
+Note that cosθs is a coefficient of k₀, which we divide by in this expression.
 This can amplify small errors when cosθs is near 0.
 
 This formula is empirical and can yield negative numbers depending on the
