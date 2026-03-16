@@ -278,12 +278,12 @@ end
             temperature_dep_yield = true,
             ϕ0_c3 = FT(0.052),
             ϕ0_c4 = FT(0.057),
-            ϕa0_c3 = FT(0.352 * 0.087),
-            ϕa1_c3 = FT(0.022 * 0.087),
-            ϕa2_c3 = FT(-0.00034 * 0.087),
-            ϕa0_c4 = FT(-0.352 * 0.087),
-            ϕa1_c4 = FT(0.022 * 0.087),
-            ϕa2_c4 = FT(-0.00034 * 0.087),
+            ϕa0_c3 = FT(0.352 / 8),
+            ϕa1_c3 = FT(0.022 / 8),
+            ϕa2_c3 = FT(-0.00034 / 8),
+            ϕa0_c4 = FT(-0.008),
+            ϕa1_c4 = FT(0.00375),
+            ϕa2_c4 = FT(-0.000058),
             α = FT(0),
         )
         is_c3 = FT(1)
@@ -342,6 +342,147 @@ end
                 atol = atol,
             )
         end
+    end
+end
+
+@testset "Mixed C3/C4 P-model outputs are partition-weighted" begin
+    for FT in (Float32, Float64)
+        toml_dict = LP.create_toml_dict(FT)
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41),
+            β_c3 = FT(146),
+            β_c4 = FT(146 / 9),
+            temperature_dep_yield = true,
+            ϕ0_c3 = FT(0.052),
+            ϕ0_c4 = FT(0.057),
+            ϕa0_c3 = FT(0.352 / 8),
+            ϕa1_c3 = FT(0.022 / 8),
+            ϕa2_c3 = FT(-0.00034 / 8),
+            ϕa0_c4 = FT(-0.008),
+            ϕa1_c4 = FT(0.00375),
+            ϕa2_c4 = FT(-0.000058),
+            α = FT(0),
+        )
+        constants = PModelConstants(toml_dict)
+        T_canopy = FT(303.15)
+        APAR = FT(0.0015)
+        ca = FT(0.00041)
+        P_air = FT(101325.0)
+        VPD = FT(2000.0)
+        βm = FT(0.9)
+        c3_fraction = FT(0.35)
+
+        outputs_c3 = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR;
+            is_c3 = FT(1),
+        )
+        outputs_c4 = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR;
+            is_c3 = FT(0),
+        )
+        outputs_mixed = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR;
+            is_c3 = c3_fraction,
+        )
+
+        for key in propertynames(outputs_mixed)
+            mixed_value = getproperty(outputs_mixed, key)
+            weighted_value =
+                c3_fraction * getproperty(outputs_c3, key) +
+                (FT(1) - c3_fraction) * getproperty(outputs_c4, key)
+            @test isapprox(mixed_value, weighted_value; rtol = 1e-6, atol = 1e-8)
+        end
+
+        χ_mixed = ClimaLand.Canopy.compute_chi(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            c3_fraction,
+        )
+        χ_weighted =
+            c3_fraction *
+            ClimaLand.Canopy.compute_chi(
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                FT(1),
+            ) +
+            (FT(1) - c3_fraction) *
+            ClimaLand.Canopy.compute_chi(
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                FT(0),
+            )
+        @test isapprox(χ_mixed, χ_weighted; rtol = 1e-6, atol = 1e-8)
+
+        A0_mixed = ClimaLand.Canopy.compute_A0_daily(
+            c3_fraction,
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            APAR,
+            βm,
+        )
+        A0_weighted =
+            c3_fraction *
+            ClimaLand.Canopy.compute_A0_daily(
+                FT(1),
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                APAR,
+                βm,
+            ) +
+            (FT(1) - c3_fraction) *
+            ClimaLand.Canopy.compute_A0_daily(
+                FT(0),
+                parameters,
+                constants,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                APAR,
+                βm,
+            )
+        @test isapprox(A0_mixed, A0_weighted; rtol = 1e-6, atol = 1e-8)
     end
 end
 

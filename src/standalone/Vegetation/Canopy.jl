@@ -220,7 +220,7 @@ end
     function PModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
+        is_c3 = nothing,
         cstar = toml_dict["pmodel_cstar"],
         β_c3 = toml_dict["pmodel_β_c3"],
         β_c4 = toml_dict["pmodel_β_c4"],
@@ -237,6 +237,8 @@ end
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
+If `is_c3` is not provided, the constructor uses the spatial `c3_fraction` field from
+the CLM artifact when available, and otherwise falls back to the dominant-pathway flag.
 
 The following default parameters (from the TOML file) are used:
 - cstar = 0.41 (unitless) - 4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)
@@ -244,18 +246,18 @@ The following default parameters (from the TOML file) are used:
 - β_c4 = 146/9 ≈ 16.222 (unitless) - Unit cost ratio of Vcmax to transpiration for C4 plants (pyrealm)
 - ϕ0_c3 = 0.052 (unitless) - constant intrinsic quantum yield. Skillman (2008)
 - ϕ0_c4 = 0.057 (unitless) - constant intrinsic quantum yield. Skillman (2008)
-- ϕa0_c3 = 0.352*0.087 (unitless) - constant term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa1_c3 = 0.022*0.087 (K^-1) - first order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa2_c3 = -0.00034*0.087 (K^-2) - second order term in quadratic intrinsic quantum yield (Stocker 2020)
-- ϕa0_c4 = 0.352*0.087 (unitless) - constant term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
-- ϕa1_c4 = 0.022*0.087 (K^-1) - first order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
-- ϕa2_c4 = -0.00034*0.087 (K^-2) - second order term in quadratic intrinsic quantum yield (Scott and Smith, 2022)
+- ϕa0_c3 = 0.044 (unitless) - constant term in quadratic intrinsic quantum yield (pyrealm/Bernacchi et al., 2003)
+- ϕa1_c3 = 0.00275 (K^-1) - first order term in quadratic intrinsic quantum yield (pyrealm/Bernacchi et al., 2003)
+- ϕa2_c3 = -0.0000425 (K^-2) - second order term in quadratic intrinsic quantum yield (pyrealm/Bernacchi et al., 2003)
+- ϕa0_c4 = -0.008 (unitless) - constant term in quadratic intrinsic quantum yield (pyrealm/Cai and Prentice, 2020)
+- ϕa1_c4 = 0.00375 (K^-1) - first order term in quadratic intrinsic quantum yield (pyrealm/Cai and Prentice, 2020)
+- ϕa2_c4 = -0.000058 (K^-2) - second order term in quadratic intrinsic quantum yield (pyrealm/Cai and Prentice, 2020)
 - α = 0.933 (unitless) - 1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)
 """
 function PModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    is_c3 = clm_photosynthesis_parameters(domain.space.surface).is_c3,
+    is_c3 = nothing,
     cstar = toml_dict["pmodel_cstar"],
     β_c3 = toml_dict["pmodel_β_c3"],
     β_c4 = toml_dict["pmodel_β_c4"],
@@ -270,6 +272,17 @@ function PModel{FT}(
     ϕa2_c4 = toml_dict["pmodel_ϕa2_c4"],
     α = toml_dict["pmodel_α"],
 ) where {FT <: AbstractFloat}
+    c3_fraction = if isnothing(is_c3)
+        photosynthesis_parameters = clm_photosynthesis_parameters(domain.space.surface)
+        (
+            hasproperty(photosynthesis_parameters, :c3_fraction) ?
+            photosynthesis_parameters.c3_fraction :
+            photosynthesis_parameters.is_c3
+        )
+    else
+        is_c3
+    end
+
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar,
         β_c3,
@@ -286,7 +299,7 @@ function PModel{FT}(
         α,
     )
 
-    return PModel{FT}(is_c3, toml_dict, parameters)
+    return PModel{FT}(c3_fraction, toml_dict, parameters)
 end
 
 
