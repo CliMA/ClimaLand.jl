@@ -81,12 +81,12 @@ const ILAMB_VARIABLES = Dict(
         "kg m-2 s-1", # kg C
         "mol CO2 m^-2 s^-1",
     ),
-    "soc" => ILAMBMapping(
+    "soc_int" => ILAMBMapping(
         "cSoil",
-        "Soil Carbon",
+        "Depth Integrated Soil Organic Carbon",
         1.0,
         "kg m-2", # kg C
-        "kg C m^-3",
+        "kg C m^-2",
     ),
     "cveg" => ILAMBMapping(
         "cVeg",
@@ -404,6 +404,8 @@ function define_var(ilamb_ds, clima_ds, clima_short_name)
     else
         expected_dims = ["lon", "lat", "time"]
     end
+
+
     data = get_data(
         clima_ds,
         clima_short_name,
