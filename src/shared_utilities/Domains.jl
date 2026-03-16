@@ -1,6 +1,5 @@
 module Domains
 
-import ..compat_add_mask, ..compat_set_mask!
 import ..Artifacts.landseamask_file_path
 
 using ClimaCore
@@ -378,9 +377,9 @@ function Plane(;
     space = ClimaCore.Spaces.SpectralElementSpace2D(
         grid_topology,
         quad;
-        compat_add_mask()...,
+        enable_mask = true,
     )
-    compat_set_mask!(space)
+    Spaces.set_mask!(space, ClimaCore.Fields.ones(space))
     space = (; surface = space)
     return Plane{FT, typeof(space)}(
         xlim,
@@ -660,9 +659,9 @@ function SphericalShell(;
     horzspace = ClimaCore.Spaces.SpectralElementSpace2D(
         horztopology,
         quad;
-        compat_add_mask()...,
+        enable_mask = true,
     )
-    compat_set_mask!(horzspace)
+    Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
@@ -737,8 +736,8 @@ function SphericalSurface(;
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
     horzspace =
-        Spaces.SpectralElementSpace2D(horztopology, quad; compat_add_mask()...)
-    compat_set_mask!(horzspace)
+        Spaces.SpectralElementSpace2D(horztopology, quad; enable_mask = true)
+    Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
     space = (; surface = horzspace)
     return SphericalSurface{FT, typeof(space)}(
         radius,

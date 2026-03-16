@@ -3,7 +3,7 @@ using ClimaLand
 using ClimaLand.Soil
 using Test
 
-if pkgversion(ClimaCore) >= v"0.14.30"
+@testset "Mask test" begin
     FT = Float64
     domain = ClimaLand.Domains.global_domain(FT)
 
