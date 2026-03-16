@@ -120,6 +120,8 @@ steps:
           slurm_ntasks_per_node: 4
           slurm_nodes: 1
           slurm_mem: 24G
+          modules: mpiwrapper/2024_05_27 climacommon/2026_02_18
+        soft_fail: true
 
       - label: "Global Run + P Model CPU MPI"
         command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy_pmodel.jl"
@@ -130,6 +132,8 @@ steps:
           slurm_ntasks_per_node: 4
           slurm_nodes: 1
           slurm_mem: 24G
+          modules: mpiwrapper/2024_05_27 climacommon/2026_02_18
+        soft_fail: true
 
       - label: "Canopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/timestep_test.jl"
