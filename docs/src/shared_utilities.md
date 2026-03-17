@@ -31,6 +31,6 @@ purpose, and can be set up as follows:
 nancheck_interval = Dates.Month(1)
 nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_interval, start_date; dt = Δt)
 ```
-and then included along with any other callbacks in a `SciMLBase.CallbackSet`.
+and then included along with any other callbacks in a `ClimaTimeSteppers.CallbackSet`.
 
 Please see our longrun experiments to see examples of this callback in action!

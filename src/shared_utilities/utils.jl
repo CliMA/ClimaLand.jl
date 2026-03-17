@@ -1,5 +1,5 @@
 import ClimaCore
-import SciMLBase
+import ClimaTimeSteppers
 import ClimaDiagnostics.Schedules:
     EveryCalendarDtSchedule, EveryDtSchedule, DivisorSchedule
 import Dates
@@ -17,8 +17,8 @@ export FTfromY
 """
     partial_q_sat_partial(q_sat::FT, T::FT, phase, earth_param_set) where {FT}
 
-Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been 
-computed from T and ρ over the correct phase `phase`.. 
+Computes the quantity ∂q_sat∂T at temperature T assuming q_sat has already been
+computed from T and ρ over the correct phase `phase`..
 """
 function partial_q_sat_partial_T(
     q_sat::FT,
@@ -735,7 +735,7 @@ function IntervalBasedCallback(
     cond = let schedule = schedule
         (_, _, integrator) -> schedule(integrator)
     end
-    return SciMLBase.DiscreteCallback(cond, affect!; initialize)
+    return ClimaTimeSteppers.DiscreteCallback(cond, affect!; initialize)
 end
 
 """
@@ -778,7 +778,7 @@ function IntervalBasedCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    return SciMLBase.DiscreteCallback(cond, affect!; initialize)
+    return ClimaTimeSteppers.DiscreteCallback(cond, affect!; initialize)
 end
 
 """

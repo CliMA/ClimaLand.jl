@@ -53,7 +53,6 @@
 
 # - Load external packages
 
-import SciMLBase
 using Plots
 # - Load CliMA packages and ClimaLand modules
 

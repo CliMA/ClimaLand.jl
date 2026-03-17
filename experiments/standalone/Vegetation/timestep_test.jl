@@ -34,7 +34,6 @@
 # Jacobian update: Every Newton iteration
 # Atmospheric and radiation driver updates: Every 3 hours
 
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 using CairoMakie

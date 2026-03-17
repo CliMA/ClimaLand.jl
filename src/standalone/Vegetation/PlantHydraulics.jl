@@ -464,7 +464,7 @@ end
     make_compute_exp_tendency(model::PlantHydraulicsModel, _)
 
 A function which creates the compute_exp_tendency! function for the PlantHydraulicsModel.
-The compute_exp_tendency! function must comply with a rhs function of SciMLBase.jl.
+The compute_exp_tendency! function must comply with a rhs function of ClimaTimeSteppers.jl.
 
 Below, `fa` denotes a flux multiplied by the relevant cross section
 (per unit area ground, or area index, AI). The tendency for the

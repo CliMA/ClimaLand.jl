@@ -2,14 +2,13 @@ using Test
 using ClimaLand
 using ClimaLand: Domains, Soil, Canopy
 using ClimaLand.Domains: global_domain, global_box_domain, HybridBox, Column
-using ClimaLand.Simulations: LandSimulation, step!
+using ClimaLand.Simulations: LandSimulation, step!, convert_cb
 using ClimaLand.Diagnostics: @with_error
 import ClimaLand.Parameters as LP
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaParams
 import ClimaLand.Parameters as LP
-import SciMLBase
 import ClimaTimeSteppers
 import ClimaDiagnostics
 import ClimaCore
@@ -125,7 +124,7 @@ end
     set_initial_cache! = ClimaLand.make_set_initial_cache(model)
     set_initial_cache!(p, Y, t0)
 
-    prob = SciMLBase.ODEProblem(
+    prob = ClimaTimeSteppers.ODEProblem(
         ClimaTimeSteppers.ClimaODEFunction((T_exp!) = exp_tendency!),
         Y,
         (t0, tf),
@@ -155,15 +154,16 @@ end
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(out, Y, p, t0; dt = Δt)
 
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+    diag_cb =
+        convert_cb(ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler))
 
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
-    cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
+    cb = ClimaTimeSteppers.CallbackSet(driver_cb, diag_cb)
     timestepper = ClimaTimeSteppers.RK4()
     ode_algo = ClimaTimeSteppers.ExplicitAlgorithm(timestepper)
-    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+    ClimaTimeSteppers.solve(prob, ode_algo; dt = Δt, callback = cb)
 
     using ClimaAnalysis
     simdir = ClimaAnalysis.SimDir(tmpdir)

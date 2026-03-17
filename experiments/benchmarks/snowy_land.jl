@@ -26,7 +26,6 @@
 # Atmos forcing update: every 3 hours
 delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
@@ -145,10 +144,13 @@ function setup_prob(
     jac_kwargs =
         (; jac_prototype = ClimaLand.initialize_jacobian(Y), Wfact = jacobian!)
 
-    prob = SciMLBase.ODEProblem(
+    prob = ClimaTimeSteppers.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = ClimaTimeSteppers.ODEFunction(
+                imp_tendency!;
+                jac_kwargs...,
+            ),
             dss! = ClimaLand.dss!,
         ),
         Y,
@@ -187,7 +189,13 @@ profiler = parsed_args["profiler"]
 if profiler == "flamegraph"
     prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
     @info "Starting profiling"
-    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
+    ClimaTimeSteppers.solve(
+        prob,
+        ode_algo;
+        dt = Δt,
+        callback = cb,
+        adaptive = false,
+    )
     MAX_PROFILING_TIME_SECONDS = 500
     MAX_PROFILING_SAMPLES = 100
     time_now = time()
@@ -197,7 +205,7 @@ if profiler == "flamegraph"
         lprob, lode_algo, lΔt, lcb = setup_simulation()
         push!(
             timings_s,
-            ClimaComms.@elapsed device SciMLBase.solve(
+            ClimaComms.@elapsed device ClimaTimeSteppers.solve(
                 lprob,
                 lode_algo;
                 dt = lΔt,
@@ -223,7 +231,7 @@ if profiler == "flamegraph"
     if ClimaComms.device() isa ClimaComms.CUDADevice
         import CUDA
         lprob, lode_algo, lΔt, lcb = setup_simulation()
-        p = CUDA.@profile SciMLBase.solve(
+        p = CUDA.@profile ClimaTimeSteppers.solve(
             lprob,
             lode_algo;
             dt = lΔt,
@@ -244,14 +252,19 @@ if profiler == "flamegraph"
         println()
     else # Flame graphs can be misleading on gpus, so we only create them on CPU
         prob, ode_algo, Δt, cb = setup_simulation()
-        Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+        Profile.@profile ClimaTimeSteppers.solve(
+            prob,
+            ode_algo;
+            dt = Δt,
+            callback = cb,
+        )
         results = Profile.fetch()
         flame_file = joinpath(outdir, "flame_$device_suffix.html")
         ProfileCanvas.html_file(flame_file, results)
         @info "Saved compute flame to $flame_file"
 
         prob, ode_algo, Δt, cb = setup_simulation()
-        Profile.Allocs.@profile sample_rate = 0.0025 SciMLBase.solve(
+        Profile.Allocs.@profile sample_rate = 0.0025 ClimaTimeSteppers.solve(
             prob,
             ode_algo;
             dt = Δt,
@@ -278,11 +291,11 @@ if profiler == "flamegraph"
     end
 elseif profiler == "nsight"
     prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
-    integrator = SciMLBase.init(prob, ode_algo; dt = Δt, callback = cb)
-    SciMLBase.step!(integrator)
-    SciMLBase.step!(integrator)
-    SciMLBase.step!(integrator)
-    SciMLBase.step!(integrator)
+    integrator = ClimaTimeSteppers.init(prob, ode_algo; dt = Δt, callback = cb)
+    ClimaTimeSteppers.step!(integrator)
+    ClimaTimeSteppers.step!(integrator)
+    ClimaTimeSteppers.step!(integrator)
+    ClimaTimeSteppers.step!(integrator)
 else
     @error("Profiler choice not supported.")
 end

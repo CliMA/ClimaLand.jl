@@ -12,7 +12,6 @@
 # Plots of the temporal evolution of water content, snow cover fraction,
 # surface temperature, evaporation, and surface energy flux.
 
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 using CairoMakie

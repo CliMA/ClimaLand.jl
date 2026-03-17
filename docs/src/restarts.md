@@ -39,10 +39,10 @@ Example:
 checkpoint_cb = CheckpointCallback(Dates.Hour(6), output_dir, start_date; model, dt)
 
 # Add the callback to the callback set
-cb = SciMLBase.CallbackSet(checkpoint_cb, other_callbacks...)
+cb = ClimaTimeSteppers.CallbackSet(checkpoint_cb, other_callbacks...)
 
 # Run the simulation with the callbacks
-sol = SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+sol = ClimaTimeSteppers.solve(prob, ode_algo; dt = Δt, callback = cb)
 
 # ... your ClimaLand simulation analysis ...
 ```

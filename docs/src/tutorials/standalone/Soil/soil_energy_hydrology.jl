@@ -78,7 +78,6 @@
 
 # # Import necessary modules
 # External (non - CliMA) modules
-import SciMLBase
 using Statistics
 using Plots
 

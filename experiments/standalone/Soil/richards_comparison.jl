@@ -4,7 +4,6 @@ ClimaComms.@import_required_backends
 using CairoMakie
 using DelimitedFiles
 using Statistics
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP

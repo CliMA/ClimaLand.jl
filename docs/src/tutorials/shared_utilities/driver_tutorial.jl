@@ -32,7 +32,7 @@
 # the start date. The start date should be in UTC.
 
 # Note: for coupled runs, corresponding types `CoupledAtmosphere`
-# and `CoupledRadiativeFluxes` exist. 
+# and `CoupledRadiativeFluxes` exist.
 
 # # Creating site-level drivers for radiation
 
@@ -130,7 +130,7 @@ update_radiation!(p, t0);
 updatefunc = update_radiation!;
 cb = ClimaLand.DriverUpdateCallback(updatefunc, 3600.0 * 3, t0);
 
-# This callback must then be provided to the simulation [`solve`](https://docs.sciml.ai/DiffEqCallbacks/stable/) function.
+# This callback must then be provided to the simulation [`solve`](https://clima.github.io/ClimaTimeSteppers.jl/stable/generated/Callbacks/) function.
 
 # # Using ERA5 data
 # If you wish to force your ClimaLand simulation with ERA5 reanalysis data, there is a helper function

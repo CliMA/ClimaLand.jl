@@ -1,4 +1,3 @@
-import SciMLBase
 using Statistics
 import ClimaTimeSteppers as CTS
 using ClimaCore

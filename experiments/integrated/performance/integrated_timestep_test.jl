@@ -35,7 +35,6 @@
 # Jacobian update: Every Newton iteration
 # Atmospheric and radiation driver updates: Every 3 hours
 
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using Dates

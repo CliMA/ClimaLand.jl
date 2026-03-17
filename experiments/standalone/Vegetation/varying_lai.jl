@@ -1,4 +1,3 @@
-import SciMLBase
 using CairoMakie
 using Statistics
 using Dates

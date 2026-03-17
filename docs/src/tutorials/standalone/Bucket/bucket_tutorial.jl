@@ -117,9 +117,8 @@
 
 # # Simulating a standalone bucket model
 
-# First, we need to import necessary packages. We use [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl)
-# and [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping.
-import SciMLBase
+# First, we need to import necessary packages. We use
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping.
 import ClimaTimeSteppers as CTS
 
 # We use [ClimaCore](https://github.com/CliMA/ClimaCore.jl)

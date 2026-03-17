@@ -3,7 +3,6 @@
 # prescribed forcing and comparing to data.
 
 using CairoMakie
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
 
