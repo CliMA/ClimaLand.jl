@@ -1,4 +1,3 @@
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore

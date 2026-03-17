@@ -17,7 +17,7 @@ The default is that no updates are required, no implicit tendency is
 present, and hence the timestepping is entirely explicit.
 
 Note that the returned function `jacobian!` should be
-used as `Wfact!` in `ClimaTimeSteppers.jl` and `SciMLBase.jl`.
+used as `Wfact!` in `ClimaTimeSteppers.jl`.
 """
 function make_jacobian(model::AbstractModel)
     update_implicit_cache! = make_update_implicit_cache(model)

@@ -1,4 +1,3 @@
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
@@ -321,7 +320,7 @@ GPP_data = comparison_data.gpp[data_id_post_spinup] .* 1e6
 GPP_model_monthly = compute_monthly_avg(GPP, model_dates)
 GPP_data_monthly = compute_monthly_avg(GPP_data, data_dates)
 
-# 
+#
 SW_u_model_monthly = compute_monthly_avg(SW_u, model_dates)
 SW_u_data = comparison_data.swu[data_id_post_spinup]
 SW_u_data_monthly = compute_monthly_avg(SW_u_data, model_dates)
