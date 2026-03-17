@@ -49,8 +49,8 @@ struct LandSimulation{
     UC,
     DI,
     RC,
-    CA <: SciMLBase.CallbackSet,
-    I <: SciMLBase.DEIntegrator,
+    CA,
+    I,
 }
     model::M
     timestepper::T
