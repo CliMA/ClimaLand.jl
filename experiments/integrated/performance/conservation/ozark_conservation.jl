@@ -1,4 +1,3 @@
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaComms
@@ -19,6 +18,7 @@ import ClimaParams
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
+import ClimaTimeSteppers
 
 global climaland_dir = pkgdir(ClimaLand)
 global site_ID = "US-MOz"
@@ -286,18 +286,21 @@ for float_type in (Float32, Float64)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, dt, t0)
-    prob = SciMLBase.ODEProblem(
+    prob = ClimaTimeSteppers.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = ClimaTimeSteppers.ODEFunction(
+                imp_tendency!;
+                jac_kwargs...,
+            ),
             dss! = ClimaLand.dss!,
         ),
         Y,
         (t0, tf),
         p,
     )
-    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-    sol = SciMLBase.solve(
+    cb = ClimaTimeSteppers.CallbackSet(driver_cb, saving_cb)
+    sol = ClimaTimeSteppers.solve(
         prob,
         ode_algo;
         dt = dt,

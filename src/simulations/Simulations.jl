@@ -2,7 +2,6 @@ module Simulations
 using ClimaTimeSteppers
 using ClimaComms
 import ClimaComms: context, device
-using SciMLBase
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
@@ -21,8 +20,8 @@ import ..Diagnostics: close_output_writers
         UC,
         DI,
         RC,
-        CA <: SciMLBase.CallbackSet,
-        I <: SciMLBase.DEIntegrator,
+        CA <: ClimaTimeSteppers.CallbackSet,
+        I <: ClimaTimeSteppers.TimeStepperIntegrator,
     }
 
 the ClimaLand LandSimulation struct, which specifies
@@ -190,11 +189,11 @@ function LandSimulation(
             jac_prototype = ClimaLand.initialize_jacobian(Y),
             Wfact = jacobian!,
         )
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...)
+        T_imp! = ClimaTimeSteppers.ODEFunction(imp_tendency!; jac_kwargs...)
     end
 
     # Create SciML ODE Problem
-    problem = SciMLBase.ODEProblem(
+    problem = ClimaTimeSteppers.ODEProblem(
         ClimaTimeSteppers.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = T_imp!,
@@ -222,15 +221,18 @@ function LandSimulation(
 
     # Collect all callbacks #TODO: ordering can be confusing as the state can be saved
     # in both user_cbs and diag_cbs, and the driver update happens between them
-    callbacks =
-        SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
+    callbacks = ClimaTimeSteppers.CallbackSet(
+        user_callbacks...,
+        required_callbacks...,
+        diag_cb,
+    )
     if haskey(solver_kwargs, :saveat) && !(solver_kwargs[:saveat] isa Array)
         solver_kwargs = merge(
             (; solver_kwargs...),
             (; :saveat => collect(t0:solver_kwargs[:saveat]:tf)),
         )
     end
-    _integrator = SciMLBase.init(
+    _integrator = ClimaTimeSteppers.init(
         problem,
         timestepper;
         dt = Δt,
@@ -315,7 +317,7 @@ Advances the land simulation `landsim` forward in time by one step,
 updating `landsim` in place.
 """
 function step!(landsim::LandSimulation)
-    SciMLBase.step!(landsim._integrator)
+    ClimaTimeSteppers.step!(landsim._integrator)
 end
 
 """
@@ -326,7 +328,7 @@ updating `landsim` in place.
 """
 function solve!(landsim::LandSimulation)
     try
-        SciMLBase.solve!(landsim._integrator)
+        ClimaTimeSteppers.solve!(landsim._integrator)
     catch ret_code
         @error "ClimaLand simulation crashed. Stacktrace for failed simulation" exception =
             (ret_code, catch_backtrace())

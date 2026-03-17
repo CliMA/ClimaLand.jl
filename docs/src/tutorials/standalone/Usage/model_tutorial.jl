@@ -85,7 +85,7 @@
 
 # In order to define this set of equations, in a manner which is consistent
 # with the `AbstractModel` interface (used by `ClimaLand.jl`) and
-# time-stepping algorithms (`OrdinaryDiffEq.jl` for the present),
+# time-stepping algorithms (`ClimaTimeSteppers.jl` for the present),
 # the following must be provided.
 
 # # The Model
@@ -122,7 +122,6 @@
 
 # Let's first import some needed packages.
 import ClimaTimeSteppers as CTS
-using SciMLBase
 using Plots
 using ClimaCore
 using ClimaLand

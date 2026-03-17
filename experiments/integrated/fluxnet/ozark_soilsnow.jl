@@ -6,7 +6,6 @@
 ## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore

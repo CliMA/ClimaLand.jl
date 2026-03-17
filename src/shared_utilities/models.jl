@@ -154,7 +154,7 @@ auxiliary_types(m::AbstractModel) = ()
     make_update_aux(model::AbstractModel)
 
 Return an `update_aux!` function that updates all of the auxiliary state
-stored in `p`. These state variables must be updated each step at 
+stored in `p`. These state variables must be updated each step at
 least once, but a subset of them may be updated more if the model
 is timestepped implicitly.
 """
@@ -170,7 +170,7 @@ Return an `update_boundary_fluxes!` function that updates the state variables
  in `p` corresponding to boundary fluxes (with the atmosphere)
 or fluxes between component models.
 
-These must be updated each step at  least once, but a subset 
+These must be updated each step at  least once, but a subset
 of them may be updated more if the model is timestepped implicitly.
 """
 function make_update_boundary_fluxes(model::AbstractModel)
@@ -199,7 +199,7 @@ end
     make_update_implicit_aux(model::AbstractModel)
 
 Return an `update_aux!` function that updates state variables
-stored in `p` to be correspond to their values at the next timestep 
+stored in `p` to be correspond to their values at the next timestep
 (i.e., treated implicitly).
 
 The default behavior is to treat all state variables implicitly; most
@@ -215,7 +215,7 @@ end
 
 Return an `update_boundary_fluxes!` function that updates the state variables
  in `p` corresponding to boundary fluxes (with the atmosphere)
-or fluxes between component models  to correspond to their values at the 
+or fluxes between component models  to correspond to their values at the
 next timestep  (i.e., treated implicitly).
 
 The default behavior is to treat all state variables implicitly; most
@@ -275,7 +275,7 @@ add_drivers_to_cache(p, model::AbstractModel) = p
 Returns an `imp_tendency` that updates auxiliary variables and
 updates the prognostic state of variables that are stepped implicitly.
 
-`compute_imp_tendency!` should be compatible with SciMLBase.jl solvers.
+`compute_imp_tendency!` should be compatible with ClimaTimeSteppers.jl solvers.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
@@ -306,7 +306,7 @@ end
 Returns an `exp_tendency` that updates auxiliary variables and
 updates the prognostic state of variables that are stepped explicitly.
 
-`compute_exp_tendency!` should be compatible with SciMLBase.jl solvers.
+`compute_exp_tendency!` should be compatible with ClimaTimeSteppers.jl solvers.
 """
 function make_exp_tendency(model::AbstractModel)
     compute_exp_tendency! = make_compute_exp_tendency(model)
@@ -328,7 +328,7 @@ for models that do not have any implicit tendencies to update.
 Note that we cannot set `dY .= 0` here because this would overwrite the
 tendencies of all models in the case of an integrated LSM.
 
-`compute_imp_tendency!` should be compatible with SciMLBase.jl solvers.
+`compute_imp_tendency!` should be compatible with ClimaTimeSteppers.jl solvers.
 """
 function make_compute_imp_tendency(model::AbstractModel)
     function compute_imp_tendency!(dY, Y, p, t)
@@ -347,7 +347,7 @@ for models that do not have any explicit tendencies to update.
 Note that we cannot set `dY .= 0` here because this would overwrite the
 tendencies of all models in the case of an integrated LSM.
 
-`compute_exp_tendency!` should be compatible with SciMLBase.jl solvers.
+`compute_exp_tendency!` should be compatible with ClimaTimeSteppers.jl solvers.
 """
 function make_compute_exp_tendency(model::AbstractModel)
     function compute_exp_tendency!(dY, Y, p, t)
@@ -361,7 +361,7 @@ end
 
 Returns the `set_initial_cache!` function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
-In this case, the drivers are updated with their initial values, because 
+In this case, the drivers are updated with their initial values, because
 many cache variables cannot be updated without the driver values being set.
 
 In principle, this function is not needed, because in the very first evaluation
