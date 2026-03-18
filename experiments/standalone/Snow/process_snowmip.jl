@@ -34,7 +34,8 @@ timestamp, mask, seconds, LWdown, SWdown, Psurf, q_air, Tair, u, rainf, snowf =
         timestamp = met_data["time"][:]
         year = Dates.year.(timestamp)
         # convert from milliseconds to seconds
-        mask = (year .== 2010) .| (year .== 2011) .| (year .== 2012)
+        mask = 2007 .<= year .<= 2014#(year .== 2010) .| (year .== 2011) .| (year .== 2012) .| (year .== 2013) .| (year .== 2014)
+        #mask = 10:(length(timestamp)-10)
         seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
 
         LWdown = met_data["LWdown"][:][mask]

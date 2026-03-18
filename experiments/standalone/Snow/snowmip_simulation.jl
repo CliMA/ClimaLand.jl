@@ -27,6 +27,16 @@ ClimaComms.@import_required_backends
 NeuralSnow =
     Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
+
+const setup = Dict(
+    "site" => "snb",
+    "output_file" => "./siteruns/snb_data_others.jld2",
+    "use_neural_albedo" => true,
+    "use_sfc_temp" => true,
+    "use_neural_depth" => true,
+)
+datadict = Dict()
+#=
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
@@ -34,10 +44,12 @@ if length(ARGS) < 1
 else
     SITE_NAME = ARGS[1]
 end
+=#
+SITE_NAME = setup["site"]
 climaland_dir = pkgdir(ClimaLand)
 
-USE_NEURAL_MODELS = true
-USE_BULK_SFC_TEMP = false
+USE_NEURAL_MODELS = setup["use_neural_depth"]
+USE_BULK_SFC_TEMP = !setup["use_sfc_temp"]
 
 FT = Float32
 context = ClimaComms.context()
@@ -49,6 +61,17 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 include(
     joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl"),
 )
+include(
+    joinpath(climaland_dir, "experiments/long_runs/acthesis/compare_models.jl")
+)
+
+datadict["obs"] = Dict(
+    "ground_alb" => albedo,
+    "swe" => mass ./ 1000,
+    "z" => z,
+    "tsurf" => ts,
+    "dates" => timestamp,
+)
 
 t0 = FT(0.0)
 tf = FT(seconds[end])
@@ -58,20 +81,23 @@ ndays = (tf - t0) / 3600 / 24
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0), longlat = FT.((long, lat)))
 
 surf_temp =
-    USE_BULK_SFC_TEMP ? Snow.BulkSurfaceTemperatureModel{FT}() :
+    !setup["use_sfc_temp"] ? Snow.BulkSurfaceTemperatureModel{FT}() :
     Snow.EquilibriumGradientTemperatureModel{FT}()
 
 density =
-    USE_NEURAL_MODELS ? NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt) :
+    setup["use_neural_depth"] ?
+    #Anderson1976{FT}() :
+    NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt) :
     Snow.MinimumDensityModel(ρ)
 
 α_snow =
-    USE_NEURAL_MODELS ?
+    setup["use_neural_albedo"] ?
+    #HTESSELAlbedoModel{FT}() :
     NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt) :
     Snow.ConstantAlbedoModel(α)
 
 temp_tag = USE_BULK_SFC_TEMP ? "surftemp" : "gradtemp"
-neural_tag = USE_NEURAL_MODELS ? "default" : "neural"
+neural_tag = USE_NEURAL_MODELS ? "neural" : "default"
 
 savedir = generate_output_path(
     "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(neural_tag)_$(temp_tag)",
@@ -159,33 +185,33 @@ sol = ClimaTimeSteppers.solve(
 );
 
 # Plotting
-q_l = [Array(parent(sv.saveval[k].snow.q_l))[1] for k in 1:length(sol.t)];
-T = [Array(parent(sv.saveval[k].snow.T))[1] for k in 1:length(sol.t)];
+q_l = [Array(parent(sv.saveval[k].snow.q_l))[1] for k in 1:length(sv.t)];
+T = [Array(parent(sv.saveval[k].snow.T))[1] for k in 1:length(sv.t)];
 evaporation = [
     Array(parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux))[1] for
-    k in 1:length(sol.t)
+    k in 1:length(sv.t)
 ];
-R_n = [Array(parent(sv.saveval[k].snow.R_n))[1] for k in 1:length(sol.t)];
+R_n = [Array(parent(sv.saveval[k].snow.R_n))[1] for k in 1:length(sv.t)];
 water_runoff =
-    [Array(parent(sv.saveval[k].snow.water_runoff))[1] for k in 1:length(sol.t)];
+    [Array(parent(sv.saveval[k].snow.water_runoff))[1] for k in 1:length(sv.t)];
 phase_change_flux = [
     Array(parent(sv.saveval[k].snow.phase_change_flux))[1] for
-    k in 1:length(sol.t)
+    k in 1:length(sv.t)
 ];
 rain = [Array(parent(sv.saveval[k].drivers.P_liq))[1] for k in 1:length(sv.t)];
 snow = [Array(parent(sv.saveval[k].drivers.P_snow))[1] for k in 1:length(sv.t)];
 scf = [
     Array(parent(sv.saveval[k].snow.snow_cover_fraction))[1] for
-    k in 1:length(sol.t)
+    k in 1:length(sv.t)
 ];
-ρ = [Array(parent(sv.saveval[k].snow.ρ_snow))[1] for k in 1:length(sol.t)];
-z = [Array(parent(sv.saveval[k].snow.z_snow))[1] for k in 1:length(sol.t)];
-α_snow = [Array(parent(sv.saveval[k].snow.α_snow))[1] for k in 1:length(sol.t)];
+ρ = [Array(parent(sv.saveval[k].snow.ρ_snow))[1] for k in 1:length(sv.t)];
+z = [Array(parent(sv.saveval[k].snow.z_snow))[1] for k in 1:length(sv.t)];
+α_snow = [Array(parent(sv.saveval[k].snow.α_snow))[1] for k in 1:length(sv.t)];
 α_surf = scf .* α_snow .+ (1 .- scf) .* (0.2) #where could I get the ground albedo value to combine with this?
-S = [Array(parent(sol.u[k].snow.S))[1] for k in 1:length(sol.t)];
-S_l = [Array(parent(sol.u[k].snow.S_l))[1] for k in 1:length(sol.t)];
-U = [Array(parent(sol.u[k].snow.U))[1] for k in 1:length(sol.t)];
-t = sol.t;
+S = [Array(parent(sol.u[k].snow.S))[1] for k in 1:length(sv.t)];
+S_l = [Array(parent(sol.u[k].snow.S_l))[1] for k in 1:length(sv.t)];
+U = [Array(parent(sol.u[k].snow.U))[1] for k in 1:length(sv.t)];
+t = sv.t;
 
 start_day = 1
 days = start_day .+ floor.(t ./ 3600 ./ 24)
@@ -214,6 +240,17 @@ mean_obs_df = combine(
     renamecols = false,
 )
 daily = t ./ 24 ./ 3600
+
+#save results numerically
+tsurf = [Array(parent(sv.saveval[k].snow.T_sfc))[1] for k in 1:length(sv.t)]
+datadict["sim"] = Dict(
+    "z" => z,
+    "S" => S,
+    "scf" => scf,
+    "snalb" => α_snow,
+    "tsurf" => tsurf,
+)
+jldsave(setup["output_file"], data = datadict)
 
 fig = CairoMakie.Figure(size = (1000, 1300), fontsize = 26)
 ax_alb = CairoMakie.Axis(fig[1, 1], ylabel = "Albedo")
