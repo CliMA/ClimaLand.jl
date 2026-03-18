@@ -1046,4 +1046,23 @@ end
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
+@diagnostic_compute "snow_albedo" Union{LandModel, SnowModel} p.snow.α_snow
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+
+function compute_ground_albedo!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (p.α_ground.PAR + p.α_ground.NIR) / 2
+        return out
+    else
+        @. out = (p.α_ground.PAR + p.α_ground.NIR) / 2
+    end
+end

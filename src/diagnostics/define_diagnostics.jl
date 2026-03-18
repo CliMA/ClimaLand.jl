@@ -1138,4 +1138,28 @@ function define_diagnostics!(land_model, possible_diags)
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
+
+    #Snow Albedo
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snalb",
+        long_name = "Snow Surface Albedo",
+        standard_name = "snow_albedo",
+        units = "",
+        comments = "The albedo of just the snow surface, when a snowpack exists",
+        compute! = (out, Y, p, t) ->
+            compute_snow_albedo!(out, Y, p, t, land_model),
+    )
+
+    #Ground albedo (no canopy)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "galb",
+        long_name = "Ground albedo",
+        standard_name = "ground_albedo",
+        units = "",
+        comments = "Combined albedo specifically of the ground surface (no canopy), including soil and snow.",
+        compute! = (out, Y, p, t) ->
+            compute_ground_albedo!(out, Y, p, t, land_model),
+    )
 end
