@@ -76,14 +76,14 @@ end
 Preprocess each variable from the ERA5 dataset with `short_names`.
 """
 function preprocess_era5_vars(short_names, start_date, nelements)
-    era5_obs_vars = get_era5_obs_var_dict()
+    obs_vars = get_calibration_obs_var_dict()
     for short_name in short_names
-        short_name ∉ keys(era5_obs_vars) && error(
-            "There is no variable with the short name $short_name. Add this variable to get_era5_obs_var_dict",
+        short_name ∉ keys(obs_vars) && error(
+            "There is no variable with the short name $short_name. Add this variable to get_calibration_obs_var_dict",
         )
     end
     vars = map(short_names) do short_name
-        var = era5_obs_vars[short_name](start_date)
+        var = obs_vars[short_name](start_date)
         preprocess_single_era5_var(var, short_name, nelements)
     end
     return vars
