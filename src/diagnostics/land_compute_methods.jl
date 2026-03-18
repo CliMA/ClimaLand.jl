@@ -987,18 +987,18 @@ function compute_canopy_temperature!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= canopy_temperature(land_model.canopy.energy, land_model, Y, p)
+            #nan_if_no_canopy.(
+            #    canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            #    PAI,
+            #)
         return out
     else
-        out .=
-            nan_if_no_canopy.(
-                canopy_temperature(land_model.canopy.energy, land_model, Y, p),
-                PAI,
-            )
+        out .= canopy_temperature(land_model.canopy.energy, land_model, Y, p)
+            #nan_if_no_canopy.(
+            #    canopy_temperature(land_model.canopy.energy, land_model, Y, p),
+            #    PAI,
+            #)
     end
 end
 function compute_canopy_temperature!(
@@ -1044,8 +1044,13 @@ end
 } Y.soil.ρe_int
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
+@diagnostic_compute "snow_energy" LandModel Y.snow.U
+@diagnostic_compute "snow_applied_energy_flux" LandModel p.snow.applied_energy_flux
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
+@diagnostic_compute "snow_albedo" Union{LandModel, SnowModel} p.snow.α_snow
+@diagnostic_compute "surf_residual_flux" Union{LandModel, SnowModel} p.snow.surf_residual_flux #need to take out before merge since this doesn't always appear
+@diagnostic_compute "phase_change_flux" Union{LandModel, SnowModel} p.snow.phase_change_flux
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 
@@ -1057,3 +1062,21 @@ end
 @diagnostic_compute "lake_lhf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.lhf
 @diagnostic_compute "lake_shf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.shf
 @diagnostic_compute "lake_rn" Union{SlabLakeModel, LandModel} p.lake.R_n
+
+function compute_ground_albedo!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (p.α_ground.PAR + p.α_ground.NIR) / 2
+        return out
+    else
+        @. out = (p.α_ground.PAR + p.α_ground.NIR) / 2
+    end
+end

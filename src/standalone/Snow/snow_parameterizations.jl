@@ -799,6 +799,7 @@ end
         κ::FT,
         ρ::FT,
         z::FT,
+        temp_tol::FT
         earth_param_set
     )
 
@@ -810,11 +811,13 @@ function surface_residual_flux(
     κ::FT,
     ρ::FT,
     z::FT,
+    temp_tol::FT,
     earth_param_set,
 )::FT where {FT}
     _T_freeze = FT(LP.T_freeze(earth_param_set))
     d_safe = max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), eps(FT))
-    return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
+    return T_sfc_root - _T_freeze > temp_tol ?
+           FT(-κ * (T_sfc_root - _T_freeze) / d_safe) : #change the diff to T_sfc_root - T_freeze > tol?
            FT(0)
 end
 
@@ -873,6 +876,7 @@ function update_surf_temp!(
             p.snow.κ,
             p.snow.ρ_snow,
             p.snow.z_snow,
+            surf_temp.tol,
             model.parameters.earth_param_set,
         )
 

@@ -399,7 +399,8 @@ function ClimaLand.Snow.update_density_and_depth!(
     earth_param_set,
 )
     #For now: assume this model was trained to represent Y.snow.Z as z-per-ground-area, just like p.snow.Z is, and take in per-ground-area inputs.
-    @. z_snow = Y.snow.Z #p.snow.z_snow is z-per-ground-area, so we set its value directly. Need to change to "Y.snow.Z * scf" if we change Y.snow.Z to represent true snow depth.
+    #Do one extra clamp to deal with machine precision issues:
+    @. z_snow = clamp(Y.snow.Z, Y.snow.S, Y.snow.S / density.ρ_min_frac) #p.snow.z_snow is z-per-ground-area, so we set its value directly. Need to change to "Y.snow.Z * scf" if we change Y.snow.Z to represent true snow depth.
     @. ρ_snow = snow_bulk_density(Y.snow.S, z_snow, earth_param_set) #make sure both passed args are both per-snow-area or both per-ground-area.
 end
 
@@ -417,7 +418,8 @@ function ClimaLand.Snow.update_snow_albedo!(
     t,
     earth_param_set,
 )
-    @. α = Y.snow.A
+    c = m.alb_model.constraints
+    @. α = clamp(Y.snow.A, c.lower_bound.lim[1], c.upper_bound.lim[1]) #try clipping again for machine precision concerns?
 end
 
 """
@@ -500,14 +502,12 @@ an overlying canopy.
     },
     p,
 )
-    return @. -(
+    return @. (
         p.canopy.radiative_transfer.nir.trans *
-        p.canopy.radiative_transfer.nir_d *
-        (1 - p.snow.α_snow) +
+        p.canopy.radiative_transfer.nir_d +
         p.canopy.radiative_transfer.par.trans *
-        p.canopy.radiative_transfer.par_d *
-        (1 - p.snow.α_snow)
-    )
+        p.canopy.radiative_transfer.par_d
+    ) #network just takes incoming shortwave, not net
 end
 
 """
@@ -588,7 +588,7 @@ function update_dzdt!(dzdt, density::NeuralDepthModel, model, Y, p)
     dzdt .=
         eval_z_nn.(
             Ref(density.z_model),
-            Y.snow.Z,
+            p.snow.z_snow,
             Y.snow.S,
             Y.snow.P_avg,
             Y.snow.T_avg,
@@ -647,8 +647,7 @@ function clip_dZdt(
     new_Z = dZdt * Δt + Z #also ground-area presently
     #new_scf = (something), if we pivot to let Y.snow.Z be the per-snow-area value
 
-    new_safe_z =
-        max(new_S_ground_area, min(new_Z, new_S_ground_area / ρ_min_frac)) #new_S_ground_area -> (new_S_ground_area / new_scf) if if Y.snow.Z becomes per-snow-area, which can be unstable
+    new_safe_z = clamp(new_Z, new_S_ground_area, new_S_ground_area / ρ_min_frac) #new_S_ground_area -> (new_S_ground_area / new_scf) if if Y.snow.Z becomes per-snow-area, which can be unstable
     return (new_safe_z - Z) / Δt
 end
 
@@ -666,6 +665,7 @@ function ClimaLand.Snow.compute_extra_prog_tendency!(
     p,
     t,
 )
+    prog_comps = model.boundary_conditions.prognostic_land_components
     update_dzdt!(dY.snow.Z, density, model, Y, p)
 
     # Now clip the tendency so that Z stays within approximately physical bounds.
@@ -685,7 +685,8 @@ function ClimaLand.Snow.compute_extra_prog_tendency!(
         p.drivers.T - model.parameters.earth_param_set.T_freeze,
         Y.snow.T_avg,
     )
-    @. dY.snow.R_avg = ema_tendency(density.w, p.drivers.SW_d, Y.snow.R_avg)
+    dY.snow.R_avg .=
+        ema_tendency.(density.w, snow_SW_down(Val(prog_comps), p), Y.snow.R_avg)
     dY.snow.Qrel_avg .=
         ema_tendency.(
             density.w,

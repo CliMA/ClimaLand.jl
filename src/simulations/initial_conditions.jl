@@ -199,8 +199,8 @@ function set_snow_initial_conditions!(
         )
     FT = eltype(Y.snow.U)
     if :Z in propertynames(Y.snow)
-        #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
-        Y.snow.Z .= FT(3) .* Y.snow.S
+        #no depth field in spin-up file: start with reasonable guess (snow density 250 kg/m^3)
+        Y.snow.Z .= FT(4) .* Y.snow.S
     end
     if :A in propertynames(Y.snow)
         FT = eltype(Y.snow.S)
@@ -680,7 +680,7 @@ function make_set_initial_state_from_file(
     function set_ic!(Y, p, t0, land)
         ds = NCDataset(ic_path)
         has_all_variables = all(key -> haskey(ds, key), ["W", "Ws", "T", "S"])
-        @assert has_all_variables "The bucket iniital condition file is expected to contain the variables W, Ws, T, and S (read documentation about requirements)."
+        @assert has_all_variables "The bucket initial condition file is expected to contain the variables W, Ws, T, and S (read documentation about requirements)."
         close(ds)
 
         domain = land.domain

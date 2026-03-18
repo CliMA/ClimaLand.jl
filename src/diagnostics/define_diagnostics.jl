@@ -1114,6 +1114,30 @@ function define_diagnostics!(land_model, possible_diags)
             compute_snow_water_equivalent!(out, Y, p, t, land_model),
     )
 
+    # Snow Energy U
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "usnow",
+        long_name = "Snow energy",
+        standard_name = "snow_energy",
+        units = "m",
+        comments = "Snow energy per ground area",
+        compute! = (out, Y, p, t) ->
+            compute_snow_energy!(out, Y, p, t, land_model),
+    )
+
+    # Snow Applied Energy Flux
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "apeflux",
+        long_name = "Snow applied energy flux",
+        standard_name = "snow_applied_energy_flux",
+        units = "m",
+        comments = "clipped flux to snow energy",
+        compute! = (out, Y, p, t) ->
+            compute_snow_applied_energy_flux!(out, Y, p, t, land_model),
+    )
+
     # Snow depth
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -1216,5 +1240,51 @@ function define_diagnostics!(land_model, possible_diags)
         comments = "Lake sensible heat flux per lake area",
         compute! = (out, Y, p, t) ->
             compute_lake_shf!(out, Y, p, t, land_model),
+    )
+    
+    #Snow Albedo
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snalb",
+        long_name = "Snow Surface Albedo",
+        standard_name = "snow_albedo",
+        units = "",
+        comments = "The albedo of just the snow surface, when a snowpack exists",
+        compute! = (out, Y, p, t) ->
+            compute_snow_albedo!(out, Y, p, t, land_model),
+    )
+
+    #Ground albedo (no canopy)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "galb",
+        long_name = "Ground albedo",
+        standard_name = "ground_albedo",
+        units = "",
+        comments = "Combined albedo specifically of the ground surface (no canopy), including soil and snow.",
+        compute! = (out, Y, p, t) ->
+            compute_ground_albedo!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "esflux",
+        long_name = "excess snow surface residual flux",
+        standard_name = "surf_residual_flux",
+        units = "",
+        comments = "surface residual flux term, as computed by EquilibriumGradientTemperatureModel",
+        compute! = (out, Y, p, t) ->
+            compute_surf_residual_flux!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "pcflux",
+        long_name = "snow phase change flux",
+        standard_name = "phase_change_flux",
+        units = "",
+        comments = "snow phase change flux",
+        compute! = (out, Y, p, t) ->
+            compute_phase_change_flux!(out, Y, p, t, land_model),
     )
 end

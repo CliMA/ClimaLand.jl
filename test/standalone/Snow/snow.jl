@@ -190,6 +190,7 @@ import ClimaLand.Parameters as LP
             p.snow.κ,
             p.snow.ρ_snow,
             p.snow.z_snow,
+            model.parameters.surf_temp.tol,
             model.parameters.earth_param_set,
         )
     #no update should occur from update_surf_temp!:

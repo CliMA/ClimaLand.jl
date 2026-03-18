@@ -165,6 +165,7 @@ for FT in (Float32, Float64)
             κ_surf_test,
             ρ_surf_test,
             FT(log(2)),
+            FT(0.1),
             param_set,
         )
         @test resid_flux_1 == FT(0)
@@ -173,6 +174,7 @@ for FT in (Float32, Float64)
             κ_surf_test,
             ρ_surf_test,
             FT(log(2)),
+            FT(0.1),
             param_set,
         )
         @test resid_flux_2 ≈ FT(-4 * κ_surf_test)
