@@ -207,8 +207,9 @@ Once you have defined `ClimaCalibrate.forward_model`,
 ## Job script
 
 A calibration job will likely take hours to complete, so you will probably have
-to submit a job with a job scheduler. Below is an example job .pbs script (for
-PBS, e.g., Derecho):
+to submit a job with a job scheduler. When working with the
+`ClimaCalibrate.WorkerBackend`, an example job .pbs script (for PBS, e.g.,
+Derecho):
 
 ```bash
 #!/bin/bash
@@ -253,16 +254,32 @@ julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl
 ```
 
-where `run_calibration.jl` is a script that set up the calibration and call
+where `run_calibration.jl` is a script that sets up the calibration and calls
 `ClimaCalibrate.calibrate`. You would start the job with a command such as `qsub
 name_of_job_script` for PBS or `sbatch name_of_job_script` for Slurm, and a few
-hours later, you would get a calibrated parameter set. You can check the status
-of your job with `qstat -u username` of PBS or `squeue -u username` on Slurm.
+hours later, you would get a calibrated parameter set.
+
+When using the `ClimaCalibrate.DerechoBackend` or `ClimaCalibrate.GCPBackend`,
+these backends will automatically submit the appropriate script to PBS or Slurm
+respectively. An example bash script would look like this:
+
+```
+#!/bin/bash
+
+module load climacommon
+
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+julia --project=.buildkite/ experiments/calibration/generate_observations.jl
+julia --project=.buildkite/ experiments/calibration/run_calibration.jl
+```
+
+You can check the status of your job with `qstat -u username` of PBS or `squeue
+-u username` on Slurm.
 
 Note that with the default EKP configuration, UTKI, the number of ensemble is
 set by the number of parameters, as explained in the documentation above. The
 number of workers (if you use the worker backend) is automatically set to that
-numbers, so that all members are run in parallel for each iteration.
+number, so that all members are run in parallel for each iteration.
 
 ## Configure your land calibration
 
