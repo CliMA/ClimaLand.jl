@@ -22,7 +22,6 @@ ClimaLand.surface_roughness_model
 ClimaLand.surface_displacement_height
 ClimaLand.get_update_surface_temperature_function
 ClimaLand.get_update_surface_humidity_function
-ClimaLand.helper_update_surface_humidity_function
 ClimaLand.get_∂T_sfc∂T_function
 ClimaLand.get_∂q_sfc∂T_function
 ClimaLand.default_cos_zenith_angle

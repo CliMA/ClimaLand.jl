@@ -73,7 +73,7 @@ function ClimaLand.get_update_surface_humidity_function(
 end
 
 """
-    ClimaLand.helper_update_surface_humidity_function(
+    helper_update_surface_humidity_function(
         W,
         σS,
         model::BucketModel,
@@ -95,7 +95,7 @@ Arguments
 Returns
 - A broadcasted function to update the surface humidity
 """
-function ClimaLand.helper_update_surface_humidity_function(
+function helper_update_surface_humidity_function(
     W,
     σS,
     model::BucketModel,
