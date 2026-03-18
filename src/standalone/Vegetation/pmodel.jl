@@ -741,7 +741,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     βm = p.canopy.soil_moisture_stress.βm
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -837,7 +837,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     # drivers
     FT = eltype(parameters)
     βm = p.canopy.soil_moisture_stress.βm
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -992,7 +992,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     P_air = p.drivers.P
     ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
     c3_fraction = model.is_c3
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -1176,7 +1176,7 @@ function get_J_over_Jmax(Y, p, canopy, m::PModel)
 end
 
 function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     constants = m.constants
     Jmax_c3 = @. lazy(
         p.canopy.photosynthesis.OptVars.c3.Jmax25_opt * inst_temp_scaling(
@@ -1206,7 +1206,7 @@ function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmode
 end
 
 function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     FT = eltype(m.constants)
     earth_param_set = canopy.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
