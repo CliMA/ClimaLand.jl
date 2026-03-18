@@ -17,8 +17,10 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     "Constant describing cost of maintaining electron transport (unitless)"
     cstar::FT
-    "Ratio of unit costs of transpiration and carboxylation (unitless)"
-    β::FT
+    "Ratio of unit costs of transpiration and carboxylation for C3 plants (unitless)"
+    β_c3::FT
+    "Ratio of unit costs of transpiration and carboxylation for C4 plants (unitless)"
+    β_c4::FT
     "A boolean flag indicating if the quantum yield is a function of temperature or not"
     temperature_dep_yield::Bool
     "Temp-independent intrinsic quantum yield. (unitless); C3"
@@ -111,6 +113,35 @@ Base.eltype(::PModelConstants{FT}) where {FT} = FT
 # make these custom structs broadcastable as tuples
 Base.broadcastable(x::PModelParameters) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
+
+zero_optvars(::Type{FT}) where {FT} =
+    (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+zero_optvars_by_pathway(::Type{FT}) where {FT} =
+    (; c3 = zero_optvars(FT), c4 = zero_optvars(FT))
+
+weighted_pmodel_value(c3_fraction, c3_value, c4_value) =
+    c3_fraction * c3_value + (one(c3_fraction) - c3_fraction) * c4_value
+
+function mix_pmodel_outputs(c3_fraction, c3_outputs, c4_outputs)
+    keys = propertynames(c3_outputs)
+    values = map(
+        key ->
+            weighted_pmodel_value(
+                c3_fraction,
+                getproperty(c3_outputs, key),
+                getproperty(c4_outputs, key),
+            ),
+        keys,
+    )
+    return NamedTuple{keys}(values)
+end
+
+"""
+    get_beta(is_c3, β_c3, β_c4)
+
+Returns the appropriate β (cost ratio) based on whether the plant is C3 or C4.
+"""
+get_beta(is_c3, β_c3, β_c4) = ifelse(is_c3 == one(is_c3), β_c3, β_c4)
 
 """
     PModelConstants(toml_dict::CP.ParamDict;
@@ -217,7 +248,7 @@ struct PModel{
     parameters::OPFT
     "Constants for the P-model"
     constants::OPCT
-    "Photosynthesis mechanism - 1 indicates C3, 0 indicates C4"
+    "Fraction of C3 vegetation - 1 indicates pure C3, 0 indicates pure C4"
     is_c3::F
 end
 
@@ -239,10 +270,8 @@ function PModel{FT}(
     parameters::PModelParameters{FT};
     constants::PModelConstants{FT} = PModelConstants(toml_dict),
 ) where {FT <: AbstractFloat}
-    # if is_c3 is a field, is_c3 may contain values between 0.0 and 1.0 after regridding
-    # this deals with that possibility by rounding to the closest int
-    is_c3 = max.(min.(is_c3, FT(1)), FT(0)) # placeholder
-    is_c3 = round.(is_c3)
+    # Preserve mixed C3/C4 pixels while keeping the valid range [0, 1].
+    is_c3 = max.(min.(is_c3, FT(1)), FT(0))
     F = typeof(is_c3)
     return PModel{FT, typeof(parameters), typeof(constants), F}(
         parameters,
@@ -260,20 +289,41 @@ Defines the auxiliary vars of the Pmode: canopy level net photosynthesis,
  canopy-level gross photosynthesis (`GPP`),
 and dark respiration at the canopy level (`Rd`), and
 
-- `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt`
-    containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
+- `OptVars`: a NamedTuple with keys `:c3` and `:c4`, each containing acclimated
+    optimal values of ξ, Vcmax25, and Jmax25 for that pathway. These are updated
     using an exponential moving average (EMA) at local noon.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars)
+ClimaLand.auxiliary_vars(model::PModel) =
+    (:An, :GPP, :Rd, :ci, :An_c3, :An_c4, :ci_c3, :ci_c4, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
     FT,
-    NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+    FT,
+    FT,
+    FT,
+    FT,
+    NamedTuple{
+        (:c3, :c4),
+        Tuple{
+            NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+            NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+        },
+    },
 )
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+    )
 
 
 """
@@ -293,7 +343,8 @@ Performs the P-model computations as defined in Stocker et al. (2020)
 and returns a dictionary of full outputs. See https://github.com/geco-bern/rpmodel
 for a code reference. This should replicate the behavior of the `rpmodel` package.
 
-This is for C3 only, since the comparison data for C3.
+When `is_c3` is between 0 and 1, the function evaluates pure C3 and pure C4
+pathways separately and returns their partition-weighted average.
 
 Args:
 - `parameters`:     PModelParameters object containing the model parameters.
@@ -324,7 +375,7 @@ Output name         Description (units)
 - "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
 - "Rd"            Dark respiration rate (mol m^-2 s^-1)
 """
-function compute_full_pmodel_outputs(
+function compute_full_pmodel_outputs_pathway(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
     T_canopy::FT,
@@ -336,7 +387,8 @@ function compute_full_pmodel_outputs(
     is_c3 = FT(1),
 ) where {FT}
     # Unpack parameters
-    (; cstar, β) = parameters
+    (; cstar, β_c3, β_c4) = parameters
+    β = get_beta(is_c3, β_c3, β_c4)
 
     # Unpack constants
     (;
@@ -452,6 +504,56 @@ function compute_full_pmodel_outputs(
     )
 end
 
+function compute_full_pmodel_outputs(
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    βm::FT,
+    APAR::FT;
+    is_c3 = FT(1),
+) where {FT}
+    if FT(0) < is_c3 < FT(1)
+        c3_outputs = compute_full_pmodel_outputs_pathway(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR;
+            is_c3 = FT(1),
+        )
+        c4_outputs = compute_full_pmodel_outputs_pathway(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            APAR;
+            is_c3 = FT(0),
+        )
+        return mix_pmodel_outputs(is_c3, c3_outputs, c4_outputs)
+    end
+
+    return compute_full_pmodel_outputs_pathway(
+        parameters,
+        constants,
+        T_canopy,
+        P_air,
+        VPD,
+        ca,
+        βm,
+        APAR;
+        is_c3,
+    )
+end
+
 
 """
     update_optimal_EMA(is_c3::FT,
@@ -507,7 +609,8 @@ function update_optimal_EMA(
 ) where {FT}
     if local_noon_mask == FT(1.0)
         # Unpack parameters
-        (; cstar, β, α) = parameters
+        (; cstar, β_c3, β_c4, α) = parameters
+        β = get_beta(is_c3, β_c3, β_c4)
 
         # Unpack constants
         (;
@@ -638,7 +741,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     grav = LP.grav(earth_param_set)
     ρ_water = LP.ρ_cloud_liq(earth_param_set)
     βm = p.canopy.soil_moisture_stress.βm
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -662,15 +765,13 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
 
-    # Initialize OptVars with dummy values which will be overwritten
-    fill!(
-        p.canopy.photosynthesis.OptVars,
-        (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0)),
-    )
+    # Initialize pathway-specific acclimated values with dummy values which will be overwritten.
+    fill!(p.canopy.photosynthesis.OptVars, zero_optvars_by_pathway(FT))
 
     parameters_init = PModelParameters(
         cstar = parameters.cstar,
-        β = parameters.β,
+        β_c3 = parameters.β_c3,
+        β_c4 = parameters.β_c4,
         temperature_dep_yield = parameters.temperature_dep_yield,
         ϕ0_c4 = parameters.ϕ0_c4,
         ϕ0_c3 = parameters.ϕ0_c3,
@@ -685,11 +786,24 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     local_noon_mask = FT(1)  # Force update for initialization
 
-    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
-        model.is_c3,
+    @. p.canopy.photosynthesis.OptVars.c3 = update_optimal_EMA(
+        FT(1),
         parameters_init,
         constants,
-        p.canopy.photosynthesis.OptVars,
+        p.canopy.photosynthesis.OptVars.c3,
+        T_canopy,
+        p.drivers.P,
+        VPD,
+        p.drivers.c_co2,
+        βm,
+        APAR_canopy_moles,
+        local_noon_mask,
+    )
+    @. p.canopy.photosynthesis.OptVars.c4 = update_optimal_EMA(
+        FT(0),
+        parameters_init,
+        constants,
+        p.canopy.photosynthesis.OptVars.c4,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -723,7 +837,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
     # drivers
     FT = eltype(parameters)
     βm = p.canopy.soil_moisture_stress.βm
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -747,11 +861,24 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         ),
     )
 
-    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
-        canopy.photosynthesis.is_c3,
+    @. p.canopy.photosynthesis.OptVars.c3 = update_optimal_EMA(
+        FT(1),
         parameters,
         constants,
-        p.canopy.photosynthesis.OptVars,
+        p.canopy.photosynthesis.OptVars.c3,
+        T_canopy,
+        p.drivers.P,
+        VPD,
+        p.drivers.c_co2,
+        βm,
+        APAR_canopy_moles,
+        local_noon_mask,
+    )
+    @. p.canopy.photosynthesis.OptVars.c4 = update_optimal_EMA(
+        FT(0),
+        parameters,
+        constants,
+        p.canopy.photosynthesis.OptVars.c4,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -855,12 +982,17 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     GPP = p.canopy.photosynthesis.GPP
     Rd = p.canopy.photosynthesis.Rd
     ci = p.canopy.photosynthesis.ci
+    An_c3 = p.canopy.photosynthesis.An_c3
+    An_c4 = p.canopy.photosynthesis.An_c4
+    ci_c3 = p.canopy.photosynthesis.ci_c3
+    ci_c4 = p.canopy.photosynthesis.ci_c4
     OptVars = p.canopy.photosynthesis.OptVars
 
     # drivers
     P_air = p.drivers.P
     ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    c3_fraction = model.is_c3
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
         max(
@@ -895,7 +1027,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.Γstar25,
         ),
     )
-    @. ci = intercellular_co2_pmodel(OptVars.ξ_opt, ca_pp, Γstar, VPD)
     Kmm = @. lazy(
         compute_Kmm(
             T_canopy,
@@ -909,9 +1040,24 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.oi,
         ),
     )
-    # compute instantaneous max photosynthetic rates and assimilation rates
-    Jmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
+    # compute instantaneous max photosynthetic rates and assimilation rates for each pathway
+    @. ci_c3 = intercellular_co2_pmodel(OptVars.c3.ξ_opt, ca_pp, Γstar, VPD)
+    @. ci_c4 = intercellular_co2_pmodel(OptVars.c4.ξ_opt, ca_pp, Γstar, VPD)
+
+    Jmax_c3 = @. lazy(
+        OptVars.c3.Jmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Jmax,
+            constants.Hd_Jmax,
+            constants.aS_Jmax,
+            constants.bS_Jmax,
+            constants.R,
+        ),
+    )
+    Jmax_c4 = @. lazy(
+        OptVars.c4.Jmax25_opt * inst_temp_scaling(
             T_canopy,
             T_canopy,
             constants.To,
@@ -923,16 +1069,35 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    J = @. lazy(
+    J_c3 = @. lazy(
         electron_transport_pmodel(
-            intrinsic_quantum_yield(model.is_c3, T_canopy, parameters),
+            intrinsic_quantum_yield(FT(1), T_canopy, parameters),
             APAR_canopy_moles,
-            Jmax,
+            Jmax_c3,
+        ),
+    )
+    J_c4 = @. lazy(
+        electron_transport_pmodel(
+            intrinsic_quantum_yield(FT(0), T_canopy, parameters),
+            APAR_canopy_moles,
+            Jmax_c4,
         ),
     )
 
-    Vcmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
+    Vcmax_c3 = @. lazy(
+        OptVars.c3.Vcmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Vcmax,
+            constants.Hd_Vcmax,
+            constants.aS_Vcmax,
+            constants.bS_Vcmax,
+            constants.R,
+        ),
+    )
+    Vcmax_c4 = @. lazy(
+        OptVars.c4.Vcmax25_opt * inst_temp_scaling(
             T_canopy,
             T_canopy,
             constants.To,
@@ -944,35 +1109,52 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         ),
     )
 
-    # rubisco limited assimilation rate
-    Ac = @. lazy(Vcmax * compute_mc(model.is_c3, Γstar, ca_pp, ci, VPD, Kmm)) # c3 or c4 is reflected in the value of mc
+    Ac_c3 = @. lazy(Vcmax_c3 * compute_mc(FT(1), Γstar, ca_pp, ci_c3, VPD, Kmm))
+    Ac_c4 = @. lazy(Vcmax_c4 * compute_mc(FT(0), Γstar, ca_pp, ci_c4, VPD, Kmm))
+    Aj_c3 = @. lazy(J_c3 / 4 * compute_mj(FT(1), Γstar, ca_pp, ci_c3, VPD))
+    Aj_c4 = @. lazy(J_c4 / 4 * compute_mj(FT(0), Γstar, ca_pp, ci_c4, VPD))
 
-    # light limited assimilation rate
-    Aj = @. lazy(J / 4 * compute_mj(model.is_c3, Γstar, ca_pp, ci, VPD)) # c3 or c4 is reflected in the value of mj
-
-    # dark respiration
-    # Here we make an assumption about how to relate Rd25 to Vcmax25_opt
-    # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
-    # This function below would become c3_dark_respiration_pmodel
-    @. Rd =
+    Rd_c3 = @. lazy(
         constants.fC3 *
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt *
+        OptVars.c3.Vcmax25_opt *
         inst_temp_scaling_rd(
             T_canopy,
             constants.To,
             constants.aRd,
             constants.bRd,
         )
+    )
+    Rd_c4 = @. lazy(
+        constants.fC3 *
+        OptVars.c4.Vcmax25_opt *
+        inst_temp_scaling_rd(
+            T_canopy,
+            constants.To,
+            constants.aRd,
+            constants.bRd,
+        )
+    )
 
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
     # this factor to Vcmax and Jmax, we do not apply it again here
-    @. GPP = gross_photosynthesis(Ac, Aj)
-    @. An = net_photosynthesis(GPP, Rd)
+    GPP_c3 = @. lazy(gross_photosynthesis(Ac_c3, Aj_c3))
+    GPP_c4 = @. lazy(gross_photosynthesis(Ac_c4, Aj_c4))
+    @. An_c3 = net_photosynthesis(GPP_c3, Rd_c3)
+    @. An_c4 = net_photosynthesis(GPP_c4, Rd_c4)
+
+    @. ci = weighted_pmodel_value(c3_fraction, ci_c3, ci_c4)
+    @. GPP = weighted_pmodel_value(c3_fraction, GPP_c3, GPP_c4)
+    @. Rd = weighted_pmodel_value(c3_fraction, Rd_c3, Rd_c4)
+    @. An = weighted_pmodel_value(c3_fraction, An_c3, An_c4)
 
 end
 
 get_Vcmax25_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.OptVars.Vcmax25_opt /
+    weighted_pmodel_value(
+        m.is_c3,
+        p.canopy.photosynthesis.OptVars.c3.Vcmax25_opt,
+        p.canopy.photosynthesis.OptVars.c4.Vcmax25_opt,
+    ) /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 get_Rd_leaf(p, m::PModel) = @. lazy(
@@ -994,10 +1176,10 @@ function get_J_over_Jmax(Y, p, canopy, m::PModel)
 end
 
 function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
     constants = m.constants
-    return @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
+    Jmax_c3 = @. lazy(
+        p.canopy.photosynthesis.OptVars.c3.Jmax25_opt * inst_temp_scaling(
             T_canopy,
             T_canopy,
             constants.To,
@@ -1008,10 +1190,24 @@ function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmode
             constants.R,
         ),
     )
+    Jmax_c4 = @. lazy(
+        p.canopy.photosynthesis.OptVars.c4.Jmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            constants.To,
+            constants.Ha_Jmax,
+            constants.Hd_Jmax,
+            constants.aS_Jmax,
+            constants.bS_Jmax,
+            constants.R,
+        ),
+    )
+    return @. lazy(weighted_pmodel_value(m.is_c3, Jmax_c3, Jmax_c4))
 end
 
 function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    T_canopy = p.drivers.T # use air temperature (as in pyrealm)
+    FT = eltype(m.constants)
     earth_param_set = canopy.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
     par_d = p.canopy.radiative_transfer.par_d
@@ -1023,16 +1219,46 @@ function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel p
         compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
     )
 
-    Jmax_canopy = compute_Jmax_canopy(Y, p, canopy, m)
     parameters = m.parameters
-    constants = m.constants
-    return @. lazy(
-        electron_transport_pmodel(
-            intrinsic_quantum_yield(m.is_c3, T_canopy, parameters),
-            APAR_canopy_moles,
-            Jmax_canopy,
+    Jmax_c3 = @. lazy(
+        p.canopy.photosynthesis.OptVars.c3.Jmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            m.constants.To,
+            m.constants.Ha_Jmax,
+            m.constants.Hd_Jmax,
+            m.constants.aS_Jmax,
+            m.constants.bS_Jmax,
+            m.constants.R,
         ),
     )
+    Jmax_c4 = @. lazy(
+        p.canopy.photosynthesis.OptVars.c4.Jmax25_opt * inst_temp_scaling(
+            T_canopy,
+            T_canopy,
+            m.constants.To,
+            m.constants.Ha_Jmax,
+            m.constants.Hd_Jmax,
+            m.constants.aS_Jmax,
+            m.constants.bS_Jmax,
+            m.constants.R,
+        ),
+    )
+    J_c3 = @. lazy(
+        electron_transport_pmodel(
+            intrinsic_quantum_yield(FT(1), T_canopy, parameters),
+            APAR_canopy_moles,
+            Jmax_c3,
+        ),
+    )
+    J_c4 = @. lazy(
+        electron_transport_pmodel(
+            intrinsic_quantum_yield(FT(0), T_canopy, parameters),
+            APAR_canopy_moles,
+            Jmax_c4,
+        ),
+    )
+    return @. lazy(weighted_pmodel_value(m.is_c3, J_c3, J_c4))
 end
 
 """
@@ -1400,59 +1626,47 @@ function compute_A0_daily(
     PPFD::FT,
     βm::FT,
 ) where {FT}
-    (; cstar, β) = parameters
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
-        constants
-
-    # Convert ca from mol/mol to partial pressure (Pa)
-    ca_pp = ca * P_air
-
-    # Compute P-model intermediate values
-    ϕ0 = intrinsic_quantum_yield(is_c3, T_air, parameters)
-    Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_air, To, ρ_water)
-    Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-
-    # Compute optimal ξ and intercellular CO2
-    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-    ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
-
-    # Compute mj and m' (with Jmax limitation)
-    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
-    mprime = compute_mj_with_jmax_limitation(mj, cstar)
-
-    # Compute LUE with actual βm (soil moisture stress)
-    LUE_daily = compute_LUE(ϕ0, βm, mprime, Mc)
-
-    # Daily potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD)
-    return PPFD * LUE_daily
+    return compute_full_pmodel_outputs(
+        parameters,
+        constants,
+        T_air,
+        P_air,
+        VPD,
+        ca,
+        βm,
+        PPFD;
+        is_c3,
+    ).gpp
 end
 
 """
-    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca, is_c3=FT(1))
 
 Compute the optimal ratio of intercellular to ambient CO2 (chi = ci/ca) using P-model.
 
 # Arguments
-- `pmodel_parameters`: P-model parameters (including beta)
+- `pmodel_parameters`: P-model parameters (including β_c3 and β_c4)
 - `pmodel_constants`: P-model constants (including Gamma_star25, Kc25, Ko25, etc.)
 - `T::FT`: Temperature (K)
 - `P_air::FT`: Atmospheric pressure (Pa)
 - `VPD::FT`: Vapor pressure deficit (Pa)
 - `ca::FT`: Ambient CO2 mixing ratio (mol/mol)
+- `is_c3::FT`: C3 (1) or C4 (0) flag (default: C3)
 
 # Returns
 - `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85
 """
-function compute_chi(
+function compute_chi_pathway(
     pmodel_parameters,
     pmodel_constants,
     T::FT,
     P_air::FT,
     VPD::FT,
     ca::FT,
+    is_c3::FT = FT(1),
 ) where {FT}
-    (; β) = pmodel_parameters
+    (; β_c3, β_c4) = pmodel_parameters
+    β = get_beta(is_c3, β_c3, β_c4)
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi, ρ_water) =
         pmodel_constants
 
@@ -1470,6 +1684,48 @@ function compute_chi(
     VPD_safe = max(VPD, eps(FT))
     ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD_safe)
     return clamp(ci / ca_pp, FT(0), FT(1))
+end
+
+function compute_chi(
+    pmodel_parameters,
+    pmodel_constants,
+    T::FT,
+    P_air::FT,
+    VPD::FT,
+    ca::FT,
+    is_c3::FT = FT(1),
+) where {FT}
+    if FT(0) < is_c3 < FT(1)
+        χ_c3 = compute_chi_pathway(
+            pmodel_parameters,
+            pmodel_constants,
+            T,
+            P_air,
+            VPD,
+            ca,
+            FT(1),
+        )
+        χ_c4 = compute_chi_pathway(
+            pmodel_parameters,
+            pmodel_constants,
+            T,
+            P_air,
+            VPD,
+            ca,
+            FT(0),
+        )
+        return weighted_pmodel_value(is_c3, χ_c3, χ_c4)
+    end
+
+    return compute_chi_pathway(
+        pmodel_parameters,
+        pmodel_constants,
+        T,
+        P_air,
+        VPD,
+        ca,
+        is_c3,
+    )
 end
 
 """
