@@ -2,14 +2,14 @@ using Dates
 
 const FT = Float32;
 const setup = Dict(
-    "output_tag" => "first_try",
+    "output_tag" => "neurals_plus_sfc_temp_20yr",
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
     "use_sfc_temp" => true,
     "max_wind_speed" => FT(25.0),
-    "snow_min_density_param" => FT(300),
-    "start_date" => DateTime("2008-03-01"),
-    "stop_date" => DateTime("2008-06-01"),
+    "snow_min_density_param" => FT(300), #only used if not using neural models
+    "start_date" => DateTime("2000-06-01"), #earliest we have is Jan 1st 1979
+    "stop_date" => DateTime("2020-06-01"), #latest we have is 7th 2024
     "dt" => FT(450),
     "output_vars" =>
         ["snd", "swe", "snowc", "salb", "swa", "snalb", "galb"], #salb = soil alb, swa = p.snow.α_sfc
@@ -51,6 +51,8 @@ output_dir = joinpath("/home/acharbon/thesis_outputs", setup["output_tag"])
 
 toml_dict = LP.create_toml_dict(FT)
 Δt = setup["dt"]
+
+@info "Setting up Simulation!"
 
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -176,12 +178,12 @@ simulation = LandSimulation(
     diagnostics,
 )
 
+@info "Beginning Simulation!"
+
 parameter_log_path = joinpath(output_dir, "parameters.toml")
 
 isdir(output_dir) || mkdir(output_dir)
 CP.log_parameter_information(toml_dict, parameter_log_path)
 ClimaLand.Simulations.solve!(simulation)
-close_output_writers(diagnostics)
 
-#can you save/output the SYPD and wall time for each simulation to an ouptut file?
-#^^ pipe the run with a "*> path/to/output_file.txt" and move that file into the appropriate directory
+@info "Simulation Complete!"
