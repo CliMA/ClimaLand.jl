@@ -11,7 +11,6 @@
 
 using Plots
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP

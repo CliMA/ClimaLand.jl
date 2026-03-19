@@ -1,4 +1,3 @@
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using CairoMakie
 import ClimaParams as CP
@@ -11,6 +10,7 @@ using ClimaLand.Domains
 using ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaTimeSteppers
 using DataFrames
 using NCDatasets
 using Dates
@@ -94,7 +94,7 @@ Y, p, coords = ClimaLand.initialize(model)
 Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
 if USE_NEURAL_MODELS
-    Y.snow.Z .= FT(depths[1]) #first depth value 
+    Y.snow.Z .= FT(depths[1]) #first depth value
     Y.snow.A .= FT(first(collect(skipmissing(albedo)))) #first albedo value
 end
 Y.snow.U .= ClimaLand.Snow.energy_from_q_l_and_swe(
@@ -117,7 +117,7 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
+prob = ClimaTimeSteppers.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
         T_imp! = nothing,
@@ -147,9 +147,9 @@ saving_cb = ClimaLand.IntervalBasedCallback(
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+cb = ClimaTimeSteppers.CallbackSet(driver_cb, saving_cb)
 
-sol = SciMLBase.solve(
+sol = ClimaTimeSteppers.solve(
     prob,
     ode_algo;
     dt = Δt,

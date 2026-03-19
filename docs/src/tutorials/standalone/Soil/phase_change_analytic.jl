@@ -47,7 +47,6 @@
 # ``F_T`` is the freeze-thaw term.
 
 # # Import necessary modules
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using DelimitedFiles
 using CairoMakie

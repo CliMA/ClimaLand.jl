@@ -1,7 +1,6 @@
 using ClimaCore
 import ClimaComms
 ClimaComms.@import_required_backends
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using CairoMakie
 using Statistics

@@ -15,7 +15,6 @@
 # 3. With evaporation and drainage
 
 using CairoMakie
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
 
