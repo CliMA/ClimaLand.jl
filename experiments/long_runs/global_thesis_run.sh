@@ -3,6 +3,7 @@
 #SBATCH --output=output_20yr.txt
 #SBATCH --error=error_20yr.txt
 #SBATCH --time=12:00:00
+#SBATCH --gpus=1
 #SBATCH --gpus-per-task=1
 #SBATCH --mail-user=acharbon@caltech.edu
 
