@@ -11,4 +11,4 @@ export CLIMACOMMS_DEVICE="CUDA"
 module purge
 module load climacommon
 julia --project=./ClimaLand.jl/.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
-julia --project=./ClimaLand.jl/.buildkite ./ClimaLand/experiments/long_runs/global_thesis_runs.jl
+julia --project=./ClimaLand.jl/.buildkite ./ClimaLand.jl/experiments/long_runs/global_thesis_runs.jl
