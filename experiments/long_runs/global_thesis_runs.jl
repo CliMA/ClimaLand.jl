@@ -47,7 +47,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
-output_dir = joinpath("\\home\\acharbon\\thesis_outputs", setup["output_tag"])
+output_dir = joinpath("/home/acharbon/thesis_outputs", setup["output_tag"])
 
 toml_dict = LP.create_toml_dict(FT)
 Δt = setup["dt"]
@@ -182,3 +182,6 @@ isdir(output_dir) || mkdir(output_dir)
 CP.log_parameter_information(toml_dict, parameter_log_path)
 ClimaLand.Simulations.solve!(simulation)
 close_output_writers(diagnostics)
+
+#can you save/output the SYPD and wall time for each simulation to an ouptut file?
+#^^ pipe the run with a "*> path/to/output_file.txt" and move that file into the appropriate directory
