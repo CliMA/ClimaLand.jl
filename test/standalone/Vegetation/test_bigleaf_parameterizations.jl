@@ -25,8 +25,11 @@ for FT in (Float32, Float64)
         )
         RT = BeerLambertModel{FT}(RTparams)
         is_c3 = FT(1) # set the photosynthesis mechanism to C3
-        photosynthesisparams =
-            FarquharParameters(toml_dict; is_c3, Vcmax25 = FT(5e-5))
+        photosynthesisparams = FarquharParameters(
+            toml_dict;
+            fractional_c3 = is_c3,
+            Vcmax25 = FT(5e-5),
+        )
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1 = 790)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)

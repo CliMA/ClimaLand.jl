@@ -136,7 +136,7 @@ function model(Vcmax25)
         canopy_domain,
         toml_dict;
         photosynthesis_parameters = (;
-            is_c3 = photosyn_defaults.is_c3,
+            fractional_c3 = photosyn_defaults.fractional_c3,
             Vcmax25,
         ),
     )
