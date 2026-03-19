@@ -140,10 +140,7 @@ function setup_model(
     )
 
     # Inland water mask — identifies lake/river grid points for slab lake model
-    iw_mask = ClimaLand.InlandWater.inland_water_mask(
-        surface_space;
-        filepath = joinpath(pkgdir(ClimaLand), "IMERG_land_sea_mask.nc"),
-    )
+    iw_mask = ClimaLand.InlandWater.inland_water_mask(surface_space)
 
     # Construct the land model with all default components except for snow
     land = LandModel{FT}(

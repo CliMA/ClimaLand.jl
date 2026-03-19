@@ -675,10 +675,7 @@ end
     )
 
     # Inland water mask
-    iw_mask = ClimaLand.InlandWater.inland_water_mask(
-        surface_space;
-        filepath = joinpath(pkgdir(ClimaLand), "IMERG_land_sea_mask.nc"),
-    )
+    iw_mask = ClimaLand.InlandWater.inland_water_mask(surface_space)
 
     # This should NOT throw an AssertionError in check_land_equality
     land = LandModel{FT}(
@@ -741,10 +738,7 @@ end
         start_date,
         stop_date,
     )
-    iw_mask = ClimaLand.InlandWater.inland_water_mask(
-        surface_space;
-        filepath = joinpath(pkgdir(ClimaLand), "IMERG_land_sea_mask.nc"),
-    )
+    iw_mask = ClimaLand.InlandWater.inland_water_mask(surface_space)
 
     land = LandModel{FT}(
         forcing,

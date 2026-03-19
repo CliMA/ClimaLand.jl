@@ -684,7 +684,7 @@ ClimaLand.get_domain(model::SlabLakeModel) = model.domain
 """
     inland_water_mask(
         surface_space;
-        filepath,
+        filepath = nothing,
         varname = "landseamask",
         threshold = 80.0,
         landsea_mask = nothing,
@@ -698,8 +698,9 @@ ClimaLand.get_domain(model::SlabLakeModel) = model.domain
        interpolation_method = Interpolations.Constant()
     )
 
-Reads a water-fraction dataset from `filepath`, regrids to the
-`surface_space`, and identifies inland water points.
+Reads a water-fraction dataset from `filepath` (defaults to the IMERG
+land-sea mask artifact), regrids to the `surface_space`, and identifies
+inland water points.
 
 A point is classified as inland water if its water fraction is above
 `threshold` and its latitude is within `latitude_bounds`. Points
@@ -722,7 +723,7 @@ Returns `nothing` for Point/Column domains (no horizontal extent).
 """
 function inland_water_mask(
     surface_space;
-    filepath,
+    filepath = nothing,
     varname = "landseamask",
     threshold = 80.0,
     landsea_mask = nothing,
@@ -735,6 +736,9 @@ function inland_water_mask(
     ),
     interpolation_method = Interpolations.Constant(),
 )
+    if isnothing(filepath)
+        filepath = ClimaLand.Artifacts.imerg_landsea_mask_path()
+    end
     water_frac = SpaceVaryingInput(
         filepath,
         varname,
@@ -776,7 +780,7 @@ end
 
 function inland_water_mask(
     domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
-    filepath,
+    filepath = nothing,
     kwargs...,
 )
     # HybridBox and Plane domains might not have longlat, which is needed for the mask
