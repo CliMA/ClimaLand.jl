@@ -139,7 +139,7 @@ function LandSimVis.check_conservation(
     ## Energy
     energy_per_area = get(simdir; short_name = "epa")
     energy_per_area_change = get(simdir; short_name = "epac")
-    N = length(ClimaAnalysis.times(energy_per_area))
+    N = length(ClimaAnalysis.times(energy_per_area)) - 1
     times = ClimaAnalysis.times(energy_per_area)
     energy_0 = ClimaAnalysis.apply_oceanmask(
         ClimaAnalysis.slice(energy_per_area; time = times[1]),
@@ -168,23 +168,30 @@ function LandSimVis.check_conservation(
         ) / 2
     energy_error = zeros(N)
     water_volume_error = zeros(N)
-    for (i, t) in enumerate(times)
+    for i in 1:1:N
         # error = nanmean[(X(t) - X(0) - Expected Change in X)]
-        energy_error[i] = ClimaAnalysis.weighted_average_lonlat(
-            ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(energy_per_area, time = t),
-            ) - energy_0 - ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(energy_per_area_change, time = t),
-            ),
-        ).data[1]
+        t = times[i]
+        tp1 = times[i + 1]
+        energy_error[i] =
+            ClimaAnalysis.weighted_average_lonlat(
+                ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(energy_per_area, time = t),
+                ) - energy_0 - ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(energy_per_area_change, time = tp1),
+                ),
+            ).data[1] ./ mean_energy
 
-        water_volume_error[i] = ClimaAnalysis.weighted_average_lonlat(
-            ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(water_volume_per_area, time = t),
-            ) - water_volume_0 - ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(water_volume_per_area_change, time = t),
-            ),
-        ).data[1]
+        water_volume_error[i] =
+            ClimaAnalysis.weighted_average_lonlat(
+                ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(water_volume_per_area, time = t),
+                ) - water_volume_0 - ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(
+                        water_volume_per_area_change,
+                        time = tp1,
+                    ),
+                ),
+            ).data[1] ./ mean_water_volume
 
     end
     titles =
@@ -199,10 +206,10 @@ function LandSimVis.check_conservation(
         ax = Axis(
             fig_cycle[1, 1],
             xlabel = "Years",
-            ylabel = "Global Mean Conservation Error [$(units[i])]",
+            ylabel = "Global Mean Fractional Conservation Error",
             title = "$(titles[i]), typical value = $(typical_value[i]) $(units[i])",
         )
-        CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
+        CairoMakie.lines!(ax, times[1:N] ./ 24 ./ 3600 ./ 365, errors[i])
         CairoMakie.save(
             joinpath(savedir, "$(quantity_names[i])_$(plot_stem_name).png"),
             fig_cycle,
