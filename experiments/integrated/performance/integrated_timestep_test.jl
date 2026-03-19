@@ -241,7 +241,7 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 
 # Photosynthesis model
 Vcmax25 = FT(9e-5)
-photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
+photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 

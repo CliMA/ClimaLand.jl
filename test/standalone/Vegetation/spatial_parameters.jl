@@ -49,12 +49,12 @@ const FT = Float64;
         extrapolation_bc = extrapolation_bc,
     )
     @test axes(rooting_depth) == surface_space
-    (; is_c3, Vcmax25) = ClimaLand.Canopy.clm_photosynthesis_parameters(
+    (; fractional_c3, Vcmax25) = ClimaLand.Canopy.clm_photosynthesis_parameters(
         surface_space;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
     )
-    @test axes(is_c3) == surface_space
+    @test axes(fractional_c3) == surface_space
     @test axes(Vcmax25) == surface_space
     (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
         ClimaLand.Canopy.clm_canopy_radiation_parameters(
