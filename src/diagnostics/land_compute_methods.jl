@@ -819,27 +819,22 @@ function compute_evapotranspiration!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            (
-                (1 - p.snow.snow_cover_fraction) *
-                p.soil.turbulent_fluxes.vapor_flux_liq +
-                (1 - p.snow.snow_cover_fraction) *
-                p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.vapor_flux +
-                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-            ) * 1000 # density of liquid water (1000kg/m^3)
-        return out
-    else
-        @. out =
-            (
-                (1 - p.snow.snow_cover_fraction) *
-                p.soil.turbulent_fluxes.vapor_flux_liq +
-                (1 - p.snow.snow_cover_fraction) *
-                p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.turbulent_fluxes.vapor_flux +
-                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-            ) * 1000 # density of liquid water (1000kg/m^3)
     end
+    f_lake = !isnothing(land_model.lake) ? p.lake.lake_fraction : FT(0)
+    lake_vapor =
+        !isnothing(land_model.lake) ? p.lake.turbulent_fluxes.vapor_flux : FT(0)
+    snow_frac = p.snow.snow_cover_fraction
+    @. out =
+        (
+            (1 - f_lake - snow_frac) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.vapor_flux +
+            snow_frac * p.snow.turbulent_fluxes.vapor_flux +
+            f_lake * lake_vapor
+        ) * 1000 # density of liquid water (1000kg/m^3)
+    return out
 end
 @diagnostic_compute "evapotranspiration" CanopyModel p.canopy.turbulent_fluxes.vapor_flux
 
@@ -918,17 +913,16 @@ function compute_latent_heat_flux!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.turbulent_fluxes.lhf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
-        return out
-    else
-        @. out =
-            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.turbulent_fluxes.lhf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
     end
+    f_lake = !isnothing(land_model.lake) ? p.lake.lake_fraction : FT(0)
+    lake_lhf = !isnothing(land_model.lake) ? p.lake.turbulent_fluxes.lhf : FT(0)
+    snow_frac = p.snow.snow_cover_fraction
+    @. out =
+        (1 - f_lake - snow_frac) * p.soil.turbulent_fluxes.lhf +
+        p.canopy.turbulent_fluxes.lhf +
+        snow_frac * p.snow.turbulent_fluxes.lhf +
+        f_lake * lake_lhf
+    return out
 end
 
 function compute_sensible_heat_flux!(
@@ -941,17 +935,16 @@ function compute_sensible_heat_flux!(
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.turbulent_fluxes.shf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
-        return out
-    else
-        @. out =
-            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.turbulent_fluxes.shf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
     end
+    f_lake = !isnothing(land_model.lake) ? p.lake.lake_fraction : FT(0)
+    lake_shf = !isnothing(land_model.lake) ? p.lake.turbulent_fluxes.shf : FT(0)
+    snow_frac = p.snow.snow_cover_fraction
+    @. out =
+        (1 - f_lake - snow_frac) * p.soil.turbulent_fluxes.shf +
+        p.canopy.turbulent_fluxes.shf +
+        snow_frac * p.snow.turbulent_fluxes.shf +
+        f_lake * lake_shf
+    return out
 end
 
 function compute_net_radiation!(
@@ -1047,3 +1040,8 @@ end
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+
+### Slab Lake ###
+@diagnostic_compute "lake_internal_energy" LandModel Y.lake.U
+@diagnostic_compute "lake_temperature" LandModel p.lake.T
+@diagnostic_compute "lake_liquid_fraction" LandModel p.lake.q_l

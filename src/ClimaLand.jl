@@ -422,6 +422,9 @@ import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
 import .Snow: snow_boundary_fluxes!
+include("standalone/InlandWater/InlandWater.jl")
+using .InlandWater
+import .InlandWater: lake_boundary_fluxes!
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics

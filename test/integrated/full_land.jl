@@ -616,3 +616,151 @@ end
     u = sol.u[end]
     check_ocean_values_Y(u, binary_mask)
 end
+
+@testset "LandModel with inland_water_mask and PiecewiseMoistureStressModel" begin
+    # This tests the pattern used in the global snowy_land_pmodel experiment:
+    # a PiecewiseMoistureStressModel is created before LandModel, which then
+    # uses a slab lake at inland water points. The convenience constructor
+    # must handle the inland water mask correctly.
+    FT = Float64
+    context = ClimaComms.context()
+    toml_dict = LP.create_toml_dict(FT)
+
+    # Coarse global domain (~30° resolution)
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        nelements = (6, 12, 5),
+        mask_threshold = FT(0.99),
+        context,
+    )
+    surface_space = domain.space.surface
+
+    start_date = DateTime(2008)
+    stop_date = start_date + Second(450)
+    Δt = FT(450)
+
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        context,
+    )
+    forcing = (; atmos, radiation)
+
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
+
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+
+    # Build canopy with PiecewiseMoistureStressModel BEFORE LandModel
+    # (this reads soil ν/θ_r before LandModel construction)
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    canopy_forcing = (; atmos, radiation, ground)
+    soil_moisture_stress =
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+    canopy = Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        prognostic_land_components,
+        soil_moisture_stress,
+    )
+
+    # Inland water mask
+    iw_mask = ClimaLand.InlandWater.inland_water_mask(surface_space)
+
+    # This should NOT throw an AssertionError in check_land_equality
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+        canopy,
+        inland_water_mask = iw_mask,
+    )
+
+    @test land.soil isa Soil.EnergyHydrology
+    @test land.canopy.soil_moisture_stress isa
+          ClimaLand.Canopy.PiecewiseMoistureStressModel
+
+    # Verify the sync: canopy moisture stress params match soil params
+    ClimaLand.check_land_equality(
+        land.canopy.soil_moisture_stress.θ_high,
+        land.soil.parameters.ν,
+    )
+    ClimaLand.check_land_equality(
+        land.canopy.soil_moisture_stress.θ_low,
+        land.soil.parameters.θ_r,
+    )
+    @test true  # reached here without assertion errors
+end
+
+@testset "LandModel with inland_water_mask file IC initializes lake" begin
+    FT = Float64
+    context = ClimaComms.context()
+    toml_dict = LP.create_toml_dict(FT)
+
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        nelements = (6, 12, 5),
+        mask_threshold = FT(0.99),
+        context,
+    )
+    surface_space = domain.space.surface
+
+    start_date = DateTime(2008)
+    stop_date = start_date + Second(450)
+    Δt = FT(450)
+
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        use_lowres_forcing = true,
+        context,
+    )
+    forcing = (; atmos, radiation)
+
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
+    iw_mask = ClimaLand.InlandWater.inland_water_mask(surface_space)
+
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+        inland_water_mask = iw_mask,
+    )
+
+    Y, p, cds = initialize(land)
+    t0 = ITime(0, Second(1), start_date)
+    ic_path = ClimaLand.Artifacts.saturated_land_ic_path(; context)
+    set_ic! =
+        ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
+
+    @test_nowarn set_ic!(Y, p, t0, land)
+
+    lake_mask = Array(parent(iw_mask)) .> 0
+    lake_u = Array(parent(Y.lake.U))
+    @test any(lake_mask)
+    @test all(isfinite, lake_u[lake_mask])
+    @test any(abs.(lake_u[lake_mask]) .> 0)
+end

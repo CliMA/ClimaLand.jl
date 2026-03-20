@@ -21,6 +21,7 @@ For more information about abstract types, please see the [Julia manual](https:/
 |                                    | `EnergyHydrology`         |
 | N/A                                | `CanopyModel`             |
 | `AbstractSnowModel`                | `SnowModel`               |
+| `AbstractInlandWaterModel`         | `SlabLakeModel`           |
 | `AbstractSoilBiogeochemistryModel` | `SoilCO2Model`            |
 | `AbstractBucketModel`              | `BucketModel`             |
 | `AbstractSurfaceWaterModel`        | `PondModel`               |

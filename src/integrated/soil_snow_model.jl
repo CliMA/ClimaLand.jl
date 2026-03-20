@@ -176,9 +176,8 @@ function make_update_boundary_fluxes(
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
-            land.soil.parameters,
+            land.soil,
             land.snow.parameters,
-            land.soil.domain,
             FT,
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
@@ -218,9 +217,8 @@ Due to this, we cap Δz_snow at 10 cm.
 function update_soil_snow_ground_heat_flux!(
     p,
     Y,
-    soil_params,
+    soil::EnergyHydrology,
     snow_params,
-    soil_domain,
     FT,
 )
     # Thermal conductivities of soil and snow
@@ -229,12 +227,11 @@ function update_soil_snow_ground_heat_flux!(
 
     # Depths
     Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
-    Δz_soil = soil_domain.fields.Δz_top
+    Δz_soil = soil.domain.fields.Δz_top
 
     # Temperatures
     T_snow = p.snow.T
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
     # compute the flux
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
@@ -392,7 +389,6 @@ function soil_boundary_fluxes!(
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
-
     return nothing
 end
 

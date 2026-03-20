@@ -115,9 +115,13 @@ function Canopy.ground_albedo_PAR(
     p,
     t,
 )
+    snow_frac = p.snow.snow_cover_fraction
+    α_soil = p.soil.PAR_albedo
+    α_snow = p.snow.α_snow
+    f_lake = hasproperty(p, :lake) ? p.lake.lake_fraction : eltype(α_soil)(0)
+    α_lake = hasproperty(p, :lake) ? p.lake.lake_albedo : eltype(α_soil)(0)
     @. p.α_ground.PAR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
+        (1 - f_lake - snow_frac) * α_soil + snow_frac * α_snow + f_lake * α_lake
     return p.α_ground.PAR
 end
 
@@ -146,8 +150,12 @@ function Canopy.ground_albedo_NIR(
     p,
     t,
 )
+    snow_frac = p.snow.snow_cover_fraction
+    α_soil = p.soil.NIR_albedo
+    α_snow = p.snow.α_snow
+    f_lake = hasproperty(p, :lake) ? p.lake.lake_fraction : eltype(α_soil)(0)
+    α_lake = hasproperty(p, :lake) ? p.lake.lake_albedo : eltype(α_soil)(0)
     @. p.α_ground.NIR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * p.snow.α_snow
+        (1 - f_lake - snow_frac) * α_soil + snow_frac * α_snow + f_lake * α_lake
     return p.α_ground.NIR
 end

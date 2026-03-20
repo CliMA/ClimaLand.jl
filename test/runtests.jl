@@ -148,6 +148,12 @@ end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
 end
+@safetestset "Integrated inland-water slab lake" begin
+    include("integrated/inland_water_slab.jl")
+end
+@safetestset "Integrated inland-water column test" begin
+    include("integrated/inland_water_column_test.jl")
+end
 
 @safetestset "Full land" begin
     include("integrated/full_land.jl")

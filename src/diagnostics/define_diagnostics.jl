@@ -1138,4 +1138,41 @@ function define_diagnostics!(land_model, possible_diags)
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
+
+    ### Slab Lake ###
+    # Lake internal energy (prognostic)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "lkie",
+        long_name = "Lake Internal Energy",
+        standard_name = "lake_internal_energy",
+        units = "J m^-2",
+        comments = "Internal energy of the slab lake per unit area.",
+        compute! = (out, Y, p, t) ->
+            compute_lake_internal_energy!(out, Y, p, t, land_model),
+    )
+
+    # Lake temperature (cache)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "tlake",
+        long_name = "Lake Temperature",
+        standard_name = "lake_temperature",
+        units = "K",
+        comments = "Temperature of the slab lake.",
+        compute! = (out, Y, p, t) ->
+            compute_lake_temperature!(out, Y, p, t, land_model),
+    )
+
+    # Lake liquid fraction (cache)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "qlake",
+        long_name = "Lake Liquid Fraction",
+        standard_name = "lake_liquid_fraction",
+        units = "",
+        comments = "Liquid fraction of the slab lake (0 = fully frozen, 1 = fully liquid).",
+        compute! = (out, Y, p, t) ->
+            compute_lake_liquid_fraction!(out, Y, p, t, land_model),
+    )
 end

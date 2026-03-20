@@ -6,6 +6,7 @@ export LandModel
         SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
         SnM <: Snow.SnowModel{FT},
+        LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
     } <: AbstractLandModel{FT}
         "The soil microbe model to be used, or `nothing` if no soil microbe model is used"
         soilco2::MM
@@ -15,13 +16,12 @@ export LandModel
         canopy::VM
         "The snow model to be used"
         snow::SnM
+        "The slab lake model to be used, or `nothing` if no lake model is used"
+        lake::LM
     end
 
 A concrete type of land model used for simulating systems with
-soil, canopy, snow, soilco2.
-
-ClimaLand v1: SoilCO2 is still under testing, but errors in soilco2
-do not propagate into the other components.
+soil, canopy, snow, soilco2, and optionally a slab lake.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -31,6 +31,7 @@ struct LandModel{
     SM <: Soil.EnergyHydrology{FT},
     VM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
+    LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
 } <: AbstractLandModel{FT}
     "The soil microbe model to be used"
     soilco2::MM
@@ -40,17 +41,21 @@ struct LandModel{
     canopy::VM
     "The snow model to be used"
     snow::SnM
+    "The slab lake model, or nothing"
+    lake::LM
     function LandModel{FT}(
         canopy::VM,
         snow::SnM,
         soil::SM,
-        soilco2::MM,
+        soilco2::MM;
+        lake::LM = nothing,
     ) where {
         FT,
         MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
         SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
         SnM <: Snow.SnowModel{FT},
+        LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
     }
         prognostic_land_components =
             isnothing(soilco2) ? (:canopy, :snow, :soil) :
@@ -113,8 +118,33 @@ struct LandModel{
                 )
             end
         end
-        return new{FT, MM, SM, VM, SnM}(soilco2, soil, canopy, snow)
+
+        # Lake checks, if present
+        if !isnothing(lake)
+            @assert lake.domain == canopy.domain
+            @assert lake.parameters.earth_param_set ==
+                    soil.parameters.earth_param_set
+        end
+
+        return new{FT, MM, SM, VM, SnM, LM}(soilco2, soil, canopy, snow, lake)
     end
+end
+
+"""
+    _sync_moisture_stress_params!(canopy, soil)
+
+Ensure the canopy's `PiecewiseMoistureStressModel` fields `θ_high` and `θ_low`
+are consistent with the soil parameters. Called defensively during LandModel
+construction.
+"""
+function _sync_moisture_stress_params!(canopy, soil)
+    sms = canopy.soil_moisture_stress
+    if sms isa PiecewiseMoistureStressModel &&
+       sms.θ_high isa ClimaCore.Fields.Field
+        sms.θ_high .= soil.parameters.ν
+        sms.θ_low .= soil.parameters.θ_r
+    end
+    return nothing
 end
 
 """
@@ -188,6 +218,7 @@ function LandModel{FT}(
     },
     Δt;
     prognostic_land_components = (:canopy, :snow, :soil),
+    inland_water_mask = nothing,
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -223,8 +254,20 @@ function LandModel{FT}(
         Δt;
         prognostic_land_components,
     ),
+    lake = isnothing(inland_water_mask) ? nothing :
+           InlandWater.SlabLakeModel(
+        FT,
+        Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        domain.fields.Δz_top;
+        inland_water_mask,
+        prognostic_land_components,
+    ),
 ) where {FT}
-    return LandModel{FT}(canopy, snow, soil, soilco2)
+    # Keep canopy moisture-stress parameters consistent with the soil model.
+    _sync_moisture_stress_params!(canopy, soil)
+    return LandModel{FT}(canopy, snow, soil, soilco2; lake)
 end
 
 """
@@ -262,6 +305,7 @@ function LandModel{FT}(
     },
     Δt;
     prognostic_land_components = (:canopy, :snow, :soil),
+    inland_water_mask = nothing,
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -296,8 +340,20 @@ function LandModel{FT}(
         Δt;
         prognostic_land_components,
     ),
+    lake = isnothing(inland_water_mask) ? nothing :
+           InlandWater.SlabLakeModel(
+        FT,
+        Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        domain.fields.Δz_top;
+        inland_water_mask,
+        prognostic_land_components,
+    ),
 ) where {FT}
-    return LandModel{FT}(canopy, snow, soil, soilco2)
+    # Keep canopy moisture-stress parameters consistent with the soil model.
+    _sync_moisture_stress_params!(canopy, soil)
+    return LandModel{FT}(canopy, snow, soil, soilco2; lake)
 end
 
 """
@@ -314,8 +370,17 @@ the components returned by `land_components!`.
 This needs to be fixed.
 """
 function ClimaLand.land_components(land::LM) where {LM <: LandModel}
-    isnothing(land.soilco2) ? (:soil, :snow, :canopy) :
-    (:soil, :snow, :soilco2, :canopy)
+    has_lake = !isnothing(land.lake)
+    has_soilco2 = !isnothing(land.soilco2)
+    if has_lake && has_soilco2
+        return (:soil, :lake, :snow, :soilco2, :canopy)
+    elseif has_lake
+        return (:soil, :lake, :snow, :canopy)
+    elseif has_soilco2
+        return (:soil, :snow, :soilco2, :canopy)
+    else
+        return (:soil, :snow, :canopy)
+    end
 end
 
 """
@@ -419,13 +484,14 @@ This function is called each ode function evaluation, prior to the tendency func
 evaluation.
 """
 function make_update_boundary_fluxes(
-    land::LandModel{FT, MM, SM, RM, SnM},
+    land::LandModel{FT, MM, SM, RM, SnM, LM},
 ) where {
     FT,
     MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
+    LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! =
@@ -433,9 +499,20 @@ function make_update_boundary_fluxes(
         make_update_boundary_fluxes(land.soilco2)
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
+    update_lake_bf! =
+        isnothing(land.lake) ? Returns(nothing) :
+        make_update_boundary_fluxes(land.lake)
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
+
+        # Zero out LAI at inland water points (no vegetation over lakes)
+        if !isnothing(land.lake)
+            mask = land.lake.inland_water_mask
+            @. p.canopy.biomass.area_index.leaf =
+                ifelse(mask == 1, FT(0), p.canopy.biomass.area_index.leaf)
+        end
+
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
 
@@ -451,9 +528,8 @@ function make_update_boundary_fluxes(
         update_soil_snow_ground_heat_flux!(
             p,
             Y,
-            land.soil.parameters,
+            land.soil,
             land.snow.parameters,
-            land.soil.domain,
             FT,
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
@@ -468,6 +544,27 @@ function make_update_boundary_fluxes(
         # Now we can update the soil BC, and use the precomputed excess
         # fluxes from snow in that function in order to ensure conservation
         update_soil_bf!(p, Y, t)
+
+        # Update lake boundary fluxes and blend soil top BC with lake fraction
+        if !isnothing(land.lake)
+            update_lake_bf!(p, Y, t)
+            f = p.lake.lake_fraction
+            # At lake points: zero out soil water BC, replace heat BC with sediment heat flux
+            @. p.soil.top_bc.water = (1 - f) * p.soil.top_bc.water + f * FT(0)
+            @. p.soil.top_bc.heat =
+                (1 - f) * p.soil.top_bc.heat + f * p.lake.sediment_heat_flux
+            # Zero out infiltration and runoff at lake points
+            if haskey(p.soil, :infiltration)
+                @. p.soil.infiltration = (1 - f) * p.soil.infiltration
+            end
+            if haskey(p.soil, :R_s)
+                @. p.soil.R_s = (1 - f) * p.soil.R_s
+            end
+            if haskey(p.soil, :R_ss)
+                @. p.soil.R_ss = (1 - f) * p.soil.R_ss
+            end
+        end
+
         # Update canopy
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
@@ -477,13 +574,14 @@ function make_update_boundary_fluxes(
 end
 
 function make_update_implicit_cache(
-    land::LandModel{FT, MM, SM, RM, SnM},
+    land::LandModel{FT, MM, SM, RM, SnM, LM},
 ) where {
     FT,
     MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
+    LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
 }
     update_imp_aux_soil! = make_update_implicit_aux(land.soil)
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
@@ -549,8 +647,8 @@ function lsm_radiant_energy_fluxes!(
 
     α_soil_PAR = p.soil.PAR_albedo
     α_soil_NIR = p.soil.NIR_albedo
-    ϵ_soil = land.soil.parameters.emissivity
-    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    ϵ_soil = ClimaLand.surface_emissivity(land.soil, Y, p)
+    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
 
     α_snow_NIR = p.snow.α_snow
     α_snow_PAR = p.snow.α_snow
@@ -593,6 +691,18 @@ function lsm_radiant_energy_fluxes!(
         f_trans_par * par_d * (1 - α_snow_PAR)
     ) #at this point, R_net_snow equals the SW_net for evaluating the snow surface temperature
 
+    has_lake = !isnothing(land.lake)
+
+    # Lake SW net radiation (per-unit-area for the lake surface)
+    if has_lake
+        α_lake = p.lake.lake_albedo
+        R_net_lake = p.lake.R_n
+        @. R_net_lake = -(
+            f_trans_nir * nir_d * (1 - α_lake) +
+            f_trans_par * par_d * (1 - α_lake)
+        )
+    end
+
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
@@ -613,14 +723,39 @@ function lsm_radiant_energy_fluxes!(
     @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
     @. R_net_snow -= ϵ_snow * LW_d_canopy - ϵ_snow * _σ * T_snow^4 # identical to soil, checked
-    @. LW_net_canopy =
-        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
-        ϵ_canopy * LW_u_soil * (1 - p.snow.snow_cover_fraction) +
-        ϵ_canopy * LW_u_snow * p.snow.snow_cover_fraction # area weighted by snow cover fraction, OK
-    @. LW_u =
-        (1 - ϵ_canopy) * LW_u_soil * (1 - p.snow.snow_cover_fraction) +
-        (1 - ϵ_canopy) * LW_u_snow * p.snow.snow_cover_fraction +
-        ϵ_canopy * _σ * T_canopy^4 # area weighed by snow cover fraction, OK
+
+    if has_lake
+        ϵ_lake = land.lake.parameters.emissivity
+        T_lake = p.lake.T
+        f_lake = p.lake.lake_fraction
+        # Use sfc_scratch as temporary storage for LW_u_lake
+        LW_u_lake = p.sfc_scratch
+        @. LW_u_lake = ϵ_lake * _σ * T_lake^4 + (1 - ϵ_lake) * LW_d_canopy
+        @. R_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
+
+        # Ground LW upwelling is area-weighted over soil, snow, and lake:
+        #   ground = (1 - f_lake - snow_frac)*soil + snow_frac*snow + f_lake*lake
+        snow_frac = p.snow.snow_cover_fraction
+        LW_u_ground = @. lazy(
+            (1 - f_lake - snow_frac) * LW_u_soil +
+            snow_frac * LW_u_snow +
+            f_lake * LW_u_lake,
+        )
+        @. LW_net_canopy =
+            ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
+            ϵ_canopy * LW_u_ground
+        @. LW_u = (1 - ϵ_canopy) * LW_u_ground + ϵ_canopy * _σ * T_canopy^4
+    else
+        snow_frac = p.snow.snow_cover_fraction
+        @. LW_net_canopy =
+            ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
+            ϵ_canopy * LW_u_soil * (1 - snow_frac) +
+            ϵ_canopy * LW_u_snow * snow_frac
+        @. LW_u =
+            (1 - ϵ_canopy) * LW_u_soil * (1 - snow_frac) +
+            (1 - ϵ_canopy) * LW_u_snow * snow_frac +
+            ϵ_canopy * _σ * T_canopy^4
+    end
 end
 
 
@@ -820,6 +955,62 @@ function snow_boundary_fluxes!(
     return nothing
 end
 
+
+"""
+    lake_boundary_fluxes!(bc, prognostic_land_components, model, Y, p, t)
+
+Integrated-mode method for lake boundary fluxes. In integrated mode,
+`p.lake.R_n` is already computed by `lsm_radiant_energy_fluxes!`,
+so we skip the standalone `net_radiation!` call.
+"""
+function InlandWater.lake_boundary_fluxes!(
+    bc::InlandWater.AtmosDrivenLakeBC,
+    prognostic_land_components::Union{
+        Val{(:canopy, :snow, :soil, :soilco2)},
+        Val{(:canopy, :snow, :soil)},
+    },
+    model::InlandWater.SlabLakeModel{FT},
+    Y,
+    p,
+    t,
+) where {FT}
+    # Compute turbulent fluxes
+    turbulent_fluxes!(p.lake.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    # R_n already computed by lsm_radiant_energy_fluxes! — do NOT call net_radiation!
+
+    earth_param_set = model.parameters.earth_param_set
+    f = p.lake.lake_fraction
+
+    # Surface water flux: precip + evaporation
+    @. p.lake.surface_water_flux =
+        f * (p.drivers.P_liq + p.lake.turbulent_fluxes.vapor_flux)
+
+    # Runoff = negative of net water flux (excess leaves as runoff)
+    @. p.lake.runoff = -p.lake.surface_water_flux
+
+    # Runoff energy flux
+    @. p.lake.runoff_energy_flux =
+        f * InlandWater.lake_runoff_energy_flux(
+            p.lake.runoff / max(f, sqrt(eps(FT))),
+            p.lake.T,
+            p.lake.q_l,
+            earth_param_set,
+        )
+
+    # Surface energy flux
+    # Precipitation enthalpy: rain arrives as liquid water at air temperature
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _cp_l = FT(LP.cp_l(earth_param_set))
+    _T_ref = FT(LP.T_0(earth_param_set))
+    @. p.lake.surface_energy_flux =
+        f * (
+            p.lake.R_n +
+            p.lake.turbulent_fluxes.lhf +
+            p.lake.turbulent_fluxes.shf +
+            p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref)
+        )
+    return nothing
+end
 
 function ClimaLand.Soil.sublimation_source(
     prognostic_land_components::Union{

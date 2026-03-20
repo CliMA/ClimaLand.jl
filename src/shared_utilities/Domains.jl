@@ -1240,7 +1240,6 @@ function landsea_mask(
     return landsea_mask(domain.space.surface; filepath, kwargs...)
 end
 
-
 """
     global_domain(
         FT;
@@ -1468,6 +1467,22 @@ end
 use_lowres_clm(surface_space::ClimaCore.Spaces.PointSpace) = false
 
 
+"""
+    surface_to_subsurface(surface_field, subsurface_space)
+
+Extend a surface Field to all levels of the subsurface space,
+producing a subsurface Field where every vertical level has the
+same value as the surface field at that horizontal location.
+"""
+function surface_to_subsurface(surface_field, subsurface_space)
+    subsurface_field = ClimaCore.Fields.zeros(subsurface_space)
+    N = ClimaCore.Spaces.nlevels(subsurface_space)
+    for i in 1:N
+        ClimaCore.Fields.level(subsurface_field, i) .= surface_field
+    end
+    return subsurface_field
+end
+
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
@@ -1476,5 +1491,6 @@ export coordinates,
     get_Δz,
     average_horizontal_resolution_degrees,
     global_domain,
-    global_box_domain
+    global_box_domain,
+    surface_to_subsurface
 end

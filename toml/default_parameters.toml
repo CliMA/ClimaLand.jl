@@ -617,3 +617,46 @@ value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
+
+# Slab Lake Model
+["slab_lake_depth"]
+value = 10.0
+type = "float"
+description = "Mixed-layer depth of the slab lake (m)"
+tag = "SlabLakeParameters"
+
+["slab_lake_conductance"]
+value = 0.1
+type = "float"
+description = "Lake-sediment conductance (W m⁻² K⁻¹)"
+tag = "SlabLakeParameters"
+
+["slab_lake_liquid_albedo"]
+value = 0.08
+type = "float"
+description = "Open-water surface albedo, dimensionless"
+tag = "SlabLakeParameters"
+
+["slab_lake_ice_albedo"]
+value = 0.6
+type = "float"
+description = "Frozen lake surface albedo, dimensionless"
+tag = "SlabLakeParameters"
+
+["slab_lake_emissivity"]
+value = 0.97
+type = "float"
+description = "Longwave emissivity of the lake surface, dimensionless"
+tag = "SlabLakeParameters"
+
+["slab_lake_z_0m"]
+value = 0.001
+type = "float"
+description = "Roughness length for momentum over lake water/ice (m)"
+tag = "SlabLakeParameters"
+
+["slab_lake_z_0b"]
+value = 0.0001
+type = "float"
+description = "Roughness length for scalars over lake water/ice (m)"
+tag = "SlabLakeParameters"

@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- ![][badge-✨feature] Add slab lake model for inland water bodies (lakes, rivers, reservoirs) with prognostic internal energy, phase change, and lake–sediment thermal coupling PR[#1672](https://github.com/CliMA/ClimaLand.jl/pull/1672)
 
 - Update compat to SurfaceFluxes 1.0 PR[#1668](https://github.com/CliMA/ClimaLand.jl/pull/1668)
 - Clean up pkgversion checks and set ClimaDiagnostics in compat to 0.3 PR[#1676](https://github.com/CliMA/ClimaLand.jl/pull/1676)
