@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Year(1)
+stop_date = start_date + Month(1)
 Δt = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -46,7 +46,7 @@ forcing = (; atmos, radiation)
 # Read in LAI from MODIS data
 #LAI =
 #    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-LAI = TimeVaryingInput((t) -> 0.0)
+LAI = TimeVaryingInput((t) -> 1.0)
 land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt)
 
 timestepper = CTS.ARS111()
@@ -122,26 +122,17 @@ daily = float.(sol.t[2:end]) ./ 3600 ./ 24
 savedir =
     generate_output_path("experiments/integrated/performance/conservation")
 # Energy balance
-
 total_energy_array =
     [parent(sv.saveval[k].total_energy)[1] for k in 2:length(sol.t)];
 mass_change_actual = total_energy_array[2:end] .- total_energy_array[1];
 mass_change_expected =
     [parent(sol.u[k].∫F_e_dt)[1] for k in 2:(length(sol.t) - 1)];
 mean_energy = mean(total_energy_array)
-function total_energy_computation!(out, Y, t)
-    LAI_val = deepcopy(out)
-    ClimaCore.Operators.column_integral_definite!(out, Y.soil.ρe_int)
-    evaluate!(LAI_val, LAI, t)
-    @. out += Y.canopy.energy.U
-end
-
 fig = Figure(size = (1500, 400))
 ax = Axis(
     fig[1, 1],
     xlabel = "Days",
     ylabel = "Fractional Error",
-    #    yscale = log10,
 )
 
 lines!(
@@ -151,25 +142,7 @@ lines!(
     abs.((mass_change_actual - mass_change_expected) ./ mean_energy,),
     label = "Energy Balance",
 )
-#=
-total_energy_array =
-    [parent(sv.saveval[k].total_energy)[1] for k in 1:2112:length(sol.t)]
 
-mass_change_actual = total_energy_array[2:end] .- total_energy_array[1];
-mass_change_expected =
-    [parent(sol.u[k].∫F_e_dt)[1] for k in 2:2112:length(sol.t)]
-lines!(
-    ax,
-    daily[1:2112:end][2:end],
-    eps(FT) .+
-    abs.(
-        (mass_change_actual - mass_change_expected[2:end]) ./
-        mean_energy
-    ),
-    label = "Energy Balance Sparse Save",
-)
-axislegend(position = :lb)
-=#
 CairoMakie.save(joinpath(savedir, "energy_conservation.png"), fig)
 
 # Water balance
@@ -196,7 +169,6 @@ ax2 = Axis(
     fig2[1, 1],
     xlabel = "Days",
     ylabel = "Fractional Error",
-    #   yscale = log10,
 )
 
 lines!(
@@ -205,19 +177,4 @@ lines!(
     eps(FT) .+ abs.((mass_change_actual - mass_change_expected) ./ mean_water,),
     label = "Water Balance",
 )
-#=
-total_water_array =
-    [parent(sv.saveval[k].total_water)[1] for k in 2:2112:length(sol.t)]
-mass_change_actual = total_water_array[2:end] .- total_water_array[1];
-mass_change_expected =
-    [parent(sol.u[k].∫F_vol_liq_water_dt)[1] for k in 2:2112:length(sol.t)-1]
-lines!(
-    ax2,
-    daily[1:2112:end][2:end],
-    eps(FT) .+
-    abs.((mass_change_actual - mass_change_expected[2:end]) ./ mean_water,),
-    label = "Water Balance Sparse Save",
-)
-=#
-#axislegend(position = :lb)
 CairoMakie.save(joinpath(savedir, "water_conservation.png"), fig2)
