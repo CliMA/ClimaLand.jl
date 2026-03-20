@@ -359,10 +359,10 @@ function ClimaLand.make_compute_imp_tendency(
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
-        @. dY.soil.∫F_vol_liq_water_dt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
+        @. dY.soil.∫F_vol_liq_water_dt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes could be updated with the next state, depending on if dFluxBCdY/BC type
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
-        @. dY.soil.∫F_e_dt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
+        @. dY.soil.∫F_e_dt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes could be updated with the next state, depending on if dFluxBCdY/BC type
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
 
@@ -908,7 +908,7 @@ of `ClimaLand.source!` for soil sublimation; treated implicitly
 in ϑ_l, ρe_int but explicitly in θ_i.
 """
 @kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 """
     source!(dY::ClimaCore.Fields.FieldVector,
