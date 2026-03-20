@@ -473,7 +473,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
     # Get P-model parameters and constants for computing A0
     pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
-    is_c3 = canopy.photosynthesis.is_c3
+    fractional_c3 = canopy.photosynthesis.fractional_c3
 
     # Get drivers for A0 computation
     # Use air temperature (not canopy temperature) for potential GPP computation.
@@ -518,7 +518,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
     Mc = pmodel_constants.Mc
     @. p.canopy.biomass.A0_daily_acc +=
         compute_A0_daily(
-            is_c3,
+            fractional_c3,
             pmodel_parameters,
             pmodel_constants,
             T_air,
@@ -557,7 +557,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
             P_air,
             p.canopy.biomass.vpd_gs,
             ca,
-            is_c3,
+            fractional_c3,
         ),
     )
 

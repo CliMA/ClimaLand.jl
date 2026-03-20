@@ -170,8 +170,8 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
 conductance = PModelConductance{FT}(toml_dict)
 
 # Set up photosynthesis
-is_c3 = FT(1)
-photosynthesis = PModel{FT}(surface_domain, toml_dict; is_c3)
+fractional_c3 = FT(1)
+photosynthesis = PModel{FT}(surface_domain, toml_dict; fractional_c3)
 
 # Set up soil moisture stress using soil retention parameters
 soil_moisture_stress = PiecewiseMoistureStressModel{FT}(

@@ -221,6 +221,7 @@ end
         domain,
         toml_dict::CP.ParamDict;
         fractional_c3 = clm_photosynthesis_parameters(domain.space.surface).fractional_c3,
+        binarize = false,
         cstar = toml_dict["pmodel_cstar"],
         β_c3 = toml_dict["pmodel_β_c3"],
         β_c4 = toml_dict["pmodel_β_c4"],
@@ -258,6 +259,7 @@ function PModel{FT}(
     fractional_c3 = clm_photosynthesis_parameters(
         domain.space.surface,
     ).fractional_c3,
+    binarize = false,
     cstar = toml_dict["pmodel_cstar"],
     β_c3 = toml_dict["pmodel_β_c3"],
     β_c4 = toml_dict["pmodel_β_c4"],
@@ -288,7 +290,7 @@ function PModel{FT}(
         α,
     )
 
-    return PModel{FT}(fractional_c3, toml_dict, parameters)
+    return PModel{FT}(fractional_c3, toml_dict, parameters; binarize)
 end
 
 

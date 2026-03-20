@@ -286,7 +286,6 @@ end
             ϕa2_c4 = FT(-0.00034 * 0.087),
             α = FT(0),
         )
-        is_c3 = FT(1)
         constants = PModelConstants(toml_dict)
 
         T_canopy = FT(281.25)
@@ -308,10 +307,15 @@ end
         )
 
         @testset "Test update_optimal_EMA optimality computation for $FT" begin
-            dummy_OptVars =
-                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            dummy_OptVars = (;
+                ξ_opt_c3 = FT(0),
+                ξ_opt_c4 = FT(0),
+                Vcmax25_opt_c3 = FT(0),
+                Vcmax25_opt_c4 = FT(0),
+                Jmax25_opt_c3 = FT(0),
+                Jmax25_opt_c4 = FT(0),
+            )
             outputs_from_EMA = update_optimal_EMA(
-                is_c3,
                 parameters,
                 constants,
                 dummy_OptVars,
@@ -324,19 +328,19 @@ end
                 FT(1.0), # force update
             )
             @test isapprox(
-                outputs_from_EMA.ξ_opt,
+                outputs_from_EMA.ξ_opt_c3,
                 outputs_full.xi,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Vcmax25_opt,
+                outputs_from_EMA.Vcmax25_opt_c3,
                 outputs_full.vcmax25,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Jmax25_opt,
+                outputs_from_EMA.Jmax25_opt_c3,
                 outputs_full.jmax25,
                 rtol = rtol,
                 atol = atol,
@@ -350,4 +354,189 @@ end
     @test !isnan(
         ClimaLand.Canopy.electron_transport_pmodel(FT(0.5), FT(0.5), FT(0)),
     )
+end
+
+function setup_and_initialize_model(
+    ::Type{FT},
+    domain,
+    toml_dict;
+    fractional_c3,
+    binarize,
+) where {FT}
+    start_date = DateTime("2008-03-01")
+    stop_date = DateTime("2008-04-01")
+    Δt = 450.0
+
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    surface_space = domain.space.surface
+
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        start_date,
+        stop_date,
+        surface_space,
+        toml_dict,
+        FT;
+        max_wind_speed = 25.0,
+        use_lowres_forcing = true,
+    )
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    forcing = (; atmos, radiation)
+    canopy_forcing = (; atmos, radiation, ground)
+
+    # Read in LAI from MODIS data
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
+    # Construct the P model manually since it is not a default
+    conductance = PModelConductance{FT}(toml_dict)
+
+    photosynthesis = PModel{FT}(domain, toml_dict; fractional_c3, binarize)
+
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        surface_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        photosynthesis,
+        prognostic_land_components = (:canopy, :snow, :soil),
+        conductance,
+    )
+
+    # Construct the land model with all default components except for canopy
+    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; canopy)
+
+    Y, p, _ = ClimaLand.initialize(land)
+
+    parent(p.canopy.photosynthesis.An) .= NaN
+    parent(p.canopy.photosynthesis.GPP) .= NaN
+    parent(p.canopy.photosynthesis.Rd) .= NaN
+    parent(p.canopy.photosynthesis.ci) .= NaN
+
+    set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+        ClimaLand.Artifacts.saturated_land_ic_path(;
+            context = ClimaComms.context(land),
+        ),
+        land,
+    )
+    set_ic!(Y, p, 0.0, land)
+    set_initial_cache! = make_set_initial_cache(land)
+    set_initial_cache!(p, Y, 0.0)
+    return Y, p, land
+end
+
+@testset "Binarize" begin
+    # These tests run out of parameter memory on GPU, so they are skipped
+    ClimaComms.device() isa ClimaComms.CUDADevice && return
+    FT = Float32
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        mask_threshold = FT(0.99),
+        nelements = (10, 20, 15),
+    )
+
+    toml_dict = LP.create_toml_dict(FT)
+
+    # c3_fraction is all ones with binarize = false
+    ones_field = ones(domain.space.surface)
+    Y_ones, p_ones, land_ones = setup_and_initialize_model(
+        FT,
+        domain,
+        toml_dict;
+        fractional_c3 = ones_field,
+        binarize = false,
+    )
+
+    # c3_fraction is all 0.6 with binarize = true
+    more_half_field = FT(0.6) .* ones(domain.space.surface)
+    Y_ones2, p_ones2, land_ones2 = setup_and_initialize_model(
+        FT,
+        domain,
+        toml_dict;
+        fractional_c3 = more_half_field,
+        binarize = true,
+    )
+
+    # Call update_photosynthesis! once and check the contents are the same
+    ClimaLand.Canopy.update_photosynthesis!(
+        p_ones,
+        Y_ones,
+        land_ones.canopy.photosynthesis,
+        land_ones.canopy,
+    )
+    ClimaLand.Canopy.update_photosynthesis!(
+        p_ones2,
+        Y_ones2,
+        land_ones2.canopy.photosynthesis,
+        land_ones2.canopy,
+    )
+
+    # These quantities are weighted averages of c3
+    GPP1 = p_ones.canopy.photosynthesis.GPP
+    Rd1 = p_ones.canopy.photosynthesis.Rd
+    ci1 = p_ones.canopy.photosynthesis.ci
+
+    GPP2 = p_ones2.canopy.photosynthesis.GPP
+    Rd2 = p_ones2.canopy.photosynthesis.Rd
+    ci2 = p_ones2.canopy.photosynthesis.ci
+
+    @test isequal(parent(GPP1), parent(GPP2))
+    @test isequal(parent(Rd1), parent(Rd2))
+    @test isequal(parent(ci1), parent(ci2))
+
+    # Compare against c3 = 0, c3 = 1, and 0 <= c3 <= 1
+    zero_field = zeros(domain.space.surface)
+    Y_zeros, p_zeros, land_zeros = setup_and_initialize_model(
+        FT,
+        domain,
+        toml_dict;
+        fractional_c3 = zero_field,
+        binarize = false,
+    )
+    ClimaLand.Canopy.update_photosynthesis!(
+        p_zeros,
+        Y_zeros,
+        land_zeros.canopy.photosynthesis,
+        land_zeros.canopy,
+    )
+
+    half_field = FT(0.5) .* ones(domain.space.surface)
+    Y_half, p_half, land_half = setup_and_initialize_model(
+        FT,
+        domain,
+        toml_dict;
+        fractional_c3 = half_field,
+        binarize = false,
+    )
+    ClimaLand.Canopy.update_photosynthesis!(
+        p_half,
+        Y_half,
+        land_half.canopy.photosynthesis,
+        land_half.canopy,
+    )
+
+    GPP0 = p_zeros.canopy.photosynthesis.GPP
+    Rd0 = p_zeros.canopy.photosynthesis.Rd
+    ci0 = p_zeros.canopy.photosynthesis.ci
+
+    GPP_half = p_half.canopy.photosynthesis.GPP
+    Rd_half = p_half.canopy.photosynthesis.Rd
+    ci_half = p_half.canopy.photosynthesis.ci
+
+    GPP_weighted = similar(GPP0)
+    Rd_weighted = similar(Rd0)
+    ci_weighted = similar(ci0)
+
+    parent(GPP_weighted) .= NaN
+    parent(Rd_weighted) .= NaN
+    parent(ci_weighted) .= NaN
+
+    @. GPP_weighted = FT(0.5) * (GPP0 + GPP1)
+    @. Rd_weighted = FT(0.5) * (Rd0 + Rd1)
+    @. ci_weighted = FT(0.5) * (ci0 + ci1)
+
+    @test isequal(parent(GPP_weighted), parent(GPP_half))
+    @test isequal(parent(Rd_weighted), parent(Rd_half))
+    @test isequal(parent(ci_weighted), parent(ci_half))
 end
