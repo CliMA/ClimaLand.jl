@@ -71,7 +71,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     d_ds::FT
     "Exponent used in soil resistance to evaporation (unitless)"
     evap_p::FT
-    "Scalar used as fitting parameter in critical soil water content for evaporation (unitless)"
+    "Multiplicative scalar used as fitting parameter in critical soil water content for evaporation (unitless)"
     evap_α::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
