@@ -1,15 +1,24 @@
 using Dates
 
+#= issues: (time index, lon, lat, z, SWE, scf, total_albedo):
+ (DateTime("2019-11-03T00:00:00"), 128.0, -73.0, 7.470959, 3.4211667, 1.0, 0.7661099)
+ (DateTime("2014-03-16T00:00:00"), 147.0, -6.0, 0.0001744235, 0.00017585493, 0.0029724056, 0.07051761)
+ (DateTime("2014-05-31T00:00:00"), -79.0, -2.0, 0.0003941978, 0.00039459218, 0.0067059896, 0.083248325)
+ (DateTime("2010-10-27T00:00:00"), -77.0, 3.0, 0.0, 0.0, 0.0, 0.06903501)
+ (DateTime("2002-09-07T00:00:00"), -17.0, 64.0, 0.0005595295, 0.0005580454, 0.009502905, 0.04070939)
+=#
+use_col = true
+col_lon_lat = (-17, 64)
 const FT = Float32;
 const setup = Dict(
-    "output_tag" => "neurals_plus_sfc_temp_20yr",
+    "output_tag" => "column_debug_1",
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
     "use_sfc_temp" => true,
     "max_wind_speed" => FT(25.0),
     "snow_min_density_param" => FT(300), #only used if not using neural models
     "start_date" => DateTime("2000-06-01"), #earliest we have is Jan 1st 1979
-    "stop_date" => DateTime("2020-06-01"), #latest we have is 7th 2024
+    "stop_date" => DateTime("2003-01-01"), #latest we have is 7th 2024
     "dt" => FT(450),
     "output_vars" =>
         ["snd", "swe", "snowc", "salb", "swa", "snalb", "galb"], #salb = soil alb, swa = p.snow.α_sfc
@@ -54,8 +63,16 @@ toml_dict = LP.create_toml_dict(FT)
 
 @info "Setting up Simulation!"
 
-domain =
-    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+if use_col
+    domain = ClimaLand.Domains.Column(;
+        zlim = (-FT(15), FT(0.0)),
+        nelements = 15,
+        longlat = FT.(col_lon_lat),
+        dz_tuple = (FT(3.0), FT(0.05)),
+    );
+else
+    domain = ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+end
 
 surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
 surface_space = domain.space.surface
@@ -122,8 +139,12 @@ else
     density = Snow.MinimumDensityModel(setup["snow_min_density_param"])
 end
 
-horz_degree_res =
-    sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+if use_col
+    horz_degree_res = FT(1)
+else
+    horz_degree_res =
+        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+end
 scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
 
 if setup["use_sfc_temp"]
