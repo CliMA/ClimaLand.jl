@@ -305,10 +305,14 @@ end
         )
 
         @testset "Test update_optimal_EMA optimality computation for $FT" begin
-            dummy_OptVars =
-                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            dummy_OptVars = (;
+                ξ_opt = FT(0),
+                Vcmax25_opt_c3 = FT(0),
+                Vcmax25_opt_c4 = FT(0),
+                Jmax25_opt_c3 = FT(0),
+                Jmax25_opt_c4 = FT(0),
+            )
             outputs_from_EMA = update_optimal_EMA(
-                is_c3,
                 parameters,
                 constants,
                 dummy_OptVars,
@@ -327,13 +331,13 @@ end
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Vcmax25_opt,
+                outputs_from_EMA.Vcmax25_opt_c3,
                 outputs_full.vcmax25,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Jmax25_opt,
+                outputs_from_EMA.Jmax25_opt_c3,
                 outputs_full.jmax25,
                 rtol = rtol,
                 atol = atol,
