@@ -452,20 +452,26 @@ end
 """
     function FarquharParameters(
         toml_dict::CP.ParamDict;
-        is_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
-        Vcmax25,
+        fractional_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
+        Vcmax25;
     )
 
 Constructor for the `FarquharParameters` struct.
+
 ```julia
 import ClimaParams as CP
 toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.FarquharParameters(toml_dict, 1.0f0; Vcmax25 = 99999999)
+
+!!! note "C3 and C4 values"
+    The `FarquharModel` takes in fractional values for C3, but the model does
+    not support this. Internally, the values are constrained to the values
+    0 (C3) and 1 (C4).
 ```
 """
 function FarquharParameters(
     toml_dict::CP.ParamDict;
-    is_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
+    fractional_c3::Union{AbstractFloat, ClimaCore.Fields.Field},
     Vcmax25,
 )
     name_map = (;
@@ -497,10 +503,8 @@ function FarquharParameters(
         :s6 => FT(328.15),
         :E => FT(0.05),
     )
-    # if is_c3 is a field, is_c3 may contain values between 0.0 and 1.0 after regridding
-    # this deals with that possibility by rounding to the closest int
-    is_c3 = max.(min.(is_c3, FT(1)), FT(0)) # placeholder
-    is_c3 = round.(is_c3)
+    fractional_c3 = max.(min.(fractional_c3, FT(1)), FT(0))
+    is_c3 = round.(fractional_c3)
     MECH = typeof(is_c3)
     Vcmax25 = FT.(Vcmax25)
     VC = typeof(Vcmax25)
