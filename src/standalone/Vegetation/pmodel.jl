@@ -389,17 +389,14 @@ function compute_full_pmodel_outputs(
     ca_pp = ca * P_air
 
     # Compute intermediate values
-    ϕ0_c3 = c3_intrinsic_quantum_yield(T_canopy, parameters)
-    ϕ0_c4 = c4_intrinsic_quantum_yield(T_canopy, parameters)
+    ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
     ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
-    mj_c3 = c3_compute_mj(Γstar, ca_pp, ci, VPD)
-    mj_c4 = c4_compute_mj(Γstar, ca_pp, ci, VPD)
-    mc_c3 = c3_compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
-    mc_c4 = c4_compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
+    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci, VPD)
+    mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -461,25 +458,25 @@ function compute_full_pmodel_outputs(
             inst_temp_scaling_rd(T_canopy, To, aRd, bRd) /
             inst_temp_scaling_vcmax25
         ) *
-        (fractional_c3 * Vcmax_c3 + (1 - fractional_c3) * Vcmax_c4)
+        blend(Vcmax_c3, Vcmax_c4, fractional_c3)
 
     return (;
-        gpp = fractional_c3 * GPP_c3 + (1 - fractional_c3) * GPP_c4,
+        gpp = blend(GPP_c3, GPP_c4, fractional_c3),
         gammastar = Γstar,
         kmm = Kmm,
         ca = ca_pp,
         ns_star = ηstar,
         chi = χ,
         xi = ξ,
-        mj = fractional_c3 * mj_c3 + (1 - fractional_c3) * mj_c4,
-        mc = fractional_c3 * mc_c3 + (1 - fractional_c3) * mc_c4,
+        mj = blend(mj_c3, mj_c4, fractional_c3),
+        mc = blend(mc_c3, mc_c4, fractional_c3),
         ci = ci,
         iwue = iWUE,
-        gs = fractional_c3 * gs_c3 + (1 - fractional_c3) * gs_c4,
-        vcmax = fractional_c3 * Vcmax_c3 + (1 - fractional_c3) * Vcmax_c4,
-        vcmax25 = fractional_c3 * Vcmax25_c3 + (1 - fractional_c3) * Vcmax25_c4,
-        jmax = fractional_c3 * Jmax_c3 + (1 - fractional_c3) * Jmax_c4,
-        jmax25 = fractional_c3 * Jmax25_c3 + (1 - fractional_c3) * Jmax25_c4,
+        gs = blend(gs_c3, gs_c4, fractional_c3),
+        vcmax = blend(Vcmax_c3, Vcmax_c4, fractional_c3),
+        vcmax25 = blend(Vcmax25_c3, Vcmax25_c4, fractional_c3),
+        jmax = blend(Jmax_c3, Jmax_c4, fractional_c3),
+        jmax25 = blend(Jmax25_c3, Jmax25_c4, fractional_c3),
         rd = rd,
     )
 end
@@ -590,13 +587,10 @@ function update_optimal_EMA(
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
     ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
 
-    ϕ0_c3 = c3_intrinsic_quantum_yield(T_canopy, parameters)
-    ϕ0_c4 = c4_intrinsic_quantum_yield(T_canopy, parameters)
+    ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
-    mj_c3 = c3_compute_mj(Γstar, ca_pp, ci, VPD)
-    mj_c4 = c4_compute_mj(Γstar, ca_pp, ci, VPD)
-    mc_c3 = c3_compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
-    mc_c4 = c4_compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
+    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci, VPD)
+    mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci, VPD, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -900,6 +894,7 @@ dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), a
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::PModel, canopy)
+    @info "Remove this later when doing testing!"
     parameters = model.parameters
     constants = model.constants
     FT = eltype(parameters)
@@ -1091,10 +1086,8 @@ get_An_leaf(p, m::PModel) = @. lazy(
 get_GPP_canopy(p, m::PModel) = p.canopy.photosynthesis.GPP
 
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
-    Jmax_c3 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
-    Jmax_c4 = c4_compute_Jmax_canopy(Y, p, canopy, m) # lazy
-    J_c3 = compute_J_canopy(Y, p, canopy, m) # lazy
-    J_c4 = c4_compute_J_canopy(Y, p, canopy, m) # lazy
+    Jmax_c3, Jmax_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
+    J_c3, J_c4 = compute_J_canopy(Y, p, canopy, m) # lazy
     FT = eltype(m.constants)
     return @. lazy(
         m.fractional_c3 * (J_c3 / max(Jmax_c3, sqrt(eps(FT)))) +
@@ -1105,8 +1098,8 @@ end
 function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     constants = m.constants
-    return @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt_c3 * inst_temp_scaling( # TODO
+    inst_temp_scaling_factor = @. lazy(
+        inst_temp_scaling(
             T_canopy,
             T_canopy,
             constants.To,
@@ -1117,27 +1110,20 @@ function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmode
             constants.R,
         ),
     )
-end
-
-# TODO: This can be simplified I think with c3 and c4 mushed together
-function c4_compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    constants = m.constants
-    return @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt_c4 * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Jmax,
-            constants.Hd_Jmax,
-            constants.aS_Jmax,
-            constants.bS_Jmax,
-            constants.R,
+    return @. (
+        lazy(
+            p.canopy.photosynthesis.OptVars.Jmax25_opt_c3 *
+            inst_temp_scaling_factor,
+        ),
+        lazy(
+            p.canopy.photosynthesis.OptVars.Jmax25_opt_c4 *
+            inst_temp_scaling_factor,
         ),
     )
 end
 
 function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
+    @info "compute_J_canopy is getting called!"
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     earth_param_set = canopy.earth_param_set
     f_abs_par = p.canopy.radiative_transfer.par.abs
@@ -1150,40 +1136,23 @@ function compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel p
         compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
     )
 
-    Jmax_canopy = compute_Jmax_canopy(Y, p, canopy, m) # TODO: I think this and the lines below depend on c3 and c4 variants
+    Jmax_canopy_c3, Jmax_canopy_c4 = compute_Jmax_canopy(Y, p, canopy, m)
     parameters = m.parameters
     constants = m.constants
-    return @. lazy(
-        electron_transport_pmodel(
-            c3_intrinsic_quantum_yield(T_canopy, parameters),
-            APAR_canopy_moles,
-            Jmax_canopy,
+    return @. (
+        lazy(
+            electron_transport_pmodel(
+                c3_intrinsic_quantum_yield(T_canopy, parameters),
+                APAR_canopy_moles,
+                Jmax_canopy_c3,
+            ),
         ),
-    )
-end
-
-# TODO: This can be simplified I think with c3 and c4 mushed together
-function c4_compute_J_canopy(Y, p, canopy, m::PModel) # used internally to pmodel photosynthesis as a helper function
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    earth_param_set = canopy.earth_param_set
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    par_d = p.canopy.radiative_transfer.par_d
-    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
-    c = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    APAR_canopy_moles = @. lazy(
-        compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
-    )
-
-    Jmax_canopy = c4_compute_Jmax_canopy(Y, p, canopy, m)
-    parameters = m.parameters
-    constants = m.constants
-    return @. lazy(
-        electron_transport_pmodel(
-            c4_intrinsic_quantum_yield(T_canopy, parameters),
-            APAR_canopy_moles,
-            Jmax_canopy,
+        lazy(
+            electron_transport_pmodel(
+                c4_intrinsic_quantum_yield(T_canopy, parameters),
+                APAR_canopy_moles,
+                Jmax_canopy_c4,
+            ),
         ),
     )
 end
@@ -1226,29 +1195,15 @@ function compute_Kmm(
 end
 
 """
-    intrinsic_quantum_yield(
-        is_c3::FT, T::FT, parameters) where {FT}
-Computes the intrinsic quantum yield of photosystem II.
+    intrinsic_quantum_yield(T::FT, parameters) where {FT}
+
+Computes the intrinsic quantum yield of photosystem II for both c3 and c4.
 """
-function intrinsic_quantum_yield(is_c3::FT, T::FT, parameters) where {FT}
-    error("Remove me!")
-    if is_c3 > 0.5
-        parameters.temperature_dep_yield ?
-        quadratic_intrinsic_quantum_yield(
-            T,
-            parameters.ϕa0_c3,
-            parameters.ϕa1_c3,
-            parameters.ϕa2_c3,
-        ) : parameters.ϕ0_c3
-    else
-        parameters.temperature_dep_yield ?
-        quadratic_intrinsic_quantum_yield(
-            T,
-            parameters.ϕa0_c4,
-            parameters.ϕa1_c4,
-            parameters.ϕa2_c4,
-        ) : parameters.ϕ0_c4
-    end
+function intrinsic_quantum_yield(T::FT, parameters) where {FT}
+    return (
+        c3_intrinsic_quantum_yield(T, parameters),
+        c4_intrinsic_quantum_yield(T, parameters),
+    )
 end
 
 function c3_intrinsic_quantum_yield(T::FT, parameters) where {FT}
@@ -1463,8 +1418,6 @@ function intercellular_co2_pmodel(
     return (ξ * ca_pp + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
 end
 
-
-
 """
     gs_co2_pmodel(
         χ::FT,
@@ -1564,7 +1517,7 @@ Air temperature is used (rather than canopy temperature) because A0 represents
 potential GPP under reference conditions, independent of energy balance feedbacks.
 """
 function compute_A0_daily(
-    is_c3::FT,
+    fractional_c3::FT,
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
     T_air::FT,
@@ -1582,7 +1535,7 @@ function compute_A0_daily(
     ca_pp = ca * P_air
 
     # Compute P-model intermediate values
-    ϕ0 = intrinsic_quantum_yield(is_c3, T_air, parameters)
+    ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_air, parameters)
     Γstar = co2_compensation_pmodel(T_air, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_air, To, ρ_water)
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
@@ -1592,14 +1545,16 @@ function compute_A0_daily(
     ci = intercellular_co2_pmodel(ξ, ca_pp, Γstar, VPD)
 
     # Compute mj and m' (with Jmax limitation)
-    mj = compute_mj(is_c3, Γstar, ca_pp, ci, VPD)
-    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci, VPD)
+    mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
+    mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
     # Compute LUE with actual βm (soil moisture stress)
-    LUE_daily = compute_LUE(ϕ0, βm, mprime, Mc)
+    LUE_daily_c3 = compute_LUE(ϕ0_c3, βm, mprime_c3, Mc)
+    LUE_daily_c4 = compute_LUE(ϕ0_c4, βm, mprime_c4, Mc)
 
     # Daily potential GPP = PPFD * LUE (fAPAR = 1 is implicit in using full PPFD)
-    return PPFD * LUE_daily
+    return PPFD * blend(LUE_daily_c3, LUE_daily_c4, fractional_c3)
 end
 
 """
@@ -1664,7 +1619,6 @@ function vcmax_pmodel(ϕ0::FT, APAR::FT, mprime::FT, mc::FT, βm::FT) where {FT}
     Vcmax = βm * ϕ0 * APAR * mprime / mc
     return Vcmax
 end
-
 
 """
     electron_transport_pmodel(
@@ -1766,15 +1720,14 @@ function get_model_callbacks(component::PModel{FT}, canopy; t0, Δt) where {FT}
 end
 
 """
-    compute_mj(
-        is_c3::FT, T::FT, parameters) where {FT}
+    compute_mj(args...)
 
 Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants)
-and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj.
+and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj
+for both c3 and c4.
 """
-function compute_mj(is_c3::AbstractFloat, args...)
-    error("Remove me!")
-    return is_c3 > 0.5 ? c3_compute_mj(args...) : c4_compute_mj(args...)
+function compute_mj(args...)
+    return (c3_compute_mj(args...), c4_compute_mj(args...))
 end
 
 
@@ -1788,15 +1741,13 @@ function c4_compute_mj(::FT, ::FT, ::FT, ::FT) where {FT}
 end
 
 """
-    compute_mc(
-        is_c3::FT, T::FT, parameters) where {FT}
+    compute_mc(args...)
 
 Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
 and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj.
 """
-function compute_mc(is_c3::AbstractFloat, args...)
-    error("Remove me!")
-    return is_c3 > 0.5 ? c3_compute_mc(args...) : c4_compute_mc(args...)
+function compute_mc(args...)
+    return (c3_compute_mc(args...), c4_compute_mc(args...))
 end
 
 function c3_compute_mc(
@@ -1813,3 +1764,6 @@ end
 function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
     return FT(1)
 end
+
+blend(c3_quantity, c4_quantity, fractional_c3) =
+    fractional_c3 * c3_quantity + (1 - fractional_c3) * c4_quantity
