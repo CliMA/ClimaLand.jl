@@ -187,7 +187,7 @@ end
 A function which returns the names of the prognostic
 variables of the `PlantHydraulicsModel`.
 """
-prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
+prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_lg,)
 
 """
     auxiliary_vars(model::PlantHydraulicsModel)
@@ -205,9 +205,9 @@ the bottom boundary flux.
 function auxiliary_vars(model::PlantHydraulicsModel)
     n = model.n_stem + model.n_leaf
     if n > 1
-        return (:ψ, :fa, :fa_roots)
+        return (:ψ, :ϑ_l, :fa, :fa_roots)
     else
-        return (:ψ, :fa_roots)
+        return (:ψ, :ϑ_l, :fa_roots)
     end
 end
 
@@ -231,20 +231,21 @@ function ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
     if n > 1
         return (
             NTuple{model.n_stem + model.n_leaf, FT},
+            NTuple{model.n_stem + model.n_leaf, FT},
             NTuple{model.n_stem + model.n_leaf - 1, FT},
             FT,
         )
     else
-        return (NTuple{model.n_stem + model.n_leaf, FT}, FT)
+        return (NTuple{model.n_stem + model.n_leaf, FT}, NTuple{model.n_stem + model.n_leaf, FT}, FT)
     end
 end
 
 function ClimaLand.auxiliary_domain_names(model::PlantHydraulicsModel)
     n = model.n_stem + model.n_leaf
     if n > 1
-        return (:surface, :surface, :surface)
+        return (:surface, :surface, :surface, :surface)
     else
-        return (:surface, :surface)
+        return (:surface, :surface, :surface)
     end
 end
 
@@ -483,7 +484,6 @@ function make_compute_exp_tendency(
     canopy,
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.biomass.area_index
         n_stem = model.n_stem
         n_leaf = model.n_leaf
         fa_roots = p.canopy.hydraulics.fa_roots
@@ -496,31 +496,26 @@ function make_compute_exp_tendency(
         # @ field.:($$index) = value # works
         i_end = n_stem + n_leaf
         if i_end == 1 # single compartment
-            AI = getproperty(area_index, model.compartment_labels[1]) # this is a field; should not allocate here
-            dz = model.compartment_surfaces[2] - model.compartment_surfaces[1] # currently this is a scalar. in the future, this will be a field.
-            @. dY.canopy.hydraulics.ϑ_l.:1 =
-                1 / max(AI * dz, eps(FT)) *
-                (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
+            dz = model.compartment_surfaces[2] - model.compartment_surfaces[1]
+            @. dY.canopy.hydraulics.ϑ_lg.:1 =
+                (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)/dz
         else # multiple layers
             fa = p.canopy.hydraulics.fa
             @inbounds for i in 1:(n_stem + n_leaf)
                 im1 = i - 1
                 ip1 = i + 1
-                # To prevent dividing by zero, change AI/(AI x dz)" to AI/max(AI x dz, eps(FT))"
-                AI = getproperty(area_index, model.compartment_labels[i]) # this is a field; should not allocate here
                 dz =
                     model.compartment_surfaces[ip1] -
-                    model.compartment_surfaces[i] # currently this is a scalar. in the future, this will be a field.
+                    model.compartment_surfaces[i] 
                 if i == 1
-                    @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                        1 / max(AI * dz, eps(FT)) * (fa_roots - fa.:($$i))
+                    @inbounds @. dY.canopy.hydraulics.ϑ_lg.:($$i) =
+                        (fa_roots - fa.:($$i))/dz
                 elseif i == i_end
-                    @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                        1 / max(AI * dz, eps(FT)) *
-                        (fa.:($$im1) - p.canopy.turbulent_fluxes.vapor_flux)
+                    @inbounds @. dY.canopy.hydraulics.ϑ_lg.:($$i) =
+                        (fa.:($$im1) - p.canopy.turbulent_fluxes.vapor_flux)/dz
                 else
-                    @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                        1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
+                    @inbounds @. dY.canopy.hydraulics.ϑ_lg.:($$i) =
+                        (fa.:($$im1) - fa.:($$i))/dz
                 end
             end
         end
@@ -633,8 +628,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     n = length(labels)
     for i in 1:n
         surface_field .+=
-            dz[i] .* getproperty(area_index, labels[i]) .*
-            Y.canopy.hydraulics.ϑ_l.:($i)
+            dz[i] .* Y.canopy.hydraulics.ϑ_lg.:($i)
     end
     return nothing
 end
@@ -645,16 +639,23 @@ end
 
 Updates the following cache variables in place:
 - p.canopy.hydraulics.ψ
+- p.canopy.hydraulics.ϑ_l
 - p.canopy.hydraulics.fa[1:end-1] (within plant fluxes)
 
 Other types of AbstractPlantHydraulicsModel may update different variables.
 """
 function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
-    ϑ_l = Y.canopy.hydraulics.ϑ_l
+    ϑ_lg = Y.canopy.hydraulics.ϑ_lg
+    ϑ_l = p.canopy.hydraulics.ϑ_l
     area_index = p.canopy.biomass.area_index
     n_stem = hydraulics.n_stem
     n_leaf = hydraulics.n_leaf
+    FT = eltype(ψ)
+    @inbounds for i in 1:(n_stem + n_leaf - 1)
+        AI = getproperty(area_index, hydraulics.compartment_labels[i])
+        @. ϑ_l.:($$i).= ϑ_lg.:($$i) / max(AI, eps(FT))
+    end
     (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index

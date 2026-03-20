@@ -326,7 +326,7 @@ function make_set_initial_state_from_file(
                         interpolation_method,
                     ),
                 )
-                Y.canopy.hydraulics.ϑ_l.:1 .=
+                Y.canopy.hydraulics.ϑ_lg.:1 .=
                     ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
                         land.canopy.hydraulics.parameters.retention_model,
                         ψ_roots,
