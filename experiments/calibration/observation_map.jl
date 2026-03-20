@@ -76,10 +76,10 @@ function process_member_data!(
 )
     nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
-    era5_obs_vars = ext.get_era5_obs_var_dict()
+    calibration_obs_vars = ext.get_calibration_obs_var_dict()
     for short_name in short_names
-        short_name in keys(era5_obs_vars) || error(
-            "Variable $short_name does not appear in the observation dataset. Add the variable to get_era5_obs_var_dict",
+        short_name in keys(calibration_obs_vars) || error(
+            "Variable $short_name does not appear in the observation dataset. Add the variable to get_calibration_obs_var_dict",
         )
     end
 
