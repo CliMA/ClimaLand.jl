@@ -76,14 +76,14 @@ end
 Preprocess each variable from the ERA5 dataset with `short_names`.
 """
 function preprocess_era5_vars(short_names, start_date, nelements)
-    era5_obs_vars = get_era5_obs_var_dict()
+    obs_vars = get_calibration_obs_var_dict()
     for short_name in short_names
-        short_name ∉ keys(era5_obs_vars) && error(
-            "There is no variable with the short name $short_name. Add this variable to get_era5_obs_var_dict",
+        short_name ∉ keys(obs_vars) && error(
+            "There is no variable with the short name $short_name. Add this variable to get_calibration_obs_var_dict",
         )
     end
     vars = map(short_names) do short_name
-        var = era5_obs_vars[short_name](start_date)
+        var = obs_vars[short_name](start_date)
         preprocess_single_era5_var(var, short_name, nelements)
     end
     return vars
@@ -95,7 +95,7 @@ end
 Specifies how each individual `OutputVar` from the ERA5 dataset should be
 processed.
 
-The currently supported variables are `lhf`, `shf`, `lwu`, and `swu`. The
+The currently supported variables are `lhf`, `shf`, `lwu`, `swu`, and `gpp`. The
 preprocessing is
 - computing seasonal averages,
 - resampling to fit the model grid,
@@ -108,20 +108,29 @@ Note that an `EKP.Observation` is not generated in this function.
 function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
     lats, lons = get_lat_lon_from_resolution(nelements)
 
-    # If there are `NaN`s, then resampling cannot be performed as resampling is
-    # not `NaN` aware
-    any(isnan, var.data) && error(
-        "Cannot process OutputVar with name $short_name because `NaN`s are present in the data",
-    )
+    # Resampling is not `NaN` aware, so replace `NaN`s with zeros before
+    # resampling. This is safe because the ocean mask is applied afterward,
+    # removing ocean points where NaNs typically occur (e.g., FLUXCOM GPP).
+    if any(isnan, var.data)
+        @warn "Replacing NaNs with zeros in $short_name before resampling"
+        var = ClimaAnalysis.replace(var, NaN => 0.0)
+    end
 
-    # Window to ensure that each season contains all three months
-    # The dates are found by inspecting the ERA5 data and choosing
-    # the earliest and latest dates that contain full seasons
+    # Window to ensure that each season contains all three months.
+    # The ERA5 bounds (1979-03 to 2024-08) are only applied when the data's
+    # time range covers them; non-ERA5 sources (e.g., FLUXCOM GPP) may have a
+    # narrower range and are used as-is.
+    start_date = Dates.DateTime(var.attributes["start_date"])
+    time_vals = ClimaAnalysis.times(var)
+    t_first = start_date + Dates.Second(round(Int, time_vals[begin]))
+    t_last = start_date + Dates.Second(round(Int, time_vals[end]))
+    window_left = max(Dates.DateTime(1979, 3), t_first)
+    window_right = min(Dates.DateTime(2024, 8), t_last)
     var = ClimaAnalysis.window(
         var,
         "time",
-        left = Dates.DateTime(1979, 3),
-        right = Dates.DateTime(2024, 8),
+        left = window_left,
+        right = window_right,
         by = ClimaAnalysis.MatchValue(),
     )
 

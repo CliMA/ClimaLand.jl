@@ -11,12 +11,16 @@ import JLD2
 include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["lwu"],
-    minibatch_size = 1,
-    n_iterations = 1,
-    sample_date_ranges = [("2007-12-1", "2007-12-1")],
+    short_names = ["gpp", "lhf"],
+    minibatch_size = 4,
+    n_iterations = 10,
+    # 10 yearly samples: each covers DJF through SON (Dec 1 → Sep 1)
+    # with extend = Month(3), simulation runs through Nov 30
+    sample_date_ranges = [
+        ("$(year)-12-1", "$(year+1)-9-1") for year in 2000:2009
+    ],
     extend = Dates.Month(3),
-    spinup = Dates.Month(0),
+    spinup = Dates.Year(1),
     nelements = (180, 360, 15),
     output_dir = "experiments/calibration/land_model",
     rng_seed = 42,
@@ -26,9 +30,17 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
+    # 4 P-model parameters + 1 soil moisture stress parameter
+    # Ensemble size for TransformUnscented: 5 * 2 + 1 = 11 members
+    # Note: ϕ0_c3/ϕ0_c4 are not calibrated because temperature_dep_yield = true
+    # uses the quadratic coefficients (ϕa0, ϕa1, ϕa2) instead.
+    priors = [
+        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.2, 0.7),
+        EKP.constrained_gaussian("pmodel_β_c3", 146.0, 40.0, 50.0, 300.0),
+        EKP.constrained_gaussian("pmodel_β_c4", 16.222, 5.0, 5.0, 40.0),
+        EKP.constrained_gaussian("pmodel_α", 0.933, 0.02, 0.85, 0.999),
+        EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.05, 1.0),
+    ]
     prior = EKP.combine_distributions(priors)
 
     observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
