@@ -165,18 +165,18 @@ simulation = LandSimulation(
     @test !any(isnan, parent(Y.soil.ρe_int))
 
     # --- Lake temperature is physical ---
-    T_lake = parent(p.lake.T)[1]
+    T_lake = Array(parent(p.lake.T))[1]
     @info "  T_lake = $T_lake K"
     @test T_lake > FT(250)   # not implausibly cold
     @test T_lake < FT(350)   # not implausibly hot
 
     # --- Lake liquid fraction is in [0, 1] ---
-    q_l = parent(p.lake.q_l)[1]
+    q_l = Array(parent(p.lake.q_l))[1]
     @info "  q_l = $q_l"
     @test FT(0) <= q_l <= FT(1)
 
     # --- Sediment temperatures are physical ---
-    T_soil = parent(p.soil.T)
+    T_soil = Array(parent(p.soil.T))
     min_T = minimum(T_soil)
     max_T = maximum(T_soil)
     @info "  Sediment temperature range: [$min_T, $max_T] K"
@@ -184,11 +184,11 @@ simulation = LandSimulation(
     @test max_T < FT(350)
 
     # --- Surface energy fluxes are physical for a lake ---
-    lhf = parent(p.lake.turbulent_fluxes.lhf)[1]
-    shf = parent(p.lake.turbulent_fluxes.shf)[1]
-    R_n = parent(p.lake.R_n)[1]
-    sfc_energy = parent(p.lake.surface_energy_flux)[1]
-    sed_heat = parent(p.lake.sediment_heat_flux)[1]
+    lhf = Array(parent(p.lake.turbulent_fluxes.lhf))[1]
+    shf = Array(parent(p.lake.turbulent_fluxes.shf))[1]
+    R_n = Array(parent(p.lake.R_n))[1]
+    sfc_energy = Array(parent(p.lake.surface_energy_flux))[1]
+    sed_heat = Array(parent(p.lake.sediment_heat_flux))[1]
     @info "  Lake surface energy fluxes (W/m²):"
     @info "    LHF  = $lhf"
     @info "    SHF  = $shf"

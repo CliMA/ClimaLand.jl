@@ -19,6 +19,12 @@ ClimaLand.InlandWater.SlabLakeModel{FT}(;
 ) where {FT}
 ```
 
+## Inland Water Mask
+
+```@docs
+ClimaLand.InlandWater.inland_water_mask
+```
+
 ## Boundary Conditions and Fluxes
 
 ```@docs

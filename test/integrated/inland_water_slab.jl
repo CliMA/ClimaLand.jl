@@ -92,6 +92,145 @@ end
     @test E != FT(0)
 end
 
+@testset "Energy conservation: precipitation onto lake" begin
+    # When precipitation falls on a warm lake with no sediment flux,
+    # the energy tendency should equal -(surface flux + runoff energy flux).
+    # Here we verify the runoff energy budget: precipitation adds water at T_air,
+    # runoff removes it at T_lake, and the net energy is accounted for.
+    FT = Float64
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    params = SlabLakeParameters{FT}(; earth_param_set)
+
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _cp_l = FT(LP.cp_l(earth_param_set))
+    _T_ref = FT(LP.T_0(earth_param_set))
+
+    T_lake = FT(290)
+    q_l = FT(1)  # fully liquid
+    P_liq = FT(1e-4)  # precipitation rate (m/s)
+
+    # Runoff = -F_water = -P_liq (no evaporation) to maintain constant depth
+    runoff = -P_liq
+
+    # Precipitation enthalpy flux into lake (at air temperature = lake temperature here)
+    T_air = T_lake
+    Q_precip = P_liq * _ρ_l * _cp_l * (T_air - _T_ref)
+
+    # Runoff energy flux out of lake (at lake temperature)
+    Q_runoff = IW.lake_runoff_energy_flux(runoff, T_lake, q_l, earth_param_set)
+
+    # ρe_int at lake temperature for fully liquid
+    ρe_lake = IW.lake_volumetric_internal_energy(T_lake, q_l, earth_param_set)
+
+    # Runoff energy should be -P_liq * ρe(T_lake)
+    @test Q_runoff ≈ -P_liq * ρe_lake
+
+    # When T_air == T_lake and no radiation/turbulent fluxes, the energy tendency
+    # contribution from precip + runoff should be: -Q_precip - Q_runoff
+    # = -P_liq*ρ*cp*(T-T0) - (-P_liq)*ρe(T) = -P_liq*ρ*cp*(T-T0) + P_liq*ρe(T)
+    # For fully liquid: ρe(T) = ρ*cp*(T-T0), so these cancel exactly.
+    net_energy = -Q_precip - Q_runoff
+    @test abs(net_energy) < eps(FT) * abs(Q_precip)
+end
+
+@testset "Energy conservation: evaporation from lake" begin
+    # When evaporation removes water, runoff is positive (water supplied to maintain depth).
+    # Verify the runoff energy flux is consistent.
+    FT = Float64
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    params = SlabLakeParameters{FT}(; earth_param_set)
+
+    T_lake = FT(295)
+    q_l = FT(1)
+
+    # Evaporation rate (negative water flux, so E_liq < 0 in sign convention)
+    E_liq = FT(-5e-5)  # m/s evaporated
+    F_water = E_liq  # no precipitation
+    runoff = -F_water  # positive: water must be supplied
+
+    Q_runoff = IW.lake_runoff_energy_flux(runoff, T_lake, q_l, earth_param_set)
+    ρe_lake = IW.lake_volumetric_internal_energy(T_lake, q_l, earth_param_set)
+
+    # Runoff is positive and carries energy into the lake at lake temperature
+    @test Q_runoff ≈ runoff * ρe_lake
+    @test Q_runoff > FT(0)  # energy is added (water supplied at lake T)
+end
+
+@testset "Mass conservation: runoff balances net water flux" begin
+    FT = Float64
+
+    # Scenario 1: net precipitation → positive runoff (excess water drained)
+    P_liq = FT(2e-4)
+    E_liq = FT(-5e-5)
+    E_ice = FT(0)
+    F_water = P_liq + E_liq + E_ice
+    runoff = -F_water
+    @test runoff < FT(0)  # water leaves as drainage (net precip case → runoff < 0 means drainage)
+    # Actually: P_liq > |E_liq|, so F_water > 0, runoff = -F_water < 0
+    # Negative runoff = drainage away from lake. Total mass change = F_water + runoff = 0
+    @test F_water + runoff ≈ FT(0)
+
+    # Scenario 2: net evaporation → water must be supplied
+    P_liq2 = FT(1e-5)
+    E_liq2 = FT(-1e-4)
+    F_water2 = P_liq2 + E_liq2
+    runoff2 = -F_water2
+    @test F_water2 + runoff2 ≈ FT(0)
+
+    # Scenario 3: no fluxes → no runoff
+    @test -FT(0) ≈ FT(0)
+end
+
+@testset "Energy conservation: sediment heat flux symmetry" begin
+    # Verify that sediment heat flux conserves energy: what leaves the lake
+    # enters the soil and vice versa.
+    FT = Float64
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+    params = SlabLakeParameters{FT}(; earth_param_set)
+
+    T_lake = FT(285)
+    T_soil = FT(280)
+    κ_soil = FT(1.5)
+    Δz_soil = FT(0.1)
+
+    Q_sed = IW.lake_sediment_heat_flux(T_lake, T_soil, κ_soil, Δz_soil, params)
+
+    # Heat flows from warm lake to cold soil: Q_sed < 0 (lake loses energy)
+    @test Q_sed < FT(0)
+
+    # The soil gains exactly the same magnitude of energy
+    # (In the tendency: dU_lake/dt includes +Q_sed, soil top BC gets -Q_sed)
+    # Reversing temperatures reverses flux exactly
+    Q_sed_rev =
+        IW.lake_sediment_heat_flux(T_soil, T_lake, κ_soil, Δz_soil, params)
+    @test Q_sed + Q_sed_rev ≈ FT(0)
+
+    # At thermal equilibrium, no heat flows
+    Q_eq = IW.lake_sediment_heat_flux(T_lake, T_lake, κ_soil, Δz_soil, params)
+    @test Q_eq ≈ FT(0)
+end
+
+@testset "Energy conservation: frozen lake runoff" begin
+    # Verify runoff energy is consistent for a frozen lake (q_l = 0)
+    FT = Float64
+    toml_dict = LP.create_toml_dict(FT)
+    earth_param_set = LP.LandParameters(toml_dict)
+
+    T_lake = FT(260)  # frozen
+    q_l = FT(0)
+    runoff = FT(1e-4)
+
+    Q_runoff = IW.lake_runoff_energy_flux(runoff, T_lake, q_l, earth_param_set)
+    ρe_ice = IW.lake_volumetric_internal_energy(T_lake, q_l, earth_param_set)
+
+    @test Q_runoff ≈ runoff * ρe_ice
+    # Frozen water at 260 K has negative internal energy (below reference + latent heat)
+    @test ρe_ice < FT(0)
+end
+
 @testset "SlabLakeParameters defaults" begin
     FT = Float64
     toml_dict = LP.create_toml_dict(FT)

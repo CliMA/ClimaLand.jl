@@ -20,10 +20,10 @@ The prognostic variable is the lake internal energy per unit ground area, $U$ (J
 \frac{dU}{dt} = -Q_{\rm sfc} - Q_{\rm runoff} + Q_{\rm sed}
 ```
 
-where:
-- $Q_{\rm sfc}$ is the net surface energy flux into the atmosphere (W m$^{-2}$)
-- $Q_{\rm runoff}$ is the energy carried away by runoff (W m$^{-2}$)
-- $Q_{\rm sed}$ is the heat flux from the lake to the underlying sediment (W m$^{-2}$)
+where we have:
+- the net surface energy flux into the atmosphere, $Q_{\rm sfc}$ (W m$^{-2}$)
+- the energy carried away by runoff, $Q_{\rm runoff}$ (W m$^{-2}$)
+- the heat flux from the lake to the underlying sediment, $Q_{\rm sed}$ (W m$^{-2}$)
 
 ## Surface Energy Flux
 
@@ -49,10 +49,10 @@ where the effective conductance $G_{\rm eff}$ combines the lake conductance $G$ 
 G_{\rm eff} = \frac{1}{\frac{1}{G} + \frac{\Delta z_{\rm soil}}{2 \, \kappa_{\rm soil}}}
 ```
 
-- $G$ is the lake–sediment conductance (W m$^{-2}$ K$^{-1}$), a single tunable parameter
-- $\kappa_{\rm soil}$ is the top soil layer thermal conductivity (W m$^{-1}$ K$^{-1}$)
-- $\Delta z_{\rm soil}$ is the top soil layer thickness (m)
-- $T_{\rm lake}$ and $T_{\rm soil}$ are the lake and top soil temperatures (K)
+- the lake conductance, $G$ (W m$^{-2}$ K$^{-1}$), a single tunable parameter
+- the top soil layer thermal conductivity, $\kappa_{\rm soil}$ (W m$^{-1}$ K$^{-1}$)
+- the top soil layer thickness, $\Delta z_{\rm soil}$ (m)
+- the lake and top soil temperatures, $T_{\rm lake}$ and $T_{\rm soil}$ (K)
 
 The conductance $G$ encapsulates the lake-side thermal conductance (combining lake depth, conductivity, and mixing effects) into a single parameter that can be calibrated.
 
@@ -73,10 +73,10 @@ R_{\rm lake} = -F_{\rm water}
 Positive runoff corresponds to net precipitation (water drains away), while negative runoff corresponds to net evaporation (water must be supplied to maintain depth). The associated energy flux is:
 
 ```math
-Q_{\rm runoff} = R_{\rm lake} \cdot \rho \hat{e}(T_{\rm lake}, q_l)
+Q_{\rm runoff} = R_{\rm lake} \cdot \rho \widehat{e}(T_{\rm lake}, q_l)
 ```
 
-where $\rho \hat{e}$ is the volumetric internal energy (blending ice and liquid properties according to $q_l$) evaluated at the lake temperature.
+where $\rho \widehat{e}$ is the volumetric internal energy (blending ice and liquid properties according to $q_l$) evaluated at the lake temperature. Both runoff (effluent) and supplied water are assumed to carry energy at the lake temperature $T_{\rm lake}$. For runoff this is physically motivated: precipitation equilibrates with the lake before draining away as effluent. For evaporation-driven supply (negative runoff), the same assumption is adopted for simplicity, though in reality the source water temperature may differ.
 
 ## Thermodynamics and Phase Change
 
@@ -100,13 +100,13 @@ T_{\rm lake} = T_{\rm freeze}
 T_{\rm lake} = T_0 + \frac{U}{\rho_l \cdot d \cdot c_{p,l}}
 ```
 
-where:
-- $T_0$ is the reference temperature (K)
-- $\rho_l$ is the density of liquid water (kg m$^{-3}$)
-- $d$ is the lake depth (m)
-- $L_{f,0}$ is the specific latent heat of fusion (J kg$^{-1}$)
-- $c_{p,i}$ and $c_{p,l}$ are the specific heat capacities of ice and liquid water (J kg$^{-1}$ K$^{-1}$)
-- $T_{\rm freeze}$ is the freezing temperature (K)
+where we have:
+- the reference temperature, $T_0$ (K)
+- the density of liquid water, $\rho_l$ (kg m$^{-3}$)
+- the lake depth, $d$ (m)
+- the specific latent heat of fusion, $L_{f,0}$ (J kg$^{-1}$)
+- the specific heat capacities of ice and liquid water, $c_{p,i}$ and $c_{p,l}$ (J kg$^{-1}$ K$^{-1}$)
+- the freezing temperature, $T_{\rm freeze}$ (K)
 
 ### Liquid Fraction
 
