@@ -18,7 +18,7 @@ const setup = Dict(
     "max_wind_speed" => FT(25.0),
     "snow_min_density_param" => FT(300), #only used if not using neural models
     "start_date" => DateTime("2000-06-01"), #earliest we have is Jan 1st 1979
-    "stop_date" => DateTime("2003-01-01"), #latest we have is 7th 2024
+    "stop_date" => DateTime("2003-12-01"), #latest we have is 7th 2024
     "dt" => FT(450),
     "output_vars" =>
         ["snd", "swe", "snowc", "salb", "swa", "snalb", "galb"], #salb = soil alb, swa = p.snow.α_sfc
