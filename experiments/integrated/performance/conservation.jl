@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Year(1)
+stop_date = start_date + Month(1)
 Δt = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -174,7 +174,7 @@ ax2 = Axis(
 lines!(
     ax2,
     daily[2:end],
-    (mass_change_actual - mass_change_expected) ./ mean_water,
+    eps(FT) .+ abs.((mass_change_actual - mass_change_expected) ./ mean_water,),
     label = "Water Balance",
 )
 CairoMakie.save(joinpath(savedir, "water_conservation.png"), fig2)
