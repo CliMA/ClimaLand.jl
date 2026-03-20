@@ -69,9 +69,13 @@ if use_col
         nelements = 15,
         longlat = FT.(col_lon_lat),
         dz_tuple = (FT(3.0), FT(0.05)),
-    );
+    )
 else
-    domain = ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        context,
+        mask_threshold = FT(0.99),
+    )
 end
 
 surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
@@ -177,14 +181,16 @@ model = LandModel{FT}(
     canopy,
 )
 
+output_writer = ClimaLand.Diagnostics.default_output_writer(
+    domain,
+    setup["start_date"],
+    output_dir,
+)
+
 diagnostics = ClimaLand.default_diagnostics(
     model,
     setup["start_date"];
-    output_writer = ClimaLand.Diagnostics.default_output_writer(
-        domain,
-        setup["start_date"],
-        output_dir,
-    ),
+    output_writer,
     output_vars = setup["output_vars"],
     reduction_period = :daily,
     reduction_type = :average,
