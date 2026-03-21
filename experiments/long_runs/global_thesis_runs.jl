@@ -280,8 +280,8 @@ end
 
 parameter_log_path = joinpath(output_dir, "parameters.toml")
 
-#isdir(output_dir) || mkdir(output_dir)
-#CP.log_parameter_information(toml_dict, parameter_log_path)
+isdir(output_dir) || mkdir(output_dir)
+CP.log_parameter_information(toml_dict, parameter_log_path)
 
 const exclude_list = [:soilco2]
 old_Y = deepcopy(simulation._integrator.u)
