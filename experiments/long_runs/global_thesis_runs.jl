@@ -2,8 +2,8 @@ using Dates
 
 #= issues: (time index, lon, lat, z, SWE, scf, total_albedo):
  (DateTime("2019-11-03T00:00:00"), 128.0, -73.0, 7.470959, 3.4211667, 1.0, 0.7661099)
- (DateTime("2014-03-16T00:00:00"), 147.0, -6.0, 0.0001744235, 0.00017585493, 0.0029724056, 0.07051761)
- (DateTime("2014-05-31T00:00:00"), -79.0, -2.0, 0.0003941978, 0.00039459218, 0.0067059896, 0.083248325)
+ (DateTime("2014-03-16T00:00:00"), 147.0, -6.0, 0.0001744235, 0.00017585493, 0.0029724056, 0.07051761) #why is z<SWE??
+ (DateTime("2014-05-31T00:00:00"), -79.0, -2.0, 0.0003941978, 0.00039459218, 0.0067059896, 0.083248325) #why is z<SWE??
  (DateTime("2010-10-27T00:00:00"), -77.0, 3.0, 0.0, 0.0, 0.0, 0.06903501)
  (DateTime("2002-09-07T00:00:00"), -17.0, 64.0, 0.0005595295, 0.0005580454, 0.009502905, 0.04070939)
 =#
@@ -210,7 +210,10 @@ simulation = LandSimulation(
 const sim_mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
 
 function check_nans(x::ClimaCore.Fields.FieldVector, mask; excl = [])
-    return any(check_nans(getproperty(x, p), mask) for p in propertynames(x) if !(p in excl))
+    return any(
+        check_nans(getproperty(x, p), mask) for
+        p in propertynames(x) if !(p in excl)
+    )
 end
 
 function check_nans(x::NamedTuple, mask; excl = [])
@@ -227,7 +230,7 @@ function check_nans(
         ClimaCore.Spaces.AbstractSpectralElementSpace,
         ClimaCore.Spaces.AbstractPointSpace,
     },
-    mask
+    mask,
 )
     return count_nans(x, mask)
 end
@@ -238,7 +241,7 @@ function check_nans(
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.FiniteDifferenceSpace,
     },
-    mask
+    mask,
 )
     return count_nans(ClimaLand.Domains.top_center_to_surface(x), mask)
 end
@@ -256,12 +259,17 @@ function count_nans(x::ClimaCore.Fields.Field, mask)
     end
 end
 
-@inline get_tendency_object(::Val{ClimaTimeSteppers.ARS111()}, simulation) = simulation._integrator.cache.T_exp[1]
+@inline get_tendency_object(::Val{ClimaTimeSteppers.ARS111()}, simulation) =
+    simulation._integrator.cache.T_exp[1]
 
 function nans_exist(simulation, mask; excl = [])
     nans_in_Y = check_nans(simulation._integrator.u, mask, excl = excl)
     nans_in_p = check_nans(simulation._integrator.p, mask, excl = excl)
-    nans_in_dY = check_nans(get_tendency_object(Val(simulation.timestepper.name), simulation), mask, excl = excl)
+    nans_in_dY = check_nans(
+        get_tendency_object(Val(simulation.timestepper.name), simulation),
+        mask,
+        excl = excl,
+    )
     return nans_in_Y || nans_in_p || nans_in_dY
 end
 
@@ -274,7 +282,7 @@ function write_present_state(simulation, old_Y, outdir)
         p = curr_p,
         Y = curr_Y,
         old_Y = old_Y,
-        dY = curr_dY
+        dY = curr_dY,
     )
 end
 
@@ -301,5 +309,5 @@ else
             ClimaLand.Simulations.step!(simulation)
         end
     end
-    state = simulation._integrator;
+    state = simulation._integrator
 end

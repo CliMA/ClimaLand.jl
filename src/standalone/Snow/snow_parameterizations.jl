@@ -813,7 +813,7 @@ function surface_residual_flux(
     earth_param_set,
 )::FT where {FT}
     _T_freeze = FT(LP.T_freeze(earth_param_set))
-    d_safe = max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), sqrt(eps(FT)))
+    d_safe = max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), eps(FT))
     return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
            FT(0)
 end
