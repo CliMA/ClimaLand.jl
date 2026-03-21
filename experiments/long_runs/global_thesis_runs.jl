@@ -209,14 +209,14 @@ simulation = LandSimulation(
 
 const sim_mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
 
-function check_nans(x::ClimaCore.Fields.FieldVector, mask; excl = [])
+function check_nans(x::ClimaCore.Fields.FieldVector, mask; excl = ())
     return any(
         check_nans(getproperty(x, p), mask) for
         p in propertynames(x) if !(p in excl)
     )
 end
 
-function check_nans(x::NamedTuple, mask; excl = [])
+function check_nans(x::NamedTuple, mask; excl = ())
     return any(check_nans(x[p], mask) for p in propertynames(x) if !(p in excl))
 end
 
@@ -262,7 +262,7 @@ end
 @inline get_tendency_object(::Val{ClimaTimeSteppers.ARS111()}, simulation) =
     simulation._integrator.cache.T_exp[1]
 
-function nans_exist(simulation, mask; excl = [])
+function nans_exist(simulation, mask; excl = ())
     nans_in_Y = check_nans(simulation._integrator.u, mask, excl = excl)
     nans_in_p = check_nans(simulation._integrator.p, mask, excl = excl)
     nans_in_dY = check_nans(
@@ -291,7 +291,7 @@ parameter_log_path = joinpath(output_dir, "parameters.toml")
 isdir(output_dir) || mkdir(output_dir)
 CP.log_parameter_information(toml_dict, parameter_log_path)
 
-const exclude_list = [:soilco2]
+const exclude_list = (:soilco2,)
 old_Y = deepcopy(simulation._integrator.u)
 @info "Beginning Simulation!"
 if !debug_mode
