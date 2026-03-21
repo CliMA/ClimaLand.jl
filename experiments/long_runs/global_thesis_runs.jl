@@ -7,11 +7,12 @@ using Dates
  (DateTime("2010-10-27T00:00:00"), -77.0, 3.0, 0.0, 0.0, 0.0, 0.06903501)
  (DateTime("2002-09-07T00:00:00"), -17.0, 64.0, 0.0005595295, 0.0005580454, 0.009502905, 0.04070939)
 =#
-use_col = true
-col_lon_lat = (-17, 64)
+use_col = false
+debug_mode = true
+col_lon_lat = (-17, 64) #only used if use_col is true
 const FT = Float32;
 const setup = Dict(
-    "output_tag" => "column_debug_1",
+    "output_tag" => "global_debug_1",
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
     "use_sfc_temp" => true,
@@ -43,7 +44,8 @@ using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaLand.Simulations: LandSimulation, solve!
+import ClimaLand.Simulations: LandSimulation, solve!, step!
+using ClimaTimeSteppers
 
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
@@ -205,12 +207,99 @@ simulation = LandSimulation(
     diagnostics,
 )
 
-@info "Beginning Simulation!"
+const sim_mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
+
+function check_nans(x::ClimaCore.Fields.FieldVector, mask; excl = [])
+    return any(check_nans(getproperty(x, p), mask) for p in propertynames(x) if !(p in excl))
+end
+
+function check_nans(x::NamedTuple, mask; excl = [])
+    return any(check_nans(x[p], mask) for p in propertynames(x) if !(p in excl))
+end
+
+function check_nans(x::ClimaCore.Fields.Field, mask)
+    return check_nans(x, axes(x), mask)
+end
+
+function check_nans(
+    x::ClimaCore.Fields.Field,
+    space::Union{
+        ClimaCore.Spaces.AbstractSpectralElementSpace,
+        ClimaCore.Spaces.AbstractPointSpace,
+    },
+    mask
+)
+    return count_nans(x, mask)
+end
+
+function check_nans(
+    x::ClimaCore.Fields.Field,
+    space::Union{
+        ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.FiniteDifferenceSpace,
+    },
+    mask
+)
+    return count_nans(ClimaLand.Domains.top_center_to_surface(x), mask)
+end
+
+function count_nans(x::ClimaCore.Fields.Field, mask)
+    if isnothing(mask)
+        return count(isnan, parent(x)) > 0
+    else
+        return mapreduce(
+            (s, m) -> m != 0 && isnan(s),
+            |,
+            parent(x),
+            parent(mask),
+        )
+    end
+end
+
+@inline get_tendency_object(::Val{ClimaTimeSteppers.ARS111()}, simulation) = simulation._integrator.cache.T_exp[1]
+
+function nans_exist(simulation, mask; excl = [])
+    nans_in_Y = check_nans(simulation._integrator.u, mask, excl = excl)
+    nans_in_p = check_nans(simulation._integrator.p, mask, excl = excl)
+    nans_in_dY = check_nans(get_tendency_object(Val(simulation.timestepper.name), simulation), mask, excl = excl)
+    return nans_in_Y || nans_in_p || nans_in_dY
+end
+
+function write_present_state(simulation, old_Y, outdir)
+    curr_p = simulation._integrator.p
+    curr_Y = simulation._integrator.u
+    curr_dY = get_tendency_object(Val(simulation.timestepper.name), simulation)
+    JLD2.jldsave(
+        joinpath(outdir, "integrator_state.jld2"),
+        p = curr_p,
+        Y = curr_Y,
+        old_Y = old_Y,
+        dY = curr_dY
+    )
+end
 
 parameter_log_path = joinpath(output_dir, "parameters.toml")
 
-isdir(output_dir) || mkdir(output_dir)
-CP.log_parameter_information(toml_dict, parameter_log_path)
-ClimaLand.Simulations.solve!(simulation)
+#isdir(output_dir) || mkdir(output_dir)
+#CP.log_parameter_information(toml_dict, parameter_log_path)
 
-@info "Simulation Complete!"
+const exclude_list = [:soilco2]
+old_Y = deepcopy(simulation._integrator.u)
+@info "Beginning Simulation!"
+if !debug_mode
+    ClimaLand.Simulations.solve!(simulation)
+    @info "Simulation Complete!"
+else
+    stop_t = Second(setup["stop_date"] .- setup["start_date"]).value
+    while simulation._integrator.t.counter < stop_t
+        if nans_exist(simulation, sim_mask, excl = exclude_list)
+            @info "NaNs DISCOVERED!"
+            write_present_state(simulation, old_Y, outputp_dir)
+            break
+        else
+            @. old_Y = simulation._integrator.u
+            ClimaLand.Simulations.step!(simulation)
+        end
+    end
+    state = simulation._integrator;
+end
