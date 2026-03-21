@@ -589,7 +589,7 @@ function update_dzdt!(dzdt, density::NeuralDepthModel, model, Y, p)
     dzdt .=
         eval_z_nn.(
             Ref(density.z_model),
-            p.snow.Z,
+            p.snow.z_snow,
             Y.snow.S,
             Y.snow.P_avg,
             Y.snow.T_avg,
