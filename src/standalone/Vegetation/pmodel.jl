@@ -17,8 +17,10 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     "Constant describing cost of maintaining electron transport (unitless)"
     cstar::FT
-    "Ratio of unit costs of transpiration and carboxylation (unitless)"
-    β::FT
+    "Ratio of unit costs of transpiration and carboxylation for C3 plants (unitless)"
+    β_c3::FT
+    "Ratio of unit costs of transpiration and carboxylation for C4 plants (unitless)"
+    β_c4::FT
     "A boolean flag indicating if the quantum yield is a function of temperature or not"
     temperature_dep_yield::Bool
     "Temp-independent intrinsic quantum yield. (unitless); C3"
@@ -111,6 +113,13 @@ Base.eltype(::PModelConstants{FT}) where {FT} = FT
 # make these custom structs broadcastable as tuples
 Base.broadcastable(x::PModelParameters) = tuple(x)
 Base.broadcastable(x::PModelConstants) = tuple(x)
+
+"""
+    get_beta(is_c3, β_c3, β_c4)
+
+Returns the appropriate β (cost ratio) based on whether the plant is C3 or C4.
+"""
+get_beta(is_c3, β_c3, β_c4) = ifelse(is_c3 == one(is_c3), β_c3, β_c4)
 
 """
     PModelConstants(toml_dict::CP.ParamDict;
@@ -336,7 +345,8 @@ function compute_full_pmodel_outputs(
     is_c3 = FT(1),
 ) where {FT}
     # Unpack parameters
-    (; cstar, β) = parameters
+    (; cstar, β_c3, β_c4) = parameters
+    β = get_beta(is_c3, β_c3, β_c4)
 
     # Unpack constants
     (;
@@ -507,7 +517,8 @@ function update_optimal_EMA(
 ) where {FT}
     if local_noon_mask == FT(1.0)
         # Unpack parameters
-        (; cstar, β, α) = parameters
+        (; cstar, β_c3, β_c4, α) = parameters
+        β = get_beta(is_c3, β_c3, β_c4)
 
         # Unpack constants
         (;
@@ -670,7 +681,8 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     parameters_init = PModelParameters(
         cstar = parameters.cstar,
-        β = parameters.β,
+        β_c3 = parameters.β_c3,
+        β_c4 = parameters.β_c4,
         temperature_dep_yield = parameters.temperature_dep_yield,
         ϕ0_c4 = parameters.ϕ0_c4,
         ϕ0_c3 = parameters.ϕ0_c3,
@@ -1400,7 +1412,8 @@ function compute_A0_daily(
     PPFD::FT,
     βm::FT,
 ) where {FT}
-    (; cstar, β) = parameters
+    (; cstar, β_c3, β_c4) = parameters
+    β = get_beta(is_c3, β_c3, β_c4)
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
         constants
 
@@ -1429,17 +1442,18 @@ function compute_A0_daily(
 end
 
 """
-    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca)
+    compute_chi(pmodel_parameters, pmodel_constants, T, P_air, VPD, ca, is_c3=FT(1))
 
 Compute the optimal ratio of intercellular to ambient CO2 (chi = ci/ca) using P-model.
 
 # Arguments
-- `pmodel_parameters`: P-model parameters (including beta)
+- `pmodel_parameters`: P-model parameters (including β_c3 and β_c4)
 - `pmodel_constants`: P-model constants (including Gamma_star25, Kc25, Ko25, etc.)
 - `T::FT`: Temperature (K)
 - `P_air::FT`: Atmospheric pressure (Pa)
 - `VPD::FT`: Vapor pressure deficit (Pa)
 - `ca::FT`: Ambient CO2 mixing ratio (mol/mol)
+- `is_c3::FT`: C3 (1) or C4 (0) flag (default: C3)
 
 # Returns
 - `chi::FT`: Optimal ci/ca ratio (dimensionless), typically 0.7-0.85
@@ -1451,8 +1465,10 @@ function compute_chi(
     P_air::FT,
     VPD::FT,
     ca::FT,
+    is_c3::FT = FT(1),
 ) where {FT}
-    (; β) = pmodel_parameters
+    (; β_c3, β_c4) = pmodel_parameters
+    β = get_beta(is_c3, β_c3, β_c4)
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi, ρ_water) =
         pmodel_constants
 

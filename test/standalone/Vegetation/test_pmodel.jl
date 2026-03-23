@@ -62,7 +62,8 @@ Constructs the parameter structure for the P-Model
 """
 function PModelParameters(inputs::Dict{String, Any}, FT)
     # these are default values used in Stocker 2020, Scott and Smith 2022
-    β = FT(inputs["beta"])
+    β_c3 = FT(inputs["beta"])
+    β_c4 = FT(inputs["beta"]) / FT(9)
     cstar = FT(0.41)
 
     # handle temperature-dependent quantum yield
@@ -82,7 +83,8 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
 
     return ClimaLand.Canopy.PModelParameters(;
         cstar,
-        β,
+        β_c3,
+        β_c4,
         temperature_dep_yield,
         ϕ0_c3,
         ϕ0_c4,
@@ -271,7 +273,8 @@ end
         toml_dict = LP.create_toml_dict(FT)
         parameters = ClimaLand.Canopy.PModelParameters(
             cstar = FT(0.41),
-            β = FT(146),
+            β_c3 = FT(146),
+            β_c4 = FT(146 / 9),
             temperature_dep_yield = true,
             ϕ0_c3 = FT(0.052),
             ϕ0_c4 = FT(0.057),

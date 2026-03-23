@@ -202,10 +202,16 @@ type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
-["pmodel_β"]
+["pmodel_β_c3"]
 value = 146
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration (Stocker 2020)"
+description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
+tag = "PModelParameters"
+
+["pmodel_β_c4"]
+value = 16.222222222222222
+type = "float"
+description = "Unit cost ratio of Vcmax to transpiration for C4 plants (146/9, pyrealm)"
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c3"]
@@ -591,3 +597,16 @@ value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
+
+# Soil Parameters
+["evaporation_exponent"]
+value = 1.0
+type = "float"
+description = "Exponent of dry soil layer factor in evaporation"
+tag = "EnergyHydrologyParameters"
+
+["evaporation_scalar"]
+value = 1.0
+type = "float"
+description = "Scalar multiplying soil critical moisture for evaporation"
+tag = "EnergyHydrologyParameters"

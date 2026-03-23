@@ -263,29 +263,30 @@ for FT in (Float32, Float64)
             @test computed_energy_flux == expected_energy_flux
 
             # Test soil resistances for liquid water
-            #      ϑ_sfc = range(θ_r-eps(FT), ν, 5)
-            #      S_sfc = @. ClimaLand.Soil.effective_saturation(ν, ϑ_sfc, θ_r)
-            #      S_i_sfc =  range(FT(0), ν, 5) ./ ν;
-            #      log10_K_sfc = @. log10(hydraulic_conductivity( hcm, K_sat, S_sfc) .+ eps(FT))
-            #      thermo_params = LP.thermodynamic_parameters(earth_param_set)
-            #      fluxes = soil_turbulent_fluxes_at_a_point(
-            #          parent(T_sfc)[1],
-            #          parent(h_sfc)[1],
-            #          parent(d_sfc)[1],
-            #          S_i_sfc,
-            #          hcm,
-            #          K_sat,
-            #          log10_K_sfc,
-            #          FT(101325),
-            #          FT(285),
-            #          FT(0.005),
-            #          FT(3),
-            #          atmos.h,
-            #          FT(0),
-            #          z_0m,
-            #          z_0b,
-            #          earth_param_set,
-            #)
+            θ_sfc = range(θ_r + eps(FT), ν, 5)
+            S_sfc = @. ClimaLand.Soil.effective_saturation(ν, θ_sfc, θ_r)
+            (; d_ds, evap_p, evap_α, hydrology_cm, ν, θ_r) = params
+            S_c = hydrology_cm.S_c * evap_α
+            dsl = @. ClimaLand.Soil.dry_soil_layer_thickness(
+                S_sfc,
+                S_c,
+                d_ds,
+                evap_p,
+            )
+            @test extrema(dsl ./ d_ds)[1] == 0
+            @test extrema(dsl ./ d_ds)[2] ==
+                  ((S_c - S_sfc[1]) / S_sfc[1])^evap_p
+            _D_vapor = FT(LP.D_vapor(earth_param_set))
+            S_sfc = @. ClimaLand.Soil.effective_saturation(ν, θ_sfc, θ_r)
+            gsoil = @. ClimaLand.Soil.soil_conductance(
+                S_sfc,
+                hydrology_cm.S_c,
+                d_ds,
+                evap_p,
+                evap_α,
+                _D_vapor,
+            )
+            @test gsoil[1] < gsoil[2]
         end
     end
 end
