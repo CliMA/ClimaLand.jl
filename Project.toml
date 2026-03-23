@@ -1,7 +1,7 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-authors = ["Clima Land Team"]
 version = "1.6.3"
+authors = ["Clima Land Team"]
 
 [deps]
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
@@ -27,6 +27,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 [weakdeps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
 ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -46,13 +47,14 @@ SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 
 [compat]
 Adapt = "4.3.0"
+CFTime = "< 0.2.7"
 CairoMakie = "0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.17"
 ClimaComms = "0.6.2"
 ClimaCore = "0.14.46"
 ClimaDiagnostics = "0.3.0"
 ClimaParams = "1"
-ClimaTimeSteppers = "0.8.2"
+ClimaTimeSteppers = "< 0.8.9"
 ClimaUtilities = "0.1.25"
 DataFrames = "1.4"
 Dates = "1"
