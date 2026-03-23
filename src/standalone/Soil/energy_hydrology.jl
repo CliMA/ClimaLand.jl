@@ -1115,6 +1115,7 @@ function ClimaLand.get_update_surface_humidity_function(
     (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
         model.parameters
     hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    S_c_sfc = hydrology_cm_sfc.S_c
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
@@ -1125,23 +1126,20 @@ function ClimaLand.get_update_surface_humidity_function(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + sqrt(eps(FT)))
+    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + eps(FT))
+    S_l_sfc = p.soil.sfc_scratch # currently set to θ_l_sfc
+    @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
     _D_vapor = FT(LP.D_vapor(earth_param_set))
+    g_soil_sfc = p.soil.sfc_scratch # currently set to S_l_sfc
+    g_soil_sfc .=
+        soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
+    # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
     update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed) =
         (args...) ->
             update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, Tf_depressed)
     return @. lazy(
         update_q_vap_sfc_field(
-            soil_conductance(
-                θ_l_sfc,
-                hydrology_cm_sfc,
-                ν_sfc,
-                θ_r_sfc,
-                d_ds,
-                evap_p,
-                evap_α,
-                _D_vapor,
-            ),
+            g_soil_sfc,
             (θ_i_sfc / ν_sfc)^4,
             Tf_depressed_sfc,
         ),
@@ -1322,14 +1320,14 @@ end
 
 """
     soil_conductance(θ_l::FT,
-                    hydrology_cm::C,
+                    S_c::FT,
                     ν::FT,
                     θ_r::FT,
                     d_ds::FT,
                     p::FT,
                     α::FT,
                     _D_vapor::FT
-                   ) where {FT, C}
+                   ) where {FT}
 
 Computes the conductance of the top of the soil column to
 water vapor diffusion, as a function of the surface 
@@ -1337,17 +1335,13 @@ volumetric liquid water fraction `θ_l`, other soil parameters,
 and diffusivity of vapor in air.
 """
 function soil_conductance(
-    θ_l::FT,
-    hydrology_cm::C,
-    ν::FT,
-    θ_r::FT,
+    S_l::FT,
+    S_c::FT,
     d_ds::FT,
     p::FT,
     α::FT,
     _D_vapor::FT,
-) where {FT, C}
-    (; S_c) = hydrology_cm
-    S_l = effective_saturation(ν, θ_l, θ_r)
+) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
     g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
     return g_soil

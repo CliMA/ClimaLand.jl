@@ -277,11 +277,10 @@ for FT in (Float32, Float64)
             @test extrema(dsl ./ d_ds)[2] ==
                   ((S_c - S_sfc[1]) / S_sfc[1])^evap_p
             _D_vapor = FT(LP.D_vapor(earth_param_set))
+            S_sfc = @. ClimaLand.Soil.effective_saturation(ν, θ_sfc, θ_r)
             gsoil = @. ClimaLand.Soil.soil_conductance(
-                θ_sfc,
-                hydrology_cm,
-                ν,
-                θ_r,
+                S_sfc,
+                hydrology_cm.S_c,
                 d_ds,
                 evap_p,
                 evap_α,
