@@ -93,7 +93,7 @@ compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
 
 # Set up the timestepping information for the simulation
-dt = Float64(900)
+dt = Float64(600)
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
@@ -157,7 +157,7 @@ snow_model = Snow.SnowModel(
 )
 
 # Construct the land model
-land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
+land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model);
 
 # Initial conditions
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
@@ -183,8 +183,8 @@ simulation = LandSimulation(
     updateat = updateat,
     solver_kwargs = (; saveat),
     diagnostics = nothing,
-)
-sol = solve!(simulation)
+);
+sol = solve!(simulation);
 
 # Plotting
 daily = FT.(sol.t) ./ 3600 ./ 24
