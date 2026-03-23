@@ -42,7 +42,7 @@ using Dates
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
-const FT = Float64;
+const FT = Float32;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
 # long run on Buildkite manually, then make a new build and pass `LONGER_RUN=""`
@@ -159,7 +159,7 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2018-03-01")
 Δt = 450.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
