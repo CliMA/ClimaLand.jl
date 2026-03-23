@@ -29,6 +29,8 @@ This is the repository of the CliMA land model code. Here are some notable featu
 - ClimaLand is CPU and GPU compatible
 - ClimaLand welcomes contributions! Please feel free to reach out to us with questions about how to get started, create a branch, and extend our code.
 
+For more information, read [our manuscript](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2025MS005118): Deck, Katherine, et al. "ClimaLand: A land surface model designed to enable data‐driven parameterizations." Journal of Advances in Modeling Earth Systems 18.1 (2026): e2025MS005118.
+
 ## Installation
 
 To use ClimaLand.jl, first you need to [install Julia](https://julialang.org/downloads/).
