@@ -569,7 +569,7 @@ function update_optimal_EMA(
                 R,
             )
 
-        Jmax = 4 * ϕ0 * APAR_canopy_moles / sqrt((mj / (βm * mprime))^2 - 1)
+        Jmax = 4 * ϕ0 * APAR_canopy_moles * βm / sqrt((mj /  mprime)^2 - 1)
         Jmax25 =
             Jmax / inst_temp_scaling(
                 T_canopy,
