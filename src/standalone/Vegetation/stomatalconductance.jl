@@ -148,16 +148,27 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     (; Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
-    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
-    An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
+    ci_c3 = p.canopy.photosynthesis.ci_c3
+    ci_c4 = p.canopy.photosynthesis.ci_c4
+    An_c3 = p.canopy.photosynthesis.An_c3
+    An_c4 = p.canopy.photosynthesis.An_c4
+    c3_fraction = canopy.photosynthesis.is_c3
     R = LP.gas_constant(earth_param_set)
     FT = eltype(model.parameters)
 
-    χ = @. lazy(clamp(ci / (c_co2_air * P_air), FT(0), FT(1))) # ratio of intercellular to ambient CO2 concentration, unitless
+    χ_c3 = @. lazy(clamp(ci_c3 / (c_co2_air * P_air), FT(0), FT(1)))
+    χ_c4 = @. lazy(clamp(ci_c4 / (c_co2_air * P_air), FT(0), FT(1)))
+    gs_h2o_canopy = @. lazy(
+        weighted_pmodel_value(
+            c3_fraction,
+            gs_h2o_pmodel(χ_c3, c_co2_air, An_c3, Drel),
+            gs_h2o_pmodel(χ_c4, c_co2_air, An_c4, Drel),
+        ),
+    )
     @. p.canopy.conductance.r_stomata_canopy =
         1 / (
             conductance_molar_flux_to_m_per_s(
-                gs_h2o_pmodel(χ, c_co2_air, An_canopy, Drel), # canopy level conductance in mol H2O/m^2/s
+                gs_h2o_canopy, # canopy level conductance in mol H2O/m^2/s
                 T_air,
                 R,
                 P_air,

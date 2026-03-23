@@ -137,6 +137,7 @@ Fields.
 
 In particular, this file returns a field for
 - C3 flag
+- C3 fraction
 - VCmax25
 
 The values correspond to the value of the dominant PFT at each point.
@@ -177,7 +178,8 @@ function clm_photosynthesis_parameters(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
-    # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
+    # dominant photosynthesis mechanism is read as a float, where 1.0 indicates c3
+    # and 0.0 indicates c4
     is_c3 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "c3_dominant",
@@ -185,7 +187,14 @@ function clm_photosynthesis_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    return (; is_c3 = is_c3, Vcmax25 = Vcmax25)
+    c3_fraction = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "c3_proportion",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    return (; is_c3 = is_c3, c3_fraction = c3_fraction, Vcmax25 = Vcmax25)
 end
 
 
