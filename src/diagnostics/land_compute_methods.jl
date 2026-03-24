@@ -58,6 +58,16 @@ get_canopy(m::CanopyModel) = m
 get_soil(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) = m.soil
 get_soil(m::EnergyHydrology) = m
 
+get_surface_space(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
+    m.soil.domain.space.surface
+get_surface_space(
+    m::Union{CanopyModel, SoilCO2Model, SnowModel, EnergyHydrology},
+) = m.domain.space.surface
+
+get_z_coordinates(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
+    m.soil.domain.fields.z
+get_z_coordinates(m::Union{SoilCO2Model, EnergyHydrology}) = m.domain.fields.z
+
 ### Conservation ##
 @diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
 @diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
@@ -196,12 +206,20 @@ function compute_stomatal_conductance!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out =
-            gs_h2o_pmodel(clamp(ci / (c_co2_air * P_air), 0, 1), c_co2_air, An_leaf, Drel)
+        @. out = gs_h2o_pmodel(
+            clamp(ci / (c_co2_air * P_air), 0, 1),
+            c_co2_air,
+            An_leaf,
+            Drel,
+        )
         return out
     else
-        @. out =
-            gs_h2o_pmodel(clamp(ci / (c_co2_air * P_air), 0, 1), c_co2_air, An_leaf, Drel)
+        @. out = gs_h2o_pmodel(
+            clamp(ci / (c_co2_air * P_air), 0, 1),
+            c_co2_air,
+            An_leaf,
+            Drel,
+        )
     end
 end
 
@@ -382,14 +400,6 @@ end
     CanopyModel,
 } p.canopy.radiative_transfer.SW_n
 
-## Drivers Module ##
-
-@diagnostic_compute "soil_organic_carbon" Union{
-    SoilCanopyModel,
-    LandModel,
-    SoilCO2Model,
-} Y.soilco2.SOC # SOC is now prognostic
-
 # Vegetation carbon (derived from prescribed biomass)
 function compute_vegetation_carbon!(
     out,
@@ -564,31 +574,58 @@ end
 } p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
 
 # Soil - SoilCO2
-function compute_heterotrophic_respiration!(
+@diagnostic_compute "soc" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.SOC
+
+@diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.CO2
+
+@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.O2_f
+@diagnostic_compute "soilco2_diffusivity" Union{
+    SoilCO2Model,
+    SoilCanopyModel,
+    LandModel,
+} p.soilco2.D
+@diagnostic_compute "soilco2_source_microbe" Union{
+    SoilCO2Model,
+    SoilCanopyModel,
+    LandModel,
+} p.soilco2.Sm
+@diagnostic_compute "soilo2_diffusivity" Union{
+    SoilCO2Model,
+    SoilCanopyModel,
+    LandModel,
+} p.soilco2.D_o2
+
+function compute_integrated_soc!(
     out,
     Y,
     p,
     t,
-    land_model::SoilCO2Model{FT},
+    land_model::Union{SoilCO2Model{FT}, SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
+    z = get_z_coordinates(land_model)
+    depth = FT(-1.0)
+    first_meter_SOC = @.lazy(Y.soilco2.SOC * heaviside(z, depth))
     if isnothing(out)
-        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        surface_space = get_surface_space(land_model)
+        out = zeros(surface_space) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.top_bc * FT(83.26)
+        column_integral_definite!(out, first_meter_SOC) # updates out in place
         return out
     else
-        out .= p.top_bc .* FT(83.26)
+        column_integral_definite!(out, first_meter_SOC) # updates out in place
     end
 end # Convert from kg C to mol CO2.
+
 function compute_heterotrophic_respiration!(
     out,
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+    land_model::Union{SoilCO2Model{FT}, SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
-        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        surface_space = get_surface_space(land_model)
+        out = zeros(surface_space) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = p.soilco2.top_bc * FT(83.26)
         return out
@@ -598,13 +635,6 @@ function compute_heterotrophic_respiration!(
 end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
-
-@diagnostic_compute "soilco2_diffusivity" SoilCO2Model p.soilco2.D
-@diagnostic_compute "soilco2_source_microbe" SoilCO2Model p.soilco2.Sm
-@diagnostic_compute "soilo2_diffusivity" SoilCO2Model p.soilco2.D_o2
-@diagnostic_compute "soilco2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D
-@diagnostic_compute "soilco2_source_microbe" Union{SoilCanopyModel, LandModel} p.soilco2.Sm
-@diagnostic_compute "soilo2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D_o2
 
 ## Other ##
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
@@ -690,6 +720,24 @@ function compute_subsurface_runoff!(
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
     end
     out .=
+        Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
+    return out
+end
+
+function compute_total_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{EnergyHydrology, SoilCanopyModel, LandModel},
+)
+    soil = get_soil(land_model)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+    end
+    out .=
+        Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p) .+
         Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
     return out
 end
@@ -979,9 +1027,6 @@ function compute_canopy_temperature!(
     end
 end
 
-@diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.CO2
-@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel} Y.soilco2.O2_f
-@diagnostic_compute "soc" Union{SoilCanopyModel, LandModel} Y.soilco2.SOC
 @diagnostic_compute "soil_water_content" Union{
     SoilCanopyModel,
     LandModel,

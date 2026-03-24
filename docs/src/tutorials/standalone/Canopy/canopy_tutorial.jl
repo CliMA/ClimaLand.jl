@@ -56,7 +56,7 @@ import ClimaLand.Parameters as LP
 import ClimaDiagnostics
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf
 import ClimaLand.LandSimVis as LandSimVis
 
 # Define the floating point precision desired (64 or 32 bit), and get the

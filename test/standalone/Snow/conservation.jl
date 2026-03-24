@@ -66,7 +66,13 @@ for FT in (Float32, Float64)
             S0 = FT(0.5)
             S_l0 = FT(0.3)
             Temp0 = FT(270)
-            U0 = Snow.energy_from_T_and_swe.(S0, Temp0, snow.parameters)
+            U0 =
+                Snow.energy_from_T_and_swe.(
+                    S0,
+                    Temp0,
+                    snow.parameters.ΔS,
+                    snow.parameters.earth_param_set,
+                )
 
             Y.snow.S .= S0
             Y.snow.S_l .= S_l0

@@ -539,6 +539,12 @@ This applies the Beer-Lambert law, which is a function of leaf reflectance
 and the albedo of the soil (`α_soil`).
 
 Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
+Canopy absorption accounts for:
+
+    Downward pass: (1 - `α_leaf`) * (1 - transmitted_fraction)
+    Ground reflects: `α_soil` * transmitted_fraction back upward
+    Upward pass: Canopy absorbs additional fraction of reflected light
+    Note: This does NOT account for multiple scattering within canopy or leaf transmittance (assumed to be zero).
 """
 function canopy_sw_rt_beer_lambert(
     G_Function,
@@ -549,10 +555,28 @@ function canopy_sw_rt_beer_lambert(
     α_soil::FT,
 ) where {FT}
     K = extinction_coeff(G_Function, cosθs)
-    AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
-    TR = exp(-K * LAI * Ω)
-    RR = FT(1) - AR - TR * (1 - α_soil)
-    return (; abs = AR, refl = RR, trans = TR)
+    transmitted_fraction = exp(-K * LAI * Ω)
+    absorbed_downwards_pass = (1 - transmitted_fraction) * (1 - α_leaf)
+    reflected_downwards_pass = α_leaf * (1 - transmitted_fraction)
+    # soil absorbs (1-α_soil)*transmitted_fraction
+    # soil reflects α_soil*transmitted_fraction
+    upwelling_from_soil = α_soil * transmitted_fraction
+    absorbed_upwards_pass =
+        upwelling_from_soil * (1 - transmitted_fraction) * (1 - α_leaf)
+    reflected_upwards_pass =
+        upwelling_from_soil * (1 - transmitted_fraction) * α_leaf
+    transmitted_upwards_pass = upwelling_from_soil * transmitted_fraction
+    # total canopy absorbed fraction = absorbed_downwards_pass+absorbed_upwards_pass
+    # do not track second reflection off of canopy (reflected_upwards_pass) - instead just count this as part of the pass through
+    upwelling_from_land =
+        reflected_downwards_pass +
+        reflected_upwards_pass +
+        transmitted_upwards_pass
+    return (;
+        abs = absorbed_downwards_pass + absorbed_upwards_pass,
+        refl = upwelling_from_land,
+        trans = transmitted_fraction,
+    )
 end
 
 """

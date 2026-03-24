@@ -23,7 +23,7 @@ import ClimaParams
 
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
-using CairoMakie, StatsBase
+using CairoMakie, Statistics
 
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
@@ -93,7 +93,7 @@ compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
 
 # Set up the timestepping information for the simulation
-dt = Float64(900)
+dt = Float64(600)
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
@@ -157,7 +157,7 @@ snow_model = Snow.SnowModel(
 )
 
 # Construct the land model
-land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
+land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model);
 
 # Initial conditions
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
@@ -183,8 +183,8 @@ simulation = LandSimulation(
     updateat = updateat,
     solver_kwargs = (; saveat),
     diagnostics = nothing,
-)
-sol = solve!(simulation)
+);
+sol = solve!(simulation);
 
 # Plotting
 daily = FT.(sol.t) ./ 3600 ./ 24
@@ -268,10 +268,16 @@ _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 function compute_atmos_energy_fluxes(p)
-    e_flux_falling_snow =
-        Snow.energy_flux_falling_snow(atmos, p, land.snow.parameters)
-    e_flux_falling_rain =
-        Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
+    e_flux_falling_snow = Snow.energy_flux_falling_snow(
+        atmos,
+        p,
+        land.snow.parameters.earth_param_set,
+    )
+    e_flux_falling_rain = Snow.energy_flux_falling_rain(
+        atmos,
+        p,
+        land.snow.parameters.earth_param_set,
+    )
 
     return @. (1 - p.snow.snow_cover_fraction) * (
                   p.soil.turbulent_fluxes.lhf +

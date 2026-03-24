@@ -600,19 +600,6 @@ function define_diagnostics!(land_model, possible_diags)
             compute_radiation_shortwave_net!(out, Y, p, t, land_model),
     )
 
-    ## Drivers Module ##
-    # Soil organic carbon
-    conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "soc",
-        long_name = "Soil organic carbon",
-        standard_name = "soil_organic_carbon",
-        units = "kg C m^-3",
-        comments = "Mass of organic carbon per volume of soil. (depth resolved)",
-        compute! = (out, Y, p, t) ->
-            compute_soil_organic_carbon!(out, Y, p, t, land_model),
-    )
-
     ### Canopy - Vegetation carbon (derived from prescribed biomass)
     # Vegetation carbon
     conditional_add_diagnostic_variable!(
@@ -872,7 +859,7 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "hr",
         long_name = "Heterotrophic Respiration",
         standard_name = "heterotrophic_respiration",
-        units = "mol m^-2 s^-1",
+        units = "mol CO2 m^-2 s^-1",
         comments = "The CO2 efflux at the soil surface due to microbial decomposition of soil organic matter. This is not necessarily equal to CO2 production by microbes, as co2 diffusion through the soil pores takes time.",
         compute! = (out, Y, p, t) ->
             compute_heterotrophic_respiration!(out, Y, p, t, land_model),
@@ -985,6 +972,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_subsurface_runoff!(out, Y, p, t, land_model),
     )
 
+    # Total runoff
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "tr",
+        long_name = "Total Runoff",
+        standard_name = "total_runoff",
+        units = "m s^-1",
+        comments = "Total water runoff (surface + subsurface)",
+        compute! = (out, Y, p, t) ->
+            compute_total_runoff!(out, Y, p, t, land_model),
+    )
+
     ## Stored in Y (prognostic or state variables) ##
 
     # Canopy temperature
@@ -1028,8 +1027,18 @@ function define_diagnostics!(land_model, possible_diags)
         long_name = "Soil Organic Carbon",
         standard_name = "soil_organic_carbon",
         units = "kg C m^-3",
-        comments = "Soil organic carbon mass per soil volume (depth resolved).",
+        comments = "Mass concentration of soil organic carbon. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soc!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "soc_int",
+        long_name = "1m Depth Integrated Soil Organic Carbon",
+        standard_name = "integrated_soc",
+        units = "kg C m^-2",
+        comments = "1m Integrated Mass concentration of soil organic carbon",
+        compute! = (out, Y, p, t) ->
+            compute_integrated_soc!(out, Y, p, t, land_model),
     )
 
     # Soil CO2 in ppm (for NEON comparison)

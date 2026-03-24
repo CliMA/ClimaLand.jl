@@ -2,10 +2,31 @@ ClimaLand.jl Release Notes
 ========================
 
 main
+-----
+- Change bare soil evaporation scheme PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
+
+v1.6.3
+-----
+- SOC diagnostic integrated over depth PR[#1662](https://github.com/CliMA/ClimaLand.jl/pull/1662)
+
+v1.6.2
+-----
+
+- Update compat to SurfaceFluxes 1.0 PR[#1668](https://github.com/CliMA/ClimaLand.jl/pull/1668)
+- Clean up pkgversion checks and set ClimaDiagnostics in compat to 0.3 PR[#1676](https://github.com/CliMA/ClimaLand.jl/pull/1676)
+
+v1.6.1
 ------
+- Update compat to Thermodynamics 1.0 PR[#1667](https://github.com/CliMA/ClimaLand.jl/pull/1667)
+
+v1.6.0
+------
+- Initialize the cache in LandSimulation constructor only for offline runs PR[#1641](https://github.com/CliMA/ClimaLand.jl/pull/1641)
+- Run tests on julia 1.12 instead of 1.11 PR[#1650](https://github.com/CliMA/ClimaLand.jl/pull/1650)
 - Create set ic functions for the bucket PR[#1644](https://github.com/CliMA/ClimaLand.jl/pull/1644)
 - Add CRUJRA forcing PR[#1624](https://github.com/CliMA/ClimaLand.jl/pull/1624)
 - ![breaking change][badge-💥breaking] Unify radiation for bucket and integrated land PR[#1630](https://github.com/CliMA/ClimaLand.jl/pull/1630)
+- ![breaking change][badge-💥breaking] Refactor NeuralSnow extension, reducing ClimaLand dependencies and breaking up extensions PR[#1631](https://github.com/CliMA/ClimaLand.jl/pull/1631)
 
 v1.5.3
 ------

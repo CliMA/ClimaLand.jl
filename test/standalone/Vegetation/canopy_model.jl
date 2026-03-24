@@ -180,7 +180,7 @@ import ClimaParams
         jacobian! = ClimaLand.make_jacobian(canopy)
         # set up jacobian info
         jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            jac_prototype = ClimaLand.initialize_jacobian(Y),
             Wfact = jacobian!,
         )
 
@@ -465,7 +465,7 @@ end
         T_sfc = Y.canopy.energy.T
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
-        jac = ClimaLand.FieldMatrixWithSolver(Y)
+        jac = ClimaLand.initialize_jacobian(Y)
         jacobian!(jac, Y, p, FT(1), t0)
         jac_value = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
         ΔT = FT(0.01)
@@ -513,7 +513,7 @@ end
         ∂Ṫ∂T = Array(parent(jac_value))[1] .+ 1
         @test abs.(
             Array(parent(dY_2.canopy.energy.T .- dY.canopy.energy.T))[1] ./ ΔT -
-            ∂Ṫ∂T
+            ∂Ṫ∂T,
         ) / abs.(∂Ṫ∂T) < 0.4 # Error propagates here from ∂LHF∂T
     end
 end

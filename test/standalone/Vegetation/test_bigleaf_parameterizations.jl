@@ -73,8 +73,8 @@ for FT in (Float32, Float64)
 
         @test all(
             @. FAPAR ≈
-               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K * LAI * RTparams.Ω)) *
-               (1 - α_soil_PAR)
+               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K * LAI * RTparams.Ω)) .*
+               (1 .+ α_soil_PAR .* exp(-K * LAI * RTparams.Ω))
         )
         To = photosynthesisparams.To
         Vcmax =

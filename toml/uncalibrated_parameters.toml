@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.27
+value = 1.0
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -135,25 +135,25 @@ tag = "PlantHydraulicsParameters"
 # ZenithAngleAlbedoModel parameters
 
 ["alpha_0"]
-value = 0.59
+value = 0.8
 type = "float"
 description = "Free parameter controlling the minimum snow albedo"
 tag = "ZenithAngleAlbedoModel"
 
 ["delta_alpha"]
-value = 0.40
+value = 0.0
 type = "float"
 description = "Free parameter controlling the snow albedo when θs = 90∘"
 tag = "ZenithAngleAlbedoModel"
 
 ["k"]
-value = 1.96
+value = 0.0
 type = "float"
 description = "Rate at which albedo drops to its minimum value with zenith angle"
 tag = "ZenithAngleAlbedoModel"
 
 ["beta"]
-value = 0.97
+value = 0.0
 type = "float"
 description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
@@ -195,32 +195,6 @@ type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"
 
-# NeuralDepthModel Parameters
-[minimum_NDM_density]
-value = 0.05
-type = "float"
-description = "The minimum allowable snow density by the NeuralDepthModel, expressed as unitless fraction of liquid water density."
-tag = "NeuralDepthModel"
-
-# ConstantResetAlbedo Parameters
-[snow_initial_albedo]
-value = 0.8
-type = "float"
-description = "The value used for new albedo whenever the reset is triggered (0-1)"
-tag = "ConstantResetAlbedo"
-
-[albedo_psnow_reset_rate]
-value = 3.47222222e-8
-type = "float"
-description = "The threshold rate of liquid-equivalent snowfall (m/s) to trigger an albedo reset in a new snowpack"
-tag = "ConstantResetAlbedo"
-
-[new_snowpack_S_threshold]
-value = 0.001
-type = "float"
-description = "The SWE for which a snowpack is considered gone (m), or the starting SWE for which (with sufficient precipitation) a previously no-snowpack state is considered new"
-tag = "ConstantResetAlbedo"
-
 # P model parameters
 ["pmodel_cstar"]
 value = 0.41
@@ -229,13 +203,13 @@ description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, 
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 51
+value = 146
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 51
+value = 16.222222222222222
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants (146/9, pyrealm)"
 tag = "PModelParameters"
@@ -404,7 +378,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.85
+value = 1.0
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -539,25 +513,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.02
+value = 0.13
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0007
+value = 0.013
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.007
+value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.07
+value = 0.1
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
@@ -577,7 +551,7 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_pre_exponential_factor"]
-value = 23835.0
+value = 194000.0
 type = "float"
 description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
 tag = "SoilCO2Parameters"
@@ -624,35 +598,6 @@ type = "float"
 description = "Molar mass of oxygen (kg/mol)"
 tag = "SoilCO2Parameters"
 
-["O2_volume_fraction"]
-value = 0.2095
-type = "float"
-description = "Volumetric fraction of O₂ in atmospheric air (dimensionless)"
-tag = "SoilCO2Parameters"
-
-["CO2_henry_k298"]
-value = 3.4e-4
-type = "float"
-description = "Henry's law constant for CO₂ at 298K (mol/(m³·Pa))"
-tag = "SoilCO2Parameters"
-
-["CO2_henry_Tcoeff"]
-value = 2400.0
-type = "float"
-description = "Temperature coefficient for CO₂ Henry's law (K)"
-tag = "SoilCO2Parameters"
-
-["O2_henry_k298"]
-value = 1.3e-5
-type = "float"
-description = "Henry's law constant for O₂ at 298K (mol/(m³·Pa))"
-tag = "SoilCO2Parameters"
-
-["O2_henry_Tcoeff"]
-value = 1500.0
-type = "float"
-description = "Temperature coefficient for O₂ Henry's law (K)"
-tag = "SoilCO2Parameters"
 # Soil Parameters
 ["evaporation_exponent"]
 value = 1.0

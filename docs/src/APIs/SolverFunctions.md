@@ -39,7 +39,7 @@ ClimaLand.make_imp_tendency
 ClimaLand.make_compute_imp_tendency
 ClimaLand.make_compute_jacobian
 ClimaLand.make_jacobian
-ClimaLand.FieldMatrixWithSolver
+ClimaLand.initialize_jacobian
 ```
 
 ## Explicit Tendencies

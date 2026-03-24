@@ -3,7 +3,9 @@ import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
 using ClimaCore
 
-export make_set_initial_state_from_file
+export make_set_initial_state_from_file,
+    make_set_subseasonal_initial_conditions,
+    make_set_initial_state_from_atmos_and_parameters
 
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
@@ -246,9 +248,25 @@ function set_snow_initial_conditions!(
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)
     Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(Y.snow.S, p.snow.T, params)
+        ClimaLand.Snow.energy_from_T_and_swe.(
+            Y.snow.S,
+            p.snow.T,
+            params.ΔS,
+            params.earth_param_set,
+        )
+    FT = eltype(Y.snow.U)
+    if :Z in propertynames(Y.snow)
+        #no depth field in spin-up file: start with reasonable guess (snow density 333 kg/m^3)
+        Y.snow.Z .= FT(3) .* Y.snow.S
+    end
+    if :A in propertynames(Y.snow)
+        FT = eltype(Y.snow.S)
+        #no albedo field in spin-up file: start with reasonable guess
+        Y.snow.A .= FT(0.8)
+    end
     return nothing
 end
+
 """
     enforce_snow_temperature_constraint(S::FT, T::FT)
 
@@ -282,7 +300,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -416,7 +434,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -520,7 +538,7 @@ If `enforce_constraints = true`, we ensure the soil water content is between por
 residual value, and that the temperature is bounded to be within the extrema of the air temperature
 at the surface.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_file(
@@ -547,6 +565,83 @@ function make_set_initial_state_from_file(
             model;
             T_bounds,
             enforce_constraints,
+        )
+    end
+    return set_ic!
+end
+
+"""
+    make_set_subseasonal_initial_conditions(ic_path)
+
+Creates and returns a function `set_ic!(Y,p,t,model)` which updates `Y` in place with
+the subseasonal initial conditions from the file `ic_path`.
+These initial conditions are analytical for some variables and read in from file for others.
+
+The input file `ic_path` is expected to contain the following variables:
+- "tsn": snow temperature
+- "swe": snow water equivalent
+- "skt": skin temperature of the land surface
+- "swvl": soil total water content
+- "stl": soil temperature
+"""
+function make_set_subseasonal_initial_conditions(
+    ic_path;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Linear(),
+)
+    function set_ic!(Y, p, t, land)
+        domain = ClimaLand.get_domain(land)
+        surface_space = domain.space.surface
+        subsurface_space = domain.space.subsurface
+        FT = eltype(Y.soil.ϑ_l)
+
+        # Set initial conditions that aren't read in from file
+        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+
+        # Set snow T first to use in computing snow internal energy from IC file
+        p.snow.T .= SpaceVaryingInput(
+            ic_path,
+            "tsn",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        )
+        # Set canopy temperature to skin temperature
+        Y.canopy.energy.T .= SpaceVaryingInput(
+            ic_path,
+            "skt",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        )
+
+        set_snow_initial_conditions!(
+            Y,
+            p,
+            surface_space,
+            ic_path,
+            land.snow.parameters;
+            regridder_type = regridder_type,
+            extrapolation_bc = extrapolation_bc,
+            interpolation_method = interpolation_method,
+        )
+
+        set_soil_initial_conditions_from_temperature_and_total_water!(
+            Y,
+            subsurface_space,
+            ic_path,
+            land.soil;
+            regridder_type = regridder_type,
+            extrapolation_bc = extrapolation_bc,
+            interpolation_method = interpolation_method,
         )
     end
     return set_ic!
@@ -627,7 +722,7 @@ end
     make_set_initial_state_from_file(ic_path, model::ClimaLand.Bucket.BucketModel)
 
 Returns a function which takes (Y,p,t0,model) as arguments, and updates
-the state Y of the `BucketModel` in place with initial conditions from 
+the state Y of the `BucketModel` in place with initial conditions from
 `ic_path`, a path to a netCDF file with variables `W`, `Ws`, `T`, and `S`.
 
 The returned function is a closure for `ic_path` and `model`.
@@ -686,7 +781,7 @@ function make_set_initial_state_from_file(
 end
 
 
-""" 
+"""
     make_set_initial_state_from_atmos_and_parameters(
                land::ClimaLand.Bucket.BucketModel
     )
@@ -697,7 +792,7 @@ Y.bucket.Ws .= 0
 Y.bucket.σS .= 0
 Y.bucket.T .= p.drivers.T # at every level
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_atmos_and_parameters(
@@ -724,9 +819,9 @@ end
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
 the state Y in place with initial conditions from parameter values and the
-atmospheric temperature. 
+atmospheric temperature.
 
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has 
+It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
 been updated already.
 """
 function make_set_initial_state_from_atmos_and_parameters(

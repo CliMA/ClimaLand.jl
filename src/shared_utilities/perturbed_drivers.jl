@@ -5,16 +5,7 @@ export prescribed_perturbed_temperature_era5, prescribed_perturbed_rh_era5
 
 Estimates the perturbed specific humidity given the true dewpoint temperature, true temperature of the air
 in Kelvin, and true air pressure in Pa, along with a perturbation to the temperature ΔT, and the ClimaLand
-`earth_param_set`. We first compute relative humidity, and then using RH and the perturbed air temperature,
-equal to  true temperature+ΔT, compute a perturbed `q`.
-
-Relative humidity is computed using the Magnus formula.
-
-For more information on the Magnus formula, see e.g.
-Lawrence, Mark G. (1 February 2005).
-"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air:
-A Simple Conversion and Applications".
-Bulletin of the American Meteorological Society. 86 (2): 225–234.
+`earth_param_set`. 
 """
 function perturbed_temp_specific_humidity_from_dewpoint(
     T_dew_air::data_FT,
@@ -24,13 +15,21 @@ function perturbed_temp_specific_humidity_from_dewpoint(
     ΔT,
 ) where {data_FT <: Real}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    _T_freeze = LP.T_freeze(earth_param_set)
-    sim_FT = typeof(_T_freeze)
-    # Obtain the relative humidity. This function requires temperatures in Celsius
-    rh::sim_FT = rh_from_dewpoint(
-        sim_FT(T_dew_air) - _T_freeze,
-        sim_FT(T_air) - _T_freeze,
+    sim_FT = typeof(LP.T_freeze(earth_param_set))
+
+    # Obtain true rh using vapor pressure
+    e_sat_dew = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        sim_FT(T_dew_air),
+        Thermodynamics.Liquid(),
     )
+    e_sat_T = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        sim_FT(T_air),
+        Thermodynamics.Liquid(),
+    )
+    rh::sim_FT = e_sat_dew / e_sat_T
+
     q = Thermodynamics.q_vap_from_RH(
         thermo_params,
         sim_FT(P_air),
@@ -47,15 +46,7 @@ end
 
 Estimates the perturbed specific humidity given the true dewpoint temperature, true temperature of the air
 in Kelvin, and true air pressure in Pa, along with a perturbation to the relative humidity Δrh, and the ClimaLand
-`earth_param_set`. We first compute relative humidity, and then perturb it to rh + Δrh, compute a perturbed `q`.
-
-Relative humidity is computed using the Magnus formula.
-
-For more information on the Magnus formula, see e.g.
-Lawrence, Mark G. (1 February 2005).
-"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air:
-A Simple Conversion and Applications".
-Bulletin of the American Meteorological Society. 86 (2): 225–234.
+`earth_param_set`. 
 """
 function perturbed_rh_specific_humidity_from_dewpoint(
     T_dew_air::data_FT,
@@ -65,13 +56,21 @@ function perturbed_rh_specific_humidity_from_dewpoint(
     Δrh,
 ) where {data_FT <: Real}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    _T_freeze = LP.T_freeze(earth_param_set)
-    sim_FT = typeof(_T_freeze)
-    # Obtain the relative humidity. This function requires temperatures in Celsius
-    rh_true::sim_FT = rh_from_dewpoint(
-        sim_FT(T_dew_air) - _T_freeze,
-        sim_FT(T_air) - _T_freeze,
+    sim_FT = typeof(LP.T_freeze(earth_param_set))
+
+    # Obtain true rh using vapor pressure
+    e_sat_dew = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        sim_FT(T_dew_air),
+        Thermodynamics.Liquid(),
     )
+    e_sat_T = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        sim_FT(T_air),
+        Thermodynamics.Liquid(),
+    )
+    rh_true::sim_FT = e_sat_dew / e_sat_T
+
     rh = min(max(rh_true + Δrh, sqrt(eps(sim_FT))), sim_FT(1))
     q = Thermodynamics.q_vap_from_RH(
         thermo_params,

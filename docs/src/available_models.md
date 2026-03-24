@@ -96,10 +96,13 @@ unless otherwise noted.
 |                                       | `BigLeafEnergyModel` (default, in integrated models)        |
 
 ### `SnowModel`
-| Parameterization type            | Available options                       |
-| -------------------------------- | ----------------------------------------|
-| `AbstractDensityModel`           | `MinimumDensityModel` (default)         |
-|                                  | `NeuralDepthModel`                      |
-| `AbstractAlbedoModel`            | `ConstantAlbedoModel` (default)         |
-|                                  | `ZenithAngleAlbedoModel`                |
-| `AbstractSnowCoverFractionModel` | `WuWuSnowCoverFractionModel` (default)  |
+| Parameterization type                 | Available options                       |
+| ------------------------------------- | ----------------------------------------|
+| `AbstractDensityModel`                | `MinimumDensityModel` (default)         |
+|                                       | `NeuralDepthModel`                      |
+| `AbstractAlbedoModel`                 | `ConstantAlbedoModel` (default)         |
+|                                       | `ZenithAngleAlbedoModel`                |
+|                                       | `NeuralAlbedoModel`                     |
+| `AbstractSnowCoverFractionModel`      | `WuWuSnowCoverFractionModel` (default)  |
+| `AbstractSnowSurfaceTemperatureModel` | `BulkSurfaceTemperatureModel` (default) |
+|                                       | `EquilibriumGradientTemperatureModel`   |

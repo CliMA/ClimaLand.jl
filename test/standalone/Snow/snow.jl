@@ -83,7 +83,8 @@ import ClimaLand.Parameters as LP
         ClimaLand.Snow.energy_from_T_and_swe.(
             Y.snow.S,
             FT(273.0),
-            Ref(model.parameters),
+            model.parameters.ΔS,
+            Ref(model.parameters.earth_param_set),
         )
     set_initial_cache! = ClimaLand.make_set_initial_cache(model)
     t0 = FT(0.0)
@@ -118,7 +119,8 @@ import ClimaLand.Parameters as LP
         Y.snow.U,
         Y.snow.S,
         p.snow.q_l,
-        model.parameters,
+        parameters.ΔS,
+        model.parameters.earth_param_set,
     )
 
     #Surface temperature tests:
@@ -153,7 +155,8 @@ import ClimaLand.Parameters as LP
             roughness_model,
             model.boundary_conditions.atmos.h,
             gustiness,
-            model.parameters,
+            model.parameters.earth_param_set,
+            Ref(model.parameters.surf_temp),
         )
 
     #resulting flux balance from tsfc_1 should be near-zero
@@ -177,7 +180,7 @@ import ClimaLand.Parameters as LP
             roughness_model,
             model.boundary_conditions.atmos.h,
             gustiness,
-            model.parameters,
+            model.parameters.earth_param_set,
         )
     @test all(parent(result_bal) .< model.parameters.surf_temp.tol)
 
@@ -187,7 +190,7 @@ import ClimaLand.Parameters as LP
             p.snow.κ,
             p.snow.ρ_snow,
             p.snow.z_snow,
-            model.parameters,
+            model.parameters.earth_param_set,
         )
     #no update should occur from update_surf_temp!:
     Snow.update_surf_temp!(
@@ -251,7 +254,9 @@ import ClimaLand.Parameters as LP
         Y.snow.S,
         p.snow.q_l,
         p.snow.applied_energy_flux,
-        model.parameters,
+        model.parameters.Δt,
+        model.parameters.ΔS,
+        model.parameters.earth_param_set,
     )) == p.snow.phase_change_flux
     @test turb_fluxes_copy.shf == p.snow.turbulent_fluxes.shf
     @test turb_fluxes_copy.lhf == p.snow.turbulent_fluxes.lhf
@@ -264,7 +269,7 @@ import ClimaLand.Parameters as LP
         model.parameters.density,
         Y,
         p,
-        model.parameters,
+        model.parameters.earth_param_set,
     )
     @test p.snow.ρ_snow ≈ old_ρ
     @test p.snow.z_snow ≈ old_z
@@ -287,7 +292,24 @@ import ClimaLand.Parameters as LP
         p.snow.R_n .+ p.snow.energy_runoff
     @test all(parent(dY.snow.U) .≈ parent(test_dY_U))
     @test isnothing(
-        Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
+        Snow.compute_extra_prog_tendency!(
+            model.parameters.density,
+            model,
+            dY,
+            Y,
+            p,
+            t0,
+        ),
+    )
+    @test isnothing(
+        Snow.compute_extra_prog_tendency!(
+            model.parameters.α_snow,
+            model,
+            dY,
+            Y,
+            p,
+            t0,
+        ),
     )
 
     @test all(
@@ -335,7 +357,8 @@ import ClimaLand.Parameters as LP
         ClimaLand.Snow.energy_from_T_and_swe.(
             Y.snow.S,
             FT(273.0),
-            Ref(model.parameters),
+            model.parameters.ΔS,
+            Ref(model.parameters.earth_param_set),
         )
     set_initial_cache! = ClimaLand.make_set_initial_cache(model)
     t0 = FT(0.0)

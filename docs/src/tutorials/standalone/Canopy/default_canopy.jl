@@ -21,7 +21,7 @@ import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 using Dates
 import ClimaDiagnostics
-using CairoMakie, ClimaAnalysis, GeoMakie, Printf, StatsBase
+using CairoMakie, ClimaAnalysis, GeoMakie, Printf, Statistics
 import ClimaLand.LandSimVis as LandSimVis
 
 # Choose a floating point precision, and get the parameter set,
