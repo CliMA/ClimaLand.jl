@@ -172,7 +172,7 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     (; obs_vec_filepath) = CALIBRATE_CONFIG
     covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
-        scalar = 25.0,
+        scalar = 3.0, # for GPP, 3 g C m-2 day-1
         use_latitude_weights = true,
         min_cosd_lat = 0.1,
     )

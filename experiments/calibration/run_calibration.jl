@@ -11,7 +11,7 @@ import JLD2
 include(joinpath(pkgdir(ClimaLand), "experiments/calibration/api.jl"))
 
 const CALIBRATE_CONFIG = CalibrateConfig(;
-    short_names = ["gpp", "lhf"],
+    short_names = ["gpp"],
     minibatch_size = 4,
     n_iterations = 10,
     # 10 yearly samples: each covers DJF through SON (Dec 1 → Sep 1)
