@@ -25,19 +25,7 @@ function update_root_extraction!(p, Y, t, land)
     # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
     # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
     # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
-    @. p.root_extraction =
-        above_ground_area_index *
-        PlantHydraulics.water_flux(
-            z,
-            land.canopy.hydraulics.compartment_midpoints[1],
-            p.soil.ψ,
-            p.canopy.hydraulics.ψ.:1,
-            p.soil.K,
-            PlantHydraulics.hydraulic_conductivity(
-                conductivity_model,
-                p.canopy.hydraulics.ψ.:1,
-            ),
-        ) *
+    @. p.root_extraction = p.canopy.turbulent_fluxes.vapor_flux .*
         Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(

@@ -279,7 +279,7 @@ ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+    NamedTuple{(:T_opt, :ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT, FT}},
 )
 ClimaLand.auxiliary_domain_names(::PModel) =
     (:surface, :surface, :surface, :surface, :surface)
@@ -467,7 +467,7 @@ end
     update_optimal_EMA(is_c3::FT,
         parameters::PModelParameters{FT},
         constants::PModelConstants{FT},
-        OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+        OptVars::NamedTuple{(:T_opt, :ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT, FT}},
         T_canopy::FT,
         P_air::FT,
         VPD::FT,
@@ -506,7 +506,7 @@ function update_optimal_EMA(
     is_c3::FT,
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
-    OptVars::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
+    OptVars::NamedTuple{(:T_opt, :ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT, FT}},
     T_canopy::FT,
     P_air::FT,
     VPD::FT,
@@ -548,8 +548,7 @@ function update_optimal_EMA(
             lightspeed,
             N_a,
             ρ_water,
-        ) = constants
-
+         ) = constants
         # Compute intermediate values
         ϕ0 = intrinsic_quantum_yield(is_c3, T_canopy, parameters)
 
@@ -568,35 +567,19 @@ function update_optimal_EMA(
         mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
         Vcmax = βm * ϕ0 * APAR_canopy_moles * mprime / mc
-        Vcmax25 =
-            Vcmax / inst_temp_scaling(
-                T_canopy,
-                T_canopy,
-                To,
-                Ha_Vcmax,
-                Hd_Vcmax,
-                aS_Vcmax,
-                bS_Vcmax,
-                R,
-            )
-
         Jmax = 4 * ϕ0 * APAR_canopy_moles * βm / sqrt((mj /  mprime)^2 - 1)
+
+        T_opt = α * OptVars.T_opt + (1 - α) * T_canopy
+        Vcmax25 =
+            Vcmax / arrhenius_function(T_opt, To, R, FT(65330)) 
         Jmax25 =
-            Jmax / inst_temp_scaling(
-                T_canopy,
-                T_canopy,
-                To,
-                Ha_Jmax,
-                Hd_Jmax,
-                aS_Jmax,
-                bS_Jmax,
-                R,
-            )
+            Jmax / arrhenius_function(T_opt, To, R, FT(43990)) 
         return (;
-            ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
-            Vcmax25_opt = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
-            Jmax25_opt = α * OptVars.Jmax25_opt + (1 - α) * Jmax25,
-        )
+                T_opt = T_opt,
+                ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
+                Vcmax25_opt = α * OptVars.Vcmax25_opt + (1 - α) * Vcmax25,
+                Jmax25_opt = α * OptVars.Jmax25_opt + (1 - α) * Jmax25,
+                )
     else
         return OptVars
     end
@@ -676,7 +659,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     # Initialize OptVars with dummy values which will be overwritten
     fill!(
         p.canopy.photosynthesis.OptVars,
-        (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0)),
+        (; T_opt = FT(0), ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0)),
     )
 
     parameters_init = PModelParameters(
@@ -923,16 +906,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
     # compute instantaneous max photosynthetic rates and assimilation rates
     Jmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Jmax,
-            constants.Hd_Jmax,
-            constants.aS_Jmax,
-            constants.bS_Jmax,
-            constants.R,
-        ),
+        p.canopy.photosynthesis.OptVars.Jmax25_opt * arrhenius_function(T_canopy, constants.To, constants.R, FT(43990)) 
     )
 
     J = @. lazy(
@@ -944,16 +918,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
 
     Vcmax = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Vcmax,
-            constants.Hd_Vcmax,
-            constants.aS_Vcmax,
-            constants.bS_Vcmax,
-            constants.R,
-        ),
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt * arrhenius_function(T_canopy,constants.To, constants.R, FT(65330))
     )
 
     # rubisco limited assimilation rate
@@ -1280,7 +1245,7 @@ function co2_compensation_pmodel(
     ΔHΓstar::FT,
     Γstar25::FT,
 ) where {FT}
-    Γstar = Γstar25 * p / FT(101325.0) * arrhenius_function(T, To, R, ΔHΓstar)
+    Γstar = Γstar25 * arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
 end
 
