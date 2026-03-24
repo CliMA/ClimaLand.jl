@@ -7,6 +7,7 @@ EKP.Observation. Saves to JLD2 for use by the calibration driver.
 
 Configuration via environment variables:
     NEON_SITE_ID     — NEON site ID (default: "NEON-srer")
+    NEON_START_DATE  — Start date (default: site metadata start date, format: YYYY-mm-dd)
     NEON_SPINUP_DAYS — Number of spinup days (default: 20)
 
 Run once before calibration:
@@ -25,19 +26,27 @@ using DataFrames
 
 const FT = Float64
 const climaland_dir = pkgdir(ClimaLand)
+#=
+ENV["NEON_SITE_ID"]    = "NEON-cper"
+ENV["NEON_START_DATE"] = "2017-01-01"   # Format: YYYY-mm-dd
+ENV["NEON_STOP_DATE"]  = "2017-12-31"   # Format: YYYY-mm-dd
+ENV["NEON_SPINUP_DAYS"] = "20"        # optional
+=#
 
 # ── Configuration ────────────────────────────────────────────────────────────
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
-SITE_ID = "NEON-cper"
+#SITE_ID = "NEON-cper"
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 
 # Get dates from site metadata
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(start_date, stop_date) =
+(site_start_date, site_stop_date) =
     FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
-stop_date = DateTime(2017,12,31)
+start_date =
+    DateTime(get(ENV, "NEON_START_DATE", string(Date(site_start_date))))
+stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(site_stop_date))))
 
 spinup_date = start_date + Day(SPINUP_DAYS)
 
@@ -109,8 +118,9 @@ daily_df = combine(
         end) => :daily_var,
 )
 
-# Trim to after spinup and remove NaN days
+# Trim to after spinup and before stop date and remove NaN days
 daily_df = filter(row -> row.date >= Date(spinup_date), daily_df)
+daily_df = filter(row -> row.date <= Date(stop_date), daily_df)
 daily_df = filter(row -> !isnan(row.daily_mean), daily_df)
 sort!(daily_df, :date)
 
@@ -137,7 +147,7 @@ println("Observation vector length: $n_obs")
 
 # ── Save ────────────────────────────────────────────────────────────────────
 obs_filepath =
-    "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017/observations.jld2"
+    "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/observations_$(SITE_ID)_$(Date(start_date))_$(Date(stop_date)).jld2"
     #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
 JLD2.jldsave(
     obs_filepath;
