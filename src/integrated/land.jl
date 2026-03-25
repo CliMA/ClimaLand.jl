@@ -1,4 +1,27 @@
+import LinearAlgebra: I
+import ClimaCore.MatrixFields: FieldOrStencilStyleType, BandMatrixRow, LazyOperatorBroadcasted, MultiplyColumnwiseBandMatrixField,  unrolled_reduce, ⊠, DiagonalMatrixRow
 export LandModel
+
+function Base.Broadcast.broadcasted(
+    ::typeof(*),
+    field_or_broadcasted::FieldOrStencilStyleType,
+    args...,
+)
+    unrolled_reduce(args; init = field_or_broadcasted) do arg1, arg2
+        arg1_isa_matrix =
+            eltype(arg1) <: BandMatrixRow || arg1 isa LazyOperatorBroadcasted
+        use_matrix_mul_op = arg1_isa_matrix && arg2 isa FieldOrStencilStyleType
+
+        if axes(arg1) isa ClimaCore.Spaces.PointSpace && use_matrix_mul_op
+            Base.Broadcast.broadcasted(⊠, Base.Broadcast.broadcasted(Base.Fix2(getindex,0),arg1), arg2)
+        else
+            op = use_matrix_mul_op ? MultiplyColumnwiseBandMatrixField() : ⊠
+                Base.Broadcast.broadcasted(op, arg1, arg2)
+        end
+        
+    end
+end
+
 """
     struct LandModel{
         FT,
@@ -559,6 +582,36 @@ function make_imp_tendency(land::LandModel)
         @. dY.∫F_e_dt = -(imp_heat_flux - 0)
     end
     return imp_tendency!
+end
+
+function make_compute_jacobian(land::LandModel{FT}) where {FT}
+    components = land_components(land)
+    compute_jacobian_function_list =
+        map(x -> make_compute_jacobian(getproperty(land, x)), components)
+    function compute_jacobian!(jacobian, Y, p, dtγ, t)
+        for f! in compute_jacobian_function_list
+            f!(jacobian, Y, p, dtγ, t)
+        end
+        (; matrix) = jacobian
+
+        # The derivative of the residual with respect to the prognostic variable
+        area_index = p.canopy.biomass.area_index
+        ac_canopy = land.canopy.energy.parameters.ac_canopy
+        ∂lhf∂T = p.canopy.turbulent_fluxes.∂lhf∂T
+        ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
+        ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
+        ϵ_c = p.canopy.radiative_transfer.ϵ
+        earth_param_set = land.canopy.earth_param_set
+        _σ = LP.Stefan(earth_param_set)
+        T_c = canopy_temperature(land.canopy.energy, land.canopy, Y, p)
+        @. ∂LW_n∂T = 2 * 4 * _σ * ϵ_c * T_c^3 # ≈ ϵ_ground = 1
+        ∂Xres∂T = matrix[@name(∫F_e_dt), @name(canopy.energy.T)]
+        ∂Xres∂X = matrix[@name(∫F_e_dt), @name(∫F_e_dt)]
+        @. ∂Xres∂T =  float(dtγ) * DiagonalMatrixRow(
+            (-∂LW_n∂T - ∂shf∂T - ∂lhf∂T))
+        @. ∂Xres∂X = DiagonalMatrixRow(∂LW_n∂T*0) - (I,)
+    end
+    return compute_jacobian!
 end
 
 """
