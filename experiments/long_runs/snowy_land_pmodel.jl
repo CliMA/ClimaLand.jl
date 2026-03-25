@@ -125,8 +125,7 @@ function setup_model(
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
-    horz_degree_res =
-        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    horz_degree_res = FT(1)
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     snow = Snow.SnowModel(
         FT,
@@ -158,10 +157,10 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
+start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2016-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2018-03-01")
 Δt = 450.0
-domain =
+domain = ClimaLand.Domains.Column(; nelements = 15, dz_tuple = FT.((3, 0.05)), zlim = FT.((-15, 0)), longlat = FT.((85.0, -80.0)))
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 
 if UNCALIBRATED
@@ -181,14 +180,3 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
-LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
-
-if LONGER_RUN
-    include("../ilamb/ilamb_conversion.jl")
-    make_compatible_with_ILAMB(
-        joinpath(root_path, "global_diagnostics", "output_active"),
-        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
-    )
-end
