@@ -69,6 +69,7 @@ get_surface_space(
 get_z_coordinates(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
     m.soil.domain.fields.z
 get_z_coordinates(m::Union{SoilCO2Model, EnergyHydrology}) = m.domain.fields.z
+@diagnostic_compute "ghf" LandModel p.ground_heat_flux
 
 ### Conservation ##
 @diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
@@ -371,6 +372,15 @@ end
     CanopyModel,
 } p.canopy.radiative_transfer.SW_n
 
+function compute_radiation_shortwave_net!(out, Y, p, t, soil::EnergyHydrology)
+    if isnothing(out)
+        out = zeros(soil.domain.space.surface)
+        fill!(field_values(out), NaN)
+    end
+    α_sfc = ClimaLand.surface_albedo(soil, Y, p)
+    @. out =  (1 - α_sfc) * p.drivers.SW_d
+end
+
 # Vegetation carbon (derived from prescribed biomass)
 function compute_vegetation_carbon!(
     out,
@@ -414,7 +424,7 @@ end
     CanopyModel,
 } p.drivers.SW_d
 @diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_snow
-@diagnostic_compute "tair" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.T
+@diagnostic_compute "tair" Union{SoilCanopyModel, EnergyHydrology, LandModel, CanopyModel} p.drivers.T
 @diagnostic_compute "specific_humidity" Union{
     SoilCanopyModel,
     LandModel,
@@ -1097,6 +1107,10 @@ end
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
+@diagnostic_compute "snow_sfc_temp" LandModel p.snow.T_sfc
+@diagnostic_compute "snow_bot_temp" LandModel p.snow.T_bot
+@diagnostic_compute "snow_κ" LandModel p.snow.κ
+@diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 
