@@ -229,7 +229,7 @@ function WuWuSnowCoverFractionModel(
     β0::FT,
     β_min::FT,
     horz_degree_res::FT;
-    z0 = FT(0.106),
+    z0,
 ) where {FT}
     @assert β_min > eps(FT)
     @assert β0 > eps(FT)
@@ -340,6 +340,8 @@ Base.@kwdef struct SnowParameters{
     Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
     ΔS::FT
+    "Snow depth using to compute heat flux with the ground"
+    Δz_max::FT
     "Snow cover fraction parameterization"
     scf::SCFM
     "Snow surface temperature parameterization"
@@ -369,6 +371,7 @@ end
         θ_r = toml_dict["holding_capacity_of_water_in_snow"],
         Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
         ΔS = toml_dict["delta_S"],
+        Δz_max = toml_dict["effective_max_depth_ghf"],
     ) where {DM, AM, SCFM}
 
 TOML dictionary constructor for the `SnowParameters`` struct.
@@ -399,6 +402,7 @@ function SnowParameters(
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],
+    Δz_max = toml_dict["effective_max_depth_ghf"],
 ) where {DM, AM, SCFM, STM}
     Δt = float(Δt)
     FT = CP.float_type(toml_dict)
@@ -413,6 +417,7 @@ function SnowParameters(
         θ_r,
         Ksat,
         ΔS,
+        Δz_max,
         density,
         α_snow,
         scf,
@@ -430,7 +435,8 @@ function SnowParameters{FT}(
     θ_r,
     Ksat,
     κ_ice,
-    ΔS = FT(0.1),
+    ΔS,
+    Δz_max,
     scf::SCFM,
     surf_temp::STM = BulkSurfaceTemperatureModel{FT}(),
     earth_param_set::PSE,
@@ -453,6 +459,7 @@ function SnowParameters{FT}(
         κ_ice,
         float(Δt),
         ΔS,
+        Δz_max,
         scf,
         surf_temp,
         earth_param_set,
@@ -677,6 +684,7 @@ auxiliary_vars(snow::SnowModel) = (
     :κ,
     :T,
     :T_sfc,
+    :T_bot,
     :z_snow,
     :α_snow,
     :ρ_snow,
@@ -713,6 +721,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     surf_temp_auxiliary_types(snow.parameters.surf_temp)...,
     boundary_var_types(
         snow,
@@ -722,6 +731,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,

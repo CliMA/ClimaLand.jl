@@ -1125,6 +1125,62 @@ function define_diagnostics!(land_model, possible_diags)
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
 
+
+    # Snow bulk temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtb",
+        long_name = "Snow bulk temperature",
+        standard_name = "snow_bulk_temp",
+        units = "",
+        comments = "The snow bulk temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_bulk_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowκ",
+        long_name = "Snow thermal conductivity",
+        standard_name = "snow_κ",
+        units = "",
+        comments = "The snow thermal K",
+        compute! = (out, Y, p, t) ->
+            compute_snow_κ!(out, Y, p, t, land_model),
+    )
+    # Snow sfc temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtsfc",
+        long_name = "Snow sfc temperature",
+        standard_name = "snow_sfc_temp",
+        units = "",
+        comments = "The snow surface temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_sfc_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtbot",
+        long_name = "Snow bot temperature",
+        standard_name = "snow_bot_temp",
+        units = "",
+        comments = "The snow bottom temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_bot_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ghf",
+        long_name = "Snow soil heat flux",
+        standard_name = "ghf",
+        units = "",
+        compute! = (out, Y, p, t) ->
+            compute_ghf!(out, Y, p, t, land_model),
+    )
+
     ### Slab Lake ###
     # Lake internal energy (prognostic)
     conditional_add_diagnostic_variable!(

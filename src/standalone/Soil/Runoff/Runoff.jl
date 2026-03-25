@@ -261,11 +261,13 @@ function update_infiltration_water_flux!(
     @. p.soil.is_saturated =
         is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
-    @. p.soil.R_ss = topmodel_ss_flux(
-        runoff.subsurface_source.R_sb,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-    )
+    τ = eltype(p.soil.R_ss)(2.6e4)
+    column_integral_definite!(p.soil.R_ss, @. (Y.soil.ϑ_l - model.parameters.ν) * p.soil.is_saturated/τ)
+#    @. p.soil.R_ss = (Y.soil.ϑ_l - model.parameters.ν) * p.soil.is_saturated/τ #topmodel_ss_flux(
+    #      runoff.subsurface_source.R_sb,
+    #      runoff.f_over,
+    #      model.domain.fields.depth - p.soil.h∇,
+    #   )
     update_subsurface_energy_runoff!(p, model)
 end
 
@@ -352,8 +354,10 @@ function ClimaLand.source!(
 ) where {FT}
     h∇ = p.soil.h∇
     ϵ = eps(FT)
-    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ϑ_l -= (Y.soil.ϑ_l - model.parameters.ν) * p.soil.is_saturated/FT(2.6e4) #(p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ρe_int -= (Y.soil.ϑ_l - model.parameters.ν) * p.soil.is_saturated/FT(2.6e4) * volumetric_internal_energy_liq(p.soil.T, model.parameters.earth_param_set)##p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+#    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+#    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
     @. dY.soil.∫F_e_dt -= p.soil.R_ess # the integral is designed to be this flux
 end

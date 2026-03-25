@@ -41,7 +41,11 @@ using Dates
 
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
-
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
+ 
+ClimaComms.@import_required_backends
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -91,14 +95,31 @@ function setup_model(
         stop_date,
     )
 
-    # Construct the land model with all default components
-    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :snow, :soil)
+
+    # Snow model setup
+    # Set β = 0 in order to regain model without density dependence
+    surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
+    snow = Snow.SnowModel(
+        FT,
+        surface_domain,
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components,
+        surf_temp,
+        density
+    )
+
+    # Construct the land model with all default components except for snow
     land = LandModel{FT}(
         forcing,
         LAI,
         toml_dict,
         domain,
         Δt;
+        snow,
         prognostic_land_components,
     )
     return land
@@ -123,7 +144,11 @@ else
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+set_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        model,
+    )
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"

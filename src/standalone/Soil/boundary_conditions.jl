@@ -921,8 +921,7 @@ function soil_boundary_fluxes!(
     )
     # The actual boundary condition is a mix of liquid water infiltration and
     # evaporation.
-    @. p.soil.top_bc.water =
-        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
+    @. p.soil.top_bc.water = p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
         p.soil.R_n +
         p.soil.turbulent_fluxes.lhf +
