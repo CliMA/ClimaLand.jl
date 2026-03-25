@@ -1125,6 +1125,31 @@ function define_diagnostics!(land_model, possible_diags)
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
 
+
+    # Snow bulk temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtb",
+        long_name = "Snow bulk temperature",
+        standard_name = "snow_bulk_temp",
+        units = "",
+        comments = "The snow bulk temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_bulk_temp!(out, Y, p, t, land_model),
+    )
+
+    # Snow sfc temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtsfc",
+        long_name = "Snow sfc temperature",
+        standard_name = "snow_sfc_temp",
+        units = "",
+        comments = "The snow surface temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_sfc_temp!(out, Y, p, t, land_model),
+    )
+
     ### Slab Lake ###
     # Lake internal energy (prognostic)
     conditional_add_diagnostic_variable!(

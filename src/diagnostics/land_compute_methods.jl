@@ -1080,6 +1080,8 @@ end
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
+@diagnostic_compute "snow_sfc_temp" LandModel p.snow.T_sfc
+@diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 

@@ -528,7 +528,7 @@ function get_possible_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
-    return ["swe", "snd", "snowc"]
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
 end
 function get_possible_diagnostics(model::BucketModel)
     return [

@@ -1,21 +1,3 @@
-# # Global run of land model
-
-# The code sets up and runs ClimaLand v1, which
-# includes soil, canopy, and snow, on a spherical domain,
-# using ERA5 data as forcing. In this simulation, we have
-# turned lateral flow off because horizontal boundary conditions and the
-# land/sea mask are not yet supported by ClimaCore.
-
-# Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
-# Soil depth: 50 m
-# Simulation duration: 730 d
-# Timestep: 450 s
-# Timestepper: ARS111
-# Fixed number of iterations: 3
-# Jacobian update: every new Newton iteration
-# Atmos forcing update: every 3 hours
-
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaUtilities.ClimaArtifacts
@@ -57,7 +39,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -81,6 +63,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -93,7 +76,7 @@ function setup_model(
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :snow, :soil)
 
     # Construct the P model manually since it is not a default
     photosynthesis = PModel{FT}(domain, toml_dict)
@@ -118,11 +101,9 @@ function setup_model(
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
-    horz_degree_res =
-        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    horz_degree_res = FT(1)
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
-
     snow = Snow.SnowModel(
         FT,
         surface_domain,
@@ -132,7 +113,7 @@ function setup_model(
         prognostic_land_components,
         α_snow,
         scf,
-        surf_temp
+        #        surf_temp,
     )
 
     # Construct the land model with all default components except for snow
@@ -154,11 +135,14 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+start_date = DateTime("2008-01-01")
+stop_date = DateTime("2010-01-01")
 Δt = 450.0
-domain =
-    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+longlat = FT.((-74.4, 47.7))
+zlim = FT.((-15, 0))
+nelements = 15
+dz_tuple = FT.((3, 0.05))
+domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
     override_params_path = "toml/uncalibrated_parameters.toml"
@@ -168,7 +152,29 @@ else
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date,
+    outdir;
+    reduction_period = :daily,
+    output_vars = [
+        "tsoil",
+        "swc",
+        "si",
+        "snowtb",
+        "snowtsfc",
+        "snowc",
+        "swe",
+        "snd",
+        "sr",
+        "ssr",
+        "infc",
+    ],
+)
+
+simulation =
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
@@ -177,14 +183,116 @@ simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
-LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+LandSimVis.make_timeseries(simulation; savedir = root_path)
 
-if LONGER_RUN
-    include("../ilamb/ilamb_conversion.jl")
-    make_compatible_with_ILAMB(
-        joinpath(root_path, "global_diagnostics", "output_active"),
-        joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
+times = collect(keys(diagnostics[1].output_writer.dict["tsoil_1d_average"]))
+fig = CairoMakie.Figure(size = (800, 1200))
+ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Tsoil")
+for i in 1:2:15
+    lines!(
+        ax1,
+        [
+            parent(diagnostics[1].output_writer.dict["tsoil_1d_average"][t])[i]
+            for t in times
+        ],
+        label = "$i",
     )
 end
+
+ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Ice")
+for i in 1:2:15
+    lines!(
+        ax2,
+        [
+            parent(diagnostics[1].output_writer.dict["si_1d_average"][t])[i] for
+            t in times
+        ],
+        label = "$i",
+    )
+end
+fig[2, 2] = Legend(fig, ax2)
+
+ax3 = CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Liquid Water")
+for i in 1:2:15
+    lines!(
+        ax3,
+        [
+            parent(diagnostics[1].output_writer.dict["swc_1d_average"][t])[i]
+            for t in times
+        ],
+        label = "$i",
+    )
+end
+CairoMakie.save(joinpath(root_path, "soil.png"), fig)
+
+fig = CairoMakie.Figure(size = (800, 1200))
+ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Snow depth")
+lines!(
+    ax1,
+    [
+        parent(diagnostics[1].output_writer.dict["snd_1d_average"][t])[1] for
+        t in times
+    ],
+)
+ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Snow cover")
+lines!(
+    ax2,
+    [
+        parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1] for
+        t in times
+    ],
+)
+ax3 = CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Temps")
+lines!(
+    ax3,
+    [
+        parent(diagnostics[1].output_writer.dict["snowtb_1d_average"][t])[1] for
+        t in times
+    ],
+    label = "Bulk Snow",
+)
+lines!(
+    ax3,
+    [
+        parent(diagnostics[1].output_writer.dict["snowtsfc_1d_average"][t])[1]
+        for t in times
+    ],
+    label = "Surface Snow",
+)
+lines!(
+    ax3,
+    [
+        parent(diagnostics[1].output_writer.dict["tsoil_1d_average"][t])[15] for
+        t in times
+    ],
+    label = "Surface Soil",
+)
+fig[3, 2] = Legend(fig, ax3)
+CairoMakie.save(joinpath(root_path, "snow.png"), fig)
+
+fig = CairoMakie.Figure(size = (800, 1200))
+ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Inf c")
+lines!(
+    ax1,
+    [
+        parent(diagnostics[1].output_writer.dict["infc_1d_average"][t])[1] for
+        t in times
+    ],
+)
+ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "SR")
+lines!(
+    ax2,
+    [
+        parent(diagnostics[1].output_writer.dict["sr_1d_average"][t])[1] for
+        t in times
+    ],
+)
+CairoMakie.save(joinpath(root_path, "runoff.png"), fig)
+@show sum([
+    parent(diagnostics[1].output_writer.dict["sr_1d_average"][t])[1] for
+    t in times
+])
+@show sum([
+    parent(diagnostics[1].output_writer.dict["ssr_1d_average"][t])[1] for
+    t in times
+])
