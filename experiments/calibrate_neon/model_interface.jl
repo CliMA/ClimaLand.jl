@@ -34,6 +34,33 @@ using Dates
 using Statistics
 using DataFrames
 using CSV
+using DelimitedFiles
+
+#── Site Metadata ───────────────────────────────────────────────────────────
+const NEON_SITE_METADATA_CSV =
+    "/kiwi-data/Data/groupMembers/evametz/ERA5/sitedata/NEON_Field_Site_Metadata_20260324.csv"
+
+function _neon_site_key(SITE_ID)
+    return uppercase(replace(string(SITE_ID), "NEON_" => "", "NEON-" => ""))
+end
+
+function _get_neon_site_metadata(SITE_ID)
+    (data, columns) = DelimitedFiles.readdlm(NEON_SITE_METADATA_CSV, ','; header = true)
+    header = vec(String.(columns))
+
+    i_site = findfirst(==("site_id"), header)
+    i_lat = findfirst(==("latitude"), header)
+    i_long = findfirst(==("longitude"), header)
+    i_h = findfirst(==("tower_height_m"), header)
+
+    key = _neon_site_key(SITE_ID)
+    row_idx = findfirst(i -> uppercase(string(data[i, i_site])) == key, axes(data, 1))
+
+    lat = parse(Float64, string(data[row_idx, i_lat]))
+    long = parse(Float64, string(data[row_idx, i_long]))
+    atmos_h = parse(Float64, string(data[row_idx, i_h]))
+    return (; lat, long, atmos_h)
+end
 
 # ── Forward Model ────────────────────────────────────────────────────────────
 
@@ -42,12 +69,20 @@ function ClimaCalibrate.forward_model(iteration, member)
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = pkgdir(ClimaLand)
 
+
     # Get simulation dates from site metadata
-    (; time_offset, lat, long) =
-        FluxnetSimulations.get_location(FT, Val(site_ID_val))
+    #(; time_offset, lat, long) =
+    #    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+    time_offset = 0
+    metadata = _get_neon_site_metadata(SITE_ID)
+    lat = FT(metadata.lat)
+    long = FT(metadata.long)
+    atmos_h = FT(metadata.atmos_h)
+    
     (start_date, stop_date) =
         FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
-
+    start_date = DateTime(get(ENV, "NEON_START_DATE", string(Date(start_date))))
+    stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(stop_date))))
     @info "Member $member: simulating $start_date to $stop_date"
 
     # Load calibrated parameters from TOML written by ClimaCalibrate
@@ -57,10 +92,17 @@ function ClimaCalibrate.forward_model(iteration, member)
         LP.create_toml_dict(FT; override_files = [calibrate_params_path])
 
     # Domain
-    (; dz_tuple, nelements, zmin, zmax) =
-        FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-    (; atmos_h) =
-        FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+    dz_bottom = FT(2) #FT(1.5),
+    dz_top = FT(0.038)
+    dz_tuple = (dz_bottom, dz_top)
+    nelements = 24
+    zmin = FT(-6.2)
+    zmax = FT(0)
+
+    #(; dz_tuple, nelements, zmin, zmax) =
+    #    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+    #(; atmos_h) =
+    #    FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
     land_domain = Column(;
         zlim = (zmin, zmax),

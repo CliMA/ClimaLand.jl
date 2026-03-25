@@ -24,16 +24,37 @@ import EnsembleKalmanProcesses.ParameterDistributions as PD
 import JLD2
 using LinearAlgebra
 
+# ── Helper Functions ────────────────────────────────────────────────────────
+
+function find_available_dir(base_dir)
+    """Find an available directory by appending _1, _2, etc. if base_dir exists."""
+    if !isdir(base_dir)
+        return base_dir
+    end
+    i = 1
+    while isdir("$(base_dir)_$i")
+        i += 1
+    end
+    return "$(base_dir)_$i"
+end
+
 # ── Configuration ────────────────────────────────────────────────────────────
-outdir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017"
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
+const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
+start_date =
+    DateTime(get(ENV, "NEON_START_DATE", string(Date(2009,1,1))))
+stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(2009,12,31))))
+
 const DT = Float64(450)
-SITE_ID = "NEON-cper"
+#SITE_ID = "NEON-cper"
 const climaland_dir = pkgdir(ClimaLand)
-const OUTPUT_DIR = joinpath(outdir, "experiments/calibrate_neon/output")
+outdir = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))_SpinUp$(SPINUP_DAYS)/"
+output_base = joinpath(outdir, "output")
+const OUTPUT_DIR = find_available_dir(output_base)
+const PRIOR_VALUES_FILE = joinpath(OUTPUT_DIR, "prior_values.txt")
 const OBS_FILEPATH =
-    "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon/output_CPER_2017/observations.jld2"
+    "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))_SpinUp$(SPINUP_DAYS)/observations.jld2"
     #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
 
 
@@ -41,18 +62,42 @@ const OBS_FILEPATH =
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
 # parameter TOMLs using these names and LP.create_toml_dict reads them.
 
+preexp = [2000.0, 1000.0, 100.0, 20000.0]
+michaelis = [0.046, 0.020, 1e-5, 0.1]
+o2_michaelis = [0.066, 0.03, 1e-5, 0.12]
+
 priors = [
     PD.constrained_gaussian(
         "soilCO2_pre_exponential_factor",
-        2000,#2000
-        1000.0,
-        100.0,
-        20000.0,
+        preexp[1],
+        preexp[2],
+        preexp[3],
+        preexp[4],
     ),
-    PD.constrained_gaussian("michaelis_constant", 0.046, 0.020, 1e-5, 0.1),#0.096413, 0.002, 1e-5, 0.1),#0.046, 0.020, 1e-5, 0.1
-    PD.constrained_gaussian("O2_michaelis_constant",0.066, 0.03, 1e-5, 0.12),# 0.000398, 0.0002, 1e-5, 0.12),#0.066, 0.03, 1e-5, 0.12
+    PD.constrained_gaussian(
+        "michaelis_constant",
+        michaelis[1],
+        michaelis[2],
+        michaelis[3],
+        michaelis[4],
+    ),
+    PD.constrained_gaussian(
+        "O2_michaelis_constant",
+        o2_michaelis[1],
+        o2_michaelis[2],
+        o2_michaelis[3],
+        o2_michaelis[4],
+    ),
 ]
 prior = PD.combine_distributions(priors)
+
+# Create output directory (find_available_dir ensures unique path)
+mkpath(OUTPUT_DIR)
+open(PRIOR_VALUES_FILE, "w") do io
+    println(io, "soilCO2_pre_exponential_factor = $(preexp)")
+    println(io, "michaelis_constant = $(michaelis)")
+    println(io, "O2_michaelis_constant = $(o2_michaelis)")
+end
 
 # ── Load Observations ────────────────────────────────────────────────────────
 

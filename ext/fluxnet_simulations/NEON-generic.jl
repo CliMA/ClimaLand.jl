@@ -36,7 +36,7 @@ keyword arguments to this function.
 """
 function FluxnetSimulations.get_domain_info(
     FT,
-    ::Val{:NEON_cper};
+    ::Val{site_ID};
     #dz_bottom = FT(1.5),
     #dz_top = FT(0.1),
     #nelements = 20,

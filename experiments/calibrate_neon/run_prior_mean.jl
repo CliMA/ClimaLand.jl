@@ -36,14 +36,57 @@ using CSV
 using DataFrames
 CairoMakie.activate!()
 
+const NEON_SITE_METADATA_CSV =
+    "/kiwi-data/Data/groupMembers/evametz/ERA5/sitedata/NEON_Field_Site_Metadata_20260324.csv"
+
+function _neon_site_key(SITE_ID)
+    return uppercase(replace(string(SITE_ID), "NEON_" => "", "NEON-" => ""))
+end
+
+function _get_neon_site_metadata(SITE_ID)
+    (data, columns) = DelimitedFiles.readdlm(NEON_SITE_METADATA_CSV, ','; header = true)
+    header = vec(String.(columns))
+
+    i_site = findfirst(==("site_id"), header)
+    i_lat = findfirst(==("latitude"), header)
+    i_long = findfirst(==("longitude"), header)
+    i_h = findfirst(==("tower_height_m"), header)
+
+    key = _neon_site_key(SITE_ID)
+    row_idx = findfirst(i -> uppercase(string(data[i, i_site])) == key, axes(data, 1))
+
+    lat = parse(Float64, string(data[row_idx, i_lat]))
+    long = parse(Float64, string(data[row_idx, i_long]))
+    atmos_h = parse(Float64, string(data[row_idx, i_h]))
+    return (; lat, long, atmos_h)
+end
+
 const FT = Float64
 const climaland_dir = pkgdir(ClimaLand)
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
 const DT = Float64(450)
+outdir = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))_SpinUp$(SPINUP_DAYS)/"
+output_base = joinpath(outdir, "output")
+outpath = joinpath(output_base, "calibrate_neon_output", "prior_mean_$(SITE_ID).png")
+
+time_offset = 0
+(site_start_date, site_stop_date) =
+    FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
+start_date =
+    DateTime(get(ENV, "NEON_START_DATE", string(Date(site_start_date))))
+stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(site_stop_date))))
+
+spinup_date = start_date + Day(SPINUP_DAYS)
+
+time_offset = 0
+metadata = _get_neon_site_metadata(SITE_ID)
+lat = FT(metadata.lat)
+long = FT(metadata.long)
+atmos_h = FT(metadata.atmos_h)
 
 # ── Prior mean values ─────────────────────────────────────────────────────────
-const PRIOR_TOML = joinpath(@__DIR__, "prior_mean_parameters.toml")
+const PRIOR_TOML = joinpath(output_base, "prior_mean_parameters.toml")
 open(PRIOR_TOML, "w") do io
     write(io, """
 [soilCO2_pre_exponential_factor]
@@ -67,20 +110,27 @@ println("Wrote prior mean TOML: $PRIOR_TOML")
 # ── Setup ─────────────────────────────────────────────────────────────────────
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 
-(; time_offset, lat, long) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
-spinup_date = start_date + Day(SPINUP_DAYS)
+#(; time_offset, lat, long) =
+#    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+#(start_date, stop_date) =
+#    FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
+#spinup_date = start_date + Day(SPINUP_DAYS)
 
 println("Site: $SITE_ID")
 println("Simulating $start_date → $stop_date (spinup until $spinup_date)")
 
 # Domain
-(; dz_tuple, nelements, zmin, zmax) =
-    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
-(; atmos_h) =
-    FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+dz_bottom = FT(2) #FT(1.5),
+dz_top = FT(0.038)
+dz_tuple = (dz_bottom, dz_top)
+nelements = 24
+zmin = FT(-6.2)
+zmax = FT(0)
+# Domain
+#(; dz_tuple, nelements, zmin, zmax) =
+#    FluxnetSimulations.get_domain_info(FT, Val(site_ID_val))
+#(; atmos_h) =
+#    FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 land_domain = Column(;
     zlim = (zmin, zmax),
@@ -287,7 +337,6 @@ ax3 = Axis(fig[3,1]; xlabel="Day index (after spinup)", ylabel="Tsoil (K)")
 lines!(ax3, 1:nrow(tsoil_daily), tsoil_daily.daily_mean; color=:red, linewidth=1.5, label="Tsoil (model)")
 axislegend(ax3; position=:rt, framevisible=false)
 
-outpath = joinpath(@__DIR__, "calibrate_neon_output", "prior_mean_$(SITE_ID).png")
 mkpath(dirname(outpath))
 CairoMakie.save(outpath, fig)
 println("Saved: $outpath")

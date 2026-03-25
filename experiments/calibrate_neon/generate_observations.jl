@@ -39,9 +39,7 @@ const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
 #SITE_ID = "NEON-cper"
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 
-# Get dates from site metadata
-(; time_offset, lat, long) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+time_offset = 0
 (site_start_date, site_stop_date) =
     FluxnetSimulations.get_data_dates(SITE_ID, time_offset)
 start_date =
@@ -56,6 +54,7 @@ println("Spinup until: $spinup_date")
 
 # ── Load NEON CSV observations ──────────────────────────────────────────────
 csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
+println("Loading NEON data from $csv_path")
 obs_df = CSV.read(csv_path, DataFrame)
 
 # Extract depth-502 columns for plots 001–005
@@ -146,9 +145,10 @@ observation = EKP.Observation(
 println("Observation vector length: $n_obs")
 
 # ── Save ────────────────────────────────────────────────────────────────────
+obs_dir = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))_SpinUp$(SPINUP_DAYS)/"
+mkpath(obs_dir)
 obs_filepath =
-    "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/observations_$(SITE_ID)_$(Date(start_date))_$(Date(stop_date)).jld2"
-    #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
+    joinpath(obs_dir, "observations.jld2")
 JLD2.jldsave(
     obs_filepath;
     observation = observation,

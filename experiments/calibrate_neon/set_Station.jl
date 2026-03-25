@@ -1,0 +1,10 @@
+import Pkg
+Pkg.add("CSV")
+
+ENV["NEON_SITE_ID"] = "NEON-srer"
+ENV["NEON_START_DATE"] = "2019-02-01"
+ENV["NEON_STOP_DATE"] = "2019-12-31"
+
+println("NEON_SITE_ID: ", ENV["NEON_SITE_ID"])
+println("NEON_START_DATE: ", ENV["NEON_START_DATE"])
+println("NEON_STOP_DATE: ", ENV["NEON_STOP_DATE"])
