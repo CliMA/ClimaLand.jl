@@ -27,7 +27,7 @@ const SITE_ID = "DK-Sor"
 const N_ITERATIONS = 10
 const DT = Float64(450)
 
-const climaland_dir = pkgdir(ClimaLand)
+const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 const OUTPUT_DIR = joinpath(climaland_dir, "experiments/calibrate_dk_sor/output")
 const OBS_FILEPATH =
     joinpath(climaland_dir, "experiments/calibrate_dk_sor/observations.jld2")
@@ -109,7 +109,7 @@ end
 @everywhere const OBS_FILEPATH = $OBS_FILEPATH
 @everywhere const DT = $DT
 @everywhere include(
-    joinpath(pkgdir(ClimaLand), "experiments/calibrate_dk_sor/model_interface.jl"),
+    joinpath(abspath(joinpath(@__DIR__, "..", "..")), "experiments/calibrate_dk_sor/model_interface.jl"),
 )
 
 # ── Run Calibration ──────────────────────────────────────────────────────────

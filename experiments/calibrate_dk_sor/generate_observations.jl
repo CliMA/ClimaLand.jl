@@ -18,7 +18,7 @@ import EnsembleKalmanProcesses as EKP
 import ClimaLand
 
 const FT = Float64
-const climaland_dir = pkgdir(ClimaLand)
+const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 
 flux_nc_path = joinpath(
     climaland_dir,

@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=dk_sor_calibration
+#SBATCH --partition=expansion
+#SBATCH --account=esm
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=29
 #SBATCH --cpus-per-task=1
@@ -10,6 +12,7 @@
 export CLIMACOMMS_DEVICE="CPU"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 
+module use /groups/esm/modules
 module load climacommon
 
 julia --project=.buildkite -e 'using Pkg; Pkg.update(); Pkg.instantiate(; verbose=true)'
