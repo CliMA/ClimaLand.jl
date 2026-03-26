@@ -37,7 +37,7 @@ using Statistics
 function ClimaCalibrate.forward_model(iteration, member)
     FT = Float64
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
-    climaland_dir = pkgdir(ClimaLand)
+    climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 
     # Fixed simulation window: 1-year spinup before 2004, run through end of 2013
     sim_start = DateTime(2003, 1, 1)
@@ -83,10 +83,10 @@ function ClimaCalibrate.forward_model(iteration, member)
         FT,
     )
 
-    # FLUXNET LAI — same as run_dk_sor_default.jl
+    # MODIS LAI (LAI_alternative in the FLUXNET met file)
     surface_space = canopy_domain.space.surface
     met_ds = NCDataset(met_nc_path, "r")
-    lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
+    lai_data = Float64.(coalesce.(met_ds["LAI_alternative"][1, 1, :], NaN))
     lai_times = met_ds["time"][:]
     close(met_ds)
     lai_seconds = [Float64(Second(t - Hour(time_offset) - sim_start).value) for t in lai_times]
