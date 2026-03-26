@@ -142,15 +142,13 @@ function set_soilco2_initial_conditions!(Y, p, land)
     @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
     Y.soilco2.O2_f .= FT(0.21)
 
-    # SOC from SoilGrids organic matter fraction:
-    # SOC = ν_ss_om × (1 - ν) × ρ_om × f_C
-    # where ρ_om = 1300 kg/m³ (organic matter density),
-    # f_C = 0.58 (Van Bemmelen carbon fraction of OM),
-    # ν = porosity, ν_ss_om = volume fraction of OM in soil solids
-    ρ_om = FT(1300.0)  # kg/m³
-    f_C = FT(0.58)     # Van Bemmelen factor
-    ν_ss_om = soil.parameters.ν_ss_om
-    @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
+    # SOC: exponential decay with depth (same profile as DK-Sor)
+    # SOC(z) = SOC_bot + (SOC_top - SOC_bot) × exp(z / τ_soc)
+    SOC_top = FT(15.0)  # kgC/m³ at surface
+    SOC_bot = FT(0.5)   # kgC/m³ at depth
+    τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+    @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
     return nothing
 end
 
@@ -603,7 +601,12 @@ function make_set_subseasonal_initial_conditions(
         # Set initial conditions that aren't read in from file
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        # SOC: exponential decay with depth (same profile as DK-Sor)
+        SOC_top = FT(15.0)  # kgC/m³ at surface
+        SOC_bot = FT(0.5)   # kgC/m³ at depth
+        τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
+        z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+        @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
 
         # Set snow T first to use in computing snow internal energy from IC file
@@ -837,13 +840,12 @@ function make_set_initial_state_from_atmos_and_parameters(
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
             Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            # SOC from SoilGrids organic matter fraction:
-            # SOC = ν_ss_om × (1 - ν) × ρ_om × f_C
-            ρ_om = FT(1300.0)  # kg/m³
-            f_C = FT(0.58)     # Van Bemmelen factor
-            ν_ss_om = land.soil.parameters.ν_ss_om
-            ν = land.soil.parameters.ν
-            @. Y.soilco2.SOC = ν_ss_om * (1 - ν) * ρ_om * f_C
+            # SOC: exponential decay with depth (same profile as DK-Sor)
+            SOC_top = FT(15.0)  # kgC/m³ at surface
+            SOC_bot = FT(0.5)   # kgC/m³ at depth
+            τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
+            z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+            @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
         end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
