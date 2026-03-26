@@ -35,6 +35,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 Aqua = "0.8"
+ClimaParams = "1.0.15"
 DelimitedFiles = "1"
 NLsolve = "4.5"
 SafeTestsets = "0.1"

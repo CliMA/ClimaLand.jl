@@ -40,6 +40,7 @@ SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
+ClimaParams = "1.0.15"
 ClimaTimeSteppers = "0.7, 0.8"
 DataFrames = "1.6"
 Flux = "0.15, 0.16"
