@@ -139,7 +139,16 @@ function canopy_boundary_fluxes!(
     bc = canopy.boundary_conditions
 
     # Update the canopy radiation
-    canopy_radiant_energy_fluxes!(
+    canopy_shortwave_fluxes!(
+        p,
+        bc.ground,
+        canopy,
+        bc.radiation,
+        canopy.earth_param_set,
+        Y,
+        t,
+    )
+    canopy_longwave_fluxes!(
         p,
         bc.ground,
         canopy,

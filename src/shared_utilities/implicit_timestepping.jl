@@ -94,13 +94,14 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     # The full jacobian used by the model is Δt ∂X_t_i/∂X_j - δ_{i,j}, so
     # explicit variables have a full jacobian equal to minus the identity matrix.
     implicit_vars =
-        (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T))
+        (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T),@name(∫F_e_dt),)
     explicit_vars = (
         @name(soil.∫F_vol_liq_water_dt),
         @name(soil.∫F_e_dt),
         @name(soilco2.CO2),
         @name(soilco2.O2_f),
         @name(soilco2.SOC),
+        @name(∫F_vol_liq_water_dt),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),
         @name(snow.S),
@@ -134,18 +135,18 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     ) = MatrixFields.DiagonalMatrixRow{FT}
 
     get_j_field(space, FT) = zeros(get_jac_type(space, FT), space)
-
+   
     implicit_blocks = MatrixFields.unrolled_map(
         var ->
             (var, var) =>
                 get_j_field(axes(MatrixFields.get_field(Y, var)), FT),
         available_implicit_vars,
     )
-
+    #implicit_blocks = (implicit_blocks..., (@name(∫F_e_dt), @name(∫F_e_dt)) => FT(-1)* I)
     # We include some terms ∂T_x/∂y where x ≠ y
     # These are the off-diagonal terms in the Jacobian matrix
     # Here, we take the convention that each pair has order (T_x, y) to produce ∂T_x/∂y as above
-    off_diagonal_pairs = ((@name(soil.ρe_int), @name(soil.ϑ_l)),)
+    off_diagonal_pairs = ((@name(soil.ρe_int), @name(soil.ϑ_l)),(@name(∫F_e_dt), @name(canopy.energy.T)))
     available_off_diagonal_pairs = MatrixFields.unrolled_filter(
         pair -> all(is_in_Y.(pair)),
         off_diagonal_pairs,
@@ -156,6 +157,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
                 get_j_field(axes(MatrixFields.get_field(Y, pair[1])), FT),
         available_off_diagonal_pairs,
     )
+    #implicit_off_diagonals = (implicit_off_diagonals..., (@name(∫F_e_dt), @name(canopy.energy.T)) => FT(0)*I)
     # For explicitly-stepped variables, use the negative identity matrix
     # Note: We have to use FT(-1) * I instead of -I because inv(-1) == -1.0,
     # which means that multiplying inv(-1) by a Float32 will yield a Float64.
@@ -174,7 +176,8 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     if is_in_Y(@name(soil.ρe_int)) && is_in_Y(@name(soil.ϑ_l))
         # Set up lower triangular solver for block Jacobian with off-diagonal blocks
         # Specify which variable to compute ∂T_x/∂x for first
-        alg = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
+        alg₁ = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
+        alg = MatrixFields.BlockLowerTriangularSolve((@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T))...; alg₁)
     else
         # Set up block diagonal solver for block Jacobian with no off-diagonal blocks
         alg = MatrixFields.BlockDiagonalSolve()
