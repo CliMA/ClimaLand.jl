@@ -234,11 +234,11 @@ function update_soil_snow_ground_heat_flux!(
     # Temperatures
     T_snow = p.snow.T
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
+    _T_freeze = LP.T_freeze(soil_params.earth_param_set) 
     # compute the flux
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
-        (T_snow - T_soil)
+        (_T_freeze - T_soil)
     return nothing
 end
 
