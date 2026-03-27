@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- Finish computing/label fluxes clearly as expicit or implicit, split radiation in sw and lw pieces
 - Change bare soil evaporation scheme PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
 
 v1.6.3
@@ -11,7 +12,6 @@ v1.6.3
 
 v1.6.2
 -----
-
 - Update compat to SurfaceFluxes 1.0 PR[#1668](https://github.com/CliMA/ClimaLand.jl/pull/1668)
 - Clean up pkgversion checks and set ClimaDiagnostics in compat to 0.3 PR[#1676](https://github.com/CliMA/ClimaLand.jl/pull/1676)
 
