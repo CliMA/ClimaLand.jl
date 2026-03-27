@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = start_date + Month(1)
+stop_date = start_date + Year(10)
 Δt = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -133,6 +133,8 @@ ax = Axis(
     fig[1, 1],
     xlabel = "Days",
     ylabel = "Fractional Error",
+    yscale = log10,
+    xscale = log10
 )
 
 lines!(
@@ -169,6 +171,8 @@ ax2 = Axis(
     fig2[1, 1],
     xlabel = "Days",
     ylabel = "Fractional Error",
+    yscale= log10,
+    xscale = log10
 )
 
 lines!(

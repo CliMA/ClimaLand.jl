@@ -20,7 +20,7 @@ FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 earth_param_set = LP.LandParameters(toml_dict)
 start_date = DateTime("2008-03-01")
-stop_date = DateTime("2009-03-01")
+stop_date = DateTime("2018-03-01")
 Δt = 450.0
 domain = ClimaLand.Domains.Column(;
     dz_tuple = FT.((3, 0.05)),
@@ -45,7 +45,7 @@ forcing = (; atmos, radiation)
 # Read in LAI from MODIS data
 #LAI =
 #    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-LAI = TimeVaryingInput((t) -> 0.0)
+LAI = TimeVaryingInput((t) -> 1.0)
 land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt)
 outdir = generate_output_path(
     "experiments/integrated/performance/conservation_simulation",
