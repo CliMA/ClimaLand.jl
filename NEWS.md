@@ -3,6 +3,14 @@ ClimaLand.jl Release Notes
 
 main
 -----
+
+v1.6.4
+-----
+- Update environment in ClimaCoupler.jl downstream test PR[#1685](https://github.com/CliMA/ClimaLand.jl/pull/1685)
+- Update README PR[#1683](https://github.com/CliMA/ClimaLand.jl/pull/1683)
+- Allow different beta values for C3 and C4 plants PR[#1684](https://github.com/CliMA/ClimaLand.jl/pull/1684)
+- Test different bare soil evaporation scheme with calibratable parameters PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
+- Add CFTime dep and compat to avoid bug in ClimaUtilities PR[#1682](https://github.com/CliMA/ClimaLand.jl/pull/1682)
 - Change bare soil evaporation scheme PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
 
 v1.6.3
