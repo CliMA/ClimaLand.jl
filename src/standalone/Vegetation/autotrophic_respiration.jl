@@ -142,12 +142,19 @@ function compute_autrophic_respiration(
 )
 
     (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
-    Nl, Nr, Ns =
-        nitrogen_content(ne, Vcmax25, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
-    Rg = plant_respiration_growth(Rel, An, Rpm)
-    Ra = Rpm + Rg
-    return Ra * (1 - exp(-K * LAI * Ω)) / (K * Ω) # adjust to canopy level
+    FT = typeof(LAI)
+
+    # Root and stem maintenance respiration: LAI-independent (trees keep roots and stems in winter)
+    Ra_root = Rd * μr * RAI
+    Ra_stem = Rd * μs * ηsl * h * SAI / σl
+
+    # Leaf maintenance and growth respiration: canopy-scaled (→ 0 as LAI → 0)
+    Rpm_leaf = Rd * β
+    Rg = plant_respiration_growth(Rel, An, Rpm_leaf)
+    canopy_scale = (1 - exp(-K * LAI * Ω)) / (K * Ω)
+    Ra_canopy = max(FT(0), Rpm_leaf + Rg) * canopy_scale
+
+    return Ra_canopy + Ra_root + Ra_stem
 end
 
 Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
@@ -207,7 +214,7 @@ function nitrogen_content(
     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
 ) where {FT}
-    Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
+    Sc = ηsl * h * SAI
     Rc = σl * RAI
     nm = Vcmax25 / ne
     Nl = nm * σl * LAI
