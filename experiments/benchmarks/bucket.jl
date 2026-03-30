@@ -6,8 +6,6 @@
 # forcings.
 # See "benchmark_utils.jl" for details on what is benchmarked
 
-delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
-
 import SciMLBase
 using Dates
 import ClimaComms

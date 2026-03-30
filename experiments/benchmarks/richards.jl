@@ -7,11 +7,9 @@
 
 # See "benchmark_utils.jl" for details on what is benchmarked
 
-# When run with buildkite on clima, without Nisght, this code compares with the previous
+# When run with buildkite on clima, without Nsight, this code compares with the previous
 # best time saved at the top of this file
 
-# When run with buildkite on clima, without Nisght, this code also compares with the previous best time
-# saved at the top of this file
 # Simulation Setup
 # This simulation setup is taken from the richards_runoff.jl experiment.
 # Number of spatial elements: 101 in horizontal, 15 in vertical
@@ -23,7 +21,6 @@
 # Jacobian update: Every Newton iteration
 # Precipitation data update: every timestep
 # No user callbacks or diagnostics
-delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
 import SciMLBase
 using Dates
@@ -133,34 +130,6 @@ function setup_richards()
         vg_n = hydrology_cm.n
         Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s)
     end
-    # Create model update functions
-    # set_initial_cache! = make_set_initial_cache(model)
-    # exp_tendency! = make_exp_tendency(model)
-    # imp_tendency! = make_imp_tendency(model)
-    # jacobian! = make_jacobian(model)
-
-    # set_initial_cache!(p, Y, t0)
-
-    # # set up jacobian info
-    # jac_kwargs =
-    #     (; jac_prototype = ClimaLand.initialize_jacobian(Y), Wfact = jacobian!)
-
-    # prob = SciMLBase.ODEProblem(
-    #     CTS.ClimaODEFunction(
-    #         T_exp! = exp_tendency!,
-    #         T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-    #         dss! = ClimaLand.dss!,
-    #     ),
-    #     Y,
-    #     (t0, tf),
-    #     p,
-    # )
-    # drivers = ClimaLand.get_drivers(model)
-    # updatefunc = ClimaLand.make_update_drivers(drivers)
-    # driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, 2Δt, t0)
-    # cb = SciMLBase.CallbackSet(driver_cb)
-
-
 
 
     # Define timestepper and ODE algorithm

@@ -11,9 +11,6 @@
 
 # See "benchmark_utils.jl" for details on what is benchmarked
 
-delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
-
-
 import ClimaComms
 ClimaComms.@import_required_backends
 import CUDA
