@@ -212,3 +212,10 @@ git-tree-sha1 = "9977a4f9cd33b21340f13c9eb4fcd13ad96ad5ee"
     [[neural_snow.download]]
     sha256 = "1f15262014e39269eb95622609ed472c9171a79cf38fb0bea3a0bfb89641bb2f"
     url = "https://caltech.box.com/shared/static/zoog7slfkpi3gjl48umnrx53imxef6li.gz"
+
+[imerg_landsea_mask]
+git-tree-sha1 = "ea4d0f709c63d34dc2d35ce9727e3f70f67133c8"
+
+    [[imerg_landsea_mask.download]]
+    sha256 = "a931f48fcadf9c94e4162d11ae8c6d05d6d9960a01cd1a8342c7c40cf74dfd4b"
+    url = "https://caltech.box.com/shared/static/kmfe3j4bg97l1y07v36gb5jntk1lru3l.gz"

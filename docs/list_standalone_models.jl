@@ -1,4 +1,7 @@
 standalone_models = [
+    "Inland Waters" => [
+        "Slab Lake model" => "standalone/pages/inland_waters/slab_lake.md",
+    ]
     "Vegetation" => [
         "Radiative transfer" => [
             "Beer model" => "standalone/pages/vegetation/radiative_transfer/beer_model.md",

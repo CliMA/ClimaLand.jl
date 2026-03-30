@@ -1047,3 +1047,13 @@ end
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+
+
+### Slab Lake ###
+@diagnostic_compute "lake_internal_energy" Union{SlabLakeModel, LandModel} Y.lake.U
+@diagnostic_compute "lake_temperature" Union{SlabLakeModel, LandModel} p.lake.T
+@diagnostic_compute "lake_liquid_fraction" Union{SlabLakeModel, LandModel} p.lake.q_l
+@diagnostic_compute "lake_sw_albedo" Union{SlabLakeModel, LandModel} p.lake.albedo
+@diagnostic_compute "lake_lhf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.lhf
+@diagnostic_compute "lake_shf" Union{SlabLakeModel, LandModel} p.lake.turbulent_fluxes.shf
+@diagnostic_compute "lake_rn" Union{SlabLakeModel, LandModel} p.lake.R_n

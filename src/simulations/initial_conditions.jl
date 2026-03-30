@@ -251,7 +251,7 @@ function make_set_initial_state_from_file(
     land::LandModel{FT};
     enforce_constraints = false,
 ) where {FT}
-    function set_ic!(Y, p, t0, land)
+    function set_land_ic!(Y, p, t0, land)
         atmos = land.soil.boundary_conditions.top.atmos
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
@@ -354,8 +354,9 @@ function make_set_initial_state_from_file(
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
+
     end
-    return set_ic!
+    return set_land_ic!
 end
 
 """
@@ -412,6 +413,7 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
         # that to set the IC; otherwise choose steady state with the soil water.
@@ -808,7 +810,33 @@ function make_set_initial_state_from_atmos_and_parameters(
             Y.canopy.energy.T .= p.drivers.T
         end
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
-
     end
     return set_ic!
+end
+
+"""
+    set_lake_initial_conditions!(Y, p, t0, model::ClimaLand.InlandWater.SlabLakeModel{FT}) where {FT}
+
+Set initial conditions for the slab lake model.
+
+The lake energy is initialised using the atmospheric temperature (`p.drivers.T`),
+masked by the inland water fraction field stored in the model; it assumes that this has already
+been updated in the case where the atmosphere model is a CoupledAtmosphere.
+"""
+function set_lake_initial_conditions!(
+    Y,
+    p,
+    t0,
+    model::ClimaLand.InlandWater.SlabLakeModel{FT},
+) where {FT}
+    earth_param_set = model.parameters.earth_param_set
+    atmos = model.boundary_conditions.atmos
+    if atmos isa ClimaLand.PrescribedAtmosphere
+        evaluate!(p.drivers.T, atmos.T, t0)
+    end
+    @. Y.lake.U = ClimaLand.InlandWater.lake_energy_from_temperature(
+        p.drivers.T,
+        model.parameters,
+    )
+    return nothing
 end

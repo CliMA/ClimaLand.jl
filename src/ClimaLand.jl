@@ -29,6 +29,8 @@ include("shared_utilities/boundary_conditions.jl")
 include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_timestepping.jl")
 include("standalone/Bucket/Bucket.jl")
+include("standalone/InlandWater/InlandWater.jl")
+
 
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
