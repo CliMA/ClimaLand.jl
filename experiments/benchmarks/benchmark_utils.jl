@@ -96,7 +96,10 @@ function run_profiler(
 
     simulation = setup_simulation()
     GC.gc()
-    Profile.Allocs.@profile sample_rate = 0.0025 step_or_solve!(simulation, device)
+    Profile.Allocs.@profile sample_rate = 0.0025 step_or_solve!(
+        simulation,
+        device,
+    )
     results = Profile.Allocs.fetch()
     profile = ProfileCanvas.view_allocs(results)
     alloc_flame_file = joinpath(outdir, "alloc_flame_cpu.html")
@@ -193,7 +196,9 @@ function run_timing_benchmarks(
             ClimaComms.@elapsed device step_or_solve!(simulation, device)
         )
     end
-    length(timings_s) == 1 && error("Only one sample was obtained. Try increasing MAX_PROFILING_TIME_SECONDS")
+    length(timings_s) == 1 && error(
+        "Only one sample was obtained. Try increasing MAX_PROFILING_TIME_SECONDS",
+    )
     popfirst!(timings_s) # the first sample is always slower, but I'm not sure why
     num_samples = length(timings_s)
     average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
@@ -230,8 +235,10 @@ end
 If device is a ClimaComms.CUDADevice, solve `sim`. Otherwise step `sim` 5 times and close
 all output writers and file readers.
 """
-step_or_solve!(sim::ClimaLand.Simulations.LandSimulation, device::ClimaComms.CUDADevice) =
-    ClimaLand.Simulations.solve!(sim)
+step_or_solve!(
+    sim::ClimaLand.Simulations.LandSimulation,
+    device::ClimaComms.CUDADevice,
+) = ClimaLand.Simulations.solve!(sim)
 function step_or_solve!(sim::ClimaLand.Simulations.LandSimulation, device)
     step_N_times!(sim, 5)
     ClimaLand.Simulations.close_output_writers(sim.diagnostics)

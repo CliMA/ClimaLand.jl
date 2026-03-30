@@ -38,6 +38,7 @@ using Interpolations
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaTimeSteppers as CTS
 using ClimaParams
+import ClimaCore
 
 import ClimaLand
 import ClimaLand.Parameters
@@ -98,6 +99,8 @@ function setup_richards()
         atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip),
     )
     model = ClimaLand.Soil.RichardsModel{FT}(domain, forcing)
+    z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
+    lat = ClimaCore.Fields.coordinate_field(domain.space.subsurface).lat
     function hydrostatic_profile(
         lat::FT,
         z::FT,
@@ -120,58 +123,45 @@ function setup_richards()
         end
         return FT(ϑ_l)
     end
-
-    hydrology_cm = model.parameters.hydrology_cm
-    ν = model.parameters.ν
-    θ_r = model.parameters.S_s
-    S_s = model.parameters.θ_r
-    # Set initial state values
-    vg_α = hydrology_cm.α
-    vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s)
-    # Create model update functions
-    set_initial_cache! = make_set_initial_cache(model)
-    exp_tendency! = make_exp_tendency(model)
-    imp_tendency! = make_imp_tendency(model)
-    jacobian! = make_jacobian(model)
-
-    set_initial_cache!(p, Y, t0)
-
-    # set up jacobian info
-    jac_kwargs =
-        (; jac_prototype = ClimaLand.initialize_jacobian(Y), Wfact = jacobian!)
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    drivers = ClimaLand.get_drivers(model)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, 2Δt, t0)
-    cb = SciMLBase.CallbackSet(driver_cb)
-
-    return prob, cb
-end
-
-function setup_simulation(; greet = false)
-    t0 = 0.0
-    tf = 3600.0 * 24 * 7
-    Δt = 1800.0
-    nelements = (101, 15)
-    if greet
-        @info "Run: Global RichardsModel"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Duration: $(tf - t0) s"
+    function set_ic!(Y, _, _, model)
+        hydrology_cm = model.parameters.hydrology_cm
+        ν = model.parameters.ν
+        θ_r = model.parameters.S_s
+        S_s = model.parameters.θ_r
+        # Set initial state values
+        vg_α = hydrology_cm.α
+        vg_n = hydrology_cm.n
+        Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s)
     end
+    # Create model update functions
+    # set_initial_cache! = make_set_initial_cache(model)
+    # exp_tendency! = make_exp_tendency(model)
+    # imp_tendency! = make_imp_tendency(model)
+    # jacobian! = make_jacobian(model)
 
-    prob, cb = setup_prob(t0, tf, Δt; nelements)
+    # set_initial_cache!(p, Y, t0)
+
+    # # set up jacobian info
+    # jac_kwargs =
+    #     (; jac_prototype = ClimaLand.initialize_jacobian(Y), Wfact = jacobian!)
+
+    # prob = SciMLBase.ODEProblem(
+    #     CTS.ClimaODEFunction(
+    #         T_exp! = exp_tendency!,
+    #         T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+    #         dss! = ClimaLand.dss!,
+    #     ),
+    #     Y,
+    #     (t0, tf),
+    #     p,
+    # )
+    # drivers = ClimaLand.get_drivers(model)
+    # updatefunc = ClimaLand.make_update_drivers(drivers)
+    # driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, 2Δt, t0)
+    # cb = SciMLBase.CallbackSet(driver_cb)
+
+
+
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

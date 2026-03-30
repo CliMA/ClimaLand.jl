@@ -56,7 +56,7 @@ function setup_snowyland()
     stop_date = start_date + duration
     Δt = 450.0
     time_interpolation_method = LinearInterpolation(PeriodicCalendar())
-    nelements = (180, 360, 15),
+    nelements = (180, 360, 15)
     earth_param_set = LP.LandParameters(toml_dict)
     domain = ClimaLand.Domains.global_box_domain(FT; nelements)
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
@@ -82,30 +82,18 @@ function setup_snowyland()
     )
 
     # Construct land model with all default components
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+    )
 
 
     # Set initial conditions
-    (; θ_r, ν, ρc_ds, earth_param_set) = land.soil.parameters
-    @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
-    Y.soil.θ_i .= 0
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            ρc_ds,
-            earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, earth_param_set)
-    Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    # we need t0 to set IC
-    t0 = 0.0
-    tf = Second(stop_date - start_date).value
-    plant_ν = land.canopy.hydraulics.parameters.ν
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
     function set_ic!(Y, p, t0, land)
         (; θ_r, ν, ρc_ds, earth_param_set) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
@@ -125,7 +113,7 @@ function setup_snowyland()
                 T,
                 earth_param_set,
             )
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
         plant_ν = land.canopy.hydraulics.parameters.ν
         Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
