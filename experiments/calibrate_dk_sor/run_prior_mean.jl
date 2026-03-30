@@ -31,7 +31,7 @@ using CairoMakie
 CairoMakie.activate!()
 
 const FT = Float64
-const climaland_dir = pkgdir(ClimaLand)
+const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 const SITE_ID = "DK-Sor"
 const DT = Float64(900)
 
@@ -169,7 +169,7 @@ forcing_nt = (; atmos, radiation, ground = ClimaLand.PrognosticGroundConditions{
 biomass = Canopy.PrescribedBiomassModel{FT}(
     land_domain, LAI, toml_dict;
     rooting_depth,
-    height = FT(25), SAI = FT(1.0), RAI = FT(17.5),
+    height = FT(25), SAI = FT(1.0), RAI = FT(1.5),
 )
 radiation_parameters = (;
     Ω,

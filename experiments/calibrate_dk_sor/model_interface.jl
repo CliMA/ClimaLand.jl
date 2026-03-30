@@ -83,10 +83,10 @@ function ClimaCalibrate.forward_model(iteration, member)
         FT,
     )
 
-    # MODIS LAI (LAI_alternative in the FLUXNET met file)
+    # FLUXNET LAI — same as run_dk_sor_default.jl (Copernicus Global Land Service)
     surface_space = canopy_domain.space.surface
     met_ds = NCDataset(met_nc_path, "r")
-    lai_data = Float64.(coalesce.(met_ds["LAI_alternative"][1, 1, :], NaN))
+    lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
     lai_times = met_ds["time"][:]
     close(met_ds)
     lai_seconds = [Float64(Second(t - Hour(time_offset) - sim_start).value) for t in lai_times]
@@ -126,7 +126,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         rooting_depth,
         height = FT(25),
         SAI = FT(1.0),
-        RAI = FT(17.5),
+        RAI = FT(1.5),
     )
     radiation_parameters = (;
         Ω,

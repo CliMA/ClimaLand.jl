@@ -60,12 +60,12 @@ rng = Random.MersenneTwister(60732)
 
 # ── Tunable settings ──────────────────────────────────────────────────────────
 case           = "posterior_uq"   # output subdirectory label
-N_train        = 7                # EKI iterations used to train the emulator
+N_train        = 8                # EKI iterations used to train the emulator (10-iter calibration → max=8)
 skip           = 1                # stride over iterations (1 = all)
 retain_var_in  = 0.99             # fraction of input variance kept after PCA
 retain_var_out = 0.95             # fraction of output variance kept after PCA
 chain_length   = 100_000          # MCMC chain length
-init_stepsize  = 0.1              # initial step size for optimisation
+init_stepsize  = 1e-3             # initial step size for optimisation (pCN β; 0.1 too large → 0% acceptance)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 const climaland_dir  = abspath(joinpath(@__DIR__, "..", ".."))
@@ -85,26 +85,23 @@ cp(abspath(@__FILE__), joinpath(out_dir, basename(@__FILE__)); force = true)
       "\n  outputs: $out_dir"
 
 # ── Priors ────────────────────────────────────────────────────────────────────
-# These MUST mirror the `priors` vector in `run_calibration.jl` EXACTLY as it
-# was when the EKP was created — 12 parameters (9 canopy + 3 DAMM soilCO2).
-# NOTE: root_leaf_nitrogen_ratio and stem_leaf_nitrogen_ratio were added to
-# run_calibration.jl after the stored EKP was generated and are NOT calibrated.
-# They are handled via hardcoded defaults in run_callmip_simulations.jl.
+# These MUST mirror the `priors` vector in Alexis's 12-param backup EXACTLY —
+# 12 parameters (9 canopy + 3 DAMM soilCO2, no autotrophic respiration).
 priors_vec = [
     # Canopy / conductance parameters
-    PD.constrained_gaussian("moisture_stress_c",              0.27,     0.15,     0.01,    5.0),
+    PD.constrained_gaussian("moisture_stress_c",              0.5,      0.3,      0.01,    5.0),
     PD.constrained_gaussian("pmodel_cstar",                   0.43,     0.15,     0.05,    2.0),
     PD.constrained_gaussian("pmodel_β",                      51.0,     20.0,      5.0,  500.0),
-    PD.constrained_gaussian("leaf_Cd",                        0.07,     0.04,     0.005,   1.0),
-    PD.constrained_gaussian("canopy_z_0m_coeff",              0.02,     0.01,     0.001,   0.3),
-    PD.constrained_gaussian("canopy_z_0b_coeff",              0.0007,   0.0003,   1e-5,  0.005),
-    PD.constrained_gaussian("canopy_d_coeff",                 0.007,    0.004,    0.001,   0.1),
+    PD.constrained_gaussian("leaf_Cd",                        0.1,      0.05,     0.005,   1.0),
+    PD.constrained_gaussian("canopy_z_0m_coeff",              0.05,     0.03,     0.001,   0.3),
+    PD.constrained_gaussian("canopy_z_0b_coeff",              0.001,    0.0005,   1e-5,   0.01),
+    PD.constrained_gaussian("canopy_d_coeff",                 0.1,      0.05,     0.001,  0.95),
     PD.constrained_gaussian("canopy_K_lw",                    0.85,     0.25,     0.1,     2.0),
-    PD.constrained_gaussian("canopy_emissivity",              0.98,     0.01,     0.9,     1.0),
+    PD.constrained_gaussian("canopy_emissivity",              0.97,     0.02,     0.9,     1.0),
     # DAMM soil-CO₂
-    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 23835.0,  10000.0,  1000.0, 200000.0),
-    PD.constrained_gaussian("michaelis_constant",             0.005,    0.003,    1e-4,    0.1),
-    PD.constrained_gaussian("O2_michaelis_constant",          0.004,    0.002,    1e-4,    0.1),
+    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0,  10000.0,  1000.0, 200000.0),
+    PD.constrained_gaussian("michaelis_constant",             0.01,     0.005,    1e-4,    0.1),
+    PD.constrained_gaussian("O2_michaelis_constant",          0.01,     0.005,    1e-4,    0.1),
 ]
 
 prior       = PD.combine_distributions(priors_vec)
@@ -239,10 +236,11 @@ mcmc = MCMCWrapper(
 
 @info "Optimising MCMC step size (N=2000 test steps)…"
 new_step = try
-    optimize_stepsize(rng, mcmc; init_stepsize, N = 2000, discard_initial = 0, max_iter = 40)
+    optimize_stepsize(rng, mcmc; init_stepsize, N = 2000, discard_initial = 0, max_iter = 500)
 catch e
-    @warn "optimize_stepsize did not converge ($(e)). Falling back to init_stepsize=$init_stepsize."
-    init_stepsize
+    fallback = init_stepsize / 10
+    @warn "optimize_stepsize did not converge ($(e)). Falling back to $fallback."
+    fallback
 end
 @info "Step size selected: $new_step  — sampling chain of length $chain_length…"
 
