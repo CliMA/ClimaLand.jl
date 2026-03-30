@@ -1,5 +1,6 @@
 import ClimaAnalysis
 import ClimaAnalysis: OutputVar
+import ClimaComms
 import ClimaLand
 import ClimaCalibrate
 import Dates

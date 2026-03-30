@@ -137,11 +137,13 @@ function process_member_data!(
 end
 
 """
-    ClimaCalibrate.analyze_iteration(ekp,
-                                     g_ensemble,
-                                     prior,
-                                     output_dir,
-                                     iteration)
+    ClimaCalibrate.analyze_iteration(
+        ekp,
+        g_ensemble,
+        prior,
+        output_dir,
+        iteration
+    )
 
 Analyze an iteration by plotting the bias plots, constrained parameters over
 iterations, and errors over iterations and time.
