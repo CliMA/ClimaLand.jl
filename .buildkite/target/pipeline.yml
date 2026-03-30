@@ -42,6 +42,7 @@ steps:
         agents:
           slurm_mem: 16GB
           slurm_cpus_per_task: 4
+          slurm_gpus: 0
         artifact_paths:
           - "bucket_benchmark_cpu/*"
         soft_fail: true
@@ -53,6 +54,7 @@ steps:
         agents:
           slurm_mem: 16GB
           slurm_cpus_per_task: 4
+          slurm_gpus: 0
         artifact_paths:
           - "richards_benchmark_cpu/*"
         soft_fail: true
@@ -64,6 +66,7 @@ steps:
         agents:
           slurm_mem: 16GB
           slurm_cpus_per_task: 4
+          slurm_gpus: 0
         artifact_paths:
           - "soil_benchmark_cpu/*"
         soft_fail: true
@@ -75,6 +78,7 @@ steps:
         agents:
           slurm_mem: 16GB
           slurm_cpus_per_task: 4
+          slurm_gpus: 0
         artifact_paths:
           - "snowy_land_benchmark_cpu/*"
         soft_fail: true
@@ -142,6 +146,7 @@ steps:
         env:
           CLIMACOMMS_DEVICE: CUDA
           JULIA_NVTX_CALLBACKS: "gc,alloc,free,inference"
+          CLIMA_NAME_CUDA_KERNELS_FROM_STACK_TRACE: true
         agents:
           slurm_mem: 64G
           slurm_cpus_per_task: 4

@@ -35,7 +35,7 @@ const FT = Float64
 
 ######################################################################
 ## This result is from a benchmark ran on an A100 on the clima cluster
-const PREVIOUS_GPU_TIME_S = 0.7
+const PREVIOUS_GPU_TIME_S = 0.515
 ## This result is from a benchmark ran with a single process on the clima cluster
 const PREVIOUS_CPU_TIME_S = 14.9
 ######################################################################
