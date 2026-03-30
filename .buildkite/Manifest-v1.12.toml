@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "3a670ec1f3228eaa501f77111b052a480a84b388"
+project_hash = "591c6a2e97bff35a87a5f474f6b8e6a8eaa80277"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -426,9 +426,9 @@ weakdeps = ["GeoMakie", "Makie"]
 
 [[deps.ClimaCalibrate]]
 deps = ["Dates", "Distributed", "Distributions", "EnsembleKalmanProcesses", "JLD2", "Logging", "Random", "TOML", "YAML"]
-git-tree-sha1 = "0d7ff225f8cfe2f6adad34ed7ed6f32438d4a772"
+git-tree-sha1 = "614be4383a0caa9214fd47e28c086cc4e8d536b9"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
-version = "0.1.4"
+version = "0.2.2"
 
     [deps.ClimaCalibrate.extensions]
     CESExt = "CalibrateEmulateSample"

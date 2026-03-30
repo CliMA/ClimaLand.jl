@@ -33,7 +33,6 @@ end
 
 Make an ocean mask.
 
-
 This assumes that the model is run using a global box domain with `nelements`,
 mask threshold set to 0.99,
 and that the output is on the grid specified by
