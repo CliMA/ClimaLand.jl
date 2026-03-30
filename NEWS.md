@@ -12,6 +12,7 @@ v1.6.4
 - Test different bare soil evaporation scheme with calibratable parameters PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
 - Add CFTime dep and compat to avoid bug in ClimaUtilities PR[#1682](https://github.com/CliMA/ClimaLand.jl/pull/1682)
 - Change bare soil evaporation scheme PR[#1663](https://github.com/CliMA/ClimaLand.jl/pull/1663)
+- ![breaking change][badge-💥breaking] Use fractional C3/C4 for `PModel` PR[#1680](https://github.com/CliMA/ClimaLand.jl/pull/1680)
 
 v1.6.3
 -----
