@@ -53,32 +53,23 @@ isdir(OUTPUT_DIR) || mkpath(OUTPUT_DIR)
 const MEMBER_PRIOR     = 1    # prior simulation slot
 const MEMBER_POSTERIOR = 2    # posterior simulation slot
 
-# ── Priors (must match the 12-param EKP from Alexis's calibration) ───────────
-# Note: root_leaf_nitrogen_ratio and stem_leaf_nitrogen_ratio were added to
-# run_calibration.jl after the EKP was created. They are NOT in the stored EKP
-# and are written separately as fixed defaults in the TOML below.
+# ── Priors (must match Alexis's 12-param backup EXACTLY) ─────────────────────
 priors_vec = [
-    PD.constrained_gaussian("moisture_stress_c",              0.27,    0.15,    0.01,    5.0),
+    PD.constrained_gaussian("moisture_stress_c",              0.5,     0.3,     0.01,    5.0),
     PD.constrained_gaussian("pmodel_cstar",                   0.43,    0.15,    0.05,    2.0),
     PD.constrained_gaussian("pmodel_β",                      51.0,    20.0,     5.0,  500.0),
-    PD.constrained_gaussian("leaf_Cd",                        0.07,    0.04,    0.005,   1.0),
-    PD.constrained_gaussian("canopy_z_0m_coeff",              0.02,    0.01,    0.001,   0.3),
-    PD.constrained_gaussian("canopy_z_0b_coeff",              0.0007,  0.0003,  1e-5,  0.005),
-    PD.constrained_gaussian("canopy_d_coeff",                 0.007,   0.004,   0.001,   0.1),
+    PD.constrained_gaussian("leaf_Cd",                        0.1,     0.05,    0.005,   1.0),
+    PD.constrained_gaussian("canopy_z_0m_coeff",              0.05,    0.03,    0.001,   0.3),
+    PD.constrained_gaussian("canopy_z_0b_coeff",              0.001,   0.0005,  1e-5,   0.01),
+    PD.constrained_gaussian("canopy_d_coeff",                 0.1,     0.05,    0.001,  0.95),
     PD.constrained_gaussian("canopy_K_lw",                    0.85,    0.25,    0.1,     2.0),
-    PD.constrained_gaussian("canopy_emissivity",              0.98,    0.01,    0.9,     1.0),
-    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 23835.0, 10000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("michaelis_constant",             0.005,   0.003,   1e-4,    0.1),
-    PD.constrained_gaussian("O2_michaelis_constant",          0.004,   0.002,   1e-4,    0.1),
+    PD.constrained_gaussian("canopy_emissivity",              0.97,    0.02,    0.9,     1.0),
+    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0, 10000.0, 1000.0, 200000.0),
+    PD.constrained_gaussian("michaelis_constant",             0.01,    0.005,   1e-4,    0.1),
+    PD.constrained_gaussian("O2_michaelis_constant",          0.01,    0.005,   1e-4,    0.1),
 ]
 prior       = PD.combine_distributions(priors_vec)
 param_names = [only(PD.get_name(d)) for d in priors_vec]
-
-# Fixed AR defaults (not in the calibrated EKP — written to every TOML)
-const AR_DEFAULTS = [
-    ("root_leaf_nitrogen_ratio", 1.0,  "[\"getindex\"]"),
-    ("stem_leaf_nitrogen_ratio", 0.1,  "[\"getindex\"]"),
-]
 
 # ── Helper: write a parameter TOML file ───────────────────────────────────────
 function write_parameter_toml(path, names, values)
@@ -87,14 +78,6 @@ function write_parameter_toml(path, names, values)
             used_in = (name == "soilCO2_pre_exponential_factor" ||
                        name == "michaelis_constant"              ||
                        name == "O2_michaelis_constant") ? "[\"Land\"]" : "[\"getindex\"]"
-            println(io, "[\"$name\"]")
-            println(io, "value = $(Float64(val))")
-            println(io, "type  = \"float\"")
-            println(io, "used_in = $used_in")
-            println(io)
-        end
-        # Always write AR parameters at their physical defaults (not calibrated)
-        for (name, val, used_in) in AR_DEFAULTS
             println(io, "[\"$name\"]")
             println(io, "value = $(Float64(val))")
             println(io, "type  = \"float\"")
@@ -120,6 +103,8 @@ const PRIOR_MEANS = Dict(
     "canopy_d_coeff"                 => 0.007,
     "canopy_K_lw"                    => 0.85,
     "canopy_emissivity"              => 0.98,
+    "root_leaf_nitrogen_ratio"       => 1.0,
+    "stem_leaf_nitrogen_ratio"       => 0.1,
     "soilCO2_pre_exponential_factor" => 23835.0,
     "michaelis_constant"             => 0.005,
     "O2_michaelis_constant"          => 0.004,

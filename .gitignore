@@ -38,3 +38,16 @@ docs/site/
 # committed for packages, but should be committed for applications that require a static
 # environment.
 Manifest.toml
+
+# SLURM job logs
+*.out
+*.err
+
+# Julia distributed worker logs
+worker_*.log
+.julia-*.out
+
+# Generated calibration / UQ output (large JLD2 artifacts, not for version control)
+experiments/calibrate_dk_sor/output/
+experiments/callmip_uq_dk_sor/output_posterior_uq/
+experiments/callmip_uq_dk_sor/output_*/

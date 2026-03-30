@@ -163,7 +163,7 @@ function ClimaCalibrate.forward_model(iteration, member)
 
     biomass = Canopy.PrescribedBiomassModel{FT}(
         land_domain, LAI, toml_dict;
-        rooting_depth, height = FT(25), SAI = FT(1.0), RAI = FT(17.5),
+        rooting_depth, height = FT(25), SAI = FT(1.0), RAI = FT(1.5),
     )
     radiation_parameters = (;
         Ω,

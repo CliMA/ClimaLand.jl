@@ -22,7 +22,7 @@ import ..Diagnostics: close_output_writers
         DI,
         RC,
         CA <: SciMLBase.CallbackSet,
-        I <: SciMLBase.DEIntegrator,
+        I,
     }
 
 the ClimaLand LandSimulation struct, which specifies
@@ -50,7 +50,7 @@ struct LandSimulation{
     DI,
     RC,
     CA <: SciMLBase.CallbackSet,
-    I <: SciMLBase.DEIntegrator,
+    I,
 }
     model::M
     timestepper::T
