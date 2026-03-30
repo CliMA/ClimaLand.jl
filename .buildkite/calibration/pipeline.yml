@@ -3,6 +3,9 @@ agents:
   slurm_mem: 8G
   modules: climacommon/2026_02_18
 
+env:
+  TEST_CALIBRATION: ""
+
 steps:
   - label: "init :GPU:"
     command:

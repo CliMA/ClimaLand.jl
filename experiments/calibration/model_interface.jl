@@ -38,6 +38,18 @@ interface_path =
 include(joinpath(interface_path, "snowy_land.jl"))
 include(joinpath(interface_path, "bucket.jl"))
 
+# To prevent infinite includes from run_calibration.jl including this file
+if !@isdefined(CALIBRATE_CONFIG)
+    include(
+        joinpath(
+            pkgdir(ClimaLand),
+            "experiments",
+            "calibration",
+            "run_calibration.jl",
+        ),
+    )
+end
+
 function ClimaCalibrate.forward_model(iteration, member)
     model_type = CALIBRATE_CONFIG.model_type
     ClimaCalibrate.forward_model(iteration, member, model_type)
