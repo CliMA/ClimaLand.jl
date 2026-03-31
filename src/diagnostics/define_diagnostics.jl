@@ -1,4 +1,3 @@
-
 """
     define_diagnostics!(land_model, possible_diags)
 
@@ -1137,5 +1136,85 @@ function define_diagnostics!(land_model, possible_diags)
         comments = "The snow cover fraction",
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
+    )
+
+    ### Slab Lake ###
+    # Lake internal energy (prognostic)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "lkie",
+        long_name = "Lake Internal Energy",
+        standard_name = "lake_internal_energy",
+        units = "J m^-2",
+        comments = "Internal energy of the slab lake per unit lake area.",
+        compute! = (out, Y, p, t) ->
+            compute_lake_internal_energy!(out, Y, p, t, land_model),
+    )
+
+    # Lake temperature (cache)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "tlake",
+        long_name = "Lake Temperature",
+        standard_name = "lake_temperature",
+        units = "K",
+        comments = "Temperature of the slab lake.",
+        compute! = (out, Y, p, t) ->
+            compute_lake_temperature!(out, Y, p, t, land_model),
+    )
+
+    # Lake liquid fraction (cache)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "qlake",
+        long_name = "Lake Liquid Fraction",
+        standard_name = "lake_liquid_fraction",
+        units = "",
+        comments = "Liquid fraction of the slab lake (0 = fully frozen, 1 = fully liquid).",
+        compute! = (out, Y, p, t) ->
+            compute_lake_liquid_fraction!(out, Y, p, t, land_model),
+    )
+
+    # Lake albedo
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "alake",
+        long_name = "Lake Shortwave Albedo",
+        standard_name = "lake_sw_albedo",
+        units = "",
+        comments = "Lake broadband sw albedo",
+        compute! = (out, Y, p, t) ->
+            compute_lake_sw_albedo!(out, Y, p, t, land_model),
+    )
+
+    # Lake fluxes
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "rnlake",
+        long_name = "Lake net radiative flux",
+        standard_name = "lake_rn",
+        units = "W m-2",
+        comments = "Lake net radiative flux per lake area",
+        compute! = (out, Y, p, t) -> compute_lake_rn!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "lhflake",
+        long_name = "Lake latent heat flux",
+        standard_name = "lake_lhf",
+        units = "W m-2",
+        comments = "Lake latent heat flux per lake area",
+        compute! = (out, Y, p, t) ->
+            compute_lake_lhf!(out, Y, p, t, land_model),
+    )
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "shflake",
+        long_name = "Lake sensible heat flux",
+        standard_name = "lake_shf",
+        units = "W m-2",
+        comments = "Lake sensible heat flux per lake area",
+        compute! = (out, Y, p, t) ->
+            compute_lake_shf!(out, Y, p, t, land_model),
     )
 end

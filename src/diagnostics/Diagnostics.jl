@@ -9,6 +9,7 @@ import ..Parameters as LP
 
 import ..AbstractModel, ..AbstractLandModel
 using ..Bucket: BucketModel
+using ..InlandWater: SlabLakeModel
 import ..SoilCanopyModel
 import ..LandModel
 import ..SoilSnowModel

@@ -42,6 +42,10 @@ end
     include("standalone/Bucket/restart.jl")
 end
 
+@safetestset "Inland water" begin
+    include("standalone/InlandWater/unit_tests.jl")
+end
+
 # Standalone Snow model tests
 @safetestset "Snow parameterization tests" begin
     include("standalone/Snow/parameterizations.jl")

@@ -198,7 +198,7 @@ function default_diagnostics(
 end
 
 """
-    default_diagnostics(model::Union{
+    default_diagnostics(model::Union{SlabLakeModel{FT},
                             CanopyModel{FT},
                             SoilCanopyModel{FT},
                             LandModel{FT},
@@ -233,6 +233,7 @@ Note that `EnergyHydrology` has a specialized method that handles conservation d
 """
 function default_diagnostics(
     model::Union{
+        SlabLakeModel{FT},
         CanopyModel{FT},
         SoilCanopyModel{FT},
         LandModel{FT},
@@ -627,6 +628,12 @@ function get_short_diagnostics(model::CanopyModel)
 end
 function get_short_diagnostics(model::SnowModel)
     return get_possible_diagnostics(model)
+end
+function get_possible_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
+    return ["lkie", "tlake", "qlake", "alake", "shflake", "lhflake", "rnlake"]
+end
+function get_short_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
+    return ["tlake", "alake"]
 end
 function get_short_diagnostics(model::SoilCanopyModel)
     component_diagnostics =

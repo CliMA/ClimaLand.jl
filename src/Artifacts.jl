@@ -526,6 +526,18 @@ function ilamb_dataset_path(filename; context = nothing)
 end
 
 """
+    imerg_landsea_mask_path(; context = nothing)
+
+Return the path to the IMERG land-sea mask NetCDF file.
+The file contains a `landseamask` variable encoding water fraction
+(0 = pure land, 100 = pure water/ocean).
+"""
+function imerg_landsea_mask_path(; context = nothing)
+    dir = @clima_artifact("imerg_landsea_mask", context)
+    return joinpath(dir, "IMERG_land_sea_mask.nc")
+end
+
+"""
     landseamask_file_path(; resolution = "60arcs", context=nothing)
 
 Construct the file path for the landsea mask data NetCDF file,
