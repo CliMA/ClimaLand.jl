@@ -192,4 +192,4 @@ lines!(ax5, R_ss .+1e-10)
 ax6 = Axis(fig[6,1])
 lines!(ax6,h∇)
 
-CairoMakie.save("tmp_is_saturated_ghf.png",fig)
+CairoMakie.save("tmp_ghf_10x.png",fig)

@@ -228,17 +228,17 @@ function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depths
-    Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
+    Δz_snow = @. lazy(min(p.snow.z_snow, FT(1.0)))
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
     T_snow = p.snow.T
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-    _T_freeze = LP.T_freeze(soil_params.earth_param_set) 
+
     # compute the flux
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
-        (_T_freeze - T_soil)
+        (T_snow - T_soil)
     return nothing
 end
 
