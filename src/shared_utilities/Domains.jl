@@ -1444,7 +1444,8 @@ If the surface space is a point, `use_lowres_clm` always returns true.
 """
 function use_lowres_clm(
     surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
-)
+) = false
+#=
     node_scale = ClimaCore.Spaces.node_horizontal_length_scale(surface_space)
     surface_mesh = ClimaCore.Spaces.topology(surface_space).mesh
     if surface_mesh isa ClimaCore.Meshes.AbstractCubedSphere
@@ -1463,6 +1464,7 @@ function use_lowres_clm(
         return false
     end
     return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
+=#
 end
 
 use_lowres_clm(surface_space::ClimaCore.Spaces.PointSpace) = false
