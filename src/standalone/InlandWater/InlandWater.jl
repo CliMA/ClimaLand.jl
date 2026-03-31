@@ -49,14 +49,17 @@ using ClimaLand:
 import ClimaLand.Domains:
     Point, Column, SphericalShell, SphericalSurface, HybridBox, Plane
 using Interpolations
+using Dates
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.DataHandling
 
 export SlabLakeParameters,
     SlabLakeModel,
     AbstractInlandWaterModel,
     AtmosDrivenLakeBC,
     lake_boundary_fluxes!,
-    inland_water_mask
+    inland_water_mask,
+    era5_lake_depth
 
 """
     AbstractInlandWaterModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -81,8 +84,10 @@ where
 $(DocStringExtensions.FIELDS)
 """
 struct SlabLakeParameters{FT <: AbstractFloat, PSE}
-    "Mixed-layer depth of the slab lake (m)"
+    "Default mixed-layer depth of the slab lake (m), used as fallback"
     depth::FT
+    "Scale factor for ERA5 lake depth (dimensionless)"
+    depth_scale_factor::FT
     "Lake–sediment conductance (W m⁻² K⁻¹)"
     conductance::FT
     "Open-water albedo"
@@ -105,6 +110,7 @@ Base.broadcastable(ps::SlabLakeParameters) = tuple(ps)
     SlabLakeParameters(
         toml_dict::CP.ParamDict;
         depth = toml_dict["slab_lake_depth"],
+        depth_scale_factor = toml_dict["slab_lake_depth_scale_factor"],
         conductance = toml_dict["slab_lake_conductance"],
         liquid_albedo = toml_dict["slab_lake_liquid_albedo"],
         ice_albedo = toml_dict["slab_lake_ice_albedo"],
@@ -118,6 +124,7 @@ TOML dictionary constructor for `SlabLakeParameters`.
 function SlabLakeParameters(
     toml_dict::CP.ParamDict;
     depth = toml_dict["slab_lake_depth"],
+    depth_scale_factor = toml_dict["slab_lake_depth_scale_factor"],
     conductance = toml_dict["slab_lake_conductance"],
     liquid_albedo = toml_dict["slab_lake_liquid_albedo"],
     ice_albedo = toml_dict["slab_lake_ice_albedo"],
@@ -129,6 +136,7 @@ function SlabLakeParameters(
     earth_param_set = LP.LandParameters(toml_dict)
     return SlabLakeParameters{FT, typeof(earth_param_set)}(
         depth,
+        depth_scale_factor,
         conductance,
         liquid_albedo,
         ice_albedo,
@@ -167,7 +175,7 @@ A slab lake model for inland water points.
 
 $(DocStringExtensions.FIELDS)
 """
-struct SlabLakeModel{FT, PS, D, BC, M} <: AbstractInlandWaterModel{FT}
+struct SlabLakeModel{FT, PS, D, BC, M, DP} <: AbstractInlandWaterModel{FT}
     "Lake parameters"
     parameters::PS
     "The lake domain (surface only)"
@@ -176,6 +184,8 @@ struct SlabLakeModel{FT, PS, D, BC, M} <: AbstractInlandWaterModel{FT}
     boundary_conditions::BC
     "Inland water mask on the surface space (fraction 0–1)"
     inland_water_mask::M
+    "Lake depth — scalar or spatially varying (m)"
+    depth::DP
 end
 
 """
@@ -184,6 +194,7 @@ end
         domain,
         boundary_conditions,
         inland_water_mask,
+        depth,
     )
 
 Construct a `SlabLakeModel`.
@@ -193,12 +204,14 @@ function SlabLakeModel{FT}(;
     domain::D,
     boundary_conditions::BC,
     inland_water_mask::M,
-) where {FT, PS, D, BC, M}
-    return SlabLakeModel{FT, PS, D, BC, M}(
+    depth::DP,
+) where {FT, PS, D, BC, M, DP}
+    return SlabLakeModel{FT, PS, D, BC, M, DP}(
         parameters,
         domain,
         boundary_conditions,
         inland_water_mask,
+        depth,
     )
 end
 
@@ -209,13 +222,15 @@ end
         forcing,
         toml_dict::CP.ParamDict;
         inland_water_mask = inland_water_mask(domain.space.surface),
+        depth = era5_lake_depth(domain.space.surface; inland_water_mask),
         prognostic_land_components = (:lake,),
         parameters = SlabLakeParameters(toml_dict),
     )
 
 Convenience constructor for `SlabLakeModel` that builds the model from a
 TOML parameter dictionary, following the same pattern as for other
-component models. The default inland water mask is used.
+component models. The default depth is `α * depth_ERA5` where `α` is
+`parameters.depth_scale_factor`.
 """
 function SlabLakeModel(
     FT,
@@ -223,9 +238,18 @@ function SlabLakeModel(
     forcing,
     toml_dict::CP.ParamDict;
     inland_water_mask = inland_water_mask(domain.space.surface),
+    depth = era5_lake_depth(
+        domain.space.surface;
+        inland_water_mask = inland_water_mask,
+        default_depth = toml_dict["slab_lake_depth"],
+    ),
     prognostic_land_components = (:lake,),
     parameters = SlabLakeParameters(toml_dict),
 )
+    # Apply depth scale factor: depth_slab = α * depth_ERA5
+    α = parameters.depth_scale_factor
+    depth = α .* depth
+
     boundary_conditions = AtmosDrivenLakeBC(
         forcing.atmos,
         forcing.radiation,
@@ -237,11 +261,13 @@ function SlabLakeModel(
         typeof(domain),
         typeof(boundary_conditions),
         typeof(inland_water_mask),
+        typeof(depth),
     }(
         parameters,
         domain,
         boundary_conditions,
         inland_water_mask,
+        depth,
     )
 end
 
@@ -363,9 +389,10 @@ end
 function ClimaLand.make_update_aux(model::SlabLakeModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         params = model.parameters
+        depth = model.depth
         # Thermodynamic state from prognostic U
-        @. p.lake.q_l = lake_liquid_fraction(Y.lake.U, params)
-        @. p.lake.T = lake_temperature(Y.lake.U, p.lake.q_l, params)
+        @. p.lake.q_l = lake_liquid_fraction(Y.lake.U, depth, params)
+        @. p.lake.T = lake_temperature(Y.lake.U, p.lake.q_l, depth, params)
         @. p.lake.albedo = lake_surface_albedo(p.lake.q_l, params)
     end
     return update_aux!
@@ -490,7 +517,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     t,
 ) where {FT}
     mask = model.inland_water_mask
-    @. sfc_field = model.parameters.depth * mask
+    @. sfc_field = model.depth * mask
 end
 
 # ─── Drivers ──────────────────────────────────────────────────────────────────
@@ -551,7 +578,6 @@ grid point with > 80% water fraction that is inside the simulation's
 land domain and within the latitude bounds is treated as inland water.
 
 Returns a binary ClimaCore Field: 1 = inland water, 0 = land/ocean.
-Returns `nothing` for Point/Column domains (no horizontal extent).
 """
 function inland_water_mask(
     surface_space;
@@ -596,6 +622,72 @@ end
 
 _apply_threshold_above(field, value) =
     field > value ? eltype(field)(1) : eltype(field)(0)
+
+"""
+    era5_lake_depth(
+        surface_space;
+        filepath = ClimaLand.Artifacts.era5_lake_depth_path(),
+        varname = "dl",
+        inland_water_mask = nothing,
+        default_depth = 10.0,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        interpolation_method = Interpolations.Constant(),
+    )
+
+Reads the ERA5 lake total depth from `filepath` and regrids to the
+`surface_space`. The ERA5 `dl` variable has fill values (~4127 m) at
+non-lake points; where the `inland_water_mask` is zero or the depth
+is zero/negative, the depth is set to `default_depth` (these points
+are masked out in physics, so the value does not matter physically).
+
+Returns a ClimaCore Field of lake depth (m).
+"""
+function era5_lake_depth(
+    surface_space;
+    filepath = ClimaLand.Artifacts.era5_lake_depth_path(),
+    varname = "dl",
+    inland_water_mask = nothing,
+    default_depth = 10.0,
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    # ERA5 files have a valid_time dimension, so we use DataHandler
+    # directly and read a snapshot at the first available date.
+    dh = DataHandling.DataHandler(
+        filepath,
+        varname,
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    dates = DataHandling.available_dates(dh)
+    depth_raw = DataHandling.regridded_snapshot(dh, first(dates))
+    close(dh)
+
+    FT = eltype(depth_raw)
+    if !isnothing(inland_water_mask)
+        # Replace fill values at non-lake points with a sensible default
+        depth_raw = @. ifelse(
+            inland_water_mask > FT(0) && depth_raw > FT(0),
+            depth_raw,
+            FT(default_depth),
+        )
+    else
+        # Even without a mask, replace non-positive depths
+        depth_raw = @. ifelse(depth_raw > FT(0), depth_raw, FT(default_depth))
+    end
+    return depth_raw
+end
 
 _within_latitude_bounds(lat, lat_min, lat_max) =
     (lat >= lat_min && lat <= lat_max) ? typeof(lat)(1) : typeof(lat)(0)

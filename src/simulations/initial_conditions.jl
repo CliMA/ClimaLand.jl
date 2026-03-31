@@ -836,6 +836,7 @@ function set_lake_initial_conditions!(
     end
     @. Y.lake.U = ClimaLand.InlandWater.lake_energy_from_temperature(
         p.drivers.T,
+        model.depth,
         model.parameters,
     )
     return nothing
