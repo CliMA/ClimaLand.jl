@@ -1465,7 +1465,6 @@ use_lowres_clm(
     end
     return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
 =#
-end
 
 use_lowres_clm(surface_space::ClimaCore.Spaces.PointSpace) = false
 
