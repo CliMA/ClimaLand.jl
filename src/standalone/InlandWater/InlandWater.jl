@@ -641,9 +641,11 @@ _apply_threshold_above(field, value) =
 
 Reads the ERA5 lake total depth from `filepath` and regrids to the
 `surface_space`. The ERA5 `dl` variable has fill values (~4127 m) at
-non-lake points; where the `inland_water_mask` is zero or the depth
-is zero/negative, the depth is set to `default_depth` (these points
-are masked out in physics, so the value does not matter physically).
+points without ERA5 lake cover. The ERA5 lake cover (`cl`) is used to
+identify where depth is valid: where `cl > 0` the ERA5 depth is used,
+elsewhere `default_depth` is substituted. This matters because the
+IMERG-based inland water mask may flag points (rivers, reservoirs) that
+ERA5 does not cover.
 
 Returns a ClimaCore Field of lake depth (m).
 """
@@ -661,6 +663,8 @@ function era5_lake_depth(
     ),
     interpolation_method = Interpolations.Constant(),
 )
+    regridder_kwargs = (; extrapolation_bc, interpolation_method)
+
     # ERA5 files have a valid_time dimension, so we use DataHandler
     # directly and read a snapshot at the first available date.
     dh = DataHandling.DataHandler(
@@ -668,25 +672,29 @@ function era5_lake_depth(
         varname,
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        regridder_kwargs,
     )
     dates = DataHandling.available_dates(dh)
     depth_raw = DataHandling.regridded_snapshot(dh, first(dates))
     close(dh)
 
+    # Read ERA5 lake cover to identify where depth data is valid.
+    # ERA5 dl has fill values (~4127 m) at points without lake cover.
+    dh_cover = DataHandling.DataHandler(
+        ClimaLand.Artifacts.era5_lake_cover_path(),
+        "cl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+    )
+    dates_cover = DataHandling.available_dates(dh_cover)
+    lake_cover = DataHandling.regridded_snapshot(dh_cover, first(dates_cover))
+    close(dh_cover)
+
+    # Where ERA5 has lake cover, use ERA5 depth; otherwise use default.
     FT = eltype(depth_raw)
-    if !isnothing(inland_water_mask)
-        # Replace fill values at non-lake points with a sensible default
-        depth_raw = @. ifelse(
-            inland_water_mask > FT(0) && depth_raw > FT(0),
-            depth_raw,
-            FT(default_depth),
-        )
-    else
-        # Even without a mask, replace non-positive depths
-        depth_raw = @. ifelse(depth_raw > FT(0), depth_raw, FT(default_depth))
-    end
-    return depth_raw
+    depth = @. ifelse(lake_cover > FT(0), depth_raw, FT(default_depth))
+    return depth
 end
 
 _within_latitude_bounds(lat, lat_min, lat_max) =
