@@ -70,9 +70,9 @@ for FT in (Float32, Float64)
             α_NIR_leaf = 0.4,
             Ω = 1,
         )
-        is_c3 = FT(1) # set the photosynthesis mechanism to C3
+        fractional_c3 = FT(1) # set the photosynthesis mechanism to C3
         photosynthesis_params =
-            FarquharParameters(toml_dict; Vcmax25 = FT(5e-5), is_c3)
+            FarquharParameters(toml_dict; Vcmax25 = FT(5e-5), fractional_c3)
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1 = 790)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)

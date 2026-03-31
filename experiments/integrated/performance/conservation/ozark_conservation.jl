@@ -189,7 +189,7 @@ for float_type in (Float32, Float64)
         Canopy.MedlynConductanceModel{FT}(canopy_domain, toml_dict; g1)
 
     # Set up photosynthesis
-    photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25)
+    photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25)
     photosynthesis =
         FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 

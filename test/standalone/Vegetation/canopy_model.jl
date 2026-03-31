@@ -37,7 +37,8 @@ import ClimaParams
             G_Function = ConstantGFunction(FT(0.5)),
         )
         rt_model = BeerLambertModel{FT}(domain, toml_dict; radiation_parameters)
-        photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(9e-5))
+        photosynthesis_parameters =
+            (; fractional_c3 = FT(1), Vcmax25 = FT(9e-5))
         photosynthesis_model =
             FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters)
         energy_model = BigLeafEnergyModel{FT}(toml_dict)
@@ -289,7 +290,7 @@ end
 
         g1 = FT(790)
         Vcmax25 = FT(9e-5)
-        is_c3 = FT(1)
+        fractional_c3 = FT(1)
         RTparams = BeerLambertParameters(
             toml_dict,
             G_Function = ConstantGFunction(
@@ -300,7 +301,8 @@ end
             Ω = 1,
         )
 
-        photosynthesis_params = FarquharParameters(toml_dict; is_c3, Vcmax25)
+        photosynthesis_params =
+            FarquharParameters(toml_dict; fractional_c3, Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(toml_dict; g1)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)

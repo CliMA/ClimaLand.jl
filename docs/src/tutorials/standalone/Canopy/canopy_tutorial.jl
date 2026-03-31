@@ -190,7 +190,7 @@ biomass =
 conductance = Canopy.MedlynConductanceModel{FT}(domain, toml_dict; g1 = FT(141));
 
 # Construct the photosynthesis model.
-photosynthesis_parameters = (; is_c3 = FT(1), Vcmax25 = FT(5e-5))
+photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25 = FT(5e-5))
 photosynthesis =
     Canopy.FarquharModel{FT}(domain, toml_dict; photosynthesis_parameters);
 
