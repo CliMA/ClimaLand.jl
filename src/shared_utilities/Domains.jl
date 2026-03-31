@@ -1442,7 +1442,7 @@ suffices is desirable.
 
 If the surface space is a point, `use_lowres_clm` always returns true.
 """
-function use_lowres_clm(
+use_lowres_clm(
     surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
 ) = false
 #=
