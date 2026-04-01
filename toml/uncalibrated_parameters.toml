@@ -169,6 +169,12 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
+["effective_max_depth_ghf"]
+value = 1.0
+type = "float"
+description = "Parameter controlling effective conductance of the slab snow model with the soil underneath (m)"
+tag = "SnowModel"
+
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
