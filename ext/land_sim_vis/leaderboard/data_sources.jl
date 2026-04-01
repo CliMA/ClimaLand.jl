@@ -344,11 +344,11 @@ element is the upper bound for the bias plots.
 function get_compare_vars_biases_plot_extrema()
     compare_vars_biases_plot_extrema = Dict(
         "et" => (-2.0, 2.0),
-        "gpp" => (-6.0, 6.0),
-        "lwu" => (-40.0, 40.0),
-        "shf" => (-50.0, 50.0),
-        "lhf" => (-40.0, 40.0),
-        "swu" => (-50.0, 50.0),
+        "gpp" => (-4.5, 4.5),
+        "lwu" => (-30.0, 30.0),
+        "shf" => (-30.0, 30.0),
+        "lhf" => (-30.0, 30.0),
+        "swu" => (-30.0, 30.0),
     )
     return compare_vars_biases_plot_extrema
 end
