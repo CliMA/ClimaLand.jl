@@ -176,4 +176,4 @@ Both the PAR and NIR albedo bands use this same value. Default values are $\alph
 
 ### Inland Water Mask
 
-The inland water mask is a binary inland water coverage field derived from the IMERG land-sea mask (threshold > 80% water fraction). For manual `SlabLakeModel` construction, a custom mask field can be provided directly. This is used to weight the lake total energy and total water per unit grid area. The lake depth is spatially varying, read from the ERA5 lake depth dataset and scaled by a tunable factor `α` (default 1).
+The inland water mask is a binary field built from the union of two sources: (1) the IMERG land-sea mask (water fraction > 80%) and (2) ERA5 lake cover and depth (cover > 0.5 and depth > 5 m). For manual `SlabLakeModel` construction, a custom mask field can be provided directly. This is used to weight the lake total energy and total water per unit grid area. The lake depth is spatially varying, read from the ERA5 lake depth dataset where available and defaulting to 10 m elsewhere, then scaled by a tunable factor `α` (default 1).

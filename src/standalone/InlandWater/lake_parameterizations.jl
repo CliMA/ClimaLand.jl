@@ -69,8 +69,7 @@ function lake_energy_from_temperature(
     _cp_i = LP.cp_i(earth_param_set)
     _cp_l = LP.cp_l(earth_param_set)
     if T <= _T_freeze
-        return _ρ_l * depth * _cp_i * (T - _T_ref) -
-               _ρ_l * depth * _LH_f0
+        return _ρ_l * depth * _cp_i * (T - _T_ref) - _ρ_l * depth * _LH_f0
     else
         return _ρ_l * depth * _cp_l * (T - _T_ref)
     end

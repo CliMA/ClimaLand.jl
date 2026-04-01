@@ -17,6 +17,7 @@ ClimaLand.InlandWater.SlabLakeModel{FT}(;
     domain,
     boundary_conditions,
     inland_water_mask,
+    depth,
 ) where {FT}
 ClimaLand.InlandWater.SlabLakeModel(
     FT,
@@ -24,15 +25,17 @@ ClimaLand.InlandWater.SlabLakeModel(
     forcing,
     toml_dict::CP.ParamDict;
     inland_water_mask,
+    depth,
     prognostic_land_components,
     parameters,
 )
 ```
 
-## Inland Water Mask
+## Inland Water Mask and Depth
 
 ```@docs
 ClimaLand.InlandWater.inland_water_mask
+ClimaLand.InlandWater.era5_lake_depth
 ```
 
 ## Boundary Conditions and Fluxes
