@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- always use hi-resolution PFT maps and soil albedo map PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
 - add standalone lake model PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
 
 v1.6.4
