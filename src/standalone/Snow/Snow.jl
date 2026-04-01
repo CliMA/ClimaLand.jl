@@ -227,7 +227,7 @@ function WuWuSnowCoverFractionModel(
     β0::FT,
     β_min::FT,
     horz_degree_res::FT;
-    z0 = FT(0.106),
+    z0,
 ) where {FT}
     @assert β_min > eps(FT)
     @assert β0 > eps(FT)
@@ -338,10 +338,10 @@ Base.@kwdef struct SnowParameters{
     Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
     ΔS::FT
-    "Snow cover fraction parameterization"
-    scf::SCFM
     "Snow depth using to compute heat flux with the ground"
     Δz_max::FT
+    "Snow cover fraction parameterization"
+    scf::SCFM
     "Snow surface temperature parameterization"
     surf_temp::STM
     "Clima-wide parameters"
@@ -368,8 +368,8 @@ end
         ϵ_snow = toml_dict["snow_emissivity"],
         θ_r = toml_dict["holding_capacity_of_water_in_snow"],
         Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
-        Δz_max = toml_dict["effective_max_depth_ghf"],
         ΔS = toml_dict["delta_S"],
+        Δz_max = toml_dict["effective_max_depth_ghf"],
     ) where {DM, AM, SCFM}
 
 TOML dictionary constructor for the `SnowParameters`` struct.
@@ -398,9 +398,9 @@ function SnowParameters(
     κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
     ϵ_snow = toml_dict["snow_emissivity"],
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
-    Δz_max = toml_dict["effective_max_depth_ghf"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],
+    Δz_max = toml_dict["effective_max_depth_ghf"],
 ) where {DM, AM, SCFM, STM}
     Δt = float(Δt)
     FT = CP.float_type(toml_dict)
@@ -415,11 +415,52 @@ function SnowParameters(
         θ_r,
         Ksat,
         ΔS,
+        Δz_max,
         density,
         α_snow,
         scf,
-        Δz_max,
         surf_temp,
+    )
+end
+
+function SnowParameters{FT}(
+    Δt;
+    density::DM,
+    z_0m,
+    z_0b,
+    α_snow::AM,
+    ϵ_snow,
+    θ_r,
+    Ksat,
+    κ_ice,
+    ΔS,
+    Δz_max,
+    scf::SCFM,
+    surf_temp::STM = BulkSurfaceTemperatureModel{FT}(),
+    earth_param_set::PSE,
+) where {
+    FT <: AbstractFloat,
+    DM <: AbstractDensityModel,
+    AM <: AbstractAlbedoModel,
+    SCFM <: AbstractSnowCoverFractionModel,
+    STM <: AbstractSnowSurfaceTemperatureModel,
+    PSE,
+}
+    return SnowParameters{FT, DM, AM, SCFM, PSE}(
+        density,
+        z_0m,
+        z_0b,
+        α_snow,
+        ϵ_snow,
+        θ_r,
+        Ksat,
+        κ_ice,
+        float(Δt),
+        ΔS,
+        Δz_max,
+        scf,
+        surf_temp,
+        earth_param_set,
     )
 end
 
@@ -471,7 +512,16 @@ end
         toml_dict::CP.ParamDict,
         Δt;
         prognostic_land_components = (:snow,),
-        parameters = SnowParameters(toml_dict, Δt)
+        z_0m = toml_dict["snow_momentum_roughness_length"],
+        z_0b = toml_dict["snow_scalar_roughness_length"],
+        ϵ_snow = toml_dict["snow_emissivity"],
+        α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+        density = MinimumDensityModel(toml_dict["snow_density"]),
+        scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+        surf_temp = BulkSurfaceTemperatureModel{FT}(),
+        θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+        Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+        ΔS = toml_dict["delta_S"],
     )
 
 Creates a SnowModel model with the given float type FT, domain, toml_dict, forcing, and prognostic land components.
@@ -489,8 +539,31 @@ function SnowModel(
     toml_dict::CP.ParamDict,
     Δt;
     prognostic_land_components = (:snow,),
-    parameters = SnowParameters(toml_dict, Δt),
+    z_0m = toml_dict["snow_momentum_roughness_length"],
+    z_0b = toml_dict["snow_scalar_roughness_length"],
+    ϵ_snow = toml_dict["snow_emissivity"],
+    α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+    density = MinimumDensityModel(toml_dict["snow_density"]),
+    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1.0)),
+    surf_temp = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
+    θ_r = toml_dict["holding_capacity_of_water_in_snow"],
+    Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
+    ΔS = toml_dict["delta_S"],
 )
+    parameters = SnowParameters(
+        toml_dict,
+        Δt;
+        scf,
+        surf_temp,
+        α_snow,
+        ϵ_snow,
+        density,
+        z_0m,
+        z_0b,
+        θ_r,
+        Ksat,
+        ΔS,
+    )
     boundary_conditions = AtmosDrivenSnowBC(
         forcing.atmos,
         forcing.radiation;
