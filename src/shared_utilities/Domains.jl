@@ -1427,17 +1427,6 @@ function global_box_domain(
 
     return domain
 end
-
-"""
-    use_lowres_clm(space)
-
-Always returns false: use the high resolution CLM data 
-(0.125x0.125 degree lat/long) instead of the low resolution  CLM data (at 0.9x1.25 degree lat/long).
-
-Previously this chose between the two based on the resolution of the simulation.
-"""
-use_lowres_clm(surface_space) = false
-
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
