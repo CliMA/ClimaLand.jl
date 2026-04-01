@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- always use hi-resolution PFT maps and soil albedo map PR[#1697](https://github.com/CliMA/ClimaLand.jl/pull/1697)
 - change limits on leaderboard annual plots PR[#1698](https://github.com/CliMA/ClimaLand.jl/pull/1698)
 - add standalone lake model PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
 

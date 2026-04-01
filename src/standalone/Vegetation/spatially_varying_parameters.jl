@@ -16,7 +16,7 @@ import ClimaLand: Artifacts
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        lowres = false
     )
 
 Reads spatially varying parameters for the canopy radiative transfer schemes,
@@ -39,8 +39,7 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data, and (3) changed the spatial interpolation method.
 
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
-resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
-with the closest resolution to the surface_space is used.
+resolution CLM data artifact is used.
 
 By default linear interpolation is used. This can be changed to nearest neighbor by passing
 `interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
@@ -54,7 +53,7 @@ function clm_canopy_radiation_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    lowres = false,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -127,7 +126,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        lowres = false,
     )
 
 Reads spatially varying parameters for the canopy, from NetCDF files
@@ -149,8 +148,7 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data, and (3) changed the spatial interpolation method.
 
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
-resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
-with the closest resolution to the surface_space is used.
+resolution CLM data artifact is used.
 
 By default linear interpolation is used. This can be changed to nearest neighbor by passing
 `interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
@@ -164,7 +162,7 @@ function clm_photosynthesis_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    lowres = false,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -200,7 +198,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        lowres = false,
     )
 
 Reads spatially varying rooting depth for the canopy, from a NetCDF file
@@ -218,8 +216,7 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data, and (3) changed the spatial interpolation method.
 
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
-resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
-with the closest resolution to the surface_space is used.
+resolution CLM data artifact is used.
 
 By default linear interpolation is used. This can be changed to nearest neighbor by passing
 `interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
@@ -233,7 +230,7 @@ function clm_rooting_depth(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    lowres = false,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -258,7 +255,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        lowres = false,
     )
 
 Reads spatially varying g1 for the canopy, from a NetCDF file
@@ -276,8 +273,7 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data, and (3) changed the spatial interpolation method.
 
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
-resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
-with the closest resolution to the surface_space is used.
+resolution CLM data artifact is used.
 
 By default linear interpolation is used. This can be changed to nearest neighbor by passing
 `interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
@@ -291,7 +287,7 @@ function clm_medlyn_g1(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    lowres = false,
 )
     context = ClimaComms.context(surface_space)
     clm_artifact_path = Artifacts.clm_data_folder_path(; context, lowres)
@@ -318,7 +314,7 @@ end
             Interpolations.Flat(),
         ),
         interpolation_method = Interpolations.Linear(),
-        lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+        lowres = false,
         max_height = nothing
     )
 
@@ -336,7 +332,7 @@ function clm_canopy_height(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Linear(),
-    lowres = ClimaLand.Domains.use_lowres_clm(surface_space),
+    lowres = false,
     max_height = nothing,
 )
     context = ClimaComms.context(surface_space)
