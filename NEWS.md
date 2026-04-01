@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- change limits on leaderboard annual plots PR[#1698](https://github.com/CliMA/ClimaLand.jl/pull/1698)
 - add standalone lake model PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
 
 v1.6.4

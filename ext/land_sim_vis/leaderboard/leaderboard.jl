@@ -448,7 +448,8 @@ function compute_seasonal_leaderboard(
     # Add plot of time average for simulation and bias data excluding spin up
     # Rows correspond to short names
     # Cols correspond to "SIM" and "ANN"
-    annual_compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema(; annual = true)
+    annual_compare_vars_biases_plot_extrema =
+        get_compare_vars_biases_plot_extrema(; annual = true)
     groups = ["SIM", "ANN"]
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),

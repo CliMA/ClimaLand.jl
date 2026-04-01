@@ -345,7 +345,7 @@ the value is a tuple, where the first element is the lower bound and the last
 element is the upper bound for the bias plots.
 """
 function get_compare_vars_biases_plot_extrema(; annual = false)
-    factor = annual ? 1/sqrt(2) : 1.0 # treats each season as ~ independent
+    factor = annual ? 1 / sqrt(2) : 1.0 # treats each season as ~ independent
     compare_vars_biases_plot_extrema = Dict(
         "et" => (-2.0, 2.0) .* factor,
         "gpp" => (-6.0, 6.0) .* factor,
