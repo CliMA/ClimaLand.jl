@@ -331,9 +331,12 @@ function get_mask_dict(data_source)
 end
 
 """
-    get_compare_vars_biases_plot_extrema()
+    get_compare_vars_biases_plot_extrema(; annual = false)
 
 Return a dictionary mapping short names to ranges for the bias plots.
+
+If annual = true, the limits are tightened since the errors in annual means
+are smaller.
 
 To add a variable to the leaderboard, add a key-value pair to the dictionary
 `compare_vars_biases_plot_extrema` whose key is a short name key is the same
@@ -341,14 +344,15 @@ short name in `sim_var_pfull_dict` in the function `get_sim_var_pfull_dict` and
 the value is a tuple, where the first element is the lower bound and the last
 element is the upper bound for the bias plots.
 """
-function get_compare_vars_biases_plot_extrema()
+function get_compare_vars_biases_plot_extrema(; annual = false)
+    factor = annual ? 1 / sqrt(2) : 1.0 # treats each season as ~ independent
     compare_vars_biases_plot_extrema = Dict(
-        "et" => (-2.0, 2.0),
-        "gpp" => (-6.0, 6.0),
-        "lwu" => (-40.0, 40.0),
-        "shf" => (-50.0, 50.0),
-        "lhf" => (-40.0, 40.0),
-        "swu" => (-50.0, 50.0),
+        "et" => (-2.0, 2.0) .* factor,
+        "gpp" => (-6.0, 6.0) .* factor,
+        "lwu" => (-40.0, 40.0) .* factor,
+        "shf" => (-50.0, 50.0) .* factor,
+        "lhf" => (-40.0, 40.0) .* factor,
+        "swu" => (-50.0, 50.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
