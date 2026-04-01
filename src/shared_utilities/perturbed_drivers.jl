@@ -224,7 +224,9 @@ function prescribed_perturbed_temperature_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-	file_reader_kwargs = (; preprocess_func = (data) -> max.(data, Float32(0)),),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> max.(data, Float32(0)),
+        ),
         method = time_interpolation_method,
     )
     function compute_diffuse_fraction(total, direct)
@@ -418,7 +420,9 @@ function prescribed_perturbed_rh_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-	file_reader_kwargs = (; preprocess_func = (data) -> max.(data, Float32(0)),),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> max.(data, Float32(0)),
+        ),
         method = time_interpolation_method,
     )
     function compute_diffuse_fraction(total, direct)
@@ -446,7 +450,9 @@ function prescribed_perturbed_rh_era5(
         start_date,
         regridder_type,
         regridder_kwargs = (; interpolation_method),
-	file_reader_kwargs = (; preprocess_func = (data) -> max.(data, Float32(0)),),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> max.(data, Float32(0)),
+        ),
         method = time_interpolation_method,
     )
     cos_zenith_angle =

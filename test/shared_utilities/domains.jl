@@ -569,7 +569,7 @@ end
         dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
-    @test ClimaLand.Domains.use_lowres_clm(surface_space)
+    @test !ClimaLand.Domains.use_lowres_clm(surface_space)
     domain = ClimaLand.Domains.SphericalShell(;
         radius = radius,
         depth = depth,
@@ -584,7 +584,7 @@ end
         nelements = (10, 10),
     )
     surface_space = domain.space.surface
-    @test ClimaLand.Domains.use_lowres_clm(surface_space)
+    @test !ClimaLand.Domains.use_lowres_clm(surface_space)
     domain = ClimaLand.Domains.Plane(;
         longlat = (-117.0, 34.0),
         xlim = (0.0, FT(2e5)),

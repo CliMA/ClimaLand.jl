@@ -1431,43 +1431,12 @@ end
 """
     use_lowres_clm(space)
 
-Returns true if the simulation space is closer in resolution to the low
-resolution  CLM data (at 0.9x1.25 degree lat/long) compared with the
-high resolution CLM data ( 0.125x0.125 degree lat/long).
+Always returns false: use the high resolution CLM data 
+(0.125x0.125 degree lat/long) instead of the low resolution  CLM data (at 0.9x1.25 degree lat/long).
 
-If the simulation space is closer to the low resolution CLM data,
-that data will be used, and vice versa. The high resolution data
-takes longer to process and so using lower resolution data when it
-suffices is desirable.
-
-If the surface space is a point, `use_lowres_clm` always returns true.
+Previously this chose between the two based on the resolution of the simulation.
 """
-use_lowres_clm(
-    surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
-) = false
-#=
-    node_scale = ClimaCore.Spaces.node_horizontal_length_scale(surface_space)
-    surface_mesh = ClimaCore.Spaces.topology(surface_space).mesh
-    if surface_mesh isa ClimaCore.Meshes.AbstractCubedSphere
-        # in this case, node_scale is in meters
-        sphere_radius = surface_mesh.domain.radius
-        horizontal_length_scale(lat_res, long_res) = sqrt(
-            4 * pi * sphere_radius^2 / ((360 / long_res) * (180 / lat_res)),
-        )
-        highres_scale = horizontal_length_scale(0.125, 0.125)
-        lowres_scale = horizontal_length_scale(0.9, 1.25)
-    elseif surface_mesh isa ClimaCore.Meshes.RectilinearMesh
-        # in this case, node_scale is in degrees
-        highres_scale = 0.125
-        lowres_scale = sqrt(1.25 * 0.9)
-    else
-        return false
-    end
-    return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
-=#
-
-use_lowres_clm(surface_space::ClimaCore.Spaces.PointSpace) = false
-
+use_lowres_clm(surface_space) = false
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
