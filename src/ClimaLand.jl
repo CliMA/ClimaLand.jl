@@ -421,7 +421,7 @@ import .Soil:
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
-import .Snow: snow_boundary_fluxes!, maximum_snow_cover_fraction
+import .Snow: snow_boundary_fluxes!, maximum_snow_cover_fraction!
 include("standalone/InlandWater/InlandWater.jl")
 using .InlandWater
 import .InlandWater: lake_boundary_fluxes!
