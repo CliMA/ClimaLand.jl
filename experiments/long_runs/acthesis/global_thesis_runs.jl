@@ -10,7 +10,7 @@ gather_diagnostics = true
 col_lon_lat = (-17, 64) #only used if use_col is true
 const FT = Float64;
 const setup = Dict(
-    "output_tag" => "all_global",
+    "output_tag" => "others_global",
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
     "use_sfc_temp" => true,
@@ -161,18 +161,16 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     biomass,
 )
 
-#what about HTESSEL?
 if setup["use_neural_albedo"]
-    α_snow = NS.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
-    #α_snow = HTESSELAlbedoModel{FT}()
+    #α_snow = NS.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
+    α_snow = HTESSELAlbedoModel{FT}()
 else
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
 end
 
-#what about Anderson76?
 if setup["use_neural_depth"]
-    density = NS.NeuralDepthModel(toml_dict, Δt = Δt)
-    #density = Anderson1976{FT}()
+    #density = NS.NeuralDepthModel(toml_dict, Δt = Δt)
+    density = Anderson1976{FT}()
 else
     density = Snow.MinimumDensityModel(setup["snow_min_density_param"])
 end
