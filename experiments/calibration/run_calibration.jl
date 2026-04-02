@@ -83,6 +83,11 @@ function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
     module load climacommon/2026_02_18"""
 end
 
+function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
+    return """module purge
+    module load climacommon/2025_02_25"""
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
     # 4 P-model parameters + 1 soil moisture stress parameter
     # Ensemble size for TransformUnscented: 5 * 2 + 1 = 11 members
