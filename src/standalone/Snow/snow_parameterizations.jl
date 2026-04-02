@@ -447,20 +447,20 @@ function phase_change_flux(
 ) where {FT}
     S_safe = max(S, FT(0))
 
-    energy_at_T_freeze =
-        energy_from_q_l_and_swe(S_safe, q_l, ΔS, earth_param_set)
-    Upred = U - energy_flux * Δt
-    energy_excess = Upred - energy_at_T_freeze
-
     _LH_f0 = LP.LH_f0(earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _cp_i = LP.cp_i(earth_param_set)
     _cp_l = LP.cp_l(earth_param_set)
     _T_ref = LP.T_0(earth_param_set)
     _T_freeze = LP.T_freeze(earth_param_set)
-    if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / Δt / _ρ_liq /
-               ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+    Upred = U - energy_flux * Δt # predicted U
+    # difference in energy per unit volume between ice and water
+    Δenergy_per_unit_volume =
+        _ρ_liq * ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+    # change in energy required to bring the snow pack back to a physical state (same q but T = _T_freeze)
+    ΔU = Upred - energy_from_q_l_and_swe(S, q_l, ΔS, earth_param_set)
+    if ΔU > 0 || ΔU * heaviside(q_l, sqrt(eps(FT))) < 0
+        return -ΔU / Δt / Δenergy_per_unit_volume # units of ΔS/Δt
     else
         return FT(0)
     end
