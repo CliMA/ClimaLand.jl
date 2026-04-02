@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=acharbon_global_test_ALTERNATE
-#SBATCH --output=global_ALTERNATE_output.txt
-#SBATCH --error=global_ALTERNATE_error.txt
+#SBATCH --job-name=acharbon_global_test_NONE
+#SBATCH --output=global_NONE_output.txt
+#SBATCH --error=global_NONE_error.txt
 #SBATCH --time=48:00:00
 #SBATCH --gpus=1
 #SBATCH --gpus-per-task=1
