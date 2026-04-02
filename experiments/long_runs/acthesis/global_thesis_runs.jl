@@ -49,6 +49,9 @@ const setup = Dict(
     ], #salb = soil alb, swa = p.snow.α_sfc
 )
 
+@info "\n SETTINGS LOCKED!: $(setup["output_tag"]), ($(setup["use_neural_depth"]))\n"
+print("\n SETTINGS LOCKED!: $(setup["output_tag"]), ($(setup["use_neural_depth"]))\n")
+
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaUtilities.ClimaArtifacts
@@ -83,12 +86,13 @@ device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 include("debug_tools.jl")
 
-output_dir = joinpath("/home/acharbon/thesis_outputs", setup["output_tag"])
+output_dir = joinpath("/home/acharbon/outputs", setup["output_tag"])
 
 toml_dict = LP.create_toml_dict(FT)
 Δt = setup["dt"]
 
 @info "Setting up Simulation!"
+print("ALL CODE LOADED; SETUP BEGINS\n")
 
 if use_col
     domain = ClimaLand.Domains.Column(;
@@ -244,9 +248,11 @@ if !on_local
 end
 
 @info "Beginning Simulation!"
+print("SIMULATION BEGINS\n")
 if !debug_mode
     ClimaLand.Simulations.solve!(simulation)
     @info "Simulation Complete!"
+    print("SIMULATION COMPLETE!")
 else
     const sim_mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model))
     const exclude_list =
