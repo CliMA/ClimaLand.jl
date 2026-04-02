@@ -51,7 +51,7 @@ function Canopy.mask_biomass!(
 end
 
 """
-    maximum_snow_cover_fraction(
+    maximum_snow_cover_fraction!(
         p,
         prognostic_land_components::Union{
             Val{(:canopy, :lake, :snow, :soil, :soilco2)},
@@ -60,14 +60,14 @@ end
 
 Sets the maximum snow cover fraction to be 1 - lake fraction.
 """
-function Snow.maximum_snow_cover_fraction(
+function Snow.maximum_snow_cover_fraction!(
     p,
     prognostic_land_components::Union{
         Val{(:canopy, :lake, :snow, :soil, :soilco2)},
         Val{(:canopy, :lake, :snow, :soil)},
     },
 )
-    return @. lazy(1 - p.sfc_scratch)
+    @. p.snow.snow_cover_fraction *= (1 - p.sfc_scratch)
 end
 
 """
