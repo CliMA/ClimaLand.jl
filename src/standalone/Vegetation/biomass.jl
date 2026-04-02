@@ -7,6 +7,7 @@ using DocStringExtensions
 
 export prescribed_lai_era5,
     prescribed_lai_modis,
+    prescribed_climatological_lai_modis,
     PrescribedAreaIndices,
     update_biomass!,
     ZhouOptimalLAIModel
@@ -107,6 +108,40 @@ function prescribed_lai_modis(
         ["lai"],
         surface_space;
         start_date,
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+        method = time_interpolation_method,
+    )
+end
+
+
+"""
+     prescribed_climatological_lai_modis(surface_space,
+                                         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                                         regridder_type = :InterpolationsRegridder,
+                                         interpolation_method = Interpolations.Constant(),
+                                         context = ClimaComms.context(surface_space))
+
+A helper function which constructs the TimeVaryingInput object for Leaf Area
+Index using MODIS climatological LAI data; requires the
+surface_space.
+
+The ClimaLand default is to use nearest neighbor interpolation, but
+linear interpolation is supported
+by passing interpolation_method = Interpolations.Linear().
+"""
+function prescribed_climatological_lai_modis(
+    surface_space,
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
+    context = ClimaComms.context(surface_space),
+)
+    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_climatology_data_path(; context)
+    return TimeVaryingInput(
+        modis_lai_ncdata_path,
+        ["lai"],
+        surface_space;
         regridder_type,
         regridder_kwargs = (; interpolation_method),
         method = time_interpolation_method,
