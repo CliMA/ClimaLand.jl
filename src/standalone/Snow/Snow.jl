@@ -44,7 +44,7 @@ export SnowParameters,
     ConstantAlbedoModel,
     ZenithAngleAlbedoModel,
     WuWuSnowCoverFractionModel,
-    maximum_snow_cover_fraction
+    maximum_snow_cover_fraction!
 
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -834,10 +834,9 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             p.snow.water_runoff *
             volumetric_internal_energy_liq(p.snow.T, parameters.earth_param_set)
         update_snow_cover_fraction!(
-            p.snow.snow_cover_fraction,
+            p,
             parameters.scf,
             Y,
-            p,
             t,
             parameters.earth_param_set,
             model.boundary_conditions.prognostic_land_components,
