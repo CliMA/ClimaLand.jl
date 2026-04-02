@@ -42,7 +42,7 @@ if !TEST_CALIBRATION
         # 10 yearly samples: each covers DJF through SON (Dec 1 → Sep 1)
         # with extend = Month(3), simulation runs through Nov 30
         sample_date_ranges = [
-            ("$(year)-12-1", "$(year+1)-9-1") for year in 2000:2009
+            ("$(year)-12-1", "$(year+1)-9-1") for year in 2001:2010
         ],
         extend = Dates.Month(3),
         spinup = Dates.Year(1),
