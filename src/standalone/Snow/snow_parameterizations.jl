@@ -71,7 +71,7 @@ function update_snow_cover_fraction!(
 )
     z = p.snow.z_snow #ground-area snow depth in this case
     @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
-    @. scf *= maximum_snow_area_fraction(p, Val(prognostic_land_components))
+    @. scf *= maximum_snow_cover_fraction(p, Val(prognostic_land_components))
 end
 maximum_snow_cover_fraction(p, plc_val) = eltype(Y.snow.U)(1)
 
