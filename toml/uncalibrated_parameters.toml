@@ -618,12 +618,6 @@ type = "float"
 description = "Mixed-layer depth of the slab lake (m)"
 tag = "SlabLakeParameters"
 
-["slab_lake_depth_scale_factor"]
-value = 1.0
-type = "float"
-description = "Scale factor applied to ERA5 lake depth (dimensionless)"
-tag = "SlabLakeParameters"
-
 ["slab_lake_conductance"]
 value = 0.1
 type = "float"

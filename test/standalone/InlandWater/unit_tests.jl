@@ -49,11 +49,8 @@ t0 = ITime(0, Second(1), start_date)
 ClimaLand.Simulations.set_lake_initial_conditions!(Y, p, t0, lake)
 tmp = ClimaCore.Fields.zeros(surface_space)
 evaluate!(tmp, forcing.atmos.T, t0)
-expected_U = @. InlandWater.lake_energy_from_temperature(
-    tmp,
-    lake.depth,
-    default_params_from_toml,
-)
+expected_U =
+    @. InlandWater.lake_energy_from_temperature(tmp, default_params_from_toml)
 @test Y.lake.U == expected_U
 set_initial_cache! = make_set_initial_cache(lake)
 set_initial_cache!(p, Y, t0)
