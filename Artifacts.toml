@@ -1,3 +1,10 @@
+[modis_lai_climatology]
+git-tree-sha1 = "cd070348ab70f5d1b165c814f70e3822c0173eed"
+
+    [[modis_lai_climatology.download]]
+    sha256 = "569cc33c3db2d3096ca1d50c7a30fe19cbc8f00a5d814d57d066b1d633aa2f5f"
+    url = "https://caltech.box.com/shared/static/iquk73vo9983073uxjjri2nxqevq65tk.gz"
+
 [saturated_land_ic]
 git-tree-sha1 = "cc2888b590f5158113b54c75eee3e2f797be8956"
 
