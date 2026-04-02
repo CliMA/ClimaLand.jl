@@ -82,7 +82,7 @@ function compact_density(
     ρ::FT,
     Δt_t::FT,
     Tsnow::FT,
-)::FT where {FT}
+)::FT where {FT <: AbstractFloat}
     c5 = (sliq > 0) ? density.c5_wet : density.c5
     cx = (ρ > density.ρ_d) ? density.cx : FT(0)
 
@@ -107,7 +107,7 @@ Estimates the density of newly fallen snow as a function of air temperature (in 
 of water), according to the Snow17 model.
 Used in computing the time derivative of snow depth under the Anderson1976 density parameterization.
 """
-function newsnow_density(air_temp::FT, density::Anderson1976{FT})::FT where {FT}
+function newsnow_density(air_temp::FT, density::Anderson1976{FT})::FT where {FT <: AbstractFloat}
     if air_temp < density.new_snowfall_temp
         return density.min_density
     else
@@ -120,7 +120,7 @@ end
 Estimates the temperature of newly fallen snow as a function of air temperature, according to the Snow17 model.
 Used in computing the time derivative of snow depth under the Anderson1976 density parameterization.
 """
-function newsnow_temp(air_temp::FT)::FT where {FT}
+function newsnow_temp(air_temp::FT)::FT where {FT <: AbstractFloat}
     return (air_temp > 0) ? FT(0) : air_temp
 end
 
@@ -149,7 +149,7 @@ function get_dzdt(
     Z::FT,
     q_l::FT,
     dt::FT,
-)::FT where {FT}
+)::FT where {FT <: AbstractFloat}
     #change in z =  (contribution from new snowfall; liquid equivalent divided by its density)
     #             + (decrease from how the old snowpack compresses from itself and new snowfall on top)
 
@@ -200,7 +200,7 @@ function anderson_clip_dZdt(
     dZdt::FT,
     Δt::FT,
     ρ_min_frac::FT,
-)::FT where {FT}
+)::FT where {FT <: AbstractFloat}
     #This function is simple for now since we let Y.snow.Z also be the per-ground-area value, just like Y.snow.S is
     new_S_ground_area = dSdt * Δt + S
     new_Z = dZdt * Δt + Z #also ground-area presently
@@ -324,7 +324,7 @@ function get_dαdt(
     snowT::FT,
     dt::FT,
     earth_param_set,
-)
+)::FT where {FT<:AbstractFloat}
     _DT_ = FT(earth_param_set.insol_params.day) #86400 seconds, from earth_param_set
     T_freeze = FT(earth_param_set.T_freeze)
     p_scaled = abs(P_snow) * dt / albedo.P_thresh
@@ -372,7 +372,7 @@ function ClimaLand.Snow.compute_extra_prog_tendency!(
 )
     dY.snow.A .= get_dαdt.(
         Ref(albedo),
-        Y.snow.A,
+        p.snow.α_snow,
         p.drivers.P_snow,
         dY.snow.S, #assumes it has been set/clipped by now, which it has been
         p.snow.T,

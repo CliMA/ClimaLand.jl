@@ -615,7 +615,7 @@ function update_dαdt!(dαdt, albedo::NeuralAlbedoModel, model, Y, p, t)
             albedo_reset_rate(albedo.new_alb, model.parameters.Δt, Y, p),
             eval_alb_nn.(
                 Ref(albedo.alb_model),
-                Y.snow.A,
+                p.snow.α_snow,
                 abs.(p.drivers.P_snow),
                 albedo.za_solarnoon(t, start_date),
                 p.drivers.T .- model.parameters.earth_param_set.T_freeze,

@@ -85,6 +85,7 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 include("debug_tools.jl")
+include("compare_models.jl")
 
 output_dir = joinpath("/home/acharbon/outputs", setup["output_tag"])
 
@@ -163,6 +164,7 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 #what about HTESSEL?
 if setup["use_neural_albedo"]
     α_snow = NS.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
+    #α_snow = HTESSELAlbedoModel{FT}()
 else
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
 end
@@ -170,6 +172,7 @@ end
 #what about Anderson76?
 if setup["use_neural_depth"]
     density = NS.NeuralDepthModel(toml_dict, Δt = Δt)
+    #density = Anderson1976{FT}()
 else
     density = Snow.MinimumDensityModel(setup["snow_min_density_param"])
 end
