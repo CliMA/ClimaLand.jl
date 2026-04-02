@@ -45,7 +45,7 @@ if !TEST_CALIBRATION
         extend = Dates.Month(3),
         spinup = Dates.Month(3),
         nelements = (180, 360, 15),
-        output_dir = "experiments/calibration/land_model",
+        output_dir = "glade/derecho/scratch/kdeck/recalibrate_land",
         rng_seed = 42,
         obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
         model_type = ClimaLand.LandModel,
@@ -82,11 +82,17 @@ function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
-    prior = EKP.combine_distributions(priors)
+    priors = [
+        EKP.constrained_gaussian("moisture_stress_c", 0.5, 0.25, 0, 2),
+        EKP.constrained_gaussian("leaf_Cd", 0.08, 0.03, 0, Inf),
+        EKP.constrained_gaussian("canopy_z_0m_coeff", 0.13, 0.05, 0.0, 0.5),
+        EKP.constrained_gaussian("canopy_z_0b_coeff", 0.013, 0.005, 0.0, 0.05),
+        EKP.constrained_gaussian("canopy_d_coeff", 0.67, 0.2, 0.0, 1.0),
+        EKP.constrained_gaussian("evaporation_scalar", 1.0, 0.1, 0.0, 1.5),
+        EKP.constrained_gaussian("evaporation_exponent", 1.0, 0.2, 0.5, 10.0),
+    ]
 
+    prior = EKP.combine_distributions(priors)
     observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
 
     sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
@@ -153,7 +159,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         :gpus_per_task => 1,
         :ntasks => 1,
         # 180 minutes is 3 hours
-        :time => 180,
+        :time => 720,
     )
 
     # Determine which backend to submit job scripts to

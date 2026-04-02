@@ -229,13 +229,13 @@ description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, 
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 51
+value = 146
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 51
+value = 16
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants (146/9, pyrealm)"
 tag = "PModelParameters"
