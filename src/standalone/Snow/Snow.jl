@@ -43,7 +43,8 @@ export SnowParameters,
     snow_boundary_fluxes!,
     ConstantAlbedoModel,
     ZenithAngleAlbedoModel,
-    WuWuSnowCoverFractionModel
+    WuWuSnowCoverFractionModel,
+    maximum_snow_cover_fraction
 
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -839,6 +840,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             p,
             t,
             parameters.earth_param_set,
+            snow.boundary_conditions.prognostic_land_components,
         ) # This depends on z_snow
     end
 end

@@ -959,7 +959,7 @@ function compute_sensible_heat_flux!(
             @. out += land.lake.inland_water_mask .* p.lake.turbulent_fluxes.shf
             return out
         end
-        
+
     else
         @. out =
             p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +

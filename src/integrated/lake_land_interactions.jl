@@ -29,6 +29,7 @@ end
             Val{(:canopy, :lake, :snow, :soil, :soilco2)},
             Val{(:canopy, :lake, :snow, :soil)},},
        ) where {FT}
+
 Mask out areas where there is a lake by setting LAI, RAI, and SAI to zero.
 Called in canopy update_aux!
 """
@@ -47,6 +48,26 @@ function Canopy.mask_biomass!(
         ifelse(canopy_mask == 1, FT(0), p.canopy.biomass.area_index.stem)
     @. p.canopy.biomass.area_index.root =
         ifelse(canopy_mask == 1, FT(0), p.canopy.biomass.area_index.root)
+end
+
+"""
+    maximum_snow_cover_fraction(
+        p,
+        prognostic_land_components::Union{
+            Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+            Val{(:canopy, :lake, :snow, :soil)},},
+       ) where {FT}
+
+Sets the maximum snow cover fraction to be 1 - lake fraction.
+"""
+function Snow.maximum_snow_cover_fraction(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},
+    },
+)
+    return @. lazy(1 - p.sfc_scratch)
 end
 
 """

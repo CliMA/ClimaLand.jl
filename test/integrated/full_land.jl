@@ -747,4 +747,12 @@ end
         parent(p.soil.top_bc.heat .- p_copy.soil.top_bc.heat)[:][.~lake_mask[:] .&& land_mask] .≈
         0,
     )
+
+    # Snow cover fraction cannot exceed 1 - lake fraction
+    @test all(
+        parent(
+            p.snow.snow_cover_fraction .- (1 .- land.lake.inland_water_mask),
+        )[lake_mask] .<= 0,
+    )
+
 end
