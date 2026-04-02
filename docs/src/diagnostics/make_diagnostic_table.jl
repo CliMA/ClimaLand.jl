@@ -27,10 +27,9 @@ data = hcat(
 pretty_table(
     IOBuffer(),
     data;
-    autowrap = true,
-    linebreaks = true,
-    columns_width = [10, 15, 8, 32, 15],  # Width = 80
-    body_hlines = collect(1:size(data)[1]),
+    auto_wrap = true,
+    line_breaks = true,
+    fixed_data_column_widths = [10, 15, 8, 32, 15],  # Width = 80
     column_labels = [
         "Short name",
         "Long name",
