@@ -1,12 +1,12 @@
-my_param_dir = "global_all_models_f64"
+using NCDatasets, DataFrames, Statistics, GeoMakie
+using ClimaLand
+
+my_param_dir = "/home/acharbon/thesis_outputs/global_all_models_f64"
 old_param_dir = nothing
 htessel_param_dir = nothing
-era5_land_dir = nothing
-
-base_dir = "/home/acharbon/thesis_outputs"
 output_dir = "/home/acharbon/thesis_plots"
-
-using NCDatasets, DataFrames, Statistics
+era5_land_obs = joinpath(ClimaLand.Artifacts.era5_surface_data_1979_2024_path(), "era5_monthly_averages_surface_single_level_197901-202410.nc")
+#^^ this does not have everything, you need to get your own.
 
 function get_agg_ids(dates::Vector{DateTime}, period::Symbol, bin::Bool = false)
     if period == :year
@@ -47,4 +47,22 @@ function agg_indices(data::Array, dates::Vector{DateTime}, period::Symbol, agg; 
         end
         return cat(dat..., dims = 1), idset
     end
+end
+
+#mapslices(f, data, dims = 1)
+
+function globe_heatmap(lat, lon, data)
+    fig = Figure()
+    viz_mask = GeoMakie.NaturalEarth.bathymetry(0).geometry
+    ax = GeoMakie.GeoAxis(fig[1,1]; title = "plot title")
+    plot = GeoMakie.surface!(ax, lon, lat, data; shading = NoShading)
+    GeoMakie.poly!(ax, viz_mask;)
+    GeoMakie.lines!(ax, GeoMakie.coastlines(); color = "black")
+    GeoMakie.Colorbar(
+            fig[1,2],
+            plot,
+            label = "variable name";
+            height = Relative(0.65)
+        )
+    return fig
 end

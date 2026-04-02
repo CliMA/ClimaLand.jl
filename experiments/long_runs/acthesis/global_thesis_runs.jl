@@ -1,13 +1,5 @@
 using Dates
 
-#= issues: unsure what is causing this last one? Maybe initial condition sensitivity?
- (t_idx = 7100, lon_idx = 164, lat_idx = 155, t = DateTime("2019-08-08T00:00:00"), lon = -17.000000000000014, lat = 64.0, z = 3.5210928204511235e-5, swe = 3.528068913038551e-5, scf = 0.0006010421426520024, cell_alb = 0.05652549787175682, snow_alb = 0.6636027448947742, soil_alb = 0.0750000011175871, surf_alb = 0.07535375219166783)
-  index in global array -> 29495
-  NaN begins in lhf of p in canopy, which is used to update Y and makes canopy.energy.T into a NaN.
-  p is made from old_Y values & current_p that are set before it, otherwise old_p values
-  old_Y.canopy.energy.T = 20 Kelvin, not good.
- =#
-
 setup_only = false
 on_local = false
 use_col = false
@@ -18,7 +10,7 @@ gather_diagnostics = true
 col_lon_lat = (-17, 64) #only used if use_col is true
 const FT = Float64;
 const setup = Dict(
-    "output_tag" => "global_all_models_updated_f64",
+    "output_tag" => "global_all",
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
     "use_sfc_temp" => true,
@@ -33,27 +25,27 @@ const setup = Dict(
         "usnow",
         "snowc",
         "salb",
-        "swa",
+        #"swa",
         "snalb",
         "galb",
-        "rn",
+        #"rn",
         "shf",
         "lhf",
         "rnir",
         "rpar",
-        "pcflux",
+        #"pcflux",
         "apeflux",
-        "tsoil",
-        #"swd",
-        #"lwd",
+        "esflux",
+        #"tsoil",
+        "swn",
+        "lwn",
         #"swu",
         #"lwu",
-        "ct",
+        #"ct",
         #"snow",
         #"tair",
-        "lai",
-        "sai",
-        "esflux"
+        #"lai",
+        #"sai",
     ], #salb = soil alb, swa = p.snow.α_sfc
 )
 
