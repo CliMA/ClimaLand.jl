@@ -25,5 +25,6 @@ ClimaLand.Canopy.PrescribedAreaIndices{FT}(
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
+ClimaLand.Canopy.prescribed_climatological_lai_modis
 ClimaLand.Canopy.update_biomass!
 ```
