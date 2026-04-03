@@ -32,7 +32,7 @@ This currently one works when a single file is passed for both the era5 lai and 
 
 The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
-by passing interpolation_method = Interpolations.Linear().
+by passing `interpolation_method = Interpolations.Linear()`.
 """
 function prescribed_lai_era5(
     era5_lai_ncdata_path,
@@ -81,7 +81,7 @@ surface_space, the start and stop dates, and the earth_param_set.
 
 The ClimaLand default is to use nearest neighbor interpolation, but
 linear interpolation is supported
-by passing interpolation_method = Interpolations.Linear().
+by passing `interpolation_method = Interpolations.Linear()`.
 
 If `modis_lai_ncdata_path` is provided, it will be used directly.
 Otherwise, the path will be inferred from the start and stop dates.

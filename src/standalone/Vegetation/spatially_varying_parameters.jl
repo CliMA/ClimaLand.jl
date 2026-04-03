@@ -15,7 +15,7 @@ import ClimaLand: Artifacts
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         lowres = false
     )
 
@@ -41,8 +41,8 @@ data, and (3) changed the spatial interpolation method.
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used.
 
-By default linear interpolation is used. This can be changed to nearest neighbor by passing
-`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+By default nearest neighbor interpolation is used. This can be changed to linear by passing
+`interpolation_method = Interpolations.Linear()`.
 """
 function clm_canopy_radiation_parameters(
     surface_space;
@@ -52,7 +52,7 @@ function clm_canopy_radiation_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = false,
 )
     context = ClimaComms.context(surface_space)
@@ -125,7 +125,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         lowres = false,
     )
 
@@ -150,8 +150,8 @@ data, and (3) changed the spatial interpolation method.
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used.
 
-By default linear interpolation is used. This can be changed to nearest neighbor by passing
-`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+By default nearest neighbor interpolation is used. This can be changed to linear by passing
+`interpolation_method = Interpolations.Linear()`.
 """
 function clm_photosynthesis_parameters(
     surface_space;
@@ -161,7 +161,7 @@ function clm_photosynthesis_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = false,
 )
     context = ClimaComms.context(surface_space)
@@ -197,7 +197,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         lowres = false,
     )
 
@@ -218,8 +218,8 @@ data, and (3) changed the spatial interpolation method.
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used.
 
-By default linear interpolation is used. This can be changed to nearest neighbor by passing
-`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+By default nearest neighbor interpolation is used. This can be changed to linear by passing
+`interpolation_method = Interpolations.Linear()`.
 """
 function clm_rooting_depth(
     surface_space;
@@ -229,7 +229,7 @@ function clm_rooting_depth(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = false,
 )
     context = ClimaComms.context(surface_space)
@@ -254,7 +254,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         lowres = false,
     )
 
@@ -275,8 +275,8 @@ data, and (3) changed the spatial interpolation method.
 The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used.
 
-By default linear interpolation is used. This can be changed to nearest neighbor by passing
-`interpolation_method = Interpolations.Constant()`, but linear interpolation is recommended.
+By default nearest neighbor interpolation is used. This can be changed to linear by passing
+`interpolation_method = Interpolations.Linear()`.
 """
 function clm_medlyn_g1(
     surface_space;
@@ -286,7 +286,7 @@ function clm_medlyn_g1(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = false,
 )
     context = ClimaComms.context(surface_space)
@@ -313,7 +313,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
-        interpolation_method = Interpolations.Linear(),
+        interpolation_method = Interpolations.Constant(),
         lowres = false,
         max_height = nothing
     )
@@ -331,7 +331,7 @@ function clm_canopy_height(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
-    interpolation_method = Interpolations.Linear(),
+    interpolation_method = Interpolations.Constant(),
     lowres = false,
     max_height = nothing,
 )

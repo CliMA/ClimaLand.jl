@@ -5,7 +5,6 @@ defined by plant functional types instead of fully site-specific parameters.
 
 import ClimaLand
 
-import SciMLBase
 using ClimaCore
 import ClimaComms
 import ClimaParams as CP
