@@ -1,5 +1,5 @@
 export update_albedo!,
-    CLMTwoBandSoilAlbedo, ConstantTwoBandSoilAlbedo, CompositionBasedSoilAlbedo
+    CLMTwoBandSoilAlbedo, ConstantTwoBandSoilAlbedo, CompositionBasedSoilAlbedo, OfflineLinearSoilAlbedo
 
 abstract type AbstractSoilAlbedoParameterization end
 
@@ -533,6 +533,440 @@ function update_albedo!(
         albedo_with_nonlinear_moisture(α_dry_PAR, S_sfc, f_wet, β)
     @. p.soil.NIR_albedo =
         albedo_with_nonlinear_moisture(α_dry_NIR, S_sfc, f_wet, β)
+end
+
+
+#TODO: have both BSA and WSA
+"""
+    OfflineLinearSoilAlbedo{FT <: AbstractFloat} <: AbstractSoilAlbedoParameterization
+
+A soil albedo parameterization based on an offline-trained linear model.
+
+This parameterization uses **black-sky albedo (BSA)** predictions only for testing:
+- `BSA_vis` is used as a proxy for `PAR_albedo`
+- `BSA_nir` is used for `NIR_albedo`
+
+The predicted albedo in each band is a linear function of surface soil properties:
+
+    α_band = b₀
+           + b_ν       * ν
+           + b_om      * ν_ss_om
+           + b_cf      * ν_ss_gravel
+           + b_sand    * ν_ss_sand
+           + b_clay    * ν_ss_clay
+           + b_silt    * ν_ss_silt
+           + b_n       * n
+           + b_θ       * θ_sfc
+
+where
+- `ν` is porosity
+- `ν_ss_om` is soil organic matter
+- `ν_ss_gravel` is coarse fragments / gravel
+- `ν_ss_sand`, `ν_ss_clay`, `ν_ss_silt` are soil composition fractions
+- `n` is the van Genuchten `n` parameter
+- `θ_sfc` is the surface liquid water content used directly as the moisture predictor
+
+Because this is a linear model, its raw predictions are not automatically bounded.
+Therefore the final predicted albedo is clamped to the physical interval
+[`α_min`, `α_max`].
+
+# Notes
+- This parameterization uses `model_parameters.ν_ss_quartz` as the sand predictor.
+- The additional predictors `ν_ss_silt` and `ν_ss_clay` are stored directly in the
+  albedo parameterization object so that the core soil model does not need to be modified.
+- `VIS` is used as a practical proxy for `PAR`, consistent with the existing two-band
+  (`PAR`, `NIR`) soil albedo interface in this file.
+- This implementation is intended to reproduce an externally fitted offline linear model
+  as directly as possible inside the runtime model.
+
+# Coefficients
+Separate coefficient sets are stored for:
+- `BSA_vis`  → used for `PAR_albedo`
+- `BSA_nir`  → used for `NIR_albedo`
+"""
+struct OfflineLinearSoilAlbedo{
+    FT <: AbstractFloat,
+    SF <: Union{FT, ClimaCore.Fields.Field},
+} <: AbstractSoilAlbedoParameterization    
+    "Intercept for BSA VIS (used as PAR)"
+    intercept_BSA_vis::FT
+    "Intercept for BSA NIR"
+    intercept_BSA_nir::FT
+
+    "Porosity coefficient for BSA VIS"
+    coef_ν_BSA_vis::FT
+    "Porosity coefficient for BSA NIR"
+    coef_ν_BSA_nir::FT
+
+    "Organic matter coefficient for BSA VIS"
+    coef_om_BSA_vis::FT
+    "Organic matter coefficient for BSA NIR"
+    coef_om_BSA_nir::FT
+
+    "Coarse fragments / gravel coefficient for BSA VIS"
+    coef_cf_BSA_vis::FT
+    "Coarse fragments / gravel coefficient for BSA NIR"
+    coef_cf_BSA_nir::FT
+
+    "Sand coefficient for BSA VIS"
+    coef_sand_BSA_vis::FT
+    "Sand coefficient for BSA NIR"
+    coef_sand_BSA_nir::FT
+
+    "Clay coefficient for BSA VIS"
+    coef_clay_BSA_vis::FT
+    "Clay coefficient for BSA NIR"
+    coef_clay_BSA_nir::FT
+
+    "Silt coefficient for BSA VIS"
+    coef_silt_BSA_vis::FT
+    "Silt coefficient for BSA NIR"
+    coef_silt_BSA_nir::FT
+
+    "van Genuchten n coefficient for BSA VIS"
+    coef_n_BSA_vis::FT
+    "van Genuchten n coefficient for BSA NIR"
+    coef_n_BSA_nir::FT
+
+    "Surface moisture θ_sfc coefficient for BSA VIS"
+    coef_θ_BSA_vis::FT
+    "Surface moisture θ_sfc coefficient for BSA NIR"
+    coef_θ_BSA_nir::FT
+
+    "Silt fraction relative to soil solids"
+    ν_ss_silt::SF
+
+    "Clay fraction relative to soil solids"
+    ν_ss_clay::SF
+
+    "Minimum allowed albedo after prediction"
+    α_min::FT
+    "Maximum allowed albedo after prediction"
+    α_max::FT
+
+    "Thickness of top of soil used in surface moisture calculations (m)"
+    albedo_calc_top_thickness::FT
+end
+
+
+"""
+    OfflineLinearSoilAlbedo{FT}(; kwargs...) where {FT}
+
+Construct an `OfflineLinearSoilAlbedo`.
+
+All coefficients default to zero so that users can explicitly insert coefficients from
+their offline-trained model. The only nonzero defaults are the physical bounds and the
+surface-moisture averaging depth.
+
+# Required follow-up
+Replace the default zeros with the fitted coefficients from the offline regression
+before using this parameterization in experiments.
+"""
+function OfflineLinearSoilAlbedo{FT}(;
+    intercept_BSA_vis = FT(0),
+    intercept_BSA_nir = FT(0),
+
+    coef_ν_BSA_vis = FT(0),
+    coef_ν_BSA_nir = FT(0),
+
+    coef_om_BSA_vis = FT(0),
+    coef_om_BSA_nir = FT(0),
+
+    coef_cf_BSA_vis = FT(0),
+    coef_cf_BSA_nir = FT(0),
+
+    coef_sand_BSA_vis = FT(0),
+    coef_sand_BSA_nir = FT(0),
+
+    coef_clay_BSA_vis = FT(0),
+    coef_clay_BSA_nir = FT(0),
+
+    coef_silt_BSA_vis = FT(0),
+    coef_silt_BSA_nir = FT(0),
+
+    coef_n_BSA_vis = FT(0),
+    coef_n_BSA_nir = FT(0),
+
+    coef_θ_BSA_vis = FT(0),
+    coef_θ_BSA_nir = FT(0),
+
+    ν_ss_silt,
+    ν_ss_clay,
+   
+    α_min = FT(0.02),
+    α_max = FT(0.95),
+    albedo_calc_top_thickness = FT(0.02),
+) where {FT}
+    return OfflineLinearSoilAlbedo{FT, typeof(ν_ss_silt)}(
+        intercept_BSA_vis,
+        intercept_BSA_nir,
+
+        coef_ν_BSA_vis,
+        coef_ν_BSA_nir,
+
+        coef_om_BSA_vis,
+        coef_om_BSA_nir,
+
+        coef_cf_BSA_vis,
+        coef_cf_BSA_nir,
+
+        coef_sand_BSA_vis,
+        coef_sand_BSA_nir,
+
+        coef_clay_BSA_vis,
+        coef_clay_BSA_nir,
+
+        coef_silt_BSA_vis,
+        coef_silt_BSA_nir,
+
+        coef_n_BSA_vis,
+        coef_n_BSA_nir,
+
+        coef_θ_BSA_vis,
+        coef_θ_BSA_nir,
+
+        ν_ss_silt,
+        ν_ss_clay,
+
+        α_min,
+        α_max,
+        albedo_calc_top_thickness,
+    )
+end
+
+
+"""
+    linear_albedo_from_predictors(
+        intercept::FT,
+        coef_ν::FT,
+        coef_om::FT,
+        coef_cf::FT,
+        coef_sand::FT,
+        coef_clay::FT,
+        coef_silt::FT,
+        coef_n::FT,
+        coef_θ::FT,
+        ν::FT,
+        ν_ss_om::FT,
+        ν_ss_gravel::FT,
+        ν_ss_sand::FT,
+        ν_ss_clay::FT,
+        ν_ss_silt::FT,
+        vg_n::FT,
+        θ_sfc::FT,
+        α_min::FT,
+        α_max::FT,
+    ) where {FT}
+
+Evaluate a linear albedo model and clamp the result to [`α_min`, `α_max`].
+
+The unclamped prediction is
+
+    α = intercept
+      + coef_ν    * ν
+      + coef_om   * ν_ss_om
+      + coef_cf   * ν_ss_gravel
+      + coef_sand * ν_ss_sand
+      + coef_clay * ν_ss_clay
+      + coef_silt * ν_ss_silt
+      + coef_n    * vg_n
+      + coef_θ    * θ_sfc
+"""
+function linear_albedo_from_predictors(
+    intercept::FT,
+    coef_ν::FT,
+    coef_om::FT,
+    coef_cf::FT,
+    coef_sand::FT,
+    coef_clay::FT,
+    coef_silt::FT,
+    coef_n::FT,
+    coef_θ::FT,
+    ν::FT,
+    ν_ss_om::FT,
+    ν_ss_gravel::FT,
+    ν_ss_sand::FT,
+    ν_ss_clay::FT,
+    ν_ss_silt::FT,
+    vg_n::FT,
+    θ_sfc::FT,
+    α_min::FT,
+    α_max::FT,
+) where {FT}
+    α = intercept +
+        coef_ν * ν +
+        coef_om * ν_ss_om +
+        coef_cf * ν_ss_gravel +
+        coef_sand * ν_ss_sand +
+        coef_clay * ν_ss_clay +
+        coef_silt * ν_ss_silt +
+        coef_n * vg_n +
+        coef_θ * θ_sfc
+
+    return clamp(α, α_min, α_max)
+end
+
+
+"""
+    update_albedo!(bc::AtmosDrivenFluxBC, albedo::OfflineLinearSoilAlbedo, p, soil_domain, model_parameters)
+
+Update soil PAR and NIR albedo using an offline-trained linear model.
+
+This method:
+1. Extracts the needed surface soil predictors from `model_parameters`
+2. Computes `θ_sfc` using the same surface-moisture logic used elsewhere in this file
+3. Evaluates the BSA VIS and BSA NIR linear models
+4. Clamps predictions to physical bounds
+5. Stores:
+   - `BSA_vis` into `p.soil.PAR_albedo`
+   - `BSA_nir` into `p.soil.NIR_albedo`
+"""
+function update_albedo!(
+    bc::AtmosDrivenFluxBC,
+    albedo::OfflineLinearSoilAlbedo,
+    p,
+    soil_domain,
+    model_parameters,
+)
+    (;
+        intercept_BSA_vis,
+        intercept_BSA_nir,
+
+        coef_ν_BSA_vis,
+        coef_ν_BSA_nir,
+
+        coef_om_BSA_vis,
+        coef_om_BSA_nir,
+
+        coef_cf_BSA_vis,
+        coef_cf_BSA_nir,
+
+        coef_sand_BSA_vis,
+        coef_sand_BSA_nir,
+
+        coef_clay_BSA_vis,
+        coef_clay_BSA_nir,
+
+        coef_silt_BSA_vis,
+        coef_silt_BSA_nir,
+
+        coef_n_BSA_vis,
+        coef_n_BSA_nir,
+
+        coef_θ_BSA_vis,
+        coef_θ_BSA_nir,
+
+        ν_ss_silt,
+        ν_ss_clay,
+
+        α_min,
+        α_max,
+        albedo_calc_top_thickness,
+    ) = albedo
+
+    FT = eltype(soil_domain.fields.Δz_top)
+
+    #
+    # Surface predictors used directly by the offline linear model
+    #
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.ν)
+    ν_ss_om_sfc =
+        ClimaLand.Domains.top_center_to_surface(model_parameters.ν_ss_om)
+    ν_ss_gravel_sfc =
+        ClimaLand.Domains.top_center_to_surface(model_parameters.ν_ss_gravel)
+
+    # These are expected to be added to model_parameters elsewhere in the repo.
+    ν_ss_sand_sfc =
+        ClimaLand.Domains.top_center_to_surface(model_parameters.ν_ss_quartz)
+    
+    # Additional predictors are stored directly on the albedo object
+    ν_ss_silt_sfc =
+        ν_ss_silt isa ClimaCore.Fields.Field ?
+        ClimaLand.Domains.top_center_to_surface(ν_ss_silt) : ν_ss_silt
+
+    ν_ss_clay_sfc =
+        ν_ss_clay isa ClimaCore.Fields.Field ?
+        ClimaLand.Domains.top_center_to_surface(ν_ss_clay) : ν_ss_clay
+ 
+    hydrology_cm_sfc =
+        ClimaLand.Domains.top_center_to_surface(model_parameters.hydrology_cm)
+    vg_n_sfc = @. lazy(hydrology_cm_sfc.n)
+
+    #
+    # Surface moisture predictor θ_sfc
+    #
+    if soil_domain.fields.Δz_min < albedo_calc_top_thickness
+        N = p.soil.sfc_scratch
+        @. p.soil.sub_sfc_scratch = ClimaLand.heaviside(
+            albedo_calc_top_thickness + sqrt(eps(FT)),
+            soil_domain.fields.z_sfc - soil_domain.fields.z,
+        )
+        ClimaCore.Operators.column_integral_definite!(N, p.soil.sub_sfc_scratch)
+
+        @. p.soil.sub_sfc_scratch =
+            ClimaLand.heaviside(
+                albedo_calc_top_thickness + sqrt(eps(FT)),
+                soil_domain.fields.z_sfc - soil_domain.fields.z,
+            ) * p.soil.θ_l / N
+
+        θ_sfc = p.soil.sfc_scratch
+        ClimaCore.Operators.column_integral_definite!(
+            θ_sfc,
+            p.soil.sub_sfc_scratch,
+        )
+    else
+        θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
+    end
+
+    #
+    # BSA VIS -> PAR
+    #
+    @. p.soil.PAR_albedo = linear_albedo_from_predictors(
+        intercept_BSA_vis,
+        coef_ν_BSA_vis,
+        coef_om_BSA_vis,
+        coef_cf_BSA_vis,
+        coef_sand_BSA_vis,
+        coef_clay_BSA_vis,
+        coef_silt_BSA_vis,
+        coef_n_BSA_vis,
+        coef_θ_BSA_vis,
+        ν_sfc,
+        ν_ss_om_sfc,
+        ν_ss_gravel_sfc,
+        ν_ss_sand_sfc,
+        ν_ss_clay_sfc,
+        ν_ss_silt_sfc,
+        vg_n_sfc,
+        θ_sfc,
+        α_min,
+        α_max,
+    )
+
+    #
+    # BSA NIR -> NIR
+    #
+    @. p.soil.NIR_albedo = linear_albedo_from_predictors(
+        intercept_BSA_nir,
+        coef_ν_BSA_nir,
+        coef_om_BSA_nir,
+        coef_cf_BSA_nir,
+        coef_sand_BSA_nir,
+        coef_clay_BSA_nir,
+        coef_silt_BSA_nir,
+        coef_n_BSA_nir,
+        coef_θ_BSA_nir,
+        ν_sfc,
+        ν_ss_om_sfc,
+        ν_ss_gravel_sfc,
+        ν_ss_sand_sfc,
+        ν_ss_clay_sfc,
+        ν_ss_silt_sfc,
+        vg_n_sfc,
+        θ_sfc,
+        α_min,
+        α_max,
+    )
 end
 
 
