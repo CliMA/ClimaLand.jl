@@ -7,6 +7,10 @@ main
 - change limits on leaderboard annual plots PR[#1698](https://github.com/CliMA/ClimaLand.jl/pull/1698)
 - add standalone lake model PR[#1695](https://github.com/CliMA/ClimaLand.jl/pull/1695)
 
+v1.7.0
+-----
+- Don't compute bucket fluxes in coupled case PR[#1677](https://github.com/CliMA/ClimaLand.jl/pull/1677)
+
 v1.6.4
 -----
 - Update environment in ClimaCoupler.jl downstream test PR[#1685](https://github.com/CliMA/ClimaLand.jl/pull/1685)

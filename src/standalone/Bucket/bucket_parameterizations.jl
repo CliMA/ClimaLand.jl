@@ -57,7 +57,7 @@ end
 """
     ClimaLand.get_update_surface_humidity_function(model::BucketModel, Y, p)
 
-a helper function which creates and returns a function which modifies q_sfc 
+a helper function which creates and returns a function which modifies q_sfc
 given the evaporative scaling factor β and the air humidity.
 """
 function ClimaLand.get_update_surface_humidity_function(
@@ -65,10 +65,41 @@ function ClimaLand.get_update_surface_humidity_function(
     Y,
     p,
 )
+    return helper_update_surface_humidity_function(
+        Y.bucket.W,
+        Y.bucket.σS,
+        model,
+    )
+end
+
+"""
+    helper_update_surface_humidity_function(
+        W,
+        σS,
+        model::BucketModel,
+    )
+
+A helper function which returns the function to update the surface humidity.
+The input `W` and `σS` are the water content and snow cover fraction, respectively,
+and should live on the same ClimaCore Space.
+
+For offline (standalone) simulations, they will be accessed directly from `Y`.
+For online (coupled) simulations, they will need to be remapped onto the
+coupler space so we can compute fluxes on the coupler space.
+
+Arguments
+- `W`: A ClimaCore Field of water content
+- `σS`: A ClimaCore Field of snow cover fraction
+- `model`: The bucket model
+
+Returns
+- A broadcasted function to update the surface humidity
+"""
+function helper_update_surface_humidity_function(W, σS, model::BucketModel)
     β = @. lazy(
         beta_factor(
-            Y.bucket.W,
-            Y.bucket.σS,
+            W,
+            σS,
             model.parameters.f_bucket * model.parameters.W_f,
             model.parameters.f_snow * model.parameters.σS_c,
             model.parameters.p,
