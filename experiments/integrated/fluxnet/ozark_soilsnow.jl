@@ -115,9 +115,51 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
 
 # Construct the soil model
 prognostic_land_components = (:snow, :soil)
-α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+#α_soil = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+#    PAR_albedo = soil_α_PAR,
+#    NIR_albedo = soil_α_NIR,
+#)
+
+#composition_parameters = (; ν_ss_quartz, ν_ss_om, ν_ss_gravel)
+# Load additional predictors
+# Currently reading from local file but not local artifacts branch
+raw_comp = Soil.soil_composition_parameters(
+    domain.space.subsurface,
+    FT;
+    path = "/resnick/groups/esm/xwu/ClimaArtifacts/soilgrids/soilgrids_lowres/soil_solid_vol_fractions_soilgrids_lowres.nc",
+)
+ν_ss_silt_site = FT(parent(ClimaLand.Domains.top_center_to_surface(raw_comp.ν_ss_silt))[1])
+ν_ss_clay_site = FT(parent(ClimaLand.Domains.top_center_to_surface(raw_comp.ν_ss_clay))[1])
+
+#composition_parameters = (;
+#    ν_ss_om      = ν_ss_om,
+#    ν_ss_quartz  = ν_ss_quartz,
+#    ν_ss_gravel  = ν_ss_gravel,
+#)
+
+α_soil = Soil.OfflineLinearSoilAlbedo{FT}(;
+    intercept_BSA_vis = -2.988,
+    intercept_BSA_nir = -1.480,
+    coef_ν_BSA_vis = -0.131,
+    coef_ν_BSA_nir = -0.152,
+    coef_om_BSA_vis = -0.247,
+    coef_om_BSA_nir = -0.036,
+    coef_cf_BSA_vis = 0.107,
+    coef_cf_BSA_nir = 0.035,
+    coef_sand_BSA_vis = 0.123,
+    coef_sand_BSA_nir = 0.152,
+    coef_clay_BSA_vis = 0.244,
+    coef_clay_BSA_nir = 0.282,
+    coef_silt_BSA_vis = 0.261,
+    coef_silt_BSA_nir = 0.106,
+    coef_n_BSA_vis = 3.326,
+    coef_n_BSA_nir = 4.330,
+    coef_θ_BSA_vis = -0.029,
+    coef_θ_BSA_nir = -0.022,
+    ν_ss_silt = ν_ss_silt_site,
+    ν_ss_clay = ν_ss_clay_site,
+    α_min = 0.02,
+    α_max = 0.95,
 )
 runoff = ClimaLand.Soil.SurfaceRunoff()
 retention_parameters = (;
@@ -183,8 +225,8 @@ simulation = LandSimulation(
     updateat = updateat,
     solver_kwargs = (; saveat),
     diagnostics = nothing,
-);
-sol = solve!(simulation);
+)
+sol = solve!(simulation)
 
 # Plotting
 daily = FT.(sol.t) ./ 3600 ./ 24

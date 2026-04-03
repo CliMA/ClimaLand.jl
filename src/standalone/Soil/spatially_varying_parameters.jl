@@ -262,7 +262,7 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data, and (3) changed the spatial interpolation method.
 
 Any `path` can be provided, but this assumes that the parameters are stored under the names
-`nu_ss_om`, `nu_ss_sand`, and `nu_ss_cf`.
+`nu_ss_om`, `nu_ss_sand`, `nu_ss_silt`, `nu_ss_clay`, and `nu_ss_cf`.
 """
 function soil_composition_parameters(
     subsurface_space,
@@ -295,6 +295,22 @@ function soil_composition_parameters(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
+    ν_ss_silt = SpaceVaryingInput(
+        path,
+        "nu_ss_silt",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    ν_ss_clay = SpaceVaryingInput(
+        path,
+        "nu_ss_clay",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
     ν_ss_gravel = SpaceVaryingInput(
         path,
         "nu_ss_cf",
@@ -307,14 +323,19 @@ function soil_composition_parameters(
     # interpolation is used).
     # Values of zero are OK here, so we dont need to apply any masking
     # if sum > 1, normalize by sum, else "normalize" by 1 (i.e., do not normalize)
-    texture_norm = @. max(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
+    #TODO: check normalization
+    texture_norm = @. max(ν_ss_gravel + ν_ss_quartz + ν_ss_silt + ν_ss_clay + ν_ss_om, 1)
     @. ν_ss_gravel = ν_ss_gravel / texture_norm
     @. ν_ss_om = ν_ss_om / texture_norm
     @. ν_ss_quartz = ν_ss_quartz / texture_norm
+    @. ν_ss_silt = ν_ss_silt / texture_norm
+    @. ν_ss_clay = ν_ss_clay / texture_norm
 
     return (;
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
+        ν_ss_silt = ν_ss_silt,
+        ν_ss_clay = ν_ss_clay,
         ν_ss_gravel = ν_ss_gravel,
     )
 end
