@@ -86,14 +86,6 @@ function get_sim_var_dict(diagnostics_folder_path)
             return sim_var
         end
 
-    sim_var_dict["lai"] =
-        () -> begin
-            sim_var = get(
-                ClimaAnalysis.SimDir(diagnostics_folder_path),
-                short_name = "lai",
-            )
-            return sim_var
-        end
     return sim_var_dict
 end
 
@@ -298,32 +290,6 @@ function get_calibration_obs_var_dict()
                 (obs_var.dim_attributes["lat"]["units"] = "degrees_north")
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
             obs_var.attributes["short_name"] = "gpp"
-            return obs_var
-        end
-
-    # Add LAI from MODIS
-    obs_var_dict["lai"] =
-        (start_date) -> begin
-            modis_lai_data_path =
-                ClimaLand.Artifacts.modis_lai_forcing_data_path()
-            # Collect all available yearly files (2000-2020)
-            paths = [
-                joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
-                for year in 2000:2020 if isfile(
-                    joinpath(
-                        modis_lai_data_path,
-                        "Yuan_et_al_$(year)_1x1.nc",
-                    ),
-                )
-            ]
-            obs_var = ClimaAnalysis.OutputVar(
-                paths,
-                "lai",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            )
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-            obs_var.attributes["short_name"] = "lai"
             return obs_var
         end
 
