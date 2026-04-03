@@ -922,10 +922,11 @@ function compute_latent_heat_flux!(
             p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.lhf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
-        if land.lake isa Nothing
+        if land_model isa Nothing
             return out
         else
-            @. out += land.lake.inland_water_mask .* p.lake.turbulent_fluxes.lhf
+            @. out +=
+                land_model.inland_water_mask .* p.lake.turbulent_fluxes.lhf
             return out
         end
     else
@@ -933,8 +934,9 @@ function compute_latent_heat_flux!(
             p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.lhf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
-        if !(land.lake isa Nothing)
-            @. out += land.lake.inland_water_mask .* p.lake.turbulent_fluxes.lhf
+        if !(land_model isa Nothing)
+            @. out +=
+                land_model.inland_water_mask .* p.lake.turbulent_fluxes.lhf
         end
     end
 end
@@ -953,10 +955,11 @@ function compute_sensible_heat_flux!(
             p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.shf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
-        if land.lake isa Nothing
+        if land_model.lake isa Nothing
             return out
         else
-            @. out += land.lake.inland_water_mask .* p.lake.turbulent_fluxes.shf
+            @. out +=
+                land_model.lake.inland_water_mask .* p.lake.turbulent_fluxes.shf
             return out
         end
 
@@ -965,8 +968,9 @@ function compute_sensible_heat_flux!(
             p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.shf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
-        if !(land.lake isa Nothing)
-            @. out += land.lake.inland_water_mask .* p.lake.turbulent_fluxes.shf
+        if !(land_model isa Nothing)
+            @. out +=
+                land_model.inland_water_mask .* p.lake.turbulent_fluxes.shf
         end
     end
 end
