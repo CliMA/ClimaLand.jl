@@ -137,7 +137,8 @@ function prescribed_climatological_lai_modis(
     interpolation_method = Interpolations.Constant(),
     context = ClimaComms.context(surface_space),
 )
-    modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_climatology_data_path(; context)
+    modis_lai_ncdata_path =
+        ClimaLand.Artifacts.modis_lai_climatology_data_path(; context)
     return TimeVaryingInput(
         modis_lai_ncdata_path,
         ["lai"],

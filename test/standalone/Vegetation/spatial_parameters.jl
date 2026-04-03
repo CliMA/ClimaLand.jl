@@ -8,7 +8,7 @@ import Interpolations
 import ClimaUtilities
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
-using ClimaUtilities.TimeManager:ITime
+using ClimaUtilities.TimeManager: ITime
 using Dates
 import ClimaParams as CP
 
@@ -126,12 +126,12 @@ end
 @testset "Climatological LAI" begin
     FT = Float32
     domain = ClimaLand.Domains.global_box_domain(
-            FT;
-            nelements = (180, 360, 5),
-            mask_threshold = FT(0.99),
-    );
-    surface_space = domain.space.surface;
-    LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space);
+        FT;
+        nelements = (180, 360, 5),
+        mask_threshold = FT(0.99),
+    )
+    surface_space = domain.space.surface
+    LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
     t1 = ITime(0, Second(1), DateTime(1975))
     tmp1 = ClimaCore.Fields.zeros(surface_space)
     tmp2 = ClimaCore.Fields.zeros(surface_space)
@@ -140,4 +140,3 @@ end
     evaluate!(tmp2, LAI, t2)
     # checks that both evaluate without error even though beyond the bounds of the data
 end
-
