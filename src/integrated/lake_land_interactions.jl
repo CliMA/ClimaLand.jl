@@ -1,4 +1,12 @@
 """
+"""
+set_lake_fraction!(p, model::LandModel) =
+    isnothing(model.lake) ? p.lake_fraction .= 0 :
+    p.lake_fraction .= model.lake.inland_water_mask
+set_lake_fraction!(p, model::SoilCanopyModel) = nothing
+
+
+"""
     update_lake_sediment_heat_flux!(p, lake::InlandWater.SlabLakeModel, soil)
 
 Compute the sediment heat flux between the lake and the top soil layer.
@@ -40,7 +48,7 @@ function Canopy.mask_biomass!(
         Val{(:canopy, :lake, :snow, :soil)},
     },
 )
-    canopy_mask = p.sfc_scratch
+    canopy_mask = p.lake_fraction
     FT = eltype(p.canopy.biomass.area_index.leaf)
     @. p.canopy.biomass.area_index.leaf =
         ifelse(canopy_mask == 1, FT(0), p.canopy.biomass.area_index.leaf)
@@ -67,7 +75,7 @@ function Snow.maximum_snow_cover_fraction!(
         Val{(:canopy, :lake, :snow, :soil)},
     },
 )
-    @. p.snow.snow_cover_fraction *= (1 - p.sfc_scratch)
+    @. p.snow.snow_cover_fraction *= (1 - p.lake_fraction)
 end
 
 """
@@ -110,7 +118,7 @@ end
 Returns the bare soil fraction of 1-snow cover fraction-lake fraction.
 """
 bare_soil_fraction(p, snow, lake::SlabLakeModel) =
-    @. lazy(1 - p.snow.snow_cover_fraction - lake.inland_water_mask)
+    @. lazy(1 - p.snow.snow_cover_fraction - p.lake_fraction)
 
 """
     update_ground_albedo_PAR!(p, Y, soil, snow, lake::SlabLakeModel)
@@ -121,7 +129,7 @@ function update_ground_albedo_PAR!(p, Y, soil, snow, lake::SlabLakeModel)
     snow_frac = p.snow.snow_cover_fraction
     α_soil = p.soil.PAR_albedo
     α_snow = p.snow.α_snow
-    f_lake = lake.inland_water_mask
+    f_lake = p.lake_fraction
     α_lake = p.lake.albedo
     @. p.α_ground.PAR =
         p.bare_soil_fraction * α_soil + snow_frac * α_snow + f_lake * α_lake
@@ -136,7 +144,7 @@ function update_ground_albedo_NIR!(p, Y, soil, snow, lake::SlabLakeModel)
     snow_frac = p.snow.snow_cover_fraction
     α_soil = p.soil.NIR_albedo
     α_snow = p.snow.α_snow
-    f_lake = lake.inland_water_mask
+    f_lake = p.lake_fraction
     α_lake = p.lake.albedo
     @. p.α_ground.NIR =
         p.bare_soil_fraction * α_soil + snow_frac * α_snow + f_lake * α_lake
@@ -153,7 +161,7 @@ function update_soil_heat_flux_with_lake_sediment_flux!(
     p,
     lake::SlabLakeModel,
 )
-    @. energy_bc += lake.inland_water_mask * p.lake.sediment_heat_flux
+    @. energy_bc += p.lake_fraction * p.lake.sediment_heat_flux
 end
 
 """
@@ -196,7 +204,7 @@ function ground_lw_upwelling(
     LW_u_lake,
 )
     snow_frac = p.snow.snow_cover_fraction
-    f_lake = lake.inland_water_mask
+    f_lake = p.lake_fraction
     return @. lazy(
         p.bare_soil_fraction * LW_u_soil +
         snow_frac * LW_u_snow +

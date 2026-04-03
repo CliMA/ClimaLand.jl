@@ -309,6 +309,7 @@ lsm_aux_vars(m::LandModel) = (
     :α_sfc,
     :α_ground,
     :bare_soil_fraction,
+    :lake_fraction,
 )
 
 """
@@ -337,6 +338,7 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
     FT,
+    FT,
 )
 
 """
@@ -359,6 +361,7 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -427,7 +430,6 @@ function make_update_boundary_fluxes(
             land.soil.domain,
             FT,
         )
-        # p.sfc_scratch .= 1 - land.lake.inland_water_mask
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
 
@@ -785,7 +787,7 @@ function snow_boundary_fluxes!(
     P_liq = p.drivers.P_liq
 
     @. p.snow.total_water_flux =
-        P_snow * p.sfc_scratch +
+        P_snow * (1 - p.lake_fraction) +
         (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
 
@@ -808,7 +810,7 @@ function snow_boundary_fluxes!(
 
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
     p.snow.total_energy_flux .=
-        e_flux_falling_snow .+
+        e_flux_falling_snow .* (1 .- p.lake_fraction) .+
         (
             Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
@@ -872,6 +874,7 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
     canopy = model.canopy
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
+        set_lake_fraction!(p, model)
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
         Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
@@ -969,17 +972,12 @@ function make_update_aux(land::LandModel)
     update_snow_aux! = make_update_aux(land.snow)
     update_lake_aux! =
         isnothing(land.lake) ? Returns(nothing) : make_update_aux(land.lake)
-    function update_aux!(p, Y, t)
-        # we require the following ordering so that soil and snow albedo fields
+    function update_aux!(p, Y, t)        # we require the following ordering so that soil and snow albedo fields
         # in p are updated to the current step, so that they can be used by the canopy
         # to compute shortwave radiation
         # In principle radiation, GPP, etc should be computed as a flux in boundary_fluxes,
         # and then we would not have this ordering requirement.
         update_soil_aux!(p, Y, t)
-        # Set maximum snow cover fraction to be 1 - lake fraction
-        # snow needs access via `p` so use a scratch spot.
-        isnothing(land.lake) ? Returns(nothing) :
-        p.sfc_scratch .= land.lake.inland_water_mask
         update_snow_aux!(p, Y, t)
         update_lake_aux!(p, Y, t)
         # update the bare soil fraction
@@ -987,9 +985,6 @@ function make_update_aux(land::LandModel)
         # Update albedo for the canopy
         update_ground_albedo_PAR!(p, Y, land.soil, land.snow, land.lake)
         update_ground_albedo_NIR!(p, Y, land.soil, land.snow, land.lake)
-        # Use scratch space for the lake fraction - canopy needs access in `p`
-        isnothing(land.lake) ? Returns(nothing) :
-        p.sfc_scratch .= land.lake.inland_water_mask
         # Update the canopy and soil co2
         update_canopy_aux!(p, Y, t)
         update_soilco2_aux!(p, Y, t)
