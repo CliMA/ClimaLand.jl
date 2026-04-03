@@ -926,7 +926,7 @@ function compute_latent_heat_flux!(
             return out
         else
             @. out +=
-                land_model.inland_water_mask .* p.lake.turbulent_fluxes.lhf
+                land_model.lake.inland_water_mask .* p.lake.turbulent_fluxes.lhf
             return out
         end
     else
@@ -936,7 +936,7 @@ function compute_latent_heat_flux!(
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
         if !(land_model isa Nothing)
             @. out +=
-                land_model.inland_water_mask .* p.lake.turbulent_fluxes.lhf
+                land_model.lake.inland_water_mask .* p.lake.turbulent_fluxes.lhf
         end
     end
 end
@@ -970,7 +970,7 @@ function compute_sensible_heat_flux!(
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
         if !(land_model isa Nothing)
             @. out +=
-                land_model.inland_water_mask .* p.lake.turbulent_fluxes.shf
+                land_model.lake.inland_water_mask .* p.lake.turbulent_fluxes.shf
         end
     end
 end
