@@ -4,7 +4,6 @@ ClimaComms.@import_required_backends
 import ClimaLand
 import ClimaParams
 import ClimaLand.Parameters as LP
-import SciMLBase
 import ClimaTimeSteppers
 import Dates
 import ClimaUtilities
@@ -60,7 +59,7 @@ exp_tendency! = ClimaLand.make_exp_tendency(model)
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)
 
-prob = SciMLBase.ODEProblem(
+prob = ClimaTimeSteppers.ODEProblem(
     ClimaTimeSteppers.ClimaODEFunction((T_exp!) = exp_tendency!),
     Y,
     (t0, tf),
@@ -73,12 +72,12 @@ updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
 checkpoint_cb =
     ClimaLand.CheckpointCallback(checkpoint_period, output_dir, t0; model)
-cb = SciMLBase.CallbackSet(driver_cb, checkpoint_cb)
+cb = ClimaTimeSteppers.CallbackSet(driver_cb, checkpoint_cb)
 
 timestepper = ClimaTimeSteppers.RK4()
 ode_algo = ClimaTimeSteppers.ExplicitAlgorithm(timestepper)
 
-sol = SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+sol = ClimaTimeSteppers.solve(prob, ode_algo; dt = Δt, callback = cb)
 
 # Now, let's restart from the checkpoint (we have the pass the root_path, not the output_dir)
 restart_file = ClimaLand.find_restart(root_path)
@@ -91,16 +90,20 @@ ClimaLand.set_initial_conditions_from_checkpoint!(
 t_restart = ClimaLand.initial_time_from_checkpoint(restart_file; model)
 
 set_initial_cache!(p_restart, Y_restart, t_restart)
-prob_restart = SciMLBase.ODEProblem(
+prob_restart = ClimaTimeSteppers.ODEProblem(
     ClimaTimeSteppers.ClimaODEFunction((T_exp!) = exp_tendency!),
     Y_restart,
     (t_restart, tf),
     p_restart,
 )
 driver_cb_restarted = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
-cb_restarted = SciMLBase.CallbackSet(driver_cb_restarted)
-sol_restarted =
-    SciMLBase.solve(prob_restart, ode_algo; dt = Δt, callback = cb_restarted)
+cb_restarted = ClimaTimeSteppers.CallbackSet(driver_cb_restarted)
+sol_restarted = ClimaTimeSteppers.solve(
+    prob_restart,
+    ode_algo;
+    dt = Δt,
+    callback = cb_restarted,
+)
 for p in propertynames(Y.bucket)
     @test getproperty(Y.bucket, p) == getproperty(Y_restart.bucket, p)
 end

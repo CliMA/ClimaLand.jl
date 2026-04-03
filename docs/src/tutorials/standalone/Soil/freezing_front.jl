@@ -72,7 +72,6 @@
 # The problem setup and soil properties are chosen to match the lab experiment of [Mizoguchi1990](@citet), as detailed in [Hansson2004](@citet) and [DallAmico2011](@citet). Like Hansson et al., we allow for a small amount of energy leakage at the bottom of the domain to account for imperfect insulation.
 
 # # Import necessary modules
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using DelimitedFiles
 using CairoMakie

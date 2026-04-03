@@ -1,6 +1,5 @@
 using ClimaComms
 ClimaComms.@import_required_backends
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name
@@ -16,6 +15,7 @@ using ClimaLand.Snow
 import ClimaLand.Parameters as LP
 using ClimaCore
 using ClimaUtilities.TimeManager: ITime
+import ClimaTimeSteppers
 
 for FT in (Float32, Float64)
     @testset "Default LandModel constructor, FT=$FT" begin
@@ -586,10 +586,13 @@ end
 
     # Take a step
     jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
-    prob = SciMLBase.ODEProblem(
+    prob = ClimaTimeSteppers.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = ClimaTimeSteppers.ODEFunction(
+                imp_tendency!;
+                jac_kwargs...,
+            ),
             dss! = ClimaLand.dss!,
         ),
         Y,
@@ -606,7 +609,7 @@ end
         ),
     )
 
-    sol = SciMLBase.solve(
+    sol = ClimaTimeSteppers.solve(
         prob,
         ode_algo;
         dt = Δt,

@@ -6,7 +6,6 @@
 # [Lehmann2008](@citet)
 
 using CairoMakie
-import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
 

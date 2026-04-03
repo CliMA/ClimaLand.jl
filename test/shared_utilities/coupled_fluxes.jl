@@ -1,7 +1,5 @@
 using ClimaComms
 ClimaComms.@import_required_backends
-import SciMLBase
-import ClimaTimeSteppers as CTS
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name
 using ClimaUtilities.ClimaArtifacts
