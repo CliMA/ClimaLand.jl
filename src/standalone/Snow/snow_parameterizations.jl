@@ -61,16 +61,19 @@ snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
 """
 function update_snow_cover_fraction!(
-    scf,
+    p,
     m::WuWuSnowCoverFractionModel,
     Y,
-    p,
     t,
     earth_param_set,
+    prognostic_land_components,
 )
+    scf = p.snow.snow_cover_fraction
     z = p.snow.z_snow #ground-area snow depth in this case
     @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
+    maximum_snow_cover_fraction!(p, Val(prognostic_land_components))
 end
+maximum_snow_cover_fraction!(p, plc_val) = nothing
 
 """
     ClimaLand.surface_height(
