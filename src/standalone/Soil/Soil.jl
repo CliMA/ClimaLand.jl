@@ -112,7 +112,8 @@ export RichardsModel,
     EnergyHydrologyParameters,
     AbstractSoilModel,
     AbstractSoilSource,
-    PhaseChange
+    PhaseChange,
+    CompositionBasedSoilAlbedo
 
 
 
@@ -204,7 +205,7 @@ using .Biogeochemistry
 """
     EnergyHydrology{FT}(domain, forcing, toml_dict::CP.ParamDict;
                          prognostic_land_components = (:soil),
-                         albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
+                         albedo = CompositionBasedSoilAlbedo{FT}(),
                          runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(toml_dict,
                                                                 f_max = topmodel_fmax(domain.space.surface, FT),
                                                             ),
@@ -251,10 +252,18 @@ The runoff and albedo parameterizations are also provided and can be changed via
 additional sources may be required in your model if the soil model will be composed with other
 component models.
 
+For the albedo parameterization, the default is `CompositionBasedSoilAlbedo` which computes
+albedo from soil composition (organic matter, van Genuchten n, coarse fragments) using a
+regression model fitted to desert regions. This model has been shown to have lower RMSE compared 
+to CLM soil color maps. An alternative is `CLMTwoBandSoilAlbedo` which uses traditional soil color maps:
+```julia
+albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...)
+```
+
 Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as Floats
 by kwarg; otherwise the default values are used.
 
-This sets the bottom boundary conditions to be no flux by default, but these can be changed using the 
+This sets the bottom boundary conditions to be no flux by default, but these can be changed using the
 `bottom_bc` kwarg.
 """
 function EnergyHydrology{FT}(
@@ -262,9 +271,9 @@ function EnergyHydrology{FT}(
     forcing,
     toml_dict::CP.ParamDict;
     prognostic_land_components = (:soil,),
-    albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
-        clm_soil_albedo_parameters(domain.space.surface)...,
-    ),
+    albedo::AbstractSoilAlbedoParameterization = CompositionBasedSoilAlbedo{
+        FT,
+    }(),
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(
         toml_dict,
         f_max = topmodel_fmax(domain.space.surface, FT),
