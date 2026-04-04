@@ -326,7 +326,7 @@ for float_type in (Float32, Float64)
         @assert mean(
             abs.(
                 first.(radiation.cosθs.(sv.t, radiation.start_date)) .-
-                cache_cosθs
+                cache_cosθs,
             ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
