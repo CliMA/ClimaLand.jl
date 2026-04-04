@@ -226,3 +226,11 @@ git-tree-sha1 = "ea4d0f709c63d34dc2d35ce9727e3f70f67133c8"
     [[imerg_landsea_mask.download]]
     sha256 = "a931f48fcadf9c94e4162d11ae8c6d05d6d9960a01cd1a8342c7c40cf74dfd4b"
     url = "https://caltech.box.com/shared/static/kmfe3j4bg97l1y07v36gb5jntk1lru3l.gz"
+
+[era5_lake_cover_and_depth]
+git-tree-sha1 = "da338fdaf3704c744a90f79e1b84526afc9f092b"
+
+    [[era5_lake_cover_and_depth.download]]
+    sha256 = "d822dfccbe72d194c3e7bc5e88e6485c0496fdef4ee5b33aa6e1ce9dae746389"
+    url = "https://caltech.box.com/shared/static/andadm1km9mitehanga1ae186u0drw2p.gz"
+

@@ -49,7 +49,9 @@ using ClimaLand:
 import ClimaLand.Domains:
     Point, Column, SphericalShell, SphericalSurface, HybridBox, Plane
 using Interpolations
+using Dates
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.DataHandling
 
 export SlabLakeParameters,
     SlabLakeModel,
@@ -520,38 +522,32 @@ ClimaLand.get_domain(model::SlabLakeModel) = model.domain
         threshold = 80.0,
         landsea_mask = nothing,
         latitude_bounds = (-60.0, 60.0),
+        use_era5_lakes = true,
+        era5_lake_cover_threshold = 0.5,
+        era5_lake_depth_threshold = 5.0,
         regridder_type = :InterpolationsRegridder,
-        extrapolation_bc = (
-            Interpolations.Periodic(),
-            Interpolations.Flat(),
-            Interpolations.Flat(),
-        ),
-       interpolation_method = Interpolations.Constant()
+        extrapolation_bc = ...,
+        interpolation_method = Interpolations.Constant(),
     )
 
-Reads a water-fraction dataset from `filepath` (defaults to the IMERG
-land-sea mask artifact), regrids to the `surface_space`, and identifies
-inland water points. The `surface_space` must have latitude and longitude
-as dimensions, without a `z` dimension.
+Builds the inland water mask by combining two data sources:
 
-A point is classified as inland water if its water fraction is above
-`threshold` and its latitude is within `latitude_bounds`. Points
-outside the latitude bounds (e.g. polar ice shelves) are never
-classified as inland water, since the slab lake treatment
-is not appropriate for ice sheets.
+1. **IMERG** water-fraction mask (default): points with water fraction
+   above `threshold` are classified as inland water.
+2. **ERA5 lakes** (when `use_era5_lakes = true`, the default): points
+   where ERA5 lake cover `cl > era5_lake_cover_threshold` (default 0.5)
+   **and** ERA5 lake depth `dl > era5_lake_depth_threshold` (default 5 m)
+   are also classified as inland water, even if IMERG does not flag them.
+
+The final mask is the **union** of both sources, filtered by
+`latitude_bounds` (to exclude polar ice shelves) and optionally by
+`landsea_mask` (to exclude ocean points).
 
 If a `landsea_mask` is provided (binary field: 1 = land,
 0 = ocean), only points that are classified as land in the `landsea_mask`
-but have a water fraction above `threshold` are marked as inland water.
-This ensures ocean points are not double-counted.
-
-The IMERG land-sea mask (`landseamask` variable) encodes water fraction:
-0 = pure land, 100 = pure water/ocean. A `threshold` of 80 means any
-grid point with > 80% water fraction that is inside the simulation's
-land domain and within the latitude bounds is treated as inland water.
+are eligible for inland water classification.
 
 Returns a binary ClimaCore Field: 1 = inland water, 0 = land/ocean.
-Returns `nothing` for Point/Column domains (no horizontal extent).
 """
 function inland_water_mask(
     surface_space;
@@ -560,6 +556,9 @@ function inland_water_mask(
     threshold = 80.0,
     landsea_mask = nothing,
     latitude_bounds = (-60.0, 60.0),
+    use_era5_lakes = true,
+    era5_lake_cover_threshold = 0.5,
+    era5_lake_depth_threshold = 5.0,
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
         Interpolations.Periodic(),
@@ -568,29 +567,70 @@ function inland_water_mask(
     ),
     interpolation_method = Interpolations.Constant(),
 )
+    regridder_kwargs = (; extrapolation_bc, interpolation_method)
+
+    # --- IMERG-based mask ---
     water_frac = SpaceVaryingInput(
         filepath,
         varname,
         surface_space;
         regridder_type,
-        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+        regridder_kwargs,
     )
-    # Points with high water fraction are water-like (inland lakes, rivers)
-    is_high_water_frac = _apply_threshold_above.(water_frac, threshold)
+    is_water = _apply_threshold_above.(water_frac, threshold)
 
-    # Exclude polar regions where the slab lake treatment is inappropriate
-    # (e.g. Antarctic ice shelves have high IMERG water fraction but are not lakes)
+    # Exclude polar regions (e.g. Antarctic ice shelves)
     lat_field = ClimaCore.Fields.coordinate_field(surface_space).lat
     lat_min, lat_max = latitude_bounds
     in_bounds = _within_latitude_bounds.(lat_field, lat_min, lat_max)
-    is_high_water_frac = is_high_water_frac .* in_bounds
+    is_water = is_water .* in_bounds
+
+    # --- ERA5 lake cover + depth mask ---
+    if use_era5_lakes
+        # Read ERA5 lake cover
+        dh_cover = DataHandling.DataHandler(
+            ClimaLand.Artifacts.era5_lake_cover_path(),
+            "cl",
+            surface_space;
+            regridder_type,
+            regridder_kwargs,
+        )
+        dates_cover = DataHandling.available_dates(dh_cover)
+        lake_cover =
+            DataHandling.regridded_snapshot(dh_cover, first(dates_cover))
+        close(dh_cover)
+
+        # Read ERA5 lake depth
+        dh_depth = DataHandling.DataHandler(
+            ClimaLand.Artifacts.era5_lake_depth_path(),
+            "dl",
+            surface_space;
+            regridder_type,
+            regridder_kwargs,
+        )
+        dates_depth = DataHandling.available_dates(dh_depth)
+        lake_depth =
+            DataHandling.regridded_snapshot(dh_depth, first(dates_depth))
+        close(dh_depth)
+
+        FT = eltype(lake_cover)
+        cl_thresh = FT(era5_lake_cover_threshold)
+        dl_thresh = FT(era5_lake_depth_threshold)
+        era5_is_lake = @. ifelse(
+            lake_cover > cl_thresh && lake_depth > dl_thresh,
+            FT(1),
+            FT(0),
+        )
+        era5_is_lake = era5_is_lake .* in_bounds
+        # Union: pixel is inland water if IMERG OR ERA5 flags it
+        is_water =
+            @. ifelse(is_water > FT(0) || era5_is_lake > FT(0), FT(1), FT(0))
+    end
 
     if isnothing(landsea_mask)
-        return is_high_water_frac
+        return is_water
     else
-        # Only mark as inland water if the simulation treats it as land
-        # (landsea_mask == 1) but the water fraction data says it's watery
-        return is_high_water_frac .* landsea_mask
+        return is_water .* landsea_mask
     end
 end
 
