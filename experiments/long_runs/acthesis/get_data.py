@@ -262,7 +262,6 @@ def make_netcdf(mdata, edata, output_dir, output_name):
 
 def gather_month_data(client, year, month, master_dict, era5dir, mod_dumpdir, nc_dir):
     output_tag = f"{year}" + "-" + f"{month:02d}"
-    print(f"\n\n*** OBTAINING DATA FOR {output_tag}: *****\n")
     era5_data = get_era5land_data(client, year, month, era5dir)
     modis_data = get_modis_files(master_dict, year, month, mod_dumpdir)
     make_netcdf(modis_data, era5_data, nc_dir, output_tag)
@@ -292,18 +291,23 @@ def run_scrape():
     for year in range(2000, 2021):
         for month in range(1, 13):
             try:
+                if date(year, month, 1) < date(2000, 3, 1):
+                    continue
+                if date(year, month, 1) > date(2020, 6, 1):
+                    continue
+                print(f"\n\n*** OBTAINING DATA FOR {year}-{month}: *****\n", flush = True)
                 gather_month_data(client, year, month, master_date_dict, era5_dir, modis_dump_dir, nc_dir)
                 progress += 1
                 newtime = datetime.now()
                 dt = newtime - start_time
-                t_done = newtime + (dt*(240/progress) - dt)
-                print(f"PROGRESS: {progress}/240")
+                t_done = newtime + (dt*(244/progress) - dt)
+                print(f"PROGRESS: {progress}/244")
                 print(f"ESTIMATED COMPLETION: {t_done}")
             except:
                 missed_years.append((year, month))
-                print(f"****** ERROR WITH {year}-{month}*****")
+                print(f"****** ERROR WITH {year}-{month}*****", flush = True)
             else:
-                print(f"{year}-{month} SUCCESSFULLY GATHERED.")
+                print(f"{year}-{month} SUCCESSFULLY GATHERED.", flush = True)
     print("MISSED DATES: ")
     print(", ".join(missed_years))
 
