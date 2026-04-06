@@ -168,6 +168,18 @@ function modis_lai_climatology_data_path(; context = nothing)
 end
 
 """
+    modis_max_lai_data_path(; context)
+
+Return the path to the netcdf file that contains the max LAI from  MODIS forcing data, computed from data from 2000-2020.
+"""
+function modis_max_lai_data_path(; context = nothing)
+    return joinpath(
+        @clima_artifact("modis_max_lai", context),
+        "modis_max_lai.nc",
+    )
+end
+
+"""
     modis_lai_single_year_path(; context = nothing, year = Dates.year(DateTime(2008)))
 
 Return the path to the file that contains the MODIS LAI data for the provided single year.

@@ -5,9 +5,10 @@ using Thermodynamics
 using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
+using NCDatasets
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
-import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
+using ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
@@ -330,31 +331,75 @@ end
         domain,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        SAI::FT = toml_dict["SAI"],
-        RAI::FT = toml_dict["RAI"],
+        SAI::FS = toml_dict["SAI"],
+        RAI::FS = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = toml_dict["canopy_height"]
-    ) where {FT <: AbstractFloat}
+    ) where {FS, FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
 
 The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
 The following default parameters are used:
-- SAI = 0 (m2/m2) - stem area index
-- RAI = 1 (m2/m2) - root area index
 - height = 1m
+- SAI = 0
+- RAI = 1
 """
 function PrescribedBiomassModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
-    SAI::FT = toml_dict["SAI"],
-    RAI::FT = toml_dict["RAI"],
+    SAI::FS = toml_dict["SAI"],
+    RAI::FS = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FS, FT <: AbstractFloat}
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
+    return PrescribedBiomassModel{
+        FT,
+        typeof(plant_area_index),
+        typeof(rooting_depth),
+        typeof(height),
+    }(
+        plant_area_index,
+        rooting_depth,
+        height,
+    )
+end
+
+"""
+    PrescribedBiomassModel{FT}(
+        domain,
+        LAI::AbstractTimeVaryingInput,
+        maxLAI,
+        toml_dict::CP.ParamDict;
+        SAI = toml_dict["SAI_coeff"] .* maxLAI,
+        RAI = toml_dict["RAI_coeff"] .* maxLAI,
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"]
+    ) where {FT <: AbstractFloat}
+
+Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`,
+assuming that the SAI and RAI are computed as a linear multiple of the maximum LAI.
+
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index,
+and the maxLAI argument should be a ClimaUtilities SpaceVaryingInput or a single scalar.
+
+The following default parameters are used:
+- height = 1m
+"""
+function PrescribedBiomassModel{FT}(
+    domain,
+    LAI::AbstractTimeVaryingInput,
+    maxLAI,
+    toml_dict::CP.ParamDict;
+    SAI = toml_dict["SAI_coeff"] .* maxLAI,
+    RAI = toml_dict["RAI_coeff"] .* maxLAI,
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
-    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
         FT,
         typeof(plant_area_index),
