@@ -1,5 +1,6 @@
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import Interpolations: Constant
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.FileReaders: NCFileReader, read
@@ -148,6 +149,37 @@ function prescribed_climatological_lai_modis(
     )
 end
 
+"""
+     modis_max_lai(surface_space,
+                   regridder_type = :InterpolationsRegridder,
+                   interpolation_method = Interpolations.Constant(),
+                   context = ClimaComms.context(surface_space))
+
+A helper function which constructs the SpaceVaryingInput object for maximum Leaf Area
+Index using MODIS LAI data; requires the
+surface_space.
+
+The ClimaLand default is to use nearest neighbor interpolation, but
+linear interpolation is supported
+by passing interpolation_method = Interpolations.Linear().
+"""
+function modis_max_lai(
+    surface_space,
+    regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
+    context = ClimaComms.context(surface_space),
+)
+    modis_max_lai_ncdata_path =
+        ClimaLand.Artifacts.modis_max_lai_data_path(; context)
+    return SpaceVaryingInput(
+        modis_max_lai_ncdata_path,
+        ["lai"],
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+    )
+end
+
 
 """
     AbstractBiomassModel{FT} <: AbstractCanopyComponent{FT}
@@ -159,44 +191,27 @@ abstract type AbstractBiomassModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLand.name(::AbstractBiomassModel) = :biomass
 
-abstract type AbstractAreaIndexModel{FT <: AbstractFloat} end
+abstract type AbstractAreaIndexModel end
 
 """
-   PrescribedAreaIndices{FT <:AbstractFloat, F <: AbstractTimeVaryingInput}
+   PrescribedAreaIndices{FS <:Union{AbstractFloat, ClimaCore.Fields.Field}, F <: AbstractTimeVaryingInput}
 
 A struct containing the area indices of the plants at a specific site;
-LAI varies in time, while SAI and RAI are fixed in space and time.
+LAI varies in time, while SAI and RAI are fixed in time and can either
+be spatially varying or a scalar.
 
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAreaIndices{
-    FT <: AbstractFloat,
+    FS <: Union{AbstractFloat, ClimaCore.Fields.Field},
     F <: AbstractTimeVaryingInput,
-} <: AbstractAreaIndexModel{FT}
+} <: AbstractAreaIndexModel
     "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
     LAI::F
-    "The constant stem area index (SAI; m2/m2)"
-    SAI::FT
-    "The constant root area index (RAI; m2/m2)"
-    RAI::FT
-end
-
-"""
-    PrescribedAreaIndices{FT}(
-        LAI::AbstractTimeVaryingInput,
-        SAI::FT,
-        RAI::FT,
-    ) where {FT <: AbstractFloat}
-
-An outer constructor for setting the PrescribedAreaIndices given
-LAI, SAI, and RAI.
-"""
-function PrescribedAreaIndices{FT}(
-    LAI::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
-) where {FT <: AbstractFloat}
-    PrescribedAreaIndices{FT, typeof(LAI)}(LAI, SAI, RAI)
+    "The constant (in time) stem area index (SAI; m2/m2)"
+    SAI::FS
+    "The constant (in time) root area index (RAI; m2/m2)"
+    RAI::FS
 end
 
 """
@@ -212,7 +227,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedBiomassModel{
     FT,
-    PSAI <: PrescribedAreaIndices{FT},
+    PSAI <: PrescribedAreaIndices,
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
 } <: AbstractBiomassModel{FT}
@@ -225,11 +240,11 @@ struct PrescribedBiomassModel{
 end
 
 """
-    PrescribedBiomassModel{FT}(;LAI::AbstractTimeVaryingInput,
-                                SAI::FT,
-                                RAI::FT,
-                                rooting_depth,
-                                height) where {FT}
+    PrescribedBiomassModel(;LAI::AbstractTimeVaryingInput,
+                            SAI::FS,
+                            RAI::FS,
+                            rooting_depth,
+                            height) where {FS}
 
 An outer constructor to help set up the PrescribedBiomassModel from 
 LAI, SAI, and RAI directly, instead of requiring the user to make the
@@ -241,12 +256,12 @@ Height can be either:
 """
 function PrescribedBiomassModel{FT}(;
     LAI::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
+    SAI::FS,
+    RAI::FS,
     rooting_depth,
     height,
-) where {FT}
-    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+) where {FT, FS}
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     args = (plant_area_index, rooting_depth, height)
     PrescribedBiomassModel{FT, typeof.(args)...}(args...)
 end
