@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.27
+value = 0.5675395275525799
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -223,21 +223,21 @@ tag = "ConstantResetAlbedo"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.41
+value = 0.4126532780348918
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 51
+value = 68.19135215644542
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 51
+value = 53.92806481016041
 type = "float"
-description = "Unit cost ratio of Vcmax to transpiration for C4 plants (146/9, pyrealm)"
+description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
 
 ["pmodel_ϕ0_c3"]
@@ -289,7 +289,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.933
+value = 0.9758442675597523
 type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -570,32 +570,44 @@ type = "float"
 description = "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
 tag = "SoilCO2Parameters"
 
+["O2_diffusion_coefficient_air"]
+value = 1.67e-5
+type = "float"
+description = "Diffusion coefficient for O₂ in air at standard temperature and pressure (m² s⁻¹)"
+tag = "SoilCO2Parameters"
+
 ["soil_C_substrate_diffusivity"]
 value = 3.17
 type = "float"
 description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
-["soilCO2_pre_exponential_factor"]
-value = 194000.0
+["soilCO2_reference_rate"]
+value = 7.885402642122577e-8
 type = "float"
-description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
+description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+tag = "SoilCO2Parameters"
+
+["soilCO2_reference_temperature"]
+value = 288.15
+type = "float"
+description = "Reference temperature for the centered Arrhenius form of the DAMM model (K)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
-value = 61000.0
+value = 65432.29096630613
 type = "float"
 description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["michaelis_constant"]
-value = 0.005
+value = 0.3668980114900562
 type = "float"
 description = "Michaelis constant for substrate (kg C m⁻³)"
 tag = "SoilCO2Parameters"
 
 ["O2_michaelis_constant"]
-value = 0.004
+value = 0.00018610344999027417
 type = "float"
 description = "Michaelis constant for O₂ (m³ m⁻³)"
 tag = "SoilCO2Parameters"
@@ -622,6 +634,48 @@ tag = "SoilCO2Parameters"
 value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
+tag = "SoilCO2Parameters"
+
+["O2_volume_fraction"]
+value = 0.2095
+type = "float"
+description = "Volumetric fraction of O₂ in atmospheric air (dimensionless)"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_k298"]
+value = 3.4e-4
+type = "float"
+description = "Henry's law constant for CO₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_Tcoeff"]
+value = 2400.0
+type = "float"
+description = "Temperature coefficient for CO₂ Henry's law (K)"
+tag = "SoilCO2Parameters"
+
+["O2_henry_k298"]
+value = 1.3e-5
+type = "float"
+description = "Henry's law constant for O₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["O2_henry_Tcoeff"]
+value = 1500.0
+type = "float"
+description = "Temperature coefficient for O₂ Henry's law (K)"
+tag = "SoilCO2Parameters"
+
+["henry_reference_temperature"]
+value = 298.15
+type = "float"
+description = "Reference temperature for Henry's law constants (K), Sander (2015)"
+tag = "SoilCO2Parameters"
+
+["gas_diffusivity_temperature_exponent"]
+value = 1.75
+type = "float"
+description = "Temperature exponent for the free-air gas diffusivity correction D0 ∝ (T/T_ref)^exp (dimensionless), Ryan et al. (2018)"
 tag = "SoilCO2Parameters"
 
 # Soil Parameters
@@ -679,3 +733,16 @@ value = 0.0001
 type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
+
+# Autotrophic respiration (JULES) parameters
+["root_leaf_nitrogen_ratio"]
+value = 2.3992909128669666
+type = "float"
+description = "Ratio of root nitrogen to top leaf nitrogen (unitless)."
+tag = "AutotrophicRespirationParameters"
+
+["relative_contribution_factor"]
+value = 1.1321179749274621
+type = "float"
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless)."
+tag = "AutotrophicRespirationParameters"

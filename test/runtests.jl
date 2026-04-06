@@ -70,6 +70,12 @@ end
 @safetestset "Soil CO2 parameterization tests" begin
     include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
 end
+@safetestset "Soil O2_f tendency floor regression" begin
+    include("standalone/Soil/Biogeochemistry/o2_tendency_floor.jl")
+end
+@safetestset "Soil CO2 saturation stability tests" begin
+    include("standalone/Soil/Biogeochemistry/saturation_stability_test.jl")
+end
 
 @safetestset "Soil climate drivers tests" begin
     include("standalone/Soil/climate_drivers.jl")

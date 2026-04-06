@@ -102,7 +102,8 @@ end
         forcing,
         LAI,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+        Δt;
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -117,6 +118,7 @@ end
                 forcing.atmos,
             ),
             toml_dict,
+            Δt,
         ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -138,12 +140,14 @@ correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedT
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
 as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
+`Δt` is the model timestep in seconds, used by the SoilCO2Model O2_f tendency limiter.
 """
 function SoilCanopyModel{FT}(
     forcing,
     LAI,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+    Δt;
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -158,6 +162,7 @@ function SoilCanopyModel{FT}(
             forcing.atmos,
         ),
         toml_dict,
+        Δt,
     ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),

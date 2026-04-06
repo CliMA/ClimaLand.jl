@@ -286,6 +286,19 @@ function soil_grids_params_artifact_path(; context = nothing, lowres = true)
 end
 
 """
+    soil_grids_ocd_artifact_path(; context = nothing)
+
+Return the path to the file that contains the soil organic carbon density
+(`ocd`, kg/m³) at six depth levels, derived from SoilGrids. This is a ~1 degree
+regridded version used for initializing the prognostic SOC in the soil
+biogeochemistry model.
+"""
+function soil_grids_ocd_artifact_path(; context = nothing)
+    dir = @clima_artifact("soilgrids_ocd_lowres_interp", context)
+    return joinpath(dir, "soil_ocd_soilgrids_lowres.nc")
+end
+
+"""
     experiment_fluxnet_data_path(
         site_ID;
         context = nothing,
@@ -526,6 +539,19 @@ There are only three datasets available which are "rlus_CERESed4.2_rlus.nc",
 """
 function ilamb_dataset_path(filename; context = nothing)
     return joinpath(@clima_artifact("ilamb_data", context), filename)
+end
+
+"""
+    ilamb_respiration_nee_dataset_path(filename; context = nothing)
+
+Triggers the download of the ILAMB respiration and NEE dataset, if not already
+downloaded, using Julia Artifacts, and returns the path to this file.
+
+Available datasets are "reco_FLUXCOM_reco.nc" (ecosystem respiration) and
+"nee_FLUXCOM_nee.nc" (net ecosystem exchange), both in g m-2 day-1.
+"""
+function ilamb_respiration_nee_dataset_path(filename; context = nothing)
+    return joinpath(@clima_artifact("ilamb_respiration_nee", context), filename)
 end
 
 """

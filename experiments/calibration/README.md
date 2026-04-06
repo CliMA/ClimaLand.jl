@@ -25,6 +25,23 @@ latitude-weighted scalar covariance matrix.
       submission for the forward models.
     - You may want to use `tmux` to keep a persistent session on the cluster.
 
+For example, launching er.jl on Derecho
+Go into tmux:
+
+```
+tmux new -t calibration
+```
+
+(later on, attach via `tmux attach -t calibration`, and detach via `ctrl+b, release, press d`)
+Start the calibration:
+
+```
+module load climacommon/2025_02_25
+export HDF5_USE_FILE_LOCKING=FALSE
+export CALIBRATION_CONFIG=er.jl
+bash experiments/calibration/run_calibration.sh /glade/derecho/scratch/$USER/calibration_er
+```
+
 # Debugging
 
 ClimaCalibrate tries to keep `climacommon` up to date. If errors result from
