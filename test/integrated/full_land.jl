@@ -677,7 +677,7 @@ end
     set_initial_cache!(p, Y, t0)
 
     # Check that canopy fluxes are zero where lakes are:
-    lake_mask = parent(land.lake.inland_water_mask) .== 1
+    lake_mask = parent(p.lake_fraction) .== 1
     @test all(parent(p.canopy.biomass.area_index.leaf)[lake_mask] .== 0)
     @test all(parent(p.canopy.biomass.area_index.stem)[lake_mask] .== 0)
     @test all(parent(p.canopy.biomass.area_index.root)[lake_mask] .== 0)
@@ -699,7 +699,7 @@ end
     @test all(
         parent(
             @. p.bare_soil_fraction -
-               (1 - p.snow.snow_cover_fraction - land.lake.inland_water_mask)
+               (1 - p.snow.snow_cover_fraction - p.lake_fraction)
         )[:][land_mask] .≈ 0,
     )
 
@@ -707,7 +707,7 @@ end
     snow_frac = p.snow.snow_cover_fraction
     α_soil = p.soil.PAR_albedo
     α_snow = p.snow.α_snow
-    f_lake = land.lake.inland_water_mask
+    f_lake = p.lake_fraction
     α_lake = p.lake.albedo
     @test all(
         parent(
@@ -744,7 +744,7 @@ end
     )
     @test all(
         parent(p.soil.top_bc.heat .- p_copy.soil.top_bc.heat)[lake_mask] .≈
-        parent(land.lake.inland_water_mask .* p.lake.sediment_heat_flux)[lake_mask],
+        parent(p.lake_fraction .* p.lake.sediment_heat_flux)[lake_mask],
     )
     @test all(
         parent(p.soil.top_bc.heat .- p_copy.soil.top_bc.heat)[:][.~lake_mask[:] .&& land_mask] .≈
@@ -753,9 +753,8 @@ end
 
     # Snow cover fraction cannot exceed 1 - lake fraction
     @test all(
-        parent(
-            p.snow.snow_cover_fraction .- (1 .- land.lake.inland_water_mask),
-        )[lake_mask] .<= 0,
+        parent(p.snow.snow_cover_fraction .- (1 .- p.lake_fraction))[lake_mask] .<=
+        0,
     )
 
 end
