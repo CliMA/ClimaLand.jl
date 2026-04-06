@@ -36,7 +36,7 @@ const TEST_CALIBRATION = haskey(ENV, "TEST_CALIBRATION")
 
 if !TEST_CALIBRATION
     const CALIBRATE_CONFIG = CalibrateConfig(;
-        short_names = ["lwu", "shf", "lhf"],
+        short_names = ["gpp"],
         minibatch_size = 1,
         n_iterations = 10,
         sample_date_ranges = [
@@ -45,7 +45,7 @@ if !TEST_CALIBRATION
         extend = Dates.Month(3),
         spinup = Dates.Month(3),
         nelements = (180, 360, 15),
-        output_dir = "experiments/calibration/land_model",
+        output_dir = "/glade/derecho/scratch/arenchon/calibration_gpp",
         rng_seed = 42,
         obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
         model_type = ClimaLand.LandModel,
@@ -53,14 +53,14 @@ if !TEST_CALIBRATION
 else
     @info "Using calibration config for test calibration"
     const CALIBRATE_CONFIG = CalibrateConfig(;
-        short_names = ["lwu"],
+        short_names = ["gpp"],
         minibatch_size = 1,
         n_iterations = 1,
         sample_date_ranges = [("2007-12-1", "2007-12-1")],
         extend = Dates.Month(3),
         spinup = Dates.Month(0),
         nelements = (180, 360, 15),
-        output_dir = "experiments/calibration/land_model",
+        output_dir = "/glade/derecho/scratch/arenchon/calibration_gpp",
         rng_seed = 42,
         obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
         model_type = ClimaLand.LandModel,
@@ -72,19 +72,28 @@ end
 
 Load the appropriate module for `clima`.
 
-This is needed to load the right `climacommon` version on `clima`. This function
-will be removed after support is added in ClimaCalibrate.jl for choosing which
-version of `climacommon` to load.
+This is needed to load the right `climacommon` version on each cluster. This
+function will be removed after support is added in ClimaCalibrate.jl for
+choosing which version of `climacommon` to load.
 """
 function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
     return """module purge
     module load climacommon/2026_02_18"""
 end
 
+function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
+    return """module purge
+    module load climacommon/2025_02_25"""
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
+    priors = [
+        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.0, 1.0),
+        EKP.constrained_gaussian("pmodel_β_c3", 146.0, 40.0, 0.0, 500.0),
+        EKP.constrained_gaussian("pmodel_β_c4", 16.222, 5.0, 0.0, 100.0),
+        EKP.constrained_gaussian("pmodel_α", 0.933, 0.02, 0.0, 1.0),
+        EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.0, 1.0),
+    ]
     prior = EKP.combine_distributions(priors)
 
     observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
