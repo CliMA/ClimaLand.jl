@@ -27,13 +27,7 @@ function ClimaCalibrate.observation_map(iteration)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    # Determine which observation is used by the short names
-    # This assumes that observations do not differ in the variables that are
-    # being calibrated
-    obs_series = EKP.get_observation_series(ekp)
-    short_names = ClimaCalibrate.ObservationRecipe.short_names(
-        first(obs_series.observations),
-    )
+    short_names = CALIBRATE_CONFIG.short_names
 
     g_ens_builder = EnsembleBuilder.GEnsembleBuilder(ekp)
     for m in 1:ensemble_size
@@ -76,10 +70,10 @@ function process_member_data!(
 )
     nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
-    era5_obs_vars = ext.get_era5_obs_var_dict()
+    calibration_obs_vars = ext.get_calibration_obs_var_dict()
     for short_name in short_names
-        short_name in keys(era5_obs_vars) || error(
-            "Variable $short_name does not appear in the observation dataset. Add the variable to get_era5_obs_var_dict",
+        short_name in keys(calibration_obs_vars) || error(
+            "Variable $short_name does not appear in the observation dataset. Add the variable to get_calibration_obs_var_dict in data_sources.jl",
         )
     end
 
@@ -178,6 +172,16 @@ function ClimaCalibrate.analyze_iteration(
         output_path,
         diagnostics_folder_path,
         "ERA5",
+    )
+    ext.compute_monthly_leaderboard(
+        output_path,
+        diagnostics_folder_path,
+        "ILAMB",
+    )
+    ext.compute_seasonal_leaderboard(
+        output_path,
+        diagnostics_folder_path,
+        "ILAMB",
     )
 end
 

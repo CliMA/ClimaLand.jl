@@ -34,58 +34,80 @@ model_interface = joinpath(
 # Note: This has only been tested with the WorkerBackend
 const TEST_CALIBRATION = haskey(ENV, "TEST_CALIBRATION")
 
-if !TEST_CALIBRATION
-    const CALIBRATE_CONFIG = CalibrateConfig(;
-        short_names = ["lwu", "shf", "lhf"],
-        minibatch_size = 1,
-        n_iterations = 10,
-        sample_date_ranges = [
-            ("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9
-        ], # 2000 to 2020
-        extend = Dates.Month(3),
-        spinup = Dates.Month(3),
-        nelements = (180, 360, 15),
-        output_dir = "experiments/calibration/land_model",
-        rng_seed = 42,
-        obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
-        model_type = ClimaLand.LandModel,
-    )
+# Optional CLI override for the calibration output directory. Pass the target
+# path as the first positional argument to run_calibration.jl /
+# generate_observations.jl (e.g. bash run_calibration.sh /scratch/foo).
+#
+# Per-member worker jobs run a generated `model_run.jl` directly, so ARGS is
+# empty there. Recover the output_dir from PROGRAM_FILE in that case — the
+# worker script always lives at $output_dir/iteration_NNN/member_MMM/model_run.jl.
+const OUTPUT_DIR = if length(ARGS) >= 1
+    ARGS[1]
+elseif basename(PROGRAM_FILE) == "model_run.jl"
+    dirname(dirname(dirname(abspath(PROGRAM_FILE))))
 else
-    @info "Using calibration config for test calibration"
-    const CALIBRATE_CONFIG = CalibrateConfig(;
-        short_names = ["lwu"],
-        minibatch_size = 1,
-        n_iterations = 1,
-        sample_date_ranges = [("2007-12-1", "2007-12-1")],
-        extend = Dates.Month(3),
-        spinup = Dates.Month(0),
-        nelements = (180, 360, 15),
-        output_dir = "experiments/calibration/land_model",
-        rng_seed = 42,
-        obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
-        model_type = ClimaLand.LandModel,
-    )
+    "experiments/calibration/land_model"
+end
+
+# Include the calibration configuration. This defines CALIBRATE_CONFIG,
+# get_calibration_prior(), and NOISE_SCALARS. When TEST_CALIBRATION is set,
+# load the single-parameter test config; otherwise load the production config.
+# To run a different production calibration, set the CALIBRATION_CONFIG env
+# var before invoking run_calibration.sh, e.g.
+#   CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh
+const CONFIG_FILE =
+    TEST_CALIBRATION ? "test.jl" :
+    get(ENV, "CALIBRATION_CONFIG", "energy_fluxes.jl")
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "configs",
+        CONFIG_FILE,
+    ),
+)
+
+"""
+    _loaded_climacommon()
+
+Return the `climacommon/<version>` module name currently loaded in the parent
+shell, by scanning the `LOADEDMODULES` environment variable (colon-separated).
+Falls back to `"climacommon"` (default version) if none is found.
+
+This lets forward-model jobs pick up whichever `climacommon` the driver script
+loaded, instead of hardcoding a version per backend.
+"""
+function _loaded_climacommon()
+    loaded = get(ENV, "LOADEDMODULES", "")
+    # Expect entries of the form `climacommon/YYYY_MM_DD`. If multiple are
+    # loaded, the last one wins (matches `module`'s own resolution order).
+    pattern = r"^climacommon/\d{4}_\d{2}_\d{2}$"
+    matches = filter(mod -> occursin(pattern, mod), split(loaded, ':'))
+    isempty(matches) && return "climacommon"
+    return String(last(matches))
 end
 
 """
     module_load_string(::ClimaCalibrate.ClimaGPUBackend)
+    module_load_string(::ClimaCalibrate.DerechoBackend)
 
-Load the appropriate module for `clima`.
-
-This is needed to load the right `climacommon` version on `clima`. This function
-will be removed after support is added in ClimaCalibrate.jl for choosing which
-version of `climacommon` to load.
+Return the `module load` string injected into forward-model job scripts. The
+`climacommon` version is read from the driver shell's `LOADEDMODULES` so the
+version only needs to be specified once (in `run_calibration.sh`).
 """
 function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
     return """module purge
-    module load climacommon/2026_02_18"""
+    module load $(_loaded_climacommon())"""
+end
+
+function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
+    return """module purge
+    module load $(_loaded_climacommon())"""
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # true solution is at 0.96
-    priors =
-        [EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)]
-    prior = EKP.combine_distributions(priors)
+    prior = get_calibration_prior()
 
     observation_vector = JLD2.load_object(CALIBRATE_CONFIG.obs_vec_filepath)
 
