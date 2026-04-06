@@ -1,17 +1,6 @@
 using ClimaLand
 using ClimaLand.Soil
-using ClimaUtilities.TimeVaryingInputs
-import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, AbstractTimeVaryingInput
-import ClimaUtilities.TimeManager: ITime
-import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
-using ..ClimaLand.Canopy: AbstractCanopyComponent
 using ClimaLand: PrescribedGroundConditions
-using ClimaCore
-import ClimaLand.Parameters as LP
-import ClimaParams as CP
-using DocStringExtensions
-using LazyBroadcast: lazy
 
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
@@ -510,7 +499,6 @@ function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
     (; retention_model, S_s, ν) = hydraulics.parameters
-
     @. ψ = water_retention_curve(
         retention_model,
         effective_saturation(ν, ϑ_l),
