@@ -81,15 +81,15 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-    )
-    forcing = (; atmos, radiation)
+    );
+    forcing = (; atmos, radiation);
 
     # Read in LAI from MODIS data
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
         surface_space,
         start_date,
         stop_date,
-    )
+    );
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
@@ -101,8 +101,11 @@ function setup_model(
     # Use the soil moisture stress function based on soil moisture only
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass =
-        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
+    maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space);
+    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        toml_dict; SAI = 1/10 .* maxLAI, RAI = 5 .* maxLAI)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -185,3 +188,4 @@ if LONGER_RUN
         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end
+
