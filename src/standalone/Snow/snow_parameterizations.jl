@@ -73,6 +73,18 @@ function update_snow_cover_fraction!(
     @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
     maximum_snow_cover_fraction!(p, Val(prognostic_land_components))
 end
+
+"""
+    maximum_snow_cover_fraction!(p, prognostic_land_components)
+
+Default method that clips `p.snow.snow_cover_fraction` against any
+upper bound implied by the set of prognostic land components; the
+fallback does nothing.
+
+Currently, this only acts when an inland water (lake) component is
+present in an integrated `LandModel`, in which case the snow cover
+fraction is restricted to the non-lake area.
+"""
 maximum_snow_cover_fraction!(p, plc_val) = nothing
 
 """
