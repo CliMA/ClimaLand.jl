@@ -1,0 +1,47 @@
+name: update_caches
+on:
+    schedule:
+        - cron: "0 0 * * *"
+
+jobs:
+  update_caches:
+    name: ci ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - name: Cache Julia depot
+        id: cache-depot
+        uses: actions/cache@v4
+        with:
+            # Julia depot, without scratchspaces, logs, and artifacts
+            path: |
+                ~/.julia/packages
+                ~/.julia/compiled
+                ~/.julia/registries
+            # The cache key includes the OS, Julia version, and the project's dependencies
+            key: ${{ matrix.os }}-julia-${{ matrix.version }}-${{ hashFiles('**/Project.toml', '**/Manifest.toml') }}
+            # Fallback keys to use if the primary key isn't found
+            restore-keys: |
+                ${{ matrix.os }}-julia-${{ matrix.version }}-
+                ${{ matrix.os }}-julia-
+      - uses: julia-actions/julia-buildpkg@v1
+        if: steps.cache-depot.outputs.cache-hit != 'true'
+        # runtests to download any artifacts used in tests
+      - name: Run tests
+        if: steps.cache-depot.outputs.cache-hit != 'true'
+        uses: julia-actions/julia-runtest@v1
+        with:
+            coverage: false
