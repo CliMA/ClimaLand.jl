@@ -150,7 +150,7 @@ Both the PAR and NIR albedo bands use this same value. Default values are $\alph
 
 | Parameter | Symbol | Unit | Default Value | Description |
 | :--- | :---: | :---: | :---: | :--- |
-| Lake depth | $d$ | m | 10 | Mixed-layer depth |
+| Lake depth | $d$ | m | ERA5 spatially varying | Mixed-layer depth |
 | Conductance | $G$ | W m$^{-2}$ K$^{-1}$ | 0.1 | Lake–sediment conductance |
 | Liquid albedo | $\alpha_{\rm liquid}$ | - | 0.08 | Open-water surface albedo |
 | Ice albedo | $\alpha_{\rm ice}$ | - | 0.6 | Frozen lake surface albedo |
@@ -176,4 +176,4 @@ Both the PAR and NIR albedo bands use this same value. Default values are $\alph
 
 ### Inland Water Mask
 
-The inland water mask is a gridded fractional inland water coverage field. In the convenience `LandModel` constructors it is derived internally from the default IMERG-based dataset; for manual `SlabLakeModel` construction, a custom mask field can be provided directly. This is used to weight the lake fluxes, total energy, and total water per unit lake area and make them per unit grid area.
+The inland water mask is a binary field built from the union of two sources: (1) the IMERG land-sea mask (water fraction > 80%) and (2) ERA5 lake cover and depth (cover > 0.5 and depth > 5 m). For manual `SlabLakeModel` construction, a custom mask field can be provided directly. This is used to weight the lake total energy and total water per unit grid area. The lake depth is spatially varying, read from the ERA5 lake depth dataset where available and defaulting to 10 m elsewhere, then scaled by a tunable factor `α` (default 1).

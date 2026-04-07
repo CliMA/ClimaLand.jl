@@ -550,6 +550,28 @@ function imerg_landsea_mask_path(; context = nothing)
 end
 
 """
+    era5_lake_cover_path(; context = nothing)
+
+Return the path to the ERA5 lake cover NetCDF file.
+The file contains a `cl` variable encoding lake cover fraction (0–1).
+"""
+function era5_lake_cover_path(; context = nothing)
+    dir = @clima_artifact("era5_lake_cover_and_depth", context)
+    return joinpath(dir, "era5_lake_cover.nc")
+end
+
+"""
+    era5_lake_depth_path(; context = nothing)
+
+Return the path to the ERA5 lake depth NetCDF file.
+The file contains a `dl` variable encoding lake total depth (m).
+"""
+function era5_lake_depth_path(; context = nothing)
+    dir = @clima_artifact("era5_lake_cover_and_depth", context)
+    return joinpath(dir, "era5_lake_depth.nc")
+end
+
+"""
     landseamask_file_path(; resolution = "60arcs", context=nothing)
 
 Construct the file path for the landsea mask data NetCDF file,
