@@ -145,17 +145,6 @@ function LandSimulation(
     updateat = ITime(3600 * 3),
     solver_kwargs = (;),
 )
-    # Enforce `h_atmos >= h_canopy` for models with canopy
-    if hasproperty(model, :canopy)
-        h_atmos_min = first(extrema(model.canopy.boundary_conditions.atmos.h))
-        h_canopy = model.canopy.hydraulics.compartment_surfaces[end]
-        @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
-    elseif model isa ClimaLand.Canopy.CanopyModel
-        h_atmos_min = first(extrema(model.boundary_conditions.atmos.h))
-        h_canopy = model.hydraulics.compartment_surfaces[end]
-        @assert h_atmos_min >= h_canopy "Atmospheric height must be greater than or equal to canopy height. Got min atmos height $h_atmos_min and canopy height $h_canopy"
-    end
-
 
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&

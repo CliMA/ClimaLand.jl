@@ -128,14 +128,9 @@ model = Canopy.CanopyModel{FT}(
 function set_ic!(Y, p, t0, model)
     ψ_leaf_0 = FT(-2e5 / 9800)
     (; retention_model, ν, S_s) = model.hydraulics.parameters
-    S_l_ini = Canopy.PlantHydraulics.inverse_water_retention_curve(
-        retention_model,
-        ψ_leaf_0,
-        ν,
-        S_s,
-    )
-    Y.canopy.hydraulics.ϑ_l.:1 .=
-        Canopy.PlantHydraulics.augmented_liquid_fraction.(ν, S_l_ini)
+    S_l_ini =
+        Canopy.inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
+    Y.canopy.hydraulics.ϑ_l .= Canopy.augmented_liquid_fraction.(ν, S_l_ini)
 end
 
 # Since we'll want to make some plots, let's set up an object to save the

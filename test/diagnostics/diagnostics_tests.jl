@@ -301,7 +301,7 @@ end
 
         Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-        Y.canopy.hydraulics.ϑ_l.:1 .= model.canopy.hydraulics.parameters.ν
+        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(297.5)
         p.canopy.biomass.area_index.leaf .= FT(0.3)
         p.canopy.biomass.area_index.stem .= FT(0)

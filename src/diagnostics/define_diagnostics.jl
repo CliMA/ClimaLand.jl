@@ -358,30 +358,6 @@ function define_diagnostics!(land_model, possible_diags)
             compute_moisture_stress_factor!(out, Y, p, t, land_model),
     )
 
-    # Root area index
-    conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "rai",
-        long_name = "Root area Index",
-        standard_name = "root_area_index",
-        units = "m^2 m^-2",
-        comments = "The area index of roots, expressed in surface area of roots per surface area of ground.",
-        compute! = (out, Y, p, t) ->
-            compute_root_area_index!(out, Y, p, t, land_model),
-    )
-
-    # Stem area index
-    conditional_add_diagnostic_variable!(
-        possible_diags;
-        short_name = "sai",
-        long_name = "Stem area Index",
-        standard_name = "stem_area_index",
-        units = "m^2 m^-2",
-        comments = "The area index of stems, expressed in surface area of stems per surface area of ground.",
-        compute! = (out, Y, p, t) ->
-            compute_stem_area_index!(out, Y, p, t, land_model),
-    )
-
     ### Canopy - Photosynthesis
     # GPP - Gross Primary Productivity
     conditional_add_diagnostic_variable!(
