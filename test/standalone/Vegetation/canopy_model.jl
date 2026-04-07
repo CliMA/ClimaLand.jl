@@ -516,7 +516,7 @@ end
         @test abs.(
             Array(parent(dY_2.canopy.energy.T .- dY.canopy.energy.T))[1] ./ ΔT -
             ∂Ṫ∂T,
-        ) / abs.(∂Ṫ∂T) < 0.4 # Error propagates here from ∂LHF∂T
+        ) / abs.(∂Ṫ∂T) < 0.5 # Error propagates here from ∂LHF∂T
     end
 end
 

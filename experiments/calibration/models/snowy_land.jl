@@ -69,15 +69,8 @@ function setup_model(
     conductance = PModelConductance{FT}(toml_dict)
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
-        domain,
-        LAI,
-        toml_dict;
-        height = ClimaLand.Canopy.clm_canopy_height(
-            surface_space;
-            max_height = atmos.h * FT(0.9),
-        ),
-    )
+    biomass =
+        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
