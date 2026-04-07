@@ -830,10 +830,13 @@ end
     ClimaLand.Simulations.step!(simulation_with_lake)
     YL = simulation_with_lake._integrator.u
     YNL = simulation_no_lake._integrator.u
-    # Check that YL == YNL when lake mask is 0 and we are over land
-    land_mask = parent(surface_space.grid.mask.is_active)[:]
+    # Check that YL == YNL when lake mask is 0 and we are over land.
+    # Wrap in Array(...) so the mask is a CPU Vector{Bool} and can index
+    # the CPU `Array(parent(...))[:]` views below on GPU runs.
+    land_mask = Array(parent(surface_space.grid.mask.is_active))[:]
     no_lake_mask =
-        parent(land_with_lake.lake.inland_water_mask)[:] .== 0 .&& land_mask
+        Array(parent(land_with_lake.lake.inland_water_mask))[:] .== 0 .&&
+        land_mask
 
     @test all(
         Array(

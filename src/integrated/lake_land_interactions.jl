@@ -41,7 +41,7 @@ end
         prognostic_land_components::Union{
             Val{(:canopy, :lake, :snow, :soil, :soilco2)},
             Val{(:canopy, :lake, :snow, :soil)},},
-       ) where {FT}
+    )
 
 Mask out areas where there is a lake by setting LAI, RAI, and SAI to zero.
 Called in canopy update_aux!.
@@ -72,7 +72,7 @@ end
         prognostic_land_components::Union{
             Val{(:canopy, :lake, :snow, :soil, :soilco2)},
             Val{(:canopy, :lake, :snow, :soil)},},
-       ) where {FT}
+    )
 
 Sets the maximum snow cover fraction to be 1 - lake fraction.
 """

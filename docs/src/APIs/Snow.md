@@ -41,7 +41,7 @@ maximum_snow_cover_fraction!(
     prognostic_land_components::Union{
         Val{(:canopy, :lake, :snow, :soil, :soilco2)},
         Val{(:canopy, :lake, :snow, :soil)},},
-   ) where {FT}
+)
 ```
 
 ## Computing fluxes for snow
