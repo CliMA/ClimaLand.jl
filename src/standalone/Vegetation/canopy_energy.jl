@@ -256,6 +256,7 @@ end
     ClimaLand.total_energy_per_area!(
         surface_field,
         model::BigLeafEnergyModel,
+        canopy,
         Y,
         p,
         t,
@@ -271,6 +272,7 @@ area index (in height) - not the value per layer.
 function ClimaLand.total_energy_per_area!(
     surface_field,
     model::BigLeafEnergyModel,
+    canopy,
     Y,
     p,
     t,

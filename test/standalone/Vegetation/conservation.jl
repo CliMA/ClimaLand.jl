@@ -8,7 +8,6 @@ using ClimaCore
 import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Domains: Point, Plane
 
 import ClimaLand
@@ -84,11 +83,8 @@ for FT in (Float32, Float64)
     LAI = TimeVaryingInput(t -> LAI_value) # m2 [leaf] m-2 [ground]
     RAI = FT(1)
     SAI = FT(1)
-    n_stem = Int64(2) # number of stem elements
-    n_leaf = Int64(1) # number of leaf elements
     rooting_depth = FT(0.5)
-    h_stem = h_leaf = FT(1)
-    h_canopy = h_stem + h_leaf
+    h_canopy = FT(2)
 
     biomass = Canopy.PrescribedBiomassModel{FT}(;
         LAI,
@@ -99,14 +95,7 @@ for FT in (Float32, Float64)
     )
     @testset "Canopy model total energy and water, FT = $FT" begin
         for domain in domains
-            hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(
-                domain,
-                toml_dict;
-                n_stem,
-                n_leaf,
-                h_stem,
-                h_leaf,
-            )
+            hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict;)
             canopy = ClimaLand.Canopy.CanopyModel{FT}(
                 domain,
                 (; radiation, atmos, ground),
@@ -121,9 +110,7 @@ for FT in (Float32, Float64)
             ϑ0 = canopy.hydraulics.parameters.ν / 2
             Temp0 = FT(290.5)
 
-            Y.canopy.hydraulics.ϑ_l.:1 .= ϑ0
-            Y.canopy.hydraulics.ϑ_l.:2 .= ϑ0
-            Y.canopy.hydraulics.ϑ_l.:3 .= ϑ0
+            Y.canopy.hydraulics.ϑ_l .= ϑ0
             Y.canopy.energy.T .= Temp0
 
             set_initial_cache! = make_set_initial_cache(canopy)
@@ -143,10 +130,7 @@ for FT in (Float32, Float64)
                 p,
                 t0,
             )
-            @test all(
-                parent(total_water) .≈
-                (LAI_value * n_leaf * h_leaf * ϑ0 + SAI * n_stem * h_stem * ϑ0),
-            )
+            @test all(parent(total_water) .≈ (LAI_value * h_canopy * ϑ0))
         end
     end
 end

@@ -11,7 +11,6 @@ using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Canopy
-using ClimaLand.PlantHydraulics
 export prescribed_forcing_fluxnet,
     make_set_fluxnet_initial_conditions,
     get_comparison_data,

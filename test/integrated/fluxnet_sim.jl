@@ -4,7 +4,6 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 using ClimaLand
 using ClimaLand.Canopy
-using ClimaLand.PlantHydraulics
 
 const FT = Float64
 
@@ -75,10 +74,6 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Vcmax25 = FT(1e-4))
 
@@ -117,16 +112,11 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
     @test Weibull_param == FT(4)
     @test a == FT(0.05 * 0.0098)
     @test conductivity_model ==
-          PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-    @test retention_model == PlantHydraulics.LinearRetentionCurve{FT}(a)
+          Canopy.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    @test retention_model == Canopy.LinearRetentionCurve{FT}(a)
     @test plant_ν == FT(2.46e-4)
     @test plant_S_s == FT(1e-2 * 0.0098)
     @test rooting_depth == FT(0.5)
-    @test n_stem == Int64(1)
-    @test n_leaf == Int64(1)
-    @test h_leaf == FT(12)
-    @test h_stem == FT(14)
-
 end
 
 @testset "US-MOz domain info + parameters" begin
@@ -192,10 +182,6 @@ end
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID))
 
@@ -207,7 +193,6 @@ end
     @test g0 == FT(1e-4)
     @test Vcmax25 == FT(6e-5)
     @test SAI == FT(1.0)
-    @test h_stem == FT(9)
 
 end
 
@@ -274,10 +259,6 @@ end
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), Ω = FT(1))
 
@@ -289,7 +270,6 @@ end
     @test g0 == FT(1e-4)
     @test Vcmax25 == FT(9e-5)
     @test SAI == FT(1.0)
-    @test h_stem == FT(7.5)
 end
 
 
@@ -355,10 +335,6 @@ end
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID), g0 = FT(5e-4))
 
@@ -370,5 +346,4 @@ end
     @test g0 == FT(5e-4)
     @test Vcmax25 == FT(2.5e-5)
     @test SAI == FT(0)
-    @test h_stem == FT(0)
 end

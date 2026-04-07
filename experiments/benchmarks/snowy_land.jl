@@ -127,7 +127,7 @@ function setup_prob(
     t0 = 0.0
     tf = Second(stop_date - start_date).value
     plant_ν = land.canopy.hydraulics.parameters.ν
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
+    Y.canopy.hydraulics.ϑ_l .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
     Y.snow.S .= 0

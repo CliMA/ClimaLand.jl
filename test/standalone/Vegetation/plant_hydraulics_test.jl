@@ -8,7 +8,6 @@ import ClimaParams
 using ClimaLand
 using ClimaLand.Domains: Point, Plane
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import Insolation
@@ -22,29 +21,23 @@ for FT in (Float32, Float64)
         ψ63 = FT(-4 / 0.0098)
         Weibull_param = FT(4)
         a = FT(0.05 * 0.0098)
-        conductivity_model =
-            PlantHydraulics.Weibull{FT}(K_sat, ψ63, Weibull_param)
-        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+        conductivity_model = Canopy.Weibull{FT}(K_sat, ψ63, Weibull_param)
+        retention_model = Canopy.LinearRetentionCurve{FT}(a)
         S_l = FT.([0.7, 0.9, 1.0, 1.1])
         @test all(
-            @. PlantHydraulics.inverse_water_retention_curve(
+            @. Canopy.inverse_water_retention_curve(
                 retention_model,
-                PlantHydraulics.water_retention_curve(
-                    retention_model,
-                    S_l,
-                    ν,
-                    S_s,
-                ),
+                Canopy.water_retention_curve(retention_model, S_l, ν, S_s),
                 ν,
                 S_s,
             ) == S_l
         )
-        ψ = PlantHydraulics.water_retention_curve.(retention_model, S_l, ν, S_s)
-        # @show @. abs(PlantHydraulics.hydraulic_conductivity(conductivity_model, ψ) -
+        ψ = Canopy.water_retention_curve.(retention_model, S_l, ν, S_s)
+        # @show @. abs(Canopy.hydraulic_conductivity(conductivity_model, ψ) -
         # min(K_sat * exp(-(ψ / ψ63)^Weibull_param), K_sat))
         @test all(
             @. abs(
-                PlantHydraulics.hydraulic_conductivity(conductivity_model, ψ) -
+                Canopy.hydraulic_conductivity(conductivity_model, ψ) -
                 min(K_sat * exp(-(ψ / ψ63)^Weibull_param), K_sat),
             ) < 2 * eps(FT)
         )
@@ -149,10 +142,6 @@ for FT in (Float32, Float64)
             cosθs = cos_zenith_angle,
             toml_dict = toml_dict,
         )
-        Δz = FT(1.0) # height of compartments
-        n_stem = Int64(5) # number of stem elements
-        n_leaf = Int64(6) # number of leaf elements
-        h_canopy = Δz * (n_stem + n_leaf)
         SAI = FT(1) # m2/m2
         RAI = FT(1) # m2/m2
         K_sat_plant = 1.8e-8 # m/s.
@@ -161,30 +150,17 @@ for FT in (Float32, Float64)
         a = FT(0.05 * 0.0098) # 1/m
         plant_ν = FT(0.7) # m3/m3
         plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-        conductivity_model =
-            PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        compartment_midpoints = Vector{FT}(
-            range(
-                start = Δz / 2,
-                step = Δz,
-                stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-            ),
-        )
-
-        compartment_surfaces = Vector{FT}(
-            range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
-        )
-
+        conductivity_model = Canopy.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+        retention_model = Canopy.LinearRetentionCurve{FT}(a)
         ψ_soil0 = FT(0.0)
-
+        height = FT(10)
         soil_driver = PrescribedGroundConditions{FT}()
 
         autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         rooting_depth = FT(0.5)
-        plant_hydraulics_param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        plant_hydraulics_param_set = Canopy.PlantHydraulicsParameters(;
             ν = plant_ν,
             S_s = plant_S_s,
             conductivity_model,
@@ -196,16 +172,11 @@ for FT in (Float32, Float64)
             SAI,
             RAI,
             rooting_depth,
-            height = h_canopy,
+            height,
         )
 
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = plant_hydraulics_param_set,
-            n_stem,
-            n_leaf,
-            compartment_surfaces,
-            compartment_midpoints,
-        )
+        plant_hydraulics =
+            Canopy.PlantHydraulicsModel{FT}(plant_hydraulics_param_set)
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
             earth_param_set,
@@ -229,48 +200,16 @@ for FT in (Float32, Float64)
         AI = (; leaf = FT(LAI(1.0)), root = RAI, stem = SAI)
         T0A = FT(1e-8) * AI[:leaf]
         function initial_compute_exp_tendency!(F, Y)
-            for i in 1:(n_leaf + n_stem)
-                if i == 1
-                    fa =
-                        water_flux.(
-                            -1 .* rooting_depth,
-                            plant_hydraulics.compartment_midpoints[i],
-                            ψ_soil0,
-                            Y[i],
-                            PlantHydraulics.hydraulic_conductivity(
-                                conductivity_model,
-                                ψ_soil0,
-                            ),
-                            PlantHydraulics.hydraulic_conductivity(
-                                conductivity_model,
-                                Y[i],
-                            ),
-                        ) .* ClimaLand.Canopy.PlantHydraulics.harmonic_mean(
-                            AI[:stem],
-                            AI[:root],
-                        )
-                else
-                    fa =
-                        water_flux(
-                            plant_hydraulics.compartment_midpoints[i - 1],
-                            plant_hydraulics.compartment_midpoints[i],
-                            Y[i - 1],
-                            Y[i],
-                            PlantHydraulics.hydraulic_conductivity(
-                                conductivity_model,
-                                Y[i - 1],
-                            ),
-                            PlantHydraulics.hydraulic_conductivity(
-                                conductivity_model,
-                                Y[i],
-                            ),
-                        ) * ClimaLand.Canopy.PlantHydraulics.harmonic_mean(
-                            AI[plant_hydraulics.compartment_labels[i - 1]],
-                            AI[plant_hydraulics.compartment_labels[i]],
-                        )
-                end
-                F[i] = fa - T0A
-            end
+            fa =
+                water_flux.(
+                    -1 .* rooting_depth,
+                    height / 2,
+                    ψ_soil0,
+                    Y[1],
+                    Canopy.hydraulic_conductivity(conductivity_model, ψ_soil0),
+                    Canopy.hydraulic_conductivity(conductivity_model, Y[1]),
+                ) .* ClimaLand.Canopy.Canopy.harmonic_mean(AI[:leaf], AI[:root])
+            F[1] = fa - T0A
         end
         #=======================
         Here we solve for the steady state of the hydraulics
@@ -281,29 +220,26 @@ for FT in (Float32, Float64)
         ftol = FT(T0A * 1e-4)
         soln = nlsolve(
             initial_compute_exp_tendency!,
-            Vector{FT}(-3.0:-3:-33);
+            Vector{FT}([-2.0]);
             ftol,
             method = :newton,
             iterations = 20,
         )
 
-        S_l =
-            inverse_water_retention_curve.(
-                retention_model,
-                soln.zero,
-                plant_ν,
-                plant_S_s,
-            )
+        S_l = inverse_water_retention_curve(
+            retention_model,
+            soln.zero[1],
+            plant_ν,
+            plant_S_s,
+        )
 
-        ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
+        ϑ_l_0 = augmented_liquid_fraction(plant_ν, S_l)
 
         Y, p, coords = initialize(model)
 
         dY = similar(Y)
-        for i in 1:(n_stem + n_leaf)
-            Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
-            dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
-        end
+        Y.canopy.hydraulics.ϑ_l .= ϑ_l_0
+        dY.canopy.hydraulics.ϑ_l .= NaN
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         # overwrite transpiration with the prescribed value we want to test steady state with
@@ -312,16 +248,14 @@ for FT in (Float32, Float64)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
         @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l))[:] .< ftol) # starts in equilibrium
-        @test all(parent(p.canopy.hydraulics.fa)[:] .- T0A .< ftol) # Fluxes are as we expect
+        @test all(parent(p.canopy.hydraulics.fa_roots)[:] .- T0A .< ftol) # Fluxes are as we expect
 
         # repeat using the plant hydraulics model directly
         # make sure it agrees with what we get when use the canopy model ODE
         Y, p, coords = initialize(model)
         standalone_dY = similar(Y)
-        for i in 1:(n_stem + n_leaf)
-            Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
-            standalone_dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
-        end
+        Y.canopy.hydraulics.ϑ_l .= ϑ_l_0
+        standalone_dY.canopy.hydraulics.ϑ_l .= NaN
         set_initial_cache!(p, Y, 0.0)
         p.canopy.turbulent_fluxes.vapor_flux .= T0A
         standalone_exp_tendency! =

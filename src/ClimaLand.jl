@@ -427,15 +427,14 @@ using .InlandWater
 import .InlandWater: lake_boundary_fluxes!
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
-using .Canopy.PlantHydraulics
-import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
 import .Canopy:
     ground_albedo_PAR,
     ground_albedo_NIR,
     canopy_radiant_energy_fluxes!,
     root_energy_flux_per_ground_area!,
     update_piecewise_soil_moisture_stress!,
-    mask_biomass!
+    mask_biomass!,
+    root_water_flux_per_ground_area!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")

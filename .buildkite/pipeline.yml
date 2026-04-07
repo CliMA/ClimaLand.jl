@@ -53,13 +53,9 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
         artifact_paths: "experiments/standalone/Snow/cpu/cdp/output_active/*png"
 
-      - label: "Varying LAI, no stem compartment"
+      - label: "Varying LAI"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai.jl"
         artifact_paths: "experiments/standalone/Vegetation/varying_lai/output_active/varying_lai_fluxes*png"
-
-      - label: "Varying LAI, with stem compartment"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai_with_stem.jl"
-        artifact_paths: "experiments/standalone/Vegetation/varying_lai_with_stem/output_active/varying_lai_with_stem*png"
 
       - label: "zero LAI, zero SAI"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/no_vegetation.jl"

@@ -8,16 +8,8 @@ root extraction.
 function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
-    area_index = p.canopy.biomass.area_index
-    above_ground_area_index = p.scratch1
-    above_ground_area_index .=
-        PlantHydraulics.harmonic_mean.(
-            getproperty(
-                area_index,
-                land.canopy.hydraulics.compartment_labels[1],
-            ),
-            getproperty(area_index, :root),
-        )
+    LAI = p.canopy.biomass.area_index.leaf
+    RAI = p.canopy.biomass.area_index.root
     # Note that we model the flux between each soil layer and the canopy as:
     # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
     # K_eff = K_soil K_canopy /(K_canopy + K_soil)
@@ -26,16 +18,16 @@ function update_root_extraction!(p, Y, t, land)
     # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
     # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
     @. p.root_extraction =
-        above_ground_area_index *
-        PlantHydraulics.water_flux(
+        Canopy.harmonic_mean(LAI, RAI) *
+        Canopy.water_flux(
             z,
-            land.canopy.hydraulics.compartment_midpoints[1],
+            land.canopy.biomass.height / 2,
             p.soil.ψ,
-            p.canopy.hydraulics.ψ.:1,
+            p.canopy.hydraulics.ψ,
             p.soil.K,
-            PlantHydraulics.hydraulic_conductivity(
+            Canopy.hydraulic_conductivity(
                 conductivity_model,
-                p.canopy.hydraulics.ψ.:1,
+                p.canopy.hydraulics.ψ,
             ),
         ) *
         Canopy.root_distribution(z, land.canopy.biomass.rooting_depth)
@@ -47,17 +39,17 @@ function update_root_extraction!(p, Y, t, land)
 end
 
 """
-    PlantHydraulics.root_water_flux_per_ground_area!(
+    root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
         s::PrognosticGroundConditions,
-        model::Canopy.PlantHydraulics.PlantHydraulicsModel,
+        model::Canopy.PlantHydraulicsModel,
         canopy,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
     )
 
-An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function,
+An extension of the `root_water_flux_per_ground_area!` function,
  which returns the
 net flux of water between the
 roots and the soil, per unit ground area,
@@ -67,10 +59,10 @@ hydraulics are modeled prognostically. This is for use in an LSM.
 It is computed by summing the flux of water per ground area between
 roots and soil at each soil layer.
 """
-function PlantHydraulics.root_water_flux_per_ground_area!(
+function Canopy.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrognosticGroundConditions,
-    model::Canopy.PlantHydraulics.PlantHydraulicsModel,
+    model::Canopy.PlantHydraulicsModel,
     canopy,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,

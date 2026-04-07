@@ -48,7 +48,6 @@ using StaticArrays
 using ClimaLand
 import ClimaLand.Domains
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
@@ -95,8 +94,7 @@ long = FT(-92.2000) # degree
 
 # Now we define the parameters of the model domain. These values are needed
 # by some of the component models. Here we are performing a 1-dimensional
-# simulation in a `Point` domain and will use
-# single stem and leaf compartments, but for 2D simulations, the parameters of
+# simulation in a `Point` domain, but for 2D simulations, the parameters of
 # the [`domain`](@ref "Domain Tutorial")
 # would change.
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0.0), longlat = (long, lat));
@@ -153,12 +151,7 @@ radiative_transfer = Canopy.TwoStreamModel{FT}(
     ϵ_canopy = FT(0.99),
 );
 
-# Construct canopy hydraulics with 1 stem and 1 leaf compartment.
-# By default, the model is constructed with a single leaf compartment and no stem.
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
+# Construct canopy hydraulics
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + maxLAI) * f_root_to_shoot)
@@ -167,15 +160,10 @@ plant_S_s = FT(1e-2 * 0.0098)
 K_sat_plant = FT(1.8e-8)
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
-conductivity_model =
-    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+conductivity_model = Canopy.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     domain,
     toml_dict;
-    n_stem,
-    n_leaf,
-    h_stem,
-    h_leaf,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
@@ -211,20 +199,10 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 # Provide initial conditions for the canopy hydraulics model
 function set_ic!(Y, p, t0, model)
     (; retention_model, ν, S_s) = model.hydraulics.parameters
-    ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
 
-    S_l_ini =
-        inverse_water_retention_curve.(
-            retention_model,
-            [ψ_stem_0, ψ_leaf_0],
-            ν,
-            S_s,
-        )
-    for i in 1:2
-        Y.canopy.hydraulics.ϑ_l.:($i) .=
-            augmented_liquid_fraction.(ν, S_l_ini[i])
-    end
+    S_l_ini = inverse_water_retention_curve.(retention_model, ψ_leaf_0, ν, S_s)
+    Y.canopy.hydraulics.ϑ_l .= augmented_liquid_fraction.(ν, S_l_ini)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 

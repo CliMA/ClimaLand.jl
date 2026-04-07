@@ -167,8 +167,6 @@ Sets Y.canopy.energy.T to the air temperature at the observation date closest to
 date of the model; sets the potential in the stem and leaf to -0.1 and -0.2 MPa, respectively,
 and the computes the resulting water content Y.canopy.hydraulics.ϑ_l using the retention curve
 of the plant.
-
-If ony a leaf compartment is used, only the leaf ψ is used.
 """
 function set_fluxnet_ic!(
     Y,
@@ -189,26 +187,20 @@ function set_fluxnet_ic!(
 
     Y.canopy.energy.T .= T_air_0
     FT = eltype(Y.canopy.energy.T)
-    ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
     ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
     S_l_ini =
-        ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+        ClimaLand.Canopy.inverse_water_retention_curve.(
             hydraulics.parameters.retention_model,
-            ψ_comps,
+            ψ_leaf_0,
             hydraulics.parameters.ν,
             hydraulics.parameters.S_s,
         )
-    for i in 1:(n_stem + n_leaf)
-        Y.canopy.hydraulics.ϑ_l.:($i) .=
-            ClimaLand.Canopy.PlantHydraulics.augmented_liquid_fraction.(
-                hydraulics.parameters.ν,
-                S_l_ini[i],
-            )
-    end
+    Y.canopy.hydraulics.ϑ_l .=
+        ClimaLand.Canopy.augmented_liquid_fraction.(
+            hydraulics.parameters.ν,
+            S_l_ini,
+        )
 end
 
 """

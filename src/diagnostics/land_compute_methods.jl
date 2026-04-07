@@ -267,16 +267,13 @@ function compute_leaf_water_potential!(
 )
     canopy = get_canopy(land_model)
     hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    n = n_stem + n_leaf
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        out .= p.canopy.hydraulics.ψ.:($n)
+        out .= p.canopy.hydraulics.ψ
         return out
     else
-        out .= p.canopy.hydraulics.ψ.:($n)
+        out .= p.canopy.hydraulics.ψ
     end
 end
 
@@ -303,18 +300,6 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.soil_moisture_stress.βm
-
-# Canopy - Hydraulics
-@diagnostic_compute "root_area_index" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.biomass.area_index.root
-@diagnostic_compute "stem_area_index" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.biomass.area_index.stem
 
 # Canopy - Photosynthesis
 @diagnostic_compute "photosynthesis_gross_canopy" Union{

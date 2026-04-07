@@ -495,8 +495,6 @@ function get_possible_diagnostics(model::CanopyModel)
         "far",
         "lai",
         "msf",
-        "rai",
-        "sai",
         "gpp",
         "an",
         "rd",

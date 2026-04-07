@@ -1,23 +1,23 @@
 # PlantHydraulics
 
 ```@meta
-CurrentModule = ClimaLand.PlantHydraulics
+CurrentModule = ClimaLand.Canopy
 ```
 ## Models and Parameters
 
 ```@docs
-ClimaLand.PlantHydraulics.AbstractPlantHydraulicsModel
-ClimaLand.PlantHydraulics.PlantHydraulicsModel
-ClimaLand.PlantHydraulics.PlantHydraulicsParameters
+ClimaLand.AbstractPlantHydraulicsModel
+ClimaLand.PlantHydraulicsModel
+ClimaLand.PlantHydraulicsParameters
 ```
 
 ## Plant Hydraulics Parameterizations
 
 ```@docs
-ClimaLand.PlantHydraulics.AbstractConductivityModel
-ClimaLand.PlantHydraulics.Weibull
-ClimaLand.PlantHydraulics.AbstractRetentionModel
-ClimaLand.PlantHydraulics.LinearRetentionCurve
+ClimaLand.AbstractConductivityModel
+ClimaLand.Weibull
+ClimaLand.AbstractRetentionModel
+ClimaLand.LinearRetentionCurve
 ```
 
 ## Constructor Methods
@@ -32,11 +32,11 @@ ClimaLand.Canopy.PlantHydraulicsModel{FT}(
 ## Plant Hydraulics Diagnostic Variables
 
 ```@docs
-ClimaLand.PlantHydraulics.water_flux
-ClimaLand.PlantHydraulics.effective_saturation
-ClimaLand.PlantHydraulics.augmented_liquid_fraction
-ClimaLand.PlantHydraulics.water_retention_curve
-ClimaLand.PlantHydraulics.inverse_water_retention_curve
-ClimaLand.PlantHydraulics.root_water_flux_per_ground_area!
-ClimaLand.PlantHydraulics.hydraulic_conductivity
+ClimaLand.water_flux
+ClimaLand.effective_saturation
+ClimaLand.augmented_liquid_fraction
+ClimaLand.water_retention_curve
+ClimaLand.inverse_water_retention_curve
+ClimaLand.root_water_flux_per_ground_area!
+ClimaLand..hydraulic_conductivity
 ```
