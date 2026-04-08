@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- Use nearest neighbor to create higher resolution soil retention parameter data; use these by default and corresponding spun up initial condition PR[#1712](https://github.com/CliMA/ClimaLand.jl/pull/1712)
 - ![breaking change][badge-💥breaking] Refactor `PlantHydraulicsModel` to a
   single above-ground compartment; `PlantHydraulics` submodule has been
   merged into `Canopy` PR[#1709](https://github.com/CliMA/ClimaLand.jl/pull/1709)

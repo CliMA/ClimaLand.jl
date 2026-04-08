@@ -25,12 +25,12 @@ running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
 using the default global_box_domain, with a soil model with no flux
 at the bottom boundary,
 and then running the ClimaArtifacts script 
-`saturated_soil_ic/create_artifacts.jl` with a command line argument
+`saturated_land_15m/create_artifacts.jl` with a command line argument
 pointing to the correct path, as documented in that file.
 """
 function saturated_land_ic_path(; context = nothing)
-    dir = @clima_artifact("saturated_land_ic", context)
-    return joinpath(dir, "saturated_land_ic.nc")
+    dir = @clima_artifact("saturated_land_15m", context)
+    return joinpath(dir, "saturated_land_15m.nc")
 end
 
 """

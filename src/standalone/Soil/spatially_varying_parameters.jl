@@ -126,12 +126,12 @@ function soil_vangenuchten_parameters(
         Interpolations.Flat(),
     ),
     interpolation_method = Interpolations.Constant(),
-    lowres = true,
+    lowres = false,
 )
     context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
         Artifacts.soil_params_artifact_folder_path(; context, lowres)
-    file_tail = lowres ? "1.0x1.0x4" : "1km_4layer"
+    file_tail = lowres ? "1x1x4" : "0.1x0.1x4"
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
@@ -175,9 +175,9 @@ function soil_vangenuchten_parameters(
     masked_to_value(field, mask, value) =
         mask == 1.0 ? field : eltype(field)(value)
 
-    μ = FT(0.33)
+    μ = FT(0.22)
     vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
-    μ = FT(1.74)
+    μ = FT(1.76)
     vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
 
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
