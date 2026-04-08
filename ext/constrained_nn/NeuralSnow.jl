@@ -488,6 +488,8 @@ overlying canopy (standalone or just coupled with soil).
     snow_SW_down(model_type::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
         Val{(:canopy, :snow, :soil)},
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},
         }, p)
 
 Obtains the correct downward shortwave radiation magnitude for a snow model with
@@ -497,6 +499,8 @@ an overlying canopy.
     model_type::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
         Val{(:canopy, :snow, :soil)},
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},
     },
     p,
 )

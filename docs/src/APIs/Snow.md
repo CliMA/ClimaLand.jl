@@ -33,8 +33,15 @@ ClimaLand.Snow.energy_from_q_l_and_swe
 ClimaLand.Snow.energy_from_T_and_swe
 ClimaLand.Snow.energy_flux_falling_rain
 ClimaLand.Snow.energy_flux_falling_snow
-update_snow_cover_fraction!
+ClimaLand.Snow.update_snow_cover_fraction!
 update_snow_albedo!
+maximum_snow_cover_fraction!(p, prognostic_land_components)
+maximum_snow_cover_fraction!(
+    p,
+    prognostic_land_components::Union{
+        Val{(:canopy, :lake, :snow, :soil, :soilco2)},
+        Val{(:canopy, :lake, :snow, :soil)},},
+)
 ```
 
 ## Computing fluxes for snow
