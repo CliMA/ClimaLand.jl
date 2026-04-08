@@ -39,10 +39,10 @@ if !TEST_CALIBRATION
         short_names = ["gpp"],
         minibatch_size = 4,
         n_iterations = 10,
-        # 10 yearly samples: each covers DJF through SON (Dec 1 → Sep 1)
-        # with extend = Month(3), simulation runs through Nov 30
+        # 10 yearly samples: each covers DJF, MAM, JJA, SON (Dec 1 → Dec 1)
+        # with extend = Month(3), simulation runs through Feb 28 of year+2
         sample_date_ranges = [
-            ("$(year)-12-1", "$(year+1)-9-1") for year in 2001:2010
+            ("$(year)-12-1", "$(year+1)-12-1") for year in 2001:2010
         ],
         extend = Dates.Month(3),
         spinup = Dates.Year(1),
