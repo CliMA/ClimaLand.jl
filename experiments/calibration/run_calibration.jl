@@ -37,13 +37,15 @@ const TEST_CALIBRATION = haskey(ENV, "TEST_CALIBRATION")
 if !TEST_CALIBRATION
     const CALIBRATE_CONFIG = CalibrateConfig(;
         short_names = ["gpp"],
-        minibatch_size = 1,
+        minibatch_size = 4,
         n_iterations = 10,
+        # 10 yearly samples: each covers DJF through SON (Dec 1 → Sep 1)
+        # with extend = Month(3), simulation runs through Nov 30
         sample_date_ranges = [
-            ("$(2000 + 2*i)-12-1", "$(2002 + 2*i)-9-1") for i in 0:9
-        ], # 2000 to 2020
+            ("$(year)-12-1", "$(year+1)-9-1") for year in 2001:2010
+        ],
         extend = Dates.Month(3),
-        spinup = Dates.Month(3),
+        spinup = Dates.Year(1),
         nelements = (180, 360, 15),
         output_dir = "/glade/derecho/scratch/arenchon/calibration_gpp",
         rng_seed = 42,
@@ -87,12 +89,16 @@ function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    # 4 P-model parameters + 1 soil moisture stress parameter
+    # Ensemble size for TransformUnscented: 5 * 2 + 1 = 11 members
+    # Note: ϕ0_c3/ϕ0_c4 are not calibrated because temperature_dep_yield = true
+    # uses the quadratic coefficients (ϕa0, ϕa1, ϕa2) instead.
     priors = [
-        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.0, 1.0),
-        EKP.constrained_gaussian("pmodel_β_c3", 146.0, 40.0, 0.0, 500.0),
-        EKP.constrained_gaussian("pmodel_β_c4", 16.222, 5.0, 0.0, 100.0),
-        EKP.constrained_gaussian("pmodel_α", 0.933, 0.02, 0.0, 1.0),
-        EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.0, 1.0),
+        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.2, 0.7),
+        EKP.constrained_gaussian("pmodel_β_c3", 146.0, 40.0, 50.0, 300.0),
+        EKP.constrained_gaussian("pmodel_β_c4", 16.222, 5.0, 5.0, 40.0),
+        EKP.constrained_gaussian("pmodel_α", 0.933, 0.02, 0.85, 0.999),
+        EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.05, 1.0),
     ]
     prior = EKP.combine_distributions(priors)
 
