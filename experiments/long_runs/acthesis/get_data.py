@@ -6,6 +6,7 @@ import cfgrib
 from pyhdf.SD import SD, SDC
 from datetime import date, timedelta, datetime
 import logging, os, calendar
+import xesmf as xe
 logging.basicConfig(level="INFO")
 
 def get_MODIS_date_from_id(id):
@@ -18,7 +19,7 @@ def get_MODIS_date_from_result(result):
 def get_month_files(date_dict, year, month):
     _, nday = calendar.monthrange(year, month)
     dates = [date(year, month, day) for day in range(1, nday + 1)]
-    return [date_dict[d] for d in dates], dates
+    return [date_dict.get(d, "NO_DATA_THIS_DATE") for d in dates], dates
 
 def get_hdf_files(to_scrape_list, write_dir):
     earthaccess.download(to_scrape_list, local_path = write_dir)
@@ -94,13 +95,27 @@ def reduce_hdf_fields(data):
         "scf" : qa_and_scale(data["Percent_Snow"], data["Albedo_Quality"], 20)
     }
 
+def make_blank_data():
+    return {
+        "bsa" : {"mode1" : np.full((180, 360), np.nan), "mode2" : np.full((181, 360), np.nan)},
+        "wsa" : {"mode1" : np.full((180, 360), np.nan), "mode2" : np.full((181, 360), np.nan)},
+        "scf" : {"mode1" : np.full((180, 360), np.nan), "mode2" : np.full((181, 360), np.nan)}
+    }
+
 def get_modis_files(date_dict, year, month, dump_dir):
     to_scrape, dates = get_month_files(date_dict, year, month)
+    #handle the no-data-dates (findall, return those dates separately as another output to pass to the make_netcdf func):
+    no_data_dates = [dates[i] for i, x in enumerate(to_scrape) if x == "NO_DATA_THIS_DATE"]
+    scrape_list = [x for x in to_scrape if x != "NO_DATA_THIS_DATE"]
     names = ['Albedo_BSA_shortwave', 'Albedo_WSA_shortwave', 'Albedo_Quality', 'Percent_Snow'] #, 'BRDF_Albedo_Uncertainty']
-    fnames = get_hdf_files(to_scrape, dump_dir)
-    return {
-        d : reduce_hdf_fields(parse_hdf_file(fnames[d], names)) for d in dates
+    fnames = get_hdf_files(scrape_list, dump_dir)
+    data = {
+        d : reduce_hdf_fields(parse_hdf_file(fnames[d], names)) for d in dates if d not in no_data_dates
     }
+    #use no_data_dates and add a blank all-nan field into the data at those dates:
+    for d in no_data_dates:
+        data[d] = make_blank_data()
+    return data
 
 def build_ecmwf_request(year, month):
     return {
@@ -312,7 +327,7 @@ def run_scrape():
     print(", ".join(missed_years))
 
 
-run_scrape()
+#run_scrape()
 
 
 # Suppress all the warnings
@@ -349,13 +364,170 @@ run_scrape()
 #        arr_averaged = np.nanmean(arr_temp, axis = 0)
 #    return arr_averaged
 
-#def plot_m(m):
-#    ny, nx = m.shape
-#    m_small = m.reshape(ny // 4, 4, nx // 4, 4)
-#    m_small = np.nanmean(m_small, axis = (1, 3))
-#    img = np.where(np.isnan(m_small), "  ", "**")
-#    for i in range(len(img)): #dim1
-#        for j in range(len(img[0])): #dim2
-#            print(img[i, j], end = "")
-#        print('\n')
-#    print("\n\n")
+def plot_m(m):
+    ny, nx = m.shape
+    m_small = m.reshape(ny // 4, 4, nx // 4, 4)
+    m_small = np.nanmean(m_small, axis = (1, 3))
+    img = np.where(np.isnan(m_small), "  ", "**")
+    for i in range(len(img)): #dim1
+        for j in range(len(img[0])): #dim2
+            print(img[i, j], end = "")
+        print('\n')
+    print("\n\n")
+
+#request for the geopotential:
+#month_request = {
+#    "product_type": ["monthly_averaged_reanalysis"],
+#    "variable": [
+#        "surface_latent_heat_flux",
+#        "surface_net_solar_radiation",
+#        "surface_sensible_heat_flux",
+#        "surface_solar_radiation_downwards"
+#    ],
+#    "year": [
+#        "2000", "2001", "2002",
+#        "2003", "2004", "2005",
+#        "2006", "2007", "2008",
+#        "2009", "2010", "2011",
+#        "2012", "2013", "2014",
+#        "2015", "2016", "2017",
+#        "2018", "2019", "2020"
+#    ],
+#    "month": [
+#        "01", "02", "03",
+#        "04", "05", "06",
+#        "07", "08", "09",
+#        "10", "11", "12"
+#    ],
+#    "time": ["00:00"],
+#    "grid": [1.0, 1.0],
+#    "data_format": "netcdf",
+#    "download_format": "unarchived"
+#}
+
+#request for geopotential (did not regrid):
+#geo_request = {
+#    "variable": ["geopotential"],
+#    "grid": [1.0, 1.0],
+#    "data_format": "grib",
+#    "download_format": "unarchived"
+#}
+
+#request for glacier mask (did not regrid):
+#geo_request = {
+#    "variable": ["glacier_mask"],
+#    "grid": [1.0, 1.0],
+#    "data_format": "grib",
+#    "download_format": "unarchived"
+#}
+
+def process_monthly_rad_data(path, output_dir):
+    ds = xr.open_dataset(path)
+    ds_data = {}
+    for var in ['slhf', 'ssr', 'sshf', 'ssrd']:
+        data = ds[var].values
+        ddims = list(ds[var].dims)
+        lon_idx = ddims.index('longitude')
+        data_rolled = roll_lon(data, lon_idx)
+        data_clima_aligned = np.flip(data_rolled[:, 1:, :], axis = 1) #flip latitude dimension (it's dim 1) and get rid of +90
+        ds_data[var] = data_clima_aligned
+    lats = np.linspace(-90, 89, 180) #order in our output files, mark point values
+    lons = np.linspace(-180, 179, 360) #order in our output files, mark point values
+    dates = ds["valid_time"].values
+    new_ds = xr.Dataset(
+        data_vars={
+            "slhf": (["date", "lat", "lon"], ds_data['slhf']),
+            "ssr": (["date", "lat", "lon"], ds_data['ssr']),
+            "sshf": (["date", "lat", "lon",], ds_data['sshf']),
+            "ssrd": (["date", "lat", "lon"], ds_data['ssrd']),
+        },
+        coords={
+            "date": dates,
+            "lat": lats,
+            "lon": lons,
+        }
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    new_ds.to_netcdf(output_dir + f"/era5_monthly_rad.nc")
+    ds.close()
+
+def process_month_folder(data_folder, output_folder):
+    ds = xr.open_mfdataset(f"{data_folder}/*.nc")
+    ds.to_netcdf(f"{output_folder}/all_snow_vars.nc")
+
+def process_invariant(filename, npix, output_folder, filetype = "geopotential"):
+    ds = xr.open_dataset(filename)
+    lons = ds['longitude'].values
+    invariant = (ds['z'].values / 9.80665) if filetype == "geopotential" else ds['glm'].values
+    lon_idx = list(ds.dims).index('longitude')
+    ny, nx = invariant.shape
+    assert (ny-1) % npix == 0
+    assert nx % npix == 0
+    assert npix % 2 == 0
+    nshift = npix // 2
+    field_shift = np.roll(invariant, shift = len(lons)//2 + npix//2 - 1, axis = lon_idx) #positive shift bumps right-end to front, pushing 179.6-180 to the front to get averaged with -180 to -179.5
+    field_big_inside = field_shift[nshift:-(nshift+1), :]
+    field_big_top = field_shift[:nshift, :]
+    field_big_bottom = field_shift[-(nshift+1):, :]
+    field_inside_stack = field_big_inside.reshape(((ny-1) // npix) - 1, npix, nx // npix, npix)
+    field_top_stack = field_big_top.reshape(1, nshift, nx // npix, npix)
+    field_bottom_stack = field_big_bottom.reshape(1, nshift+1, nx // npix, npix)
+    with np.errstate(invalid ='ignore'):
+        field_small_inside = np.nanmean(field_inside_stack, axis = (1, 3)) #now -180, -179, ..., 179
+        field_small_top = np.nanmean(field_top_stack, axis = (1, 3))
+        field_small_bottom = np.nanmean(field_bottom_stack, axis = (1, 3))
+    invar_avg = np.vstack([field_small_top, field_small_inside, field_small_bottom])
+    invar_clima = np.flip(invar_avg[1:, :], axis = 0)
+    lats = np.linspace(-90, 89, 180) #order in our output files, mark point values
+    lons = np.linspace(-180, 179, 360) #order in our output files, mark point values
+    varname = "elev" if filetype == "geopotential" else "glf"
+    filename = "elevation" if filetype == "geopotential" else "glacialfrac"
+    new_ds = xr.Dataset(
+        data_vars={
+            varname: (["lat", "lon"], invar_clima),
+        },
+        coords={
+            "lat": lats,
+            "lon": lons,
+        }
+    )
+    os.makedirs(output_folder, exist_ok=True)
+    new_ds.to_netcdf(output_folder + f"/{filename}.nc")
+    ds.close()
+
+def reshape_clm_field(var, ds, target_grid, regridder_cache, 
+                      cons_field=[]):
+    da = ds[var]
+    # transpose
+    other_dims = [d for d in da.dims if d not in ["lat", "lon"]]
+    da = da.transpose(*other_dims, "lat", "lon")
+    method = "conservative" if var in cons_field else "bilinear"
+    key = (method, "lat", "lon")
+    if key not in regridder_cache:
+        regridder_cache[key] = xe.Regridder(
+            da,
+            target_grid,
+            method,
+        )
+    regridder = regridder_cache[key]
+    out = regridder(da)
+    return out
+
+def regrid_and_build_clm_outputs(file, year):
+    ds = xr.open_dataset(file)
+    target_grid = xr.Dataset({
+        "lat": (["lat"], np.linspace(-90, 89, 180)),
+        "lon": (["lon"], np.linspace(-180, 179, 360)),
+    })
+    regridder_cache = {}
+    ds_out = xr.Dataset()
+    for var in ds.data_vars:
+        ds_out[var] = reshape_clm_field(
+            var, ds, target_grid, regridder_cache
+        )
+    dates = np.array([date(year, i, 1) for i in range(1, 13)]).astype('datetime64[ns]')
+    if "month" in ds_out.dims:
+        ds_out = ds_out.rename({"month": "date"})
+        ds_out = ds_out.assign_coords(date=dates)
+    
+    ds_out.to_netcdf(file.replace(".nc", "_clima.nc"))
