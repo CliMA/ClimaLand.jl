@@ -89,7 +89,7 @@ function set_ic!(Y, p, t0, model)
 
     ψ_leaf_0 = FT(-2e5 / 9800)
     canopy_params = model.canopy.hydraulics.parameters
-    S_l_ini =
+    S_l =
         inverse_water_retention_curve.(
             canopy_params.retention_model,
             ψ_leaf_0,
