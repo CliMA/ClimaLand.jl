@@ -237,7 +237,8 @@ snow = Snow.SnowModel(
 )
 
 # Integrated plant hydraulics, soil, and snow model
-land = LandModel{FT}(canopy, snow, soil, soilco2);
+lake = nothing
+land = LandModel{FT}(canopy, snow, soil, soilco2, lake);
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,

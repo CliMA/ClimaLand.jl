@@ -919,15 +919,21 @@ function compute_latent_heat_flux!(
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out =
-            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
+            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.lhf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+        if !(land_model.lake isa Nothing)
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf
+        end
         return out
     else
         @. out =
-            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
+            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.lhf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+        if !(land_model.lake isa Nothing)
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf
+        end
     end
 end
 
@@ -942,15 +948,21 @@ function compute_sensible_heat_flux!(
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out =
-            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
+            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.shf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+        if !(land_model.lake isa Nothing)
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf
+        end
         return out
     else
         @. out =
-            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
+            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
             p.canopy.turbulent_fluxes.shf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+        if !(land_model.lake isa Nothing)
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf
+        end
     end
 end
 

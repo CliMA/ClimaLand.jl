@@ -218,11 +218,15 @@ for FT in (Float32, Float64)
         scf = zeros(FT, length(depth))
         α_snow = zeros(FT, length(depth))
         p = (;
-            snow = (; z_snow = depth, ρ_snow = ρ_snow),
+            snow = (;
+                z_snow = depth,
+                ρ_snow = ρ_snow,
+                snow_cover_fraction = scf,
+            ),
             drivers = (; cosθs = FT(0.5)),
         )
 
-        update_snow_cover_fraction!(scf, m, nothing, p, 0.0, param_set)
+        update_snow_cover_fraction!(p, m, nothing, 0.0, param_set, nothing)
         @test m.β_scf == max(FT(1.77 - 0.08 * (2 - 1.5)), FT(1.0))
         @test all(
             @. scf ≈
