@@ -7,9 +7,11 @@ depth, and surface temperature.
 The key conservative equations are
 
 ```math
-\rho_l\frac{\partial S}{\partial t} =  P_{\rm {snow}} + \sigma(P_{\rm liq} - E - \rho_l R_{\rm snow}) \\
-\frac{\partial U}{\partial t} & =  e_{i, \rm snow} P_{\rm {snow}} + \bigg( -\rho_l e_l R_{\mathrm{snow}} + e_{l, \rm rain} P_{\rm liq} +G -H - LE + R_n\bigg)\sigma \\
-\rho_l \frac{\partial S_l}{\partial t} =  \bigg(P_{\rm liq} - E_l + \rho_lM - \rho_lR_{\rm snow}\bigg) \sigma,
+\begin{aligned}
+\rho_l\frac{\partial S}{\partial t} &=  P_{\rm {snow}} + \sigma(P_{\rm liq} - E - \rho_l R_{\rm snow}) \\
+\frac{\partial U}{\partial t} &=  e_{i, \rm snow} P_{\rm {snow}} + \bigg( -\rho_l e_l R_{\mathrm{snow}} + e_{l, \rm rain} P_{\rm liq} +G -H - LE + R_n\bigg)\sigma \\
+\rho_l \frac{\partial S_l}{\partial t} &=  \bigg(P_{\rm liq} - E_l + \rho_lM - \rho_lR_{\rm snow}\bigg) \sigma,
+\end{aligned}
 ```
 where:
 - $S$ is the snow water equivalent per ground area, $t$ is the time, $P_{\rm {snow}}$ and $\sigma(P_{\rm liq}$ are the precpitation fluxes, $E$ is the vapor flux, and $\rho_l R_{\rm snow}$ is a mass flux of water due to meltwater leaving the snowpack,
