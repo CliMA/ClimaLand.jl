@@ -811,7 +811,7 @@ function make_set_initial_state_from_atmos_and_parameters(
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
-        
+
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
 
         # Lake IC

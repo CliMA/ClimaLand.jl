@@ -51,7 +51,6 @@ import ClimaTimeSteppers as CTS
 using ClimaLand
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP

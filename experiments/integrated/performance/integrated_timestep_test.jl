@@ -248,7 +248,7 @@ f_root_to_shoot = FT(3.5)
 RAI = maxLAI * f_root_to_shoot
 plant_ν = FT(1.44e-4)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-conductivity_model = PlantHydraulics.Weibull(toml_dict)
+conductivity_model = Canopy.Weibull(toml_dict)
 
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,

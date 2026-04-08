@@ -396,7 +396,7 @@ for float_type in (Float32, Float64)
         # d[θ_leaf h_leaf] =  - [T - Root Flux]/LAI
         rhs_canopy = @. -T / leaf_area_index + root_flux / leaf_area_index
         net_plant_water_storage = [
-            sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* h_leaf) for
+            sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* h_canopy) for
             k in 1:length(sol.t)
         ]
         lhs_canopy =
