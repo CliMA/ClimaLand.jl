@@ -212,19 +212,18 @@ end
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
-    F_g =  - κ_eff (T_snow - T_soil)/Δz_eff,
+    F_g =  - g_eff (T_snow - T_soil)
 
 where:
-    κ_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)* (Δz_soil + Δz_snow)/2
-    Δz_eff =( Δz_soil + Δz_snow)/2
+    g_eff = g_snow g_soil/ (g_soil + g_snow);
+    g_soil = κ_soil/Δz_soil
+    g_snow = κ_snow/Δz_snow_eff
 
 This is what JULES does to compute the diffusive heat flux between snow and soil, for example,
-see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011
-
-However, this is for a multi-layer snow model, with
-T_snow and Δz_snow related to the bottom layer.
-We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep.
-Due to this, we cap Δz_snow at 10 cm.
+see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011,
+setting g_snow = κ_snow/Δz_snow. Since we do not have a multilayer model, 
+using  Δz_snow = z_snow (height of snow) leads to a very small flux when the snow is deep.
+Due to this, we set Δz_snow_eff = min(z_snow, Δz_max), with Δz_max = free parameter.
 """
 function update_soil_snow_ground_heat_flux!(
     p,
@@ -239,7 +238,7 @@ function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depths
-    Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
+    Δz_snow = @. lazy(min(p.snow.z_snow, snow_params.Δz_max))
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
