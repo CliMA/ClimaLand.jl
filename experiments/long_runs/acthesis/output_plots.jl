@@ -39,6 +39,10 @@ function glacial_mask(thresh)
     ret_mask = Matrix{Float64}(deepcopy(mask))
     ret_mask[ret_mask .== 1] .= 1.0
     ret_mask[ret_mask .< 1] .= NaN
+    #add the four bad points:
+    for (p1, p2) in [(111, 57), (261, 133), (316, 153), (302, 158)]
+        ret_mask[p1, p2] = NaN
+    end
     return ret_mask
 end
 
@@ -87,17 +91,17 @@ function get_agg_ids(dates::Vector{<:Union{Date, DateTime}}, period::Symbol, bin
     elseif period == :season
         mon = month.(dates)
         seas = fill(:DJF, length(dates))
-        seas[in.(mon, [[3, 4, 5]])] .= :MAM
-        seas[in.(mon, [[6, 7, 8]])] .= :JJA
-        seas[in.(mon, [[9, 10, 11]])] .= :SON
+        seas[in.(mon, Ref([3, 4, 5]))] .= :MAM
+        seas[in.(mon, Ref([6, 7, 8]))] .= :JJA
+        seas[in.(mon, Ref([9, 10, 11]))] .= :SON
         bin && return seas
         yr = ifelse.(mon .== 12, year.(dates) + 1, year.(dates))
         return collect(zip(yr, seas))
     elseif period == :month
         return bin ? month.(dates) : collect(zip(year.(dates), month.(dates)))
     elseif period == :week
-        wk = floor.(Int, dayofyear.(dates) ./ 7) .+ 1
-        wk[wk .== 53] .= 52
+        wk = ceil.(Int, dayofyear.(dates) ./ 7)
+        wk = clamp.(wk, 1, 52)
         return bin ? wk : collect(zip(year.(dates), wk))
     elseif period == :day
         doy = dayofyear.(dates)
@@ -111,10 +115,10 @@ function agg_indices(data::Array, dates::Vector{<:Union{Date, DateTime}}, period
     if isnothing(agg_ids)
         return data, dates
     else
-        idset = unique(agg_ids)
+        idset = sort(unique(agg_ids))
         dat = Vector{Array}(undef, length(idset))
         for (i, id) in enumerate(idset)
-            idxs = findall(==(id), idset)
+            idxs = findall(==(id), agg_ids)
             dat[i] = agg(data[idxs, :, :], dims = 1)
         end
         return cat(dat..., dims = 1), idset
@@ -227,7 +231,7 @@ function ssim(sim, obs; r=5, C1=1e-4, C2=9e-4)
 end
 function time_stat(f, arr)
     T, LON, LAT = size(arr)
-    out = allowmissing(zeros(LON, LAT))
+    out = fill(NaN, LON, LAT)
     for i in 1:LON
         for j in 1:LAT
             out[i, j] = f(view(arr, :, i, j))
@@ -239,7 +243,7 @@ function time_stat(f, arr1, arr2)
     T1, LON1, LAT1 = size(arr1)
     T2, LON2, LAT2 = size(arr2)
     @assert (LAT1 == LAT2) && (LON1 == LON2) && (T1 == T2)
-    out = allowmissing(zeros(LON1, LAT1))
+    out = fill(NaN, LON1, LAT1)
     for i in 1:LON1
         for j in 1:LAT1
             out[i, j] = f(view(arr1, :, i, j), view(arr2, :, i, j))
@@ -248,8 +252,8 @@ function time_stat(f, arr1, arr2)
     return out
 end
 function space_stat(f, arr)
-    T, LAT, LON = size(arr)
-    out = allowmissing(zeros(T))
+    T, LON, LAT = size(arr)
+    out = fill(NaN, T)
     for i in 1:T
         out[i] = f(view(arr, i, :, :))
     end
@@ -259,7 +263,7 @@ function space_stat(f, arr1, arr2)
     T1, LON1, LAT1 = size(arr1)
     T2, LON2, LAT2 = size(arr2)
     @assert (LAT1 == LAT2) && (LON1 == LON2) && (T1 == T2)
-    out = allowmissing(zeros(T1))
+    out = fill(NaN, T1)
     for i in 1:T1
         out[i] = f(view(arr1, i, :, :), view(arr2, i, :, :))
     end
@@ -278,16 +282,28 @@ function stat_spread(v)
     )
 end
 
+function make_nosnow_mask(; z_thresh = 0, glacial_thresh = 0)
+    era5_snow_depth = get_data(era5_snow_outputs[:snd])
+    max_snow_cell = maximum(era5_snow_depth, dims = 1)[1, :, :]
+    max_snow_cell[ismissing.(max_snow_cell)] .= NaN
+    no_snow = findall(<(z_thresh), max_snow_cell)
+    mask = glacial_mask(glacial_thresh)
+    mask[no_snow] .= NaN
+    return mask
+end
+
 function depth_analysis(; args = snow_args)
     @info "Running Depth Analysis..."
     print("   Extracting data...\n")
     z, dates = field_data(:snd, :snd, :SNOW_DEPTH_month; args = args)
     calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
-    mask = glacial_mask(0)
-    metrics = Dict()
+    #make data mask: glacial mask, plus spots where there is no snow
+    mask = make_nosnow_mask() #leaves 8659 columns
 
     z_era_m = apply_mask(agg_indices(z.era5, dates.era5, :month, mean)[1], mask)
     z_era_a = apply_mask(agg_indices(z.era5, dates.era5, :snowyear, maximum)[1], mask)
+
+    metrics = Dict()
     std_era = time_stat(stdf, z_era_a)
     metrics["era5"] = Dict("IAV" => Dict("stats" => stat_spread(std_era), "vals" => std_era))
 
@@ -323,8 +339,15 @@ function depth_analysis(; args = snow_args)
             end
         end
     end
+    # add a mask excluding points where there is no snowpack, or not?
+    # split up these errors by season? by year?
+    # update your model with GPU fixes - should we start all from the era5Land initial state?
+
+    # check anderson parameters again (which to use? or don't compare to it; just compare to CLM5)
+    # should we be fine-tuning/calibrating? see what happens when you don't use an over-fit neural depth model?
+
     # do we need to divide by the snow cover fraction here? what's the right comparison?
-    #split up these errors by season? by year?
+    # make a histogram of the rmse errors by scheme betweeen 0.004 and 1 m for paper? or just you
     return metrics
 end
 
@@ -388,8 +411,8 @@ function plotm(m; mask = nothing,
     stretch=:linear,
     gamma=1.0,
     vmin = nothing,
-    vmax = nothing,)
-
+    vmax = nothing,
+    )
     to_plot = isnothing(mask) ? reverse(m; dims = 2) : reverse(m .* mask, dims = 2) #reverse along latitude
     data_max = maximum(x for x in skipmissing(to_plot) if !isnan(x))
     data_min = minimum(x for x in skipmissing(to_plot) if !isnan(x))
@@ -428,14 +451,7 @@ function plotm(m; mask = nothing,
     print("\n\n")
 end
 
-function print_colorbar(vmin, vmax; 
-    cmap=cgrad(:viridis), 
-    n=100, 
-    ticks=5,
-    vcenter=nothing,
-    stretch=:linear,
-    gamma=1.0
-)
+function print_colorbar(vmin, vmax; cmap = cgrad(:viridis), n=100, ticks=5, vcenter=nothing, stretch=:linear, gamma=1.0)
     vals = range(vmin, vmax; length=n)
 
     for val in vals
