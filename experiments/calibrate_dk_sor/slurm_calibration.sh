@@ -3,7 +3,7 @@
 #SBATCH --partition=expansion
 #SBATCH --account=esm
 #SBATCH --time=20:00:00
-#SBATCH --ntasks=25
+#SBATCH --ntasks=33
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=240G
 #SBATCH --output=dk_sor_calibration_%j.out

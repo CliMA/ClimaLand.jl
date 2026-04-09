@@ -9,7 +9,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["pmodel_β"]
-value = 51.0
+value = 20.0
 type = "float"
 used_in = ["getindex"]
 
@@ -19,7 +19,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["canopy_z_0m_coeff"]
-value = 0.02
+value = 0.10
 type = "float"
 used_in = ["getindex"]
 
@@ -29,7 +29,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["canopy_d_coeff"]
-value = 0.007
+value = 0.65
 type = "float"
 used_in = ["getindex"]
 
@@ -53,6 +53,11 @@ value = 0.1
 type = "float"
 used_in = ["getindex"]
 
+["soilCO2_activation_energy"]
+value = 61000.0
+type = "float"
+used_in = ["Land"]
+
 ["soilCO2_pre_exponential_factor"]
 value = 23835.0
 type = "float"
@@ -67,3 +72,8 @@ used_in = ["Land"]
 value = 0.004
 type = "float"
 used_in = ["Land"]
+
+["ac_canopy"]
+value = 2500.0
+type = "float"
+used_in = ["getindex"]

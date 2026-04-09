@@ -2,7 +2,7 @@
 #SBATCH --job-name=dk_sor_emulate_sample
 #SBATCH --partition=expansion
 #SBATCH --account=esm
-#SBATCH --time=04:00:00
+#SBATCH --time=48:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G

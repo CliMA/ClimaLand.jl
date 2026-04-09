@@ -133,7 +133,7 @@ Even with bugs fixed, `calibration_diagnostics.png` shows NEE RMSE oscillates wi
 ## Files in this branch (new / modified)
 
 ### Modified source files
-- `src/standalone/Soil/Biogeochemistry/Biogeochemistry.jl` — added SOC consumption tendency (`dY.soilco2.SOC -= Sm`) so carbon is conserved in DAMM
+- `src/standalone/Soil/Biogeochemistry/Biogeochemistry.jl` — set `dY.soilco2.SOC = 0.0` (SOC held constant) to prevent runaway depletion over multi-year runs; without NPP/litter-to-SOC coupling, making SOC prognostic causes heterotrophic respiration to drift to zero
 - `src/simulations/Simulations.jl` — relaxed `I <: SciMLBase.DEIntegrator` type constraint to `I` (fixes LandSimulation construction error with newer SciML)
 
 ### Calibration experiment (`experiments/calibrate_dk_sor/`)

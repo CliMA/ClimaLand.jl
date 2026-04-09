@@ -16,10 +16,13 @@ Usage
           experiments/callmip_uq_dk_sor/analyze_posterior_ensemble.jl
 """
 
+println("[1/5] Loading JLD2, Dates, Statistics..."); flush(stdout)
 using JLD2, Dates, Statistics
+println("[2/5] Loading Plots..."); flush(stdout)
 using Plots, Printf
+println("[3/5] Loading NCDatasets..."); flush(stdout)
 import NCDatasets
-import ClimaLand
+println("[4/5] Packages loaded. Setting up paths..."); flush(stdout)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
@@ -49,6 +52,25 @@ n_samples               = data["n_samples"]
 members = sort(collect(keys(member_results)))
 @info "Loaded $(length(members)) member runs out of $n_samples requested"
 
+# ── Prune catastrophic blow-ups (physical threshold only) ────────────────────
+# Reject ONLY members where peak |NEE| exceeds a hard physical ceiling.
+# NOTE: Do NOT filter on RMSE or skill vs prior — that would be post-hoc
+# cherry-picking.  The wide posterior spread (many near-zero NEE members) is
+# a genuine finding: the GP emulator cannot distinguish pmodel_β ≈ 20
+# (near-zero GPP) from pmodel_β ≈ 40 (strong uptake) in emulator space,
+# resulting in an underdispersed posterior.  See CALLMIP_Phase1a_Report.md §3.
+const NEE_MAX_GC = 50.0   # gC m⁻² d⁻¹ — hard ceiling for any forest
+outliers = filter(members) do m
+    max_nee = maximum(abs.(filter(!isnan, member_results[m].nee .* 12.0 .* 86400.0));
+                      init = 0.0)
+    max_nee > NEE_MAX_GC
+end
+if !isempty(outliers)
+    @warn "Pruning $(length(outliers)) blow-up members (peak |NEE| > $NEE_MAX_GC): $outliers"
+    filter!(m -> m ∉ outliers, members)
+end
+@info "Using $(length(members))/$(n_samples) members after outlier pruning"
+
 # ── Load FLUXNET observations ──────────────────────────────────────────────────
 obs_ds     = NCDatasets.NCDataset(flux_nc_path, "r")
 nee_obs_raw = Float64.(NCDatasets.coalesce.(obs_ds["NEE_daily"][:], NaN))
@@ -61,6 +83,7 @@ obs_dates   = Date.(obs_times)
 obs_dict_nee = Dict(zip(obs_dates, nee_obs_raw))
 obs_dict_qle = Dict(zip(obs_dates, qle_obs_raw))
 obs_dict_qh  = Dict(zip(obs_dates, qh_obs_raw))
+println("[5/5] Starting analysis..."); flush(stdout)
 
 # ── Align ensemble on a common date vector ────────────────────────────────────
 # Use the date range common to all successful members.

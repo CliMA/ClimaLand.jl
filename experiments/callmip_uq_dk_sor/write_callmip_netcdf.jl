@@ -112,27 +112,46 @@ const rho_water      = 1000.0           # kg m⁻³
 `col_data` must be a Matrix{Float64} with rows = z levels (bottom to surface)
 and columns = time steps.  `z_soil` is the z-coordinate vector (m, negative).
 `scale` is applied after integration (e.g. rho_water = 1000 for SoilMoist).
+
+Special case: if `size(col_data, 1) == 1` (ClimaLand stored the diagnostic as
+a depth-averaged scalar rather than a full profile), the scalar is multiplied
+by the total column depth derived from `z_soil`, giving an approximate column
+integral.  This is the expected behaviour for CalLMIP simulations where
+`default_diagnostics` with `:daily` reduction returns the spatial mean over the
+column domain.
 """
 function column_integral(col_data::Matrix{Float64}, z_soil::Vector{Float64};
                           scale::Float64 = 1.0)
     n_z, n_t = size(col_data)
-    n_z == length(z_soil) || error("col_data rows $(n_z) ≠ z_soil length $(length(z_soil))")
-    # Layer thicknesses via midpoint rule (cell centre spacing)
-    dz = zeros(n_z)
-    if n_z == 1
-        dz[1] = abs(z_soil[1])
+    n_zlev = length(z_soil)
+    # Layer thicknesses via midpoint rule (cell-centre spacing)
+    dz_full = zeros(n_zlev)
+    if n_zlev == 1
+        dz_full[1] = abs(z_soil[1])
     else
-        for i in 1:n_z
-            lo = i == 1   ? 2*z_soil[1] - z_soil[2] : (z_soil[i-1] + z_soil[i]) / 2
-            hi = i == n_z ? 0.0                      : (z_soil[i]   + z_soil[i+1]) / 2
-            dz[i] = hi - lo
+        for i in 1:n_zlev
+            lo = i == 1      ? 2*z_soil[1] - z_soil[2]  : (z_soil[i-1] + z_soil[i]) / 2
+            hi = i == n_zlev ? 0.0                       : (z_soil[i]   + z_soil[i+1]) / 2
+            dz_full[i] = hi - lo
         end
     end
     result = zeros(n_t)
-    for t in 1:n_t
-        for i in 1:n_z
-            result[t] += col_data[i, t] * dz[i] * scale
+    if n_z == n_zlev
+        # Full vertical profile: integrate layer by layer
+        for t in 1:n_t
+            for i in 1:n_zlev
+                result[t] += col_data[i, t] * dz_full[i] * scale
+            end
         end
+    elseif n_z == 1
+        # Depth-averaged scalar (ClimaLand returns domain mean): scale by total depth
+        total_depth = sum(dz_full)
+        @info "column_integral: depth-averaged scalar detected; using total depth $(round(total_depth; digits=2)) m"
+        for t in 1:n_t
+            result[t] = col_data[1, t] * total_depth * scale
+        end
+    else
+        error("col_data rows $(n_z) ≠ z_soil length $(n_zlev)")
     end
     return result
 end
@@ -146,17 +165,34 @@ uncertainty bands were loaded (posterior only).
 function build_variable_dict(d::Dict, add_uncertainty::Bool = false)
     out = Dict{String, Vector{Float64}}()
 
+    # callmip_diagnostics.jld2 stores variables in two sub-dicts:
+    #   d["surface_data"] — scalar surface diagnostics (nee, gpp, lhf, shf, …)
+    #   d["column_data"]  — vertical profile diagnostics (swc, tsoil, soc)
+    sd = get(d, "surface_data", Dict{String,Any}())
+    cd = get(d, "column_data",  Dict{String,Any}())
+
     # Helper to safely get a surface diagnostic or fill with NaN
     function get_surf(key)
-        haskey(d, key) ? Float64.(d[key]) : fill(NaN, n_days)
+        v = get(sd, key, nothing)
+        (v !== nothing && length(v) == n_days) ? Float64.(v) : fill(NaN, n_days)
     end
 
     z_soil = haskey(d, "z_soil") ? Float64.(d["z_soil"]) : Float64[]
 
     # ── Carbon fluxes (mol CO₂ m⁻² s⁻¹ → kg C m⁻² s⁻¹) ──────────────────
-    out["NEE"]  = get_surf("nee")  .* mol_CO2_to_kgC
-    out["GPP"]  = get_surf("gpp")  .* mol_CO2_to_kgC
-    out["Reco"] = get_surf("er")   .* mol_CO2_to_kgC
+    # Blowup guard: days where |NEE| > 1e-3 mol m⁻² s⁻¹ indicate numerical
+    # instability in the EKI-optimal parameter set — mask to NaN (same
+    # threshold used in evaluate_calibration.jl).
+    NEE_BLOWUP_THRESHOLD = 1e-3   # mol CO₂ m⁻² s⁻¹
+    nee_raw = get_surf("nee")
+    er_raw  = get_surf("er")
+    nee_raw[abs.(nee_raw) .> NEE_BLOWUP_THRESHOLD] .= NaN
+    er_raw[abs.(er_raw)   .> NEE_BLOWUP_THRESHOLD] .= NaN
+    n_blowup = sum(isnan.(nee_raw))
+    n_blowup > 0 && @warn "Masked $n_blowup blowup day(s) in NEE/Reco (|flux| > $(NEE_BLOWUP_THRESHOLD) mol CO₂ m⁻² s⁻¹) to NaN."
+    out["NEE"]  = nee_raw .* mol_CO2_to_kgC
+    out["GPP"]  = get_surf("gpp") .* mol_CO2_to_kgC
+    out["Reco"] = er_raw  .* mol_CO2_to_kgC
 
     # ── Heat fluxes (W m⁻², pass-through) ─────────────────────────────────
     out["Qle"] = get_surf("lhf")
@@ -175,11 +211,11 @@ function build_variable_dict(d::Dict, add_uncertainty::Bool = false)
     out["Qg"] = soilrn .- soillhf .- soilshf
 
     # ── Surface temperature (K) ────────────────────────────────────────────
-    # Primary: canopy temperature (ct); fallback: top soil layer
+    # Primary: canopy temperature (ct); fallback: top soil layer (column_data)
     ct    = get_surf("ct")
-    tsoil = if haskey(d, "tsoil") && d["tsoil"] isa Matrix
-        # Top soil layer = last row (z closest to 0)
-        Float64.(d["tsoil"][end, :])
+    tsoil = if haskey(cd, "tsoil") && cd["tsoil"] isa Matrix
+        # Top soil layer = last row (z index closest to surface, z=0)
+        Float64.(cd["tsoil"][end, :])
     else
         fill(NaN, n_days)
     end
@@ -192,9 +228,9 @@ function build_variable_dict(d::Dict, add_uncertainty::Bool = false)
     out["AvgSurfT"] = avgt
 
     # ── Total column soil moisture (kg m⁻²) ───────────────────────────────
-    if haskey(d, "swc") && d["swc"] isa Matrix && !isempty(z_soil)
+    if haskey(cd, "swc") && cd["swc"] isa Matrix && !isempty(z_soil)
         out["SoilMoist"] = column_integral(
-            Float64.(d["swc"]), z_soil; scale = rho_water)
+            Float64.(cd["swc"]), z_soil; scale = rho_water)
     else
         out["SoilMoist"] = fill(NaN, n_days)
         @warn "swc column diagnostic not available; SoilMoist set to NaN."
@@ -207,8 +243,8 @@ function build_variable_dict(d::Dict, add_uncertainty::Bool = false)
     out["TotAbovBioMass"] = get_surf("cveg")
 
     # ── Total soil organic carbon (kg C m⁻²) ──────────────────────────────
-    if haskey(d, "soc") && d["soc"] isa Matrix && !isempty(z_soil)
-        out["TotSoilCarb"] = column_integral(Float64.(d["soc"]), z_soil)
+    if haskey(cd, "soc") && cd["soc"] isa Matrix && !isempty(z_soil)
+        out["TotSoilCarb"] = column_integral(Float64.(cd["soc"]), z_soil)
     else
         out["TotSoilCarb"] = fill(NaN, n_days)
         @warn "soc column diagnostic not available; TotSoilCarb set to NaN."
@@ -397,10 +433,14 @@ end
 # ── Write all 4 files ─────────────────────────────────────────────────────────
 @info "Writing CalLMIP NetCDF files to $(nc_output_dir)…"
 
-write_callmip_nc("Cal", "Prior",     prior_vars, dates[cal_mask])
-write_callmip_nc("Cal", "Posterior", post_vars,  dates[cal_mask])
-write_callmip_nc("Val", "Prior",     prior_vars, dates[val_mask])
-write_callmip_nc("Val", "Posterior", post_vars,  dates[val_mask])
+# Protocol v1.2 Section 7 file naming:
+#   Cal period:  _Cal_Prior  /  _Cal_Posterior
+#   Val period:  _Val_Temporal  (one file per run — prior and posterior share same suffix per protocol)
+#   We write two val files with _Temporal_Prior / _Temporal_Posterior to preserve the prior/posterior distinction.
+write_callmip_nc("Cal", "Prior",              prior_vars, dates[cal_mask])
+write_callmip_nc("Cal", "Posterior",          post_vars,  dates[cal_mask])
+write_callmip_nc("Val", "Temporal_Prior",     prior_vars, dates[val_mask])
+write_callmip_nc("Val", "Temporal_Posterior", post_vars,  dates[val_mask])
 
 @info "Done! All CalLMIP NetCDF files written."
 @info "Output directory: $(nc_output_dir)"

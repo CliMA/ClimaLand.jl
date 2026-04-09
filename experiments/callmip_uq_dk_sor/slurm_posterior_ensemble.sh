@@ -21,5 +21,9 @@ export CLIMACOMMS_CONTEXT="SINGLETON"
 module use /groups/esm/modules
 module load climacommon
 
+# Instantiate the .buildkite environment before launching workers
+julia --project=.buildkite \
+      -e 'using Pkg; Pkg.instantiate()'
+
 julia --project=.buildkite \
       experiments/callmip_uq_dk_sor/run_posterior_ensemble.jl

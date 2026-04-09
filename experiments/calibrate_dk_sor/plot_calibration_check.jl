@@ -18,7 +18,7 @@ Usage:
 
 using CairoMakie
 using Dates
-using Statistics
+using Statistics: mean, std, quantile, median
 import JLD2
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -69,13 +69,35 @@ function compute_rmse(G::Matrix{Float64}, y::Vector{Float64})
     return sqrt(mean((gm[ok] .- y[ok]).^2))
 end
 
+# Robust prior RMSE: median across member-wise RMSEs, excluding blown-up members
+function compute_rmse_robust(G::Matrix{Float64}, y::Vector{Float64})
+    member_rmse = [begin
+        g = G[:, m]
+        ok = .!isnan.(g)
+        sqrt(mean((g[ok] .- y[ok]).^2))
+    end for m in 1:size(G,2)]
+    # exclude extreme outliers (member RMSE > 10x median)
+    med = median(member_rmse)
+    valid_m = filter(r -> r <= 10 * med, member_rmse)
+    return median(valid_m)
+end
+
 rmse_nee = Float64[]; rmse_qle = Float64[]; rmse_qh = Float64[]
-for i in iters_available
+for (idx, i) in enumerate(iters_available)
     G   = load_G(i)
     push!(rmse_nee, compute_rmse(G[1:n_obs,         :], y_nee_obs))
     push!(rmse_qle, compute_rmse(G[n_obs+1:2n_obs,   :], y_qle_obs))
     push!(rmse_qh,  compute_rmse(G[2n_obs+1:end,     :], y_qh_obs))
 end
+
+# Robust prior RMSE from iter_000
+let G0 = load_G(iters_available[1])
+    global rmse_nee_robust0 = compute_rmse_robust(G0[1:n_obs,         :], y_nee_obs)
+    global rmse_qle_robust0 = compute_rmse_robust(G0[n_obs+1:2n_obs,   :], y_qle_obs)
+    global rmse_qh_robust0  = compute_rmse_robust(G0[2n_obs+1:end,     :], y_qh_obs)
+end
+println("  Robust prior RMSE (median member, outliers filtered):")
+println("    NEE=$(round(rmse_nee_robust0,digits=2))  Qle=$(round(rmse_qle_robust0,digits=1))  Qh=$(round(rmse_qh_robust0,digits=1))")
 println("  NEE  RMSE iter $(iters_available[1])→$(iters_available[end]): " *
         "$(round(rmse_nee[1], sigdigits=4)) → $(round(rmse_nee[end], sigdigits=4))")
 println("  Qle  RMSE iter $(iters_available[1])→$(iters_available[end]): " *
@@ -87,26 +109,33 @@ println("  Qh   RMSE iter $(iters_available[1])→$(iters_available[end]): " *
 
 println("Loading daily diagnostics for prior and posterior ensembles…")
 
-function load_all_members_daily(iter::Int)
+function load_all_members_daily(iter::Int; filter_nee_outliers::Bool=false)
     istr = lpad(iter, 3, '0')
     nees = Vector{Float64}[]; qles = Vector{Float64}[]; qhs = Vector{Float64}[]
     dts_ref = nothing
+    n_skipped = 0
     for m in 1:50
         mstr = lpad(m, 3, '0')
         p = joinpath(ITER_DIR, "iteration_$(istr)", "member_$(mstr)", "daily_diagnostics.jld2")
         isfile(p) || break
         d    = JLD2.load(p)
         dts  = d["dates"]::Vector{Date}
-        nee  = d["nee"]::Vector{Float64}
+        nee  = d["nee"]::Vector{Float64} .* (12.0 * 86400.0)  # mol/m²/s → gC/m²/d
         qle  = d["qle"]::Vector{Float64}
         qh   = d["qh"]::Vector{Float64}
+        # Optionally skip blown-up members (|mean NEE| > 100 gC/m²/d)
+        if filter_nee_outliers && abs(mean(nee)) > 100.0
+            n_skipped += 1
+            continue
+        end
         if dts_ref === nothing; dts_ref = dts; end
         push!(nees, nee); push!(qles, qle); push!(qhs, qh)
     end
     isempty(nees) && error("No member daily_diagnostics found for iter $iter")
     N = length(nees)
+    skip_str = n_skipped > 0 ? " ($n_skipped outlier members excluded)" : ""
     println("  iter $iter: $N members, $(length(dts_ref)) days, " *
-            "$(first(dts_ref)) – $(last(dts_ref))")
+            "$(first(dts_ref)) – $(last(dts_ref))$(skip_str)")
     # Convert to (n_days × N_ens) matrices
     nee_mat = hcat(nees...)
     qle_mat = hcat(qles...)
@@ -114,8 +143,8 @@ function load_all_members_daily(iter::Int)
     return dts_ref, nee_mat, qle_mat, qh_mat
 end
 
-dts_prior, nee_prior, qle_prior, qh_prior = load_all_members_daily(iters_available[1])
-dts_post,  nee_post,  qle_post,  qh_post  = load_all_members_daily(iters_available[end])
+dts_prior, nee_prior, qle_prior, qh_prior = load_all_members_daily(iters_available[1];   filter_nee_outliers=true)
+dts_post,  nee_post,  qle_post,  qh_post  = load_all_members_daily(iters_available[end]; filter_nee_outliers=false)
 
 # ── Monthly climatology helper ─────────────────────────────────────────────────
 
@@ -158,17 +187,9 @@ println("Computing monthly climatologies…")
 MONTHS = 1:12
 MO_LAB = ["J","F","M","A","M","J","J","A","S","O","N","D"]
 
-# Prior monthly (clip huge values so band is visible — prior blows up)
-function safe_clamp(mat::Matrix{Float64}, lo, hi)
-    return clamp.(mat, lo, hi)
-end
-nee_prior_c = safe_clamp(nee_prior, -50.0,  50.0)
-qle_prior_c = safe_clamp(qle_prior, -50.0, 400.0)
-qh_prior_c  = safe_clamp(qh_prior,  -200.0, 400.0)
-
-nee_prior_mn,  nee_prior_p5,  nee_prior_p95  = monthly_clim(dts_prior, nee_prior_c)
-qle_prior_mn,  qle_prior_p5,  qle_prior_p95  = monthly_clim(dts_prior, qle_prior_c)
-qh_prior_mn,   qh_prior_p5,   qh_prior_p95   = monthly_clim(dts_prior, qh_prior_c)
+nee_prior_mn,  nee_prior_p5,  nee_prior_p95  = monthly_clim(dts_prior, nee_prior)
+qle_prior_mn,  qle_prior_p5,  qle_prior_p95  = monthly_clim(dts_prior, qle_prior)
+qh_prior_mn,   qh_prior_p5,   qh_prior_p95   = monthly_clim(dts_prior, qh_prior)
 
 nee_post_mn,   nee_post_p5,   nee_post_p95   = monthly_clim(dts_post,  nee_post)
 qle_post_mn,   qle_post_p5,   qle_post_p95   = monthly_clim(dts_post,  qle_post)
@@ -234,7 +255,7 @@ add_seasonality_panel!(
     nee_prior_mn, nee_prior_p5, nee_prior_p95,
     nee_post_mn,  nee_post_p5,  nee_post_p95,
     "NEE (gC m⁻² d⁻¹)", "NEE";
-    rmse_prior = rmse_nee[1], rmse_post = rmse_nee[end])
+    rmse_prior = rmse_nee_robust0, rmse_post = rmse_nee[end])
 
 # Row 2: Qle
 add_seasonality_panel!(
@@ -243,7 +264,7 @@ add_seasonality_panel!(
     qle_prior_mn, qle_prior_p5, qle_prior_p95,
     qle_post_mn,  qle_post_p5,  qle_post_p95,
     "Qle (W m⁻²)", "Latent Heat (Qle)";
-    rmse_prior = rmse_qle[1], rmse_post = rmse_qle[end])
+    rmse_prior = rmse_qle_robust0, rmse_post = rmse_qle[end])
 
 # Row 3: Qh
 add_seasonality_panel!(
@@ -252,7 +273,7 @@ add_seasonality_panel!(
     qh_prior_mn, qh_prior_p5, qh_prior_p95,
     qh_post_mn,  qh_post_p5,  qh_post_p95,
     "Qh (W m⁻²)", "Sensible Heat (Qh)";
-    rmse_prior = rmse_qh[1], rmse_post = rmse_qh[end])
+    rmse_prior = rmse_qh_robust0, rmse_post = rmse_qh[end])
 
 # Row 4: RMSE vs iteration
 ax_rmse = Axis(fig[4, 1];
@@ -276,8 +297,9 @@ scatter!(ax_rmse, x_iter, rmse_qh;  color = :darkorange, markersize = 8)
 
 axislegend(ax_rmse; position = :rt, framevisible = false)
 
+n_ens_str = string(size(load_G(iters_available[1]), 2))
 Label(fig[0, 1]; text = "DK-Sor EKI Calibration Check  |  " *
-      "$(first(obs_dates)) – $(last(obs_dates))  |  N_ens = 29",
+      "$(first(obs_dates)) – $(last(obs_dates))  |  N_ens = $(n_ens_str)",
       fontsize = 15, font = :bold)
 
 rowgap!(fig.layout, 8)

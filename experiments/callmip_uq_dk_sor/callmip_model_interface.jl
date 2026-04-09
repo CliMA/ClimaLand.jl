@@ -233,25 +233,38 @@ function ClimaCalibrate.forward_model(iteration, member)
         end
     end
 
-    # Diagnostics: surface (scalar) + column (profile) variables
+    # Diagnostics: use the :short preset so that "nee" (net ecosystem exchange)
+    # is always registered — it is NOT returned by get_possible_diagnostics but
+    # IS included in the :short preset used by the calibration model_interface.
+    # Column vars are added on top via a filtered explicit list.
     output_writer = ClimaDiagnostics.Writers.DictWriter()
-    # Filter to available vars only — unknown names will cause an error, so we
-    # verify against get_possible_diagnostics before requesting.
+
     possible = ClimaLand.Diagnostics.get_possible_diagnostics(land)
-    requested_surface = filter(v -> v in possible, CALLMIP_SURFACE_VARS)
-    requested_column  = filter(v -> v in possible, CALLMIP_COLUMN_VARS)
-    requested_all = vcat(requested_surface, requested_column)
+    requested_column = filter(v -> v in possible, CALLMIP_COLUMN_VARS)
 
-    skipped = setdiff(vcat(CALLMIP_SURFACE_VARS, CALLMIP_COLUMN_VARS), requested_all)
-    isempty(skipped) ||
-        @warn "Diagnostics not available in this model build and will be skipped: $skipped"
+    skipped_col = setdiff(CALLMIP_COLUMN_VARS, requested_column)
+    isempty(skipped_col) ||
+        @warn "Column diagnostics not available and will be skipped: $skipped_col"
 
-    diags = ClimaLand.default_diagnostics(
+    # :short preset registers all standard surface fluxes including nee
+    diags_short = ClimaLand.default_diagnostics(
         land, sim_start;
         output_writer    = output_writer,
-        output_vars      = requested_all,
+        output_vars      = :short,
         reduction_period = :daily,
     )
+    # Register extra column diagnostics (not covered by :short)
+    diags_col = isempty(requested_column) ? [] :
+        ClimaLand.default_diagnostics(
+            land, sim_start;
+            output_writer    = output_writer,
+            output_vars      = requested_column,
+            reduction_period = :daily,
+        )
+    diags = vcat(diags_short, diags_col)
+
+    # Determine which surface vars are now available for saving
+    requested_surface = filter(v -> v in possible || v == "nee", CALLMIP_SURFACE_VARS)
 
     simulation = LandSimulation(
         sim_start, sim_stop, DT, land;
@@ -294,6 +307,18 @@ function save_callmip_diagnostics(simulation, member_path, surface_vars,
         catch e
             @warn "Could not extract surface diagnostic '$var'" exception = e
             surface_data[var] = Float64[]
+        end
+    end
+    # Ensure "nee" is always present — extract directly if not already saved
+    # (the :short preset registers it but the key might be named differently)
+    if !haskey(surface_data, "nee") || isempty(surface_data["nee"])
+        try
+            dates, vals = extract_daily_diag(simulation, "nee_1d_average")
+            surface_data["nee"] = Float64.(vals)
+            ref_dates === nothing && (ref_dates = dates)
+            @info "NEE extracted via fallback nee_1d_average"
+        catch e
+            @warn "NEE not available; CalLMIP NEE will be NaN" exception = e
         end
     end
 

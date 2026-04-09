@@ -125,7 +125,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         toml_dict;
         rooting_depth,
         height = FT(25),
-        SAI = FT(1.0),
+        SAI = FT(1.5),  # literature value for mature European beech (Jonckheere et al. 2004)
         RAI = FT(1.5),
     )
     radiation_parameters = (;

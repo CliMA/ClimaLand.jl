@@ -53,22 +53,11 @@ isdir(OUTPUT_DIR) || mkpath(OUTPUT_DIR)
 const MEMBER_PRIOR     = 1    # prior simulation slot
 const MEMBER_POSTERIOR = 2    # posterior simulation slot
 
-# ── Priors (must match Alexis's 12-param backup EXACTLY) ─────────────────────
-priors_vec = [
-    PD.constrained_gaussian("moisture_stress_c",              0.5,     0.3,     0.01,    5.0),
-    PD.constrained_gaussian("pmodel_cstar",                   0.43,    0.15,    0.05,    2.0),
-    PD.constrained_gaussian("pmodel_β",                      51.0,    20.0,     5.0,  500.0),
-    PD.constrained_gaussian("leaf_Cd",                        0.1,     0.05,    0.005,   1.0),
-    PD.constrained_gaussian("canopy_z_0m_coeff",              0.05,    0.03,    0.001,   0.3),
-    PD.constrained_gaussian("canopy_z_0b_coeff",              0.001,   0.0005,  1e-5,   0.01),
-    PD.constrained_gaussian("canopy_d_coeff",                 0.1,     0.05,    0.001,  0.95),
-    PD.constrained_gaussian("canopy_K_lw",                    0.85,    0.25,    0.1,     2.0),
-    PD.constrained_gaussian("canopy_emissivity",              0.97,    0.02,    0.9,     1.0),
-    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0, 10000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("michaelis_constant",             0.01,    0.005,   1e-4,    0.1),
-    PD.constrained_gaussian("O2_michaelis_constant",          0.01,    0.005,   1e-4,    0.1),
-]
-prior       = PD.combine_distributions(priors_vec)
+# ── Priors: load canonical 16-parameter definitions from priors.jl ─────────────
+# This ensures the parameter set, bounds, and names here are always in sync
+# with the calibrate_dk_sor experiment that actually produced the EKI results.
+include(joinpath(cal_dir, "priors.jl"))
+prior, priors_vec = build_dk_sor_priors()
 param_names = [only(PD.get_name(d)) for d in priors_vec]
 
 # ── Helper: write a parameter TOML file ───────────────────────────────────────
@@ -77,7 +66,8 @@ function write_parameter_toml(path, names, values)
         for (name, val) in zip(names, values)
             used_in = (name == "soilCO2_pre_exponential_factor" ||
                        name == "michaelis_constant"              ||
-                       name == "O2_michaelis_constant") ? "[\"Land\"]" : "[\"getindex\"]"
+                       name == "O2_michaelis_constant"           ||
+                       name == "soilCO2_activation_energy") ? "[\"Land\"]" : "[\"getindex\"]"
             println(io, "[\"$name\"]")
             println(io, "value = $(Float64(val))")
             println(io, "type  = \"float\"")
@@ -89,27 +79,12 @@ end
 
 # ── Load parameter sets ────────────────────────────────────────────────────────
 
-# — Prior parameters: stated constrained means from the prior definition above.
-# Using transform_unconstrained_to_constrained(prior, zeros(...)) gives values
-# far from the physical defaults (e.g. cstar→1.025 instead of 0.43) due to
-# the nonlinear logit transform, which kills GPP. Use the μ values directly.
-const PRIOR_MEANS = Dict(
-    "moisture_stress_c"              => 0.27,
-    "pmodel_cstar"                   => 0.43,
-    "pmodel_β"                       => 51.0,
-    "leaf_Cd"                        => 0.07,
-    "canopy_z_0m_coeff"              => 0.02,
-    "canopy_z_0b_coeff"              => 0.0007,
-    "canopy_d_coeff"                 => 0.007,
-    "canopy_K_lw"                    => 0.85,
-    "canopy_emissivity"              => 0.98,
-    "root_leaf_nitrogen_ratio"       => 1.0,
-    "stem_leaf_nitrogen_ratio"       => 0.1,
-    "soilCO2_pre_exponential_factor" => 23835.0,
-    "michaelis_constant"             => 0.005,
-    "O2_michaelis_constant"          => 0.004,
-)
-prior_params = [PRIOR_MEANS[n] for n in param_names]
+# — Prior parameters: the physical prior means (constrained space).
+# These are EKP.transform_unconstrained_to_constrained applied at the
+# prior mean in unconstrained space, which for logit-normal priors equals
+# the stated μ in the priors_vec definition above.
+prior_params = EKP.transform_unconstrained_to_constrained(prior,
+    zeros(length(param_names)))
 
 println("Prior parameters (from prior distribution means):")
 for (n, v) in zip(param_names, prior_params)

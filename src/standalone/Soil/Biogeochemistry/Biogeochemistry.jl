@@ -433,14 +433,15 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil, consumption of O2_f (volumetric O2 fraction),
-and consumption of SOC.
+case of microbe production of CO2 in soil and consumption of O2_f (volumetric O2 fraction).
+SOC is held constant (initialized from data, no tendency) — there is no litter/NPP-to-SOC
+coupling, so making SOC prognostic would cause runaway depletion over multi-year runs.
 
 Physics:
 - CO2 production from microbial respiration (kg C m⁻³ s⁻¹)
 - O2 consumption with correct stoichiometry: C + O₂ → CO₂
   For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
-- SOC consumption equals CO2 production to conserve carbon mass
+ - SOC is NOT consumed here (held constant) — requires NPP/litter coupling to be physical
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -462,8 +463,6 @@ function ClimaLand.source!(
     @. dY.soilco2.O2_f -=
         (R * T_soil) / max(M_C * θ_eff_o2 * P_sfc, eps(eltype(p.soilco2.Sm))) *
         p.soilco2.Sm
-
-    @. dY.soilco2.SOC -= p.soilco2.Sm
 end
 
 """

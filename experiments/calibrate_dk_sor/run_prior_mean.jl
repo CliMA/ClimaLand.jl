@@ -51,7 +51,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["pmodel_β"]
-value = 51.0
+value = 20.0
 type = "float"
 used_in = ["getindex"]
 
@@ -61,7 +61,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["canopy_z_0m_coeff"]
-value = 0.02
+value = 0.10
 type = "float"
 used_in = ["getindex"]
 
@@ -71,7 +71,7 @@ type = "float"
 used_in = ["getindex"]
 
 ["canopy_d_coeff"]
-value = 0.007
+value = 0.65
 type = "float"
 used_in = ["getindex"]
 
@@ -95,6 +95,11 @@ value = 0.1
 type = "float"
 used_in = ["getindex"]
 
+["soilCO2_activation_energy"]
+value = 61000.0
+type = "float"
+used_in = ["Land"]
+
 ["soilCO2_pre_exponential_factor"]
 value = 23835.0
 type = "float"
@@ -109,6 +114,11 @@ used_in = ["Land"]
 value = 0.004
 type = "float"
 used_in = ["Land"]
+
+["ac_canopy"]
+value = 2500.0
+type = "float"
+used_in = ["getindex"]
 """)
 end
 println("Wrote prior mean TOML: $PRIOR_TOML")
@@ -169,7 +179,7 @@ forcing_nt = (; atmos, radiation, ground = ClimaLand.PrognosticGroundConditions{
 biomass = Canopy.PrescribedBiomassModel{FT}(
     land_domain, LAI, toml_dict;
     rooting_depth,
-    height = FT(25), SAI = FT(1.0), RAI = FT(1.5),
+    height = FT(25), SAI = FT(1.5), RAI = FT(1.5),
 )
 radiation_parameters = (;
     Ω,

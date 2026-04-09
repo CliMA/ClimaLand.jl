@@ -1,8 +1,8 @@
 """
 ClimaCalibrate driver for DK-Sor single-site calibration.
 
-Calibrates 12 parameters (9 canopy + 3 DAMM soilCO2) against daily NEE, Qle, Qh
-using TransformUnscented Kalman Inversion (N_ens = 25). All ~10 years of observations
+Calibrates 16 parameters (9 canopy + 3 DAMM soilCO2 + 3 respiration + ac_canopy) against daily NEE, Qle, Qh
+using TransformUnscented Kalman Inversion (N_ens = 33). All ~10 years of observations
 (2004-2013, wind-filtered) are used at each iteration (no minibatching).
 
 Copernicus LAI is used for the vegetation forcing. DT = 900 s.
@@ -33,26 +33,10 @@ const OBS_FILEPATH =
     joinpath(climaland_dir, "experiments/calibrate_dk_sor/observations.jld2")
 
 # ── Priors ───────────────────────────────────────────────────────────────────
-# Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
-# parameter TOMLs using these names and LP.create_toml_dict reads them.
-
-# Alexis's exact 12-param priors (9 canopy + 3 DAMM soilCO2, no autotrophic respiration).
-# These match the priors used in the iteration_000_12param_backup EKP.
-priors = [
-    PD.constrained_gaussian("moisture_stress_c",              0.5,     0.3,     0.01,    5.0),
-    PD.constrained_gaussian("pmodel_cstar",                   0.43,    0.15,    0.05,    2.0),
-    PD.constrained_gaussian("pmodel_β",                       51.0,    20.0,     5.0,  500.0),
-    PD.constrained_gaussian("leaf_Cd",                        0.1,     0.05,    0.005,   1.0),
-    PD.constrained_gaussian("canopy_z_0m_coeff",              0.05,    0.03,    0.001,   0.3),
-    PD.constrained_gaussian("canopy_z_0b_coeff",              0.001,   0.0005,  1e-5,   0.01),
-    PD.constrained_gaussian("canopy_d_coeff",                 0.1,     0.05,    0.001,  0.95),
-    PD.constrained_gaussian("canopy_K_lw",                    0.85,    0.25,    0.1,     2.0),
-    PD.constrained_gaussian("canopy_emissivity",              0.97,    0.02,    0.9,     1.0),
-    PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0, 10000.0, 1000.0, 200000.0),
-    PD.constrained_gaussian("michaelis_constant",             0.01,    0.005,   1e-4,    0.1),
-    PD.constrained_gaussian("O2_michaelis_constant",          0.01,    0.005,   1e-4,    0.1),
-]
-prior = PD.combine_distributions(priors)
+# Loaded from the shared priors.jl file; emulate_sample.jl uses the same function
+# so both scripts are guaranteed to use identical prior definitions.
+include(joinpath(@__DIR__, "priors.jl"))
+prior, priors = build_dk_sor_priors()
 
 # ── Load Observations ────────────────────────────────────────────────────────
 
