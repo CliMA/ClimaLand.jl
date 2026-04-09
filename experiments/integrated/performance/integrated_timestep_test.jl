@@ -51,7 +51,6 @@ using ClimaLand.Domains
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -88,23 +87,16 @@ function set_ic!(Y, p, t0, model)
 
     Y.soilco2.CO2 = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-    ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
     canopy_params = model.canopy.hydraulics.parameters
-    S_l_ini =
+    S_l =
         inverse_water_retention_curve.(
             canopy_params.retention_model,
-            [ψ_stem_0, ψ_leaf_0],
+            ψ_leaf_0,
             canopy_params.ν,
             canopy_params.S_s,
         )
-
-    for i in 1:2
-        S_l = S_l_ini[i]
-        Y.canopy.hydraulics.ϑ_l.:($i) .=
-            augmented_liquid_fraction.(canopy_params.ν, S_l)
-    end
-
+    Y.canopy.hydraulics.ϑ_l .= augmented_liquid_fraction.(canopy_params.ν, S_l)
     Y.canopy.energy.T = FT(297.5)
     return
 end
@@ -256,25 +248,17 @@ f_root_to_shoot = FT(3.5)
 RAI = maxLAI * f_root_to_shoot
 plant_ν = FT(1.44e-4)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-conductivity_model = PlantHydraulics.Weibull(toml_dict)
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9) # m
-h_leaf = FT(9.5) # m
-h_canopy = h_stem + h_leaf
+conductivity_model = Canopy.Weibull(toml_dict)
+
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,
     toml_dict;
-    n_stem,
-    n_leaf,
-    h_stem,
-    h_leaf,
     ν = plant_ν,
     S_s = plant_S_s,
     conductivity_model,
 )
 rooting_depth = FT(0.5)
-height = h_stem + h_leaf
+height = FT(18.5)
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 

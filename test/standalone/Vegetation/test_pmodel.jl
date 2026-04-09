@@ -38,7 +38,6 @@ using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP

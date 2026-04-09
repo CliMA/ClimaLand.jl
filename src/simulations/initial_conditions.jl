@@ -326,8 +326,8 @@ function make_set_initial_state_from_file(
                         interpolation_method,
                     ),
                 )
-                Y.canopy.hydraulics.ϑ_l.:1 .=
-                    ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+                Y.canopy.hydraulics.ϑ_l .=
+                    ClimaLand.Canopy.inverse_water_retention_curve.(
                         land.canopy.hydraulics.parameters.retention_model,
                         ψ_roots,
                         land.canopy.hydraulics.parameters.ν,
@@ -341,8 +341,7 @@ function make_set_initial_state_from_file(
                     land.soil.parameters.ν - Y.soil.θ_i,
                     land.soil.parameters.S_s,
                 )
-                ψ_roots =
-                    ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l.:1))
+                ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l))
                 z = land.soil.domain.fields.z
                 tmp = @. ClimaLand.Canopy.root_distribution(
                     z,
@@ -436,8 +435,8 @@ function make_set_initial_state_from_file(
                         interpolation_method,
                     ),
                 )
-                Y.canopy.hydraulics.ϑ_l.:1 .=
-                    ClimaLand.Canopy.PlantHydraulics.inverse_water_retention_curve.(
+                Y.canopy.hydraulics.ϑ_l .=
+                    ClimaLand.Canopy.inverse_water_retention_curve.(
                         land.canopy.hydraulics.parameters.retention_model,
                         ψ_roots,
                         land.canopy.hydraulics.parameters.ν,
@@ -451,8 +450,7 @@ function make_set_initial_state_from_file(
                     land.soil.parameters.ν - Y.soil.θ_i,
                     land.soil.parameters.S_s,
                 )
-                ψ_roots =
-                    ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l.:1))
+                ψ_roots = ClimaCore.Fields.zeros(axes(Y.canopy.hydraulics.ϑ_l))
                 z = land.soil.domain.fields.z
                 tmp = @. ClimaLand.Canopy.root_distribution(
                     z,
@@ -554,7 +552,7 @@ function make_set_subseasonal_initial_conditions(
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
         Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
 
         # Set snow T first to use in computing snow internal energy from IC file
         p.snow.T .= SpaceVaryingInput(
@@ -813,7 +811,8 @@ function make_set_initial_state_from_atmos_and_parameters(
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
-        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+
+        Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
 
         # Lake IC
         if !isnothing(land.lake)

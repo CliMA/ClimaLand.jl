@@ -75,10 +75,7 @@ function update_autotrophic_respiration!(
     canopy,
 )
     hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    h_canopy = hydraulics.compartment_surfaces[end]
-    i_end = n_stem + n_leaf
+    h_canopy = canopy.biomass.height
     ψ = p.canopy.hydraulics.ψ
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf

@@ -54,8 +54,7 @@ export CanopyModel
 include("./component_models.jl")
 include("./optimal_lai.jl")  # Must be before biomass.jl (defines OptimalLAIParameters used by ZhouOptimalLAIModel)
 include("./biomass.jl")
-include("./PlantHydraulics.jl")
-using .PlantHydraulics
+include("./plant_hydraulics.jl")
 include("./soil_moisture_stress.jl")
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
@@ -299,10 +298,6 @@ end
     PlantHydraulicsModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        n_stem::Int = 0,
-        n_leaf::Int = 1,
-        h_stem::FT = FT(0),
-        h_leaf::FT = toml_dict["canopy_height"],
         ν::FT = FT(1.44e-4),
         S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
         conductivity_model = Weibull{FT}(
@@ -316,10 +311,6 @@ end
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
 
 The following default parameters are used:
-- n_stem = 0 (unitless) - number of stem compartments
-- n_leaf = 1 (unitless) - number of leaf compartments
-- h_stem = 0 (m) - height of the stem compartment
-- h_leaf = 1 (m) - height of the leaf compartment
 - ν = 1.44e-4 (m3/m3) - porosity
 - S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
 - K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
@@ -336,54 +327,14 @@ https://doi.org/10.1029/2023WR035481
 function PlantHydraulicsModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    n_stem::Int = 0,
-    n_leaf::Int = 1,
-    h_stem::FT = FT(0),
-    h_leaf::FT = toml_dict["canopy_height"],
     ν::FT = toml_dict["plant_nu"],
     S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
-    conductivity_model = PlantHydraulics.Weibull(toml_dict),
-    retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
+    conductivity_model = Weibull(toml_dict),
+    retention_model = LinearRetentionCurve(toml_dict),
 ) where {FT <: AbstractFloat}
-    @assert n_stem >= 0 "Stem number must be non-negative"
-    @assert n_leaf >= 0 "Leaf number must be non-negative"
-    @assert h_stem >= 0 "Stem height must be non-negative"
-    @assert h_leaf >= 0 "Leaf height must be non-negative"
-
-    # Construct compartment surfaces and midpoints from heights and number of compartments
-    zmin = FT(0)
-    compartment_surfaces =
-        FT.(
-            vcat(
-                [zmin], # surface at ground level
-                [h_stem * i for i in 1:n_stem], # stem compartments
-                [h_stem * n_stem + h_leaf * j for j in 1:n_leaf], # leaf compartments
-            ),
-        )
-    compartment_midpoints =
-        FT.(
-            vcat(
-                [h_stem * (i - 1) + h_stem / 2 for i in 1:n_stem], # stem compartments
-                [
-                    h_stem * n_stem + h_leaf * (j - 1) + h_leaf / 2 for
-                    j in 1:n_leaf
-                ], # leaf compartments
-            ),
-        )
-
-    parameters = PlantHydraulics.PlantHydraulicsParameters(;
-        ν,
-        S_s,
-        conductivity_model,
-        retention_model,
-    )
-    return PlantHydraulics.PlantHydraulicsModel{FT}(;
-        n_stem,
-        n_leaf,
-        compartment_midpoints,
-        compartment_surfaces,
-        parameters,
-    )
+    parameters =
+        PlantHydraulicsParameters(; ν, S_s, conductivity_model, retention_model)
+    return PlantHydraulicsModel{FT}(parameters)
 end
 
 """
@@ -731,17 +682,6 @@ end
 
 An outer constructor for the `CanopyModel`, which makes certain
 consistency checks between parameterizations.
-
-Note that we do not currently enforce that the biomass `height` is the same
-as the height used in plant hydraulics. We have:
-
-biomass.height:
-     - Used for: Aerodynamic calculations (displacement height, roughness length), mass of plant
-       in energy equation
-     - Type: Can be spatially-varying (Field) or uniform (scalar)
-hydraulics height = hydraulics.compartment_surfaces[end] - hydraulics.compartment_surfaces[1]
-    - Compartment spacing affects vertical structure of plant water
-    - Type: Currently always a scalar
 """
 function CanopyModel{FT}(;
     autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
@@ -1232,7 +1172,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
 
         # update the cache for hydraulics; what this update depends
         # on the type of canopy.hydraulics
-        PlantHydraulics.update_hydraulics!(p, Y, canopy.hydraulics, canopy)
+        update_hydraulics!(p, Y, canopy.hydraulics, canopy)
 
         # Update soil moisture stress, used in photosynthesis and conductance
         update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
@@ -1378,7 +1318,14 @@ function ClimaLand.total_energy_per_area!(
     p,
     t,
 )
-    ClimaLand.total_energy_per_area!(surface_field, model.energy, Y, p, t)
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model.energy,
+        model,
+        Y,
+        p,
+        t,
+    )
 end
 
 """
@@ -1406,6 +1353,7 @@ function ClimaLand.total_liq_water_vol_per_area!(
     ClimaLand.total_liq_water_vol_per_area!(
         surface_field,
         model.hydraulics,
+        model,
         Y,
         p,
         t,
@@ -1431,11 +1379,6 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
         set_historical_cache!(p, Y0, model.biomass, model)
-        # Make sure that the hydraulics scheme and the biomass scheme are compatible
-        hydraulics = model.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        lai_consistency_check.(n_stem, n_leaf, p.canopy.biomass.area_index)
     end
     return set_initial_cache!
 end

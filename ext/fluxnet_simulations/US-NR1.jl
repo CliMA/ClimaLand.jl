@@ -122,20 +122,12 @@ function FluxnetSimulations.get_parameters(
     ψ63 = FT(-4 / 0.0098),
     Weibull_param = FT(4),
     a = FT(0.05 * 0.0098),
-    conductivity_model = PlantHydraulics.Weibull{FT}(
-        K_sat_plant,
-        ψ63,
-        Weibull_param,
-    ),
-    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a),
+    conductivity_model = Canopy.Weibull{FT}(K_sat_plant, ψ63, Weibull_param),
+    retention_model = Canopy.LinearRetentionCurve{FT}(a),
     plant_ν = FT(8.06e-4),
     plant_S_s = FT(1e-2 * 0.0098),
     rooting_depth = FT(1.0),
-    n_leaf = Int64(1),
-    n_stem = Int64(1),
-    h_leaf = FT(6.5),
-    h_stem = FT(7.5),
-    h_canopy = h_leaf + h_stem,
+    h_canopy = FT(14),
 )
     return (;
         soil_ν,
@@ -177,10 +169,6 @@ function FluxnetSimulations.get_parameters(
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     )
 

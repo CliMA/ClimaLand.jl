@@ -1000,15 +1000,6 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
         Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
-        # Make sure that the hydraulics scheme and the biomass scheme are compatible
-        hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        Canopy.lai_consistency_check.(
-            n_stem,
-            n_leaf,
-            p.canopy.biomass.area_index,
-        )
     end
     return set_initial_cache!
 end

@@ -10,7 +10,6 @@ using ClimaLand
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Domains: Point
 import Insolation
 using ClimaCore.MatrixFields: @name
@@ -172,7 +171,7 @@ import ClimaParams
             @test getproperty(prognostic_types(canopy), component) ==
                   prognostic_types(getproperty(canopy, component))
         end
-        Y.canopy.hydraulics.ϑ_l.:1 .= canopy.hydraulics.parameters.ν
+        Y.canopy.hydraulics.ϑ_l .= canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(289)
 
         set_initial_cache! = make_set_initial_cache(canopy)
@@ -382,55 +381,24 @@ end
         a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
         plant_ν = FT(0.7) # m3/m3
         plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-        conductivity_model =
-            PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+        conductivity_model = Canopy.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+        retention_model = Canopy.LinearRetentionCurve{FT}(a)
         rooting_depth = FT(0.5)
-        param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        param_set = Canopy.PlantHydraulicsParameters(;
             ν = plant_ν,
             S_s = plant_S_s,
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )
-        Δz = FT(1.0) # height of compartments
-        n_stem = Int64(0) # number of stem elements
-        n_leaf = Int64(1) # number of leaf elements
-        compartment_centers =
-            FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                    ),
-                ),
-            )
-        compartment_faces =
-            FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
-                    ),
-                ),
-            )
-
         soil_driver = PrescribedGroundConditions{FT}()
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = param_set,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_faces,
-            compartment_midpoints = compartment_centers,
-        )
+        plant_hydraulics = Canopy.PlantHydraulicsModel{FT}(param_set)
         autotrophic_parameters = AutotrophicRespirationParameters(toml_dict)
         biomass = Canopy.PrescribedBiomassModel{FT}(;
             LAI = lai_fun,
             SAI,
             RAI,
             rooting_depth,
-            height = compartment_faces[end] - compartment_faces[1],
+            height = FT(2),
         )
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
@@ -579,7 +547,7 @@ end
         ground = PrescribedGroundConditions{FT}()
         forcing = (; atmos, radiation, ground)
 
-        hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(domain, toml_dict)
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, toml_dict)
         canopy = ClimaLand.Canopy.CanopyModel{FT}(
             domain,
             forcing,
@@ -594,8 +562,8 @@ end
         # Set ICs
         Y.canopy.hydraulics .= canopy.hydraulics.parameters.ν
         Y.canopy.energy.T = FT(289)
-        p.canopy.hydraulics.ψ.:1 .= NaN
-        dY.canopy.hydraulics.ϑ_l.:1 .= NaN
+        p.canopy.hydraulics.ψ .= NaN
+        dY.canopy.hydraulics.ϑ_l .= NaN
 
         set_initial_cache! = make_set_initial_cache(canopy)
         t0 = FT(0.0)
@@ -615,7 +583,7 @@ end
 
         exp_tend! = make_exp_tendency(canopy)
         exp_tend!(dY, Y, p, FT(0))
-        @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
+        @test all(parent(dY.canopy.hydraulics.ϑ_l) .≈ FT(0.0))
     end
 end
 

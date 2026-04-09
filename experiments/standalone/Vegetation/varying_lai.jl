@@ -11,7 +11,6 @@ using StaticArrays
 using ClimaLand
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -60,15 +59,13 @@ end
 LAI = TimeVaryingInput(fakeLAIfunction)
 
 # Overwrite some plant hydraulics defaults
-n_leaf = 1
-h_leaf = FT(9.5)
+height = FT(9.5)
 f_root_to_shoot = FT(3.5)
 RAI = FT(2 * f_root_to_shoot)
 ν = FT(0.7)
-hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict; n_leaf, h_leaf, ν)
+hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict; ν)
 rooting_depth = FT(1)
 SAI = FT(0)
-height = h_leaf
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
 
@@ -87,7 +84,7 @@ function set_ic!(Y, p, t0, model)
     (; retention_model, ν, S_s) = canopy.hydraulics.parameters
     ψ_leaf_0 = FT(-2e5 / 9800)
     S_l_ini = inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
-    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini)
+    Y.canopy.hydraulics.ϑ_l .= augmented_liquid_fraction.(ν, S_l_ini)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 
@@ -114,7 +111,7 @@ sol = solve!(simulation)
 savedir = generate_output_path("experiments/standalone/Vegetation/varying_lai");
 T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
-ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
+ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l)[1] for k in 1:length(sol.t)]
 GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
     k in 1:length(sol.t)

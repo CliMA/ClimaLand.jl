@@ -11,7 +11,6 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
@@ -82,17 +81,8 @@ for float_type in (Float32, Float64)
         plant_ν,
         plant_S_s,
         rooting_depth,
-        n_stem,
-        n_leaf,
-        h_leaf,
-        h_stem,
         h_canopy,
     ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
-
-    compartment_midpoints =
-        n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
-    compartment_surfaces =
-        n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
     # TIME STEPPING:
     t0 = Float64(120 * 3600 * 24)# start mid year
@@ -208,16 +198,12 @@ for float_type in (Float32, Float64)
     hydraulics = Canopy.PlantHydraulicsModel{FT}(
         canopy_domain,
         toml_dict;
-        n_stem,
-        n_leaf,
-        h_stem,
-        h_leaf,
         ν = plant_ν,
         S_s = plant_S_s,
         conductivity_model,
         retention_model,
     )
-    height = h_stem + h_leaf
+    height = h_canopy
     biomass = Canopy.PrescribedBiomassModel{FT}(;
         LAI,
         SAI,
@@ -390,15 +376,10 @@ for float_type in (Float32, Float64)
 
         ## Canopy water balance ##
 
-        # Bottom flux from roots to stem
+        # Bottom flux from roots to plant
         root_flux =
             [sum(sv.saveval[k].root_extraction) for k in 2:length(sol.t)]
 
-        # Stem leaf flux
-        stem_leaf_flux = [
-            parent(sv.saveval[k].canopy.hydraulics.fa)[1] for
-            k in 2:length(sol.t)
-        ]
         # LAI (t)
         leaf_area_index = [
             parent(
@@ -412,14 +393,11 @@ for float_type in (Float32, Float64)
         ]
 
         # Water balance equation
-        # d[θ_leaf h_leaf+ θ_stem h_stem] = -[F_sl - Root Flux]/SAI - [T - F_sl]/LAI
-        rhs_canopy = @. -T / leaf_area_index +
-           root_flux / SAI +
-           stem_leaf_flux * (1 / leaf_area_index - 1 / SAI)
-
+        # d[θ_leaf h_leaf] =  - [T - Root Flux]/LAI
+        rhs_canopy = @. -T / leaf_area_index + root_flux / leaf_area_index
         net_plant_water_storage = [
-            sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* [h_stem, h_leaf])
-            for k in 1:length(sol.t)
+            sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* h_canopy) for
+            k in 1:length(sol.t)
         ]
         lhs_canopy =
             net_plant_water_storage[2:end] .- net_plant_water_storage[1]

@@ -3,6 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- ![breaking change][badge-💥breaking] Refactor `PlantHydraulicsModel` to a
+  single above-ground compartment; `PlantHydraulics` submodule has been
+  merged into `Canopy` PR[#1709](https://github.com/CliMA/ClimaLand.jl/pull/1709)
 
 v1.7.0
 -----

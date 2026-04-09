@@ -200,45 +200,6 @@ function PrescribedAreaIndices{FT}(
 end
 
 """
-    lai_consistency_check(
-        n_stem::Int64,
-        n_leaf::Int64,
-        area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    ) where {FT}
-
-Carries out consistency checks using the area indices supplied and the number of
-stem elements being modeled.
-
-Note that it is possible to have a plant with no stem compartments
-but with leaf compartments, and that a plant must have leaf compartments
-(even if LAI = 0).
-
-Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
-be zero.
-"""
-function lai_consistency_check(
-    n_stem::Int64,
-    n_leaf::Int64,
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-) where {FT}
-    @assert n_leaf > 0
-    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
-        @assert area_index.root > eps(FT)
-    end
-    # If there SAI is zero, there should be no stem compartment
-    if area_index.stem < eps(FT)
-        @assert n_stem == FT(0)
-    else
-        # if SAI is > 0, n_stem should be > 0 for consistency
-        @assert n_stem > 0
-    end
-
-end
-
-"""
     struct PrescribedBiomassModel{FT, PSAI <: PrescribedAreaIndices, RDTH <: Union{FT, ClimaCore.Fields.Field}} <: AbstractBiomassModel{FT}
 
 A prescribed biomass model where LAI, SAI, RAI, rooting depth, and height are prescribed.
@@ -246,13 +207,7 @@ A prescribed biomass model where LAI, SAI, RAI, rooting depth, and height are pr
 In  global run with patches
 of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
 emission, zero transpiration and sensible heat flux from the canopy), by setting:
-- n_leaf = 1
-- n_stem = 0
 - LAI = SAI = RAI = 0.
-
-If run with PlantHydraulics, this must be consistent with the plant hydraulics model:a
- plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
-
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedBiomassModel{

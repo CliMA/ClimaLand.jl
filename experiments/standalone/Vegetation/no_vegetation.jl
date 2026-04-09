@@ -11,7 +11,6 @@ using StaticArrays
 using ClimaLand
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
@@ -82,7 +81,7 @@ function set_ic!(Y, p, t0, model)
     ψ_leaf_0 = FT(-2e5 / 9800)
     (; retention_model, ν, S_s) = model.hydraulics.parameters
     S_l_ini = inverse_water_retention_curve(retention_model, ψ_leaf_0, ν, S_s)
-    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini)
+    Y.canopy.hydraulics.ϑ_l .= augmented_liquid_fraction.(ν, S_l_ini)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
 
@@ -108,7 +107,7 @@ savedir =
     generate_output_path("experiments/standalone/Vegetation/no_vegetation");
 T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
-ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
+ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l)[1] for k in 1:length(sol.t)]
 GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
     k in 1:length(sol.t)
