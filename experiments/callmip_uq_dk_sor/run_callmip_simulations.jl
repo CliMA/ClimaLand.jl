@@ -1,0 +1,195 @@
+"""
+Run CalLMIP Phase 1 prior and posterior simulations at DK-Sor.
+
+Runs two ClimaLand forward simulations using `callmip_model_interface.jl`:
+  1. Prior simulation   — default parameters from prior_mean_parameters.toml
+  2. Posterior simulation — EKI-optimal parameters (from emulate_sample.jl output,
+                            or directly from run_calibration.jl if CES was not run)
+
+Each simulation saves `callmip_diagnostics.jld2` with all CalLMIP-required
+variables to:
+   OUTPUT_DIR/iteration_000/member_001/callmip_diagnostics.jld2   (prior)
+   OUTPUT_DIR/iteration_000/member_002/callmip_diagnostics.jld2   (posterior)
+
+These files are consumed by `write_callmip_netcdf.jl` to produce the
+CalLMIP-compliant NetCDF output files.
+
+Usage
+-----
+    julia --project=.buildkite \\
+          experiments/callmip_uq_dk_sor/run_callmip_simulations.jl
+
+Prerequisite: either
+  • emulate_sample.jl has been run → reads posterior from output_posterior_uq/
+  • OR run_calibration.jl output exists → uses EKI final mean as posterior
+"""
+
+using Distributed
+import Random
+import JLD2
+import ClimaCalibrate
+import ClimaLand
+import EnsembleKalmanProcesses as EKP
+import EnsembleKalmanProcesses.ParameterDistributions as PD
+using Dates
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+const SITE_ID     = "DK-Sor"
+const DT          = Float64(450)        # model time step (s), must match calibration
+const MODEL_NAME  = "ClimaLand"         # used in CalLMIP output file names
+const MODEL_VER   = "CalLMIP1.0"        # CalLMIP submission version label
+
+const climaland_dir   = abspath(joinpath(@__DIR__, "..", ".."))
+const cal_dir         = joinpath(climaland_dir, "experiments", "calibrate_dk_sor")   # calibration artifacts
+const exp_dir         = joinpath(climaland_dir, "experiments", "callmip_uq_dk_sor")   # UQ/CalLMIP outputs
+const cal_output_dir  = joinpath(cal_dir, "output")              # EKP output
+const posterior_dir   = joinpath(exp_dir, "output_posterior_uq")  # CES output
+const OUTPUT_DIR      = joinpath(exp_dir, "output_callmip_sims")  # this script's output
+const OBS_FILEPATH    = joinpath(cal_dir, "observations.jld2")
+
+isdir(OUTPUT_DIR) || mkpath(OUTPUT_DIR)
+
+# Member indices for this run
+const MEMBER_PRIOR     = 1    # prior simulation slot
+const MEMBER_POSTERIOR = 2    # posterior simulation slot
+
+# ── Priors: load canonical 16-parameter definitions from priors.jl ─────────────
+# This ensures the parameter set, bounds, and names here are always in sync
+# with the calibrate_dk_sor experiment that actually produced the EKI results.
+include(joinpath(cal_dir, "priors.jl"))
+prior, priors_vec = build_dk_sor_priors()
+param_names = [only(PD.get_name(d)) for d in priors_vec]
+
+# ── Helper: write a parameter TOML file ───────────────────────────────────────
+function write_parameter_toml(path, names, values)
+    open(path, "w") do io
+        for (name, val) in zip(names, values)
+            used_in = (name == "soilCO2_pre_exponential_factor" ||
+                       name == "michaelis_constant"              ||
+                       name == "O2_michaelis_constant"           ||
+                       name == "soilCO2_activation_energy") ? "[\"Land\"]" : "[\"getindex\"]"
+            println(io, "[\"$name\"]")
+            println(io, "value = $(Float64(val))")
+            println(io, "type  = \"float\"")
+            println(io, "used_in = $used_in")
+            println(io)
+        end
+    end
+end
+
+# ── Load parameter sets ────────────────────────────────────────────────────────
+
+# — Prior parameters: the physical prior means (constrained space).
+# These are EKP.transform_unconstrained_to_constrained applied at the
+# prior mean in unconstrained space, which for logit-normal priors equals
+# the stated μ in the priors_vec definition above.
+prior_params = EKP.transform_unconstrained_to_constrained(prior,
+    zeros(length(param_names)))
+
+println("Prior parameters (from prior distribution means):")
+for (n, v) in zip(param_names, prior_params)
+    println("  $(rpad(n, 40)) $(round(v; sigdigits = 4))")
+end
+
+# — Posterior parameters —
+# Prefer output from emulate_sample.jl (MCMC posterior mean).
+# Fall back to EKI final mean if CES output is not available.
+function load_posterior_params()
+    # Try CES output first
+    ces_files = isdir(posterior_dir) ?
+        filter(f -> startswith(f, "posterior_its") && endswith(f, ".jld2"),
+               readdir(posterior_dir)) : String[]
+    if !isempty(ces_files)
+        path = joinpath(posterior_dir, last(sort(ces_files)))
+        @info "Loading posterior from CES output: $path"
+        d = JLD2.load(path)
+        return d["constrained_ekp_optimal"]   # EKI optimum (best point estimate)
+    end
+
+    # Fall back: try latest EKP from calibration output
+    iter = -1
+    while isfile(joinpath(cal_output_dir,
+                          "iteration_$(lpad(iter + 1, 3, '0'))",
+                          "eki_file.jld2"))
+        iter += 1
+    end
+    if iter >= 0
+        ekp_path = joinpath(cal_output_dir,
+                            "iteration_$(lpad(iter, 3, '0'))",
+                            "eki_file.jld2")
+        @info "Loading posterior from EKI final mean: $ekp_path"
+        ekp = JLD2.load_object(ekp_path)
+        return EKP.get_ϕ_mean_final(prior, ekp)
+    end
+
+    error("Could not find posterior parameters — run emulate_sample.jl or " *
+          "run_calibration.jl first.")
+end
+
+posterior_params = load_posterior_params()
+
+println("\nPosterior parameters (EKI optimal):")
+for (n, v) in zip(param_names, posterior_params)
+    println("  $(rpad(n, 40)) $(round(v; sigdigits = 4))")
+end
+
+# ── Stage parameter TOMLs in ClimaCalibrate directory layout ──────────────────
+for (member, params) in [(MEMBER_PRIOR, prior_params),
+                          (MEMBER_POSTERIOR, posterior_params)]
+    member_dir = ClimaCalibrate.path_to_ensemble_member(OUTPUT_DIR, 0, member)
+    isdir(member_dir) || mkpath(member_dir)
+    write_parameter_toml(
+        ClimaCalibrate.parameter_path(OUTPUT_DIR, 0, member),
+        param_names, params,
+    )
+end
+@info "Parameter TOMLs written for members $MEMBER_PRIOR (prior) " *
+      "and $MEMBER_POSTERIOR (posterior)."
+
+# ── Save parameter summary ────────────────────────────────────────────────────
+JLD2.jldsave(
+    joinpath(OUTPUT_DIR, "callmip_parameters.jld2");
+    prior_params     = prior_params,
+    posterior_params = posterior_params,
+    param_names      = param_names,
+    model_name       = MODEL_NAME,
+    model_version    = MODEL_VER,
+    site_id          = SITE_ID,
+)
+
+# ── Broadcast configuration to all workers ────────────────────────────────────
+@everywhere using Distributed
+@everywhere import ClimaLand
+@everywhere const SITE_ID     = $SITE_ID
+@everywhere const OUTPUT_DIR  = $OUTPUT_DIR
+@everywhere const OBS_FILEPATH = $OBS_FILEPATH
+@everywhere const DT          = $DT
+@everywhere include(joinpath(abspath(joinpath(@__DIR__, "..", "..")),
+    "experiments", "callmip_uq_dk_sor", "callmip_model_interface.jl"))
+
+# ── Run both simulations ──────────────────────────────────────────────────────
+@info "Running CalLMIP simulations (2 members)…"
+@info "  Member $MEMBER_PRIOR  = Prior (default parameters)"
+@info "  Member $MEMBER_POSTERIOR = Posterior (EKI-optimal parameters)"
+
+results = pmap([MEMBER_PRIOR, MEMBER_POSTERIOR]) do m
+    label = m == MEMBER_PRIOR ? "prior" : "posterior"
+    try
+        ClimaCalibrate.forward_model(0, m)
+        return (member = m, label = label, status = :ok)
+    catch e
+        @error "Forward model failed for member $m ($label)" exception = e
+        return (member = m, label = label, status = :failed)
+    end
+end
+
+for r in results
+    @info "  Member $(r.member) ($(r.label)): $(r.status)"
+end
+
+n_failed = count(r -> r.status == :failed, results)
+n_failed == 0 ||
+    error("$n_failed simulation(s) failed — check logs before proceeding to " *
+          "write_callmip_netcdf.jl")
+
+@info "CalLMIP simulations complete. Run write_callmip_netcdf.jl next."

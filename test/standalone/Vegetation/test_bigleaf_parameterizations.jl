@@ -294,8 +294,7 @@ for FT in (Float32, Float64)
               ARparams.μs * photosynthesisparams.Vcmax25 / ARparams.ne *
               ARparams.ηsl *
               h_canopy *
-              LAI *
-              ClimaLand.heaviside(SAI)# == gives a very small error
+              SAI # stem carbon uses SAI year-round, not LAI
         @test Rpm == Rd * (β + (Nr + Ns) / Nl)
         @test all(@.(Rg ≈ ARparams.Rel * (An - Rpm)))
 
