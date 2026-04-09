@@ -1,6 +1,6 @@
 # Plant Hydraulics
 
-Water loss during day-time transpiration drives plants to draw water from the soil by roots and transport it through the stem to leaves. The plant hydraulics code solves for the volumetric water content in the above ground plant material, $\theta_{l}$). 
+Water loss during day-time transpiration drives plants to draw water from the soil by roots and transport it through the stem to leaves. The plant hydraulics code solves for the volumetric water content in the above ground plant material, $\theta_{l}$.
 
 The volume flux of water $q$ (m/s) is given by Darcy's law as
 ```math
@@ -33,18 +33,25 @@ Then we have:
 ```
 where $v$ now represents the volume of water in that compartment (of a bulk plant) per unit ground area.
 
-We also need to convert from the variable $v$ to $\psi$, in order to compute root extraction with the soil.  To do so, we can convert $v$ to the volumetric water content, and from $\theta$ to $\psi$ using the retention curve. To convert, let the volume of water per area of compartment be $V_{w}$, and $H$ the typical ``length" of the compartment. Then e.g.,
+We also need to convert from the variable $v$ to $\psi$, in order to compute root extraction with the soil.  To do so, we can convert $v$ to the volumetric water content, and from $\theta$ to $\psi$ using the retention curve. To convert, let the volume of water per area of ground be $V$, and $H_{canopy}$ the canopy height. Then,
 ```math
 \begin{equation}
-    \theta=\frac{V}{A_{ground}} \times \frac{A_{ground}}{A_{leaf}} \times \frac{1}{H_{canopy}} = \frac{v_{stem}}{H_{canopy} \times LAI }.
+    \theta=\frac{V}{A_{ground}} \times \frac{A_{ground}}{A_{leaf}} \times \frac{1}{H_{canopy}} = \frac{v}{H_{canopy} \times LAI }.
 \end{equation}
 ```
 Substituting in the volumetric water content, we have
 ```math
 \begin{equation}
-    \frac{d \theta}{dt} = \frac{q_{roots}RAI - \tau LAI}{H_{canopy} LAI},
-\end{equaton}
+    \frac{d \theta}{dt} = \frac{q_{roots}RAI - \tau LAI}{H_{canopy} LAI}.
+\end{equation}
 ```
+
+In the code, the root cross-sectional factor is implemented with a harmonic-mean
+coupling between `RAI` and `LAI` (in the spirit of the CLM two-layer hydraulic
+conductance formulation). This regularizes the flux when either area index goes
+to zero and reduces to `RAI` (up to a factor of two, since we use
+`x*y/(x+y)` rather than the classical harmonic mean) when the two indices are
+comparable.
 
 We can also account for the distribution of roots as a function of depth. A quantity that is modeled in plant hydraulic models is the root fraction $P(z)$, satisfying $\int P(z) dz = 1$. Instead of having a single root at one discrete location, we can distribute the root system over different depths using $P(z)$. The total flux from roots between $z$ and $z+dz$ is given by
 ```math

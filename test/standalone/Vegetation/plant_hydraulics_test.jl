@@ -208,7 +208,7 @@ for FT in (Float32, Float64)
                     Y[1],
                     Canopy.hydraulic_conductivity(conductivity_model, ψ_soil0),
                     Canopy.hydraulic_conductivity(conductivity_model, Y[1]),
-                ) .* ClimaLand.Canopy.Canopy.harmonic_mean(AI[:leaf], AI[:root])
+                ) .* ClimaLand.Canopy.harmonic_mean(AI[:leaf], AI[:root])
             F[1] = fa - T0A
         end
         #=======================
@@ -248,7 +248,7 @@ for FT in (Float32, Float64)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
         @test all(abs.(parent(dY.canopy.hydraulics.ϑ_l))[:] .< ftol) # starts in equilibrium
-        @test all(parent(p.canopy.hydraulics.fa_roots)[:] .- T0A .< ftol) # Fluxes are as we expect
+        @test all(abs.(parent(p.canopy.hydraulics.fa_roots)[:] .- T0A) .< ftol) # Fluxes are as we expect
 
         # repeat using the plant hydraulics model directly
         # make sure it agrees with what we get when use the canopy model ODE

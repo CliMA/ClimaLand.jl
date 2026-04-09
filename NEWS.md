@@ -3,6 +3,13 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- ![breaking change][badge-💥breaking] Refactor `PlantHydraulicsModel` to a
+  single above-ground compartment. The `PlantHydraulics` submodule has been
+  merged into `Canopy`; the `n_stem`, `n_leaf`, `h_stem`, and `h_leaf` kwargs
+  of `PlantHydraulicsModel{FT}(domain, toml_dict; ...)` are removed, and the
+  canopy height now lives in the biomass component (`canopy.biomass.height`).
+  `Y.canopy.hydraulics.ϑ_l` and `p.canopy.hydraulics.ψ` are now scalar fields
+  rather than per-compartment tuples (drop `.:1` when accessing them).
 
 v1.7.0
 -----

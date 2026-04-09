@@ -112,7 +112,7 @@ transpiration. Note that the canopy height is part of the biomass model.
 
 The model can be used in Canopy standalone mode by prescribing
 the soil matric potential at the root tips or flux in the roots. There is also the
-option (intendend only for debugging) to use a prescribed transpiration rate.
+option (intended only for debugging) to use a prescribed transpiration rate.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -137,9 +137,9 @@ prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
 
 A function which returns the names of the auxiliary
 variables of the `PlantHydraulicsModel`,
-the water potential `ψ` (m) and the 
-volume flux\\*root cross section in the roots `fa_roots` (1/s),
-where the cross section can be represented by an area index.
+the water potential `ψ` (m) and the root water flux per
+unit ground area `fa_roots` (m/s), which is the volume flux
+through the roots multiplied by the harmonic mean of LAI and RAI.
 """
 auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa_roots)
 
@@ -184,8 +184,8 @@ Computes the water flux given the absolute potential ψ (pressure/(ρg))
  and the conductivity K (m/s) at the center of the two layers
 with midpoints z1 and z2.
 
-We currently assuming a harmonic
-mean for effective conducticity between the two layers
+We currently assume a harmonic
+mean for effective conductivity between the two layers
 (see CLM Technical Documentation).
 
 To account for different path lengths in the two compartments Δz1 and
@@ -224,7 +224,7 @@ Base.broadcastable(x::AbstractRetentionModel) = tuple(x)
     Weibull{FT} <: AbstractConductivityModel{FT}
 
 A concrete type specifying that a Weibull conductivity model is to be used;
-the struct contains the require parameters for this model.
+the struct contains the required parameters for this model.
 
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -235,7 +235,7 @@ struct Weibull{FT} <: AbstractConductivityModel{FT}
     "The absolute water potential in xylem (or xylem water potential) at which ∼63%
     of maximum xylem conductance is lost (Liu, 2020)."
     ψ63::FT
-    "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016)."
+    "Weibull parameter c, which controls the shape of the conductance curve (Sperry, 2016)."
     c::FT
 end
 
@@ -271,8 +271,8 @@ end
 """
     LinearRetentionCurve{FT} <: AbstractRetentionModel{FT}
 
-A concrete type specifying that a linear water retention  model is to be used;
-the struct contains the require parameters for this model.
+A concrete type specifying that a linear water retention model is to be used;
+the struct contains the required parameters for this model.
 
 When ψ = 0, the effective saturation is one, so the intercept
 is not a free parameter, and only the slope must be specified.
@@ -292,8 +292,8 @@ end
 
 """
     water_retention_curve(
+        retention_params::LinearRetentionCurve{FT},
         S_l::FT,
-        b::FT,
         ν::FT,
         S_s::FT) where {FT}
 
@@ -319,8 +319,8 @@ end
 
 """
     inverse_water_retention_curve(
+        retention_params::LinearRetentionCurve{FT},
         ψ::FT,
-        b::FT,
         ν::FT,
         S_s::FT) where {FT}
 
@@ -380,16 +380,17 @@ end
 A function which creates the compute_exp_tendency! function for the PlantHydraulicsModel.
 The compute_exp_tendency! function must comply with a rhs function of ClimaTimeSteppers.jl.
 
-Below, `fa` denotes a flux multiplied by the relevant cross section
-(per unit area ground, or area index, AI). The tendency is
-∂ϑ/∂t = 1/(AI*dz)[fa_roots-transpiration)
+Below, `fa_roots` denotes the root water flux per unit ground area
+(`water_flux * harmonic_mean(LAI, RAI)`), and the transpiration is
+`p.canopy.turbulent_fluxes.vapor_flux`, also per unit ground area. The tendency is
 
-Note that if the area_index is zero because no plant is present,
-AIdz is zero, and the fluxes `fa` appearing in the numerator are
-zero because they are scaled by AI.
+    ∂ϑ/∂t = (fa_roots - transpiration) / (LAI * dz)
 
-To prevent dividing by zero, we change AI/(AI x dz)" to
-"AI/max(AI x dz, eps(FT))"
+where `dz` is the canopy height from the biomass model.
+
+Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
+and both fluxes in the numerator are also zero (they are scaled by area indices).
+To prevent dividing by zero, we use `max(LAI * dz, eps(FT))` in the denominator.
 """
 function make_compute_exp_tendency(
     model::PlantHydraulicsModel{FT},
@@ -417,12 +418,15 @@ end
         t,
     ) where {FT}
 
-A method which computes the water flux between the soil and the above ground leaves, via the roots,
-and multiplied by the RAI, in the case of a model running without a prognostic
-soil model:
+A method which computes the water flux between the soil and the above ground leaves,
+via the roots, and multiplied by `harmonic_mean(LAI, RAI)`, in the case of a model
+running without a prognostic soil model:
 
 Flux = -K_eff x [(ψ_leaf - ψ_soil)/(z_leaf - z_soil) + 1], where
-K_eff = K_soil K_leaf /(K_leaf + K_soil)
+K_eff = K_soil K_leaf / (K_leaf + K_soil)
+
+(the same `x y / (x + y)` convention is used by `harmonic_mean`; it differs from the
+classical harmonic mean `2xy/(x+y)` by a factor of two).
 
 Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
 and K_leaf = K_plant(ψ_leaf). In `PrognosticSoil` mode, we compute the flux using
@@ -461,7 +465,7 @@ function root_water_flux_per_ground_area!(
 
     # since rooting_depth is positive by convention, add the sign in here to
     # convert it to a coordinate: z_roots = -rooting_depth
-    @. fa .=
+    @. fa =
         water_flux(
             -rooting_depth,
             canopy.biomass.height / 2,
@@ -503,17 +507,14 @@ end
 """
    update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
 
-Updates the following cache variables in place:
-- p.canopy.hydraulics.ψ
-- p.canopy.hydraulics.fa[1:end-1] (within plant fluxes)
-
-Other types of AbstractPlantHydraulicsModel may update different variables.
+Updates the water potential `p.canopy.hydraulics.ψ` in place using the retention
+curve. Other subtypes of `AbstractPlantHydraulicsModel` may update different cache
+variables.
 """
 function update_hydraulics!(p, Y, hydraulics::PlantHydraulicsModel, canopy)
     ψ = p.canopy.hydraulics.ψ
     ϑ_l = Y.canopy.hydraulics.ϑ_l
-    LAI = p.canopy.biomass.area_index.leaf
-    (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
+    (; retention_model, S_s, ν) = hydraulics.parameters
 
     @. ψ = water_retention_curve(
         retention_model,
