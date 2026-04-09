@@ -47,11 +47,8 @@ Substituting in the volumetric water content, we have
 ```
 
 In the code, the root cross-sectional factor is implemented with a harmonic-mean
-coupling between `RAI` and `LAI` (in the spirit of the CLM two-layer hydraulic
-conductance formulation). This regularizes the flux when either area index goes
-to zero and reduces to `RAI` (up to a factor of two, since we use
-`x*y/(x+y)` rather than the classical harmonic mean) when the two indices are
-comparable.
+coupling between `RAI` and `LAI`. This ensures that the flux goes to zero when either area index goes
+to zero.
 
 We can also account for the distribution of roots as a function of depth. A quantity that is modeled in plant hydraulic models is the root fraction $P(z)$, satisfying $\int P(z) dz = 1$. Instead of having a single root at one discrete location, we can distribute the root system over different depths using $P(z)$. The total flux from roots between $z$ and $z+dz$ is given by
 ```math
