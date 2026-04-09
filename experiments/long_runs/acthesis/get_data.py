@@ -382,7 +382,9 @@ def plot_m(m):
 #        "surface_latent_heat_flux",
 #        "surface_net_solar_radiation",
 #        "surface_sensible_heat_flux",
-#        "surface_solar_radiation_downwards"
+#        "surface_solar_radiation_downwards",
+#        "surface_net_thermal_radiation",
+#        "surface_thermal_radiation_downwards",
 #    ],
 #    "year": [
 #        "2000", "2001", "2002",
