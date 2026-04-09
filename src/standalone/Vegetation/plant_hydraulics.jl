@@ -423,10 +423,7 @@ via the roots, and multiplied by `harmonic_mean(LAI, RAI)`, in the case of a mod
 running without a prognostic soil model:
 
 Flux = -K_eff x [(ψ_leaf - ψ_soil)/(z_leaf - z_soil) + 1], where
-K_eff = K_soil K_leaf / (K_leaf + K_soil)
-
-(the same `x y / (x + y)` convention is used by `harmonic_mean`; it differs from the
-classical harmonic mean `2xy/(x+y)` by a factor of two).
+K_eff = K_soil K_leaf / (K_leaf + K_soil).
 
 Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
 and K_leaf = K_plant(ψ_leaf). In `PrognosticSoil` mode, we compute the flux using
