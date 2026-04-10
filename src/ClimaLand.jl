@@ -433,6 +433,7 @@ import .Canopy:
     canopy_radiant_energy_fluxes!,
     root_energy_flux_per_ground_area!,
     update_piecewise_soil_moisture_stress!,
+    update_experimental_soil_moisture_stress!,
     mask_biomass!,
     root_water_flux_per_ground_area!
 ### Concrete types of AbstractLandModels

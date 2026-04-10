@@ -1,9 +1,11 @@
 export TuzetMoistureStressModel,
     NoMoistureStressModel,
     PiecewiseMoistureStressModel,
+    ExperimentalMSModel,
     compute_piecewise_moisture_stress,
     compute_tuzet_moisture_stress,
-    update_piecewise_soil_moisture_stress!
+    update_piecewise_soil_moisture_stress!,
+    update_experimental_soil_moisture_stress!
 
 # define an abstract type for all soil moisture stress models
 abstract type AbstractSoilMoistureStressModel{FT} <: AbstractCanopyComponent{FT} end
@@ -214,4 +216,73 @@ function update_piecewise_soil_moisture_stress!(
         model.c,
         p.drivers.θ,
     )
+end
+
+
+
+struct ExperimentalMSModel{
+    FT,
+    F <: Union{FT, ClimaCore.Fields.Field},
+} <: AbstractSoilMoistureStressModel{FT}
+    S_high::F
+    S_low::F
+    ν::FT
+    θ_r::FT
+    """Curvature parameter (unitless)"""
+    c::FT
+end
+
+function ExperimentalMSModel{FT}(;
+                                 S_high,
+                                 S_low,
+                                 ν,
+                                 θ_r,
+                                 c::FT,
+                                 ) where {FT <: AbstractFloat}
+    return ExperimentalMSModel{FT, typeof(S_high)}(S_high, S_low, ν, θ_r, c)
+end
+
+ClimaLand.auxiliary_vars(model::ExperimentalMSModel) = (:βm,)
+ClimaLand.auxiliary_types(model::ExperimentalMSModel{FT}) where {FT} =
+    (FT,)
+ClimaLand.auxiliary_domain_names(::ExperimentalMSModel) = (:surface,)
+
+"""
+    compute_piecewise_moisture_stress(
+        θ_high::FT,
+        θ_low::FT,
+        c::FT,
+        θ::FT,
+    ) where {FT}
+
+This function computes at a point the soil moisture stress factor using the volumetric water content θ (m^3/m^3)
+and four parameters: `θ_high` (field capacity, m^3/m^3), `θ_low` (wilting point, m^3/m^3), `c` (curvature parameter,
+unitless). See  Egea et al. (2011).
+
+Citation: https://doi.org/10.1016/j.agrformet.2011.05.019
+"""
+function compute_experimental_moisture_stress(
+    S_high::FT,
+    S_low::FT,
+    c::FT,
+    S::FT,
+) where {FT}
+    # avoid taking e.g. sqrt of negative numbers for rational c
+    #    arg = max((S - S_low) / (S_high - S_low), FT(0))
+#    arg = S/S_low
+    #    return clamp(1/(1+exp(-5*arg)), FT(0), FT(1))
+    return min(FT(1), exp(-S/S_low))
+#    return min(FT(1), arg^c)
+end
+
+update_experimental_soil_moisture_stress!(ground, p, Y, model, canopy) = nothing
+
+function update_soil_moisture_stress!(
+    p,
+    Y,
+    model::ExperimentalMSModel,
+    canopy,
+)
+    ground = canopy.boundary_conditions.ground
+    update_experimental_soil_moisture_stress!(ground, p, Y, model, canopy)
 end
