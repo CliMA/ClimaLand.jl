@@ -788,7 +788,7 @@ function make_set_initial_state_from_atmos_and_parameters(
             Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
         end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) * FT(0.95)
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
         Y.soil.θ_i .= FT(0.0)
         ρc_s =
             ClimaLand.Soil.volumetric_heat_capacity.(
@@ -818,47 +818,6 @@ function make_set_initial_state_from_atmos_and_parameters(
         if !isnothing(land.lake)
             set_lake_initial_conditions!(Y, p, t0, land.lake)
         end
-    end
-    return set_ic!
-end
-
-"""
-    make_set_initial_state_from_atmos_and_parameters(land::EnergyHydrology{FT}) where {FT}
-
-Returns a function which takes (Y,p,t0,land) as arguments, and updates
-the state Y in place with initial conditions from parameter values and the
-atmospheric temperature.
-
-It is assumed that in CoupledAtmosphere simulations that `p.drivers.T` has
-been updated already.
-"""
-function make_set_initial_state_from_atmos_and_parameters(
-    land::ClimaLand.Soil.EnergyHydrology{FT},
-) where {FT}
-    function set_ic!(Y, p, t0, land)
-        atmos = ClimaLand.get_drivers(land)[1]
-        earth_param_set = ClimaLand.get_earth_param_set(land)
-        if atmos isa ClimaLand.PrescribedAtmosphere
-            evaluate!(p.drivers.T, atmos.T, t0)
-        end
-
-        (; θ_r, ν, ρc_ds) = land.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) * FT(0.98)
-        Y.soil.θ_i .= FT(0.0)
-        ρc_s =
-            ClimaLand.Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                ρc_ds,
-                earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            ClimaLand.Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                p.drivers.T,
-                earth_param_set,
-            )
     end
     return set_ic!
 end

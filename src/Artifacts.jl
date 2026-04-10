@@ -30,7 +30,7 @@ pointing to the correct path, as documented in that file.
 """
 function saturated_land_ic_path(; context = nothing)
     dir = @clima_artifact("saturated_land_15m", context)
-    return joinpath(dir, "saturated_land_15m.nc")
+    return joinpath(dir, "saturated_land_ic.nc")
 end
 
 """

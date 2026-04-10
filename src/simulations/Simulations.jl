@@ -117,7 +117,12 @@ function LandSimulation(
     Δt::ITime,
     model;
     outdir = ".",
-    set_ic! = make_set_initial_state_from_atmos_and_parameters(model),
+    set_ic! = make_set_initial_state_from_file(
+        ClimaLand.Artifacts.saturated_land_ic_path(;
+            context = ClimaComms.context(model),
+        ),
+        model,
+    ),
     timestepper = ClimaTimeSteppers.IMEXAlgorithm(
         ClimaTimeSteppers.ARS111(),
         ClimaTimeSteppers.NewtonsMethod(
