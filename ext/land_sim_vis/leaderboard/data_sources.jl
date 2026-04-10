@@ -331,6 +331,31 @@ function get_mask_dict(data_source)
 end
 
 """
+    get_calibration_obs_var_dict(; short_names = nothing)
+
+Return a dictionary mapping short names to `OutputVar` containing preprocessed
+observational data for calibration. This combines ERA5 energy flux variables
+(lhf, shf, lwu, swu) with ILAMB GPP (FLUXCOM) data.
+
+If `short_names` is provided, only the requested variables are returned.
+"""
+function get_calibration_obs_var_dict(; short_names = nothing)
+    obs_var_dict = Dict{String, Any}()
+    # ERA5 energy fluxes
+    era5_dict = get_era5_obs_var_dict()
+    merge!(obs_var_dict, era5_dict)
+    # ILAMB GPP
+    ilamb_dict = get_ilamb_obs_var_dict()
+    if haskey(ilamb_dict, "gpp")
+        obs_var_dict["gpp"] = ilamb_dict["gpp"]
+    end
+    if !isnothing(short_names)
+        filter!(p -> p.first in short_names, obs_var_dict)
+    end
+    return obs_var_dict
+end
+
+"""
     get_compare_vars_biases_plot_extrema(; annual = false)
 
 Return a dictionary mapping short names to ranges for the bias plots.

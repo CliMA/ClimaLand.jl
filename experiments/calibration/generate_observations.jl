@@ -22,120 +22,132 @@ include(
 )
 
 """
-    make_era5_observation_vector(
-        covar_estimator,
+    make_observation_vector(
+        noise_scalars,
         short_names,
         sample_date_ranges,
         nelements,
     )
 
-Return a vector of `EKP.Observation` consisting of variables from ERA5 dataset
+Return a vector of `EKP.Observation` consisting of observational variables
 with `short_names`.
 
-The covariance matrix for each observation is determined by `covar_estimator`
-and the date ranges for each observation is determined by `sample_date_ranges`.
+Each variable gets its own covariance scaling from `noise_scalars`, a
+`Dict{String, Float64}` mapping short names to scalar values. Observations
+are created per-variable and combined via `EKP.combine_observations`.
+
+The date ranges for each observation are determined by `sample_date_ranges`.
 
 The ocean mask is determined by `nelements`.
 
-!!! note "Add new variable"
-    To add a new variable from the ERA5 dataset, you must add the variable to
-    `get_era5_obs_var_dict` in `data_sources.jl`. In addition, if the varaible
-    requires any further or different preprocessing than the preprocessing done
-    in `preprocess_single_era5_var`, you should also make any necessary changes
-    to that function and in `process_member_data` in `observation_map.jl`.
+Supports both ERA5 variables (lhf, shf, lwu, swu) and ILAMB variables (gpp, et)
+via `get_calibration_obs_var_dict` in `data_sources.jl`.
 """
-function make_era5_observation_vector(
-    covar_estimator,
+function make_observation_vector(
+    noise_scalars,
     short_names,
     sample_date_ranges,
     nelements,
 )
-    # TODO: The start_date argument can be removed by making data_sources.jl not
-    # dependent on a start date.
-
     # The start date doesn't matter since we never resample along the
     # time dimension, so we grab the first date in sample_date_ranges
     start_date = first(first(sample_date_ranges))
-    era5_vars = preprocess_era5_vars(short_names, start_date, nelements)
+    obs_vars = preprocess_obs_vars(short_names, start_date, nelements)
+
+    # Build per-variable covariance estimators
+    covar_estimators = Dict(
+        name => ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
+            scalar = noise_scalars[name],
+            use_latitude_weights = true,
+            min_cosd_lat = 0.1,
+        ) for name in short_names
+    )
+
     observation_vector = map(sample_date_ranges) do (start_date, stop_date)
-        ClimaCalibrate.ObservationRecipe.observation(
-            covar_estimator,
-            era5_vars,
-            start_date,
-            stop_date,
-        )
+        # Create a separate observation for each variable with its own scalar
+        per_var_obs = map(zip(short_names, obs_vars)) do (name, var)
+            ClimaCalibrate.ObservationRecipe.observation(
+                covar_estimators[name],
+                [var],
+                start_date,
+                stop_date,
+            )
+        end
+        # Combine into a single observation with block-diagonal covariance
+        EKP.combine_observations(per_var_obs)
     end
     return observation_vector
 end
 
-# TODO: Add a note on how to add a new variable and what you need to do
-# Modify dict, maybe modify how they should be processed
-
 """
-    preprocess_era5_vars(short_names, start_date, nelements)
+    preprocess_obs_vars(short_names, start_date, nelements)
 
-Preprocess each variable from the ERA5 dataset with `short_names`.
+Preprocess each observational variable with `short_names`.
 """
-function preprocess_era5_vars(short_names, start_date, nelements)
-    era5_obs_vars = get_era5_obs_var_dict()
+function preprocess_obs_vars(short_names, start_date, nelements)
+    obs_var_dict = get_calibration_obs_var_dict(; short_names)
     for short_name in short_names
-        short_name ∉ keys(era5_obs_vars) && error(
-            "There is no variable with the short name $short_name. Add this variable to get_era5_obs_var_dict",
+        short_name ∉ keys(obs_var_dict) && error(
+            "There is no variable with the short name $short_name. Add this variable to get_calibration_obs_var_dict in data_sources.jl",
         )
     end
     vars = map(short_names) do short_name
-        var = era5_obs_vars[short_name](start_date)
-        preprocess_single_era5_var(var, short_name, nelements)
+        var = obs_var_dict[short_name](start_date)
+        preprocess_single_obs_var(var, short_name, nelements)
     end
     return vars
 end
 
 """
-    preprocess_single_era5_var(var::OutputVar, short_name, nelements)
+    preprocess_single_obs_var(var::OutputVar, short_name, nelements)
 
-Specifies how each individual `OutputVar` from the ERA5 dataset should be
-processed.
+Specifies how each individual `OutputVar` should be processed for calibration.
 
-The currently supported variables are `lhf`, `shf`, `lwu`, and `swu`. The
-preprocessing is
+The preprocessing is:
+- windowing to full seasons within the data's time range,
 - computing seasonal averages,
 - resampling to fit the model grid,
 - applying an ocean mask,
 - removing the last longitude point to avoid double counting,
 - and excluding the poles.
-
-Note that an `EKP.Observation` is not generated in this function.
 """
-function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
+function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     lats, lons = get_lat_lon_from_resolution(nelements)
 
-    # If there are `NaN`s, then resampling cannot be performed as resampling is
-    # not `NaN` aware
-    any(isnan, var.data) && error(
-        "Cannot process OutputVar with name $short_name because `NaN`s are present in the data",
-    )
+    # NaNs are kept so that resampling propagates them rather than
+    # interpolating good observations with zeros. Some valid points near
+    # NaN regions may be lost, but this is preferred over corrupting them.
 
-    # Window to ensure that each season contains all three months
-    # The dates are found by inspecting the ERA5 data and choosing
-    # the earliest and latest dates that contain full seasons
+    # Window to ensure that each season contains all three months.
+    # Use the data's own time range, clamped to full seasons.
+    times = ClimaAnalysis.times(var)
+    first_time = first(times)
+    last_time = last(times)
+    t_min = Dates.DateTime(Dates.year(first_time), 3)
+    t_max = Dates.DateTime(Dates.year(last_time), 8)
+    # Ensure bounds are within the data range
+    if t_max > last_time
+        t_max = Dates.DateTime(Dates.year(last_time) - 1, 8)
+    end
+    if t_min < first_time
+        t_min = Dates.DateTime(Dates.year(first_time) + 1, 3)
+    end
     var = ClimaAnalysis.window(
         var,
         "time",
-        left = Dates.DateTime(1979, 3),
-        right = Dates.DateTime(2024, 8),
+        left = t_min,
+        right = t_max,
         by = ClimaAnalysis.MatchValue(),
     )
 
-    # Take seasonal average, resample, and apply mask Resampling is an expensive
-    # operation, so it is good to do as many reductions as we can.
+    # Take seasonal average, resample, and apply mask. Resampling is an
+    # expensive operation, so it is good to do as many reductions as we can.
     var = ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
 
     var = ClimaAnalysis.resampled_as(var, lon = lons, lat = lats)
 
     # Cannot apply ClimaLand.apply_oceanmask because of the small
     # differences between the ClimaLand mask and ClimaAnalysis.apply_ocean_mask
-    # For now, it is better to manually create a mask from ClimaCore and
-    # generate a mask from it using ClimaAnalysis
     ocean_mask = make_ocean_mask(nelements)
     var = ocean_mask(var)
 
@@ -162,22 +174,16 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    (; obs_vec_filepath) = CALIBRATE_CONFIG
-    covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
-        scalar = 25.0,
-        use_latitude_weights = true,
-        min_cosd_lat = 0.1,
-    )
-    nelements = CALIBRATE_CONFIG.nelements
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
-    short_names = CALIBRATE_CONFIG.short_names
+    (; obs_vec_filepath, nelements, sample_date_ranges, short_names) =
+        CALIBRATE_CONFIG
     @info "The number of samples is $(length(sample_date_ranges))"
+    @info "Noise scalars: $NOISE_SCALARS"
 
     isfile(obs_vec_filepath) &&
         @warn "Overwriting the file $obs_vec_filepath to generate the vector of observations"
 
-    observation_vector = make_era5_observation_vector(
-        covar_estimator,
+    observation_vector = make_observation_vector(
+        NOISE_SCALARS,
         short_names,
         sample_date_ranges,
         nelements,

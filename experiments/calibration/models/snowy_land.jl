@@ -153,7 +153,7 @@ function ClimaCalibrate.forward_model(
     # Need to include "lhf", "shf", "lwu", "swu" because plotting the
     # leaderboard requires these diagnostics
     short_names = CALIBRATE_CONFIG.short_names
-    short_names = unique!([short_names; ["lhf", "shf", "lwu", "swu"]])
+    short_names = unique!([short_names; ["lhf", "shf", "lwu", "swu", "gpp", "et"]])
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date,
