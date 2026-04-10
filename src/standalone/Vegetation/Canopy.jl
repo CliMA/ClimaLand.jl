@@ -298,25 +298,13 @@ end
     PlantHydraulicsModel{FT}(
         domain,
         toml_dict::CP.ParamDict;
-        ν::FT = FT(1.44e-4),
-        S_s::FT = FT(1e-2 * 0.0098), # m3/m3/MPa to m3/m3/m
-        conductivity_model = Weibull{FT}(
-            K_sat = FT(7e-8),
-            ψ63 = FT(-4 / 0.0098),
-            c = FT(4),
-        ),
-        retention_model = LinearRetentionCurve{FT}(a = FT(0.2 * 0.0098)),
+        ν::FT = toml_dict["plant_nu"],
+        S_s::FT = toml_dict["plant_S_s"], # m3/m3/MPa to m3/m3/m
+        conductivity_model = PlantHydraulics.Weibull(toml_dict),
+        retention_model = PlantHydraulics.LinearRetentionCurve(toml_dict),
     ) where {FT <: AbstractFloat}
 
 Creates a PlantHydraulicsModel on the provided domain, using paramters from `toml_dict`.
-
-The following default parameters are used:
-- ν = 1.44e-4 (m3/m3) - porosity
-- S_s = 1e-2 * 0.0098 (m⁻¹) - storativity
-- K_sat = 7e-8 (m/s) - saturated hydraulic conductivity
-- ψ63 = -4 / 0.0098 (MPa to m) - xylem percentage loss of conductivity curve parameters;
-- c = 4 (unitless) - Weibull parameter;
-- a = 0.2 * 0.0098 (m) - bulk modulus of elasticity;
 
 Citation:
 Holtzman, N., Wang, Y., Wood, J. D., Frankenberg, C., & Konings, A. G. (2023).

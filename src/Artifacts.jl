@@ -25,11 +25,11 @@ running the snowy_land_pmodel.jl file for 20 years (LONGER_RUN set),
 using the default global_box_domain, with a soil model with no flux
 at the bottom boundary,
 and then running the ClimaArtifacts script 
-`saturated_soil_ic/create_artifacts.jl` with a command line argument
+`saturated_land_15m/create_artifacts.jl` with a command line argument
 pointing to the correct path, as documented in that file.
 """
 function saturated_land_ic_path(; context = nothing)
-    dir = @clima_artifact("saturated_land_ic", context)
+    dir = @clima_artifact("saturated_land_15m", context)
     return joinpath(dir, "saturated_land_ic.nc")
 end
 
@@ -254,22 +254,13 @@ end
 
 Return the path to the folder that contains the soil parameters.
 
-Returns a 1 degree version by default (lowres = true). The high resolution (1 km) version
-is not downloaded by Julia and thus must be downloaded manually if you are running this
-locally (see ClimaArtifacts for download details).
+Returns a 0.1 degree version by default (lowres = false). The low resolution (1 degree) is also available.
 """
-function soil_params_artifact_folder_path(; context = nothing, lowres = true)
+function soil_params_artifact_folder_path(; context = nothing, lowres = false)
     if lowres
         dir = @clima_artifact("soil_params_Gupta2020_2022_lowres", context)
     else
-        try
-            dir = @clima_artifact("soil_params_Gupta2020_2022", context)
-        catch
-            @warn(
-                "High resolution soil parameters not available locally; using low resolution data instead."
-            )
-            dir = @clima_artifact("soil_params_Gupta2020_2022_lowres", context)
-        end
+        dir = @clima_artifact("soil_params_Gupta2020_2022", context)
     end
     return dir
 end

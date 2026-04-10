@@ -121,7 +121,7 @@ tag = "OptimalLAIModel"
 # Plant Hydraulics Parameters
 
 ["plant_nu"]
-value = 1.44e-4
+value = 0.2
 type = "float"
 description = "Porosity (m3/m3)"
 tag = "PlantHydraulicsParameters"
