@@ -247,6 +247,44 @@ function define_diagnostics!(land_model, possible_diags)
             compute_canopy_transpiration!(out, Y, p, t, land_model),
     )
 
+    ### Canopy - Interception
+
+    # Canopy interception water storage
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "intw",
+        long_name = "Canopy Interception Water Storage",
+        standard_name = "canopy_interception_water",
+        units = "m",
+        comments = "The volume of liquid water stored on the canopy surface per unit ground area (Rutter et al. 1971).",
+        compute! = (out, Y, p, t) ->
+            compute_canopy_interception_water!(out, Y, p, t, land_model),
+    )
+
+    # Canopy wet fraction
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "fwet",
+        long_name = "Canopy Wet Fraction",
+        standard_name = "canopy_wet_fraction",
+        units = "",
+        comments = "The fraction of the canopy surface that is wet, computed as (W_int / S_max)^(2/3) (Deardorff 1978).",
+        compute! = (out, Y, p, t) ->
+            compute_canopy_wet_fraction!(out, Y, p, t, land_model),
+    )
+
+    # Canopy throughfall
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "thrf",
+        long_name = "Canopy Throughfall",
+        standard_name = "canopy_throughfall",
+        units = "m s^-1",
+        comments = "The liquid water flux reaching the ground through the canopy: free throughfall plus drainage from canopy storage.",
+        compute! = (out, Y, p, t) ->
+            compute_canopy_throughfall!(out, Y, p, t, land_model),
+    )
+
     ### Canopy - Energy
 
     # Canopy latent heat flux

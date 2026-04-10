@@ -257,6 +257,23 @@ end
 @diagnostic_compute "latent_heat_flux" CanopyModel p.canopy.turbulent_fluxes.lhf
 @diagnostic_compute "sensible_heat_flux" CanopyModel p.canopy.turbulent_fluxes.shf
 
+# Canopy - Interception
+@diagnostic_compute "canopy_interception_water" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.interception.W_int
+@diagnostic_compute "canopy_wet_fraction" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.interception.f_wet
+@diagnostic_compute "canopy_throughfall" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.interception.throughfall
+
 # Canopy - Hydraulics
 function compute_leaf_water_potential!(
     out,
