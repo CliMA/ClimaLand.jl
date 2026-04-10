@@ -596,15 +596,15 @@ end
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
     filepath = joinpath(
         soil_params_artifact_path,
-        "residual_map_gupta_etal2020_1.0x1.0x4.nc",
+        "residual_map_gupta_etal2020_0.1x0.1x4.nc",
     )
 
     NCDataset(filepath) do ncd
         lats = ncd["lat"][:]
         longs = ncd["lon"][:]
         zs = ncd["z"][:]
-        lat_ind = 90
-        long_ind = 100
+        lat_ind = 71
+        long_ind = 1093
         lat = FT(lats[lat_ind])
         long = FT(longs[long_ind])
 

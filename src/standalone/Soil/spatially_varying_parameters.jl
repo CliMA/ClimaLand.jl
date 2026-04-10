@@ -115,6 +115,10 @@ not matter, we need to ensure that values in the simulation are set to
 something physical, even if they are not set in the data.
 In the future, this should be handled by ClimaUtilities via extrapolation.
 Here we set them manually.
+
+Please note that the saved initial conditions are compatible with
+the high resolution (0.1 degree) parameters. If you use the lowres option,
+you may need to regenerate the spun-up initial conditions!
 """
 function soil_vangenuchten_parameters(
     subsurface_space,
