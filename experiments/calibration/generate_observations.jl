@@ -23,7 +23,7 @@ include(
 
 """
     make_observation_vector(
-        covar_estimator,
+        noise_scalars,
         short_names,
         sample_date_ranges,
         nelements,
@@ -32,8 +32,11 @@ include(
 Return a vector of `EKP.Observation` consisting of observational variables
 with `short_names`.
 
-The covariance matrix for each observation is determined by `covar_estimator`
-and the date ranges for each observation is determined by `sample_date_ranges`.
+Each variable gets its own covariance scaling from `noise_scalars`, a
+`Dict{String, Float64}` mapping short names to scalar values. Observations
+are created per-variable and combined via `EKP.combine_observations`.
+
+The date ranges for each observation are determined by `sample_date_ranges`.
 
 The ocean mask is determined by `nelements`.
 
@@ -41,7 +44,7 @@ Supports both ERA5 variables (lhf, shf, lwu, swu) and ILAMB variables (gpp, et)
 via `get_calibration_obs_var_dict` in `data_sources.jl`.
 """
 function make_observation_vector(
-    covar_estimator,
+    noise_scalars,
     short_names,
     sample_date_ranges,
     nelements,
@@ -50,13 +53,28 @@ function make_observation_vector(
     # time dimension, so we grab the first date in sample_date_ranges
     start_date = first(first(sample_date_ranges))
     obs_vars = preprocess_obs_vars(short_names, start_date, nelements)
+
+    # Build per-variable covariance estimators
+    covar_estimators = Dict(
+        name => ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
+            scalar = noise_scalars[name],
+            use_latitude_weights = true,
+            min_cosd_lat = 0.1,
+        ) for name in short_names
+    )
+
     observation_vector = map(sample_date_ranges) do (start_date, stop_date)
-        ClimaCalibrate.ObservationRecipe.observation(
-            covar_estimator,
-            obs_vars,
-            start_date,
-            stop_date,
-        )
+        # Create a separate observation for each variable with its own scalar
+        per_var_obs = map(zip(short_names, obs_vars)) do (name, var)
+            ClimaCalibrate.ObservationRecipe.observation(
+                covar_estimators[name],
+                [var],
+                start_date,
+                stop_date,
+            )
+        end
+        # Combine into a single observation with block-diagonal covariance
+        EKP.combine_observations(per_var_obs)
     end
     return observation_vector
 end
@@ -67,7 +85,7 @@ end
 Preprocess each observational variable with `short_names`.
 """
 function preprocess_obs_vars(short_names, start_date, nelements)
-    obs_var_dict = get_calibration_obs_var_dict()
+    obs_var_dict = get_calibration_obs_var_dict(; short_names)
     for short_name in short_names
         short_name ∉ keys(obs_var_dict) && error(
             "There is no variable with the short name $short_name. Add this variable to get_calibration_obs_var_dict in data_sources.jl",
@@ -86,7 +104,6 @@ end
 Specifies how each individual `OutputVar` should be processed for calibration.
 
 The preprocessing is:
-- replacing NaNs with zeros (required for resampling),
 - windowing to full seasons within the data's time range,
 - computing seasonal averages,
 - resampling to fit the model grid,
@@ -97,18 +114,24 @@ The preprocessing is:
 function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     lats, lons = get_lat_lon_from_resolution(nelements)
 
-    # Replace NaNs with zeros so that resampling can be performed.
-    # This is safe because the ocean mask will remove ocean points later.
-    if any(isnan, var.data)
-        @info "Replacing NaNs with zeros in $short_name for resampling"
-        var = ClimaAnalysis.replace(var, NaN => 0.0)
-    end
+    # NaNs are kept so that resampling propagates them rather than
+    # interpolating good observations with zeros. Some valid points near
+    # NaN regions may be lost, but this is preferred over corrupting them.
 
     # Window to ensure that each season contains all three months.
     # Use the data's own time range, clamped to full seasons.
     times = ClimaAnalysis.times(var)
-    t_min = Dates.DateTime(Dates.year(first(times)), 3)
-    t_max = Dates.DateTime(Dates.year(last(times)), 8)
+    first_time = first(times)
+    last_time = last(times)
+    t_min = Dates.DateTime(Dates.year(first_time), 3)
+    t_max = Dates.DateTime(Dates.year(last_time), 8)
+    # Ensure bounds are within the data range
+    if t_max > last_time
+        t_max = Dates.DateTime(Dates.year(last_time) - 1, 8)
+    end
+    if t_min < first_time
+        t_min = Dates.DateTime(Dates.year(first_time) + 1, 3)
+    end
     var = ClimaAnalysis.window(
         var,
         "time",
@@ -151,22 +174,16 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    (; obs_vec_filepath) = CALIBRATE_CONFIG
-    covar_estimator = ClimaCalibrate.ObservationRecipe.ScalarCovariance(;
-        scalar = 3.0,
-        use_latitude_weights = true,
-        min_cosd_lat = 0.1,
-    )
-    nelements = CALIBRATE_CONFIG.nelements
-    sample_date_ranges = CALIBRATE_CONFIG.sample_date_ranges
-    short_names = CALIBRATE_CONFIG.short_names
+    (; obs_vec_filepath, nelements, sample_date_ranges, short_names) =
+        CALIBRATE_CONFIG
     @info "The number of samples is $(length(sample_date_ranges))"
+    @info "Noise scalars: $NOISE_SCALARS"
 
     isfile(obs_vec_filepath) &&
         @warn "Overwriting the file $obs_vec_filepath to generate the vector of observations"
 
     observation_vector = make_observation_vector(
-        covar_estimator,
+        NOISE_SCALARS,
         short_names,
         sample_date_ranges,
         nelements,
