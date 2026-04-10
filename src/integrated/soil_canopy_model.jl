@@ -495,14 +495,15 @@ end
 
 Returns the liquid water volume flux at the surface of the soil; in
  a model without snow as a prognostic variable, the influx is
-the liquid precipitation as a volume flux.
+the canopy throughfall (free throughfall + drainage), which equals
+`P_liq` when `NoCanopyInterception` is used.
 """
 function Soil.compute_liquid_influx(
     p,
     model,
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
 )
-    return p.drivers.P_liq
+    return p.canopy.interception.throughfall
 end
 
 function ClimaLand.Soil.sublimation_source(

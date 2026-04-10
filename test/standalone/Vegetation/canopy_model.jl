@@ -152,6 +152,7 @@ import ClimaParams
             :sif,
             :soil_moisture_stress,
             :biomass,
+            :interception,
             :turbulent_fluxes,
         )
         for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -628,6 +629,7 @@ end
         earth_param_set = LP.LandParameters(toml_dict)
 
         for radiative_transfer in radiative_transfer_models
+            interception = Canopy.NoCanopyInterception{FT}()
             args = (
                 autotrophic_respiration,
                 radiative_transfer,
@@ -638,6 +640,7 @@ end
                 energy,
                 sif,
                 biomass,
+                interception,
                 boundary_conditions,
                 earth_param_set,
                 domain,
@@ -694,6 +697,7 @@ end
                 :sif,
                 :soil_moisture_stress,
                 :biomass,
+                :interception,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -770,6 +774,7 @@ end
             :sif,
             :soil_moisture_stress,
             :biomass,
+            :interception,
             :turbulent_fluxes,
         )
         @test propertynames(p.canopy.hydraulics) == (:ψ, :fa_roots)

@@ -27,7 +27,8 @@ import ..Canopy:
     MedlynConductanceModel,
     PModelConductance,
     canopy_temperature,
-    ZhouOptimalLAIModel
+    ZhouOptimalLAIModel,
+    CanopyInterceptionModel
 import ..Domains:
     top_center_to_surface,
     AbstractDomain,

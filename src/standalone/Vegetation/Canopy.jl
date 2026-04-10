@@ -64,6 +64,7 @@ include("./radiation.jl")
 include("./solar_induced_fluorescence.jl")
 include("./pfts.jl")
 include("./canopy_energy.jl")
+include("./canopy_interception.jl")
 include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
@@ -631,7 +632,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, IM, B, PSE, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -651,6 +652,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, BM, B, PSE, D} <:
     sif::SIFM
     "Biomass parameterization, a canopy component model"
     biomass::BM
+    "Canopy interception model, a canopy component model"
+    interception::IM
     "Boundary Conditions"
     boundary_conditions::B
     "Shared parameters between component models"
@@ -670,6 +673,7 @@ end
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
         biomass::AbstractBiomassModel{FT},
+        interception = NoCanopyInterception{FT}(),
         boundary_conditions::B,
         earth_param_set::PSE,
         domain::Union{
@@ -693,6 +697,7 @@ function CanopyModel{FT}(;
     sif::AbstractSIFModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     biomass::AbstractBiomassModel{FT},
+    interception = NoCanopyInterception{FT}(),
     boundary_conditions::B,
     earth_param_set::PSE,
     domain::Union{
@@ -720,6 +725,7 @@ function CanopyModel{FT}(;
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -787,6 +793,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
+    interception = NoCanopyInterception{FT}(),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,
@@ -805,6 +812,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         biomass,
+        interception,
         sif,
     ]
         # For component models without parameters, skip the check
@@ -835,6 +843,7 @@ function CanopyModel{FT}(
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -886,6 +895,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
+    interception = NoCanopyInterception{FT}(),
     turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
         toml_dict,
         biomass.height,
@@ -904,6 +914,7 @@ function CanopyModel{FT}(
         hydraulics,
         energy,
         biomass,
+        interception,
         sif,
     ]
         # For component models without parameters, skip the check
@@ -932,6 +943,7 @@ function CanopyModel{FT}(
         energy,
         sif,
         biomass,
+        interception,
         boundary_conditions,
         earth_param_set,
         domain,
@@ -961,6 +973,7 @@ canopy_components(::CanopyModel) = (
     :sif,
     :soil_moisture_stress,
     :biomass,
+    :interception,
 )
 
 """
@@ -1167,6 +1180,9 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
         # This updates LAI; it must come first.
         update_biomass!(p, Y, t, canopy.biomass, canopy)
 
+        # Update interception: f_wet and throughfall (depends on LAI)
+        update_interception!(p, Y, t, canopy.interception, canopy)
+
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
         update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
 
@@ -1357,6 +1373,12 @@ function ClimaLand.total_liq_water_vol_per_area!(
         Y,
         p,
         t,
+    )
+    # Add intercepted water (stored on canopy surface)
+    total_liq_water_vol_per_area_interception!(
+        surface_field,
+        model.interception,
+        Y,
     )
 end
 

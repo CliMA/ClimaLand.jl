@@ -277,6 +277,7 @@ function ClimaLand.get_update_surface_humidity_function(
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    f_wet = p.canopy.interception.f_wet
     function update_q_vap_sfc_at_a_point(
         ζ,
         param_set,
@@ -290,11 +291,16 @@ function ClimaLand.get_update_surface_humidity_function(
         leaf_Cd,
         LAI,
         r_stomata_canopy,
+        f_wet,
     )
         FT = eltype(param_set)
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        # Dry fraction: series resistance (leaf boundary layer + stomata)
+        g_dry = g_stomata * g_leaf / (g_leaf + g_stomata)
+        # Wet fraction: leaf boundary layer only (no stomatal resistance)
+        # Blend dry and wet conductances (Deardorff 1978)
+        g_land = f_wet * g_leaf + (1 - f_wet) * g_dry
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
@@ -319,10 +325,18 @@ function ClimaLand.get_update_surface_humidity_function(
         return q_new
     end
     # Closure
-    update_q_vap_sfc_field(LAI_val, r_val, leaf_Cd) =
+    update_q_vap_sfc_field(LAI_val, r_val, leaf_Cd, f_wet_val) =
         (args...) ->
-            update_q_vap_sfc_at_a_point(args..., leaf_Cd, LAI_val, r_val)
-    return @. lazy(update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd))
+            update_q_vap_sfc_at_a_point(
+                args...,
+                leaf_Cd,
+                LAI_val,
+                r_val,
+                f_wet_val,
+            )
+    return @. lazy(
+        update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd, f_wet),
+    )
 end
 
 """
@@ -395,6 +409,7 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    f_wet = p.canopy.interception.f_wet
     function update_∂q_sfc∂T_at_a_point(
         u_star,
         g_h,
@@ -404,12 +419,14 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         leaf_Cd,
         LAI,
         r_stomata_canopy,
+        f_wet,
     )
         FT = eltype(earth_param_set)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         g_leaf = leaf_Cd * u_star * LAI
         g_stomata = 1 / r_stomata_canopy
-        g_land = g_stomata * g_leaf / (g_leaf + g_stomata)
+        g_dry = g_stomata * g_leaf / (g_leaf + g_stomata)
+        g_land = f_wet * g_leaf + (1 - f_wet) * g_dry
         ∂q_sfc∂q = (g_land / g_h) / (1 + g_land / g_h)
         return ∂q_sfc∂q * ClimaLand.partial_q_sat_partial_T(
             q_sat,
@@ -419,10 +436,17 @@ function ClimaLand.get_∂q_sfc∂T_function(model::CanopyModel, Y, p)
         )
     end
     # Closure
-    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd) =
-        (args...) ->
-            update_∂q_sfc∂T_at_a_point(args..., leaf_Cd, LAI_val, r_val)
-    return @. lazy(update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd))
+    update_∂q_sfc∂T_field(LAI_val, r_val, leaf_Cd, f_wet_val) =
+        (args...) -> update_∂q_sfc∂T_at_a_point(
+            args...,
+            leaf_Cd,
+            LAI_val,
+            r_val,
+            f_wet_val,
+        )
+    return @. lazy(
+        update_∂q_sfc∂T_field(LAI, r_stomata_canopy, Cd, f_wet),
+    )
 end
 
 """
