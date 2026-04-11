@@ -209,7 +209,7 @@ def parse_grib_file(path):
 
 def roll_lon(field, lon_idx):
     lon_dim = field.shape[lon_idx]
-    return np.roll(field, shift = lon_dim//2, axis = lon_idx)
+    return np.roll(field, shift = lon_dim//2, axis = lon_idx) #THIS IS WRONG AND SHOULD BE 179, not 180!
 
 def collect_monthly_data(year, month, data):
     _, nday = calendar.monthrange(year, month)
@@ -375,7 +375,8 @@ def plot_m(m):
         print('\n')
     print("\n\n")
 
-#request for the geopotential:
+#request for the era5-land monthly data:
+#dataset_id = "reanalysis-era5-land-monthly-means"
 #month_request = {
 #    "product_type": ["monthly_averaged_reanalysis"],
 #    "variable": [
@@ -407,6 +408,38 @@ def plot_m(m):
 #    "download_format": "unarchived"
 #}
 
+dataset_id = "reanalysis-era5-single-levels-monthly-means"
+request = {
+    "product_type": ["monthly_averaged_reanalysis"],
+    "year": [
+        "2000", "2001", "2002",
+        "2003", "2004", "2005",
+        "2006", "2007", "2008",
+        "2009", "2010", "2011",
+        "2012", "2013", "2014",
+        "2015", "2016", "2017",
+        "2018", "2019", "2020",
+    ],
+    "month": [
+        "01", "02", "03",
+        "04", "05", "06",
+        "07", "08", "09",
+        "10", "11", "12"
+    ],
+    "time": ["00:00"],
+    "data_format": "netcdf",
+    "download_format": "unarchived",
+    "grid"  : [1.0, 1.0],
+    "variable": [
+        "mean_surface_downward_long_wave_radiation_flux",
+        "mean_surface_downward_short_wave_radiation_flux",
+        "mean_surface_latent_heat_flux",
+        "mean_surface_net_long_wave_radiation_flux",
+        "mean_surface_net_short_wave_radiation_flux",
+        "mean_surface_sensible_heat_flux",
+    ]
+}
+
 #request for geopotential (did not regrid):
 #geo_request = {
 #    "variable": ["geopotential"],
@@ -426,7 +459,7 @@ def plot_m(m):
 def process_monthly_rad_data(path, output_dir):
     ds = xr.open_dataset(path)
     ds_data = {}
-    for var in ['slhf', 'ssr', 'sshf', 'ssrd']:
+    for var in ['avg_sdlwrf', 'avg_sdswrf', 'avg_slhtf', 'avg_snlwrf', 'avg_snswrf', 'avg_ishf']:
         data = ds[var].values
         ddims = list(ds[var].dims)
         lon_idx = ddims.index('longitude')
@@ -438,10 +471,12 @@ def process_monthly_rad_data(path, output_dir):
     dates = ds["valid_time"].values
     new_ds = xr.Dataset(
         data_vars={
-            "slhf": (["date", "lat", "lon"], ds_data['slhf']),
-            "ssr": (["date", "lat", "lon"], ds_data['ssr']),
-            "sshf": (["date", "lat", "lon",], ds_data['sshf']),
-            "ssrd": (["date", "lat", "lon"], ds_data['ssrd']),
+            "lhf": (["date", "lat", "lon"], ds_data['avg_slhtf']),
+            "swn": (["date", "lat", "lon"], ds_data['avg_snswrf']),
+            "shf": (["date", "lat", "lon",], ds_data['avg_ishf']),
+            "swd": (["date", "lat", "lon"], ds_data['avg_sdswrf']),
+            "lwn": (["date", "lat", "lon"], ds_data['avg_snlwrf']),
+            "lwd": (["date", "lat", "lon"], ds_data['avg_sdlwrf']),
         },
         coords={
             "date": dates,
@@ -450,7 +485,7 @@ def process_monthly_rad_data(path, output_dir):
         }
     )
     os.makedirs(output_dir, exist_ok=True)
-    new_ds.to_netcdf(output_dir + f"/era5_monthly_rad.nc")
+    new_ds.to_netcdf(output_dir + f"/era_means_monthly_rad.nc")
     ds.close()
 
 def process_month_folder(data_folder, output_folder):

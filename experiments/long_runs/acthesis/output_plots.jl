@@ -24,7 +24,8 @@ const me_outputs = combine_clima_data(my_param_dir)
 const old_outputs = combine_clima_data(old_param_dir)
 const others_outputs = combine_clima_data(htessel_param_dir)
 const clm5_outputs = NCDataset(joinpath(clm5_dir, "all_clm_outputs.nc"))
-const era5_rad_outputs = NCDataset(joinpath(obs_param_dir, "era5_monthly_rad.nc"))
+const era5_rad_outputs = NCDataset("/home/acharbon/my_clima_api_rad.nc/era_means_monthly_rad.nc") ##NCDataset("/home/acharbon/my_clima_api_rad.nc/era_means_monthly_rad.nc")
+#^^SW_up is SW_down - SW_net, LW_up is LW_down - LW_net 
 const era5_snow_outputs = NCDataset(joinpath(obs_param_dir, "all_snow_vars.nc"))
 era5_outputs(type) = type == :rad ? era5_rad_outputs : era5_snow_outputs
 
@@ -39,7 +40,7 @@ function glacial_mask(thresh)
     ret_mask = Matrix{Float64}(deepcopy(mask))
     ret_mask[ret_mask .== 1] .= 1.0
     ret_mask[ret_mask .< 1] .= NaN
-    #add the four bad points:
+    #add the four glacial points not in mask:
     for (p1, p2) in [(111, 57), (261, 133), (316, 153), (302, 158)]
         ret_mask[p1, p2] = NaN
     end
@@ -104,7 +105,7 @@ function get_agg_ids(dates::Vector{<:Union{Date, DateTime}}, period::Symbol, bin
         return year.(dates)
     elseif period == :snowyear
         bin && error("Cannot bin yearly data")
-        return year.(dates .+ Dates.Day(122))
+        return year.(dates .+ Dates.Day(122)) #Sept 1 of year 200X is snow year 200X + 1
     elseif period == :season
         mon = month.(dates)
         seas = fill(:DJF, length(dates))
@@ -145,10 +146,10 @@ function agg_time_indices(data::Array, dates::Vector{<:Union{Date, DateTime}}, p
         return data, dates
     else
         idset = sort(unique(agg_ids))
-        dat = [fill(NaN, nx, ny) for _ in 1:length(idset)] #Vector{Matrix}(undef, length(idset))
+        dat = [fill(NaN, nx, ny) for _ in 1:length(idset)]
         for (i, id) in enumerate(idset)
             idxs = findall(==(id), agg_ids)
-            dat[i] .= dat[i] = do_time_agg(agg, view(data, idxs, :, :)) #mapslices(agg, data[idxs, :, :], dims = 1)[1, :, :]
+            dat[i] .= dat[i] = do_time_agg(agg, view(data, idxs, :, :))
         end
         return stack(dat, dims = 1), idset
     end
@@ -157,7 +158,7 @@ end
 is_data(x) = !ismissing(x) && !isnan(x)
 function meanf(v)
     n, tot = 0, 0.0
-    for x in v
+    @inbounds for x in v
         if is_data(x)
             n += 1
             tot += x
@@ -166,9 +167,21 @@ function meanf(v)
     n == 0 && return NaN
     return tot/n
 end
+function wmeanf(v, w)
+    num, denom = 0.0, 0.0
+    @inbounds for i in eachindex(v, w)
+        xi = v[i]
+        wi = w[i]
+        if is_data(xi)
+            num += xi*wi
+            denom += wi
+        end
+    end
+    return denom == 0 ? NaN : num/denom
+end
 function stdf(v)
     n, mean, M2 = 0, 0.0, 0.0
-    for x in v
+    @inbounds for x in v
         if is_data(x)
             n += 1
             delta = x - mean
@@ -181,7 +194,7 @@ end
 function maxf(v)
     m = -Inf
     found = false
-    for x in v
+    @inbounds for x in v
         if is_data(x) && x > m
             m = x
             found = true
@@ -193,7 +206,7 @@ end
 function minf(v)
     m = Inf
     found = false
-    for x in v
+    @inbounds for x in v
         if is_data(x) && x < m
             m = x
             found = true
@@ -205,18 +218,18 @@ end
 function medianf(v)
     xs = [x for x in v if is_data(x)]
     isempty(xs) && return NaN
-    return median(xs)
+    return Statistics.median(xs)
 end
 function quantilef(v, q::AbstractFloat)
     xs = [x for x in v if is_data(x)]
     isempty(xs) && return NaN
-    return quantile(xs, q)
+    return Statistics.quantile(xs, q)
 end
 mae(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.(sim .- obs))
 rmse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.(sim .- obs)))
 bias(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(sim .- obs)
 mae_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.((sim .- obs) ./ obs))
-rmse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.(sim .- obs) ./ obs))
+rmse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.((sim .- obs) ./ obs)))
 bias_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf((sim .- obs) ./ obs)
 function nse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray})
     idxs = is_data.(sim) .& is_data.(obs)
@@ -285,10 +298,63 @@ function ssim(sim, obs; r=5, C1=1e-4, C2=9e-4)
     end
     return count == 0 ? NaN : total / count
 end
+function confusion_matrix(arr1, arr2, thresh = 0.5)
+    @assert size(arr1) == size(arr2)
+    T, LON, LAT = size(arr1)
+    cm = fill(0, T, 2, 2)
+    for i in 1:T
+        for j in 1:LON
+            for k in 1:LAT
+                x1 = arr1[i, j, k]
+                x2 = arr2[i, j, k]
+                if is_data(x1) && is_data(x2)
+                    if x1 >= thresh && x2 >= thresh
+                        cm[i, 1, 1] += 1
+                    elseif x1 >= thresh && x2 < thresh
+                        cm[i, 1, 2] += 1
+                    elseif x1 < thresh && x2 >= thresh
+                        cm[i, 2, 1] += 1
+                    else
+                        cm[i, 2, 2] += 1
+                    end
+                end
+            end
+        end
+    end
+    return cm
+end
+function binary_stats(sim, obs; thresh = 0.5)
+    cm = confusion_matrix(sim, obs, thresh)
+    out = Dict()
+    TP = view(cm, :, 1, 1)
+    FP = view(cm, :, 1, 2)
+    TN = view(cm, :, 2, 2)
+    FN = view(cm, :, 2, 1)
+    out["accuracy"] = Dict()
+    out["accuracy"]["vals"] = (TP .+ TN) ./ (TP .+ FP .+ TN .+ FN)
+    out["accuracy"]["stats"] = stat_spread(out["accuracy"]["vals"])
+
+    out["precision"] = Dict()
+    out["precision"]["vals"] = TP ./ (TP .+ FP)
+    out["precision"]["stats"] = stat_spread(out["precision"]["vals"])
+
+    out["recall"] = Dict()
+    out["recall"]["vals"] = TP ./ (TP .+ FN)
+    out["recall"]["stats"] = stat_spread(out["recall"]["vals"])
+
+    out["f1"] = Dict()
+    out["f1"]["vals"] = 2 .* TP ./ (2 .* TP .+ FP .+ FN)
+    out["f1"]["stats"] = stat_spread(out["f1"]["vals"])
+
+    out["csi"] = Dict()
+    out["csi"]["vals"] = TP ./ (TP .+ FN .+ FP)
+    out["csi"]["stats"] = stat_spread(out["csi"]["vals"])
+    return out
+end
 function time_stat(f, arr)
     T, LON, LAT = size(arr)
     out = fill(NaN, LON, LAT)
-    for i in 1:LON
+    @inbounds for i in 1:LON
         for j in 1:LAT
             out[i, j] = f(view(arr, :, i, j))
         end
@@ -300,7 +366,7 @@ function time_stat(f, arr1, arr2)
     T2, LON2, LAT2 = size(arr2)
     @assert (LAT1 == LAT2) && (LON1 == LON2) && (T1 == T2)
     out = fill(NaN, LON1, LAT1)
-    for i in 1:LON1
+    @inbounds for i in 1:LON1
         for j in 1:LAT1
             out[i, j] = f(view(arr1, :, i, j), view(arr2, :, i, j))
         end
@@ -310,7 +376,7 @@ end
 function space_stat(f, arr)
     T, LON, LAT = size(arr)
     out = fill(NaN, T)
-    for i in 1:T
+    @inbounds for i in 1:T
         out[i] = f(view(arr, i, :, :))
     end
     return out
@@ -320,14 +386,14 @@ function space_stat(f, arr1, arr2)
     T2, LON2, LAT2 = size(arr2)
     @assert (LAT1 == LAT2) && (LON1 == LON2) && (T1 == T2)
     out = fill(NaN, T1)
-    for i in 1:T1
+    @inbounds for i in 1:T1
         out[i] = f(view(arr1, i, :, :), view(arr2, i, :, :))
     end
     return out
 end
 
-function stat_spread(v)
-    return Dict(
+function stat_spread(v; globe_int = false, weights = nothing)
+    data = Dict(
         "min" => minf(v),
         "max" => maxf(v),
         "median" => medianf(v),
@@ -336,6 +402,12 @@ function stat_spread(v)
         "q75" => quantilef(v, 0.75),
         "std" => stdf(v)
     )
+    if globe_int
+        data["grid_mean"] = data["mean"]
+        delete!(data, "mean")
+        data["global_int_mean"] = wmeanf(v, weights)
+    end
+    return data
 end
 
 function make_nosnow_mask(; swe_thresh = 0.001, glacial_thresh = 0) #what threshold? I think this is fine? 0.004 to get rid of 0-peak
@@ -393,6 +465,11 @@ function depth_analysis(; args = snow_args)
             end
         end
     end
+    #diff between old and new model:
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, apply_mask(z.me .- z.old, mask))
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
     # split up these errors by season? by year? see katherine's suggested plot (gantt timeline chart or stacked range bar chart)
     # update your model with GPU fixes - should we start all from the era5Land initial state? (no just skip a burn-in year or start at the summer when snow disappears)
 
@@ -405,9 +482,8 @@ function swe_analysis(; args = snow_args)
     @info "Running SWE Analysis..."
     print("   Extracting data...\n")
     swe, dates = field_data(:swe, :swe, :SNOWICE_month; args = args)
-    swe.clm5 .= (swe.clm5 .+ get_data(args.clm5[:SNOWLIQ_month])) ./ 1000 #in kg/m^2
+    swe.clm5 .= (swe.clm5 .+ get_data(args.clm5[:SNOWLIQ_month])) ./ 1000
     calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
-    #make data mask: glacial mask, plus spots where there is no snow
     mask = make_nosnow_mask()
 
     swe_era_m = apply_mask(agg_time_indices(swe.era5, dates.era5, :month, meanf)[1], mask)
@@ -430,7 +506,7 @@ function swe_analysis(; args = snow_args)
             metrics[string(tag)]["IAV"] = Dict("stats" => stat_spread(std_yr), "vals" => std_yr)
         else
             m_tidx, era_tidx = Colon(), 71:130
-            swe_month = swe.clm5 #no annual because we don't have daily outputs to work with; no additional monthly agg step needed
+            swe_month = swe.clm5
         end
         for (stat_f, f) in calcs
             print("   Assessing $(string(f))...\n")
@@ -439,7 +515,7 @@ function swe_analysis(; args = snow_args)
             if tag != :me
                 print("    + hypothesis test\n")
                 my_vals = metrics["me"][string(f)]["vals"][:]
-                string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx]) #get the smaller temporal subset for comparison if this is clm5
+                string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx])
                 these_vals = calc_d[:]
                 filt = is_data.(my_vals) .& is_data.(these_vals)
                 test = HypothesisTests.SignedRankTest(disallowmissing(my_vals[filt]),disallowmissing(these_vals[filt]));
@@ -447,6 +523,10 @@ function swe_analysis(; args = snow_args)
             end
         end
     end
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, apply_mask(swe.me .- swe.old, mask))
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
     return metrics
 end
 
@@ -470,15 +550,15 @@ function snow_alb_analysis(; args = snow_args)
     
     #make/apply data masks: only want to compare data at places where scf is above some thresh (0.95?):
     scf, _ = field_data(:snowc, :snowc, :FSNO_EFF_month, args = args) #FNO or FNO_EFF?
-    scf.era5 ./= 100 #from 0-100 to 0-1
-    scf = (scf..., modis_1 = get_data(args.era5["scf_1"]), modis_2 = get_data(args.era5["scf_2"]))
+    scf.era5 ./= 100
+    scf = (scf..., modis_1 = get_data(args.era5["scf_1"]) ./ 100, modis_2 = get_data(args.era5["scf_2"]) ./ 100)
     masks = snow_albedo_masks(scf, scf_thresh = 0.95)
     for name in propertynames(snalb)
         snalb[name] .= apply_mask(snalb[name], masks[name])
     end
 
     snalb_era_m = agg_time_indices(snalb.era5, dates.era5, :month, meanf)[1]
-    modis_1_m = agg_time_indices(snalb.modis_1, dates.era5, :month, meanf)[1] #modis/era have same dates
+    modis_1_m = agg_time_indices(snalb.modis_1, dates.era5, :month, meanf)[1]
     modis_2_m = agg_time_indices(snalb.modis_2, dates.era5, :month, meanf)[1]
 
     metrics = Dict()
@@ -502,7 +582,7 @@ function snow_alb_analysis(; args = snow_args)
             metrics[string(tag)]["IAV"] = Dict("stats" => stat_spread(std_yr), "vals" => std_yr)
         else
             m_tidx, era_tidx = Colon(), 71:130
-            snalb_month = snalb.clm5 #no annual because we don't have daily outputs to work with; no additional monthly agg step needed
+            snalb_month = snalb.clm5
         end
         for (dlabel, compare_data) in [("era5", snalb_era_m), ("modis_1", modis_1_m), ("modis_2", modis_2_m)]
             metrics[string(tag)][string(dlabel)] = Dict()
@@ -513,7 +593,7 @@ function snow_alb_analysis(; args = snow_args)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
-                    string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx]) #get the smaller temporal subset for comparison if this is clm5
+                    string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx])
                     these_vals = calc_d[:]
                     filt = is_data.(my_vals) .& is_data.(these_vals)
                     test = HypothesisTests.SignedRankTest(disallowmissing(my_vals[filt]),disallowmissing(these_vals[filt]));
@@ -522,6 +602,10 @@ function snow_alb_analysis(; args = snow_args)
             end
         end
     end
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, snalb.me .- snalb.old)
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
     return metrics
 end
 
@@ -530,13 +614,13 @@ function surface_alb_analysis(; args = snow_args)
     print("   Extracting data...\n")
     swa, dates = field_data(:rpar, :swa, :ALB_HIST_month; args = args)
     swa = (swa..., modis_1 = get_data(args.era5["bsa_1"]), modis_2 = get_data(args.era5["bsa_2"]))
-    swa.me .= (swa.me .+ get_data(args.me[:rnir])) ./ 2 #get surface alb
+    swa.me .= (swa.me .+ get_data(args.me[:rnir])) ./ 2
 
     calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     #make/apply data masks: no mask for this one, full globe:
     swa_era_m = agg_time_indices(swa.era5, dates.era5, :month, meanf)[1]
-    modis_1_m = agg_time_indices(swa.modis_1, dates.era5, :month, meanf)[1] #modis/era have same dates
+    modis_1_m = agg_time_indices(swa.modis_1, dates.era5, :month, meanf)[1]
     modis_2_m = agg_time_indices(swa.modis_2, dates.era5, :month, meanf)[1]
 
     metrics = Dict()
@@ -560,7 +644,7 @@ function surface_alb_analysis(; args = snow_args)
             metrics[string(tag)]["IAV"] = Dict("stats" => stat_spread(std_yr), "vals" => std_yr)
         else
             m_tidx, era_tidx = Colon(), 71:130
-            swa_month = swa.clm5 #no annual because we don't have daily outputs to work with; no additional monthly agg step needed
+            swa_month = swa.clm5
         end
         for (dlabel, compare_data) in [("era5", swa_era_m), ("modis_1", modis_1_m), ("modis_2", modis_2_m)]
             metrics[string(tag)][string(dlabel)] = Dict()
@@ -571,7 +655,7 @@ function surface_alb_analysis(; args = snow_args)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
-                    string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx]) #get the smaller temporal subset for comparison if this is clm5
+                    string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx])
                     these_vals = calc_d[:]
                     filt = is_data.(my_vals) .& is_data.(these_vals)
                     test = HypothesisTests.SignedRankTest(disallowmissing(my_vals[filt]),disallowmissing(these_vals[filt]));
@@ -580,82 +664,61 @@ function surface_alb_analysis(; args = snow_args)
             end
         end
     end
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, swa.me .- swa.old)
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
     return metrics
 end
-
-function rad_data(rad_type; get_clm = false)
-    rad_names = (:swn, :ssr)
-    if rad_type == :lhf
-        rad_names = (:lhf, :slhf)
-    elseif rad_type == :shf
-        rad_names = (:shf, :sshf)
-    elseif rad_type == :lwn
-        rad_names = (:lwn, :SOMETHING) # YOU FORGOT TO DOWNLOAD IT DUMMY
-    elseif rad_type != :swn
+    
+function rad_data(rad_type)
+    if !(rad_type in [:swn, :lwn, :shf, :lhf])
         error("this rad type not defined")
     end
-    rad_me = get_data(me_outputs[rad_names[1]])
-    rad_old = get_data(old_outputs[rad_names[1]])
-    rad_others = get_data(others_outputs[rad_names[1]])
-    rad_era5 = get_data(era5_rad_outputs[rad_names[2]]) #need to divide rad_era5 by the number of seconds in each month...
-    data = (me = rad_me, old = rad_old, others = rad_others, era5 = rad_era5)
-    if get_clm
-        if rad_type == :swn
-            rad_clm = get_data(clm5_outputs[:SWdown_month]) .* get_data(1 .- clm5_outputs[:ALB_HIST_month])
-            return (data..., clm5 = rad_clm)
-        else
-            error("no clm rad for this rad type")
-        end
-    end
-    #need to return the dates too I think
-    return data
-end
+    rad_me = get_data(me_outputs[rad_type])
+    rad_old = get_data(old_outputs[rad_type])
+    rad_others = get_data(others_outputs[rad_type])
     
-# do we integrate or average for the fluxes specifically? only for whole-globe flux (no masked pixels)
+    rad_era5 = get_data(era5_rad_outputs[rad_type])
+    #need to multiply era5 lhf/shf data by -1 to get direction right
+    scale = rad_type in [:swn, :lwn] ? 1 : -1
+    data = (me = rad_me, old = rad_old, others = rad_others, era5 = scale .* rad_era5)
+    dates = (
+        clima = me_outputs[rad_type][:date][:],
+        era5 = era5_rad_outputs[rad_type][:date][:],
+    )
+    return data, dates
+end
+
+# save the SW_down/SW_up and LW_down/LW_up diagnostics to compare nets to data
+# Your comparison file is identical to within 3e-12 per element... the difference must manifest in the model outputs themselves!
 function radiation_analysis(rad_type)
-    # ERA5Land/CLM5/us - downward is positive, so the net is equal to (1 - surf_alb) * sw_down
-    # CLM5 net short -> need to multiply CLM5 by (1 - SURF_ALB) (no longwave)
-    # ERA5 -> need to divide by the number of seconds in that month to get the value
     @info "Running Flux Analysis ($(rad_type))..."
     
     print("   Extracting data...\n")
-    #=
-    swe, dates = field_data(:swe, :swe, :SNOWICE_month; args = args)
-    swe.clm5 .= (swe.clm5 .+ get_data(args.clm5[:SNOWLIQ_month])) ./ 1000 #in kg/m^2
+    rad, dates = rad_data(rad_type)
+    #no mask on this data, whole globe
+    #era5 already at monthly levels here, so no IAV from daily data
+    #we will need to weight the output matrices by the cosine of their latitutde, as grid cells have different areas on globe
+    grid_weights = collect(transpose(hcat([cosd.((-90:89)) for _ in 1:360]...)))
     calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
-    #make data mask: glacial mask, plus spots where there is no snow
-    mask = make_nosnow_mask()
-
-    swe_era_m = apply_mask(agg_time_indices(swe.era5, dates.era5, :month, meanf)[1], mask)
-    swe_era_a = apply_mask(agg_time_indices(swe.era5, dates.era5, :snowyear, maxf)[1], mask)
 
     metrics = Dict()
-    std_era = time_stat(stdf, swe_era_a)
-    metrics["era5"] = Dict("IAV" => Dict("stats" => stat_spread(std_era), "vals" => std_era))
-
-    for tag in [:me, :old, :others, :clm5]
+    for tag in [:me, :old, :others]
         print("  Analyzing Model of class :$(tag)\n")
         metrics[string(tag)] = Dict()
-        if tag != :clm5
-            m_tidx, era_tidx = 1:243, 1:243
-            print("   Aggregating Data...\n")
-            swe_month = apply_mask(agg_time_indices(swe[tag], dates.clima, :month, meanf)[1], mask)
-            swe_annual = apply_mask(agg_time_indices(swe[tag], dates.clima, :year, maxf)[1], mask)
-            std_yr = time_stat(stdf, swe_annual)
-            print("   Assessing IAV...\n")
-            metrics[string(tag)]["IAV"] = Dict("stats" => stat_spread(std_yr), "vals" => std_yr)
-        else
-            m_tidx, era_tidx = Colon(), 71:130
-            swe_month = swe.clm5 #no annual because we don't have daily outputs to work with; no additional monthly agg step needed
-        end
+        m_tidx, era_tidx = 1:243, 3:245
+        print("   Aggregating Data...\n")
+        rad_month = agg_time_indices(rad[tag], dates.clima, :month, meanf)[1]
+        #no IAV to compare to, leave out annual agg for this one
         for (stat_f, f) in calcs
             print("   Assessing $(string(f))...\n")
-            calc_d = stat_f(f, swe_month[m_tidx, :, :], swe_era_m[era_tidx, :, :])
-            metrics[string(tag)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+            calc_d = stat_f(f, rad_month[m_tidx, :, :], rad.era5[era_tidx, :, :])
+            sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true, weights = grid_weights) : stat_spread(calc_d)
+            metrics[string(tag)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
             if tag != :me
                 print("    + hypothesis test\n")
                 my_vals = metrics["me"][string(f)]["vals"][:]
-                string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx]) #get the smaller temporal subset for comparison if this is clm5
                 these_vals = calc_d[:]
                 filt = is_data.(my_vals) .& is_data.(these_vals)
                 test = HypothesisTests.SignedRankTest(disallowmissing(my_vals[filt]),disallowmissing(these_vals[filt]));
@@ -663,14 +726,94 @@ function radiation_analysis(rad_type)
             end
         end
     end
-    =#
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, rad.me .- rad.old)
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true, weights = grid_weights)
     return metrics
 end
 
+function scf_analysis(; args = snow_args)
+    @info "Running Snow Cover Analysis..."
+    print("   Extracting data...\n")
+    
+    scf, dates = field_data(:snowc, :snowc, :FSNO_EFF_month, args = args) #FNO or FNO_EFF?
+    scf.era5 ./= 100
+    scf = (scf..., modis_1 = get_data(args.era5["scf_1"]) ./ 100, modis_2 = get_data(args.era5["scf_2"]) ./ 100)
+    
+    mask = make_nosnow_mask()
+    calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
 
-# radiation/lhf/shf fluxes (one radiation function, probably)
-# scf
+    scf_era_m = apply_mask(agg_time_indices(scf.era5, dates.era5, :month, meanf)[1], mask)
+    modis_1_m = apply_mask(agg_time_indices(scf.modis_1, dates.era5, :month, meanf)[1], mask)
+    modis_2_m = apply_mask(agg_time_indices(scf.modis_2, dates.era5, :month, meanf)[1], mask)
+
+    metrics = Dict()
+    print("   Gathering IAV stats for all comparison data...\n")
+    for tag in [:era5, :modis_1, :modis_2]
+        scf_a = apply_mask(agg_time_indices(scf[tag], dates.era5, :snowyear, maxf)[1], mask)
+        std_d = time_stat(stdf, scf_a)
+        metrics[string(tag)] = Dict("IAV" => Dict("stats" => stat_spread(std_d), "vals" => std_d))
+    end
+
+    for tag in [:me, :old, :others, :clm5]
+        print("  Analyzing Model of class :$(tag)\n")
+        metrics[string(tag)] = Dict()
+        if tag != :clm5
+            m_tidx, era_tidx = 1:243, 1:243
+            print("   Aggregating Data...\n")
+            scf_month = apply_mask(agg_time_indices(scf[tag], dates.clima, :month, meanf)[1], mask)
+            scf_annual = apply_mask(agg_time_indices(scf[tag], dates.clima, :year, maxf)[1], mask)
+            std_yr = time_stat(stdf, scf_annual)
+            print("   Assessing IAV...\n")
+            metrics[string(tag)]["IAV"] = Dict("stats" => stat_spread(std_yr), "vals" => std_yr)
+        else
+            m_tidx, era_tidx = Colon(), 71:130
+            scf_month = scf.clm5
+        end
+        for (dlabel, compare_data) in [("era5", scf_era_m), ("modis_1", modis_1_m), ("modis_2", modis_2_m)]
+            metrics[string(tag)][string(dlabel)] = Dict()
+            for (stat_f, f) in calcs
+                print("   Assessing $(string(f)) in $(dlabel)...\n")
+                calc_d = stat_f(f, scf_month[m_tidx, :, :], compare_data[era_tidx, :, :])
+                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+                if tag != :me
+                    print("    + hypothesis test\n")
+                    my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
+                    string(stat_f) == "space_stat" && (my_vals = my_vals[era_tidx])
+                    these_vals = calc_d[:]
+                    filt = is_data.(my_vals) .& is_data.(these_vals)
+                    test = HypothesisTests.SignedRankTest(disallowmissing(my_vals[filt]),disallowmissing(these_vals[filt]));
+                    metrics[string(tag)][string(dlabel)][string(f)]["p"] = pvalue(test)
+                end
+            end
+            print("   Getting binary statistics...\n")
+            metrics[string(tag)][string(dlabel)]["binary"] = binary_stats(scf_month[m_tidx, :, :], compare_data[era_tidx, :, :])
+            if tag != :me
+                print("    + hypothesis tests\n")
+                for stat in keys(metrics[string(tag)][string(dlabel)]["binary"])
+                    my_vals = metrics["me"][string(dlabel)]["binary"][stat]["vals"][era_tidx]
+                    these_vals = metrics[string(tag)][string(dlabel)]["binary"][stat]["vals"][:]
+                    test = HypothesisTests.SignedRankTest(my_vals, these_vals);
+                    metrics[string(tag)][string(dlabel)]["binary"][stat]["p"] = pvalue(test)
+                end
+            end
+        end
+    end
+    metrics["upgrade_diff"] = Dict()
+    model_diff = time_stat(meanf, apply_mask(scf.me .- scf.old, mask))
+    metrics["upgrade_diff"]["vals"] = model_diff
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    return metrics
+end
+
 # phenology
+function phenology_analysis(; args = snow_args)
+    #use Z threshold to determine snow presence...how much? how many cm? 5cm?
+
+end
+
+
 # metaanalyses plots/calculations
 # siteplots/stats
 
