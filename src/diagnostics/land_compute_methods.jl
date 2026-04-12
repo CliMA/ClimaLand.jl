@@ -621,6 +621,34 @@ end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
 
+# Soil CO2 in ppm (for comparison with NEON observations)
+# Converts air-equivalent CO2 concentration to ppm using ideal gas law:
+# ppm = (n_CO2 / n_air) × 10^6 = CO2_air_eq * R * T / (M_C * P) × 10^6
+function compute_soilco2_ppm!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    params = land_model.soilco2.parameters
+    M_C = FT(params.M_C)
+    R = FT(LP.gas_constant(params.earth_param_set))
+
+    CO2_air_eq = p.soilco2.CO2_air_eq  # kg C / m³ air-equivalent
+    T_soil = p.soilco2.T               # K
+    P_sfc = p.drivers.P                # Pa
+
+    if isnothing(out)
+        out = zeros(axes(CO2_air_eq))
+        fill!(field_values(out), NaN)
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+        return out
+    else
+        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+    end
+end
+
 ## Other ##
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
 @diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
@@ -721,9 +749,18 @@ function compute_total_runoff!(
         out = zeros(soil.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
     end
-    out .=
-        Runoff.get_surface_runoff(soil.boundary_conditions.top.runoff, Y, p) .+
-        Runoff.get_subsurface_runoff(soil.boundary_conditions.top.runoff, Y, p)
+    runoff = soil.boundary_conditions.top.runoff
+    surface = Runoff.get_surface_runoff(runoff, Y, p)
+    subsurface = Runoff.get_subsurface_runoff(runoff, Y, p)
+    if !isnothing(surface) && !isnothing(subsurface)
+        out .= surface .+ subsurface
+    elseif !isnothing(surface)
+        out .= surface
+    elseif !isnothing(subsurface)
+        out .= subsurface
+    else
+        fill!(out, 0)
+    end
     return out
 end
 

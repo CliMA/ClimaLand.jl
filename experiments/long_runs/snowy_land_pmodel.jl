@@ -101,8 +101,13 @@ function setup_model(
     # Use the soil moisture stress function based on soil moisture only
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass =
-        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
+    maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
+    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        maxLAI,
+        toml_dict,
+    )
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
