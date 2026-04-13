@@ -22,7 +22,7 @@ import ClimaLand.LandSimVis as LandSimVis
 const FT = Float64
 toml_dict = LP.create_toml_dict(FT)
 climaland_dir = pkgdir(ClimaLand)
-prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+prognostic_land_components = (:canopy, :soil, :soilco2)#
 
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
@@ -33,47 +33,6 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 (; time_offset, lat, long) =
     FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
-(;
-    soil_ν,
-    soil_K_sat,
-    soil_S_s,
-    soil_vg_n,
-    soil_vg_α,
-    θ_r,
-    ν_ss_quartz,
-    ν_ss_om,
-    ν_ss_gravel,
-    z_0m_soil,
-    z_0b_soil,
-    soil_ϵ,
-    soil_α_PAR,
-    soil_α_NIR,
-    Ω,
-    χl,
-    α_PAR_leaf,
-    λ_γ_PAR,
-    τ_PAR_leaf,
-    α_NIR_leaf,
-    τ_NIR_leaf,
-    ϵ_canopy,
-    ac_canopy,
-    g1,
-    Drel,
-    g0,
-    Vcmax25,
-    SAI,
-    f_root_to_shoot,
-    K_sat_plant,
-    ψ63,
-    Weibull_param,
-    a,
-    conductivity_model,
-    retention_model,
-    plant_ν,
-    plant_S_s,
-    rooting_depth,
-    h_canopy,
-) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
 land_domain = Column(;
@@ -104,62 +63,8 @@ dt = Float64(450) # 7.5 minutes
     FT,
 )
 
-
-# Now we set up the model. For the soil model, we pick
-# a model type and package up parameters.
-soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
-
 forcing = (; atmos, radiation)
-retention_parameters = (;
-    ν = soil_ν,
-    θ_r,
-    K_sat = soil_K_sat,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-)
-composition_parameters = (; ν_ss_om, ν_ss_quartz, ν_ss_gravel)
-
-soil = Soil.EnergyHydrology{FT}(
-    soil_domain,
-    forcing,
-    toml_dict;
-    prognostic_land_components,
-    additional_sources = (ClimaLand.RootExtraction{FT}(),),
-    albedo = soil_albedo,
-    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
-    retention_parameters,
-    composition_parameters,
-    S_s = soil_S_s,
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
-)
-
-# Soil microbes model
-co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
-drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
-
-# Now we set up the canopy model, one component at a time.
-# Set up radiative transfer
-radiation_parameters = (;
-    Ω,
-    G_Function = CLMGFunction(χl),
-    α_PAR_leaf,
-    τ_PAR_leaf,
-    α_NIR_leaf,
-    τ_NIR_leaf,
-)
-radiative_transfer = Canopy.TwoStreamModel{FT}(
-    surface_domain,
-    toml_dict;
-    radiation_parameters,
-    ϵ_canopy,
-)
-
+soil = EnergyHydrology{FT}(land_domain, forcing, toml_dict; prognostic_land_components,            additional_sources = (ClimaLand.RootExtraction{FT}(),));
 # Set up conductance
 conductance = PModelConductance{FT}(toml_dict)
 
@@ -168,67 +73,38 @@ fractional_c3 = FT(1)
 photosynthesis = PModel{FT}(surface_domain, toml_dict; fractional_c3)
 
 # Set up soil moisture stress using soil retention parameters
-soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
+soil_moisture_stress = ExperimentalMSModel{FT}(
     land_domain,
     toml_dict;
-    soil_params = retention_parameters,
+    soil_params = soil.parameters
 )
 
 # Set up plant hydraulics
 # Get the maximum LAI at this site over the first year of the simulation
 maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
-RAI = maxLAI * f_root_to_shoot
-hydraulics = Canopy.PlantHydraulicsModel{FT}(
-    surface_domain,
-    toml_dict;
-    ν = plant_ν,
-    S_s = plant_S_s,
-    conductivity_model,
-    retention_model,
-)
-biomass = Canopy.ZhouOptimalLAIModel{FT}(
-    surface_domain,
-    toml_dict;
-    SAI,
-    RAI,
-    rooting_depth,
-    height = h_canopy,
-)
-
-# Set up the energy model
-energy = Canopy.BigLeafEnergyModel{FT}(toml_dict; ac_canopy)
-
+SAI = FT(0)
+RAI = maxLAI * FT(3.5)
+surface_space = land_domain.space.surface;
+LAI =
+    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+biomass =
+    Canopy.PrescribedBiomassModel{FT}(land_domain, LAI, toml_dict; SAI, RAI)
 ground = ClimaLand.PrognosticGroundConditions{FT}()
 canopy_forcing = (; atmos, radiation, ground)
-
-# Combine the components into a CanopyModel
 canopy = Canopy.CanopyModel{FT}(
     surface_domain,
     canopy_forcing,
     toml_dict;
     prognostic_land_components,
-    radiative_transfer,
     photosynthesis,
     conductance,
     soil_moisture_stress,
-    hydraulics,
-    energy,
     biomass,
-)
-
-# Snow model
-snow = Snow.SnowModel(
-    FT,
-    surface_domain,
-    forcing,
-    toml_dict,
-    dt;
-    prognostic_land_components,
-)
+);
 
 # Integrated plant hydraulics, soil, and snow model
-lake = nothing
-land = LandModel{FT}(canopy, snow, soil, soilco2, lake);
+
+land = SoilCanopyModel{FT}(forcing, LAI, toml_dict, land_domain; canopy, soil);
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
@@ -242,13 +118,9 @@ output_vars = [
     "lhf",
     "swu",
     "lwu",
+    "msf",
     "swc",
-    "swe",
     "tsoil",
-    "sco2",
-    "so2",
-    "soc",
-    "scms",
     "lai",
 ]
 diags = ClimaLand.default_diagnostics(
@@ -270,7 +142,7 @@ simulation = LandSimulation(
     diagnostics = diags,
 )
 
-@time solve!(simulation)
+@time solve!(simulation);
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 savedir = joinpath(
@@ -292,7 +164,8 @@ LandSimVis.make_timeseries(
     diags,
     start_date;
     savedir,
-    short_names = ["swc", "tsoil", "swe", "lai"],
+    short_names = ["swc", "tsoil", "lai", "msf", "gpp", "lhf", "shf", "swu", "lwu"],
     spinup_date = start_date + Day(20),
     comparison_data,
 )
+

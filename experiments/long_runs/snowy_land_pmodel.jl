@@ -100,7 +100,7 @@ function setup_model(
     conductance = PModelConductance{FT}(toml_dict)
     # Use the soil moisture stress function based on soil moisture only
     soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
+        ClimaLand.Canopy.ExperimentalMSModel{FT}(domain, toml_dict)
     biomass =
         ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(

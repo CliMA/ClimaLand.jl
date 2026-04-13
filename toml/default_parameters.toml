@@ -1,4 +1,10 @@
 # Moisture stress models
+[experimental_moisture_stress_c]
+value = 1.2
+type = "float"
+description = "unitless"
+tag = "SoilMoistureStress"
+
 [moisture_stress_c]
 value = 0.27
 type = "float"
@@ -33,7 +39,7 @@ tag = "TOPMODELRunoff"
 # Big leaf energy parameters
 
 ["ac_canopy"]
-value = 2.5e3
+value = 2.5e2
 type = "float"
 description = "Specific heat per emitting area [J/m^2/K]"
 tag = "BigLeafEnergyModel"

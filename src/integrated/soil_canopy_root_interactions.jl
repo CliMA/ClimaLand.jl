@@ -201,10 +201,8 @@ function update_experimental_soil_moisture_stress!(
     model,
     canopy,
 )
-    (; S_high, S_low, ν, θ_r, c) = model
-    FT = eltype(p.soil.ψ)
-    S_l = @. lazy(min(p.soil.ψ, FT(0)))#(p.soil.θ_l - θ_r)/(ν - θ_r))
-    z = ClimaCore.Fields.coordinate_field(axes(p.soil.θ_l)).z
+    (; ψ_crit, ν, θ_r, hydrology_cm, c) = model
+    z = ClimaCore.Fields.coordinate_field(axes(p.soil.θ_l)).z 
     # normalized distribution for root density
     norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
     # for soilcanopy and land models.
@@ -213,7 +211,7 @@ function update_experimental_soil_moisture_stress!(
     # compute the root zone-averaged βm
     ClimaCore.Operators.column_integral_definite!(norm, root_dist)
     # per soil element
-    βm = @. lazy(Canopy.compute_experimental_moisture_stress(S_high, S_low, c, S_l))
+    βm = @. lazy(Canopy.compute_experimental_moisture_stress(ψ_crit, ClimaLand.Soil.matric_potential(hydrology_cm, ClimaLand.Soil.effective_saturation(ν, p.soil.θ_l, θ_r)), c))
     βm_root_distribution = @. lazy(
         βm * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
     )

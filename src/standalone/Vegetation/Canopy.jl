@@ -141,7 +141,7 @@ end
 function ExperimentalMSModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    c::FT = toml_dict["moisture_stress_c"],
+    c::FT = toml_dict["experimental_moisture_stress_c"],
     soil_params = Soil.soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
@@ -152,16 +152,10 @@ function ExperimentalMSModel{FT}(
             ArgumentError("Curvature parameter `c` must be greater than zero"),
         )
     end
-    (; α, m, n, S_c) = soil_params.hydrology_cm
-    (;ν, θ_r) = soil_params
-    x = @. (2*n-1)/n
-    y = @. (n-1)/n
-    αΔh_cap = @. 1/(n-1)*x^x*y^(-y)
-    αh_b = @. y^(-x) - αΔh_cap
-    S_high = @. (1 + αh_b^n)^(-m)
-    S_low = @. -y^(-x)/ α# soil_params.hydrology_cm.S_c
-
-    return ExperimentalMSModel{FT}(; S_high, S_low, ν, θ_r, c)
+    (; ν, θ_r, hydrology_cm) = soil_params
+    (; α, m, n, S_c) = hydrology_cm
+    ψ_crit = @. -(S_c^(-1/m)-1)^(1/n)/α # ψ
+    return ExperimentalMSModel{FT}(; ψ_crit, ν, θ_r, hydrology_cm, c)
 end
 
 """
