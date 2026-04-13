@@ -301,17 +301,13 @@ function update_biomass!(
     component::PrescribedBiomassModel{FT},
     canopy,
 ) where {FT}
-    (; LAI) = component.plant_area_index
+    (; LAI, SAI, RAI) = component.plant_area_index
+    @. p.canopy.biomass.area_index.stem = SAI
+    @. p.canopy.biomass.area_index.root = RAI
     evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
-end
-
-function set_historical_cache!(p, Y0, model::PrescribedBiomassModel, canopy)
-    (; SAI, RAI) = model.plant_area_index
-    @. p.canopy.biomass.area_index.stem = SAI
-    @. p.canopy.biomass.area_index.root = RAI
 end
 
 """
@@ -518,6 +514,9 @@ function update_biomass!(
 ) where {FT}
     # LAI is updated via the callback, not here
     # Apply clipping to LAI (same as PrescribedBiomassModel)
+    (; SAI, RAI) = component
+    @. p.canopy.biomass.area_index.stem = SAI
+    @. p.canopy.biomass.area_index.root = RAI
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
@@ -552,10 +551,6 @@ function set_historical_cache!(
     canopy;
     A0_daily = zero(eltype(model.parameters)),
 )
-    (; SAI, RAI) = component
-    @. p.canopy.biomass.area_index.stem = SAI
-    @. p.canopy.biomass.area_index.root = RAI
-
     parameters = model.parameters
     optimal_lai_inputs = model.optimal_lai_inputs
     FT = eltype(parameters)

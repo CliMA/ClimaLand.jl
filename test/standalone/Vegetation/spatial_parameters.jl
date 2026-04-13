@@ -171,7 +171,4 @@ end
             )
         )
     )
-    ClimaLand.Canopy.set_historical_cache!(p, nothing, biomass, nothing)
-    @test p.canopy.biomass.area_index.root == biomass.plant_area_index.RAI
-    @test p.canopy.biomass.area_index.stem == biomass.plant_area_index.SAI
 end

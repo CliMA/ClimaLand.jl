@@ -1441,8 +1441,8 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
-        set_historical_cache!(p, Y0, model.photosynthesis, model)
         set_historical_cache!(p, Y0, model.biomass, model)
+        set_historical_cache!(p, Y0, model.photosynthesis, model)
     end
     return set_initial_cache!
 end
