@@ -378,9 +378,9 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         )
 
         # CO₂ diffusion using air-equivalent concentration for stable saturated soil behavior
-        # Multiply D by θ_a because diffusion only occurs through air-filled pores
+        # D from Ryan et al. already accounts for air-filled porosity via tortuosity
         @. dY.soilco2.CO2 =
-            -divf2c_C(-interpc2f(p.soilco2.D * p.soilco2.θ_a) * gradc2f_C(p.soilco2.CO2_air_eq))
+            -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(p.soilco2.CO2_air_eq))
 
         FT = eltype(Y.soilco2.CO2)
         T_soil = p.soilco2.T
@@ -388,11 +388,11 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         R = FT(LP.gas_constant(model.parameters.earth_param_set))
         M_O2 = FT(model.parameters.M_O2)
 
-        # O₂ diffusion: compute ∇·[D_O2 * θ_a * ∇ρ_O2] on mass concentration,
+        # O₂ diffusion: compute ∇·[D_O2 * ∇ρ_O2] on mass concentration,
         # then convert to O2_f tendency using θ_eff_o2 for stability in saturated soils
         @. dY.soilco2.O2_f =
             -divf2c_O2(
-                -interpc2f(p.soilco2.D_o2 * p.soilco2.θ_a) *
+                -interpc2f(p.soilco2.D_o2) *
                 gradc2f_O2(p.soilco2.O2),
             ) *
             R *
@@ -640,12 +640,16 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
 
         # Compute air-equivalent CO2 concentration for diffusion
         M_C = FT(params.M_C)
+        # Clamp negative CO2 to zero (can occur from numerical diffusion)
+        @. Y.soilco2.CO2 = max(Y.soilco2.CO2, FT(0))
         @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
 
-        # NaN safety: mark physically impossible CO2 values
-        # Negative CO2 or CO2_air_eq > 100,000 ppm (= 0.1 mol/mol) → NaN
+        # Safety guard: cap CO2_air_eq at 10 million ppm equivalent.
+        # Values above this indicate numerical blow-up, not physical conditions.
+        # 10M ppm = 10 (mol/mol) → CO2_air_eq_max = 10 * M_C * P / (R * T)
+        CO2_air_eq_max = @. FT(10) * M_C * P_sfc / (R * T_soil)
         @. p.soilco2.CO2_air_eq = ifelse(
-            Y.soilco2.CO2 < FT(0) || p.soilco2.CO2_air_eq > FT(0.1) * M_C * P_sfc / (R * T_soil),
+            p.soilco2.CO2_air_eq > CO2_air_eq_max,
             FT(NaN),
             p.soilco2.CO2_air_eq,
         )
@@ -657,7 +661,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         @. p.soilco2.O2_avail =
             o2_availability(Y.soilco2.O2_f, p.soilco2.θ_a, D_oa)
 
-        # NaN safety: O2_f must be in [0, 1]
+        # Safety guard: O2_f must be in [0, 1]
         @. p.soilco2.O2 = ifelse(
             Y.soilco2.O2_f < FT(0) || Y.soilco2.O2_f > FT(1),
             FT(NaN),
@@ -755,11 +759,9 @@ function ClimaLand.boundary_flux!(
 
     # We need to project center values onto the face space
     D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
-    θ_a_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
     C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
-    # Multiply D by θ_a because diffusion only occurs through air-filled pores
-    @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_bc, C_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
 """
@@ -790,11 +792,9 @@ function ClimaLand.boundary_flux!(
 )
     FT = eltype(Δz)
     D_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.D)
-    θ_a_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.θ_a)
     C_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
-    # Multiply D by θ_a because diffusion only occurs through air-filled pores
-    @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_c, C_bc, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_c, C_bc, Δz)
 end
 
 """
@@ -845,7 +845,6 @@ function ClimaLand.boundary_flux!(
     p::NamedTuple,
     t,
 )
-    θ_a_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
     D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
     C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
     T_soil_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.T)
@@ -853,8 +852,7 @@ function ClimaLand.boundary_flux!(
     R = bc.R
     M_C = bc.M_C
     C_bc = @. p.drivers.c_co2 * P_sfc * M_C / (R * T_soil_top)
-    # Multiply D by θ_a because diffusion only occurs through air-filled pores
-    @. bc_field = ClimaLand.diffusive_flux(D_c * θ_a_c, C_bc, C_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
 """
@@ -907,7 +905,6 @@ function ClimaLand.boundary_flux!(
     t,
 )
     FT = eltype(Δz)
-    θ_a_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
     D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
     O2_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.O2)  # Current O2 mass concentration in air at top (kg O2/m³ air)
 
@@ -919,7 +916,7 @@ function ClimaLand.boundary_flux!(
     O2_f_atm = bc.O2_f_atm
 
     @. bc_field = ClimaLand.diffusive_flux(
-        D_o2 * θ_a_top,
+        D_o2,
         O2_f_atm * P_sfc * M_O2 / (R * T_soil_top),
         O2_c,
         Δz,
