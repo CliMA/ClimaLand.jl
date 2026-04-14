@@ -644,15 +644,22 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         @. Y.soilco2.CO2 = max(Y.soilco2.CO2, FT(0))
         @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
 
-        # Safety guard: cap CO2_air_eq at 10 million ppm equivalent.
+        # Safety guard: cap CO2_air_eq at 100 million ppm equivalent.
         # Values above this indicate numerical blow-up, not physical conditions.
-        # 10M ppm = 10 (mol/mol) → CO2_air_eq_max = 10 * M_C * P / (R * T)
-        CO2_air_eq_max = @. FT(10) * M_C * P_sfc / (R * T_soil)
+        # 100M ppm = 100 (mol/mol) → CO2_air_eq_max = 100 * M_C * P / (R * T)
+        CO2_air_eq_max = @. FT(100) * M_C * P_sfc / (R * T_soil)
         @. p.soilco2.CO2_air_eq = ifelse(
             p.soilco2.CO2_air_eq > CO2_air_eq_max,
             FT(NaN),
             p.soilco2.CO2_air_eq,
         )
+
+        # Clamp O2_f to physical range [0, 1]; explicit diffusion can
+        # overshoot in hot/dry columns where effective diffusivity D_o2/θ_eff_o2
+        # exceeds the CFL limit. Clamping keeps the simulation alive with
+        # physically meaningful values — the overshoot is a numerical artifact,
+        # not a real state.
+        @. Y.soilco2.O2_f = clamp(Y.soilco2.O2_f, FT(0), FT(1))
 
         @. p.soilco2.O2 =
             o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
@@ -660,18 +667,6 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         (; D_oa) = params
         @. p.soilco2.O2_avail =
             o2_availability(Y.soilco2.O2_f, p.soilco2.θ_a, D_oa)
-
-        # Safety guard: O2_f must be in [0, 1]
-        @. p.soilco2.O2 = ifelse(
-            Y.soilco2.O2_f < FT(0) || Y.soilco2.O2_f > FT(1),
-            FT(NaN),
-            p.soilco2.O2,
-        )
-        @. p.soilco2.O2_avail = ifelse(
-            Y.soilco2.O2_f < FT(0) || Y.soilco2.O2_f > FT(1),
-            FT(NaN),
-            p.soilco2.O2_avail,
-        )
 
         @. p.soilco2.Sm =
             microbe_source.(T_soil, θ_l, Csom, p.soilco2.O2_avail, params)

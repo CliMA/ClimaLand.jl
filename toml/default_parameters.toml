@@ -589,13 +589,13 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_pre_exponential_factor"]
-value = 23835.0
+value = 0.087
 type = "float"
 description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
-value = 61000.0
+value = 30000.0
 type = "float"
 description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
