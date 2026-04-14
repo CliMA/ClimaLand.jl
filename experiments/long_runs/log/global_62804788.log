@@ -1,0 +1,31 @@
+Starting job on hpc-sm-01-17.cm.cluster
+Time: Fri Apr 10 02:10:03 PM PDT 2026
+Loading cuda/12.9.0-none-none-pfmzfdv
+  Loading requirement: libiconv/1.17-gcc-11.3.1-h3jdn2x
+    xz/5.4.1-gcc-11.3.1-y32p7p3 zlib/1.2.13-gcc-11.3.1-dwcx77k
+    libxml2/2.10.3-gcc-11.3.1-m4mk5ab
+Loading climacommon/2026_02_18
+  Loading requirement: climaauth/2025_07_30 julia-preferences/2024_02_20
+    nsight-systems/2025.3.1
+CLIMACOMMS_DEVICE=CUDA
+Fri Apr 10 14:10:04 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.126.16             Driver Version: 580.126.16     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H200                    On  |   00000000:A6:00.0 Off |                    0 |
+| N/A   24C    P0             73W /  700W |       0MiB / 143771MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Finished at Fri Apr 10 02:24:02 PM PDT 2026

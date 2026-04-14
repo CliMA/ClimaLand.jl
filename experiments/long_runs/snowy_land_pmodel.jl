@@ -81,6 +81,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true, #TODO: remove if run on CliMA
     )
     forcing = (; atmos, radiation)
 
@@ -120,6 +121,7 @@ function setup_model(
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    #horz_degree_res = FT(1.0)  # placeholder for column run
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     snow = Snow.SnowModel(
         FT,
@@ -132,6 +134,55 @@ function setup_model(
         scf,
     )
 
+    # ── Soil model with custom albedo ───────────────────────────────────
+    # Load silt/clay from custom SoilGrids file for OfflineLinearSoilAlbedo
+    raw_comp = Soil.soil_composition_parameters(
+        domain.space.subsurface,
+        FT;
+        load_silt_clay = true,
+        path = "/resnick/groups/esm/xwu/ClimaArtifacts/soilgrids/soilgrids_lowres/soil_solid_vol_fractions_soilgrids_lowres.nc",
+    )
+    #ν_ss_silt_val = FT(parent(ClimaLand.Domains.top_center_to_surface(raw_comp.ν_ss_silt))[1])
+    #ν_ss_clay_val = FT(parent(ClimaLand.Domains.top_center_to_surface(raw_comp.ν_ss_clay))[1])
+    
+    ν_ss_silt_field = raw_comp.ν_ss_silt   # subsurface Field
+    ν_ss_clay_field = raw_comp.ν_ss_clay   # subsurface Field
+
+    # WSA
+    α_soil = Soil.OfflineLinearSoilAlbedo{FT}(;
+        intercept_BSA_vis = FT(-2.917),
+        intercept_BSA_nir = FT(-1.384),
+        coef_ν_BSA_vis = FT(-0.142),
+        coef_ν_BSA_nir = FT(-0.142),
+        coef_om_BSA_vis = FT(-0.244),
+        coef_om_BSA_nir = FT(-0.032),
+        coef_cf_BSA_vis = FT(0.106),
+        coef_cf_BSA_nir = FT(0.032),
+        coef_sand_BSA_vis = FT(0.103),
+        coef_sand_BSA_nir = FT(0.124),
+        coef_clay_BSA_vis = FT(0.235),
+        coef_clay_BSA_nir = FT(0.267),
+        coef_silt_BSA_vis = FT(0.262),
+        coef_silt_BSA_nir = FT(0.100),
+        coef_n_BSA_vis = FT(3.272),
+        coef_n_BSA_nir = FT(4.211),
+        coef_θ_BSA_vis = FT(-0.026),
+        coef_θ_BSA_nir = FT(-0.016),
+        ν_ss_silt = ν_ss_silt_field,
+        ν_ss_clay = ν_ss_clay_field,
+        α_min = FT(0.00),
+        α_max = FT(1.00),
+    )    
+
+    soil = Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        albedo = α_soil,
+    )
+
     # Construct the land model with all default components except for snow
     land = LandModel{FT}(
         forcing,
@@ -142,6 +193,7 @@ function setup_model(
         prognostic_land_components,
         snow,
         canopy,
+        soil,
     )
     return land
 end
@@ -156,6 +208,11 @@ stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+#longlat = FT.((25, 25))
+#zlim = FT.((-15, 0))
+#nelements = 15
+#dz_tuple = FT.((3, 0.05))
+#domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
     override_params_path = "toml/uncalibrated_parameters.toml"
@@ -164,8 +221,15 @@ else
     toml_dict = LP.create_toml_dict(FT)
 end
 
+# Add albedo diagnostics before LandSimulation
+saveat_albedo = Second(3600)  # hourly saves to avoid memory issues
+saving_cb = ClimaLand.NonInterpSavingCallback(start_date, stop_date, saveat_albedo)
+sv = saving_cb.affect!.saved_values
+
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+# Modify LandSimulation to include the callback
+#simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, user_callbacks = (saving_cb,))
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
@@ -185,3 +249,78 @@ if LONGER_RUN
         joinpath(root_path, "global_diagnostics", "ILAMB_diagnostics"),
     )
 end
+
+# ── Column visualization ────────────────────────────────────────────────
+#using CairoMakie
+
+#dw = simulation.diagnostics[1].output_writer
+#diag_dict = dw.dict
+#diag_keys = collect(keys(diag_dict))
+#@info "Available diagnostics: $diag_keys"
+
+#function extract_timeseries(diag_dict, short_name)
+#    if !haskey(diag_dict, short_name)
+#        @warn "Diagnostic '$short_name' not found"
+#        return nothing, nothing
+#    end
+#    od = diag_dict[short_name]
+#    times = collect(keys(od))
+#    days = [Float64(t.counter) / 86400 for t in times]
+#    vals = [parent(od[t])[end] for t in times]
+#    return days, vals
+#end
+
+#mkpath(root_path)
+
+# Figure 1: Surface fluxes
+#fig1 = Figure(size = (1600, 1200), fontsize = 20)
+#for (i, (sn, yl)) in enumerate([
+#    ("lhf_1M_average", "Latent Heat (W/m²)"),
+#    ("lwu_1M_average", "LW Up (W/m²)"),
+#    ("swd_1M_average", "SW Down (W/m²)"),
+#    ("lwd_1M_average", "LW Down (W/m²)"),
+#])
+#    r, c = divrem(i - 1, 2) .+ (1, 1)
+#    days, vals = extract_timeseries(diag_dict, sn)
+#    if days !== nothing
+#        ax = Axis(fig1[r, c], ylabel = yl, xlabel = "Days")
+#        lines!(ax, days, vals)
+#    end
+#end
+#Label(fig1[0, :], "Column ($(longlat[1])°E, $(longlat[2])°N): Surface Fluxes", fontsize = 24)
+#CairoMakie.save(joinpath(root_path, "column_surface_fluxes.png"), fig1)
+
+# Figure 2: State variables
+#fig2 = Figure(size = (1600, 1200), fontsize = 20)
+#for (i, (sn, yl)) in enumerate([
+#    ("swc_1M_average", "Soil Water Content"),
+#    ("swe_1M_average", "SWE (m)"),
+#    ("snd_1M_average", "Snow Depth (m)"),
+#    ("tr_1M_average", "Transpiration"),
+#])
+#    r, c = divrem(i - 1, 2) .+ (1, 1)
+#    days, vals = extract_timeseries(diag_dict, sn)
+#    if days !== nothing
+#        ax = Axis(fig2[r, c], ylabel = yl, xlabel = "Days")
+#        lines!(ax, days, vals)
+#    end
+#end
+#Label(fig2[0, :], "Column ($(longlat[1])°E, $(longlat[2])°N): State Variables", fontsize = 24)
+#CairoMakie.save(joinpath(root_path, "column_state_variables.png"), fig2)
+
+#@info "Saved plots to $root_path"
+
+# ── Figure: Soil Albedo ─────────────────────────────────────────────────
+#sv_times = Dates.value.(Second.(sv.t .- sv.t[1]))
+#fig_alb = Figure(size = (1200, 600), fontsize = 20)
+#ax = Axis(fig_alb[1, 1], ylabel = "Albedo", xlabel = "Days",
+#    title = "Column ($(longlat[1])°E, $(longlat[2])°N): Soil Albedo")
+#lines!(ax, sv_times ./ 86400,
+#    [parent(sv.saveval[k].soil.PAR_albedo)[1] for k in 1:length(sv_times)],
+#    label = "PAR (VIS)")
+#lines!(ax, sv_times ./ 86400,
+#    [parent(sv.saveval[k].soil.NIR_albedo)[1] for k in 1:length(sv_times)],
+#    label = "NIR")
+#axislegend(ax, position = :rt)
+#CairoMakie.save(joinpath(root_path, "column_soil_albedo.png"), fig_alb)
+#@info "Saved column_soil_albedo.png"

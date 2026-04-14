@@ -125,6 +125,7 @@ prognostic_land_components = (:snow, :soil)
 raw_comp = Soil.soil_composition_parameters(
     domain.space.subsurface,
     FT;
+    load_silt_clay = true,
     path = "/resnick/groups/esm/xwu/ClimaArtifacts/soilgrids/soilgrids_lowres/soil_solid_vol_fractions_soilgrids_lowres.nc",
 )
 ν_ss_silt_site = FT(parent(ClimaLand.Domains.top_center_to_surface(raw_comp.ν_ss_silt))[1])
@@ -136,6 +137,7 @@ raw_comp = Soil.soil_composition_parameters(
 #    ν_ss_gravel  = ν_ss_gravel,
 #)
 
+#BSA
 α_soil = Soil.OfflineLinearSoilAlbedo{FT}(;
     intercept_BSA_vis = -2.988,
     intercept_BSA_nir = -1.480,
@@ -157,9 +159,34 @@ raw_comp = Soil.soil_composition_parameters(
     coef_θ_BSA_nir = -0.022,
     ν_ss_silt = ν_ss_silt_site,
     ν_ss_clay = ν_ss_clay_site,
-    α_min = 0.02,
-    α_max = 0.95,
+    α_min = 0.00,
+    α_max = 1.00,
 )
+#WSA
+#α_soil = Soil.OfflineLinearSoilAlbedo{FT}(;
+#    intercept_BSA_vis = -2.917,
+#    intercept_BSA_nir = -1.384,
+#    coef_ν_BSA_vis = -0.142,
+#    coef_ν_BSA_nir = -0.142,
+#    coef_om_BSA_vis = -0.244,
+#    coef_om_BSA_nir = -0.032,
+#    coef_cf_BSA_vis = 0.106,
+#    coef_cf_BSA_nir = 0.032,
+#    coef_sand_BSA_vis = 0.103,
+#    coef_sand_BSA_nir = 0.124,
+#    coef_clay_BSA_vis = 0.235,
+#    coef_clay_BSA_nir = 0.267,
+#    coef_silt_BSA_vis = 0.262,
+#    coef_silt_BSA_nir = 0.100,
+#    coef_n_BSA_vis = 3.272,
+#    coef_n_BSA_nir = 4.211,
+#    coef_θ_BSA_vis = -0.026,
+#    coef_θ_BSA_nir = -0.016,
+#    ν_ss_silt = ν_ss_silt_site,
+#    ν_ss_clay = ν_ss_clay_site,
+#    α_min = 0.00,
+#    α_max = 1.00,
+#)
 runoff = ClimaLand.Soil.SurfaceRunoff()
 retention_parameters = (;
     ν = soil_ν,
@@ -301,6 +328,30 @@ lines!(
 )
 axislegend(ax4, position = :rt)
 CairoMakie.save(joinpath(savedir, "results.png"), fig)
+
+# ── Albedo vs. time ─────────────────────────────────────────────────────
+fig_alb = Figure(size = (1200, 600), fontsize = 26)
+ax_alb = Axis(
+    fig_alb[1, 1],
+    ylabel = "α_soil",
+    xlabel = "Days",
+    title = "Black-sky Soil Albedo (OfflineLinearSoilAlbedo)",
+)
+lines!(
+    ax_alb,
+    sv_times ./ 24 ./ 3600,
+    [parent(sv.saveval[k].soil.PAR_albedo)[1] for k in 1:length(sv_times)],
+    label = "PAR (VIS)",
+)
+lines!(
+    ax_alb,
+    sv_times ./ 24 ./ 3600,
+    [parent(sv.saveval[k].soil.NIR_albedo)[1] for k in 1:length(sv_times)],
+    label = "NIR",
+)
+axislegend(ax_alb, position = :rt)
+CairoMakie.save(joinpath(savedir, "results_albedo.png"), fig_alb)
+# ─────────────────────────────────────────────────────────────────────────
 
 # Assess conservation
 atmos = forcing.atmos

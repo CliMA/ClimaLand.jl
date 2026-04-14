@@ -1,0 +1,231 @@
+Precompiling packages...
+   2530.4 ms  ✓ LLVMLoopInfo
+   1435.1 ms  ✓ demumble_jll
+   2511.2 ms  ✓ HashArrayMappedTries
+   3767.2 ms  ✓ LibTracyClient_jll
+   4713.3 ms  ✓ RandomNumbers
+   2749.7 ms  ✓ ScopedValues
+   5273.9 ms  ✓ Crayons
+   8001.0 ms  ✓ CUDA_Runtime_Discovery
+   8313.2 ms  ✓ UnsafeAtomics
+   4428.2 ms  ✓ Tracy
+   8161.2 ms  ✓ StringManipulation
+   4525.2 ms  ✓ Random123
+   1368.6 ms  ✓ Atomix
+   8255.8 ms  ✓ LLVMExtra_jll
+   9790.2 ms  ✓ BFloat16s
+  10870.3 ms  ✓ CUDA_Driver_jll
+   9454.9 ms  ✓ KernelAbstractions
+   7633.7 ms  ✓ CUDA_Runtime_jll
+   1723.5 ms  ✓ KernelAbstractions → LinearAlgebraExt
+   2232.7 ms  ✓ KernelAbstractions → SparseArraysExt
+  14611.6 ms  ✓ LLVM
+   3149.7 ms  ✓ LLVM → BFloat16sExt
+   3499.0 ms  ✓ GPUToolbox
+   4580.8 ms  ✓ UnsafeAtomics → UnsafeAtomicsLLVM
+  10444.1 ms  ✓ GPUArrays
+  50102.1 ms  ✓ PrettyTables
+  71470.1 ms  ✓ GPUCompiler
+  93337.5 ms  ✓ CUDA_Compiler_jll
+  53207.7 ms  ✓ CUDA
+   5159.2 ms  ✓ Atomix → AtomixCUDAExt
+  30 dependencies successfully precompiled in 172 seconds. 62 already precompiled.
+  1 dependency had output during precompilation:
+┌ CUDA_Compiler_jll
+│  Downloading artifact: CUDA_Runtime
+│  ERROR: Data Error : jl_Szet6FgJI5-download
+│       Failure artifact: CUDA_Runtime
+│   Downloading artifact: CUDA_Runtime
+└  
+Precompiling packages...
+   4966.6 ms  ✓ ClimaComms → ClimaCommsCUDAExt
+  1 dependency successfully precompiled in 6 seconds. 94 already precompiled.
+Precompiling packages...
+   1418.8 ms  ✓ IntervalSets
+    812.2 ms  ✓ IntervalSets → IntervalSetsRandomExt
+   1942.6 ms  ✓ XZ_jll
+   1424.8 ms  ✓ IntervalSets → IntervalSetsStatisticsExt
+   1399.5 ms  ✓ ConstructionBase → ConstructionBaseIntervalSetsExt
+   1520.3 ms  ✓ IntervalSets → IntervalSetsRecipesBaseExt
+   2979.7 ms  ✓ RuntimeGeneratedFunctions
+   1575.8 ms  ✓ Accessors → IntervalSetsExt
+   1315.2 ms  ✓ libzip_jll
+   3305.6 ms  ✓ SymbolicIndexingInterface
+   2768.6 ms  ✓ NetCDF_jll
+   9801.2 ms  ✓ RecursiveArrayTools
+   1460.6 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsStatisticsExt
+   1673.0 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsSparseArraysExt
+   1647.6 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsForwardDiffExt
+   2068.4 ms  ✓ TaylorSeries → TaylorSeriesRATExt
+  20803.3 ms  ✓ NCDatasets
+   2514.4 ms  ✓ ClimaUtilities → ClimaUtilitiesNCDatasetsExt
+  16514.4 ms  ✓ ClimaCore
+   6547.5 ms  ✓ ClimaCore → KrylovExt
+   6625.3 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreExt
+   6748.1 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreNCDatasetsExt
+   9357.2 ms  ✓ ClimaDiagnostics
+  23 dependencies successfully precompiled in 52 seconds. 143 already precompiled.
+Precompiling packages...
+   6297.3 ms  ✓ MultiBroadcastFusion → MultiBroadcastFusionCUDAExt
+  1 dependency successfully precompiled in 8 seconds. 93 already precompiled.
+Precompiling packages...
+   4748.6 ms  ✓ CUDA → SpecialFunctionsExt
+  1 dependency successfully precompiled in 6 seconds. 104 already precompiled.
+Precompiling packages...
+   4571.4 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  1 dependency successfully precompiled in 5 seconds. 96 already precompiled.
+Precompiling packages...
+   1392.9 ms  ✓ SymbolicIndexingInterface → SymbolicIndexingInterfacePrettyTablesExt
+  1 dependency successfully precompiled in 2 seconds. 42 already precompiled.
+Precompiling packages...
+   1623.0 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsKernelAbstractionsExt
+  1 dependency successfully precompiled in 2 seconds. 43 already precompiled.
+Precompiling packages...
+    930.4 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsTablesExt
+  1 dependency successfully precompiled in 1 seconds. 36 already precompiled.
+Precompiling packages...
+   5011.8 ms  ✓ ClimaInterpolations → ClimaInterpolationsCUDAExt
+  1 dependency successfully precompiled in 6 seconds. 94 already precompiled.
+Precompiling packages...
+   9082.9 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+  1 dependency successfully precompiled in 11 seconds. 190 already precompiled.
+Precompiling packages...
+   4758.7 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  1 dependency successfully precompiled in 6 seconds. 95 already precompiled.
+Precompiling packages...
+   2184.6 ms  ✓ AxisArrays
+   2481.3 ms  ✓ Libtiff_jll
+   2555.3 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsStructArraysExt
+   5647.1 ms  ✓ ChainRulesCore
+   1927.6 ms  ✓ AbstractFFTs → AbstractFFTsChainRulesCoreExt
+   6760.6 ms  ✓ libwebp_jll
+   4235.0 ms  ✓ LogExpFunctions → LogExpFunctionsChainRulesCoreExt
+   4396.6 ms  ✓ LinearOperators → LinearOperatorsChainRulesCoreExt
+   4629.8 ms  ✓ ArrayInterface → ArrayInterfaceChainRulesCoreExt
+   8659.7 ms  ✓ SurfaceFluxes
+   7540.7 ms  ✓ PROJ_jll
+   5003.3 ms  ✓ Distances → DistancesChainRulesCoreExt
+   4965.2 ms  ✓ KrylovKit → KrylovKitChainRulesCoreExt
+   5423.9 ms  ✓ StaticArrays → StaticArraysChainRulesCoreExt
+  11324.7 ms  ✓ ImageAxes
+   7978.7 ms  ✓ SpecialFunctions → SpecialFunctionsChainRulesCoreExt
+   8550.6 ms  ✓ ChainRulesCore → ChainRulesCoreSparseArraysExt
+   8275.3 ms  ✓ StatsFuns → StatsFunsChainRulesCoreExt
+   3928.4 ms  ✓ SurfaceFluxes → CreateParametersExt
+   3616.1 ms  ✓ ImageMetadata
+  17256.1 ms  ✓ IntervalArithmetic
+   9149.7 ms  ✓ WebP
+  18946.1 ms  ✓ NaNStatistics
+   2013.1 ms  ✓ IntervalArithmetic → IntervalArithmeticIntervalSetsExt
+   1927.2 ms  ✓ IntervalArithmetic → IntervalArithmeticLinearAlgebraExt
+   2979.0 ms  ✓ IntervalArithmetic → IntervalArithmeticSparseArraysExt
+  14056.3 ms  ✓ Distributions → DistributionsChainRulesCoreExt
+   3174.7 ms  ✓ IntervalArithmetic → IntervalArithmeticDiffRulesExt
+   3707.0 ms  ✓ IntervalArithmetic → IntervalArithmeticIrrationalConstantsExt
+   3671.2 ms  ✓ IntervalArithmetic → IntervalArithmeticRecipesBaseExt
+   4216.3 ms  ✓ TaylorSeries → TaylorSeriesIAExt
+   3339.0 ms  ✓ NaNStatistics → NaNStatisticsUnitfulExt
+   8122.6 ms  ✓ Netpbm
+  14570.0 ms  ✓ Proj
+   7093.7 ms  ✓ IntervalArithmetic → IntervalArithmeticForwardDiffExt
+  11598.4 ms  ✓ Interpolations
+   2949.5 ms  ✓ Insolation
+   3255.0 ms  ✓ Interpolations → InterpolationsUnitfulExt
+   8458.5 ms  ✓ ExactPredicates
+   4130.2 ms  ✓ KernelDensity
+   2044.7 ms  ✓ Insolation → CreateParametersExt
+   7447.9 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreInterpolationsExt
+   7812.1 ms  ✓ DelaunayTriangulation
+   5544.3 ms  ✓ GeometryOps
+   1488.4 ms  ✓ GeometryOps → GeometryOpsProjExt
+  28872.8 ms  ✓ ClimaAnalysis
+ 237221.4 ms  ✓ Makie
+  12382.3 ms  ✓ GeometryOps → GeometryOpsMakieExt
+  12589.8 ms  ✓ GeoJSON → GeoJSONMakieExt
+  13006.8 ms  ✓ GeoInterface → GeoInterfaceMakieExt
+  13788.6 ms  ✓ ClimaAnalysis → ClimaAnalysisMakieExt
+  13347.3 ms  ✓ GeoMakie
+   8672.9 ms  ✓ ClimaAnalysis → ClimaAnalysisGeoMakieExt
+  11269.1 ms  ✓ ClimaLand
+   4913.3 ms  ✓ ClimaLand → FluxnetSimulationsExt
+  55 dependencies successfully precompiled in 329 seconds. 366 already precompiled.
+Precompiling packages...
+   6371.3 ms  ✓ CUDA → ChainRulesCoreExt
+  1 dependency successfully precompiled in 8 seconds. 98 already precompiled.
+Precompiling packages...
+  82477.6 ms  ✓ CairoMakie (serial)
+  1 dependency successfully precompiled in 83 seconds
+Precompiling packages...
+   1155.2 ms  ✓ StructArrays → StructArraysGPUArraysCoreExt
+  1 dependency successfully precompiled in 2 seconds. 36 already precompiled.
+Precompiling packages...
+  12656.5 ms  ✓ LandSimulationVisualizationExt (serial)
+  1 dependency successfully precompiled in 13 seconds
+┌ Error: Your Tesla V100-SXM2-32GB-LS GPU (compute capability 7.0) is not supported on CUDA 13+.
+│ Please use a device with at least capability 7.5, or downgrade your NVIDIA driver to below v580.
+└ @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:224
+ERROR: LoadError: CUDA error: unknown error (code 999, ERROR_UNKNOWN)
+Stacktrace:
+  [1] throw_api_error(res::CUDA.cudaError_enum)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/libcuda.jl:30
+  [2] check(f::CUDA.var"#cuDevicePrimaryCtxRetain##0#cuDevicePrimaryCtxRetain##1"{Base.RefValue{Ptr{CUDA.CUctx_st}}, CUDA.CuDevice})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/libcuda.jl:37
+  [3] cuDevicePrimaryCtxRetain(pctx::Base.RefValue{Ptr{CUDA.CUctx_st}}, dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/GPUToolbox/x8hVh/src/ccalls.jl:33
+  [4] CuContext
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/context.jl:197 [inlined]
+  [5] context(dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:238
+  [6] CUDA.TaskLocalState(dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:50
+  [7] TaskLocalState
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:50 [inlined]
+  [8] task_local_state!()
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:79
+  [9] device
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:189 [inlined]
+ [10] CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}(::UndefInitializer, dims::Tuple{Int64, Int64})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/src/array.jl:91
+ [11] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:437 [inlined]
+ [12] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:442 [inlined]
+ [13] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:451 [inlined]
+ [14] convert
+    @ ~/.julia/packages/GPUArrays/3a5jB/src/host/construction.jl:4 [inlined]
+ [15] adapt_storage(::Type{CUDA.CuArray}, xs::Matrix{Float64})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/src/array.jl:732
+ [16] adapt_structure(to::Type, x::Matrix{Float64})
+    @ Adapt ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:57
+ [17] adapt
+    @ ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:40 [inlined]
+ [18] adapt_structure(to::Type, data::ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, Matrix{Float64}})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/vVw9t/src/DataLayouts/DataLayouts.jl:1696
+ [19] adapt(to::Type, x::ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, Matrix{Float64}})
+    @ Adapt ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:40
+ [20] _FiniteDifferenceGrid(topology::IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:75
+ [21] #FiniteDifferenceGrid##0
+    @ ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:47 [inlined]
+ [22] get!(default::ClimaCore.Grids.var"#FiniteDifferenceGrid##0#FiniteDifferenceGrid##1"{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}}, h::Dict{Any, Any}, key::Tuple{UnionAll, IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}})
+    @ Base ./dict.jl:458
+ [23] FiniteDifferenceGrid(topology::IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:46
+ [24] FiniteDifferenceGrid(device::ClimaComms.CUDADevice, mesh::ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:172
+ [25] (ClimaCore.Spaces.FiniteDifferenceSpace{G, ClimaCore.Grids.CellCenter} where G)(device::ClimaComms.CUDADevice, mesh::ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}})
+    @ ClimaCore.Spaces ~/.julia/packages/ClimaCore/vVw9t/src/Spaces/finitedifference.jl:75
+ [26] ClimaLand.Domains.HybridBox(; xlim::Tuple{Float64, Float64}, ylim::Tuple{Float64, Float64}, zlim::Tuple{Float64, Float64}, nelements::Tuple{Int64, Int64, Int64}, npolynomial::Int64, device::ClimaComms.CUDADevice, dz_tuple::Tuple{Float64, Float64}, longlat::Tuple{Float64, Float64}, periodic::Tuple{Bool, Bool})
+    @ ClimaLand.Domains /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/Domains.jl:521
+ [27] global_box_domain(FT::Type; apply_mask::Bool, mask_threshold::Float64, nelements::Tuple{Int64, Int64, Int64}, dz_tuple::Tuple{Float64, Float64}, depth::Float64, npolynomial::Int64, context::ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, filepath::String, regridder_type::Symbol, extrapolation_bc::Tuple{Interpolations.Periodic{Nothing}, Interpolations.Flat{Nothing}, Interpolations.Flat{Nothing}}, interpolation_method::Interpolations.Constant{Interpolations.Nearest, Interpolations.Throw{Interpolations.OnGrid}})
+    @ ClimaLand.Domains /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/Domains.jl:1405
+ [28] top-level scope
+    @ /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:206
+ [29] include(mod::Module, _path::String)
+    @ Base ./Base.jl:306
+ [30] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:317
+ [31] _start()
+    @ Base ./client.jl:550
+in expression starting at /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:206

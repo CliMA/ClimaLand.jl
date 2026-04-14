@@ -1,0 +1,68 @@
+┌ Error: Your Tesla V100-SXM2-32GB-LS GPU (compute capability 7.0) is not supported on CUDA 13+.
+│ Please use a device with at least capability 7.5, or downgrade your NVIDIA driver to below v580.
+└ @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:224
+ERROR: LoadError: CUDA error: unknown error (code 999, ERROR_UNKNOWN)
+Stacktrace:
+  [1] throw_api_error(res::CUDA.cudaError_enum)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/libcuda.jl:30
+  [2] check(f::CUDA.var"#cuDevicePrimaryCtxRetain##0#cuDevicePrimaryCtxRetain##1"{Base.RefValue{Ptr{CUDA.CUctx_st}}, CUDA.CuDevice})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/libcuda.jl:37
+  [3] cuDevicePrimaryCtxRetain(pctx::Base.RefValue{Ptr{CUDA.CUctx_st}}, dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/GPUToolbox/x8hVh/src/ccalls.jl:33
+  [4] CuContext
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/context.jl:197 [inlined]
+  [5] context(dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:238
+  [6] CUDA.TaskLocalState(dev::CUDA.CuDevice)
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:50
+  [7] TaskLocalState
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:50 [inlined]
+  [8] task_local_state!()
+    @ CUDA ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:79
+  [9] device
+    @ ~/.julia/packages/CUDA/Il00B/lib/cudadrv/state.jl:189 [inlined]
+ [10] CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}(::UndefInitializer, dims::Tuple{Int64, Int64})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/src/array.jl:91
+ [11] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:437 [inlined]
+ [12] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:442 [inlined]
+ [13] CuArray
+    @ ~/.julia/packages/CUDA/Il00B/src/array.jl:451 [inlined]
+ [14] convert
+    @ ~/.julia/packages/GPUArrays/3a5jB/src/host/construction.jl:4 [inlined]
+ [15] adapt_storage(::Type{CUDA.CuArray}, xs::Matrix{Float64})
+    @ CUDA ~/.julia/packages/CUDA/Il00B/src/array.jl:732
+ [16] adapt_structure(to::Type, x::Matrix{Float64})
+    @ Adapt ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:57
+ [17] adapt
+    @ ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:40 [inlined]
+ [18] adapt_structure(to::Type, data::ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, Matrix{Float64}})
+    @ ClimaCore.DataLayouts ~/.julia/packages/ClimaCore/vVw9t/src/DataLayouts/DataLayouts.jl:1696
+ [19] adapt(to::Type, x::ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, Matrix{Float64}})
+    @ Adapt ~/.julia/packages/Adapt/aYlRH/src/Adapt.jl:40
+ [20] _FiniteDifferenceGrid(topology::IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:75
+ [21] #FiniteDifferenceGrid##0
+    @ ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:47 [inlined]
+ [22] get!(default::ClimaCore.Grids.var"#FiniteDifferenceGrid##0#FiniteDifferenceGrid##1"{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}}, h::Dict{Any, Any}, key::Tuple{UnionAll, IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}})
+    @ Base ./dict.jl:458
+ [23] FiniteDifferenceGrid(topology::IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:46
+ [24] FiniteDifferenceGrid(device::ClimaComms.CUDADevice, mesh::ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}})
+    @ ClimaCore.Grids ~/.julia/packages/ClimaCore/vVw9t/src/Grids/finitedifference.jl:172
+ [25] (ClimaCore.Spaces.FiniteDifferenceSpace{G, ClimaCore.Grids.CellCenter} where G)(device::ClimaComms.CUDADevice, mesh::ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}})
+    @ ClimaCore.Spaces ~/.julia/packages/ClimaCore/vVw9t/src/Spaces/finitedifference.jl:75
+ [26] ClimaLand.Domains.HybridBox(; xlim::Tuple{Float64, Float64}, ylim::Tuple{Float64, Float64}, zlim::Tuple{Float64, Float64}, nelements::Tuple{Int64, Int64, Int64}, npolynomial::Int64, device::ClimaComms.CUDADevice, dz_tuple::Tuple{Float64, Float64}, longlat::Tuple{Float64, Float64}, periodic::Tuple{Bool, Bool})
+    @ ClimaLand.Domains /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/Domains.jl:521
+ [27] global_box_domain(FT::Type; apply_mask::Bool, mask_threshold::Float64, nelements::Tuple{Int64, Int64, Int64}, dz_tuple::Tuple{Float64, Float64}, depth::Float64, npolynomial::Int64, context::ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, filepath::String, regridder_type::Symbol, extrapolation_bc::Tuple{Interpolations.Periodic{Nothing}, Interpolations.Flat{Nothing}, Interpolations.Flat{Nothing}}, interpolation_method::Interpolations.Constant{Interpolations.Nearest, Interpolations.Throw{Interpolations.OnGrid}})
+    @ ClimaLand.Domains /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/Domains.jl:1405
+ [28] top-level scope
+    @ /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:206
+ [29] include(mod::Module, _path::String)
+    @ Base ./Base.jl:306
+ [30] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:317
+ [31] _start()
+    @ Base ./client.jl:550
+in expression starting at /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:206
