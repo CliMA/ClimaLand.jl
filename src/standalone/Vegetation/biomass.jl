@@ -241,26 +241,26 @@ end
 
 """
     PrescribedBiomassModel(;LAI::AbstractTimeVaryingInput,
-                            SAI::FS,
-                            RAI::FS,
+                            SAI,
+                            RAI,
                             rooting_depth,
-                            height) where {FS}
+                            height)
 
 An outer constructor to help set up the PrescribedBiomassModel from 
 LAI, SAI, and RAI directly, instead of requiring the user to make the
 area index object first; rooting_depth and height are also required.
 
-Height can be either:
-- A scalar FT value (uniform height across domain)
-- A ClimaCore.Fields.Field (spatially-varying height)
+Height and SAI/LAI can be either:
+- A scalar FT value (uniform value across domain)
+- A ClimaCore.Fields.Field (spatially-varying but constant in time)
 """
 function PrescribedBiomassModel{FT}(;
     LAI::AbstractTimeVaryingInput,
-    SAI::FS,
-    RAI::FS,
+    SAI,
+    RAI,
     rooting_depth,
     height,
-) where {FT, FS}
+) where {FT}
     plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     args = (plant_area_index, rooting_depth, height)
     PrescribedBiomassModel{FT, typeof.(args)...}(args...)
