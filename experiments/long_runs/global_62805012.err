@@ -1,0 +1,1058 @@
+[ Info: Run: Global Soil-Canopy-Snow Model
+[ Info: Resolution: (180, 360, 15)
+[ Info: Timestep: 450.0 s
+[ Info: Start Date: 2008-03-01T00:00:00
+[ Info: Stop Date: 2010-03-01T00:00:00
+┌ Warning: Keys are present in parameter file but not used in the simulation. 
+│  Typically this is due to a mismatch in parameter name in toml and in source. Offending keys: Any["albedo_psnow_reset_rate", "bucket_z_0m", "moisture_stress_pc", "bucket_z_0b", "critical_snow_fraction", "optimal_lai_sigma", "snow_initial_albedo", "bucket_beta_decay_exponent", "bucket_capacity_fraction", "optimal_lai_alpha", "optimal_lai_k", "alpha_snow", "new_snowpack_S_threshold", "optimal_lai_f0", "moisture_stress_sc", "optimal_lai_z", "minimum_NDM_density", "bucket_soil_conductivity", "critical_snow_water_equivalent", "land_bucket_capacity", "bucket_soil_heat_capacity"]
+└ @ ClimaParams ~/.julia/packages/ClimaParams/H2Qxr/src/ClimaParams.jl:370
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 12846 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 12846 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 12846 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13000 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13000 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13000 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "10 weeks, 3 days"
+│   n_steps_completed = 14016
+│   wall_time_per_step = "0 seconds"
+│   wall_time_total = "0 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "0 seconds"
+│   percent_complete = "10.0%"
+│   estimated_sypd = "Inf"
+│   date_now = 2026-04-10T14:51:29.160
+└   estimated_finish_date = 2026-04-10T14:51:29.160
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13080 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13080 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13080 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13329 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13329 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13329 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "20 weeks, 6 days"
+│   n_steps_completed = 28032
+│   wall_time_per_step = "7 milliseconds, 849 microseconds"
+│   wall_time_total = "18 minutes, 20 seconds"
+│   wall_time_remaining = "14 minutes, 40 seconds"
+│   wall_time_spent = "3 minutes, 40 seconds"
+│   percent_complete = "20.0%"
+│   estimated_sypd = "156.947"
+│   date_now = 2026-04-10T14:53:19.243
+└   estimated_finish_date = 2026-04-10T15:08:00.242
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13490 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13490 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13490 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13552 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13552 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13552 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13589 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13589 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13589 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "31 weeks, 2 days"
+│   n_steps_completed = 42048
+│   wall_time_per_step = "7 milliseconds, 924 microseconds"
+│   wall_time_total = "18 minutes, 30 seconds"
+│   wall_time_remaining = "12 minutes, 57 seconds"
+│   wall_time_spent = "5 minutes, 33 seconds"
+│   percent_complete = "30.0%"
+│   estimated_sypd = "155.473"
+│   date_now = 2026-04-10T14:55:12.301
+└   estimated_finish_date = 2026-04-10T15:08:10.301
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13617 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13617 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13617 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13636 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13636 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13636 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "41 weeks, 5 days"
+│   n_steps_completed = 56064
+│   wall_time_per_step = "7 milliseconds, 908 microseconds"
+│   wall_time_total = "18 minutes, 28 seconds"
+│   wall_time_remaining = "11 minutes, 5 seconds"
+│   wall_time_spent = "7 minutes, 23 seconds"
+│   percent_complete = "40.0%"
+│   estimated_sypd = "155.794"
+│   date_now = 2026-04-10T14:57:02.453
+└   estimated_finish_date = 2026-04-10T15:08:08.453
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13656 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13656 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13656 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13665 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13665 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13665 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13682 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13682 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13682 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "52 weeks, 1 day"
+│   n_steps_completed = 70080
+│   wall_time_per_step = "7 milliseconds, 908 microseconds"
+│   wall_time_total = "18 minutes, 28 seconds"
+│   wall_time_remaining = "9 minutes, 14 seconds"
+│   wall_time_spent = "9 minutes, 14 seconds"
+│   percent_complete = "50.0%"
+│   estimated_sypd = "155.792"
+│   date_now = 2026-04-10T14:58:53.299
+└   estimated_finish_date = 2026-04-10T15:08:08.299
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13698 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13698 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13698 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13716 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13716 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13716 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "62 weeks, 4 days"
+│   n_steps_completed = 84096
+│   wall_time_per_step = "7 milliseconds, 925 microseconds"
+│   wall_time_total = "18 minutes, 30 seconds"
+│   wall_time_remaining = "7 minutes, 24 seconds"
+│   wall_time_spent = "11 minutes, 6 seconds"
+│   percent_complete = "60.0%"
+│   estimated_sypd = "155.458"
+│   date_now = 2026-04-10T15:00:45.571
+└   estimated_finish_date = 2026-04-10T15:08:10.571
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13732 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13732 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13732 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13741 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13741 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13741 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "73 weeks"
+│   n_steps_completed = 98112
+│   wall_time_per_step = "7 milliseconds, 924 microseconds"
+│   wall_time_total = "18 minutes, 30 seconds"
+│   wall_time_remaining = "5 minutes, 33 seconds"
+│   wall_time_spent = "12 minutes, 57 seconds"
+│   percent_complete = "70.0%"
+│   estimated_sypd = "155.465"
+│   date_now = 2026-04-10T15:02:36.616
+└   estimated_finish_date = 2026-04-10T15:08:10.616
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13749 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13749 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13749 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13773 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13773 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13773 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13784 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13784 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13784 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "83 weeks, 3 days"
+│   n_steps_completed = 112128
+│   wall_time_per_step = "7 milliseconds, 937 microseconds"
+│   wall_time_total = "18 minutes, 32 seconds"
+│   wall_time_remaining = "3 minutes, 42 seconds"
+│   wall_time_spent = "14 minutes, 49 seconds"
+│   percent_complete = "80.0%"
+│   estimated_sypd = "155.224"
+│   date_now = 2026-04-10T15:04:29.069
+└   estimated_finish_date = 2026-04-10T15:08:12.069
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13793 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13793 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13793 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13803 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13803 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13803 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "93 weeks, 6 days"
+│   n_steps_completed = 126144
+│   wall_time_per_step = "7 milliseconds, 930 microseconds"
+│   wall_time_total = "18 minutes, 31 seconds"
+│   wall_time_remaining = "1 minute, 51 seconds"
+│   wall_time_spent = "16 minutes, 40 seconds"
+│   percent_complete = "90.0%"
+│   estimated_sypd = "155.362"
+│   date_now = 2026-04-10T15:06:19.423
+└   estimated_finish_date = 2026-04-10T15:08:11.423
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13813 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13813 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13813 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13822 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13822 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13822 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in canopy
+[ Info: Checking NaNs in hydraulics
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in energy
+[ Info: Checking NaNs in T
+[ Info: Checking NaNs in lake
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in snow
+[ Info: Checking NaNs in S
+[ Info: Checking NaNs in S_l
+[ Info: Checking NaNs in U
+[ Info: Checking NaNs in soil
+[ Info: Checking NaNs in ϑ_l
+[ Info: Checking NaNs in θ_i
+[ Info: Checking NaNs in ρe_int
+[ Info: Checking NaNs in ∫F_vol_liq_water_dt
+[ Info: Checking NaNs in ∫F_e_dt
+[ Info: Checking NaNs in soilco2
+[ Info: Checking NaNs in CO2
+┌ Warning: 13826 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in O2_f
+┌ Warning: 13826 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+[ Info: Checking NaNs in SOC
+┌ Warning: 13826 NaNs found
+└ @ ClimaLand /resnick/groups/esm/xwu/ClimaLand.jl/src/shared_utilities/utils.jl:657
+┌ Info: Progress
+│   simulation_time = "104 weeks, 2 days"
+│   n_steps_completed = 140160
+│   wall_time_per_step = "7 milliseconds, 930 microseconds"
+│   wall_time_total = "18 minutes, 31 seconds"
+│   wall_time_remaining = "0 seconds"
+│   wall_time_spent = "18 minutes, 31 seconds"
+│   percent_complete = "100.0%"
+│   estimated_sypd = "155.359"
+│   date_now = 2026-04-10T15:08:10.596
+└   estimated_finish_date = 2026-04-10T15:08:10.596
+[ Info: Error against observations
+[ Info: Working with dates:
+[ Info: [DateTime("2008-03-01T00:00:00"), DateTime("2008-04-01T00:00:00"), DateTime("2008-05-01T00:00:00"), DateTime("2008-06-01T00:00:00"), DateTime("2008-07-01T00:00:00"), DateTime("2008-08-01T00:00:00"), DateTime("2008-09-01T00:00:00"), DateTime("2008-10-01T00:00:00"), DateTime("2008-11-01T00:00:00"), DateTime("2008-12-01T00:00:00"), DateTime("2009-01-01T00:00:00"), DateTime("2009-02-01T00:00:00"), DateTime("2009-03-01T00:00:00"), DateTime("2009-04-01T00:00:00"), DateTime("2009-05-01T00:00:00"), DateTime("2009-06-01T00:00:00"), DateTime("2009-07-01T00:00:00"), DateTime("2009-08-01T00:00:00"), DateTime("2009-09-01T00:00:00"), DateTime("2009-10-01T00:00:00"), DateTime("2009-11-01T00:00:00"), DateTime("2009-12-01T00:00:00"), DateTime("2010-01-01T00:00:00"), DateTime("2010-02-01T00:00:00")]
+[ Info: shf
+[ Info: lhf
+[ Info: swu
+[ Info: lwu
+[ Info: shf
+[ Info: lhf
+[ Info: swu
+[ Info: lwu
+[ Info: Error against observations
+[ Info: Working with dates:
+[ Info: [DateTime("2008-03-01T00:00:00"), DateTime("2008-04-01T00:00:00"), DateTime("2008-05-01T00:00:00"), DateTime("2008-06-01T00:00:00"), DateTime("2008-07-01T00:00:00"), DateTime("2008-08-01T00:00:00"), DateTime("2008-09-01T00:00:00"), DateTime("2008-10-01T00:00:00"), DateTime("2008-11-01T00:00:00"), DateTime("2008-12-01T00:00:00"), DateTime("2009-01-01T00:00:00"), DateTime("2009-02-01T00:00:00"), DateTime("2009-03-01T00:00:00"), DateTime("2009-04-01T00:00:00"), DateTime("2009-05-01T00:00:00"), DateTime("2009-06-01T00:00:00"), DateTime("2009-07-01T00:00:00"), DateTime("2009-08-01T00:00:00"), DateTime("2009-09-01T00:00:00"), DateTime("2009-10-01T00:00:00"), DateTime("2009-11-01T00:00:00"), DateTime("2009-12-01T00:00:00"), DateTime("2010-01-01T00:00:00"), DateTime("2010-02-01T00:00:00")]
+[ Info: gpp
+[ Info: lwu
+[ Info: et
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+[ Info: gpp
+[ Info: lwu
+[ Info: et
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2175
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093
+┌ Warning: NaNs detected in observational data, resampling is not NaN aware. If you applied a mask, pass the mask via the mask keyword argument instead
+└ @ ClimaAnalysis.Var ~/.julia/packages/ClimaAnalysis/FtrXN/src/Var.jl:2093

@@ -1,3 +1,4 @@
+# syntax on
 export update_albedo!,
     CLMTwoBandSoilAlbedo, ConstantTwoBandSoilAlbedo, CompositionBasedSoilAlbedo, OfflineLinearSoilAlbedo
 
@@ -693,8 +694,8 @@ function OfflineLinearSoilAlbedo{FT}(;
     ν_ss_silt,
     ν_ss_clay,
    
-    α_min = FT(0.02),
-    α_max = FT(0.95),
+    α_min = FT(0.00),
+    α_max = FT(1.00),
     albedo_calc_top_thickness = FT(0.02),
 ) where {FT}
     return OfflineLinearSoilAlbedo{FT, typeof(ν_ss_silt)}(
@@ -802,8 +803,11 @@ function linear_albedo_from_predictors(
         coef_silt * ν_ss_silt +
         coef_n * vg_n +
         coef_θ * θ_sfc
-
-    return clamp(α, α_min, α_max)
+    
+    σ = 1 / (1 + exp(-α))
+    return α_min + (α_max - α_min) * σ
+    #return clamp(α, α_min, α_max)
+    #return α
 end
 
 
@@ -890,7 +894,7 @@ function update_albedo!(
  
     hydrology_cm_sfc =
         ClimaLand.Domains.top_center_to_surface(model_parameters.hydrology_cm)
-    vg_n_sfc = @. lazy(hydrology_cm_sfc.n)
+    vg_n_sfc = @. lazy(log10(hydrology_cm_sfc.n))
 
     #
     # Surface moisture predictor θ_sfc

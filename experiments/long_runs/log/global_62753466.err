@@ -1,0 +1,524 @@
+Precompiling packages...
+   1085.1 ms  ✓ LoggingExtras
+   1272.5 ms  ✓ Requires
+    649.5 ms  ✓ Adapt
+    897.1 ms  ✓ ClimaComms
+  4 dependencies successfully precompiled in 3 seconds. 5 already precompiled.
+Precompiling packages...
+   1786.7 ms  ✓ Reexport
+   1659.3 ms  ✓ HashArrayMappedTries
+   2098.3 ms  ✓ DataValueInterfaces
+   3027.0 ms  ✓ AbstractFFTs
+   3258.6 ms  ✓ ExprTools
+   3247.1 ms  ✓ IteratorInterfaceExtensions
+   3348.4 ms  ✓ LLVMLoopInfo
+   3914.3 ms  ✓ Statistics
+   1868.8 ms  ✓ StaticArraysCore
+   4326.0 ms  ✓ LaTeXStrings
+   1048.1 ms  ✓ Scratch
+   4384.2 ms  ✓ DataAPI
+   2149.8 ms  ✓ TableTraits
+   3462.9 ms  ✓ Statistics → SparseArraysExt
+   4398.4 ms  ✓ ScopedValues
+   5517.8 ms  ✓ GPUArraysCore
+   6030.4 ms  ✓ Adapt → AdaptSparseArraysExt
+   8805.2 ms  ✓ RandomNumbers
+   7868.3 ms  ✓ BFloat16s
+  10034.9 ms  ✓ OrderedCollections
+   6864.2 ms  ✓ Preferences
+  11244.2 ms  ✓ CEnum
+  11740.2 ms  ✓ UnsafeAtomics
+   3443.6 ms  ✓ Random123
+   2275.5 ms  ✓ JLLWrappers
+   2004.0 ms  ✓ Atomix
+   2729.0 ms  ✓ PrecompileTools
+   2508.7 ms  ✓ demumble_jll
+   3243.8 ms  ✓ JuliaNVTXCallbacks_jll
+   6713.8 ms  ✓ Tables
+   4005.8 ms  ✓ NVTX_jll
+   4380.7 ms  ✓ LibTracyClient_jll
+  18044.6 ms  ✓ CUDA_Runtime_Discovery
+   7007.8 ms  ✓ LLVMExtra_jll
+   4742.2 ms  ✓ NVTX
+   4608.5 ms  ✓ Tracy
+  22301.6 ms  ✓ Crayons
+  30016.5 ms  ✓ MacroTools
+  18296.9 ms  ✓ StringManipulation
+  28545.4 ms  ✓ StaticArrays
+  22488.3 ms  ✓ LLVM
+   2022.8 ms  ✓ StaticArrays → StaticArraysStatisticsExt
+   2149.1 ms  ✓ Adapt → AdaptStaticArraysExt
+  33432.5 ms  ✓ CUDA_Driver_jll
+   4178.9 ms  ✓ GPUToolbox
+   4498.0 ms  ✓ LLVM → BFloat16sExt
+   5756.6 ms  ✓ UnsafeAtomics → UnsafeAtomicsLLVM
+   6544.5 ms  ✓ CUDA_Runtime_jll
+  15400.8 ms  ✓ KernelAbstractions
+   1941.9 ms  ✓ KernelAbstractions → LinearAlgebraExt
+   2202.7 ms  ✓ KernelAbstractions → SparseArraysExt
+  11439.5 ms  ✓ GPUArrays
+ 206859.2 ms  ✓ PrettyTables
+ 245154.7 ms  ✓ GPUCompiler
+ 237955.6 ms  ✓ CUDA_Compiler_jll
+Info Given CUDA was explicitly requested, output will be shown live [0K
+[0K Downloading artifact: CUDA_Compiler
+  95973.4 ms  ✓ CUDA
+   6100.8 ms  ✓ Atomix → AtomixCUDAExt
+  57 dependencies successfully precompiled in 394 seconds. 35 already precompiled.
+  3 dependencies had output during precompilation:
+┌ CUDA
+│  [Output was shown above]
+└  
+┌ Random123
+│  ┌ Warning: AES-acceleration instructions have not been detected, so the related RNGs (AESNI and ARS) are not available.
+│  └ @ Random123 ~/.julia/packages/Random123/QDdNH/src/Random123.jl:107
+└  
+┌ CUDA_Compiler_jll
+│  Downloading artifact: CUDA_Runtime
+│       Failure artifact: CUDA_Runtime
+│   Downloading artifact: CUDA_Runtime
+└  
+Precompiling packages...
+   5213.5 ms  ✓ ClimaComms → ClimaCommsCUDAExt
+  1 dependency successfully precompiled in 6 seconds. 94 already precompiled.
+Precompiling packages...
+   1464.8 ms  ✓ ClimaUtilities
+  1 dependency successfully precompiled in 2 seconds. 9 already precompiled.
+Precompiling packages...
+   1488.2 ms  ✓ IntervalSets
+   2192.2 ms  ✓ GilbertCurves
+   3024.2 ms  ✓ MultiBroadcastFusion
+   3477.2 ms  ✓ InverseFunctions
+   3563.9 ms  ✓ LazyBroadcast
+   3724.0 ms  ✓ StatsAPI
+   4166.1 ms  ✓ CompositionsBase
+   4304.1 ms  ✓ DocStringExtensions
+   1456.6 ms  ✓ PackageExtensionCompat
+   4205.0 ms  ✓ VectorInterface
+   4779.6 ms  ✓ LRUCache
+   4295.8 ms  ✓ ConstructionBase
+   6282.5 ms  ✓ UnrolledUtilities
+   2924.2 ms  ✓ InverseFunctions → InverseFunctionsDatesExt
+   2923.6 ms  ✓ DiffResults
+   4120.7 ms  ✓ FastClosures
+   4194.3 ms  ✓ CompositionsBase → CompositionsBaseInverseFunctionsExt
+   9310.1 ms  ✓ FillArrays
+   3691.7 ms  ✓ Bzip2_jll
+   4223.7 ms  ✓ MPIPreferences
+   8510.4 ms  ✓ DataStructures
+  12791.3 ms  ✓ OffsetArrays
+   4210.0 ms  ✓ libaec_jll
+   5360.9 ms  ✓ Xorg_libpciaccess_jll
+   6465.0 ms  ✓ Lz4_jll
+   5930.1 ms  ✓ MicrosoftMPI_jll
+  12146.5 ms  ✓ CFTime
+   2960.0 ms  ✓ IntervalSets → IntervalSetsRandomExt
+   7569.7 ms  ✓ Zstd_jll
+   2528.4 ms  ✓ CommonSubexpressions
+   7815.8 ms  ✓ Libiconv_jll
+  19954.9 ms  ✓ RuntimeGeneratedFunctions
+   4067.4 ms  ✓ IntervalSets → IntervalSetsStatisticsExt
+  11700.7 ms  ✓ XZ_jll
+  20819.4 ms  ✓ NaNMath
+   8728.7 ms  ✓ RecipesBase
+   1491.2 ms  ✓ ConstructionBase → ConstructionBaseIntervalSetsExt
+   8904.1 ms  ✓ PkgVersion
+  10042.9 ms  ✓ OpenSpecFun_jll
+  16846.2 ms  ✓ Compat
+   1775.5 ms  ✓ ConstructionBase → ConstructionBaseStaticArraysExt
+   3130.8 ms  ✓ LRUCache → SerializationExt
+   3181.6 ms  ✓ FillArrays → FillArraysStaticArraysExt
+   4410.3 ms  ✓ ConstructionBase → ConstructionBaseLinearAlgebraExt
+   4005.9 ms  ✓ UnrolledUtilities → UnrolledUtilitiesStaticArraysExt
+   3988.4 ms  ✓ FillArrays → FillArraysStatisticsExt
+   3498.1 ms  ✓ Blosc_jll
+  26839.4 ms  ✓ IrrationalConstants
+  10332.0 ms  ✓ Distances
+   5010.1 ms  ✓ OffsetArrays → OffsetArraysAdaptExt
+   5769.5 ms  ✓ FillArrays → FillArraysSparseArraysExt
+   3084.3 ms  ✓ Compat → CompatLinearAlgebraExt
+   9401.1 ms  ✓ KrylovKit
+   4783.1 ms  ✓ IntervalSets → IntervalSetsRecipesBaseExt
+  13351.8 ms  ✓ ArrayInterface
+   1013.3 ms  ✓ ArrayInterface → ArrayInterfaceStaticArraysCoreExt
+  13764.8 ms  ✓ ClimaInterpolations
+   8099.4 ms  ✓ libzip_jll
+   4989.9 ms  ✓ Distances → DistancesSparseArraysExt
+   8646.9 ms  ✓ XML2_jll
+   2638.7 ms  ✓ ArrayInterface → ArrayInterfaceGPUArraysCoreExt
+   6030.3 ms  ✓ LogExpFunctions
+   3698.8 ms  ✓ ArrayInterface → ArrayInterfaceSparseArraysExt
+  31262.6 ms  ✓ Krylov
+   1879.5 ms  ✓ LogExpFunctions → LogExpFunctionsInverseFunctionsExt
+  13239.2 ms  ✓ MPItrampoline_jll
+   3064.3 ms  ✓ Hwloc_jll
+   9708.5 ms  ✓ DiskArrays
+   2746.2 ms  ✓ OpenMPI_jll
+   9794.5 ms  ✓ SpecialFunctions
+   7783.0 ms  ✓ MPICH_jll
+   8940.9 ms  ✓ CommonDataModel
+   2547.8 ms  ✓ DiffRules
+   3453.0 ms  ✓ GaussQuadrature
+  47369.2 ms  ✓ TimerOutputs
+  45810.3 ms  ✓ TaylorSeries
+  26961.5 ms  ✓ Accessors
+   4205.3 ms  ✓ TaylorSeries → TaylorSeriesSAExt
+  11246.8 ms  ✓ HDF5_jll
+   2209.8 ms  ✓ Accessors → LinearAlgebraExt
+   2151.1 ms  ✓ Accessors → IntervalSetsExt
+   6847.5 ms  ✓ LinearOperators
+   5857.2 ms  ✓ CubedSphere
+   2833.8 ms  ✓ Accessors → StaticArraysExt
+  33796.7 ms  ✓ ArrayLayouts
+  16068.4 ms  ✓ ForwardDiff
+   7837.0 ms  ✓ SymbolicIndexingInterface
+  10062.5 ms  ✓ NetCDF_jll
+   3906.2 ms  ✓ RootSolvers
+   6071.4 ms  ✓ ArrayLayouts → ArrayLayoutsSparseArraysExt
+   4091.6 ms  ✓ ForwardDiff → ForwardDiffStaticArraysExt
+  11487.1 ms  ✓ ClimaTimeSteppers
+   8889.7 ms  ✓ BlockArrays
+   2510.9 ms  ✓ BlockArrays → BlockArraysAdaptExt
+  27801.2 ms  ✓ HDF5
+  21722.0 ms  ✓ RecursiveArrayTools
+   1985.9 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsStatisticsExt
+   2248.2 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsForwardDiffExt
+   2339.1 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsSparseArraysExt
+   2595.0 ms  ✓ TaylorSeries → TaylorSeriesRATExt
+  39965.8 ms  ✓ NCDatasets
+  11245.8 ms  ✓ ClimaUtilities → ClimaUtilitiesNCDatasetsExt
+  79836.4 ms  ✓ BandedMatrices
+   2852.3 ms  ✓ BlockArrays → BlockArraysBandedMatricesExt
+   3450.7 ms  ✓ ArrayInterface → ArrayInterfaceBandedMatricesExt
+   4033.1 ms  ✓ BandedMatrices → BandedMatricesSparseArraysExt
+  14365.3 ms  ✓ ClimaCore
+   7137.9 ms  ✓ ClimaCore → KrylovExt
+   7145.4 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreExt
+   7755.2 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreNCDatasetsExt
+  10702.9 ms  ✓ ClimaDiagnostics
+  111 dependencies successfully precompiled in 178 seconds. 55 already precompiled.
+  4 dependencies had output during precompilation:
+┌ HDF5_jll
+│  Downloading artifact: MPItrampoline
+└  
+┌ NetCDF_jll
+│  Downloading artifact: HDF5
+└  
+┌ HDF5
+│  Downloading artifact: HDF5
+└  
+┌ NCDatasets
+│  Downloading artifact: NetCDF
+└  
+Precompiling packages...
+   6806.6 ms  ✓ MultiBroadcastFusion → MultiBroadcastFusionCUDAExt
+  1 dependency successfully precompiled in 11 seconds. 93 already precompiled.
+Precompiling packages...
+   1685.4 ms  ✓ TensorCore
+   6129.1 ms  ✓ FixedPointNumbers
+   8421.7 ms  ✓ CUDA → SpecialFunctionsExt
+   4656.0 ms  ✓ ColorTypes
+    953.0 ms  ✓ ColorTypes → StyledStringsExt
+   4195.9 ms  ✓ ColorVectorSpace
+   1289.7 ms  ✓ ColorVectorSpace → SpecialFunctionsExt
+  7 dependencies successfully precompiled in 18 seconds. 98 already precompiled.
+Precompiling packages...
+   5016.3 ms  ✓ ArrayInterface → ArrayInterfaceCUDAExt
+  1 dependency successfully precompiled in 8 seconds. 96 already precompiled.
+Precompiling packages...
+   1609.2 ms  ✓ SymbolicIndexingInterface → SymbolicIndexingInterfacePrettyTablesExt
+  1 dependency successfully precompiled in 3 seconds. 42 already precompiled.
+Precompiling packages...
+   1675.0 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsKernelAbstractionsExt
+  1 dependency successfully precompiled in 3 seconds. 43 already precompiled.
+Precompiling packages...
+   1289.0 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsTablesExt
+  1 dependency successfully precompiled in 2 seconds. 36 already precompiled.
+Precompiling packages...
+   7122.3 ms  ✓ ClimaInterpolations → ClimaInterpolationsCUDAExt
+  1 dependency successfully precompiled in 11 seconds. 94 already precompiled.
+Precompiling packages...
+  10199.1 ms  ✓ ClimaCore → ClimaCoreCUDAExt
+  1 dependency successfully precompiled in 15 seconds. 190 already precompiled.
+Precompiling packages...
+   5319.9 ms  ✓ LinearOperators → LinearOperatorsCUDAExt
+  1 dependency successfully precompiled in 8 seconds. 95 already precompiled.
+Precompiling packages...
+    684.3 ms  ✓ ClimaParams
+  1 dependency successfully precompiled in 1 seconds. 4 already precompiled.
+Precompiling packages...
+   3057.0 ms  ✓ MuladdMacro
+   2388.9 ms  ✓ EnumX
+   3208.1 ms  ✓ RangeArrays
+   2977.7 ms  ✓ IntegerMathUtils
+   3401.5 ms  ✓ GeoFormatTypes
+   2905.2 ms  ✓ StableRNGs
+   3855.2 ms  ✓ Contour
+   4236.5 ms  ✓ IndirectArrays
+   4294.6 ms  ✓ PolygonOps
+   4129.2 ms  ✓ TriplotBase
+   3846.6 ms  ✓ PaddedViews
+   1214.5 ms  ✓ Ratios
+   5080.7 ms  ✓ IterTools
+   1263.0 ms  ✓ Inflate
+   3266.3 ms  ✓ Extents
+   1821.1 ms  ✓ IfElse
+   4103.3 ms  ✓ RoundingEmulator
+   1056.7 ms  ✓ MappedArrays
+   4542.6 ms  ✓ PtrArrays
+   4501.2 ms  ✓ Primes
+   1398.8 ms  ✓ StackViews
+   4539.3 ms  ✓ StableTasks
+   4756.1 ms  ✓ DelimitedFiles
+   6034.0 ms  ✓ AbstractTrees
+   4661.4 ms  ✓ CommonWorldInvalidations
+   2527.9 ms  ✓ AliasTables
+   8317.3 ms  ✓ AdaptivePredicates
+   8623.5 ms  ✓ SciMLPublic
+   6722.2 ms  ✓ SortingAlgorithms
+  15875.7 ms  ✓ Grisu
+   6245.2 ms  ✓ StructUtils
+   8516.0 ms  ✓ ProgressMeter
+   8187.7 ms  ✓ WoodburyMatrices
+  16758.6 ms  ✓ Observables
+  13437.6 ms  ✓ LazyModules
+   2715.2 ms  ✓ CoreMath_jll
+  21062.3 ms  ✓ Format
+   6012.5 ms  ✓ RelocatableFolders
+   5293.9 ms  ✓ SimpleTraits
+  16118.8 ms  ✓ SignedDistanceFields
+  15907.9 ms  ✓ StructTypes
+   7693.8 ms  ✓ dlfcn_win32_jll
+   8507.2 ms  ✓ Graphite2_jll
+   6158.0 ms  ✓ Libmount_jll
+   5191.2 ms  ✓ Xorg_libXau_jll
+  15050.9 ms  ✓ StructArrays
+  19921.1 ms  ✓ Missings
+   4287.4 ms  ✓ libpng_jll
+   7043.4 ms  ✓ Rmath_jll
+  20371.5 ms  ✓ QuadGK
+   4360.2 ms  ✓ libfdk_aac_jll
+   8533.8 ms  ✓ LLVMOpenMP_jll
+   4492.3 ms  ✓ Giflib_jll
+   5768.8 ms  ✓ Imath_jll
+  14534.3 ms  ✓ ChainRulesCore
+   4438.4 ms  ✓ EarCut_jll
+  15339.9 ms  ✓ UnicodeFun
+   4197.1 ms  ✓ CRlibm_jll
+   6568.5 ms  ✓ libdrm_jll
+   5881.8 ms  ✓ LERC_jll
+   3810.0 ms  ✓ Xorg_libXdmcp_jll
+   4423.6 ms  ✓ Ogg_jll
+   5877.4 ms  ✓ JpegTurbo_jll
+   7657.9 ms  ✓ LAME_jll
+   6402.6 ms  ✓ x265_jll
+   4640.2 ms  ✓ Libffi_jll
+   2616.4 ms  ✓ Libtiff_jll
+   6946.3 ms  ✓ Expat_jll
+   4433.5 ms  ✓ OpenBLASConsistentFPCSR_jll
+   7643.2 ms  ✓ libaom_jll
+   9023.6 ms  ✓ x264_jll
+   7748.2 ms  ✓ Xorg_xtrans_jll
+   8287.6 ms  ✓ Opus_jll
+   2736.5 ms  ✓ FreeType2_jll
+   7885.6 ms  ✓ FriBidi_jll
+   8943.2 ms  ✓ isoband_jll
+   6129.4 ms  ✓ FilePathsBase
+   8947.8 ms  ✓ Libuuid_jll
+   6518.5 ms  ✓ GettextRuntime_jll
+   2009.8 ms  ✓ MosaicViews
+   4821.2 ms  ✓ Ratios → RatiosFixedPointNumbersExt
+   1057.2 ms  ✓ Showoff
+   6808.9 ms  ✓ TranscodingStreams
+   1196.9 ms  ✓ StructUtils → StructUtilsStaticArraysCoreExt
+   3117.3 ms  ✓ AxisAlgorithms
+   8354.7 ms  ✓ PDMats
+  10446.0 ms  ✓ AxisArrays
+   6068.1 ms  ✓ StructUtils → StructUtilsTablesExt
+   1964.2 ms  ✓ CoreMath
+  10565.5 ms  ✓ FFTA
+  12725.7 ms  ✓ GeoInterface
+  15112.9 ms  ✓ HypergeometricFunctions
+   4947.5 ms  ✓ StructArrays → StructArraysAdaptExt
+  16458.9 ms  ✓ Thermodynamics
+   6333.2 ms  ✓ StructArrays → StructArraysSparseArraysExt
+   5171.7 ms  ✓ StructArrays → StructArraysLinearAlgebraExt
+   4316.9 ms  ✓ Accessors → StructArraysExt
+   2025.0 ms  ✓ Rmath
+  19955.8 ms  ✓ CoordinateTransformations
+   8894.7 ms  ✓ SQLite_jll
+  58712.4 ms  ✓ BaseDirs
+   5720.4 ms  ✓ RecursiveArrayTools → RecursiveArrayToolsStructArraysExt
+   2525.0 ms  ✓ AbstractFFTs → AbstractFFTsChainRulesCoreExt
+   3519.3 ms  ✓ Distances → DistancesChainRulesCoreExt
+   4617.6 ms  ✓ Pixman_jll
+   4896.0 ms  ✓ OpenEXR_jll
+   5891.2 ms  ✓ LogExpFunctions → LogExpFunctionsChainRulesCoreExt
+   5220.8 ms  ✓ KrylovKit → KrylovKitChainRulesCoreExt
+   5643.5 ms  ✓ SpecialFunctions → SpecialFunctionsChainRulesCoreExt
+  20633.2 ms  ✓ ComputePipeline
+   9191.5 ms  ✓ PROJ_jll
+   7684.4 ms  ✓ LinearOperators → LinearOperatorsChainRulesCoreExt
+   7898.2 ms  ✓ StaticArrays → StaticArraysChainRulesCoreExt
+   5033.8 ms  ✓ libsixel_jll
+  21896.2 ms  ✓ StructArrays → StructArraysStaticArraysExt
+   9676.7 ms  ✓ CRlibm
+   6885.6 ms  ✓ libvorbis_jll
+   2388.7 ms  ✓ FilePaths
+   6497.4 ms  ✓ Isoband
+   5510.2 ms  ✓ FilePathsBase → FilePathsBaseMmapExt
+   4738.1 ms  ✓ GeoInterface → GeoInterfaceRecipesBaseExt
+  67217.7 ms  ✓ Colors
+  25633.0 ms  ✓ ChainRulesCore → ChainRulesCoreSparseArraysExt
+  15931.7 ms  ✓ FreeType
+  19760.6 ms  ✓ Xorg_libxcb_jll
+   5712.0 ms  ✓ SortTileRecursiveTree
+  10991.1 ms  ✓ FillArrays → FillArraysPDMatsExt
+  13101.4 ms  ✓ Glib_jll
+   6384.3 ms  ✓ Thermodynamics → CreateParametersExt
+  51081.3 ms  ✓ FileIO
+  14200.3 ms  ✓ Fontconfig_jll
+   2903.3 ms  ✓ ArrayInterface → ArrayInterfaceChainRulesCoreExt
+  11970.7 ms  ✓ GeometryOpsCore
+   1599.3 ms  ✓ NVTX → NVTXColorsExt
+   4654.4 ms  ✓ Animations
+  50406.6 ms  ✓ Static
+   5636.6 ms  ✓ Xorg_libX11_jll
+  14470.9 ms  ✓ StatsFuns
+   6855.8 ms  ✓ QOI
+  46647.9 ms  ✓ StatsBase
+   3497.6 ms  ✓ Xorg_libXrender_jll
+   9058.5 ms  ✓ OpenEXR
+   5929.7 ms  ✓ Xorg_libXext_jll
+   4789.9 ms  ✓ Xorg_libXfixes_jll
+   7228.4 ms  ✓ PDMats → StatsBaseExt
+   4745.6 ms  ✓ StatsFuns → StatsFunsInverseFunctionsExt
+  26119.3 ms  ✓ Geodesy
+  27739.5 ms  ✓ SurfaceFluxes
+  14671.4 ms  ✓ Cairo_jll
+  11807.6 ms  ✓ SurfaceFluxes → CreateParametersExt
+  17512.2 ms  ✓ libva_jll
+  23677.5 ms  ✓ StatsFuns → StatsFunsChainRulesCoreExt
+  21270.0 ms  ✓ Libglvnd_jll
+  48802.8 ms  ✓ Proj
+  47668.3 ms  ✓ Interpolations
+  52361.5 ms  ✓ IntervalArithmetic
+  19115.2 ms  ✓ HarfBuzz_jll
+   9933.1 ms  ✓ IntervalArithmetic → IntervalArithmeticIntervalSetsExt
+  12163.9 ms  ✓ IntervalArithmetic → IntervalArithmeticRecipesBaseExt
+  17526.9 ms  ✓ IntervalArithmetic → IntervalArithmeticIrrationalConstantsExt
+  18226.9 ms  ✓ IntervalArithmetic → IntervalArithmeticSparseArraysExt
+  28036.0 ms  ✓ libwebp_jll
+  13713.1 ms  ✓ IntervalArithmetic → IntervalArithmeticDiffRulesExt
+  29310.2 ms  ✓ Insolation
+  17650.2 ms  ✓ IntervalArithmetic → IntervalArithmeticLinearAlgebraExt
+ 133414.9 ms  ✓ SIMD
+  14560.4 ms  ✓ libass_jll
+  17242.7 ms  ✓ TaylorSeries → TaylorSeriesIAExt
+  64815.3 ms  ✓ Distributions
+  87381.1 ms  ✓ ColorSchemes
+  35959.9 ms  ✓ IntervalArithmetic → IntervalArithmeticForwardDiffExt
+   9622.7 ms  ✓ Insolation → CreateParametersExt
+  88335.2 ms  ✓ StaticArrayInterface
+  12813.8 ms  ✓ FFMPEG_jll
+  12386.8 ms  ✓ StaticArrayInterface → StaticArrayInterfaceOffsetArraysExt
+  20194.0 ms  ✓ StaticArrayInterface → StaticArrayInterfaceStaticArraysExt
+  68709.9 ms  ✓ ClimaUtilities → ClimaUtilitiesClimaCoreInterpolationsExt
+ 127862.7 ms  ✓ ImageCore
+  41387.7 ms  ✓ Distributions → DistributionsChainRulesCoreExt
+  29450.6 ms  ✓ KernelDensity
+  31667.4 ms  ✓ WebP
+  38498.6 ms  ✓ Sixel
+ 194346.7 ms  ✓ Parsers
+  97948.6 ms  ✓ ExactPredicates
+  51130.2 ms  ✓ JpegTurbo
+  53586.3 ms  ✓ ImageBase
+  95110.6 ms  ✓ PlotUtils
+  63710.8 ms  ✓ PNGFiles
+ 110374.4 ms  ✓ NaNStatistics
+  37345.5 ms  ✓ ImageAxes
+ 303426.0 ms  ✓ Unitful
+   7751.6 ms  ✓ ImageMetadata
+   2243.3 ms  ✓ Unitful → PrintfExt
+   2946.4 ms  ✓ NaNStatistics → NaNStatisticsUnitfulExt
+   3339.3 ms  ✓ Interpolations → InterpolationsUnitfulExt
+   3934.2 ms  ✓ Unitful → InverseFunctionsUnitfulExt
+   4385.8 ms  ✓ Unitful → NaNMathExt
+   5079.8 ms  ✓ Unitful → ConstructionBaseUnitfulExt
+   5211.6 ms  ✓ Accessors → UnitfulExt
+   5678.5 ms  ✓ Unitful → ForwardDiffExt
+  13999.0 ms  ✓ Netpbm
+  86705.4 ms  ✓ JSON
+  87344.7 ms  ✓ JSON3
+   4602.4 ms  ✓ ColorBrewer
+  89245.8 ms  ✓ DelaunayTriangulation
+ 315529.9 ms  ✓ GeometryBasics
+  14769.3 ms  ✓ GeometryBasics → GeometryBasicsGeoInterfaceExt
+  16157.0 ms  ✓ Packing
+  43702.5 ms  ✓ GeometryOps
+  11633.2 ms  ✓ GeometryOps → GeometryOpsProjExt
+  96941.5 ms  ✓ ClimaAnalysis
+  40130.6 ms  ✓ FreeTypeAbstraction
+  41618.4 ms  ✓ ShaderAbstractions
+ 263786.6 ms  ✓ Automa
+  96683.4 ms  ✓ GeoJSON
+   1959.8 ms  ✓ GeoJSON → GeoJSONRecipesBaseExt
+   4851.6 ms  ✓ NaturalEarth
+  76203.6 ms  ✓ GridLayoutBase
+  30195.6 ms  ✓ MathTeXEngine
+ 341965.4 ms  ✓ TiffImages
+   1717.1 ms  ✓ ImageIO
+ 466591.9 ms  ✓ Makie
+  14549.3 ms  ✓ GeoJSON → GeoJSONMakieExt
+  14803.7 ms  ✓ GeometryOps → GeometryOpsMakieExt
+  15099.0 ms  ✓ GeoInterface → GeoInterfaceMakieExt
+  15483.3 ms  ✓ ClimaAnalysis → ClimaAnalysisMakieExt
+  12783.2 ms  ✓ GeoMakie
+   9109.9 ms  ✓ ClimaAnalysis → ClimaAnalysisGeoMakieExt
+  12498.9 ms  ✓ ClimaLand
+   5236.2 ms  ✓ ClimaLand → FluxnetSimulationsExt
+  230 dependencies successfully precompiled in 1035 seconds. 191 already precompiled.
+Precompiling packages...
+   6119.8 ms  ✓ CUDA → ChainRulesCoreExt
+  1 dependency successfully precompiled in 8 seconds. 98 already precompiled.
+Precompiling packages...
+ 153568.1 ms  ✓ CairoMakie (serial)
+  1 dependency successfully precompiled in 154 seconds
+Precompiling packages...
+   1120.0 ms  ✓ StructArrays → StructArraysGPUArraysCoreExt
+  1 dependency successfully precompiled in 2 seconds. 36 already precompiled.
+Precompiling packages...
+  12027.4 ms  ✓ LandSimulationVisualizationExt (serial)
+  1 dependency successfully precompiled in 12 seconds
+ERROR: LoadError: Scalar indexing is disallowed.
+Invocation of getindex resulted in scalar indexing of a GPU array.
+This is typically caused by calling an iterating implementation of a method.
+Such implementations *do not* execute on the GPU, but very slowly on the CPU,
+and therefore should be avoided.
+
+If you want to allow scalar iteration, use `allowscalar` or `@allowscalar`
+to enable scalar iteration globally or for the operations in question.
+Stacktrace:
+  [1] error(s::String)
+    @ Base ./error.jl:44
+  [2] errorscalar(op::String)
+    @ GPUArraysCore ~/.julia/packages/GPUArraysCore/aNaXo/src/GPUArraysCore.jl:151
+  [3] _assertscalar(op::String, behavior::GPUArraysCore.ScalarIndexing)
+    @ GPUArraysCore ~/.julia/packages/GPUArraysCore/aNaXo/src/GPUArraysCore.jl:124
+  [4] assertscalar(op::String)
+    @ GPUArraysCore ~/.julia/packages/GPUArraysCore/aNaXo/src/GPUArraysCore.jl:112
+  [5] getindex
+    @ ~/.julia/packages/GPUArrays/3a5jB/src/host/indexing.jl:50 [inlined]
+  [6] getindex(V::SubArray{Float64, 4, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Int64, Vararg{Base.Slice{Base.OneTo{Int64}}, 4}}, true}, i::Int64)
+    @ Base ./subarray.jl:330
+  [7] setup_model(::Type{Float64}, start_date::DateTime, stop_date::DateTime, Δt::Float64, domain::ClimaLand.Domains.HybridBox{Float64, @NamedTuple{surface::ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}, subsurface::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}, subsurface_face::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellFace}}, @NamedTuple{z::ClimaCore.Fields.Field{ClimaCore.DataLayouts.VIJFH{Float64, 15, 1, SubArray{Float64, 5, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}}, Δz_top::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.LevelGrid{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Utilities.PlusHalf{Int64}}}}, Δz_bottom::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.LevelGrid{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Utilities.PlusHalf{Int64}}}}, z_sfc::ClimaCore.Fields.Field{ClimaCore.DataLayouts.IJFH{Float64, 1, SubArray{Float64, 4, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Int64, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.SpectralElementSpace2D{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}}}, depth::Float64, Δz::ClimaCore.Fields.Field{ClimaCore.DataLayouts.VIJFH{Float64, 15, 1, SubArray{Float64, 5, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}, Tuple{Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, Base.Slice{Base.OneTo{Int64}}, UnitRange{Int64}, Base.Slice{Base.OneTo{Int64}}}, false}}, ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace{ClimaCore.Grids.ExtrudedFiniteDifferenceGrid{ClimaCore.Grids.SpectralElementGrid2D{ClimaCore.Topologies.Topology2D{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.RectilinearMesh{ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LatPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LatPoint{Float64}, Int64}, Nothing}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.Uniform, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.LongPoint{Float64}, Tuple{Symbol, Symbol}}, LinRange{ClimaCore.Geometry.LongPoint{Float64}, Int64}, Nothing}}, CartesianIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, LinearIndices{2, Tuple{Base.OneTo{Int64}, Base.OneTo{Int64}}}, CUDA.CuArray{Tuple{Int64, Int64, Int64, Int64, Bool}, 1, CUDA.DeviceMemory}, Vector{Tuple{Int64, Int64, Int64, Int64, Bool}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Tuple{Bool, Int64, Int64}, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}, @NamedTuple{north::Vector{Tuple{Int64, Int64}}, south::Vector{Tuple{Int64, Int64}}, west::Vector{Tuple{Int64, Int64}}, east::Vector{Tuple{Int64, Int64}}}, CUDA.CuArray{Tuple{Int64, Int64}, 1, CUDA.DeviceMemory}}, ClimaCore.Quadratures.GL{1}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.IJFH{ClimaCore.Geometry.LocalGeometry{(1, 2), ClimaCore.Geometry.LatLongPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.LocalAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2)}, ClimaCore.Geometry.ContravariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2)}, ClimaCore.Geometry.CovariantAxis{(1, 2)}}, StaticArraysCore.SMatrix{2, 2, Float64, 4}}}, 1, CUDA.CuArray{Float64, 4, CUDA.DeviceMemory}}, Nothing, Nothing, Nothing, ClimaCore.DataLayouts.IJHMask{ClimaCore.DataLayouts.IJFH{Bool, 1, CUDA.CuArray{Bool, 4, CUDA.DeviceMemory}}, Vector{Int64}, CUDA.CuArray{Int64, 1, CUDA.DeviceMemory}}}, FiniteDifferenceGrid{IntervalTopology{ClimaComms.SingletonCommsContext{ClimaComms.CUDADevice}, ClimaCore.Meshes.IntervalMesh{ClimaCore.Meshes.GeneralizedExponentialStretching{Float64}, ClimaCore.Domains.IntervalDomain{ClimaCore.Geometry.ZPoint{Float64}, Tuple{Symbol, Symbol}}, Vector{ClimaCore.Geometry.ZPoint{Float64}}, @NamedTuple{h_top::Float64}}, @NamedTuple{bottom::Int64, top::Int64}}, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 15, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VF{ClimaCore.Geometry.LocalGeometry{(3,), ClimaCore.Geometry.ZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.LocalAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(3,)}, ClimaCore.Geometry.ContravariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(3,)}, ClimaCore.Geometry.CovariantAxis{(3,)}}, StaticArraysCore.SMatrix{1, 1, Float64, 1}}}, 16, CUDA.CuArray{Float64, 2, CUDA.DeviceMemory}}}, ClimaCore.Grids.Flat, ClimaCore.Geometry.CartesianGlobalGeometry, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 15, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}, ClimaCore.DataLayouts.VIJFH{ClimaCore.Geometry.LocalGeometry{(1, 2, 3), ClimaCore.Geometry.LatLongZPoint{Float64}, Float64, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.LocalAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.LocalAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}, ClimaCore.Geometry.ContravariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}, ClimaCore.Geometry.AxisTensor{Float64, 2, Tuple{ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}, ClimaCore.Geometry.CovariantAxis{(1, 2, 3)}}, StaticArraysCore.SMatrix{3, 3, Float64, 9}}}, 16, 1, CUDA.CuArray{Float64, 5, CUDA.DeviceMemory}}}, ClimaCore.Grids.CellCenter}}, Δz_min::Float64}}, toml_dict::ClimaParams.ParamDict{Float64})
+    @ Main /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:145
+  [8] top-level scope
+    @ /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:226
+  [9] include(mod::Module, _path::String)
+    @ Base ./Base.jl:306
+ [10] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:317
+ [11] _start()
+    @ Base ./client.jl:550
+in expression starting at /resnick/groups/esm/xwu/ClimaLand.jl/experiments/long_runs/snowy_land_pmodel.jl:226
