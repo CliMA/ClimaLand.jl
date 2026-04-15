@@ -298,6 +298,19 @@ function soil_grids_params_artifact_path(; context = nothing, lowres = true)
 end
 
 """
+    soil_grids_ocd_artifact_path(; context = nothing)
+
+Return the path to the file that contains the soil organic carbon density
+(`ocd`, kg/m³) at six depth levels, derived from SoilGrids. This is a ~1 degree
+regridded version used for initializing the prognostic SOC in the soil
+biogeochemistry model.
+"""
+function soil_grids_ocd_artifact_path(; context = nothing)
+    dir = @clima_artifact("soilgrids_ocd_lowres_interp", context)
+    return joinpath(dir, "soil_ocd_soilgrids_lowres.nc")
+end
+
+"""
     experiment_fluxnet_data_path(
         site_ID;
         context = nothing,

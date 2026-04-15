@@ -142,13 +142,38 @@ function set_soilco2_initial_conditions!(Y, p, land)
     @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
     Y.soilco2.O2_f .= FT(0.21)
 
-    # SOC: exponential decay with depth (same profile as DK-Sor)
-    # SOC(z) = SOC_bot + (SOC_top - SOC_bot) × exp(z / τ_soc)
-    SOC_top = FT(15.0)  # kgC/m³ at surface
-    SOC_bot = FT(0.5)   # kgC/m³ at depth
-    τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
-    z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
-    @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
+    set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+    return nothing
+end
+
+"""
+    set_soilco2_SOC_from_soilgrids!(SOC_field)
+
+Initialize the prognostic soil organic carbon field `SOC_field` (kgC m⁻³)
+using the SoilGrids organic carbon density dataset.
+
+The data is regridded onto the 3D subsurface space of `SOC_field`. Below
+the deepest data level (-1.5 m) and above the shallowest (-0.025 m) values
+are extrapolated flat in depth, matching the convention used for the
+SoilGrids-based soil composition parameters. Ocean / missing-data grid
+points are zero in the source file and therefore come through as zero.
+Negative values produced by horizontal interpolation near coastlines are
+clipped to zero.
+"""
+function set_soilco2_SOC_from_soilgrids!(SOC_field)
+    FT = eltype(SOC_field)
+    subsurface_space = axes(SOC_field)
+    path = ClimaLand.Artifacts.soil_grids_ocd_artifact_path(;
+        context = ClimaComms.context(subsurface_space),
+    )
+    SOC_field .= SpaceVaryingInput(
+        path,
+        "ocd",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    SOC_field .= max.(SOC_field, FT(0))
     return nothing
 end
 
@@ -604,12 +629,7 @@ function make_set_subseasonal_initial_conditions(
         # Set initial conditions that aren't read in from file
         Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
         Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        # SOC: exponential decay with depth (same profile as DK-Sor)
-        SOC_top = FT(15.0)  # kgC/m³ at surface
-        SOC_bot = FT(0.5)   # kgC/m³ at depth
-        τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
-        z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
-        @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
+        set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
 
         # Set snow T first to use in computing snow internal energy from IC file
@@ -861,12 +881,7 @@ function make_set_initial_state_from_atmos_and_parameters(
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
             Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            # SOC: exponential decay with depth (same profile as DK-Sor)
-            SOC_top = FT(15.0)  # kgC/m³ at surface
-            SOC_bot = FT(0.5)   # kgC/m³ at depth
-            τ_soc = FT(1.0 / log(SOC_top / SOC_bot))  # ~0.294 m
-            z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
-            @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
+            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
 
         Y.snow.S .= FT(0)

@@ -63,6 +63,15 @@ git-tree-sha1 = "6ce1717bb8b7aa767380f1053b9d8d3a4e4edaa6"
     sha256 = "27d49fce7f4a5e2b81bbd29e8a7caf08f568a2df53e3af817126363decfd5a7c"
     url = "https://caltech.box.com/shared/static/99aw2gce2k65bdu0h8jkfxq4vin08gi2.gz"
 
+[soilgrids_ocd]
+git-tree-sha1 = "39b86daa8a335c7efa894b2a8c38419e98e9b228"
+[soilgrids_ocd_lowres_interp]
+git-tree-sha1 = "11d53b5e1ff9031a5e94cfe4b93322edcb1a6129"
+
+    [[soilgrids_ocd_lowres_interp.download]]
+    sha256 = "dec8ac8dfe23c088f7acdf790ce6fa8f958c6bfeb1e1d742a5904661f7facaef"
+    url = "https://caltech.box.com/shared/static/nr0bd7l18ka5fmvcmtwyj1t444vuonx8.gz"
+
 [sw_albedo]
 git-tree-sha1 = "136f1db3ed969614fb589c5250545a3ed1e8aaab"
 
