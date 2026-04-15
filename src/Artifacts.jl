@@ -541,6 +541,22 @@ function ilamb_dataset_path(filename; context = nothing)
 end
 
 """
+    ilamb_respiration_nee_dataset_path(filename; context = nothing)
+
+Triggers the download of the ILAMB respiration and NEE dataset, if not already
+downloaded, using Julia Artifacts, and returns the path to this file.
+
+Available datasets are "reco_FLUXCOM_reco.nc" (ecosystem respiration) and
+"nee_FLUXCOM_nee.nc" (net ecosystem exchange), both in g m-2 day-1.
+"""
+function ilamb_respiration_nee_dataset_path(filename; context = nothing)
+    return joinpath(
+        @clima_artifact("ilamb_respiration_nee", context),
+        filename,
+    )
+end
+
+"""
     imerg_landsea_mask_path(; context = nothing)
 
 Return the path to the IMERG land-sea mask NetCDF file.

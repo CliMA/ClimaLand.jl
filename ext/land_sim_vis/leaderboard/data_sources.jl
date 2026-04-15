@@ -59,6 +59,38 @@ function get_sim_var_dict(diagnostics_folder_path)
             return sim_var
         end
 
+    sim_var_dict["er"] =
+        () -> begin
+            sim_var = get(
+                ClimaAnalysis.SimDir(diagnostics_folder_path),
+                short_name = "er",
+            )
+            (ClimaAnalysis.units(sim_var) == "mol CO2 m^-2 s^-1") && (
+                sim_var = ClimaAnalysis.convert_units(
+                    sim_var,
+                    "g m-2 day-1",
+                    conversion_function = units -> units * 86400.0 * 12.011,
+                )
+            )
+            return sim_var
+        end
+
+    sim_var_dict["nee"] =
+        () -> begin
+            sim_var = get(
+                ClimaAnalysis.SimDir(diagnostics_folder_path),
+                short_name = "nee",
+            )
+            (ClimaAnalysis.units(sim_var) == "mol CO2 m^-2 s^-1") && (
+                sim_var = ClimaAnalysis.convert_units(
+                    sim_var,
+                    "g m-2 day-1",
+                    conversion_function = units -> units * 86400.0 * 12.011,
+                )
+            )
+            return sim_var
+        end
+
     sim_var_dict["lhf"] =
         () -> begin
             sim_var = get(
@@ -125,26 +157,6 @@ how to add new variables.
 function get_ilamb_obs_var_dict()
     # Dict for loading in observational data
     obs_var_dict = Dict{String, Any}()
-    obs_var_dict["et"] =
-        (start_date) -> begin
-            obs_var = ClimaAnalysis.OutputVar(
-                ClimaLand.Artifacts.ilamb_dataset_path(
-                    "evspsbl_MODIS_et_0.5x0.5.nc",
-                ),
-                "et",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            )
-            (ClimaAnalysis.units(obs_var) == "kg/m2/s") && (
-                obs_var = ClimaAnalysis.convert_units(
-                    obs_var,
-                    "mm / day",
-                    conversion_function = units -> units * 86400.0,
-                )
-            )
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-            return obs_var
-        end
 
     obs_var_dict["gpp"] =
         (start_date) -> begin
@@ -162,20 +174,44 @@ function get_ilamb_obs_var_dict()
             return obs_var
         end
 
-    obs_var_dict["lwu"] =
+    obs_var_dict["er"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                ClimaLand.Artifacts.ilamb_dataset_path(
-                    "rlus_CERESed4.2_rlus.nc",
+                ClimaLand.Artifacts.ilamb_respiration_nee_dataset_path(
+                    "reco_FLUXCOM_reco.nc",
                 ),
-                "rlus",
+                "reco",
                 new_start_date = start_date,
                 shift_by = Dates.firstdayofmonth,
             )
-            ClimaAnalysis.units(obs_var) == "W m-2" &&
-                (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
+            ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
+                (obs_var.dim_attributes["lon"]["units"] = "degrees_east")
+            ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
+                (obs_var.dim_attributes["lat"]["units"] = "degrees_north")
+            obs_var.attributes["short_name"] = "er"
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
             return obs_var
         end
+
+    obs_var_dict["nee"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                ClimaLand.Artifacts.ilamb_respiration_nee_dataset_path(
+                    "nee_FLUXCOM_nee.nc",
+                ),
+                "nee",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            )
+            ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
+                (obs_var.dim_attributes["lon"]["units"] = "degrees_east")
+            ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
+                (obs_var.dim_attributes["lat"]["units"] = "degrees_north")
+            obs_var.attributes["short_name"] = "nee"
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+            return obs_var
+        end
+
     return obs_var_dict
 end
 
@@ -281,14 +317,13 @@ function get_mask_dict(data_source)
     # Dict for loading in masks
     mask_dict = Dict{String, Any}()
 
-    # LWU is found in both ERA5 and ILAMB
     mask_dict["lwu"] =
         (sim_var, obs_var) -> begin
             return ClimaAnalysis.apply_oceanmask
         end
 
     if uppercase(data_source) == "ILAMB"
-        mask_dict["et"] =
+        ilamb_nan_mask =
             (sim_var, obs_var) -> begin
                 return ClimaAnalysis.make_lonlat_mask(
                     ClimaAnalysis.slice(
@@ -298,17 +333,9 @@ function get_mask_dict(data_source)
                     set_to_val = isnan,
                 )
             end
-
-        mask_dict["gpp"] =
-            (sim_var, obs_var) -> begin
-                return ClimaAnalysis.make_lonlat_mask(
-                    ClimaAnalysis.slice(
-                        obs_var,
-                        time = ClimaAnalysis.times(obs_var) |> first,
-                    );
-                    set_to_val = isnan,
-                )
-            end
+        mask_dict["gpp"] = ilamb_nan_mask
+        mask_dict["er"] = ilamb_nan_mask
+        mask_dict["nee"] = ilamb_nan_mask
     elseif uppercase(data_source) == "ERA5"
         mask_dict["shf"] =
             (sim_var, obs_var) -> begin
@@ -374,6 +401,8 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
     compare_vars_biases_plot_extrema = Dict(
         "et" => (-2.0, 2.0) .* factor,
         "gpp" => (-6.0, 6.0) .* factor,
+        "er" => (-6.0, 6.0) .* factor,
+        "nee" => (-4.0, 4.0) .* factor,
         "lwu" => (-40.0, 40.0) .* factor,
         "shf" => (-50.0, 50.0) .* factor,
         "lhf" => (-40.0, 40.0) .* factor,
