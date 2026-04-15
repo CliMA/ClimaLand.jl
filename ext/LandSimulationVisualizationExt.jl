@@ -440,6 +440,7 @@ function LandSimVis.make_timeseries(
     plot_stem_name = "timeseries",
     comparison_data = nothing,
     spinup_date = sim.start_date,
+    layer = nothing,
 )
     model = sim.model
     LandSimVis.make_timeseries(
@@ -451,6 +452,7 @@ function LandSimVis.make_timeseries(
         short_names,
         comparison_data,
         spinup_date,
+        layer,
     )
 end
 
@@ -463,6 +465,7 @@ function LandSimVis.make_timeseries(
     short_names = nothing,
     comparison_data = nothing,
     spinup_date = start_date,
+    layer = nothing,
 )
     @info "No method matching make_timeseries for $domain."
 end
@@ -471,6 +474,7 @@ function LandSimVis.make_timeseries(
     domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.Point},
     diagnostics,
     start_date;
+    layer = nothing,
     plot_stem_name = "timeseries",
     savedir = ".",
     short_names = nothing,
@@ -492,6 +496,7 @@ function LandSimVis.make_timeseries(
         plot_stem_name,
         comparison_data,
         spinup_date,
+        layer,
     )
 end
 

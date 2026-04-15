@@ -6,7 +6,11 @@ using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
-    AbstractSoilSource, AbstractSoilModel, RichardsModel, EnergyHydrology
+    AbstractSoilSource,
+    AbstractSoilModel,
+    RichardsModel,
+    EnergyHydrology,
+    volumetric_internal_energy_liq
 import ClimaLand.Parameters as LP
 import ClimaParams as CP
 export TOPMODELRunoff,
@@ -236,18 +240,15 @@ function update_infiltration_water_flux!(
     model::AbstractSoilModel,
 )
     ϑ_l = Y.soil.ϑ_l
+    ν = model.parameters.ν
+    θ_r = model.parameters.θ_r
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
-    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
-    column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
-    @. p.soil.R_ss = topmodel_ss_flux(
-        runoff.subsurface_source.R_sb,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-    )
+    # Surface runoff first
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
-
-    precip = p.drivers.P_liq
+    @. p.soil.is_saturated =
+        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
     @. p.soil.infiltration = topmodel_surface_infiltration(
         runoff.f_max,
         runoff.f_over,
@@ -256,14 +257,37 @@ function update_infiltration_water_flux!(
         input,
     )
     @. p.soil.R_s = abs(input - p.soil.infiltration)
-
+    # eek! now do it again but use only liquid water for subsurface runoff
+    @. p.soil.is_saturated =
+        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
+    @. p.soil.R_ss = topmodel_ss_flux(
+        runoff.subsurface_source.R_sb,
+        runoff.f_over,
+        model.domain.fields.depth - p.soil.h∇,
+    )
+    update_subsurface_energy_runoff!(p, model)
 end
 
+function update_subsurface_energy_runoff!(
+    p,
+    model::EnergyHydrology{FT},
+) where {FT}
+    @. p.soil.subsfc_scratch =
+        p.soil.is_saturated * volumetric_internal_energy_liq(
+            p.soil.T,
+            model.parameters.earth_param_set,
+        )
+    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actuall just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
+    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by tthe water table height (to get average energy) and multiplies by volumetric liquid water runoff.
+end
+update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
+
 runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
+    (:infiltration, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :subsfc_scratch)
 runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT)
+    (:surface, :subsurface, :surface, :surface, :surface, :surface, :subsurface)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -282,7 +306,7 @@ model_agnostic_volumetric_ice_content(Y, FT) =
         src::TOPMODELSubsurfaceRunoff,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        model::AbstractSoilModel{FT},
+        model::RichardsModel{FT},
     ) where {FT}
 
 Adjusts dY.soil.ϑ_l in place to account for the loss of
@@ -299,13 +323,39 @@ function ClimaLand.source!(
     src::TOPMODELSubsurfaceRunoff{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    model::AbstractSoilModel{FT},
+    model::RichardsModel{FT},
 ) where {FT}
-    ϑ_l = Y.soil.ϑ_l
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
+end
+
+"""
+    ClimaLand.source!(
+        dY::ClimaCore.Fields.FieldVector,
+        src::TOPMODELSubsurfaceRunoff,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        model::EnergyHydrology{FT},
+    ) where {FT}
+
+Adjusts dY.soil.ϑ_l and dY.soil.ρe_int in place
+ to account for the loss of water and denergy due to subsurface runoff.
+"""
+function ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::TOPMODELSubsurfaceRunoff{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::EnergyHydrology{FT},
+) where {FT}
+    h∇ = p.soil.h∇
+    ϵ = eps(FT)
+    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
+    @. dY.soil.∫F_e_dt -= p.soil.R_ess # the integral is designed to be this flux
 end
 
 """
@@ -321,7 +371,7 @@ see: Niu et al. (2005),
 use in global climate models", Equations (8) and (11).
 """
 function topmodel_surface_infiltration(f_max, f_over, z∇, f_ic, precip)
-    f_sat = f_max * exp(-f_over / 2 * z∇)
+    f_sat = min(f_max * exp(-f_over / 2 * z∇), 1)
     return (1 - f_sat) * max(f_ic, precip)
 end
 
