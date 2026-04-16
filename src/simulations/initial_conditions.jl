@@ -140,7 +140,10 @@ function set_soilco2_initial_conditions!(Y, p, land)
     θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β)
 
     @. Y.soilco2.CO2 = θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
-    Y.soilco2.O2_f .= FT(0.21)
+    # Exponential O2 profile: 0.21 at z=0, 0.15 at z=-1 m (k = ln(0.21/0.15)).
+    z = soil.domain.fields.z
+    k_o2 = FT(log(FT(0.21) / FT(0.15)))
+    @. Y.soilco2.O2_f = FT(0.21) * exp(k_o2 * z)
 
     set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
     return nothing
