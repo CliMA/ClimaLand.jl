@@ -601,7 +601,7 @@ description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["michaelis_constant"]
-value = 0.1
+value = 0.2
 type = "float"
 description = "Michaelis constant for substrate (kg C m⁻³)"
 tag = "SoilCO2Parameters"
