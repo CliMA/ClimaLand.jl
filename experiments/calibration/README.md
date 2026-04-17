@@ -7,11 +7,20 @@ latitude-weighted scalar covariance matrix.
 
 # How do I run a calibration?
 
-1. In `run_calibration.jl`, update the calibration configuration.
-    - On Derecho, you may want to set `output_dir` to a scratch directory
-      (e.g. "/glade/derecho/scratch").
-2. Run the calibration script on the cluster.
-    - Execute `bash experiments/calibration/run_calibration.sh` in the terminal.
+1. Pick (or create) a configuration file under
+   `experiments/calibration/configs/`. `run_calibration.jl` loads
+   `configs/energy_fluxes.jl` by default. To use a different config, set the
+   `CALIBRATION_CONFIG` environment variable before running the script, e.g.
+   `CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh`.
+   When `TEST_CALIBRATION` is set, the single-parameter `configs/test.jl` is
+   loaded instead.
+2. Load the `climacommon` version appropriate for your cluster (for example,
+   `module load climacommon/2025_02_25` on Derecho). The loaded version is
+   forwarded to the compute jobs automatically.
+3. Run the calibration script on the cluster:
+    - Execute `bash experiments/calibration/run_calibration.sh [OUTPUT_DIR]` in
+      the terminal. `OUTPUT_DIR` is optional; on Derecho you typically want to
+      pass a scratch path (e.g. `/glade/derecho/scratch/$USER/calibration_gpp`).
     - You can start this script from the login node. Slurm/PBS will handle job
       submission for the forward models.
     - You may want to use `tmux` to keep a persistent session on the cluster.
