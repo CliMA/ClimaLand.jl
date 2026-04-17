@@ -29,22 +29,23 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Simulations:
     LandSimulation, solve!, make_set_initial_state_from_file
 using CairoMakie
+using NCDatasets
 
 const FT = Float64
 
-# --- 10 locations in NaN regions of hr_globe.png ---
+# --- 10 sites spanning major biomes (keeping two deserts) ---
 # (name, lon, lat, approximate-maxLAI)
 sites = [
-    ("boreal_canada", FT(-110.0), FT(55.0), FT(3.0)),
-    ("alaska_interior", FT(-150.0), FT(65.0), FT(2.5)),
-    ("western_siberia", FT(80.0), FT(60.0), FT(3.0)),
-    ("central_europe", FT(10.0), FT(51.0), FT(4.0)),
-    ("sahel", FT(8.0), FT(14.0), FT(2.0)),
-    ("southern_africa", FT(25.0), FT(-23.0), FT(2.5)),
-    ("australian_outback", FT(135.0), FT(-25.0), FT(2.0)),
-    ("central_india", FT(78.0), FT(23.0), FT(3.5)),
-    ("northern_china", FT(115.0), FT(40.0), FT(3.0)),
-    ("central_us", FT(-98.0), FT(39.0), FT(3.5)),
+    ("amazon_central", FT(-60.0), FT(-3.0), FT(6.0)),          # tropical evergreen
+    ("sahel", FT(8.0), FT(14.0), FT(2.0)),                     # tropical savanna / dryland
+    ("australian_outback", FT(135.0), FT(-25.0), FT(1.5)),     # hot desert
+    ("california_chap", FT(-120.0), FT(36.0), FT(2.5)),        # mediterranean shrubland
+    ("eastern_us", FT(-84.0), FT(38.0), FT(5.0)),              # temperate deciduous
+    ("central_us_plains", FT(-98.0), FT(39.0), FT(3.0)),       # temperate grassland
+    ("pacific_nw", FT(-122.0), FT(46.0), FT(5.5)),             # temperate needleleaf
+    ("central_siberia", FT(100.0), FT(62.0), FT(3.5)),         # boreal forest
+    ("alaska_north_slope", FT(-150.0), FT(69.0), FT(1.0)),     # tundra
+    ("indo_gangetic", FT(80.0), FT(26.0), FT(4.0)),            # monsoon cropland
 ]
 
 # --- Time setup (same for all sites) ---
@@ -64,7 +65,7 @@ dz_tuple = (FT(3.0), FT(0.05))
 
 savedir = joinpath(
     pkgdir(ClimaLand),
-    "experiments/integrated/multi_column_soilco2_out",
+    "experiments/integrated/multi_column_soilco2_out_ilamb",
 )
 mkpath(savedir)
 
@@ -79,6 +80,37 @@ end
 function time_to_days(times)
     t0 = times[1]
     return [Float64((t - t0).counter) / 86400.0 for t in times]
+end
+
+# --- ILAMB FLUXCOM ER observation (monthly, 0.5°, gC m-2 d-1) ---
+# Loaded once and sliced per-site via nearest-neighbor.
+const obs_reco_ds = NCDataset(
+    ClimaLand.Artifacts.ilamb_respiration_nee_dataset_path(
+        "reco_FLUXCOM_reco.nc",
+    ),
+)
+const obs_reco_lon = Array{Float64}(obs_reco_ds["lon"][:])
+const obs_reco_lat = Array{Float64}(obs_reco_ds["lat"][:])
+const obs_reco_time = obs_reco_ds["time"][:]  # DateTimeNoLeap
+const year2_start = start_date + Day(Int(spinup_days))
+const year2_stop = stop_date
+
+"""Return (days since year-2 start, ER gC/m²/d) for FLUXCOM at (lon, lat),
+clipped to the year-2 plotting window. Drops missing/NaN values."""
+function obs_er_year2(lon_site, lat_site)
+    ilon = argmin(abs.(obs_reco_lon .- lon_site))
+    ilat = argmin(abs.(obs_reco_lat .- lat_site))
+    reco_col = Array{Float64}(obs_reco_ds["reco"][ilon, ilat, :])
+    days = Float64[]
+    vals = Float64[]
+    for (t, v) in zip(obs_reco_time, reco_col)
+        dt = DateTime(Dates.yearmonthday(t)...)
+        if dt >= year2_start && dt < year2_stop && isfinite(v)
+            push!(days, (dt - year2_start) / Day(1))
+            push!(vals, v)
+        end
+    end
+    return days, vals
 end
 
 function run_site(name, lon, lat, maxLAI)
@@ -244,27 +276,27 @@ function run_site(name, lon, lat, maxLAI)
         fontsize = fs + 6,
     )
 
-    # Panel 1: Ra + HR
+    # Panel 1: Ra + HR + modeled ER + FLUXCOM ER observation
     ax1 = Axis(fig[1, 1]; ylabel = "flux (gC m⁻² d⁻¹)")
     t_ra, v_ra = year2(get_ts(writer, "ra")...)
     t_hr, v_hr = year2(get_ts(writer, "hr")...)
-    lines!(
-        ax1,
-        t_ra,
-        v_ra .* mol_co2_to_gC_per_day;
-        color = :black,
-        linewidth = lw,
-        label = "Ra",
-    )
-    lines!(
-        ax1,
-        t_hr,
-        v_hr .* mol_co2_to_gC_per_day;
-        color = RGBf(0.45, 0.45, 0.45),
-        linewidth = lw,
-        label = "HR",
-    )
-    axislegend(ax1; position = :rt)
+    ra_gc = v_ra .* mol_co2_to_gC_per_day
+    hr_gc = v_hr .* mol_co2_to_gC_per_day
+    er_gc = ra_gc .+ hr_gc
+    lines!(ax1, t_ra, ra_gc;
+        color = :black, linewidth = lw, label = "Ra")
+    lines!(ax1, t_hr, hr_gc;
+        color = RGBf(0.45, 0.45, 0.45), linewidth = lw, label = "HR")
+    lines!(ax1, t_ra, er_gc;
+        color = :black, linewidth = lw, linestyle = :dash,
+        label = "ER model")
+    obs_days, obs_er = obs_er_year2(lon, lat)
+    if !isempty(obs_days)
+        scatterlines!(ax1, obs_days, obs_er;
+            color = RGBf(0.85, 0.2, 0.15), linewidth = lw,
+            markersize = 8, label = "ER FLUXCOM")
+    end
+    axislegend(ax1; position = :rt, nbanks = 2)
 
     # Panel 2: soil CO2 (left, black) + O2_f (right, green)
     ax2 = Axis(fig[2, 1]; ylabel = "soil CO₂ (ppm)")
