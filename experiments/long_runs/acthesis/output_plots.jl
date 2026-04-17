@@ -1,8 +1,8 @@
 using NCDatasets, DataFrames, Statistics, CairoMakie, GeoMakie, Dates, JLD2, HypothesisTests
 using ClimaLand
 
-const my_param_dir = "/home/acharbon/outputs/all_global"
-const old_param_dir = "/home/acharbon/outputs/none_global"
+const my_param_dir = "/home/acharbon/outputs/all_global_daily"
+const old_param_dir = "/home/acharbon/outputs/none_global_daily"
 const htessel_param_dir = "/home/acharbon/outputs/others_global_daily"
 const obs_param_dir = "/home/acharbon/outputs/era5_global"
 const clm5_dir = "/home/acharbon/outputs/clm5_global"
@@ -1130,8 +1130,9 @@ end
 #full_analysis("./stats/first_stats.jld2")
 
 # see what happens when you don't use an over-fit neural depth model?
+# see what the averages look like on clima analysis versus yours for an easy example array to see who needs to be fixed
+# do all runs at monthly resolution too, though the differences appear to be minimal
 # finish paper
-# do all runs at monthly AND daily resolution with best available code
 
 
 # should I do the compression via time_stat or space_stat before doing stat_spread, or do the stat_spread over the whole array?

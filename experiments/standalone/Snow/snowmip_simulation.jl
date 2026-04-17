@@ -29,11 +29,11 @@ NeuralSnow =
 
 
 const setup = Dict(
-    "site" => "snb",
-    "output_file" => "./siteruns/snb_data_others.jld2",
-    "use_neural_albedo" => true,
-    "use_sfc_temp" => true,
-    "use_neural_depth" => true,
+    "site" => "swa",
+    "output_file" => "./siteruns/swa_data_old.jld2",
+    "use_neural_albedo" => false,
+    "use_sfc_temp" => false,
+    "use_neural_depth" => false,
 )
 datadict = Dict()
 #=
@@ -94,7 +94,8 @@ density =
     setup["use_neural_albedo"] ?
     #HTESSELAlbedoModel{FT}() :
     NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt) :
-    Snow.ConstantAlbedoModel(α)
+    Snow.ZenithAngleAlbedoModel(toml_dict)
+    #Snow.ConstantAlbedoModel(α)
 
 temp_tag = USE_BULK_SFC_TEMP ? "surftemp" : "gradtemp"
 neural_tag = USE_NEURAL_MODELS ? "neural" : "default"
