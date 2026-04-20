@@ -45,7 +45,7 @@ function setup_model(
         start_date,
         stop_date,
     )
-    prognostic_land_components = (:canopy, :snow, :soil)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
@@ -153,8 +153,10 @@ function ClimaCalibrate.forward_model(
     # Need to include "lhf", "shf", "lwu", "swu" because plotting the
     # leaderboard requires these diagnostics
     short_names = CALIBRATE_CONFIG.short_names
-    short_names =
-        unique!([short_names; ["lhf", "shf", "lwu", "swu", "gpp", "et"]])
+    short_names = unique!([
+        short_names
+        ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er"]
+    ])
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date,

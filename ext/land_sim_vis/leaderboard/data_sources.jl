@@ -371,10 +371,13 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     # ERA5 energy fluxes
     era5_dict = get_era5_obs_var_dict()
     merge!(obs_var_dict, era5_dict)
-    # ILAMB GPP
+    # ILAMB GPP and ecosystem respiration (FLUXCOM reco)
     ilamb_dict = get_ilamb_obs_var_dict()
     if haskey(ilamb_dict, "gpp")
         obs_var_dict["gpp"] = ilamb_dict["gpp"]
+    end
+    if haskey(ilamb_dict, "er")
+        obs_var_dict["er"] = ilamb_dict["er"]
     end
     if !isnothing(short_names)
         filter!(p -> p.first in short_names, obs_var_dict)
