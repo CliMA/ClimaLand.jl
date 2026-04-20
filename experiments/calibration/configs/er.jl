@@ -12,13 +12,16 @@
 # Observational target: ILAMB FLUXCOM reco (reco_FLUXCOM_reco.nc), in g C m^-2 day^-1.
 #
 # Autotrophic respiration one-sided constraint:
-#   root_leaf_nitrogen_ratio (μr) and relative_contribution_factor (Rel) are both
-#   bounded above at their defaults (1.0 and 0.25). Under the current setup
-#   (PrescribedBiomassModel with default SAI=0, see snowy_land.jl), the stem term
-#   in Rpm is gated off by heaviside(SAI), so Rpm = Rd · (β + μr·RAI/LAI) and
-#   reducing μr monotonically reduces Ra. This prevents the optimizer from
-#   compensating a shrunk Hr with an inflated Ra. If SAI is ever turned on
-#   (via the maxLAI constructor in src/standalone/Vegetation/Canopy.jl:372),
+#   root_leaf_nitrogen_ratio (μr) and relative_contribution_factor (Rel) have
+#   hard upper bounds at their defaults (1.0 and 0.25). No sample drawn from
+#   these priors can exceed the defaults, so Ra cannot grow above its current
+#   value during calibration. EKP requires μ + σ < ub strictly, so the prior
+#   means sit below the defaults (0.7 and 0.15). Under the current setup
+#   (PrescribedBiomassModel with default SAI=0, see snowy_land.jl), the stem
+#   term in Rpm is gated off by heaviside(SAI), so Rpm = Rd · (β + μr·RAI/LAI)
+#   and reducing μr monotonically reduces Ra. This prevents the optimizer
+#   from compensating a shrunk Hr with an inflated Ra. If SAI is ever turned
+#   on (via the maxLAI constructor in src/standalone/Vegetation/Canopy.jl:372),
 #   this guarantee holds only in expectation, not strictly.
 
 """Noise scalars for the covariance matrix of each observed variable.
@@ -65,20 +68,24 @@ function get_calibration_prior()
             5.0e-4,
             5.0e-2,
         ),
-        # One-sided (reduce-only) priors on autotrophic respiration:
-        # mean == upper bound == default, so the truncated prior is a half-
-        # gaussian that peaks at the default and can only draw lower values.
+        # One-sided (reduce-only) priors on autotrophic respiration.
+        # EKP.constrained_gaussian requires μ + σ < ub strictly (and
+        # μ - σ > lb). The hard upper bounds at the defaults (1.0 and 0.25)
+        # prevent any sample from exceeding them, so Ra cannot grow above
+        # its current value during calibration. The means are set below
+        # the defaults so the (μ, σ) constraint holds while still leaving
+        # room to explore downward.
         EKP.constrained_gaussian(
             "root_leaf_nitrogen_ratio",
-            1.0,
-            0.4,
+            0.7,
+            0.2,
             0.05,
             1.0,
         ),
         EKP.constrained_gaussian(
             "relative_contribution_factor",
-            0.25,
-            0.1,
+            0.15,
+            0.05,
             0.0,
             0.25,
         ),
