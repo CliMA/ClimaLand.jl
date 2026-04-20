@@ -49,9 +49,11 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     D_ref::FT
     "Diffusivity of soil C substrate in liquid (unitless)"
     D_liq::FT
-    # DAMM
-    "Pre-exponential factor (kg C m-3 s-1)"
-    α_sx::FT
+    # DAMM — centered Arrhenius: Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T - 1/T_ref_sx))
+    "Maximum respiration rate at T_ref_sx (kg C m-3 s-1)"
+    V_ref_sx::FT
+    "Reference temperature for the centered Arrhenius form (K)"
+    T_ref_sx::FT
     "Activation energy (J mol-1)"
     Ea_sx::FT
     "Michaelis constant (kg C m-3)"
@@ -96,7 +98,8 @@ function SoilCO2ModelParameters(
 )
     name_map = (;
         :soil_C_substrate_diffusivity => :D_liq,
-        :soilCO2_pre_exponential_factor => :α_sx,
+        :soilCO2_reference_rate => :V_ref_sx,
+        :soilCO2_reference_temperature => :T_ref_sx,
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,

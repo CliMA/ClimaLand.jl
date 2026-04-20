@@ -562,10 +562,16 @@ type = "float"
 description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
-["soilCO2_pre_exponential_factor"]
-value = 9.5e6
+["soilCO2_reference_rate"]
+value = 4.517e-8
 type = "float"
-description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
+description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+tag = "SoilCO2Parameters"
+
+["soilCO2_reference_temperature"]
+value = 288.15
+type = "float"
+description = "Reference temperature for the centered Arrhenius form of the DAMM model (K)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
