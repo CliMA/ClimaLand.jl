@@ -209,6 +209,12 @@ function get_ilamb_obs_var_dict()
                 (obs_var.dim_attributes["lat"]["units"] = "degrees_north")
             obs_var.attributes["short_name"] = "nee"
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+            # nee_FLUXCOM_nee.nc has no _FillValue attribute, so the netCDF
+            # default fill (~9.97e36) leaks through as real data — set it to NaN.
+            obs_var = ClimaAnalysis.replace(
+                x -> (!ismissing(x) && abs(x) > 1e20) ? NaN : x,
+                obs_var,
+            )
             return obs_var
         end
 
