@@ -355,10 +355,22 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 AmeriFlux CC-BY-4.0 License
 """
 function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
-
-    folder_path = @clima_artifact("fluxnet_sites", context)
-    data_path = joinpath(folder_path, "$(site_ID).csv")
+    if occursin("NEON", site_ID)
+        datafolder = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/dataframes_Neon"
+        key = uppercase(replace(string(site_ID), "NEON_" => "", "NEON-" => ""))
+        prefix = "Neon_CliMA_Input_withERA_wCompData_wSoil_$(key)_"
+        files = readdir(datafolder; sort = true)
+        idx = findfirst(
+            f -> startswith(f, prefix) && endswith(f, ".csv"),
+            files,
+        )
+        isnothing(idx) &&
+            error("No matching NEON file found for site_ID=$(site_ID) in $(datafolder)")
+        data_path = joinpath(datafolder, files[idx])
+    else
+        folder_path = @clima_artifact("fluxnet_sites", context)
+        data_path = joinpath(folder_path, "$(site_ID).csv")
+    end
     return data_path
 end
 
