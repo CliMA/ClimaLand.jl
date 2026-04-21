@@ -28,7 +28,7 @@ ENV["NEON_SITE_ID"] = "NEON-cper"; ENV["NEON_START_DATE"] = "2017-01-02";  ENV["
 
 ENV["NEON_SPINUP_DAYS"] = "20"
 ENV["NEON_N_ITERATIONS"] = "10"
-settingsdesc = "SpinUP-20d_CalDepth-2cm_10-It_NEONextrap_RHupdate" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
+settingsdesc = "SpinUP-20d_CalDepth-2cm_10-It_NEONextrap_RHupdate_newDAMM" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
 
 # Output path for both observations and calibration results
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")

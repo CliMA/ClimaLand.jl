@@ -176,7 +176,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         land,
     )
 
-    ocd_path = ClimaLand.Artifacts.soilgrids_ocd_artifact_path()
+    ocd_path = ClimaLand.Artifacts.soil_grids_ocd_artifact_path()
     SOC_from_artifact = SpaceVaryingInput(
         ocd_path,
         "ocd",

@@ -1,7 +1,7 @@
 """
 ClimaCalibrate driver for NEON site soil CO₂ calibration.
 
-Calibrates 3 DAMM soil CO₂ parameters (soilCO2_pre_exponential_factor,
+Calibrates 3 DAMM soil CO₂ parameters (soilCO2_reference_rate,
 michaelis_constant, O2_michaelis_constant) against daily soil CO₂ concentration
 observations at NEON sites using Unscented Kalman Inversion.
 
@@ -64,17 +64,17 @@ const OBS_FILEPATH = joinpath(outputpath, "observations.jld2")
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
 # parameter TOMLs using these names
 
-soilCO2_pre_exponential_factor = [0.087, 0.04, 0.001, 1.5]
+soilCO2_reference_rate = [2.526e-7, 1.0e-7, 1e-9, 1e-5]
 michaelis_constant = [0.005, 0.003, 1.0e-5, 0.1]
 O2_michaelis_constant = [0.004, 0.002, 1.0e-5, 0.12]
 
 priors = [
     PD.constrained_gaussian(
-        "soilCO2_pre_exponential_factor",
-        soilCO2_pre_exponential_factor[1],
-        soilCO2_pre_exponential_factor[2],
-        soilCO2_pre_exponential_factor[3],
-        soilCO2_pre_exponential_factor[4],
+        "soilCO2_reference_rate",
+        soilCO2_reference_rate[1],
+        soilCO2_reference_rate[2],
+        soilCO2_reference_rate[3],
+        soilCO2_reference_rate[4],
     ),
     PD.constrained_gaussian(
         "michaelis_constant",
@@ -96,11 +96,11 @@ prior = PD.combine_distributions(priors)
 # Create output directory (find_available_dir ensures unique path)
 mkpath(OUTPUT_DIR)
 open(PRIOR_VALUES_FILE, "w") do io
-    println(io, "soilCO2_pre_exponential_factor = $(soilCO2_pre_exponential_factor)")
+    println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate)")
     println(io, "michaelis_constant = $(michaelis_constant)")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant)")
     println(io, "Means only:")
-    println(io, "soilCO2_pre_exponential_factor = $(soilCO2_pre_exponential_factor[1])")
+    println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate[1])")
     println(io, "michaelis_constant = $(michaelis_constant[1])")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant[1])")
 end
