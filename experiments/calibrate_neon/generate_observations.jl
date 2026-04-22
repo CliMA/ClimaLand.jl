@@ -59,11 +59,11 @@ obs_df = CSV.read(csv_path, DataFrame)
 
 # Extract depth-501 columns for plots 001–005
 co2_cols_501 = [
-    Symbol("soilCO2concentrationMean_001_501"),
-    Symbol("soilCO2concentrationMean_002_501"),
-    Symbol("soilCO2concentrationMean_003_501"),
-    Symbol("soilCO2concentrationMean_004_501"),
-    Symbol("soilCO2concentrationMean_005_501"),
+    Symbol("soilCO2concentrationMean_001_502"),
+    Symbol("soilCO2concentrationMean_002_502"),
+    Symbol("soilCO2concentrationMean_003_502"),
+    Symbol("soilCO2concentrationMean_004_502"),
+    Symbol("soilCO2concentrationMean_005_502"),
 ]
 
 # Row-wise mean across plots (skip missing/NaN)

@@ -105,6 +105,13 @@ open(PRIOR_VALUES_FILE, "w") do io
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant[1])")
 end
 
+# copy folder with model scripts to output dir for record-keeping
+scripts_src = joinpath(climaland_dir, "experiments/calibrate_neon")
+scripts_dst = joinpath(OUTPUT_DIR, "model_scripts")
+cp -r $scripts_src $scripts_dst
+scripts_src = joinpath(climaland_dir, "/src/standalone/Soil/Biogeochemistry")
+cp -r $scripts_src $scripts_dst
+
 # ── Load Observations ────────────────────────────────────────────────────────
 
 obs_data = JLD2.load(OBS_FILEPATH)

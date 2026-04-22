@@ -94,7 +94,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     # Determine target layer for soil CO₂ extraction (~2 cm depth)
     z_field = ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z
     z_vals = parent(z_field)[:, 1]
-    target_depth = FT(-0.02)
+    target_depth = FT(-0.06)
     target_layer = argmin(abs.(z_vals .- target_depth))
 
     # Base TOML for non-calibrated parameters (canopy, snow, etc.)
@@ -215,7 +215,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         end
         Y.soilco2.SOC .= model_value
     end=#
-    
+    #=
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
         Y.soilco2.CO2 .= FT(0.000412)
@@ -249,7 +249,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         end
         Y.soilco2.SOC .= model_value
 
-    end
+    end=#
     #=
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
@@ -257,7 +257,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         Y.soilco2.O2_f .= FT(0.21)
         Y.soilco2.SOC .= SOC_from_artifact
     end=#
-    #=
+    
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
         Y.soilco2.CO2 .= FT(0.000412)
@@ -267,7 +267,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
         z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
         @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
-    end=#
+    end
 
     # Diagnostics — halfhourly sco2_ppm (and supporting soil variables)
     output_writer = ClimaDiagnostics.Writers.DictWriter()

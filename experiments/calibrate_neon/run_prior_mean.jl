@@ -47,7 +47,11 @@ const climaland_dir = pkgdir(ClimaLand)
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
 const DT = Float64(450) #(450)
+const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
+
 outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
+#replace $(N_ITERATIONS)-It with "prior_mean" for the prior mean run output path
+outputpath = replace(outputpath, "$(N_ITERATIONS)-It" => "prior_mean")
 
 #-----HELPER FUNCTIONS
 
@@ -80,6 +84,12 @@ OUTPUT_DIR = find_available_dir(output_base)
 mkpath(OUTPUT_DIR)
 outpath = joinpath(OUTPUT_DIR, "prior_mean_$(SITE_ID).png")
 
+# copy folder with model scripts to output dir for record-keeping
+scripts_src = joinpath(climaland_dir, "experiments/calibrate_neon")
+scripts_dst = joinpath(OUTPUT_DIR, "model_scripts")
+cp -r $scripts_src $scripts_dst
+scripts_src = joinpath(climaland_dir, "/src/standalone/Soil/Biogeochemistry")
+cp -r $scripts_src $scripts_dst
 
 time_offset = 0
 metadata = _get_neon_site_metadata(SITE_ID)

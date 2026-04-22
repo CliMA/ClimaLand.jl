@@ -29,7 +29,7 @@ import ClimaLand
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const climaland_dir = pkgdir(ClimaLand)
 const outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
-const EKI_PATH = joinpath(outputpath, "output/iteration_009/eki_file.jld2")
+const EKI_PATH = joinpath(outputpath, "output/iteration_010/eki_file.jld2")
 const OBS_PATH = joinpath(outputpath, "observations.jld2")
 const OUTDIR   = joinpath(outputpath, "output/figures_eki_diagnostics/")
 mkpath(OUTDIR)
