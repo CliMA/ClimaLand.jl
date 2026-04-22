@@ -106,12 +106,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     FT,
 );
 
-# Get Leaf Area Index (LAI) data from MODIS satellite observations.
-LAI = ClimaLand.Canopy.prescribed_lai_modis(
-    domain.space.surface,
-    start_date,
-    stop_date,
-);
+
 
 # ## Model Setup
 #
@@ -119,6 +114,12 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
 # components. This comprehensive model allows us to simulate the full land
 # surface system and its interactions.
 function model(Vcmax25)
+    #md # Get Leaf Area Index (LAI) data from MODIS satellite observations.
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        domain.space.surface,
+        start_date,
+        stop_date,
+    )
     Vcmax25 = FT(Vcmax25)
 
     #md # Set up ground conditions and define which components to simulate prognostically

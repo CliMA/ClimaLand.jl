@@ -26,7 +26,9 @@ function profile_and_benchmark(
     outdir::AbstractString,
 )
     # set up and run for a bit just to ensure everything is compiled
-    setup_time = ClimaComms.@elapsed device setup_simulation()
+    setup_time = ClimaComms.@elapsed device begin
+        simulation = setup_simulation()
+    end
     simulation = setup_simulation()
     first_step_time =
         ClimaComms.@elapsed device ClimaLand.Simulations.step!(simulation)
@@ -76,7 +78,7 @@ end
 """
     run_profiler(
         setup_simulation::Function,
-        device::ClimaComms.CPUSingleThreaded,
+        device::ClimaComms.AbstractCPUDevice,
         outdir::AbstractString,
     )
 
@@ -86,7 +88,7 @@ are saved in `outdir` as flame_cpu.html and alloc_flame_cpu.html.
 """
 function run_profiler(
     setup_simulation::Function,
-    device::ClimaComms.CPUSingleThreaded,
+    device::ClimaComms.AbstractCPUDevice,
     outdir::AbstractString,
 )
 
@@ -177,7 +179,7 @@ end
 
 Benchmark solving the simulation returned by `setup_simulation()`, with
 `MAX_PROFILING_SAMPLES` samples. If the total benchmark time takes longer than
-`MAX_PROFILING_SAMPLES`, the benchmark will terminate early.
+`MAX_PROFILING_TIME_SECONDS`, the benchmark will terminate early.
 """
 function run_timing_benchmarks(
     setup_simulation::Function,

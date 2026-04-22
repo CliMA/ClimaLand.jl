@@ -30,9 +30,9 @@ const FT = Float64;
 
 ######################################################################
 # This result is from a benchmark run on an A100 on the clima cluster
-const PREVIOUS_GPU_TIME_S = 0.25
+const PREVIOUS_GPU_TIME_S = 0.13
 ## This result is from a benchmark run with a single process on the clima cluster
-const PREVIOUS_CPU_TIME_S = 4.76
+const PREVIOUS_CPU_TIME_S = 1.12
 ######################################################################
 
 context = ClimaComms.context()
@@ -45,14 +45,12 @@ outdir = "soil_benchmark_$(device_suffix)"
 
 function setup_soil()
     toml_dict = LP.create_toml_dict(FT)
-    time_interpolation_method = LinearInterpolation()
     start_date = DateTime(2008)
     duration = Hour(6)
     stop_date = start_date + duration
     Δt = 450.0
-    nelements = (101, 15)
-    domain = ClimaLand.Domains.global_domain(FT; context, nelements)
-    params = LP.LandParameters(toml_dict)
+    nelements = (101, 101, 15)
+    domain = ClimaLand.Domains.global_box_domain(FT; context, nelements)
     forcing = ClimaLand.prescribed_forcing_era5(
         start_date,
         stop_date,
@@ -60,7 +58,7 @@ function setup_soil()
         toml_dict,
         FT;
         max_wind_speed = 25.0,
-        time_interpolation_method,
+        context,
     )
     model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict;)
     simulation = LandSimulation(

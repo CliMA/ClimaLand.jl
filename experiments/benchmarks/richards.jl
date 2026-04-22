@@ -38,7 +38,6 @@ import ClimaCore
 
 import ClimaLand
 import ClimaLand.Parameters
-import Interpolations
 
 import Profile, ProfileCanvas
 
@@ -48,7 +47,7 @@ const FT = Float64;
 ## This result is from a benchmark run on an A100 on the clima cluster
 const PREVIOUS_GPU_TIME_S = 0.49
 ## This result is from a benchmark run with a single process on the clima cluster
-const PREVIOUS_CPU_TIME_S = 1.31
+const PREVIOUS_CPU_TIME_S = 1.18
 ######################################################################
 
 include("benchmark_utils.jl")
@@ -68,7 +67,6 @@ function setup_richards()
     duration = Dates.Week(1)
     Δt = FT(1800.0)
     stop_date = start_date + duration
-    updateat = Array(start_date:Dates.Second(2Δt):stop_date)
     nelements = (101, 15)
     dz_tuple = (10.0, 0.1)
     domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
@@ -122,8 +120,8 @@ function setup_richards()
     function set_ic!(Y, _, _, model)
         hydrology_cm = model.parameters.hydrology_cm
         ν = model.parameters.ν
-        θ_r = model.parameters.S_s
-        S_s = model.parameters.θ_r
+        θ_r = model.parameters.θ_r
+        S_s = model.parameters.S_s
         # Set initial state values
         vg_α = hydrology_cm.α
         vg_n = hydrology_cm.n
