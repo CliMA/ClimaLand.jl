@@ -46,7 +46,7 @@ const FT = Float64
 const climaland_dir = pkgdir(ClimaLand)
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
-const DT = Float64(450) #(450)
+const DT = Float64(180) #(450)
 const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
 
 outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
@@ -87,9 +87,9 @@ outpath = joinpath(OUTPUT_DIR, "prior_mean_$(SITE_ID).png")
 # copy folder with model scripts to output dir for record-keeping
 scripts_src = joinpath(climaland_dir, "experiments/calibrate_neon")
 scripts_dst = joinpath(OUTPUT_DIR, "model_scripts")
-cp -r $scripts_src $scripts_dst
-scripts_src = joinpath(climaland_dir, "/src/standalone/Soil/Biogeochemistry")
-cp -r $scripts_src $scripts_dst
+cp(scripts_src, scripts_dst; force=true)
+scripts_src = joinpath(climaland_dir, "src/standalone/Soil/Biogeochemistry")
+cp(scripts_src, joinpath(scripts_dst, "Biogeochemistry"); force=true)
 
 time_offset = 0
 metadata = _get_neon_site_metadata(SITE_ID)
@@ -99,18 +99,14 @@ atmos_h = FT(metadata.atmos_h)
 
 # ── Prior mean values ─────────────────────────────────────────────────────────
 const PRIOR_TOML = joinpath(OUTPUT_DIR, "prior_mean_parameters.toml")
-soilCO2_pre_exponential_factor = 0.0021454
-michaelis_constant = 0.0020109
-O2_michaelis_constant = 0.10594
-
-#soilCO2_pre_exponential_factor = 0.087#6380.5#23835#
-#michaelis_constant = 0.043331
-#O2_michaelis_constant = 0.084186
+soilCO2_reference_rate = 1e-8 # 3.9869e-8
+michaelis_constant = 0.0006921
+O2_michaelis_constant = 0.000001#6.2317e-5
 
 open(PRIOR_TOML, "w") do io
     write(io, """
-[soilCO2_pre_exponential_factor]
-value = $(soilCO2_pre_exponential_factor)
+[soilCO2_reference_rate]
+value = $(soilCO2_reference_rate)
 type = "float"
 used_in = ["Land"]
 
@@ -171,6 +167,8 @@ println("Target layer: $target_layer (z = $(z_vals[target_layer]) m)")
 # Base and calibrated TOML
 toml_dict_base = LP.create_toml_dict(FT)
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
+toml_dict.data["soil_C_substrate_diffusivity"]["value"] = FT(1)  # default 3.17
+#toml_dict.data["CO2_diffusion_coefficient"]["value"] = FT(3.0e-5)  # default 1.39e-5 
 
 # ERA5 forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -238,6 +236,11 @@ land = LandModel{FT}(
     canopy,
 )
 
+porosity_scale = FT(1)
+land.soil.parameters.ν .*= porosity_scale
+println("Porosity scaled by $porosity_scale, mean ν = $(mean(parent(land.soil.parameters.ν)))")
+
+
 # ── Initial conditions with SOC profile ──────────────────────────────────────
 base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     SITE_ID,
@@ -255,10 +258,10 @@ function set_ic!(Y, p, t, model)
     τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
     z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
     @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
-end
-=#
+end=#
 
-ocd_path = ClimaLand.Artifacts.soilgrids_ocd_artifact_path()
+
+ocd_path = ClimaLand.Artifacts.soil_grids_ocd_artifact_path()
 SOC_from_artifact = SpaceVaryingInput(
     ocd_path,
     "ocd",
@@ -297,7 +300,6 @@ function set_ic!(Y, p, t, model)
     end
     Y.soilco2.SOC .= model_value
 end=#
-
 function set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
     Y.soilco2.CO2 .= FT(0.000412)
@@ -513,8 +515,8 @@ ax2 = Axis(fig[2,1]; ylabel="SWC", xlabel="Date")
 lines!(ax2, swc_daily.date, swc_daily.daily_mean; color=:blue, linewidth=1.5, label="SWC (model)")
 axislegend(ax2; position=:rt, framevisible=false)
 
-ax3 = Axis(fig[3,1]; xlabel="Date", ylabel="O2 (K)")
-lines!(ax3, so2_daily.date, so2_daily.daily_mean; color=:red, linewidth=1.5, label="O2 (model)")
+ax3 = Axis(fig[3,1]; xlabel="Date", ylabel="T (K)")
+lines!(ax3, tsoil_daily.date, tsoil_daily.daily_mean; color=:red, linewidth=1.5, label="T (model)")
 axislegend(ax3; position=:rt, framevisible=false)
 
 if nrow(swc_daily) > 0
@@ -535,8 +537,8 @@ colors = cgrad(:viridis, nelements, categorical=true)
 
 fig = Figure(size=(1200, 1000))
 ax1 = Axis(fig[1,1]; ylabel="Soil CO₂ (ppm)", title="$SITE_ID — Prior Mean vs NEON Obs (depth 501)")
-ax2 = Axis(fig[2,1]; ylabel="Soil O2")
-ax3 = Axis(fig[3,1]; xlabel="Date", ylabel="CMS")
+ax2 = Axis(fig[2,1]; ylabel="Soil SWC")
+ax3 = Axis(fig[3,1]; xlabel="Date", ylabel="Soil CO₂ Microbial Source")
 #plot O2, CO2 and cms profile
 for layer in 1:nelements
     target_layer = layer
