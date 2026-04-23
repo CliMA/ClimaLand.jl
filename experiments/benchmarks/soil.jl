@@ -10,6 +10,7 @@
 # No user callbacks or diagnostics
 
 # See "benchmark_utils.jl" for details on what is benchmarked
+# This benchmark must be ran on the clima cluster because it relies on the ERA5 forcing data
 
 import ClimaComms
 ClimaComms.@import_required_backends

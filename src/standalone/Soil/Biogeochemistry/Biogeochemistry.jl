@@ -416,7 +416,7 @@ Physics:
   For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
 - SOC consumption equals CO2 production to conserve carbon mass
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::MicrobeProduction,
     Y::ClimaCore.Fields.FieldVector,

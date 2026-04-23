@@ -5,7 +5,7 @@ Updates p.root_extraction and p.root_energy_extraction in place to account
 for the flux of water and energy between the soil and the canopy via
 root extraction.
 """
-function update_root_extraction!(p, Y, t, land)
+NVTX.@annotate function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
     LAI = p.canopy.biomass.area_index.leaf
@@ -135,7 +135,7 @@ An extension of the `ClimaLand.source!` function,
 soil model; this method returns the water and energy loss/gain due
 to root extraction.
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::RootExtraction,
     Y::ClimaCore.Fields.FieldVector,
@@ -164,7 +164,7 @@ end
 Updates the soil moisture stress using the piecewise model for a
 prognostic soil model, where θ is vertically resolved and prognostic.
 """
-function update_piecewise_soil_moisture_stress!(
+NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     ground::PrognosticGroundConditions,
     p,
     Y,

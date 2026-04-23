@@ -95,41 +95,15 @@ function setup_snowyland()
 
 
     # Set initial conditions
-    function set_ic!(Y, p, t0, land)
-        (; θ_r, ν, ρc_ds, earth_param_set) = land.soil.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
-        Y.soil.θ_i .= 0
-        T = FT(276.85)
-        ρc_s =
-            Soil.volumetric_heat_capacity.(
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                ρc_ds,
-                earth_param_set,
-            )
-        Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(
-                Y.soil.θ_i,
-                ρc_s,
-                T,
-                earth_param_set,
-            )
-        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-        plant_ν = land.canopy.hydraulics.parameters.ν
-        Y.canopy.hydraulics.ϑ_l .= plant_ν
-        evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-        Y.snow.S .= 0
-        Y.snow.S_l .= 0
-        Y.snow.U .= 0
-    end
     simulation = ClimaLand.Simulations.LandSimulation(
         start_date,
         stop_date,
         Δt,
         land;
-        set_ic!,
+        set_ic! = ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+            land,
+        ),
         user_callbacks = (),
         diagnostics = [],
     )

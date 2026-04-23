@@ -5,6 +5,7 @@ using LazyBroadcast: lazy
 using DocStringExtensions
 using ClimaCore
 import ClimaCore: Fields, Spaces
+import NVTX
 import ..Parameters as LP
 import ClimaParams as CP
 using Thermodynamics
@@ -361,7 +362,7 @@ end
 # ─── Update aux ───────────────────────────────────────────────────────────────
 
 function ClimaLand.make_update_aux(model::SlabLakeModel{FT}) where {FT}
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         params = model.parameters
         # Thermodynamic state from prognostic U
         @. p.lake.q_l = lake_liquid_fraction(Y.lake.U, params)
@@ -376,7 +377,7 @@ end
 function ClimaLand.make_update_boundary_fluxes(
     model::SlabLakeModel{FT},
 ) where {FT}
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         lake_boundary_fluxes!(
             model.boundary_conditions,
             Val(model.boundary_conditions.prognostic_land_components),

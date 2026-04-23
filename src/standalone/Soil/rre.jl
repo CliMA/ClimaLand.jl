@@ -460,7 +460,7 @@ end
 
 function ClimaLand.make_update_implicit_boundary_fluxes(model::RichardsModel)
     ubf! = make_update_boundary_fluxes(model)
-    function update_imp_bf!(p, Y, t)
+    NVTX.@annotate function update_imp_bf!(p, Y, t)
         if haskey(p.soil, :dfluxBCdY)
             ubf!(p, Y, t)
         end

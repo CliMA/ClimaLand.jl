@@ -601,7 +601,7 @@ function make_update_implicit_cache(
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
     update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
     update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
-    function update_implicit_cache!(p, Y, t)
+    NVTX.@annotate function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil, snow, lake also
@@ -886,7 +886,7 @@ function Soil.compute_infiltration_energy_flux(
     )
 end
 
-function snow_boundary_fluxes!(
+NVTX.@annotate function snow_boundary_fluxes!(
     bc::Snow.AtmosDrivenSnowBC,
     prognostic_land_components::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
@@ -1085,7 +1085,7 @@ function make_update_aux(land::LandModel)
     update_snow_aux! = make_update_aux(land.snow)
     update_lake_aux! =
         isnothing(land.lake) ? Returns(nothing) : make_update_aux(land.lake)
-    function update_aux!(p, Y, t)        # we require the following ordering so that soil and snow albedo fields
+    NVTX.@annotate function update_aux!(p, Y, t)        # we require the following ordering so that soil and snow albedo fields
         # in p are updated to the current step, so that they can be used by the canopy
         # to compute shortwave radiation
         # In principle radiation, GPP, etc should be computed as a flux in boundary_fluxes,

@@ -425,7 +425,7 @@ function ClimaLand.make_compute_imp_tendency(
 end
 
 function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
-    function update_imp_aux!(p, Y, t)
+    NVTX.@annotate function update_imp_aux!(p, Y, t)
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
         @. p.soil.T = temperature_from_ρe_int(
             Y.soil.ρe_int,
@@ -446,7 +446,7 @@ end
 
 function ClimaLand.make_update_implicit_boundary_fluxes(model::EnergyHydrology)
     ubf! = make_update_boundary_fluxes(model)
-    function update_imp_bf!(p, Y, t)
+    NVTX.@annotate function update_imp_bf!(p, Y, t)
         if haskey(p.soil, :dfluxBCdY)
             ubf!(p, Y, t)
         end
@@ -593,7 +593,7 @@ spherical shell domain with the model
 The horizontal contributions are
 computed using the WeakDivergence and Gradient operators.
 """
-function horizontal_components!(
+NVTX.@annotate function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
     domain::Union{HybridBox, SphericalShell},
     lateral_flow::Val{true},
@@ -837,7 +837,7 @@ Computes the source terms for phase change
 explicitly in time.
 
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PhaseChange,
     Y::ClimaCore.Fields.FieldVector,
@@ -930,7 +930,7 @@ Updates dY.soil.θ_i in place with a term due to sublimation; this only affects
 the surface layer of soil.
 
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::SoilSublimation{FT},
     Y::ClimaCore.Fields.FieldVector,
