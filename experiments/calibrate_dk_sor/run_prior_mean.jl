@@ -14,7 +14,6 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Snow
 using ClimaCore
 using ClimaDiagnostics
@@ -96,12 +95,17 @@ type = "float"
 used_in = ["getindex"]
 
 ["soilCO2_activation_energy"]
-value = 61000.0
+value = 30000.0
 type = "float"
 used_in = ["Land"]
 
-["soilCO2_pre_exponential_factor"]
-value = 23835.0
+["soilCO2_reference_rate"]
+value = 2.0e-7
+type = "float"
+used_in = ["Land"]
+
+["soilCO2_reference_temperature"]
+value = 288.15
 type = "float"
 used_in = ["Land"]
 
@@ -187,7 +191,7 @@ radiation_parameters = (;
     α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf,
 )
 radiative_transfer = Canopy.TwoStreamModel{FT}(canopy_domain, toml_dict; radiation_parameters)
-hydraulics = Canopy.PlantHydraulicsModel{FT}(canopy_domain, toml_dict; n_stem=1, h_stem=FT(24), h_leaf=FT(1))
+hydraulics = Canopy.PlantHydraulicsModel{FT}(canopy_domain, toml_dict)
 canopy = Canopy.CanopyModel{FT}(
     canopy_domain, forcing_nt, LAI, toml_dict;
     prognostic_land_components,
@@ -222,9 +226,7 @@ function set_ic!(Y, p, t, model)
     if model.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
         Y.canopy.energy.T .= p.drivers.T
     end
-    for i in 1:(model.canopy.hydraulics.n_stem + model.canopy.hydraulics.n_leaf)
-        Y.canopy.hydraulics.ϑ_l.:($i) .= model.canopy.hydraulics.parameters.ν
-    end
+    Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
     if !isnothing(model.soilco2)
         Y.soilco2.CO2 .= FT(0.000412); Y.soilco2.O2_f .= FT(0.21)
         SOC_top = FT(15.0); SOC_bot = FT(0.5)

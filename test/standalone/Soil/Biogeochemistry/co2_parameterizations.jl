@@ -65,11 +65,15 @@ for FT in (Float32, Float64)
         # Test microbe_source with O2_avail
         ms = microbe_source(T_soil, θ_l, Csom, O2_avail, parameters)
         # Check that the value is correct
-        (; p_sx, D_liq, kM_o2, kM_sx, α_sx, Ea_sx) = parameters
+        (; p_sx, D_liq, kM_o2, kM_sx, V_ref_sx, T_ref_sx, Ea_sx) = parameters
         Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3
         MM_sx = Sx / (kM_sx + Sx)
         MM_o2 = O2_avail / (kM_o2 + O2_avail)
-        @test ms == α_sx * exp(-Ea_sx / (R * T_soil)) * MM_sx * MM_o2
+        @test ms ==
+              V_ref_sx *
+              exp(-Ea_sx / R * (1 / T_soil - 1 / T_ref_sx)) *
+              MM_sx *
+              MM_o2
         @test typeof(ms) == FT
         @test ms >= FT(0)  # Respiration should be non-negative
     end
