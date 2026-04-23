@@ -1,8 +1,8 @@
 """
 ClimaCalibrate driver for NEON site soil CO₂ calibration.
 
-Calibrates 3 DAMM soil CO₂ parameters (soilCO2_reference_rate,
-michaelis_constant, O2_michaelis_constant) against daily soil CO₂ concentration
+Calibrates 4 DAMM soil CO₂ parameters (soilCO2_reference_rate,
+soilCO2_activation_energy, michaelis_constant, O2_michaelis_constant) against daily soil CO₂ concentration
 observations at NEON sites using Unscented Kalman Inversion.
 
 Configuration via environment variables:
@@ -64,9 +64,10 @@ const OBS_FILEPATH = joinpath(outputpath, "observations.jld2")
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
 # parameter TOMLs using these names
 
-soilCO2_reference_rate = [2.526e-7, 1.0e-7, 1e-9, 1e-5]
-michaelis_constant = [0.005, 0.003, 1.0e-5, 0.1]
-O2_michaelis_constant = [0.004, 0.002, 1.0e-5, 0.12]
+soilCO2_reference_rate = [2.526e-7, 1.0e-7, 5.0e-8, 5.0e-7]
+soilCO2_activation_energy = [40000.0, 15000.0, 20000.0, 80000.0,]
+michaelis_constant = [0.3, 0.2, 0.01, 1.0]
+O2_michaelis_constant = [0.005, 0.003, 5.0e-4, 5.0e-2]
 
 priors = [
     PD.constrained_gaussian(
@@ -75,6 +76,13 @@ priors = [
         soilCO2_reference_rate[2],
         soilCO2_reference_rate[3],
         soilCO2_reference_rate[4],
+    ),
+    PD.constrained_gaussian(
+        "soilCO2_activation_energy",
+        soilCO2_activation_energy[1],
+        soilCO2_activation_energy[2],
+        soilCO2_activation_energy[3],
+        soilCO2_activation_energy[4],
     ),
     PD.constrained_gaussian(
         "michaelis_constant",
@@ -97,20 +105,24 @@ prior = PD.combine_distributions(priors)
 mkpath(OUTPUT_DIR)
 open(PRIOR_VALUES_FILE, "w") do io
     println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate)")
+    println(io, "soilCO2_activation_energy = $(soilCO2_activation_energy)")  # neu
     println(io, "michaelis_constant = $(michaelis_constant)")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant)")
     println(io, "Means only:")
     println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate[1])")
+    println(io, "soilCO2_activation_energy = $(soilCO2_activation_energy[1])")  # neu
     println(io, "michaelis_constant = $(michaelis_constant[1])")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant[1])")
 end
 
+
 # copy folder with model scripts to output dir for record-keeping
 scripts_src = joinpath(climaland_dir, "experiments/calibrate_neon")
 scripts_dst = joinpath(OUTPUT_DIR, "model_scripts")
-cp -r $scripts_src $scripts_dst
-scripts_src = joinpath(climaland_dir, "/src/standalone/Soil/Biogeochemistry")
-cp -r $scripts_src $scripts_dst
+cp(scripts_src, scripts_dst; force=true)
+scripts_src = joinpath(climaland_dir, "src/standalone/Soil/Biogeochemistry")
+cp(scripts_src, joinpath(scripts_dst, "Biogeochemistry"); force=true)
+
 
 # ── Load Observations ────────────────────────────────────────────────────────
 

@@ -29,7 +29,7 @@ ENV["NEON_SITE_ID"] = "NEON-cper"; ENV["NEON_START_DATE"] = "2019-01-01";  ENV["
 ENV["NEON_SPINUP_DAYS"] = "20"
 ENV["NEON_N_ITERATIONS"] = "10"
 Caldepth = "2cm" #NEEDS TO BE ADAPTED IN SCRIPTS calibration depth, e.g. "2cm", "5cm", "10cm"
-settingsdesc = "NEONextrap_newDAMM_dt180s_10layer_1Cdiff" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
+settingsdesc = "NEONextrap_newDAMM4Param_dt180s" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
 
 # Output path for both observations and calibration results
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")

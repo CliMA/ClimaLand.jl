@@ -328,9 +328,9 @@ version = "0.10.16"
 
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Compiler_jll", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "Crayons", "ExprTools", "GPUArrays", "GPUCompiler", "GPUToolbox", "KernelAbstractions", "LLVM", "LLVMLoopInfo", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "NVTX", "Preferences", "PrettyTables", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "SparseArrays", "StaticArrays", "Statistics", "demumble_jll"]
-git-tree-sha1 = "b267c611dcbbcb70d42e398192ee0af160358075"
+git-tree-sha1 = "c876673fd63ca14d8e02dff5aa720fbea93e6584"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "5.11.1"
+version = "5.11.2"
 
     [deps.CUDA.extensions]
     ChainRulesCoreExt = "ChainRulesCore"
@@ -358,9 +358,9 @@ version = "13.2.1+0"
 
 [[deps.CUDA_Runtime_Discovery]]
 deps = ["Libdl"]
-git-tree-sha1 = "f9a521f52d236fe49f1028d69e549e7f2644bb72"
+git-tree-sha1 = "4fd010410c0c91c8b9bd6194a9ebdebecd9a8107"
 uuid = "1af6417a-86b4-443c-805f-a4643ffb695f"
-version = "1.0.0"
+version = "2.0.0"
 
 [[deps.CUDA_Runtime_jll]]
 deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
@@ -904,9 +904,9 @@ version = "2.2.9"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "27af30de8b5445644e8ffe3bcb0d72049c089cf1"
+git-tree-sha1 = "9cb7fe11da6adb8683cbacf8aa9b5237941e3a75"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.7.3+0"
+version = "2.7.5+0"
 
 [[deps.ExprTools]]
 git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
@@ -944,9 +944,9 @@ version = "1.10.0"
 
 [[deps.FFTW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6d6219a004b8cf1e0b4dbe27a2860b8e04eba0be"
+git-tree-sha1 = "6866aec60ef98e3164cd8d6855225684207e9dff"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
-version = "3.3.11+0"
+version = "3.3.12+0"
 
 [[deps.FLoops]]
 deps = ["BangBang", "Compat", "FLoopsBase", "InitialValues", "JuliaVariables", "MLStyle", "Serialization", "Setfield", "Transducers"]
@@ -1135,9 +1135,9 @@ version = "1.11.0"
 
 [[deps.GPUArrays]]
 deps = ["Adapt", "GPUArraysCore", "KernelAbstractions", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "ScopedValues", "Serialization", "SparseArrays", "Statistics"]
-git-tree-sha1 = "377689725e840feda0d208d54d45145c981dc631"
+git-tree-sha1 = "34fd745547978beb471f029f447290ef4dbc7bbd"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "11.5.2"
+version = "11.5.3"
 weakdeps = ["JLD2"]
 
     [deps.GPUArrays.extensions]
@@ -1642,10 +1642,10 @@ uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
 version = "4.1.0+0"
 
 [[deps.LLVM]]
-deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Unicode"]
-git-tree-sha1 = "69e4739502b7ab5176117e97e1664ed181c35036"
+deps = ["CEnum", "LLVMExtra_jll", "Libdl", "PrecompileTools", "Preferences", "Printf", "Unicode"]
+git-tree-sha1 = "bb3492cc442118d4b12242e7efd8618336caec47"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "9.4.6"
+version = "9.5.0"
 weakdeps = ["BFloat16s"]
 
     [deps.LLVM.extensions]
@@ -1653,9 +1653,9 @@ weakdeps = ["BFloat16s"]
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "8e76807afb59ebb833e9b131ebf1a8c006510f33"
+git-tree-sha1 = "4a50a4ab3f83a75a451ffa5ba5ad3093b85e7943"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.38+0"
+version = "0.0.40+0"
 
 [[deps.LLVMLoopInfo]]
 git-tree-sha1 = "2e5c102cfc41f48ae4740c7eca7743cc7e7b75ea"
