@@ -29,9 +29,9 @@ import ClimaLand
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const climaland_dir = pkgdir(ClimaLand)
 const outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
-const EKI_PATH = joinpath(outputpath, "output/iteration_008/eki_file.jld2")
+const EKI_PATH = joinpath(outputpath, "output_wPorosity/iteration_005/eki_file.jld2")
 const OBS_PATH = joinpath(outputpath, "observations.jld2")
-const OUTDIR   = joinpath(outputpath, "output/figures_eki_diagnostics/")
+const OUTDIR   = joinpath(outputpath, "output_wPorosity/figures_eki_diagnostics/")
 mkpath(OUTDIR)
 # ── Load all data from eki_file.jld2 ─────────────────────────────────────────
 
@@ -303,5 +303,9 @@ Legend(fig3[2, 1], ax3; orientation=:horizontal, framevisible=false, tellwidth=f
 oto_path = joinpath(OUTDIR, "plot_1to1.png")
 save(oto_path, fig3; px_per_unit=2)
 println("  Saved → $oto_path")
+
+#Figure to show the parameter evolution over iterations
+
+
 
 println("\nAll done.")

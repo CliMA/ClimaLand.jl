@@ -58,14 +58,15 @@ const FINAL_PARAMS_FILE = joinpath(OUTPUT_DIR, "final_parameter_means.txt")
 const OBS_FILEPATH = joinpath(outputpath, "observations.jld2")
     #"/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))_SpinUp$(SPINUP_DAYS)/observations.jld2"
     #joinpath(climaland_dir, "experiments/calibrate_neon/observations.jld2")
+const Caldepthnum = get(ENV, "CALL_DEPTH", "0.00")
 
 
 # ── Priors ───────────────────────────────────────────────────────────────────
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
 # parameter TOMLs using these names
 
-soilCO2_reference_rate = [2.526e-7, 1.0e-7, 5.0e-8, 5.0e-7]
-soilCO2_activation_energy = [40000.0, 15000.0, 20000.0, 80000.0,]
+soilCO2_reference_rate = [2.526e-7, 1.0e-7, 5.0e-8, 1.0e-6]
+soilCO2_activation_energy = [40000.0, 15000.0, 20000.0, 100000.0,]
 michaelis_constant = [0.3, 0.2, 0.01, 1.0]
 O2_michaelis_constant = [0.005, 0.003, 5.0e-4, 5.0e-2]
 
@@ -177,6 +178,8 @@ end
 @everywhere const OUTPUT_DIR = $OUTPUT_DIR
 @everywhere const OBS_FILEPATH = $OBS_FILEPATH
 @everywhere const DT = $DT
+@everywhere const Caldepthnum = $Caldepthnum
+
 @everywhere include(    joinpath(pkgdir(ClimaLand), "experiments/calibrate_neon/site_metadata.jl"),
 )
 @everywhere include(    joinpath(pkgdir(ClimaLand), "experiments/calibrate_neon/model_interface.jl"),

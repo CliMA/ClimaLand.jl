@@ -926,9 +926,9 @@ version = "0.4.5"
 
 [[deps.FFMPEG_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "PCRE2_jll", "Zlib_jll", "libaom_jll", "libass_jll", "libfdk_aac_jll", "libva_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
-git-tree-sha1 = "66381d7059b5f3f6162f28831854008040a4e905"
+git-tree-sha1 = "cac41ca6b2d399adfc95e51240566f8a60a80806"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
-version = "8.0.1+1"
+version = "8.1.0+0"
 
 [[deps.FFTA]]
 deps = ["AbstractFFTs", "DocStringExtensions", "LinearAlgebra", "MuladdMacro", "Primes", "Random", "Reexport"]
@@ -1643,9 +1643,9 @@ version = "4.1.0+0"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "PrecompileTools", "Preferences", "Printf", "Unicode"]
-git-tree-sha1 = "bb3492cc442118d4b12242e7efd8618336caec47"
+git-tree-sha1 = "c0cec0c63687dda0115a51fe04d8f75902e181b3"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "9.5.0"
+version = "9.6.0"
 weakdeps = ["BFloat16s"]
 
     [deps.LLVM.extensions]
@@ -1653,9 +1653,9 @@ weakdeps = ["BFloat16s"]
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "4a50a4ab3f83a75a451ffa5ba5ad3093b85e7943"
+git-tree-sha1 = "721fcd02aa06f8b2ed58d8db9914beab7a274b69"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.40+0"
+version = "0.0.41+0"
 
 [[deps.LLVMLoopInfo]]
 git-tree-sha1 = "2e5c102cfc41f48ae4740c7eca7743cc7e7b75ea"
@@ -2284,9 +2284,9 @@ version = "0.4.4"
 
 [[deps.PROJ_jll]]
 deps = ["Artifacts", "JLLWrappers", "LibCURL_jll", "Libdl", "Libtiff_jll", "SQLite_jll"]
-git-tree-sha1 = "af57004c3b686097d563f9c394d7886431a38c75"
+git-tree-sha1 = "fbfbc14815c5f5375abc971321aa5f468e715a38"
 uuid = "58948b4f-47e0-5654-a9ad-f609743f8632"
-version = "902.700.100+0"
+version = "902.800.100+0"
 
 [[deps.PackageExtensionCompat]]
 git-tree-sha1 = "fb28e33b8a95c4cee25ce296c817d89cc2e53518"
@@ -3093,9 +3093,9 @@ version = "0.4.9"
 
 [[deps.WeakRefStrings]]
 deps = ["DataAPI", "InlineStrings", "Parsers"]
-git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+git-tree-sha1 = "0716e01c3b40413de5dedbc9c5c69f27cddfddfc"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
-version = "1.4.2"
+version = "1.4.3"
 
 [[deps.WebP]]
 deps = ["CEnum", "ColorTypes", "FileIO", "FixedPointNumbers", "ImageCore", "libwebp_jll"]

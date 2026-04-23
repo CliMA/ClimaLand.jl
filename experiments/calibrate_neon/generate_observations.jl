@@ -38,6 +38,7 @@ const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
 const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
 const outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
+Caldepthnums = get(ENV, "CALL_DEPTH", "0.00")
 
 time_offset = 0
 (site_start_date, site_stop_date) =
@@ -57,13 +58,21 @@ csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
 println("Loading NEON data from $csv_path")
 obs_df = CSV.read(csv_path, DataFrame)
 
-# Extract depth-501 columns for plots 001–005
+if Caldepthnums == "0.02"
+    ObsDepth = "501"
+elseif Caldepthnums == "0.06"
+    ObsDepth = "502"
+else
+    error("Calibration depth $Caldepthnums m not recognized. Please set CALL_DEPTH to a valid value (e.g., 0.02 for 2 cm, 0.06 for 6 cm).")
+end
+
+# Extract depth-$ObsDepth columns for plots 001–005
 co2_cols_501 = [
-    Symbol("soilCO2concentrationMean_001_502"),
-    Symbol("soilCO2concentrationMean_002_502"),
-    Symbol("soilCO2concentrationMean_003_502"),
-    Symbol("soilCO2concentrationMean_004_502"),
-    Symbol("soilCO2concentrationMean_005_502"),
+    Symbol("soilCO2concentrationMean_001_$ObsDepth"),
+    Symbol("soilCO2concentrationMean_002_$ObsDepth"),
+    Symbol("soilCO2concentrationMean_003_$ObsDepth"),
+    Symbol("soilCO2concentrationMean_004_$ObsDepth"),
+    Symbol("soilCO2concentrationMean_005_$ObsDepth"),
 ]
 
 # Row-wise mean across plots (skip missing/NaN)

@@ -48,6 +48,8 @@ using DelimitedFiles
 
 function ClimaCalibrate.forward_model(iteration, member)
     FT = Float64
+    site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
+    climaland_dir = pkgdir(ClimaLand)
     time_offset = 0
     metadata = _get_neon_site_metadata(SITE_ID)
     lat = FT(metadata.lat)
@@ -94,7 +96,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     # Determine target layer for soil CO₂ extraction (~2 cm depth)
     z_field = ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z
     z_vals = parent(z_field)[:, 1]
-    target_depth = FT(-0.02)
+    target_depth = FT(-1 * parse(Float64, Caldepthnum))
     target_layer = argmin(abs.(z_vals .- target_depth))
 
     # Base TOML for non-calibrated parameters (canopy, snow, etc.)
@@ -239,7 +241,17 @@ function ClimaCalibrate.forward_model(iteration, member)
         Y.soilco2.SOC .= model_value
 
     end
-
+    #=
+    function custom_set_ic!(Y, p, t, model)
+        base_set_ic!(Y, p, t, model)
+        Y.soilco2.CO2 .= FT(0.000412)
+        Y.soilco2.O2_f .= FT(0.21)
+        SOC_top = FT(15.0)
+        SOC_bot = FT(0.5)
+        τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
+        z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+        @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
+    end=#
     # ── Diagnostics ──────────────────────────────────────────────────────────
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     output_vars = ["swc", "tsoil", "si", "sco2", "soc", "so2", "sco2_ppm"]

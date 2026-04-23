@@ -59,25 +59,33 @@ const OUTPUT_DIR = find_available_dir(output_base)
 const PRIOR_VALUES_FILE = joinpath(OUTPUT_DIR, "prior_values.txt")
 const FINAL_PARAMS_FILE = joinpath(OUTPUT_DIR, "final_parameter_means.txt")
 const OBS_FILEPATH = joinpath(outputpath, "observations.jld2")
+const Caldepthnum = get(ENV, "CALL_DEPTH", "0.00")
 
 # ── Priors ───────────────────────────────────────────────────────────────────
 # Prior names MUST match ClimaParams TOML keys for ClimaParams-registered
 # parameters. nu_scaling_factor is NOT a ClimaParams key — it is read
 # directly from the TOML via Julia's TOML parser in model_interface_wPorosity.jl.
 
-soilCO2_pre_exponential_factor = [0.087, 0.04, 0.001, 1.5]
-michaelis_constant = [0.005, 0.003, 1.0e-5, 0.1]
-O2_michaelis_constant = [0.004, 0.002, 1.0e-5, 0.12]
-# nu_scaling_factor: mean=1.0 (identity), std=0.15, bounds=[0.5, 1.5]
+soilCO2_reference_rate = [2.526e-7, 1.0e-7, 5.0e-8, 1.0e-6]
+soilCO2_activation_energy = [40000.0, 15000.0, 20000.0, 100000.0,]
+michaelis_constant = [0.3, 0.2, 0.01, 1.0]
+O2_michaelis_constant = [0.005, 0.003, 5.0e-4, 5.0e-2]
 nu_scaling_factor = [1.0, 0.15, 0.5, 1.5]
 
 priors = [
     PD.constrained_gaussian(
-        "soilCO2_pre_exponential_factor",
-        soilCO2_pre_exponential_factor[1],
-        soilCO2_pre_exponential_factor[2],
-        soilCO2_pre_exponential_factor[3],
-        soilCO2_pre_exponential_factor[4],
+        "soilCO2_reference_rate",
+        soilCO2_reference_rate[1],
+        soilCO2_reference_rate[2],
+        soilCO2_reference_rate[3],
+        soilCO2_reference_rate[4],
+    ),
+    PD.constrained_gaussian(
+        "soilCO2_activation_energy",
+        soilCO2_activation_energy[1],
+        soilCO2_activation_energy[2],
+        soilCO2_activation_energy[3],
+        soilCO2_activation_energy[4],
     ),
     PD.constrained_gaussian(
         "michaelis_constant",
@@ -106,16 +114,23 @@ prior = PD.combine_distributions(priors)
 # Create output directory
 mkpath(OUTPUT_DIR)
 open(PRIOR_VALUES_FILE, "w") do io
-    println(io, "soilCO2_pre_exponential_factor = $(soilCO2_pre_exponential_factor)")
+    println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate)")
+    println(io, "soilCO2_activation_energy = $(soilCO2_activation_energy)")  # neu
     println(io, "michaelis_constant = $(michaelis_constant)")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant)")
     println(io, "nu_scaling_factor = $(nu_scaling_factor)")
     println(io, "Means only:")
-    println(io, "soilCO2_pre_exponential_factor = $(soilCO2_pre_exponential_factor[1])")
+    println(io, "soilCO2_reference_rate = $(soilCO2_reference_rate[1])")
+    println(io, "soilCO2_activation_energy = $(soilCO2_activation_energy[1])")  # neu
     println(io, "michaelis_constant = $(michaelis_constant[1])")
     println(io, "O2_michaelis_constant = $(O2_michaelis_constant[1])")
     println(io, "nu_scaling_factor = $(nu_scaling_factor[1])")
 end
+scripts_src = joinpath(climaland_dir, "experiments/calibrate_neon")
+scripts_dst = joinpath(OUTPUT_DIR, "model_scripts")
+cp(scripts_src, scripts_dst; force=true)
+scripts_src = joinpath(climaland_dir, "src/standalone/Soil/Biogeochemistry")
+cp(scripts_src, joinpath(scripts_dst, "Biogeochemistry"); force=true)
 
 # ── Load Observations ────────────────────────────────────────────────────────
 
@@ -165,6 +180,8 @@ end
 @everywhere const OUTPUT_DIR = $OUTPUT_DIR
 @everywhere const OBS_FILEPATH = $OBS_FILEPATH
 @everywhere const DT = $DT
+@everywhere const Caldepthnum = $Caldepthnum
+
 @everywhere include(    joinpath(pkgdir(ClimaLand), "experiments/calibrate_neon/site_metadata.jl"),
 )
 @everywhere include(    joinpath(pkgdir(ClimaLand), "experiments/calibrate_neon/model_interface_wPorosity.jl"),
@@ -178,7 +195,7 @@ println("  Site: $SITE_ID")
 println("  Iterations: $N_ITERATIONS")
 println("  Ensemble size: $N_ens")
 println("  Observation days: $n_obs")
-println("  Parameters: $(length(priors)) (3 DAMM soilCO2 + nu_scaling_factor)")
+println("  Parameters: $(length(priors)) (4 DAMM soilCO2 + nu_scaling_factor)")
 println("  LAI: MODIS")
 println("  Output: $OUTPUT_DIR")
 

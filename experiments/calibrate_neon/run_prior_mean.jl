@@ -99,14 +99,20 @@ atmos_h = FT(metadata.atmos_h)
 
 # ── Prior mean values ─────────────────────────────────────────────────────────
 const PRIOR_TOML = joinpath(OUTPUT_DIR, "prior_mean_parameters.toml")
-soilCO2_reference_rate = 1e-8 # 3.9869e-8
-michaelis_constant = 0.0006921
-O2_michaelis_constant = 0.000001#6.2317e-5
+soilCO2_reference_rate = 6.6903e-7
+soilCO2_activation_energy = 65400.0
+michaelis_constant = 0.7573
+O2_michaelis_constant = 0.015957
 
 open(PRIOR_TOML, "w") do io
     write(io, """
 [soilCO2_reference_rate]
 value = $(soilCO2_reference_rate)
+type = "float"
+used_in = ["Land"]
+
+[soilCO2_activation_energy]
+value = $(soilCO2_activation_energy)
 type = "float"
 used_in = ["Land"]
 
@@ -139,7 +145,7 @@ println("Simulating $start_date → $stop_date (spinup until $spinup_date)")
 dz_bottom = FT(2) #FT(1.5),
 dz_top = FT(0.038)
 dz_tuple = (dz_bottom, dz_top)
-nelements = 10#24
+nelements = 24
 zmin = FT(-6.2)
 zmax = FT(0)
 # Domain
@@ -160,14 +166,14 @@ surface_space = land_domain.space.surface
 # Determine target layer for soil CO₂ extraction
 z_field = ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z
 z_vals = parent(z_field)[:, 1]
-target_depth = FT(-0.02)
+target_depth = FT(-0.06)
 target_layer = argmin(abs.(z_vals .- target_depth))
 println("Target layer: $target_layer (z = $(z_vals[target_layer]) m)")
 
 # Base and calibrated TOML
 toml_dict_base = LP.create_toml_dict(FT)
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
-toml_dict.data["soil_C_substrate_diffusivity"]["value"] = FT(1)  # default 3.17
+#toml_dict.data["soil_C_substrate_diffusivity"]["value"] = FT(1)  # default 3.17
 #toml_dict.data["CO2_diffusion_coefficient"]["value"] = FT(3.0e-5)  # default 1.39e-5 
 
 # ERA5 forcing
@@ -467,11 +473,11 @@ csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
 obs_df = CSV.read(csv_path, DataFrame)
 
 co2_cols_501 = [
-    Symbol("soilCO2concentrationMean_001_501"),
-    Symbol("soilCO2concentrationMean_002_501"),
-    Symbol("soilCO2concentrationMean_003_501"),
-    Symbol("soilCO2concentrationMean_004_501"),
-    Symbol("soilCO2concentrationMean_005_501"),
+    Symbol("soilCO2concentrationMean_001_502"),
+    Symbol("soilCO2concentrationMean_002_502"),
+    Symbol("soilCO2concentrationMean_003_502"),
+    Symbol("soilCO2concentrationMean_004_502"),
+    Symbol("soilCO2concentrationMean_005_502"),
 ]
 
 function rowmean_skipinvalid(row, cols)
@@ -537,7 +543,7 @@ colors = cgrad(:viridis, nelements, categorical=true)
 
 fig = Figure(size=(1200, 1000))
 ax1 = Axis(fig[1,1]; ylabel="Soil CO₂ (ppm)", title="$SITE_ID — Prior Mean vs NEON Obs (depth 501)")
-ax2 = Axis(fig[2,1]; ylabel="Soil SWC")
+ax2 = Axis(fig[2,1]; ylabel="Soil O2")
 ax3 = Axis(fig[3,1]; xlabel="Date", ylabel="Soil CO₂ Microbial Source")
 #plot O2, CO2 and cms profile
 for layer in 1:nelements
@@ -545,6 +551,7 @@ for layer in 1:nelements
     sco2_daily = get_diag_layer(simulation, "sco2_ppm_30m_average",target_layer)
     so2_daily = get_diag_layer(simulation, "so2_30m_average", target_layer)
     scms_daily = get_diag_layer(simulation, "scms_30m_average", target_layer)
+    
     lines!(ax1, sco2_daily.date, sco2_daily.daily_mean; linewidth=1.5, color=colors[target_layer], label="layer" * string(target_layer))
     lines!(ax2, so2_daily.date, so2_daily.daily_mean; linewidth=1.5, color=colors[target_layer], label="layer" * string(target_layer))
     lines!(ax3, scms_daily.date, scms_daily.daily_mean; linewidth=1.5, color=colors[target_layer], label="layer" * string(target_layer))
