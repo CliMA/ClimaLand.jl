@@ -15,8 +15,8 @@ parameter TOMLs using these names and LandParameterTypes.create_toml_dict reads 
 
 16 parameters total:
   9 canopy / conductance parameters
-  3 DAMM soil-CO₂ parameters
-  3 autotrophic respiration parameters (winter NEE bias fix)
+  4 DAMM soil-CO₂ parameters (V_ref, Ea, Km, KmO2 — centered Arrhenius)
+  2 autotrophic-respiration nitrogen ratios (μr, μs)
   1 canopy heat capacity
 """
 
@@ -34,17 +34,19 @@ function build_dk_sor_priors()
         PD.constrained_gaussian("canopy_d_coeff",                 0.65,     0.12,     0.30,    0.92),  # raised: d ≈ 0.65h; default 0.007 gives d=17cm (wrong for 25m forest)
         PD.constrained_gaussian("canopy_K_lw",                    0.85,     0.25,     0.1,     2.0),
         PD.constrained_gaussian("canopy_emissivity",              0.97,     0.02,     0.9,     1.0),
-        # ── DAMM soil-CO₂ ───────────────────────────────────────────────────
-        PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0,  10000.0,  1000.0,  200000.0),
+        # ── DAMM soil-CO₂ (centered Arrhenius) ─────────────────────────────
+        # Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T - 1/T_ref_sx)); T_ref_sx = 288.15 K (held fixed).
+        # V_ref_sx: rate at T_ref_sx; ~2e-7 kg C m⁻³ s⁻¹ matches previous α·exp(-61000/(R·288.15)).
+        PD.constrained_gaussian("soilCO2_reference_rate",         2.0e-7,   1.0e-7,   1.0e-9,   2.0e-6),
+        # soilCO2_activation_energy [J/mol]: Arrhenius Ea. Centred low (effective Q10 ≈ 1.3)
+        # so winter heterotrophic Rh is non-negligible under main's LAI-scaled AR formulation.
+        PD.constrained_gaussian("soilCO2_activation_energy",      30000.0,  15000.0,  5000.0,  100000.0),
         PD.constrained_gaussian("michaelis_constant",             0.01,     0.005,    1e-4,     0.1),
         PD.constrained_gaussian("O2_michaelis_constant",          0.01,     0.005,    1e-4,     0.1),
-        # ── Autotrophic respiration (winter NEE fix) ─────────────────────────
-        # soilCO2_activation_energy [J/mol]: Arrhenius Ea for DAMM; default causes
-        # excessive cold-temperature suppression → winter respiration too low.
-        PD.constrained_gaussian("soilCO2_activation_energy",      61000.0,  15000.0,  30000.0, 100000.0),
-        # root_leaf_nitrogen_ratio (μr): Ra_root = Rd * μr * RAI; calibrated to ~5 → more winter Ra
+        # ── Autotrophic respiration nitrogen ratios ─────────────────────────
+        # root_leaf_nitrogen_ratio (μr): feeds Nr in nitrogen_content → Rpm
         PD.constrained_gaussian("root_leaf_nitrogen_ratio",       1.0,      0.5,      0.1,      5.0),
-        # stem_leaf_nitrogen_ratio (μs): Ra_stem = Rd * μs * ... (LAI-independent)
+        # stem_leaf_nitrogen_ratio (μs): feeds Ns in nitrogen_content → Rpm
         PD.constrained_gaussian("stem_leaf_nitrogen_ratio",       0.1,      0.05,     0.01,     0.5),
         # ── Canopy heat capacity ─────────────────────────────────────────────
         # ac_canopy [J/m²/K]: DK-Sor is dense beech forest with high wood thermal mass;

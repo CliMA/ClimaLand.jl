@@ -54,12 +54,17 @@ type = "float"
 used_in = ["getindex"]
 
 ["soilCO2_activation_energy"]
-value = 61000.0
+value = 30000.0
 type = "float"
 used_in = ["Land"]
 
-["soilCO2_pre_exponential_factor"]
-value = 23835.0
+["soilCO2_reference_rate"]
+value = 2.0e-7
+type = "float"
+used_in = ["Land"]
+
+["soilCO2_reference_temperature"]
+value = 288.15
 type = "float"
 used_in = ["Land"]
 

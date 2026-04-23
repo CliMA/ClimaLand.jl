@@ -20,6 +20,12 @@ export volumetric_air_content,
 Computes the CO₂ production in the soil by microbes, in depth and time (kg C / m^3/s), using
 the Dual Arrhenius Michaelis Menten model (Davidson et al., 2012).
 O2_avail is a dimensionless O₂ availability metric that accounts for tortuosity effects.
+
+The Arrhenius term is written in centered form,
+    Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T_soil - 1/T_ref_sx)),
+so that V_ref_sx (the rate at T_ref_sx) and Ea_sx (the temperature sensitivity) are
+approximately orthogonal under calibration. This is algebraically equivalent to the
+uncentered form Vmax = α_sx * exp(-Ea_sx/(R·T_soil)) with α_sx = V_ref_sx * exp(Ea_sx/(R·T_ref_sx)).
 """
 function microbe_source(
     T_soil::FT,
@@ -28,9 +34,18 @@ function microbe_source(
     O2_avail::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) = params
+    (;
+        V_ref_sx,
+        T_ref_sx,
+        Ea_sx,
+        kM_sx,
+        kM_o2,
+        D_liq,
+        p_sx,
+        earth_param_set,
+    ) = params
     R = FT(LP.gas_constant(earth_param_set))
-    Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
+    Vmax = V_ref_sx * exp(-Ea_sx / R * (1 / T_soil - 1 / T_ref_sx)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
     # Use pre-computed O2 availability (includes tortuosity effects)

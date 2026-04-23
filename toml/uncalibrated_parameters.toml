@@ -80,6 +80,18 @@ type = "float"
 description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
+["SAI_coeff"]
+value = 0.16
+type = "float"
+description = "The linear factor multiplying the maximum LAI in a pixel to get the stem area index (SAI; m2/m2)"
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff"]
+value = 5.0
+type = "float"
+description = "The linear factor multiplying the maximum LAI in a pixel to get the root area index (RAI; m2/m2)"
+tag = "PrescribedAreaIndices"
+
 [canopy_height]
 value = 1.0
 type = "float"
@@ -121,7 +133,7 @@ tag = "OptimalLAIModel"
 # Plant Hydraulics Parameters
 
 ["plant_nu"]
-value = 1.44e-4
+value = 0.2
 type = "float"
 description = "Porosity (m3/m3)"
 tag = "PlantHydraulicsParameters"
@@ -550,14 +562,20 @@ type = "float"
 description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
-["soilCO2_pre_exponential_factor"]
-value = 194000.0
+["soilCO2_reference_rate"]
+value = 4.517e-8
 type = "float"
-description = "Pre-exponential factor for DAMM model (kg C m⁻³ s⁻¹)"
+description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
+tag = "SoilCO2Parameters"
+
+["soilCO2_reference_temperature"]
+value = 288.15
+type = "float"
+description = "Reference temperature for the centered Arrhenius form of the DAMM model (K)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
-value = 61000.0
+value = 79000.0
 type = "float"
 description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
@@ -596,6 +614,36 @@ tag = "SoilCO2Parameters"
 value = 0.032
 type = "float"
 description = "Molar mass of oxygen (kg/mol)"
+tag = "SoilCO2Parameters"
+
+["O2_volume_fraction"]
+value = 0.2095
+type = "float"
+description = "Volumetric fraction of O₂ in atmospheric air (dimensionless)"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_k298"]
+value = 3.4e-4
+type = "float"
+description = "Henry's law constant for CO₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["CO2_henry_Tcoeff"]
+value = 2400.0
+type = "float"
+description = "Temperature coefficient for CO₂ Henry's law (K)"
+tag = "SoilCO2Parameters"
+
+["O2_henry_k298"]
+value = 1.3e-5
+type = "float"
+description = "Henry's law constant for O₂ at 298K (mol/(m³·Pa))"
+tag = "SoilCO2Parameters"
+
+["O2_henry_Tcoeff"]
+value = 1500.0
+type = "float"
+description = "Temperature coefficient for O₂ Henry's law (K)"
 tag = "SoilCO2Parameters"
 
 # Soil Parameters
