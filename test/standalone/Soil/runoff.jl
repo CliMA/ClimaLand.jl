@@ -2,6 +2,9 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+using Dates
+import ClimaParams as CP
+import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Soil.Runoff
 using Test
@@ -99,11 +102,26 @@ end
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model =
         Runoff.TOPMODELRunoff{FT}(; f_over = f_over, f_max = f_max, R_sb = R_sb)
-    @test Runoff.runoff_vars(runoff_model) ==
-          (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
-    @test Runoff.runoff_var_domain_names(runoff_model) ==
-          (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
-    @test Runoff.runoff_var_types(runoff_model, FT) == (FT, FT, FT, FT, FT, FT)
+    @test Runoff.runoff_vars(runoff_model) == (
+        :infiltration,
+        :is_saturated,
+        :R_s,
+        :R_ss,
+        :R_ess,
+        :h∇,
+        :subsfc_scratch,
+    )
+    @test Runoff.runoff_var_domain_names(runoff_model) == (
+        :surface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :surface,
+        :subsurface,
+    )
+    @test Runoff.runoff_var_types(runoff_model, FT) ==
+          (FT, FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
@@ -149,6 +167,7 @@ end
     Y, p, t = initialize(model)
     @test :R_s ∈ propertynames(p.soil)
     @test :R_ss ∈ propertynames(p.soil)
+    @test :R_ess ∈ propertynames(p.soil)
     @test :h∇ ∈ propertynames(p.soil)
     @test :infiltration ∈ propertynames(p.soil)
     @test :is_saturated ∈ propertynames(p.soil)
@@ -163,7 +182,9 @@ end
     scratch = ClimaCore.zeros(surface_space)
     ClimaCore.Operators.column_integral_definite!(
         scratch,
-        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν),
+        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν) .*
+        (Y.soil.ϑ_l .- model.parameters.θ_r) ./
+        (model.parameters.ν .- model.parameters.θ_r),
     )
     @test scratch == p.soil.h∇
     @test p.soil.R_ss ==
@@ -193,6 +214,100 @@ end
 
 end
 
+@testset "EnergyHydrology model, TOPMODEL runoff FT =$FT" begin
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = FT(6300e3),
+        depth = FT(50.0),
+        nelements = (101, 15),
+        dz_tuple = FT.((5.0, 0.05)),
+    )
+    toml_dict = LP.create_toml_dict(FT)
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        DateTime(2008),
+        DateTime(2009),
+        domain.space.surface,
+        toml_dict,
+        FT;
+        max_wind_speed = 25.0,
+        use_lowres_forcing = true,
+    )
+    forcing = (; atmos, radiation)
+    model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
+    Y, p, t = initialize(model)
+    @test :R_s ∈ propertynames(p.soil)
+    @test :R_ss ∈ propertynames(p.soil)
+    @test :R_ess ∈ propertynames(p.soil)
+    @test :h∇ ∈ propertynames(p.soil)
+    @test :infiltration ∈ propertynames(p.soil)
+    @test :is_saturated ∈ propertynames(p.soil)
+    @test :subsfc_scratch ∈ propertynames(p.soil)
+
+    # set initial conditions
+    z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
+    Y.soil.ϑ_l .= FT(0.6) .- FT(0.3 / 50) .* (z .+ FT(50))
+    Y.soil.θ_i .= FT(0)
+    T = FT(273.17)
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters.ρc_ds,
+            model.parameters.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            model.parameters.earth_param_set,
+        )
+    set_initial_cache! = make_set_initial_cache(model)
+    set_initial_cache!(p, Y, FT(0))
+    surface_space = domain.space.surface
+    scratch = ClimaCore.zeros(surface_space)
+    runoff_model = model.boundary_conditions.top.runoff
+    ClimaCore.Operators.column_integral_definite!(
+        scratch,
+        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν) .*
+        (Y.soil.ϑ_l .- model.parameters.θ_r) ./
+        (model.parameters.ν .- model.parameters.θ_r),
+    )
+    @test scratch == p.soil.h∇
+    @test p.soil.R_ss ==
+          Runoff.topmodel_ss_flux.(
+        runoff_model.subsurface_source.R_sb,
+        runoff_model.f_over,
+        model.domain.depth .- p.soil.h∇,
+    )
+    ic = Runoff.soil_infiltration_capacity(model, Y, p)
+    @test p.soil.infiltration == @. Runoff.topmodel_surface_infiltration(
+        runoff_model.f_max,
+        runoff_model.f_over,
+        model.domain.depth - p.soil.h∇,
+        ic,
+        p.drivers.P_liq,
+    )
+    @test p.soil.R_s == abs.(p.drivers.P_liq .- p.soil.infiltration)
+    scratch2 = ClimaCore.zeros(surface_space)
+    ClimaCore.Operators.column_integral_definite!(
+        scratch2,
+        ClimaLand.heaviside.(Y.soil.ϑ_l .- model.parameters.ν) .*
+        (Y.soil.ϑ_l .- model.parameters.θ_r) ./
+        (model.parameters.ν .- model.parameters.θ_r) .*
+        ClimaLand.Soil.volumetric_internal_energy_liq.(
+            p.soil.T,
+            model.parameters.earth_param_set,
+        ),
+    )
+    @test p.soil.R_ess == scratch2 .* (p.soil.R_ss ./ max.(p.soil.h∇, eps(FT)))
+    @test Runoff.get_saturated_height(runoff_model, Y, p) == p.soil.h∇
+    @test Runoff.get_subsurface_runoff(runoff_model, Y, p) == p.soil.R_ss
+    @test Runoff.get_surface_runoff(runoff_model, Y, p) == p.soil.R_s
+    tmp = p.soil.R_s
+    tmp .= Runoff.get_soil_fsat(runoff_model, Y, p, model.domain.depth)
+    @test tmp == @. runoff_model.f_max *
+             exp(-runoff_model.f_over / 2 * (model.domain.depth - p.soil.h∇))
+end
 
 @testset "Richards model, Site level runoff FT =$FT" begin
     domain = ClimaLand.Domains.SphericalShell(;

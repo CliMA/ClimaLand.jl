@@ -459,6 +459,7 @@ function LandSimVis.make_timeseries(
     savedir,
     diagnostics,
     start_date;
+    layer = nothing,
     plot_stem_name = "timeseries",
     comparison_data = nothing,
     spinup_date = start_date,
@@ -472,7 +473,8 @@ function LandSimVis.make_timeseries(
         sn = short_names[i]
         model_time, model_output = ClimaLand.Diagnostics.diagnostic_as_vectors(
             diagnostics[1].output_writer,
-            dn,
+            dn;
+            layer,
         )
         save_Δt = model_time[2] - model_time[1] # in seconds
         model_dates = time_to_date.(model_time, start_date)
