@@ -39,8 +39,8 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - 'julia --project=.buildkite -e ''using Pkg; Pkg.develop(;path="."); Pkg.instantiate(;verbose=true)'''
-      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
     agents:
       slurm_gpus: 1
       slurm_nodes: 1
