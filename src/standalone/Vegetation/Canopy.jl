@@ -1154,6 +1154,7 @@ function ClimaLand.make_update_aux(canopy::CanopyModel)
     NVTX.@annotate function update_aux!(p, Y, t)
 
         # This updates LAI; it must come first.
+        #nenesedw
         update_biomass!(p, Y, t, canopy.biomass, canopy)
 
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
