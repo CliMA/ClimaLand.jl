@@ -90,7 +90,7 @@ struct LandModel{
                 snow.parameters.earth_param_set
 
         # Check that soil moisture stress parameters are consistent between canopy and soil
-        if canopy.soil_moisture_stress isa PiecewiseMoistureStressModel
+        if canopy.soil_moisture_stress isa Canopy.PiecewiseMoistureStressModel
             # Note that these functions allocate. These checks should not occur except on initialization.
             check_land_equality(
                 canopy.soil_moisture_stress.θ_high,
@@ -178,6 +178,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
+            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -251,6 +252,10 @@ function LandModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components,
+        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict,
+        ),
     ),
     snow = Snow.SnowModel(
         FT,
@@ -311,6 +316,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components,
+            soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict),
         ),
         snow = Snow.SnowModel(
             FT,
@@ -374,6 +380,10 @@ function LandModel{FT}(
         ),
         toml_dict;
         prognostic_land_components,
+        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict,
+        ),
     ),
     snow = Snow.SnowModel(
         FT,

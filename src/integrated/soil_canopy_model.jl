@@ -130,6 +130,7 @@ end
             LAI,
             toml_dict;
             prognostic_land_components = (:canopy, :soil, :soilco2),
+            soil_moisture_stress = PiecewiseMoistureStressModel{FT}(domain, toml_dict),
         ),
     ) where {FT}
 
@@ -174,6 +175,10 @@ function SoilCanopyModel{FT}(
         LAI,
         toml_dict;
         prognostic_land_components = (:canopy, :soil, :soilco2),
+        soil_moisture_stress = Canopy.PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict,
+        ),
     ),
 ) where {FT}
     return SoilCanopyModel{FT}(soilco2, soil, canopy)

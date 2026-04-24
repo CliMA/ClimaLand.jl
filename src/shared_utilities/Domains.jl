@@ -1098,6 +1098,8 @@ Return a tuple with the approximate resolution on the domain in degrees along
 the two directions.
 
 For boxes and planes, the order is `(latitude, longitude)`.
+For domains without latitude and longitude (i.e. columns or points),
+we return 1 by default.
 
 Examples
 =======
@@ -1125,8 +1127,8 @@ julia> round.(ClimaLand.Domains.average_horizontal_resolution_degrees(domain), d
 ```
 """
 function average_horizontal_resolution_degrees(
-    domain::Union{SphericalShell, SphericalSurface},
-)
+    domain::Union{SphericalShell{FT}, SphericalSurface{FT}},
+) where {FT}
     num_elements_lat = num_elements_lon = first(domain.nelements)
     quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
     num_points_per_element =
@@ -1134,13 +1136,15 @@ function average_horizontal_resolution_degrees(
 
     # There are 2 full cubed-sphere panels along latitudes, and 4 along
     # longitudes
-    return (
+    return FT.((
         180 / (2 * num_points_per_element * num_elements_lat),
         360 / (4 * num_points_per_element * num_elements_lon),
-    )
+    ))
 end
 
-function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
+function average_horizontal_resolution_degrees(
+    domain::Union{Plane{FT}, HybridBox{FT}},
+) where {FT}
     isnothing(domain.longlat) &&
         error("Can only compute resolution with domains in latlong")
 
@@ -1153,11 +1157,15 @@ function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
     num_points_per_element =
         ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
 
-    return (
+    return FT.((
         delta_lat / (num_points_per_element * num_elements_lat),
         delta_lon / (num_points_per_element * num_elements_lon),
-    )
+    ))
 end
+
+average_horizontal_resolution_degrees(
+    domain::Union{Point{FT}, Column{FT}},
+) where {FT} = (FT(1), FT(1))
 
 apply_threshold(field, value) =
     field > value ? eltype(field)(1) : eltype(field)(0)

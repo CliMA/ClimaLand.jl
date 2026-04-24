@@ -928,18 +928,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     P_air = p.drivers.P
     ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
-    VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                LP.thermodynamic_parameters(canopy.earth_param_set),
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            sqrt(eps(FT)),
-        ),
-    )
+
     APAR_canopy_moles = @. lazy(
         compute_APAR_canopy_moles(
             p.canopy.radiative_transfer.par.abs,
@@ -962,7 +951,19 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.Γstar25,
         ),
     )
-
+    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
+    thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
+    VPD = @. lazy(
+        max(
+            Thermodynamics.vapor_pressure_deficit(
+                thermo_params,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+            ),
+            sqrt(eps(FT)),
+        ),
+    )
     ci_c3 =
         @. lazy(intercellular_co2_pmodel(OptVars.ξ_opt_c3, ca_pp, Γstar, VPD))
     ci_c4 =

@@ -83,7 +83,7 @@ function setup_snowyland()
     )
 
     # Construct land model with all default components
-    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
     land = LandModel{FT}(
         forcing,
         LAI,
