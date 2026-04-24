@@ -300,6 +300,9 @@ end
         hour_offset_from_UTC;
         duration::Union{Nothing, Period} = nothing,
         start_offset::Period = Second(0),
+        require_forcing_coverage::Bool = false,
+        required_varnames = (...),
+        val = -9999,
     )
 
 A helper function to get the first and last dates, in UTC, for which we have
@@ -307,6 +310,11 @@ Fluxnet data at `site_ID`, given the offset in hours of local time
 from UTC. If `duration` is provided, it is used to determine the end date,
 otherwise the end date is the last date in the data. The `start_offset` is
 added to the start date, and must be non-negative.
+
+If `require_forcing_coverage = true`, this function restricts the returned
+time window to rows where all `required_varnames` are present and not marked
+missing (using `val`). This is useful to ensure all forcing TimeVaryingInput
+objects cover `t = 0`.
 
 Please note that we use date halfway between the TIMESTAMP_START
 and TIMESTAMP_END date of the Fluxnet averaging window as the timestamp of
@@ -317,6 +325,18 @@ function FluxnetSimulations.get_data_dates(
     hour_offset_from_UTC;
     duration::Union{Nothing, Period} = nothing,
     start_offset::Period = Second(0),
+    require_forcing_coverage::Bool = false,
+    required_varnames = (
+        "TA_F",
+        "VPD_F",
+        "PA_F",
+        "P_F",
+        "WS_F",
+        "LW_IN_F",
+        "SW_IN_F",
+        "CO2_F_MDS",
+    ),
+    val = -9999,
 )
     (data, columns) = read_fluxnet_data(site_ID)
 
@@ -341,7 +361,26 @@ function FluxnetSimulations.get_data_dates(
     # Get the midpoint of the averaging period
     UTC_datetimes =
         UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
-    earliest_date, latest_date = extrema(UTC_datetimes)
+
+    if require_forcing_coverage
+        forcing_column_name_map = get_column_name_map(
+            required_varnames,
+            columns;
+            error_on_missing = true,
+        )
+        forcing_data = hcat(
+            [
+                data[:, forcing_column_name_map[varname]] for
+                varname in required_varnames
+            ]...,
+        )
+        valid_forcing_mask = all(.~var_missing.(forcing_data; val), dims = 2)[:]
+        @assert any(valid_forcing_mask) "No rows with complete forcing data were found for $site_ID."
+        earliest_date = minimum(UTC_datetimes[valid_forcing_mask])
+        latest_date = maximum(UTC_datetimes[valid_forcing_mask])
+    else
+        earliest_date, latest_date = extrema(UTC_datetimes)
+    end
 
     # Compute the start and stop dates, applying the start_offset and duration if provided
     @assert Dates.value(start_offset) >= 0 "start_offset must be non-negative, got $start_offset"

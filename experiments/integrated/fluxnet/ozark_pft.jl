@@ -93,8 +93,14 @@ prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the timestepping information for the simulation
 dt = Float64(450) # 7.5 minutes
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(
+    site_ID,
+    time_offset;
+    require_forcing_coverage = true,
+)
+# Constrain to 2000-2020 (MODIS LAI availability)
+start_date = max(data_start, DateTime(2000, 1, 1))
+stop_date = min(data_stop, DateTime(2020, 12, 31, 23, 59, 59))
 # Define the PFT land cover percentages for the Ozark site. Currently we only
 # use the dominant PFT, which for Ozark is deciduous broadleaf temperate trees.
 pft_pcts = [
@@ -211,13 +217,17 @@ photosynthesis =
     FarquharModel{FT}(canopy_domain, toml_dict; photosynthesis_parameters)
 
 # Set up plant hydraulics
-# Read in LAI from MODIS data
+# Read in climatological LAI from MODIS data
 surface_space = land_domain.space.surface;
 
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(
+    start_date,
+    lat,
+    long;
+    ncd_path = ClimaLand.Artifacts.modis_lai_climatology_data_path(),
+);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     canopy_domain,

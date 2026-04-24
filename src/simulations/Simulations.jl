@@ -4,7 +4,6 @@ using ClimaComms
 import ClimaComms: context, device
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
-import ClimaUtilities.FileReaders: close_all_ncfiles
 import ClimaDiagnostics
 using ClimaLand
 import ..Parameters as LP
@@ -324,7 +323,6 @@ function solve!(landsim::LandSimulation)
             (ret_code, catch_backtrace())
     finally
         close_output_writers(landsim.diagnostics)
-        close_all_ncfiles()
     end
 end
 

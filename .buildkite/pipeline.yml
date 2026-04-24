@@ -26,10 +26,12 @@ steps:
 
       - echo "--- Instantiate experiments"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"SurfaceFluxes\", rev=\"main\"))'"	    
       - "julia --project=.buildkite -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
       - echo "--- Instantiate test"
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"SurfaceFluxes\", rev=\"main\"))'"
       - "julia --project=test -e 'using Pkg; Pkg.precompile(;strict=true); using CUDA; CUDA.precompile_runtime(); Pkg.status()'"
 
     agents:
@@ -51,8 +53,8 @@ steps:
 
       - label: "Snow Col de Porte"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
-        artifact_paths: "experiments/standalone/Snow/cpu/cdp_default_gradtemp/output_active/*png"
-
+        artifact_paths: "experiments/standalone/Snow/cpu/cdp/output_active/*png"
+        
       - label: "Varying LAI"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai.jl"
         artifact_paths: "experiments/standalone/Vegetation/varying_lai/output_active/varying_lai_fluxes*png"
@@ -80,6 +82,10 @@ steps:
       - label: "harvard_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
+
+      - label: "emr_test"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_any_fluxnet.jl AU-Emr"
+        artifact_paths: "experiments/integrated/fluxnet/AU-Emr/out/*png"
 
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
@@ -116,8 +122,6 @@ steps:
           slurm_ntasks_per_node: 4
           slurm_nodes: 1
           slurm_mem: 24G
-          modules: mpiwrapper/2024_05_27 climacommon/2026_02_18
-        soft_fail: true
 
       - label: "Global Run + P Model CPU MPI"
         command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy_pmodel.jl"
@@ -128,8 +132,6 @@ steps:
           slurm_ntasks_per_node: 4
           slurm_nodes: 1
           slurm_mem: 24G
-          modules: mpiwrapper/2024_05_27 climacommon/2026_02_18
-        soft_fail: true
 
       - label: "Canopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/timestep_test.jl"

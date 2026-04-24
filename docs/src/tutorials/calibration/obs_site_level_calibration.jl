@@ -92,7 +92,20 @@ zmin = FT(-2)  # 2m depth
 zmax = FT(0)   # surface
 domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));
 
+# Load prescribed atmospheric and radiative forcing from FLUXNET data
+forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
+    site_ID,
+    lat,
+    long,
+    time_offset,
+    atmos_h,
+    start_date,
+    toml_dict,
+    FT,
+);
 
+# Get Leaf Area Index (LAI) data from MODIS satellite observations.
+LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(domain.space.surface);
 
 # ## Model Setup
 #
@@ -103,23 +116,6 @@ function model(Vcmax25, g1)
     Vcmax25 = FT(Vcmax25)
     g1 = FT(g1)
 
-    #md # Load prescribed atmospheric and radiative forcing from FLUXNET data
-    forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
-        site_ID,
-        lat,
-        long,
-        time_offset,
-        atmos_h,
-        start_date,
-        toml_dict,
-        FT,
-    )
-    #md # Get Leaf Area Index (LAI) data from MODIS satellite observations.
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        domain.space.surface,
-        start_date,
-        stop_date,
-    )
     #md # Set up models; note: we are not using the default soil, which relies on global
     #md # maps of parameters to estimate the parameters at the site.
     #md # Instead we use parameter more tailored to this site.

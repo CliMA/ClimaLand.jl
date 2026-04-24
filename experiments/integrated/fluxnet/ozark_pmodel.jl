@@ -89,8 +89,14 @@ dt = Float64(450) # 7.5 minutes
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(
+    site_ID,
+    time_offset;
+    require_forcing_coverage = true,
+)
+# Constrain to 2000-2020 (MODIS LAI availability)
+start_date = max(data_start, DateTime(2000, 1, 1))
+stop_date = min(data_stop, DateTime(2020, 12, 31, 23, 59, 59))
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -176,7 +182,12 @@ soil_moisture_stress = PiecewiseMoistureStressModel{FT}(
 
 # Set up plant hydraulics
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(
+    start_date,
+    lat,
+    long;
+    ncd_path = ClimaLand.Artifacts.modis_lai_climatology_data_path(),
+)
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,

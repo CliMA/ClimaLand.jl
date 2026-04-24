@@ -4,7 +4,6 @@ import ClimaParams as CP
 using DocStringExtensions
 using ClimaCore
 import ...Parameters as LP
-using NVTX
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
 import ClimaLand.Domains: AbstractDomain
@@ -266,7 +265,7 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
 )
 
 function make_update_boundary_fluxes(model::SoilCO2Model)
-    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
+    function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
 
@@ -329,7 +328,7 @@ apply diffusion, then convert back to O2_f tendency.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
-    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
+    function compute_exp_tendency!(dY, Y, p, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
@@ -416,7 +415,7 @@ Physics:
   For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
 - SOC consumption equals CO2 production to conserve carbon mass
 """
-NVTX.@annotate function ClimaLand.source!(
+function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::MicrobeProduction,
     Y::ClimaCore.Fields.FieldVector,
@@ -560,7 +559,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
-    NVTX.@annotate function update_aux!(p, Y, t)
+    function update_aux!(p, Y, t)
         FT = eltype(Y.soilco2.CO2)
 
         params = model.parameters
