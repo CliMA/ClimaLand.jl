@@ -278,8 +278,8 @@ function update_subsurface_energy_runoff!(
             p.soil.T,
             model.parameters.earth_param_set,
         )
-    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actuall just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
-    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by tthe water table height (to get average energy) and multiplies by volumetric liquid water runoff.
+    column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actual just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
+    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
 end
 update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
 
@@ -341,7 +341,7 @@ end
     ) where {FT}
 
 Adjusts dY.soil.ϑ_l and dY.soil.ρe_int in place
- to account for the loss of water and denergy due to subsurface runoff.
+ to account for the loss of water and energy due to subsurface runoff.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
