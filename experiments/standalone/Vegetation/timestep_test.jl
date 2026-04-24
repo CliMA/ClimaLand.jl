@@ -91,20 +91,6 @@ forcing = (; atmos, radiation, ground);
 
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-
-# Overwrite energy parameter for stability
-energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e3))
-
-# Construct canopy model
-canopy = ClimaLand.Canopy.CanopyModel{FT}(
-    land_domain,
-    forcing,
-    LAI,
-    toml_dict;
-    energy,
-);
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -139,6 +125,23 @@ for dt in dts
 
     # Create update times for driver and saving callback
     saveat = vcat(Array(start_date:Second(3 * 3600):stop_date), stop_date)
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        surface_space,
+        start_date,
+        stop_date,
+    )
+
+    # Overwrite energy parameter for stability
+    energy = BigLeafEnergyModel{FT}(toml_dict; ac_canopy = FT(1e3))
+
+    # Construct canopy model
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        land_domain,
+        forcing,
+        LAI,
+        toml_dict;
+        energy,
+    )
     simulation = LandSimulation(
         start_date,
         stop_date,

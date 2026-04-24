@@ -1,5 +1,6 @@
 export SoilSnowModel
 using ClimaCore.Operators: column_integral_definite!
+using NVTX
 
 
 """
@@ -180,7 +181,7 @@ function make_update_boundary_fluxes(
 ) where {FT, SnM <: Snow.SnowModel{FT}, SoM <: Soil.EnergyHydrology{FT}}
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
         # First compute the ground heat flux in place:
@@ -226,7 +227,7 @@ T_snow and Δz_snow related to the bottom layer.
 We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep.
 Due to this, we cap Δz_snow at 10 cm.
 """
-function update_soil_snow_ground_heat_flux!(
+NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
     Y,
     soil_params,
@@ -275,7 +276,7 @@ inclusion of the ground heat flux (precomputed by the integrated land model).
 However, this will change more if e.g. we allow for transmission of radiation
 through the snowpack.
 """
-function snow_boundary_fluxes!(
+NVTX.@annotate function snow_boundary_fluxes!(
     bc::Snow.AtmosDrivenSnowBC,
     prognostic_land_components::Val{(:snow, :soil)},
     model::SnowModel{FT},
@@ -351,7 +352,7 @@ integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions, taking into account the presence of snow on the surface.
 """
-function soil_boundary_fluxes!(
+NVTX.@annotate function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
     prognostic_land_components::Val{(:snow, :soil)},
     soil::EnergyHydrology,
@@ -415,7 +416,7 @@ end
 Returns the liquid water volume flux at the surface of the soil,
 accounting for snowmelt and rainfall.
 """
-function Soil.compute_liquid_influx(
+NVTX.@annotate function Soil.compute_liquid_influx(
     p,
     model,
     prognostic_land_components::Val{(:snow, :soil)},
@@ -448,7 +449,7 @@ Infiltration * (f_rain * ρe(T_air) + f_snow * ρe(T_snow)), where f_rain  = 1- 
 Influx = P_liq * (1-σ) + snowmelt * σ. Here, σ is the snow cover fraction, and ρe(T) refers
 to the volumetric internal energy of liquid water at temperature T.
 """
-function Soil.compute_infiltration_energy_flux(
+NVTX.@annotate function Soil.compute_infiltration_energy_flux(
     p,
     runoff,
     atmos,
@@ -499,7 +500,7 @@ end
 Updates `dY.soil.θ_i` in place with a term due to sublimation; this only affects
 the surface layer of soil.
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PartialAreaSoilSublimation{FT},
     Y::ClimaCore.Fields.FieldVector,

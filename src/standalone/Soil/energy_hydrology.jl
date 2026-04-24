@@ -271,7 +271,7 @@ function EnergyHydrology{FT}(;
 end
 
 function make_update_boundary_fluxes(model::EnergyHydrology)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
         soil_boundary_fluxes!(
@@ -315,7 +315,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
         dY.soil.∫F_vol_liq_water_dt .= 0
@@ -363,7 +363,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_imp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
@@ -425,7 +425,7 @@ function ClimaLand.make_compute_imp_tendency(
 end
 
 function ClimaLand.make_update_implicit_aux(model::EnergyHydrology)
-    function update_imp_aux!(p, Y, t)
+    NVTX.@annotate function update_imp_aux!(p, Y, t)
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
         @. p.soil.T = temperature_from_ρe_int(
             Y.soil.ρe_int,
@@ -446,7 +446,7 @@ end
 
 function ClimaLand.make_update_implicit_boundary_fluxes(model::EnergyHydrology)
     ubf! = make_update_boundary_fluxes(model)
-    function update_imp_bf!(p, Y, t)
+    NVTX.@annotate function update_imp_bf!(p, Y, t)
         if haskey(p.soil, :dfluxBCdY)
             ubf!(p, Y, t)
         end
@@ -464,7 +464,7 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
-    function compute_jacobian!(
+    NVTX.@annotate function compute_jacobian!(
         jacobian::MatrixFields.FieldMatrixWithSolver,
         Y,
         p,
@@ -593,7 +593,7 @@ spherical shell domain with the model
 The horizontal contributions are
 computed using the WeakDivergence and Gradient operators.
 """
-function horizontal_components!(
+NVTX.@annotate function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
     domain::Union{HybridBox, SphericalShell},
     lateral_flow::Val{true},
@@ -722,7 +722,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::EnergyHydrology)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         (;
             ν,
             hydrology_cm,
@@ -837,7 +837,7 @@ Computes the source terms for phase change
 explicitly in time.
 
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PhaseChange,
     Y::ClimaCore.Fields.FieldVector,
@@ -930,7 +930,7 @@ Updates dY.soil.θ_i in place with a term due to sublimation; this only affects
 the surface layer of soil.
 
 """
-function ClimaLand.source!(
+NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::SoilSublimation{FT},
     Y::ClimaCore.Fields.FieldVector,
