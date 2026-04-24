@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -----
+- Remove `convert_cb` function PR[#1730](https://github.com/CliMA/ClimaLand.jl/pull/1730)
 - Use nearest neighbor to create higher resolution soil retention parameter data; use these by default and corresponding spun up initial condition PR[#1712](https://github.com/CliMA/ClimaLand.jl/pull/1712)
 - ![breaking change][badge-💥breaking] Refactor `PlantHydraulicsModel` to a
   single above-ground compartment; `PlantHydraulics` submodule has been

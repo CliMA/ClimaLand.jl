@@ -206,8 +206,7 @@ function LandSimulation(
     diagnostics = isnothing(diagnostics) ? () : diagnostics
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(diagnostics, Y, p, t0; dt = Δt)
-    diag_cb =
-        convert_cb(ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler))
+    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     # Collect all callbacks #TODO: ordering can be confusing as the state can be saved
     # in both user_cbs and diag_cbs, and the driver update happens between them
@@ -413,20 +412,4 @@ convert_updates(t0::ITime, update_time::AbstractFloat) =
     promote(t0, ITime(update_time, epoch = t0.epoch))[2]
 convert_updates(t0, update_time) = t0 # fallback (used for non convertible Dates.Period(s))
 
-"""
-convert_cb(cb)
-
-Convert the given callback `cb`, which may be either a SciMLBase.DiscreteCallback
-or a ClimaTimeSteppers.DiscreteCallback, into a ClimaTimeSteppers.DiscreteCallback.
-This is a temporary fix while we switch from SciMLBase to using only
-ClimaTimeSteppers.
-"""
-function convert_cb(cb)
-    return ClimaTimeSteppers.DiscreteCallback(
-        cb.condition,
-        cb.affect!;
-        initialize = cb.initialize,
-        finalize = cb.finalize,
-    )
-end
 end#module
