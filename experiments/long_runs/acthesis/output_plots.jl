@@ -685,7 +685,7 @@ function surface_alb_analysis(; args = snow_args)
     metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
     return metrics
 end
-    
+
 function rad_data(rad_type)
     if !(rad_type in [:swu, :lwu, :shf, :lhf])
         error("this rad type not defined")
@@ -697,7 +697,7 @@ function rad_data(rad_type)
     if rad_type == :swu
         rad_era5 = era5_swu
     elseif rad_type == :lwu
-        rad_era5 == era5_lwu
+        rad_era5 = era5_lwu
     else
         rad_era5 = get_data(era5_rad_outputs[rad_type])
     end
@@ -706,7 +706,7 @@ function rad_data(rad_type)
     data = (me = rad_me, old = rad_old, others = rad_others, era5 = scale .* rad_era5)
     dates = (
         clima = me_outputs[rad_type][:date][:],
-        era5 = era5_rad_outputs[rad_type][:date][:],
+        era5 = era5_rad_outputs[:date][:],
     )
     return data, dates
 end
@@ -1089,7 +1089,7 @@ function full_analysis(output_path; args = snow_args)
         z_avg_nonzero = time_stat(nonzero_meanf, z[tag1])
         data["avg_z"][string(tag1)] = z_avg_nonzero
         z_annual_max = agg_time_indices(apply_mask(z[tag1], mask), dates[tag2], :year, maxf)[1]
-        data["maximum_zs"][string(tag)] = z_annual_max
+        data["maximum_zs"][string(tag1)] = z_annual_max
     end
     print("  Grabbing scf data to get gantt chart timing...\n")
     scf, dates = field_data(:snowc, :snowc, :FSNO_EFF_month, args = args) #FNO or FNO_EFF?
@@ -1131,14 +1131,10 @@ end
 
 # see what happens when you don't use an over-fit neural depth model?
 # see what the averages look like on clima analysis versus yours for an easy example array to see who needs to be fixed
-# do all runs at monthly resolution too, though the differences appear to be minimal
-# finish paper
-
 
 # should I do the compression via time_stat or space_stat before doing stat_spread, or do the stat_spread over the whole array?
-# split up these errors by season? by year?
+# split up these errors by season? by year? by land type?
 # update your model with GPU fixes
-
 
 function globe_heatmap(data; lat = clima_lat, lon = clima_lon)
     fig = Figure()
