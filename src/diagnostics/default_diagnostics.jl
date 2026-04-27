@@ -449,6 +449,15 @@ function add_diagnostics!(
     return nothing
 end
 
+function add_diagnostics!(
+    diagnostics,
+    model::CanopyModel,
+    subcomponent::CanopyInterceptionModel,
+)
+    append!(diagnostics, ["intw", "fwet", "thrf"])
+    return nothing
+end
+
 ## Possible diagnostics for standalone models
 """
     get_possible_diagnostics(model)
@@ -525,6 +534,8 @@ function get_possible_diagnostics(model::CanopyModel)
     add_diagnostics!(diagnostics, model, model.boundary_conditions.atmos)
     # Add conditional diagnostics based on biomass model type
     add_diagnostics!(diagnostics, model, model.biomass)
+    # Add conditional diagnostics based on interception model type
+    add_diagnostics!(diagnostics, model, model.interception)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)

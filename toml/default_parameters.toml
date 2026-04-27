@@ -30,6 +30,38 @@ type = "float"
 description = "Units are m/s"
 tag = "TOPMODELRunoff"
 
+# Canopy interception parameters (Rutter et al. 1971)
+
+["interception_k_int"]
+value = 0.5
+type = "float"
+description = "Extinction coefficient for free throughfall, unitless"
+tag = "CanopyInterception"
+
+["interception_S_leaf"]
+value = 0.0002
+type = "float"
+description = "Storage capacity per unit LAI [m]"
+tag = "CanopyInterception"
+
+["interception_S_stem"]
+value = 0.00025
+type = "float"
+description = "Storage capacity per unit SAI [m]"
+tag = "CanopyInterception"
+
+["interception_D_s"]
+value = 2.4e-5
+type = "float"
+description = "Rutter drainage rate coefficient at saturation [m/s]"
+tag = "CanopyInterception"
+
+["interception_b"]
+value = 3700.0
+type = "float"
+description = "Rutter drainage exponent [1/m]"
+tag = "CanopyInterception"
+
 # Big leaf energy parameters
 
 ["ac_canopy"]
