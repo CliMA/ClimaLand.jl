@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=acharbon_global_run_OTHERSNOTEMPSPEED
-#SBATCH --output=global_output_OTHERSNOTEMPSPEED.txt
-#SBATCH --error=global_error_OTHERSNOTEMPSPEED.txt
+#SBATCH --output=global_output_OLDNOTEMPSPEED.txt
+#SBATCH --error=global_error_OLDNOTEMPSPEED.txt
 #SBATCH --time=48:00:00
 #SBATCH --gpus=1
 #SBATCH --gpus-per-task=1
