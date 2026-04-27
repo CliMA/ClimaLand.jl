@@ -235,6 +235,13 @@ function make_ocean_masked_annual_timeseries(
         var = get(simdir; short_name)
         kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         var_sliced = ClimaAnalysis.slice(var; kwarg_z...)
+
+        # Get the first and last years of the simulation for windowing
+        first_date = first(ClimaAnalysis.dates(var_sliced))
+        last_date = last(ClimaAnalysis.dates(var_sliced))
+        first_year = year(first_date)
+        last_year = year(last_date)
+
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
         # i represent a year, from 1 to last year
         # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
@@ -244,15 +251,18 @@ function make_ocean_masked_annual_timeseries(
                     ClimaAnalysis.window(
                         var_sliced,
                         "time",
-                        left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
-                        right = i * 366 * 86400, # 1 year right of year i, in seconds
+                        left = Dates.DateTime(year, 1),
+                        right = Dates.DateTime(year, 12),
                     ),
                 ),
-            ).data for i in range(
-                1,
-                round(last(ClimaAnalysis.times(var_sliced) / (365 * 86400))), # n years
-            )
+            ).data for year in range(first_year, last_year)
         ]
+
+        # Preappend NaNs for the first year
+        num_to_prepend = 12 - length(first(var_global_average))
+        var_global_average[1] =
+            vcat(fill(NaN, num_to_prepend), first(var_global_average))
+
         fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
             fig_seasonal_cycle[1, 1],
