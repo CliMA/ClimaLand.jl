@@ -10,7 +10,7 @@ gather_diagnostics = false
 col_lon_lat = (-17, 64) #only used if use_col is true
 const FT = Float64;
 const setup = Dict(
-    "output_tag" => "others_speedrun",
+    "output_tag" => "all_speedrun",
     "output_resolution" => :monthly,
     "use_neural_albedo" => true,
     "use_neural_depth" => true,
@@ -161,15 +161,15 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 )
 
 if setup["use_neural_albedo"]
-    #α_snow = NS.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
-    α_snow = HTESSELAlbedoModel{FT}()
+    α_snow = NS.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt)
+    #α_snow = HTESSELAlbedoModel{FT}()
 else
     α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
 end
 
 if setup["use_neural_depth"]
-    #density = NS.NeuralDepthModel(toml_dict, Δt = Δt)
-    density = Anderson1976{FT}()
+    density = NS.NeuralDepthModel(toml_dict, Δt = Δt)
+    #density = Anderson1976{FT}()
 else
     density = nothing
 end
