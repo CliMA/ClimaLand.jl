@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=acharbon_global_run_OLDSPEED
-#SBATCH --output=global_output_OLDSPEED.txt
-#SBATCH --error=global_error_OLDSPEED.txt
+#SBATCH --job-name=acharbon_global_run_MENOTEMPSPEED
+#SBATCH --output=global_output_MENOTEMPSPEED.txt
+#SBATCH --error=global_error_MENOTEMPSPEED.txt
 #SBATCH --time=48:00:00
 #SBATCH --gpus=1
 #SBATCH --gpus-per-task=1
