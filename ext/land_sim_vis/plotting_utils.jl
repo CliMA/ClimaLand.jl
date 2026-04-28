@@ -233,6 +233,11 @@ function make_ocean_masked_annual_timeseries(
     simdir = ClimaAnalysis.SimDir(diagdir)
     for short_name in short_names
         var = get(simdir; short_name)
+
+        # Can only plot monthly data
+        # This assumes EveryCalendarDtSchedule is used with a period of 1 month
+        occursin("1 Month", ClimaAnalysis.long_name(var)) || continue
+
         kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         var_sliced = ClimaAnalysis.slice(var; kwarg_z...)
 
@@ -258,10 +263,19 @@ function make_ocean_masked_annual_timeseries(
             ).data for year in range(first_year, last_year)
         ]
 
-        # Preappend NaNs for the first year
-        num_to_prepend = 12 - length(first(var_global_average))
+        # Add NaNs for months that are not simulated
+        first_year_months =
+            ClimaAnalysis.window(
+                var_sliced,
+                "time",
+                left = Dates.DateTime(first_year, 1),
+                right = Dates.DateTime(first_year, 12),
+            ) |>
+            ClimaAnalysis.dates .|>
+            Dates.monthname
+        indices = indexin(Dates.monthname.(1:12), first_year_months)
         var_global_average[1] =
-            vcat(fill(NaN, num_to_prepend), first(var_global_average))
+            [isnothing(i) ? NaN : var_global_average[1][i] for i in indices]
 
         fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
