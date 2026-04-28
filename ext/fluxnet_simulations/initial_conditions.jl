@@ -100,19 +100,19 @@ function set_fluxnet_ic!(
     FT = eltype(Y.soil.ρe_int)
     tmp_ic = @. model.parameters.θ_r +
        (model.parameters.ν - model.parameters.θ_r) * FT(0.95)
-    if isnothing(column_name_map["SWC_F_MDS_1"])
-        θ_l_0 = tmp_ic
-    elseif unique(data[:, column_name_map["SWC_F_MDS_1"]]) == val
+    swc_idx = column_name_map["SWC_F_MDS_1"]
+    if isnothing(swc_idx) || all_missing(data[:, swc_idx]; val)
         θ_l_0 = tmp_ic
     else
         θ_l_0 =
             min.(
                 FT(
                     get_data_at_start_date(
-                        data[:, column_name_map["SWC_F_MDS_1"]],
+                        data[:, swc_idx],
                         Δ_date;
                         preprocess_func = x -> x / 100,
                         val,
+                        varname = "SWC_F_MDS_1",
                     ),
                 ),
                 tmp_ic,
@@ -121,26 +121,23 @@ function set_fluxnet_ic!(
     Y.soil.ϑ_l .= θ_l_0
     Y.soil.θ_i .= 0
 
-    if isnothing(column_name_map["TS_F_MDS_1"])
+    ts_idx = column_name_map["TS_F_MDS_1"]
+    ta_idx = column_name_map["TA_F"]
+    if !isnothing(ts_idx) && !all_missing(data[:, ts_idx]; val)
         T_soil_0 = get_data_at_start_date(
-            data[:, column_name_map["TA_F"]],
+            data[:, ts_idx],
             Δ_date;
             preprocess_func = x -> x + 273.15,
             val,
-        )
-    elseif unique(data[:, column_name_map["TS_F_MDS_1"]]) == [val]
-        T_soil_0 = get_data_at_start_date(
-            data[:, column_name_map["TA_F"]],
-            Δ_date;
-            preprocess_func = x -> x + 273.15,
-            val,
+            varname = "TS_F_MDS_1",
         )
     else
         T_soil_0 = get_data_at_start_date(
-            data[:, column_name_map["TS_F_MDS_1"]],
+            data[:, ta_idx],
             Δ_date;
             preprocess_func = x -> x + 273.15,
             val,
+            varname = "TA_F",
         )
     end
 
@@ -183,6 +180,7 @@ function set_fluxnet_ic!(
         Δ_date;
         preprocess_func = x -> x + 273.15,
         val,
+        varname = "TA_F",
     )
 
     Y.canopy.energy.T .= T_air_0
