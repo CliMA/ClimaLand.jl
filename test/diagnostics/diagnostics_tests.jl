@@ -2,7 +2,7 @@ using Test
 using ClimaLand
 using ClimaLand: Domains, Soil, Canopy
 using ClimaLand.Domains: global_domain, global_box_domain, HybridBox, Column
-using ClimaLand.Simulations: LandSimulation, step!, convert_cb
+using ClimaLand.Simulations: LandSimulation, step!
 using ClimaLand.Diagnostics: @with_error
 import ClimaLand.Parameters as LP
 import ClimaComms
@@ -154,8 +154,7 @@ end
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(out, Y, p, t0; dt = Δt)
 
-    diag_cb =
-        convert_cb(ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler))
+    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
