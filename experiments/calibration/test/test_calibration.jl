@@ -9,7 +9,12 @@ import Statistics: std
 
 # Needed to access CalibrateConfig
 include(
-    joinpath(pkgdir(ClimaLand), "experiments/calibration/run_calibration.jl"),
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "run_calibration.jl",
+    ),
 )
 
 @testset "Observations" begin
@@ -35,7 +40,8 @@ end
     )
 
     (; output_dir, n_iterations) = CALIBRATE_CONFIG
-    ekp = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, n_iterations))
+    ekp =
+        JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, n_iterations + 1))
 
     @test EKP.get_N_iterations(ekp) == n_iterations
 

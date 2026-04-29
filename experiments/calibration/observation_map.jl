@@ -5,15 +5,24 @@ import ClimaCalibrate.EnsembleBuilder
 import ClimaCalibrate.Checker
 
 include(
-    joinpath(pkgdir(ClimaLand), "experiments/calibration/observation_utils.jl"),
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "observation_utils.jl",
+    ),
 )
 
 using CairoMakie, GeoMakie, Printf, Statistics
 
 # Need access to get_era5_obs_var_dict and get_sim_var_dict
 ext = Base.get_extension(ClimaLand, :LandSimulationVisualizationExt)
+
 """
-    ClimaCalibrate.observation_map(iteration)
+    ClimaCalibrate.observation_map(
+        model_interface::LandModelInterface,
+        iteration,
+    )
 
 Return G ensemble for an `iteration`.
 
@@ -22,12 +31,16 @@ ensemble members, arranged horizontally. Each individual forward model
 evaluation corresponds to preprocessed, flattened simulation data from a single
 ensemble member that has been matched to the corresponding observational data.
 """
-function ClimaCalibrate.observation_map(iteration)
-    output_dir = CALIBRATE_CONFIG.output_dir
+function ClimaCalibrate.observation_map(
+    model_interface::LandModelInterface,
+    iteration,
+)
+    (; config) = model_interface
+    (; output_dir) = config
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    short_names = CALIBRATE_CONFIG.short_names
+    (; short_names) = config
 
     g_ens_builder = EnsembleBuilder.GEnsembleBuilder(ekp)
     for m in 1:ensemble_size
@@ -68,7 +81,6 @@ function process_member_data!(
     diagnostics_folder_path,
     short_names,
 )
-    nelements = CALIBRATE_CONFIG.nelements
     @info "Short names: $short_names"
     calibration_obs_vars = ext.get_calibration_obs_var_dict()
     for short_name in short_names
@@ -143,6 +155,7 @@ Analyze an iteration by plotting the bias plots, constrained parameters over
 iterations, and errors over iterations and time.
 """
 function ClimaCalibrate.analyze_iteration(
+    ::LandModelInterface,
     ekp,
     g_ensemble,
     prior,

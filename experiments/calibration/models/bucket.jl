@@ -48,9 +48,14 @@ function setup_model(
     return bucket
 end
 
-function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
-    (; output_dir, sample_date_ranges, nelements, spinup, extend) =
-        CALIBRATE_CONFIG
+function ClimaCalibrate.forward_model(
+    model_interface::LandModelInterface,
+    iteration,
+    member,
+    ::Type{BucketModel},
+)
+    (; config) = model_interface
+    (; output_dir, sample_date_ranges, nelements, spinup, extend) = config
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -102,7 +107,7 @@ function ClimaCalibrate.forward_model(iteration, member, ::Type{BucketModel})
     # Set up diagnostics
     # Need to include "lhf", "shf", "lwu", "swu" because plotting the
     # leaderboard requires these diagnostics
-    short_names = CALIBRATE_CONFIG.short_names
+    (; short_names) = config
     short_names = unique!([short_names; ["lhf", "shf", "lwu", "swu"]])
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,

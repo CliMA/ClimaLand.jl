@@ -15,21 +15,13 @@ import EnsembleKalmanProcesses as EKP
 import JLD2
 
 include(joinpath(pkgdir(ClimaLand), "experiments", "calibration", "api.jl"))
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "calibration",
-        "observation_map.jl",
-    ),
-)
-
-model_interface = joinpath(
+model_interface_filepath = joinpath(
     pkgdir(ClimaLand),
     "experiments",
     "calibration",
     "model_interface.jl",
 )
+include(model_interface_filepath)
 
 # Note: This has only been tested with the WorkerBackend
 const TEST_CALIBRATION = haskey(ENV, "TEST_CALIBRATION")
@@ -88,45 +80,6 @@ function _loaded_climacommon()
     return String(last(matches))
 end
 
-"""
-    _forwarded_env_exports()
-
-Return shell-export lines for env vars that must be propagated from the driver
-shell into each forward-model PBS/Slurm job. PBS does not inherit the submit
-environment without `-V`, so worker jobs would otherwise re-read `ENV` and see
-an empty `CALIBRATION_CONFIG`, silently falling back to the default config in
-`run_calibration.jl` and producing sims that disagree with the obs vector.
-"""
-function _forwarded_env_exports()
-    forwarded = ("CALIBRATION_CONFIG", "HDF5_USE_FILE_LOCKING")
-    lines = String[]
-    for name in forwarded
-        haskey(ENV, name) || continue
-        push!(lines, "export $name=$(ENV[name])")
-    end
-    return join(lines, "\n")
-end
-
-"""
-    module_load_string(::ClimaCalibrate.ClimaGPUBackend)
-    module_load_string(::ClimaCalibrate.DerechoBackend)
-
-Return the `module load` string injected into forward-model job scripts. The
-`climacommon` version is read from the driver shell's `LOADEDMODULES` so the
-version only needs to be specified once (in `run_calibration.sh`).
-"""
-function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
-    return """module purge
-    module load $(_loaded_climacommon())
-    $(_forwarded_env_exports())"""
-end
-
-function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
-    return """module purge
-    module load $(_loaded_climacommon())
-    $(_forwarded_env_exports())"""
-end
-
 if abspath(PROGRAM_FILE) == @__FILE__
     prior = get_calibration_prior()
 
@@ -148,7 +101,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         ),
     )
 
-    rng_seed = CALIBRATE_CONFIG.rng_seed
+    (; rng_seed) = CALIBRATE_CONFIG
     rng = Random.MersenneTwister(rng_seed)
 
     # Note: You should check that the ensemble size is the same as the number of
@@ -169,6 +122,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     curr_backend = ClimaCalibrate.get_backend()
     N_ens = EKP.get_N_ens(ekp)
 
+    model_interface = LandModelInterface(CALIBRATE_CONFIG)
+
     # Run test calibration (only support the WorkerBackend and clusters with
     # Slurm)
     if TEST_CALIBRATION
@@ -177,11 +132,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
         # instead.
         @info "Check your slurm script that the number of tasks is the same as the ensemble size ($N_ens)"
         addprocs(ClimaCalibrate.SlurmManager())
-        @everywhere include($model_interface)
+        @everywhere include($model_interface_filepath)
         (; n_iterations, output_dir) = CALIBRATE_CONFIG
         eki = ClimaCalibrate.calibrate(
             ClimaCalibrate.WorkerBackend(),
             ekp,
+            model_interface,
             n_iterations,
             prior,
             output_dir,
@@ -189,53 +145,57 @@ if abspath(PROGRAM_FILE) == @__FILE__
         return nothing
     end
 
-    # The HPC keyword arguments specify the resources for running a single
+    # The directives specify the resources for running a single
     # ensemble member
-    hpc_kwargs = Dict(
+    directives = [
         :cpus_per_task => 4,
         :gpus_per_task => 1,
         :ntasks => 1,
         # 180 minutes is 3 hours
         :time => 180,
-    )
+    ]
+    # Modules to load with `module load`
+    modules = [_loaded_climacommon()]
+    # Environment variables to set for each job
+    env_vars =
+        ["CLIMACOMMS_CONTEXT" => "SINGLETON", "CLIMACOMMS_DEVICE" => "CUDA"]
 
     # Determine which backend to submit job scripts to
     if curr_backend == ClimaCalibrate.DerechoBackend
-        derecho_hpc_kwargs = Dict(
-            # Options include "premium", "regular", "economy", "preempt"
-            :job_priority => "regular",
-        )
+        derecho_directives = [:job_priority => "regular"]
         backend = ClimaCalibrate.DerechoBackend(;
-            model_interface,
-            verbose = true,
-            hpc_kwargs = merge(hpc_kwargs, derecho_hpc_kwargs),
+            directives = vcat(directives, derecho_directives),
+            modules,
+            env_vars,
         )
     elseif curr_backend == ClimaCalibrate.GCPBackend
-        gcp_hpc_kwargs = Dict(:partition => "a3mega")
+        gcp_directives = [:partition => "a3mega"]
         backend = ClimaCalibrate.GCPBackend(;
-            model_interface,
-            verbose = true,
-            hpc_kwargs = merge(hpc_kwargs, gcp_hpc_kwargs),
+            directives = vcat(directives, gcp_directives),
+            modules,
+            env_vars,
         )
     elseif curr_backend == ClimaCalibrate.CaltechHPCBackend
-        central_hpc_kwargs = Dict(:partition => "gpu")
+        central_directives = [:partition => "gpu"]
         backend = ClimaCalibrate.CaltechHPCBackend(;
-            model_interface,
-            verbose = true,
-            hpc_kwargs = merge(hpc_kwargs, central_hpc_kwargs),
+            directives = vcat(directives, central_directives),
+            modules,
+            env_vars,
         )
     elseif curr_backend == ClimaCalibrate.ClimaGPUBackend
-        clima_hpc_kwargs = Dict()
-        backend = ClimaCalibrate.ClimaGPUBackend(;
-            model_interface,
-            verbose = true,
-            hpc_kwargs = merge(hpc_kwargs, clima_hpc_kwargs),
-        )
+        backend =
+            ClimaCalibrate.ClimaGPUBackend(; directives, modules, env_vars)
     else
         error("Unsupported backend: $(ClimaCalibrate.get_backend())")
     end
 
     (; n_iterations, output_dir) = CALIBRATE_CONFIG
-    eki =
-        ClimaCalibrate.calibrate(backend, ekp, n_iterations, prior, output_dir)
+    eki = ClimaCalibrate.calibrate(
+        backend,
+        ekp,
+        model_interface,
+        n_iterations,
+        prior,
+        output_dir,
+    )
 end
