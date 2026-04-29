@@ -116,8 +116,14 @@ for float_type in (Float32, Float64)
     prognostic_land_components = (:canopy, :soil, :soilco2)
 
     # Get the atmospheric and radiation forcing data
-    (start_date, stop_date) =
-        FluxnetSimulations.get_data_dates(site_ID, time_offset)
+    (data_start, data_stop) = FluxnetSimulations.get_data_dates(
+        site_ID,
+        time_offset;
+        require_forcing_coverage = true,
+    )
+    # Constrain to 2000-2020 (MODIS LAI availability)
+    start_date = max(data_start, DateTime(2000, 1, 1))
+    stop_date = min(data_stop, DateTime(2020, 12, 31, 23, 59, 59))
     (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
         site_ID,
         lat,
@@ -312,7 +318,7 @@ for float_type in (Float32, Float64)
         @assert mean(
             abs.(
                 first.(radiation.cosθs.(sv.t, radiation.start_date)) .-
-                cache_cosθs
+                cache_cosθs,
             ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)

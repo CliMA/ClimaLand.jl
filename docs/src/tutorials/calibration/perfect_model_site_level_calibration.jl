@@ -78,8 +78,13 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # Get maximum simulation start and end dates
-(start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(
+    site_ID,
+    time_offset;
+    require_forcing_coverage = true,
+)
+# Constrain to 2000-2020 (MODIS LAI availability)
+start_date = max(data_start, DateTime(2000, 1, 1))
 stop_date = DateTime(2010, 4, 1, 6, 30)  # Set the stop date manually
 Δt = 450.0  # seconds
 
@@ -106,7 +111,8 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     FT,
 );
 
-
+# Get Leaf Area Index (LAI) data from MODIS satellite observations.
+LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(domain.space.surface);
 
 # ## Model Setup
 #
@@ -114,12 +120,6 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
 # components. This comprehensive model allows us to simulate the full land
 # surface system and its interactions.
 function model(Vcmax25)
-    #md # Get Leaf Area Index (LAI) data from MODIS satellite observations.
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        domain.space.surface,
-        start_date,
-        stop_date,
-    )
     Vcmax25 = FT(Vcmax25)
 
     #md # Set up ground conditions and define which components to simulate prognostically

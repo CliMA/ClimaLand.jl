@@ -239,7 +239,7 @@ updating fluxes using these state variables and Y.
 function make_update_implicit_cache(model::AbstractImExModel)
     update_aux! = make_update_implicit_aux(model)
     update_boundary_fluxes! = make_update_implicit_boundary_fluxes(model)
-    NVTX.@annotate function update_implicit_cache!(p, Y, t)
+    function update_implicit_cache!(p, Y, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
     end

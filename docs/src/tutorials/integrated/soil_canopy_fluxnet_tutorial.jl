@@ -78,11 +78,7 @@ forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     FT,
 );
 # LAI for the site - this uses our interface for working with MODIS data.
-LAI = ClimaLand.Canopy.prescribed_lai_modis(
-    domain.space.surface,
-    start_date,
-    stop_date,
-);
+LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(domain.space.surface);
 
 # # Setup the integrated model
 

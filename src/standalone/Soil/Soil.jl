@@ -61,7 +61,6 @@ using DocStringExtensions
 using LinearAlgebra
 using ClimaCore
 using ClimaCore.MatrixFields
-using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces

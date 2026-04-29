@@ -90,8 +90,14 @@ dt = Float64(450) # 7.5 minutes
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-(start_date, _) = FluxnetSimulations.get_data_dates(site_ID, time_offset)
-stop_date = start_date + Year(1)
+(data_start, data_stop) = FluxnetSimulations.get_data_dates(
+    site_ID,
+    time_offset;
+    require_forcing_coverage = true,
+)
+# Constrain to 2000-2020 (MODIS LAI availability)
+start_date = max(data_start, DateTime(2000, 1, 1))
+stop_date = min(start_date + Year(1), DateTime(2020, 12, 31, 23, 59, 59))
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -167,12 +173,16 @@ photosynthesis_parameters = (; fractional_c3 = FT(1), Vcmax25)
 photosynthesis =
     FarquharModel{FT}(surface_domain, toml_dict; photosynthesis_parameters)
 # Set up plant hydraulics
-# Read in LAI from MODIS data
+# Read in climatological LAI from MODIS data
 surface_space = land_domain.space.surface;
-LAI =
-    ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
+LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
 # Get the maximum LAI at this site over the first year of the simulation
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long);
+maxLAI = FluxnetSimulations.get_maxLAI_at_site(
+    start_date,
+    lat,
+    long;
+    ncd_path = ClimaLand.Artifacts.modis_lai_climatology_data_path(),
+);
 RAI = maxLAI * f_root_to_shoot
 hydraulics = Canopy.PlantHydraulicsModel{FT}(
     surface_domain,
@@ -257,6 +267,10 @@ function compute_monthly_avg(x, dates)
 end
 
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
+has_tsoil5 = haskey(comparison_data, :tsoil5)
+has_swc3 = haskey(comparison_data, :swc3)
+tsoil_deep_data = has_tsoil5 ? comparison_data.tsoil5 : comparison_data.tsoil
+swc_deep_data = has_swc3 ? comparison_data.swc3 : comparison_data.swc
 savedir =
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/$(site_ID)/out")
 mkpath(savedir)
@@ -466,12 +480,12 @@ lines!(ax1, model_dates, T_soil5, label = "", color = "blue", linewidth = 3)
 lines!(
     ax1,
     data_dates,
-    comparison_data.tsoil5[data_id_post_spinup],
+    tsoil_deep_data[data_id_post_spinup],
     label = "",
     color = "orange",
     linewidth = 3,
 )
-text!(ax1, model_dates[1], 310, text = "32 cm")
+text!(ax1, model_dates[1], 310, text = has_tsoil5 ? "32 cm" : "2 cm (fallback)")
 
 
 ax2 = Axis(
@@ -507,12 +521,12 @@ lines!(ax3, model_dates, θ3, color = "blue", label = "Model", linewidth = 3)
 lines!(
     ax3,
     data_dates,
-    comparison_data.swc3[data_id_post_spinup],
+    swc_deep_data[data_id_post_spinup],
     label = "Data",
     color = "orange",
     linewidth = 3,
 )
-text!(ax3, model_dates[1], 0, text = "20 cm")
+text!(ax3, model_dates[1], 0, text = has_swc3 ? "20 cm" : "0-2 cm (fallback)")
 
 ylabel01 = Label(fig[1:2, 0], "Volumetric Water (m/m)", rotation = pi / 2)
 ylabel23 = Label(fig[3:4, 0], "Temperature (K)", rotation = pi / 2)
