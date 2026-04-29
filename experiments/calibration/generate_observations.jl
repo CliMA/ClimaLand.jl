@@ -10,7 +10,12 @@ import JLD2
 
 # Access CalibrateConfig
 include(
-    joinpath(pkgdir(ClimaLand), "experiments/calibration/run_calibration.jl"),
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "run_calibration.jl",
+    ),
 )
 
 include("observation_utils.jl")
@@ -18,7 +23,13 @@ include("observation_utils.jl")
 # For now, we will reuse `data_sources.jl` that is used for making the
 # leaderboard, since it is the easiest option.
 include(
-    joinpath(pkgdir(ClimaLand), "ext/land_sim_vis/leaderboard/data_sources.jl"),
+    joinpath(
+        pkgdir(ClimaLand),
+        "ext",
+        "land_sim_vis",
+        "leaderboard",
+        "data_sources.jl",
+    ),
 )
 
 """

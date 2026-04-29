@@ -55,6 +55,10 @@ const CALIBRATE_CONFIG = CalibrateConfig(;
     nelements = (180, 360, 15),
     output_dir = OUTPUT_DIR,
     rng_seed = 42,
-    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    obs_vec_filepath = joinpath(
+        "experiments",
+        "calibration",
+        "land_observation_vector.jld2",
+    ),
     model_type = ClimaLand.LandModel,
 )

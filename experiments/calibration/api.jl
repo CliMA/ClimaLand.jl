@@ -68,8 +68,13 @@ end
         minibatch_size,
         n_iterations,
         nelements = (101, 15),
-        output_dir = "experiments/calibration/land_model",
+        output_dir = joinpath("experiments", "calibration", "land_model"),
         rng_seed = 42,
+        obs_vec_filepath = joinpath(
+            "experiments",
+            "calibration",
+            "land_observation_vector.jld2",
+        ),
         model_type = ClimaLand.LandModel,
     )
 
@@ -121,9 +126,13 @@ function CalibrateConfig(;
     extend,
     spinup = Dates.Month(3),
     nelements = (101, 15),
-    output_dir = "experiments/calibration/land_model",
+    output_dir = joinpath("experiments", "calibration", "land_model"),
     rng_seed = 42,
-    obs_vec_filepath = "experiments/calibration/land_observation_vector.jld2",
+    obs_vec_filepath = joinpath(
+        "experiments",
+        "calibration",
+        "land_observation_vector.jld2",
+    ),
     model_type = ClimaLand.LandModel,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")

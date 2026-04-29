@@ -63,6 +63,7 @@ import ClimaCalibrate
 ClimaCalibrate.calibrate(
     ClimaCalibrate.WorkerBackend,
     utki,
+    model_interface,
     n_iterations,
     prior,
     output_dir,
@@ -100,9 +101,6 @@ target plus or minus the noise at specific space and time, the goal is reached.
   For more information, read the
   [EKP documentation for that method](https://clima.github.io/EnsembleKalmanProcesses.jl/stable/unscented_kalman_inversion/).
 
-- `verbose = true` is a setting that writes information about your calibration
-  run to a log file.
-
 - `rng` is a set random seed.
 
 - `Scheduler` is a EKP setting for timestepping, please read
@@ -112,6 +110,9 @@ target plus or minus the noise at specific space and time, the goal is reached.
   compute system. For other possible backends (for example, `JuliaBackend`,
   `ClimaGPUBackend`, or `DerechoBackend`), see the
   [backend documentation in ClimaCalibrate](https://clima.github.io/ClimaCalibrate.jl/stable/backends/).
+
+- `model_interface` defines how to run the forward model, observation map and
+  postprocess analysis of each iteration.
 
 Each backend is optimized for specific use cases and computing resources. The
 backend system is implemented through Julia's multiple dispatch, so that code
@@ -141,7 +142,7 @@ For more documentation about prior distribution, see [this EKP documentation pag
 
 ```
 .
-├── iteration_000
+├── iteration_001
 │   ├── eki_file.jld2
 │   ├── G_ensemble.jld2
 │   ├── member_001
@@ -162,7 +163,7 @@ For more documentation about prior distribution, see [this EKP documentation pag
 │   │   │   │   └── swu_1M_average.nc
 │   │   │   └── output_active -> output_0000
 │   │   └── parameters.toml
-├── iteration_001
+├── iteration_002
 │   ├── eki_file.jld2
 │   ├── G_ensemble.jld2
 │   ├── member_001
@@ -189,14 +190,15 @@ the parameters value inside `parameters.toml`, and model outputs inside
 `global_diagnostics`.
 
 Two additional functions need to be defined in order to run
-`ClimaCalibrate.calibrate`. `ClimaCalibrate.forward_model(iteration, member)`
-and `ClimaCalibrate.observation_map(iteration)`. The
-`ClimaCalibrate.forward_model(iteration, member)` needs to generate your model
-output for a specific iteration and member. The
-`ClimaCalibrate.observation_map(iteration)` needs to return your loss, a vector
-of the same format as `observations` but created with your model output (for
-example, monthly average of latent heat flux), for all members. To make this
-easier, it can be useful to implement a `process_member_data(root_path)`
+`ClimaCalibrate.calibrate`.
+`ClimaCalibrate.forward_model(interface, iteration, member)` and
+`ClimaCalibrate.observation_map(iteration)`. The
+`ClimaCalibrate.forward_model(interface, iteration, member)` needs to generate
+your model output for a specific iteration and member. The
+`ClimaCalibrate.observation_map(interface, iteration)` needs to return your loss,
+a vector of the same format as `observations` but created with your model output
+(for example, monthly average of latent heat flux), for all members. To make
+this easier, it can be useful to implement a `process_member_data(root_path)`
 function that generates one member output from your model output path.
 
 Once you have defined `ClimaCalibrate.forward_model`,
@@ -413,11 +415,12 @@ simulation data is done in `process_member_data` in
     Different data sources have different conventions for time. For example,
     data sources use January 1, January 15, and Feburary 1 for the monthly
     average of January. For the diagnostics saved from a CliMA simulation, the
-    current convention is to save the monthly average on Feburary 1. You must
-    ensure that the time conventions are the same. For calibration, we choose
-    the start of the time reduction, so for this example, the time associated
-    with the monthly average of January is January 1. For seasonal averages, the
-    dates would be December 1, March 1, June 1, and September 1.
+    current convention is to save the monthly average on the first day of each
+    month. You must ensure that the time conventions are the same. For
+    calibration, we choose the start of the time reduction, so for this example,
+    the time associated with the monthly average of January is January 1. For
+    seasonal averages, the dates would be December 1, March 1, June 1, and
+    September 1.
 
 ### Simulation settings
 
@@ -451,6 +454,5 @@ and `extend`.
 ClimaLand.jl provides a full list of spatially-constant parameters that may be
 calibrated in `toml/default_parameters.toml`. For each parameter, this file
 includes the parameter name, type, default value, units, and model or
-parameterization it is used for.
-Please see that file to see which parameters could be calibrated
-for your model of interest.
+parameterization it is used for. Please see that file to see which parameters
+could be calibrated for your model of interest.

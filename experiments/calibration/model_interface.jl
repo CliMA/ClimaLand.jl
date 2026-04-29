@@ -33,25 +33,68 @@ import JLD2
 import EnsembleKalmanProcesses as EKP
 import TOML
 
+include(joinpath(pkgdir(ClimaLand), "experiments", "calibration", "api.jl"))
+
+"""
+    LandModelInterface <: ClimaCalibrate.AbstractModelInterface
+
+A model interface struct for running the land calibration pipeline.
+
+See the ClimaCalibrate.jl documentation for the methods that
+`LandModelInterface` should implement.
+"""
+struct LandModelInterface <: ClimaCalibrate.AbstractModelInterface
+    config::CalibrateConfig
+end
+
 interface_path =
     joinpath(pkgdir(ClimaLand), "experiments", "calibration", "models")
 include(joinpath(interface_path, "snowy_land.jl"))
 include(joinpath(interface_path, "bucket.jl"))
 
-# To prevent infinite includes from run_calibration.jl including this file
-if !@isdefined(CALIBRATE_CONFIG)
-    include(
-        joinpath(
-            pkgdir(ClimaLand),
-            "experiments",
-            "calibration",
-            "run_calibration.jl",
-        ),
+"""
+    ClimaCalibrate.forward_model(
+        model_interface::LandModelInterface,
+        iteration,
+        member,
     )
-end
 
-function ClimaCalibrate.forward_model(iteration, member)
-    model_type = CALIBRATE_CONFIG.model_type
-    ClimaCalibrate.forward_model(iteration, member, model_type)
+Run a land simulation for calibration.
+
+The snowy land model or bucket simulation is ran depending on the the
+configuration in the `model_interface`.
+
+This function may be called in parallel depending on the ClimaCalibrate backend
+used.
+"""
+function ClimaCalibrate.forward_model(
+    model_interface::LandModelInterface,
+    iteration,
+    member,
+)
+    (; config) = model_interface
+    (; model_type) = config
+    ClimaCalibrate.forward_model(model_interface, iteration, member, model_type)
     return nothing
 end
+
+"""
+    ClimaCalibrate.model_interface_filepath(::LandModelInterface)
+
+Return a filepath to the definition of the `CouplerModelInterface` struct and
+all its associated methods.
+
+This is required to use the `ClimaCalibrate.HPCBackend`s.
+"""
+function ClimaCalibrate.model_interface_filepath(::LandModelInterface)
+    return @__FILE__
+end
+
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "observation_map.jl",
+    ),
+)
