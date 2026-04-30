@@ -81,19 +81,42 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
-      # Generic single-site calibration on a FLUXNET2015 site that is staged on
+      # Generic single-site calibration on FLUXNET2015 sites that are staged on
       # HPC (no download URL — the `fluxnet2015` artifact is HPC-only). The
       # forward model uses default parameters at the site coordinates and MODIS
-      # LAI climatology, so this run is a smoke test of the full
+      # LAI climatology, so these runs are smoke tests of the full
       # generic_site_simulation + calibration pipeline for any FLUXNET2015 site.
+      #
+      # Two sites (AU-Cum, BE-Vie) cover both hemispheres and exercise the
+      # all-sites driver (calibrate_all_fluxnet.jl) — once green, the same
+      # driver is what calibrate_all_fluxnet.sbatch fans out across all sites.
       - label: "generic_site_calibrate AU-Cum"
         command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/calibrate_site.jl"
         env:
           SITE_ID: "AU-Cum"
-          CAL_DURATION_DAYS: "90"
-          N_ITERS: "2"
+          CALIBRATION_CONFIG: "smoke_test.jl"
           LOCAL: "false"
         artifact_paths: "experiments/integrated/generic_site/calibration_out/AU-Cum_90d/**/*"
+        soft_fail: true
+
+      - label: "generic_site_calibrate BE-Vie"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/calibrate_site.jl"
+        env:
+          SITE_ID: "BE-Vie"
+          CALIBRATION_CONFIG: "smoke_test.jl"
+          LOCAL: "false"
+        artifact_paths: "experiments/integrated/generic_site/calibration_out/BE-Vie_90d/**/*"
+        soft_fail: true
+
+      # Exercises the all-sites driver on the same two sites, validating the
+      # outer loop in calibrate_all_fluxnet.jl that calibrate_all_fluxnet.sbatch
+      # depends on. Each site runs as its own julia subprocess.
+      - label: "generic_site_calibrate_all_fluxnet (smoke, 2 sites)"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/calibrate_all_fluxnet.jl"
+        env:
+          SITES: "AU-Cum,BE-Vie"
+          CALIBRATION_CONFIG: "smoke_test.jl"
+        artifact_paths: "experiments/integrated/generic_site/calibration_out/*_90d/**/*"
         soft_fail: true
 
       - label: "ozark_pft"

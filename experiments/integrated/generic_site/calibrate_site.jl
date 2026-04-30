@@ -5,15 +5,20 @@
 # multi-backend dispatch, and HPC kwargs. Runs locally with ClimaCalibrate.JuliaBackend.
 #
 # Usage:
-#   SITE_ID=US-MOz CAL_DURATION_DAYS=365 julia --project=experiments \
+#   SITE_ID=US-MOz julia --project=.buildkite \
 #       experiments/integrated/generic_site/calibrate_site.jl
 #
 # Optional ENV vars:
 #   SITE_ID            (default "US-MOz")  — any fluxnet site_ID resolvable via
 #                                              ClimaLand.Artifacts.experiment_fluxnet_data_path
-#   CAL_DURATION_DAYS  (default "365")    — length of the calibration window
+#   CALIBRATION_CONFIG (default "default.jl")
+#                                          — config file in configs/ that defines
+#                                              CALIBRATE_CONFIG, NOISE_VARIANCES,
+#                                              and get_calibration_prior(). Use
+#                                              "smoke_test.jl" for CI smoke runs.
+#   CAL_DURATION_DAYS  (override config)   — length of the calibration window
 #                                              starting at the site's data start date
-#   N_ITERS            (default "5")      — number of EKP iterations
+#   N_ITERS            (override config)   — number of EKP iterations
 #   LOCAL              (default "true")   — if "true", look up coordinates from the
 #                                              per-site Val{} dispatchers (the four
 #                                              bundled sites). Set to anything else
@@ -36,12 +41,17 @@ import ClimaCore
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
+const CONFIG_FILE = get(ENV, "CALIBRATION_CONFIG", "default.jl")
+include(joinpath(@__DIR__, "configs", CONFIG_FILE))
+
 const SITE_ID = get(ENV, "SITE_ID", "US-MOz")
-const CAL_DURATION_DAYS = parse(Int, get(ENV, "CAL_DURATION_DAYS", "365"))
-const N_ITERATIONS = parse(Int, get(ENV, "N_ITERS", "5"))
+const CAL_DURATION_DAYS =
+    parse(Int, get(ENV, "CAL_DURATION_DAYS", string(CALIBRATE_CONFIG.cal_duration_days)))
+const N_ITERATIONS =
+    parse(Int, get(ENV, "N_ITERS", string(CALIBRATE_CONFIG.n_iterations)))
 const LOCAL_MODE = get(ENV, "LOCAL", "true") == "true"
 const FT = Float64
-const SHORT_NAMES = ["gpp", "lhf"]
+const SHORT_NAMES = CALIBRATE_CONFIG.short_names
 
 const OUTPUT_DIR = joinpath(
     pkgdir(ClimaLand),
@@ -76,21 +86,6 @@ function _resolve_coords(site_ID)
                       FT(first(info.atmospheric_sensor_height)),
         )
     end
-end
-
-# ── Prior ────────────────────────────────────────────────────────────────────
-
-"""
-    get_calibration_prior()
-
-Two PModel-related parameters, mirroring a subset of `experiments/calibration/configs/gpp_lhf.jl`.
-Easy to expand once the loop is proven.
-"""
-function get_calibration_prior()
-    return EKP.combine_distributions([
-        EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.2, 0.7),
-        EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.05, 1.0),
-    ])
 end
 
 # ── Observation generation ───────────────────────────────────────────────────
@@ -181,26 +176,36 @@ function generate_observations()
     comparison =
         FluxnetSimulations.get_comparison_data(SITE_ID, coords.time_offset)
 
-    gpp_monthly, months =
-        monthly_means_in_window(comparison, :gpp, window_start, window_stop)
-    lhf_monthly, _ =
-        monthly_means_in_window(comparison, :lhf, window_start, window_stop)
+    monthly_per_var = Dict{String,Vector{Float64}}()
+    months = DateTime[]
+    for name in SHORT_NAMES
+        haskey(NOISE_VARIANCES, name) || error(
+            "NOISE_VARIANCES is missing an entry for short_name '$name' (defined in $(CONFIG_FILE)).",
+        )
+        vals, bin_ends = monthly_means_in_window(
+            comparison,
+            Symbol(name),
+            window_start,
+            window_stop,
+        )
+        monthly_per_var[name] = vals
+        isempty(months) && (months = bin_ends)
+    end
 
     # Comparison gpp is in mol/m²/s after the preprocess_func; lhf in W/m².
-    y_obs = vcat(gpp_monthly, lhf_monthly)
+    y_obs = reduce(vcat, monthly_per_var[name] for name in SHORT_NAMES)
 
-    # Diagonal noise: per-variable scalar variance.
-    # GPP scale ~3 µmol/m²/s = 3e-6 mol/m²/s; LHF ~30 W/m².
-    n_months = length(gpp_monthly)
-    gpp_var = (3e-6)^2
-    lhf_var = (30.0)^2
-    noise_diag = vcat(fill(gpp_var, n_months), fill(lhf_var, n_months))
+    n_months = length(first(values(monthly_per_var)))
+    noise_diag = reduce(
+        vcat,
+        fill(NOISE_VARIANCES[name], n_months) for name in SHORT_NAMES
+    )
 
     obs = EKP.Observation(
         Dict(
             "samples" => y_obs,
             "covariances" => Diagonal(noise_diag),
-            "names" => "$(SITE_ID)_$(CAL_DURATION_DAYS)d_monthly_gpp_lhf",
+            "names" => "$(SITE_ID)_$(CAL_DURATION_DAYS)d_monthly_$(join(SHORT_NAMES, "_"))",
         ),
     )
 
@@ -265,11 +270,13 @@ function ClimaCalibrate.forward_model(iteration, member)
     )
     solve!(result.simulation)
 
-    # Pull g vector from the in-memory DictWriter
+    # Pull g vector from the in-memory DictWriter, in the same variable order
+    # as `SHORT_NAMES` so it matches `y_obs` in `generate_observations`.
     writer = first(result.diags).output_writer
-    gpp = _extract_monthly_scalar(writer.dict, "gpp")
-    lhf = _extract_monthly_scalar(writer.dict, "lhf")
-    g_member = vcat(gpp, lhf)
+    g_member = reduce(
+        vcat,
+        _extract_monthly_scalar(writer.dict, name) for name in SHORT_NAMES
+    )
 
     JLD2.jldsave(joinpath(member_path, "g.jld2"); g = g_member)
     return nothing
@@ -319,7 +326,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     prior = get_calibration_prior()
 
-    rng = Random.MersenneTwister(42)
+    rng = Random.MersenneTwister(CALIBRATE_CONFIG.rng_seed)
     ekp = EKP.EnsembleKalmanProcess(
         obs,
         EKP.TransformUnscented(prior; impose_prior = true);
