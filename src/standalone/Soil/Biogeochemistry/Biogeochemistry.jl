@@ -3,6 +3,7 @@ using ClimaLand
 import ClimaParams as CP
 using DocStringExtensions
 using ClimaCore
+using LazyBroadcast: lazy
 import ...Parameters as LP
 using NVTX
 import ClimaCore: Fields, Operators, Geometry, Spaces
@@ -48,11 +49,15 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
     D_ref::FT
+    "Diffusion coefficient for O₂ in air at standard temperature and pressure (m² s⁻¹)"
+    D_ref_o2::FT
     "Diffusivity of soil C substrate in liquid (unitless)"
     D_liq::FT
-    # DAMM
-    "Pre-exponential factor (kg C m-3 s-1)"
-    α_sx::FT
+    # DAMM — centered Arrhenius: Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T - 1/T_ref_sx))
+    "Maximum respiration rate at T_ref_sx (kg C m-3 s-1)"
+    V_ref_sx::FT
+    "Reference temperature for the centered Arrhenius form (K)"
+    T_ref_sx::FT
     "Activation energy (J mol-1)"
     Ea_sx::FT
     "Michaelis constant (kg C m-3)"
@@ -69,6 +74,19 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     M_C::FT
     "Molar mass of oxygen (kg/mol)"
     M_O2::FT
+    # Henry's law parameters for air-water partitioning (Sander, 2015)
+    "Henry's law constant for CO2 at 298K (mol/(m³·Pa))"
+    K_H_co2_298::FT
+    "Temperature coefficient for CO2 Henry's law (K)"
+    dln_K_H_co2_dT::FT
+    "Henry's law constant for O2 at 298K (mol/(m³·Pa))"
+    K_H_o2_298::FT
+    "Temperature coefficient for O2 Henry's law (K)"
+    dln_K_H_o2_dT::FT
+    "Reference temperature for Henry's law (K), Sander (2015)"
+    T_ref_henry::FT
+    "Temperature exponent for free-air gas diffusivity correction (dimensionless), Ryan et al. (2018)"
+    T_exp_diffusivity::FT
     "Physical constants used Clima-wide"
     earth_param_set::PSE
 end
@@ -85,10 +103,12 @@ Keywords arguments can be used to directly override any parameters.
 function SoilCO2ModelParameters(
     toml_dict::CP.ParamDict;
     D_ref = toml_dict["CO2_diffusion_coefficient"],
+    D_ref_o2 = toml_dict["O2_diffusion_coefficient_air"],
 )
     name_map = (;
         :soil_C_substrate_diffusivity => :D_liq,
-        :soilCO2_pre_exponential_factor => :α_sx,
+        :soilCO2_reference_rate => :V_ref_sx,
+        :soilCO2_reference_temperature => :T_ref_sx,
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,
@@ -97,6 +117,13 @@ function SoilCO2ModelParameters(
         :soluble_soil_carbon_fraction => :p_sx,
         :molar_mass_carbon => :M_C,
         :molar_mass_oxygen => :M_O2,
+        # Henry's law constants from Sander (2015), Atmos. Chem. Phys., 15, 4399-4981
+        :CO2_henry_k298 => :K_H_co2_298,
+        :CO2_henry_Tcoeff => :dln_K_H_co2_dT,
+        :O2_henry_k298 => :K_H_o2_298,
+        :O2_henry_Tcoeff => :dln_K_H_o2_dT,
+        :henry_reference_temperature => :T_ref_henry,
+        :gas_diffusivity_temperature_exponent => :T_exp_diffusivity,
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
@@ -104,6 +131,7 @@ function SoilCO2ModelParameters(
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
         D_ref,
+        D_ref_o2,
         parameters...,
     )
 end
@@ -140,6 +168,8 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     sources::S
     "Drivers"
     drivers::DT
+    "Model timestep in seconds (used for the O2_f tendency limiter); pass FT(0) to disable the hard cap"
+    Δt::FT
 end
 
 
@@ -147,7 +177,8 @@ end
 SoilCO2Model{FT}(
         domain::ClimaLand.AbstractDomain,
         drivers::DT,
-        toml_dict::CP.ParamDict;
+        toml_dict::CP.ParamDict,
+        Δt;
         parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
         sources::Tuple = (MicrobeProduction{FT}(),),
     ) where {FT, DT}
@@ -156,20 +187,24 @@ A constructor for `SoilCO2Model`.
 Defaults are provided for the parameters and sources.
 These can be overridden by providing the appropriate keyword arguments.
 
+`Δt` is the model timestep in seconds, used by the O2_f tendency limiter.
+Pass `FT(0)` to disable the limiter.
+
 Boundary conditions are set automatically:
-- Top: AtmosCO2StateBC() for CO2, AtmosO2StateBC(earth_param_set, M_O2, O2_f_atm) for O2
+- Top: AtmosCO2StateBC(earth_param_set, M_C) for CO2, AtmosO2StateBC(earth_param_set, M_O2, O2_f_atm) for O2
 - Bottom: Zero flux for both CO2 and O2
 """
 function SoilCO2Model{FT}(
     domain::ClimaLand.AbstractDomain,
     drivers::DT,
-    toml_dict::CP.ParamDict;
+    toml_dict::CP.ParamDict,
+    Δt;
     parameters::SoilCO2ModelParameters{FT} = SoilCO2ModelParameters(toml_dict),
     sources::Tuple = (MicrobeProduction{FT}(),),
 ) where {FT, DT}
     boundary_conditions = (
         top = (
-            co2 = AtmosCO2StateBC(),
+            co2 = AtmosCO2StateBC(parameters.earth_param_set, parameters.M_C),
             o2 = AtmosO2StateBC(
                 parameters.earth_param_set,
                 parameters.M_O2,
@@ -182,7 +217,7 @@ function SoilCO2Model{FT}(
         ),
     )
     args = (parameters, domain, boundary_conditions, sources, drivers)
-    SoilCO2Model{FT, typeof.(args)...}(args...)
+    SoilCO2Model{FT, typeof.(args)...}(args..., FT(Δt))
 end
 
 ClimaLand.name(model::SoilCO2Model) = :soilco2
@@ -199,6 +234,9 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
     :Sm,
     :θ_a,
     :T,
+    :θ_eff,        # Effective porosity for CO2 (air + dissolved in water)
+    :θ_eff_o2,     # Effective porosity for O2 (air + dissolved in water)
+    :CO2_air_eq,   # Air-equivalent CO2 concentration for diffusion
     # CO2 boundary vars (top_bc, bottom_bc, top_bc_wvec, bottom_bc_wvec)
     ClimaLand.boundary_vars(
         model.boundary_conditions.top.co2,
@@ -224,6 +262,9 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,  # θ_eff
+    FT,  # θ_eff_o2
+    FT,  # CO2_air_eq
     # CO2 boundary var types
     ClimaLand.boundary_var_types(
         model,
@@ -249,6 +290,9 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
     :subsurface,
     :subsurface,
+    :subsurface,  # θ_eff
+    :subsurface,  # θ_eff_o2
+    :subsurface,  # CO2_air_eq
     # CO2 boundary var domain names
     ClimaLand.boundary_var_domain_names(
         model.boundary_conditions.top.co2,
@@ -352,31 +396,48 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
             bottom = Operators.SetValue(p.soilco2.bottom_bc_o2_wvec),
         )
 
-        # CO₂ diffusion
+        # CO₂ diffusion using air-equivalent concentration for stable saturated soil behavior
+        # D from Ryan et al. already accounts for air-filled porosity via tortuosity
         @. dY.soilco2.CO2 =
-            -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.CO2))
+            -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(p.soilco2.CO2_air_eq))
 
         FT = eltype(Y.soilco2.CO2)
         T_soil = p.soilco2.T
         P_sfc = p.drivers.P
-        R = FT(LP.gas_constant(model.parameters.earth_param_set))
+        R = LP.gas_constant(model.parameters.earth_param_set)
         M_O2 = FT(model.parameters.M_O2)
 
-        # O₂ diffusion: compute ∇·[D_O2 * θ_a * ∇ρ_O2] on mass concentration,
-        # then convert to O2_f tendency by multiplying by R*T/(θ_a*P*M_O2)
+        # O₂ diffusion: compute ∇·[D_O2 * ∇ρ_O2] on mass concentration,
+        # then convert to O2_f tendency using θ_eff_o2 for stability in saturated soils
         @. dY.soilco2.O2_f =
-            -divf2c_O2(
-                -interpc2f(p.soilco2.D_o2 * p.soilco2.θ_a) *
-                gradc2f_O2(p.soilco2.O2),
-            ) *
+            -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2)) *
             R *
-            T_soil / max(p.soilco2.θ_a * P_sfc * M_O2, eps(FT))
+            T_soil / max(p.soilco2.θ_eff_o2 * P_sfc * M_O2, eps(FT))
 
         # SOC has no diffusion, only source/sink from microbial activity
         @. dY.soilco2.SOC = 0.0
 
         for src in model.sources
             source!(dY, src, Y, p, model.parameters)
+        end
+
+        # Bracket the net O2_f tendency so a single explicit step cannot drive
+        # O2_f outside [0, O2_f_atm]. With CFL-violating diffusivities (common
+        # in hot/dry columns with fine near-surface layers), the unlimited
+        # tendency oscillates wildly in both directions. The lower cap
+        # -max(Y, 0)/Δt guarantees Y_new ≥ 0; the upper cap
+        # max(O2_f_atm - Y, 0)/Δt guarantees Y_new ≤ O2_f_atm (the soil air
+        # cannot physically exceed the atmospheric O2 fraction since soil is
+        # an O2 sink). For multi-stage RK integrators the bounds are slightly
+        # conservative (per-stage step is a fraction of Δt) but still safe.
+        if model.Δt > 0
+            inv_Δt = 1 / model.Δt # model.Δt is already type FT
+            O2_f_atm = model.parameters.O2_f_atm
+            @. dY.soilco2.O2_f = clamp(
+                dY.soilco2.O2_f,
+                -max(Y.soilco2.O2_f, 0) * inv_Δt,
+                max(O2_f_atm - Y.soilco2.O2_f, 0) * inv_Δt,
+            )
         end
 
     end
@@ -407,14 +468,13 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil, consumption of O2_f (volumetric O2 fraction),
-and consumption of SOC.
+case of microbe production of CO2 in soil and consumption of O2_f (volumetric O2 fraction).
+SOC is held constant (initialized from data, no tendency).
 
 Physics:
 - CO2 production from microbial respiration (kg C m⁻³ s⁻¹)
 - O2 consumption with correct stoichiometry: C + O₂ → CO₂
   For every 12 kg C respired, 32 kg O₂ is consumed (ratio = 32/12 = 8/3)
-- SOC consumption equals CO2 production to conserve carbon mass
 """
 NVTX.@annotate function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -425,18 +485,26 @@ NVTX.@annotate function ClimaLand.source!(
 )
     dY.soilco2.CO2 .+= p.soilco2.Sm
 
-    M_C = eltype(p.soilco2.Sm)(params.M_C)
-    R = eltype(p.soilco2.Sm)(LP.gas_constant(params.earth_param_set))
+    FT = eltype(p.soilco2.Sm)
+    M_C = FT(params.M_C)
+    R = LP.gas_constant(params.earth_param_set)
     T_soil = p.soilco2.T  # soil temperature (K)
     P_sfc = p.drivers.P   # atmospheric pressure (Pa)
 
-    θ_a = p.soilco2.θ_a
+    # Use θ_eff_o2 for stability in saturated soils
+    θ_eff_o2 = p.soilco2.θ_eff_o2
+
+    # Extra Michaelis-Menten attenuation in O2_f drives consumption to ~O2_f^2
+    # near zero (Sm already carries an MM_o2 ~O2_f factor). Combined with the
+    # tendency-level limiter in compute_exp_tendency!, this prevents the explicit
+    # step from pulling O2_f below zero.
+    K_O2_lim = FT(1e-4)
+    O2_f = Y.soilco2.O2_f
 
     @. dY.soilco2.O2_f -=
-        (R * T_soil) / max(M_C * θ_a * P_sfc, eps(eltype(p.soilco2.Sm))) *
-        p.soilco2.Sm
-
-    @. dY.soilco2.SOC -= p.soilco2.Sm
+        (R * T_soil) / max(M_C * θ_eff_o2 * P_sfc, eps(FT)) *
+        p.soilco2.Sm *
+        (O2_f / (O2_f + K_O2_lim))
 end
 
 """
@@ -552,6 +620,16 @@ function soil_moisture(driver::PrescribedMet, p, Y, t, z)
 end
 
 """
+    soil_ice(driver::PrescribedMet, p, Y, t, z)
+
+Returns zero ice content for prescribed soil case (standalone mode has no ice).
+"""
+function soil_ice(driver::PrescribedMet, p, Y, t, z)
+    FT = eltype(z)
+    return FT(0)
+end
+
+"""
     make_update_aux(model::SoilCO2Model)
 
 An extension of the function `make_update_aux`, for the soilco2 equation.
@@ -567,22 +645,78 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
-        Csom = Y.soilco2.SOC  # Now using prognostic SOC
+        θ_i = soil_ice(model.drivers.met, p, Y, t, z)
+        Csom = @. lazy(max(Y.soilco2.SOC, 0))  # Clamp SOC to non-negative (lazy, no allocation)
         P_sfc = p.drivers.P
-        θ_w = θ_l
         ν = model.drivers.met.ν
         θ_a100 = model.drivers.met.θ_a100
         b = model.drivers.met.b
 
         @. p.soilco2.T = T_soil
 
-        @. p.soilco2.D =
-            co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
-        @. p.soilco2.D_o2 .=
-            co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
+        # Compute θ_a using total water (liquid + ice)
+        @. p.soilco2.θ_a = volumetric_air_content(θ_l + θ_i, ν)
 
-        FT = eltype(Y.soilco2.CO2)
-        @. p.soilco2.θ_a = max(ν - θ_l, FT(0))
+        @. p.soilco2.D =
+            co2_diffusivity(T_soil, θ_l + θ_i, P_sfc, θ_a100, b, ν, params)
+        @. p.soilco2.D_o2 =
+            o2_diffusivity(T_soil, θ_l + θ_i, P_sfc, θ_a100, b, ν, params)
+
+        # Compute Henry's law factors (temperature-dependent)
+        R = LP.gas_constant(params.earth_param_set)
+        K_H_co2_298 = params.K_H_co2_298
+        dln_K_H_co2_dT = params.dln_K_H_co2_dT
+        K_H_o2_298 = params.K_H_o2_298
+        dln_K_H_o2_dT = params.dln_K_H_o2_dT
+        T_ref_henry = params.T_ref_henry
+
+        # Compute effective porosities (θ_l only, not θ_i - gas dissolves in liquid water)
+        @. p.soilco2.θ_eff = effective_porosity(
+            p.soilco2.θ_a,
+            θ_l,
+            beta_gas(
+                henry_constant(
+                    K_H_co2_298,
+                    dln_K_H_co2_dT,
+                    T_soil,
+                    T_ref_henry,
+                ),
+                R,
+                T_soil,
+            ),
+        )
+        @. p.soilco2.θ_eff_o2 = effective_porosity(
+            p.soilco2.θ_a,
+            θ_l,
+            beta_gas(
+                henry_constant(K_H_o2_298, dln_K_H_o2_dT, T_soil, T_ref_henry),
+                R,
+                T_soil,
+            ),
+        )
+
+        # Compute air-equivalent CO2 concentration for diffusion.
+        # Clamp negative CO2 to zero (can occur from numerical diffusion).
+        @. Y.soilco2.CO2 = max(Y.soilco2.CO2, FT(0))
+        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
+
+        # Safety guard: cap CO2_air_eq at 100 million ppm equivalent.
+        # Values above this indicate numerical blow-up, not physical conditions.
+        # 100M ppm = 100 (mol/mol) → CO2_air_eq_max = 100 * M_C * P / (R * T)
+        M_C = FT(params.M_C)
+        CO2_air_eq_max = @. FT(100) * M_C * P_sfc / (R * T_soil)
+        @. p.soilco2.CO2_air_eq = ifelse(
+            p.soilco2.CO2_air_eq > CO2_air_eq_max,
+            FT(NaN),
+            p.soilco2.CO2_air_eq,
+        )
+
+        # Clamp O2_f to physical range [0, 1]; explicit diffusion can
+        # overshoot in hot/dry columns where effective diffusivity D_o2/θ_eff_o2
+        # exceeds the CFL limit. Clamping keeps the simulation alive with
+        # physically meaningful values — the overshoot is a numerical artifact,
+        # not a real state.
+        @. Y.soilco2.O2_f = clamp(Y.soilco2.O2_f, 0, 1)
 
         @. p.soilco2.O2 =
             o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
@@ -620,7 +754,7 @@ end
     )
 
 A method of ClimaLand.boundary_flux which updates the soilco2
-flux (kg CO2 /m^2/s) in the case of a prescribed flux BC at either the top
+flux (kg C m⁻² s⁻¹) in the case of a prescribed flux BC at either the top
 or bottom of the domain.
 """
 function ClimaLand.boundary_flux!(
@@ -639,7 +773,7 @@ end
 """
     SoilCO2StateBC <: ClimaLand.AbstractBC
 
-A container holding the CO2 state boundary condition (kg CO2 m−3),
+A container holding the CO2 state boundary condition (kg C m⁻³ air-equivalent),
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
@@ -659,7 +793,10 @@ end
 
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
- top of the domain.
+top of the domain.
+
+The prescribed state should be the air-equivalent CO2 concentration
+(kg C/m³ air), consistent with the diffused variable.
 """
 function ClimaLand.boundary_flux!(
     bc_field,
@@ -674,7 +811,7 @@ function ClimaLand.boundary_flux!(
 
     # We need to project center values onto the face space
     D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
-    C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.CO2)
+    C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
     @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
@@ -692,6 +829,9 @@ end
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
 bottom of the domain.
+
+The prescribed state should be the air-equivalent CO2 concentration
+(kg C/m³ air), consistent with the diffused variable.
 """
 function ClimaLand.boundary_flux!(
     bc_field,
@@ -704,7 +844,7 @@ function ClimaLand.boundary_flux!(
 )
     FT = eltype(Δz)
     D_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.D)
-    C_c = ClimaLand.Domains.bottom_center_to_surface(Y.soilco2.CO2)
+    C_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.CO2_air_eq)
     C_bc = FT.(bc.bc(p, t))
     @. bc_field = ClimaLand.diffusive_flux(D_c, C_c, C_bc, Δz)
 end
@@ -713,8 +853,26 @@ end
     AtmosCO2StateBC <: ClimaLand.AbstractBC
 
 Set the CO2 concentration to the atmospheric one.
+Stores physical constants needed for the boundary flux calculation.
+
+$(DocStringExtensions.FIELDS)
 """
-struct AtmosCO2StateBC <: ClimaLand.AbstractBC end
+struct AtmosCO2StateBC{FT <: AbstractFloat} <: ClimaLand.AbstractBC
+    "Universal gas constant (J/(mol·K))"
+    R::FT
+    "Molar mass of carbon (kg/mol)"
+    M_C::FT
+end
+
+"""
+    AtmosCO2StateBC(earth_param_set, M_C::FT) where {FT}
+
+Constructor for AtmosCO2StateBC that gets parameters from LandParameters and model parameters.
+"""
+function AtmosCO2StateBC(earth_param_set, M_C::FT) where {FT}
+    R = LP.gas_constant(earth_param_set)
+    return AtmosCO2StateBC{FT}(R, M_C)
+end
 
 """
     ClimaLand.boundary_flux!(bc_field,
@@ -727,7 +885,8 @@ struct AtmosCO2StateBC <: ClimaLand.AbstractBC end
     )
 
 A method of ClimaLand.boundary_flux which returns the soilco2 flux in the case when the
-atmospheric CO2 is ued at top of the domain.
+atmospheric CO2 is used at top of the domain. Uses air-equivalent CO2 concentration
+for stable behavior in saturated soils.
 """
 function ClimaLand.boundary_flux!(
     bc_field,
@@ -739,9 +898,17 @@ function ClimaLand.boundary_flux!(
     t,
 )
     D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
-    C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.CO2)
-    C_bc = p.drivers.c_co2
-    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
+    C_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.CO2_air_eq)
+    T_soil_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.T)
+    P_sfc = p.drivers.P
+    R = bc.R
+    M_C = bc.M_C
+    @. bc_field = ClimaLand.diffusive_flux(
+        D_c,
+        p.drivers.c_co2 * P_sfc * M_C / (R * T_soil_top),
+        C_c,
+        Δz,
+    )
 end
 
 """
@@ -767,7 +934,7 @@ end
 Constructor for AtmosO2StateBC that gets parameters from LandParameters and model parameters.
 """
 function AtmosO2StateBC(earth_param_set, M_O2::FT, O2_f_atm::FT) where {FT}
-    R = FT(LP.gas_constant(earth_param_set))
+    R = LP.gas_constant(earth_param_set)
     return AtmosO2StateBC{FT}(R, M_O2, O2_f_atm)
 end
 
@@ -794,7 +961,6 @@ function ClimaLand.boundary_flux!(
     t,
 )
     FT = eltype(Δz)
-    θ_a_top = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_a)
     D_o2 = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
     O2_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.O2)  # Current O2 mass concentration in air at top (kg O2/m³ air)
 
@@ -806,7 +972,7 @@ function ClimaLand.boundary_flux!(
     O2_f_atm = bc.O2_f_atm
 
     @. bc_field = ClimaLand.diffusive_flux(
-        D_o2 * θ_a_top,
+        D_o2,
         O2_f_atm * P_sfc * M_O2 / (R * T_soil_top),
         O2_c,
         Δz,

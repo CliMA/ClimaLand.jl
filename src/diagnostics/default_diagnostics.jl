@@ -480,7 +480,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
 end
 
 function get_possible_diagnostics(model::SoilCO2Model)
-    return ["sco2", "hr", "scd", "scms", "so2", "soc", "soc_int"]
+    return ["sco2", "hr", "scd", "scms", "so2", "soc", "soc_int", "sco2_ppm"]
 end
 function get_possible_diagnostics(model::CanopyModel)
     diagnostics = [
@@ -603,7 +603,8 @@ function get_possible_diagnostics(model::LandModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics = ["swa", "swu", "lwu", "tair", "precip"]
+    additional_diagnostics =
+        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -617,7 +618,7 @@ function get_short_diagnostics(model::EnergyHydrology)
     return ["swc", "si", "sie", "tsoil", "et"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2", "hr", "soc", "soc_int"]
+    return ["sco2", "hr", "soc", "soc_int", "sco2_ppm"]
 end
 function get_short_diagnostics(model::CanopyModel)
     diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]

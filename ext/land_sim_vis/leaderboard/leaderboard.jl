@@ -1,4 +1,58 @@
 """
+    _percentile_contour_kwargs(var; low_q = 0.05, high_q = 0.95, nlevels = 11)
+
+Build a `more_kwargs` dictionary for `ClimaAnalysis.Visualize.contour2D_on_globe!`
+that clips the colormap to `[quantile(data, low_q), quantile(data, high_q)]`
+and lets `Makie.contourf!` draw extend-arrows for values outside that range.
+
+Returns an empty `Dict` (i.e. fall back to the plotting defaults) when the
+field is all-NaN, has fewer than two finite samples, or has a degenerate
+percentile range.
+"""
+function _percentile_contour_kwargs(
+    var;
+    low_q = 0.05,
+    high_q = 0.95,
+    nlevels = 11,
+)
+    vals = filter(isfinite, vec(var.data))
+    isempty(vals) && return Dict{Symbol, Any}()
+    lo = Statistics.quantile(vals, low_q)
+    hi = Statistics.quantile(vals, high_q)
+    lo == hi && return Dict{Symbol, Any}()
+    levels = collect(range(lo, hi; length = nlevels))
+    return Dict(
+        :plot =>
+            Dict(:levels => levels, :extendhigh => :auto, :extendlow => :auto),
+    )
+end
+
+"""
+    _nee_diverging_contour_kwargs(var, q; nlevels = 21)
+
+Build `more_kwargs` for `contour2D_on_globe!` that uses a diverging
+green → white → red colormap centered at zero, so NEE ≈ 0 reads as white,
+strong sinks (NEE ≪ 0) as saturated green, and strong sources (NEE ≫ 0)
+as saturated red. The half-range is set to the `q`-th percentile of
+`|NEE|` so single-cell outliers don't dominate.
+"""
+function _nee_diverging_contour_kwargs(var, q; nlevels = 21)
+    vals = filter(isfinite, vec(var.data))
+    isempty(vals) && return Dict{Symbol, Any}()
+    bound = Statistics.quantile(abs.(vals), q)
+    bound == 0 && return Dict{Symbol, Any}()
+    levels = collect(range(-bound, bound; length = nlevels))
+    return Dict(
+        :plot => Dict(
+            :levels => levels,
+            :colormap => CairoMakie.cgrad([:darkgreen, :white, :darkred]),
+            :extendhigh => :auto,
+            :extendlow => :auto,
+        ),
+    )
+end
+
+"""
     compute_monthly_leaderboard(leaderboard_base_path,
                                 diagnostics_folder_path,
                                 data_source)
@@ -26,7 +80,11 @@ function compute_monthly_leaderboard(
     mask_dict = get_mask_dict(data_source)
 
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
-    short_names = intersect(keys(sim_var_dict), keys(obs_var_dict))
+    available_sim_vars = ClimaAnalysis.available_vars(
+        ClimaAnalysis.SimDir(diagnostics_folder_path),
+    )
+    short_names =
+        intersect(keys(sim_var_dict), keys(obs_var_dict), available_sim_vars)
     issubset(short_names, keys(mask_dict)) ||
         error("Not all variables ($short_names) have a mask $(keys(mask_dict))")
 
@@ -291,7 +349,11 @@ function compute_seasonal_leaderboard(
     # Get everything we need from data_sources.jl
     sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
     obs_var_dict = get_obs_var_dict(data_source)
-    short_names = intersect(keys(sim_var_dict), keys(obs_var_dict))
+    available_sim_vars = ClimaAnalysis.available_vars(
+        ClimaAnalysis.SimDir(diagnostics_folder_path),
+    )
+    short_names =
+        intersect(keys(sim_var_dict), keys(obs_var_dict), available_sim_vars)
 
     # Need to intialize mask function
     mask_dict = get_mask_dict(data_source)
@@ -493,10 +555,23 @@ function compute_seasonal_leaderboard(
                 sim_var, _ = sim_obs_season_comparsion_dict[short_name]["ANN"]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
+                # Clip the colorbar to the 5th-95th percentile of the
+                # simulated field so that outliers don't flatten the map;
+                # values outside that range are drawn with the `contourf!`
+                # :auto arrow bounds (same convention as the SIM-OBS bias
+                # plot produced by `plot_bias_on_globe!`).
+                # NEE uses a diverging colormap centered at zero
+                # (green = sink, red = source) since the sign carries
+                # physical meaning.
+                more_kwargs =
+                    short_name == "nee" ?
+                    _nee_diverging_contour_kwargs(sim_var, 0.95) :
+                    _percentile_contour_kwargs(sim_var)
                 ClimaAnalysis.Visualize.contour2D_on_globe!(
                     layout,
                     sim_var,
-                    mask = mask_fn_dict[short_name],
+                    mask = mask_fn_dict[short_name];
+                    more_kwargs,
                 )
             else
                 sim_var, obs_var =

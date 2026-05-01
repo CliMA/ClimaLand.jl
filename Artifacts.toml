@@ -56,6 +56,15 @@ git-tree-sha1 = "6ce1717bb8b7aa767380f1053b9d8d3a4e4edaa6"
     sha256 = "27d49fce7f4a5e2b81bbd29e8a7caf08f568a2df53e3af817126363decfd5a7c"
     url = "https://caltech.box.com/shared/static/99aw2gce2k65bdu0h8jkfxq4vin08gi2.gz"
 
+[soilgrids_ocd]
+git-tree-sha1 = "39b86daa8a335c7efa894b2a8c38419e98e9b228"
+[soilgrids_ocd_lowres_interp]
+git-tree-sha1 = "11d53b5e1ff9031a5e94cfe4b93322edcb1a6129"
+
+    [[soilgrids_ocd_lowres_interp.download]]
+    sha256 = "dec8ac8dfe23c088f7acdf790ce6fa8f958c6bfeb1e1d742a5904661f7facaef"
+    url = "https://caltech.box.com/shared/static/nr0bd7l18ka5fmvcmtwyj1t444vuonx8.gz"
+
 [sw_albedo]
 git-tree-sha1 = "136f1db3ed969614fb589c5250545a3ed1e8aaab"
 
@@ -237,3 +246,10 @@ git-tree-sha1 = "ea4d0f709c63d34dc2d35ce9727e3f70f67133c8"
     [[imerg_landsea_mask.download]]
     sha256 = "a931f48fcadf9c94e4162d11ae8c6d05d6d9960a01cd1a8342c7c40cf74dfd4b"
     url = "https://caltech.box.com/shared/static/kmfe3j4bg97l1y07v36gb5jntk1lru3l.gz"
+
+[ilamb_respiration_nee]
+git-tree-sha1 = "1e10a01d843f8e2a12ae7691a997c2c5c9a8c72d"
+
+    [[ilamb_respiration_nee.download]]
+    sha256 = "a7ff814d3b89fa80826670185079960b5cd3d5bf634d4d9cb502a3741d2ed437"
+    url = "https://caltech.box.com/shared/static/mb69shq9y8wnhi7hx23cf70v1b1cf1ln.gz"

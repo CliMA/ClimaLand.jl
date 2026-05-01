@@ -27,7 +27,8 @@ for FT in (Float32, Float64)
 
         (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
-        model = LandSoilBiogeochemistry{FT}(forcing, toml_dict, domain)
+        Δt = FT(450)
+        model = LandSoilBiogeochemistry{FT}(forcing, toml_dict, domain, Δt)
         @test ClimaComms.context(model) == ClimaComms.context()
         @test ClimaComms.device(model) == ClimaComms.device()
 

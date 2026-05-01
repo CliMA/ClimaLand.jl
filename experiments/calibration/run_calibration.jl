@@ -89,6 +89,25 @@ function _loaded_climacommon()
 end
 
 """
+    _forwarded_env_exports()
+
+Return shell-export lines for env vars that must be propagated from the driver
+shell into each forward-model PBS/Slurm job. PBS does not inherit the submit
+environment without `-V`, so worker jobs would otherwise re-read `ENV` and see
+an empty `CALIBRATION_CONFIG`, silently falling back to the default config in
+`run_calibration.jl` and producing sims that disagree with the obs vector.
+"""
+function _forwarded_env_exports()
+    forwarded = ("CALIBRATION_CONFIG", "HDF5_USE_FILE_LOCKING")
+    lines = String[]
+    for name in forwarded
+        haskey(ENV, name) || continue
+        push!(lines, "export $name=$(ENV[name])")
+    end
+    return join(lines, "\n")
+end
+
+"""
     module_load_string(::ClimaCalibrate.ClimaGPUBackend)
     module_load_string(::ClimaCalibrate.DerechoBackend)
 
@@ -98,12 +117,14 @@ version only needs to be specified once (in `run_calibration.sh`).
 """
 function ClimaCalibrate.module_load_string(::ClimaCalibrate.ClimaGPUBackend)
     return """module purge
-    module load $(_loaded_climacommon())"""
+    module load $(_loaded_climacommon())
+    $(_forwarded_env_exports())"""
 end
 
 function ClimaCalibrate.module_load_string(::ClimaCalibrate.DerechoBackend)
     return """module purge
-    module load $(_loaded_climacommon())"""
+    module load $(_loaded_climacommon())
+    $(_forwarded_env_exports())"""
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

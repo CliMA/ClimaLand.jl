@@ -10,9 +10,10 @@
 
 """Noise scalars for the covariance matrix of each observed variable.
 
-Units follow the observational dataset:
-- `gpp`: g C m^-2 day^-1 (ILAMB FLUXCOM)
-- `lhf`: W m^-2 (ERA5)
+These multiply the identity in `ScalarCovariance`, so they are variances.
+Units are the square of the observational dataset units:
+- `gpp`: (g C m^-2 day^-1)^2 (ILAMB FLUXCOM)
+- `lhf`: (W m^-2)^2 (ERA5)
 """
 const NOISE_SCALARS = Dict("gpp" => 2.0, "lhf" => 20.0)
 

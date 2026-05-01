@@ -1,9 +1,13 @@
 export volumetric_air_content,
     co2_diffusivity,
+    o2_diffusivity,
     microbe_source,
     o2_concentration,
     o2_fraction_from_concentration,
-    o2_availability
+    o2_availability,
+    henry_constant,
+    beta_gas,
+    effective_porosity
 
 
 """
@@ -17,6 +21,12 @@ export volumetric_air_content,
 Computes the CO₂ production in the soil by microbes, in depth and time (kg C / m^3/s), using
 the Dual Arrhenius Michaelis Menten model (Davidson et al., 2012).
 O2_avail is a dimensionless O₂ availability metric that accounts for tortuosity effects.
+
+The Arrhenius term is written in centered form,
+    Vmax = V_ref_sx * exp(-Ea_sx/R * (1/T_soil - 1/T_ref_sx)),
+so that V_ref_sx (the rate at T_ref_sx) and Ea_sx (the temperature sensitivity) are
+approximately orthogonal under calibration. This is algebraically equivalent to the
+uncentered form Vmax = α_sx * exp(-Ea_sx/(R·T_soil)) with α_sx = V_ref_sx * exp(Ea_sx/(R·T_ref_sx)).
 """
 function microbe_source(
     T_soil::FT,
@@ -25,9 +35,10 @@ function microbe_source(
     O2_avail::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) = params
-    R = FT(LP.gas_constant(earth_param_set))
-    Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
+    (; V_ref_sx, T_ref_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) =
+        params
+    R = LP.gas_constant(earth_param_set)
+    Vmax = V_ref_sx * exp(-Ea_sx / R * (1 / T_soil - 1 / T_ref_sx)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
     # Use pre-computed O2 availability (includes tortuosity effects)
@@ -67,7 +78,7 @@ function o2_concentration(
     P_sfc::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    R = FT(LP.gas_constant(params.earth_param_set))
+    R = LP.gas_constant(params.earth_param_set)
     M_O2 = params.M_O2
     # O2 mass concentration in air phase (kg O2/m³ air)
     ρ_O2_air = O2_f * P_sfc * M_O2 / (R * T_soil)
@@ -101,7 +112,7 @@ function o2_fraction_from_concentration(
     P_sfc::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    R = FT(LP.gas_constant(params.earth_param_set))
+    R = LP.gas_constant(params.earth_param_set)
     M_O2 = params.M_O2
     # O2 volumetric fraction (dimensionless)
     O2_f = ρ_O2_air * R * T_soil / (P_sfc * M_O2)
@@ -137,6 +148,72 @@ end
 
 
 """
+    henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT, T_ref::FT) where {FT}
+
+Compute temperature-dependent Henry's law constant using van 't Hoff equation.
+Returns K_H in mol/(m³·Pa).
+
+The temperature dependence follows:
+    K_H(T) = K_H(T_ref) * exp[dln_K_H_dT * (1/T - 1/T_ref)]
+
+where T_ref is the Sander reference temperature (298.15 K) and dln_K_H_dT is
+the temperature coefficient.
+
+Reference: Sander (2015), Atmos. Chem. Phys., 15, 4399-4981.
+"""
+function henry_constant(
+    K_H_298::FT,
+    dln_K_H_dT::FT,
+    T::FT,
+    T_ref::FT,
+) where {FT}
+    return K_H_298 * exp(dln_K_H_dT * (FT(1) / T - FT(1) / T_ref))
+end
+
+
+"""
+    beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+
+Compute dimensionless Henry's law factor β = K_H * R * T.
+
+This converts liquid water storage to air-equivalent storage capacity.
+For CO2 at 20-25°C: β ≈ 0.7-0.9 (significant buffering)
+For O2 at 20°C: β ≈ 0.03 (less buffering, but still helps)
+
+Arguments:
+- K_H: Henry's law constant (mol/(m³·Pa))
+- R: Universal gas constant (J/(mol·K))
+- T: Temperature (K)
+"""
+function beta_gas(K_H::FT, R::FT, T::FT) where {FT}
+    return K_H * R * T
+end
+
+
+"""
+    effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+
+Compute effective porosity accounting for gas and dissolved storage.
+
+    θ_eff = max(θ_a + β * θ_l, θ_eff_min)
+
+When θ_a → 0 (saturated soil) but θ_l > 0, θ_eff remains finite,
+preventing blow-up in concentration calculations. A minimum floor
+of 1e-4 is applied for numerical stability in extreme conditions
+(e.g., very dry desert soils where both θ_a and θ_l are small).
+
+Arguments:
+- θ_a: Volumetric air content (m³/m³)
+- θ_l: Volumetric liquid water content (m³/m³)
+- β: Dimensionless Henry's law factor
+"""
+function effective_porosity(θ_a::FT, θ_l::FT, β::FT) where {FT}
+    θ_eff_min = FT(1e-4)  # Minimum effective porosity for numerical stability
+    return max(θ_a + β * θ_l, θ_eff_min)
+end
+
+
+"""
     volumetric_air_content(θ_w::FT,
                            ν::FT,
                            ) where {FT}
@@ -144,11 +221,56 @@ end
 Computes the volumetric air content (`θ_a`) in the soil,
 which is related to the total soil porosity (`ν`) and
 volumetric soil water content (`θ_w = θ_l+θ_i`).
+
+Note: The effective_porosity function provides numerical stability
+when θ_a approaches zero by accounting for dissolved gas in liquid water.
 """
 function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
-    θ_a = max(ν - θ_w, FT(0))
+    θ_a = max(ν - θ_w, FT(0))  # prevents small negative θ_a from floating-point rounding when θ_w ≈ ν
     return θ_a
 end
+
+"""
+    gas_diffusivity_in_soil(T_soil::FT,
+                              θ_w::FT,
+                              P_sfc::FT,
+                              θ_a100::FT,
+                              b::FT,
+                              ν::FT,
+                              D_ref::FT,
+                              earth_param_set,
+                             ) where {FT}
+
+Effective diffusivity of a gas within partially saturated soil (m² s⁻¹).
+
+Internal helper used by [`co2_diffusivity`](@ref) and [`o2_diffusivity`](@ref).
+The reference diffusivity `D_ref` is the gas's diffusion coefficient in free
+air at standard temperature and pressure (273 K, 101325 Pa); the rest of the
+expression follows Ryan et al., GMD 11, 1909-1928, 2018,
+https://doi.org/10.5194/gmd-11-1909-2018.
+"""
+function gas_diffusivity_in_soil(
+    T_soil::FT,
+    θ_w::FT,
+    P_sfc::FT,
+    θ_a100::FT,
+    b::FT,
+    ν::FT,
+    D_ref::FT,
+    T_exp::FT,
+    earth_param_set,
+) where {FT}
+    T_ref = LP.T_0(earth_param_set)
+    P_ref = LP.P_ref(earth_param_set)
+    θ_a = volumetric_air_content(θ_w, ν)
+    D0 = D_ref * max((T_soil / T_ref), 0)^T_exp * (P_ref / P_sfc)
+    # Cap the ratio to prevent diffusivity blow-up in very dry conditions
+    # (e.g., Sahara where θ_a can greatly exceed θ_a100)
+    ratio = min(θ_a / max(θ_a100, eps(FT)), FT(5))
+    D = D0 * (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) * ratio^(FT(2) + FT(3) / b)
+    return D
+end
+
 
 """
     co2_diffusivity(
@@ -182,14 +304,54 @@ function co2_diffusivity(
     ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; D_ref, earth_param_set) = params
-    T_ref = FT(LP.T_0(earth_param_set))
-    P_ref = FT(LP.P_ref(earth_param_set))
-    θ_a = volumetric_air_content(θ_w, ν)
-    D0 = D_ref * max((T_soil / T_ref), 0)^FT(1.75) * (P_ref / P_sfc)
-    D =
-        D0 *
-        (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) *
-        (θ_a / θ_a100)^(FT(2) + FT(3) / b)
-    return D
+    return gas_diffusivity_in_soil(
+        T_soil,
+        θ_w,
+        P_sfc,
+        θ_a100,
+        b,
+        ν,
+        params.D_ref,
+        params.T_exp_diffusivity,
+        params.earth_param_set,
+    )
+end
+
+
+"""
+    o2_diffusivity(
+                   T_soil::FT,
+                   θ_w::FT,
+                   P_sfc::FT,
+                   θ_a100::FT,
+                   b::FT,
+                   ν::FT,
+                   params::SoilCO2ModelParameters{FT},
+                  ) where {FT}
+
+Effective diffusivity of O₂ in soil (m² s⁻¹). Uses the same Ryan/Moldrup
+parameterization as [`co2_diffusivity`](@ref) but with `params.D_ref_o2`,
+the O₂ reference diffusivity in free air at standard conditions
+(≈ 1.67×10⁻⁵ m² s⁻¹, Davidson et al., 2012).
+"""
+function o2_diffusivity(
+    T_soil::FT,
+    θ_w::FT,
+    P_sfc::FT,
+    θ_a100::FT,
+    b::FT,
+    ν::FT,
+    params::SoilCO2ModelParameters{FT},
+) where {FT}
+    return gas_diffusivity_in_soil(
+        T_soil,
+        θ_w,
+        P_sfc,
+        θ_a100,
+        b,
+        ν,
+        params.D_ref_o2,
+        params.T_exp_diffusivity,
+        params.earth_param_set,
+    )
 end

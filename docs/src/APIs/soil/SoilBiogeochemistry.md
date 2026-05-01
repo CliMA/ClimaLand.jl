@@ -36,10 +36,14 @@ ClimaLand.Soil.Biogeochemistry.PrescribedMet
 ```@docs
 ClimaLand.Soil.Biogeochemistry.volumetric_air_content
 ClimaLand.Soil.Biogeochemistry.co2_diffusivity
+ClimaLand.Soil.Biogeochemistry.o2_diffusivity
 ClimaLand.Soil.Biogeochemistry.microbe_source
 ClimaLand.Soil.Biogeochemistry.o2_availability
 ClimaLand.Soil.Biogeochemistry.o2_concentration
 ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration
+ClimaLand.Soil.Biogeochemistry.henry_constant
+ClimaLand.Soil.Biogeochemistry.beta_gas
+ClimaLand.Soil.Biogeochemistry.effective_porosity
 ```
 
 ## Extendible Functions
@@ -47,4 +51,5 @@ ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration
 ```@docs
 ClimaLand.Soil.Biogeochemistry.soil_moisture
 ClimaLand.Soil.Biogeochemistry.soil_temperature
+ClimaLand.Soil.Biogeochemistry.soil_ice
 ```

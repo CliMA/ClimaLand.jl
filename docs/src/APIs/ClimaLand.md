@@ -23,13 +23,19 @@ ClimaLand.SoilCanopyModel{FT}(
     forcing,
     LAI,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
+    Δt;
 ) where {FT}
 ClimaLand.LandSoilBiogeochemistry
 ClimaLand.LandSoilBiogeochemistry{FT}(
     forcing,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
+    domain::Union{
+        ClimaLand.Domains.Column,
+        ClimaLand.Domains.SphericalShell,
+        ClimaLand.Domains.HybridBox,
+    },
+    Δt;
 ) where {FT}
 ClimaLand.SoilSnowModel
 ClimaLand.SoilSnowModel{FT}(

@@ -90,7 +90,7 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
 # [`SoilCanopyModel`](@ref "Integrated Land Model Types and methods")
 # Here we use the highest level model constructor, which uses default parameters,
 # and parameterizations, for the soil and canopy models.
-land_model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain);
+land_model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain, Δt);
 set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     site_ID,
     start_date,
