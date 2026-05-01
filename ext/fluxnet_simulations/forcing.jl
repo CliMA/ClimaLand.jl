@@ -463,6 +463,7 @@ function FluxnetSimulations.get_comparison_data(
         "TIMESTAMP_START",
         "TIMESTAMP_END",
         "GPP_DT_VUT_REF",
+        "RECO_NT_VUT_REF",
         "LE_CORR",
         "H_CORR",
         "SW_OUT",
@@ -497,6 +498,15 @@ function FluxnetSimulations.get_comparison_data(
         column_name_map,
         "gpp";
         preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol/m^2/s
+        val,
+    )
+
+    er = FluxnetSimulations.get_comparison_data(
+        data,
+        "RECO_NT_VUT_REF",
+        column_name_map,
+        "er";
+        preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol CO2/m^2/s
         val,
     )
 
@@ -621,6 +631,7 @@ function FluxnetSimulations.get_comparison_data(
     return merge(
         (; UTC_datetime = UTC_datetimes),
         gpp,
+        er,
         lhf,
         shf,
         swu,

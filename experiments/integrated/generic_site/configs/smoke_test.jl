@@ -6,7 +6,10 @@
 const CALIBRATE_CONFIG = (;
     short_names = ["gpp", "lhf"],
     n_iterations = 2,
-    cal_duration_days = 90,
+    cal_window_days = 90,
+    spinup_days = 0,
+    minibatch_size = 1,
+    max_n_samples = 1,
     rng_seed = 42,
 )
 

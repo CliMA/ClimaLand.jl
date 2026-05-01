@@ -7,10 +7,12 @@
 #   - CALIBRATE_CONFIG        -> NamedTuple with keys
 #         short_names         :: Vector{String}   variables in the obs vector
 #         n_iterations        :: Int              EKP iterations
-#         cal_duration_days   :: Int              calibration window length
+#         cal_window_days     :: Int              length of one sample window
+#         spinup_days         :: Int              spinup before each window
+#         minibatch_size      :: Int              samples drawn per iteration
+#         max_n_samples       :: Int              cap on per-site sample count
 #         rng_seed            :: Int
-#   - NOISE_VARIANCES         -> Dict mapping each short_name in
-#                                 CALIBRATE_CONFIG.short_names to a per-bin
+#   - NOISE_VARIANCES         -> Dict mapping each short_name to a per-bin
 #                                 scalar variance used to build the diagonal
 #                                 noise covariance.
 #
@@ -21,11 +23,14 @@
 const CALIBRATE_CONFIG = (;
     short_names = ["gpp", "lhf"],
     n_iterations = 5,
-    cal_duration_days = 365,
+    cal_window_days = 365,
+    spinup_days = 0,
+    minibatch_size = 1,
+    max_n_samples = 1,
     rng_seed = 42,
 )
 
-# Per-variable scalar variance applied to every monthly bin. GPP scale
+# Per-variable scalar variance applied to every diagnostic bin. GPP scale
 # ~3 µmol m⁻² s⁻¹ = 3e-6 mol m⁻² s⁻¹; LHF scale ~30 W m⁻².
 const NOISE_VARIANCES = Dict("gpp" => (3e-6)^2, "lhf" => (30.0)^2)
 
