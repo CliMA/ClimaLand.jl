@@ -184,6 +184,7 @@ function make_update_boundary_fluxes(
     NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         @. p.bare_soil_fraction = 1 .- p.snow.snow_cover_fraction
+        update_radiation_fluxes!(p, land, Y, t)
         # First compute the ground heat flux in place:
         update_soil_snow_ground_heat_flux!(
             p,
@@ -254,6 +255,46 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     return nothing
 end
 
+"""
+   update_radiation_fluxes!(p, land::SoilSnowModel{FT}, Y, t) where {FT}
+ 
+Computes and sets the net shortwave radiation for the snow and soil.
+"""
+function update_radiation_fluxes!(p, land::SoilSnowModel{FT}, Y, t) where {FT}
+    snow = land.snow
+    soil = land.soil
+    radiation_snow = snow.boundary_conditions.radiation
+    net_sw_radiation!(p.snow.SW_n, radiation, snow, Y, p, t)
+    net_sw_radiation!(
+        p.soil.SW_n,
+        soil.boundary_conditions.top.radiation,
+        soil,
+        Y,
+        p,
+        t,
+    )
+
+    Snow.update_surf_temp!(
+        snow,
+        snow.parameters.surf_temp,
+        p.snow.SW_n,
+        p.drivers.LW_d,
+        Y,
+        p,
+        t,
+    )
+    _σ = LP.Stefan(snow.parameters.earth_param_set)
+    ϵ_snow = snow.parameters.ϵ_snow
+    net_lw_radiation!(p.snow.LW_n, radiation, snow, Y, p, t)
+    net_lw_radiation!(
+        p.soil.LW_n,
+        soil.boundary_conditions.top.radiation,
+        soil,
+        Y,
+        p,
+        t,
+    )
+end
 
 ### Extensions of existing functions to account for prognostic soil/snow
 """
@@ -284,21 +325,6 @@ NVTX.@annotate function snow_boundary_fluxes!(
     p,
     t,
 ) where {FT}
-
-    SW_net = @. lazy((p.snow.α_snow - 1) * p.drivers.SW_d) #match sign convention in ./shared_utilities/drivers.jl
-    Snow.update_surf_temp!(
-        model,
-        model.parameters.surf_temp,
-        SW_net,
-        p.drivers.LW_d,
-        Y,
-        p,
-        t,
-    )
-    _σ = LP.Stefan(model.parameters.earth_param_set)
-    ϵ_snow = model.parameters.ϵ_snow
-    LW_net = @. lazy(-ϵ_snow * (p.drivers.LW_d - _σ * p.snow.T_sfc^4)) #match sign convention in ./shared_utilities/drivers.jl
-    p.snow.R_n .= SW_net .+ LW_net
 
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     P_snow = p.drivers.P_snow
@@ -332,8 +358,8 @@ NVTX.@annotate function snow_boundary_fluxes!(
         (
             Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
             p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n .- p.snow.energy_runoff .- p.ground_heat_flux .+
-            e_flux_falling_rain
+            p.snow.LW_n .+ p.snow.SW_n .- p.snow.energy_runoff .-
+            p.ground_heat_flux .+ e_flux_falling_rain
         ) .* p.snow.snow_cover_fraction
 end
 
@@ -361,7 +387,6 @@ NVTX.@annotate function soil_boundary_fluxes!(
     t,
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
-    net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
     liquid_influx =
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)
@@ -396,7 +421,8 @@ NVTX.@annotate function soil_boundary_fluxes!(
         p.bare_soil_fraction * p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
         p.bare_soil_fraction * (
-            p.soil.R_n +
+            p.soil.LW_n +
+            p.soil.SW_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
@@ -486,7 +512,7 @@ of `ClimaLand.source!` for soil sublimation with snow or lakes present.
 """
 @kwdef struct PartialAreaSoilSublimation{FT} <:
               ClimaLand.Soil.AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 
 """

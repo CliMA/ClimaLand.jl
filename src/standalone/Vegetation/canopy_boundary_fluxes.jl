@@ -103,15 +103,17 @@ end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
-        canopy_boundary_fluxes!(p, canopy, Y, t)
+        canopy_boundary_fluxes!(bc, Val(bc.prognostic_land_components), canopy, Y, p, t)
     end
     return update_boundary_fluxes!
 end
 
 """
-    canopy_boundary_fluxes!(p::NamedTuple,
+    canopy_boundary_fluxes!(bc::AtmosDrivenCanopyBC,
+                            prognostic_land_components::Val{(:canopy,)},
                             canopy::CanopyModel,
                             Y::ClimaCore.Fields.FieldVector,
+                            p::NamedTuple
                             t,
                             )
 
@@ -127,21 +129,16 @@ within the explicit tendency of the canopy model.
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
 """
 NVTX.@annotate function canopy_boundary_fluxes!(
-    p::NamedTuple,
+    bc::AtmosDrivenCanopyBC,
+    prognostic_land_components::Val{(:canopy,)},
     canopy::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
-    t,
-)
-    # Note that in three functions below,
-    # we dispatch off of the ground conditions `bc.ground`
-    # to handle standalone canopy simulations vs integrated ones
+    p::NamedTuple
+    t)
 
-    bc = canopy.boundary_conditions
-
-    # Update the canopy radiation
-    canopy_radiant_energy_fluxes!(
+    # Update the canopy LW radiation
+    canopy_longwave_fluxes!(
         p,
-        bc.ground,
         canopy,
         bc.radiation,
         canopy.earth_param_set,

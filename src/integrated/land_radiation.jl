@@ -1,3 +1,7 @@
+sw_n(sw_d, α) = -(1-α)*sw_d
+lw_n(lw_d, ϵ, T, σ) = -(ϵ * lw_d - ϵ * σ * T^4)
+lw_ug(lw_d, ϵ, T, σ) = ϵ * σ * T^4 + (1-ϵ)*lw_d
+
 """
     set_eff_land_radiation_properties!(p, earth_param_set)
 
@@ -16,26 +20,24 @@ end
 
 
 """
-    Canopy.canopy_radiant_energy_fluxes!(p::NamedTuple,
+    Canopy.canopy_longwave_fluxes!(p::NamedTuple,
                                          s::PrognosticGroundConditions,
                                          canopy,
-                                         radiation::PrescribedRadiativeFluxes,
+                                         radiation::AbstractRadiativeDrivers,
                                          earth_param_set::PSE,
                                          Y::ClimaCore.Fields.FieldVector,
                                          t,
                                         ) where {PSE}
 
 In standalone mode, this function computes and stores the net
-long and short wave radition, in W/m^2,
-absorbed by the canopy.
+long wave radiation, in W/m^2, absorbed by the canopy.
 
 In integrated mode, we have already computed those quantities in
 `lsm_radiant_energy_fluxes!`, so this method does nothing additional.
 
-LW and SW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
-and `p.canopy.radiative_transfer.SW_n`.
+LW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
 """
-function Canopy.canopy_radiant_energy_fluxes!(
+function Canopy.canopy_longwave_fluxes!(
     p::NamedTuple,
     s::PrognosticGroundConditions,
     canopy,

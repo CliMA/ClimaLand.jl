@@ -729,7 +729,8 @@ end
     )
 
     # Make sure lake radiation is set
-    @test sum(parent(p.lake.R_n)[lake_mask]) != 0
+    @test sum(parent(p.lake.LW_n)[lake_mask]) != 0
+    @test sum(parent(p.lake.SW_n)[lake_mask]) != 0
 
     # Make sure the soil bc was updated correctly over the lakes
     p_copy = deepcopy(p)
