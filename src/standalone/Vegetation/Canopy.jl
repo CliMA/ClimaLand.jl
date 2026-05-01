@@ -1153,30 +1153,31 @@ has a single update_aux! function, given here.
 function ClimaLand.make_update_aux(canopy::CanopyModel)
     NVTX.@annotate function update_aux!(p, Y, t)
 
+        # 17 broadcasts in standlone. Could be 13
         # This updates LAI; it must come first.
-        update_biomass!(p, Y, t, canopy.biomass, canopy)
+        update_biomass!(p, Y, t, canopy.biomass, canopy) # 3, could be 2
 
         # Update p.canopy.radiative_transfer.par, .nir, .ϵ, .par_d, .nir_d
-        update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy)
+        update_radiative_transfer!(p, Y, t, canopy.radiative_transfer, canopy) # 5 broadcasts, I think this could be 2
 
         # update the cache for hydraulics; what this update depends
         # on the type of canopy.hydraulics
-        update_hydraulics!(p, Y, canopy.hydraulics, canopy)
+        update_hydraulics!(p, Y, canopy.hydraulics, canopy) # 1 broadcast
 
         # Update soil moisture stress, used in photosynthesis and conductance
-        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
+        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy) # 1 broadcast in standalone 
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
-        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy) # 4 broadcasts, many many lazy ones
 
         # update SIF
-        update_SIF!(p, Y, canopy.sif, canopy)
+        update_SIF!(p, Y, canopy.sif, canopy)# 1 actual
 
         # update stomatal conductance
-        update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+        update_canopy_conductance!(p, Y, canopy.conductance, canopy) # 1 lazy, 1 actual
 
         # update autotrophic respiration
-        update_autotrophic_respiration!(
+        update_autotrophic_respiration!( # 1 actual
             p,
             Y,
             canopy.autotrophic_respiration,

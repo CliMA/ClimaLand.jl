@@ -71,11 +71,6 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     c = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    APAR_canopy_moles = @. lazy(
-        compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
-    )
-
-    # Get max photosynthesis rates
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
     J_over_Jmax = get_J_over_Jmax(Y, p, canopy, canopy.photosynthesis)
@@ -84,7 +79,7 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     sif_parameters = sif_model.parameters
 
     @. SIF = compute_SIF_at_a_point(
-        APAR_canopy_moles,
+        compute_APAR_canopy_moles(f_abs_par, par_d, λ_γ_PAR, c, planck_h, N_a),
         T_canopy,
         Vcmax25_leaf,
         J_over_Jmax,

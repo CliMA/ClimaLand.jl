@@ -144,18 +144,6 @@ NVTX.@annotate function ClimaLand.source!(
 )
     @. dY.soil.ϑ_l += -1 * p.root_extraction
     @. dY.soil.ρe_int += -1 * p.root_energy_extraction
-
-    # if flow is negative, towards soil -> soil water increases, add in sign here.
-    # Currently, these column integrals are done twice rather than add space to the cache.
-    # We can revisit this as needed.
-    ClimaCore.Operators.column_integral_definite!(
-        p.scratch1,
-        p.root_energy_extraction,
-    )
-    @. dY.soil.∫F_e_dt += p.scratch1
-
-    ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
-    @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
 end
 
 """
@@ -173,7 +161,8 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
 )
     θ_l = p.soil.θ_l
     (; θ_high, θ_low, c) = model
-    z = ClimaCore.Fields.coordinate_field(axes(θ_l)).z
+    z = p.scratch1
+    z .= ClimaCore.Fields.coordinate_field(axes(θ_l)).z
     # normalized distribution for root density
     norm = p.scratch1 # A surface scratch field; included in lsm_aux_vars
     # for soilcanopy and land models.
@@ -182,11 +171,9 @@ NVTX.@annotate function update_piecewise_soil_moisture_stress!(
     # compute the root zone-averaged βm
     ClimaCore.Operators.column_integral_definite!(norm, root_dist)
     # per soil element
-    βm = @. lazy(compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l))
     βm_root_distribution = @. lazy(
-        βm * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
+        compute_piecewise_moisture_stress(θ_high, θ_low, c, θ_l) * Canopy.root_distribution(z, canopy.biomass.rooting_depth) / norm,
     )
-
     # compute the root zone-averaged βm
     ClimaCore.Operators.column_integral_definite!(
         p.canopy.soil_moisture_stress.βm,
