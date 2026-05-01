@@ -47,4 +47,6 @@ function get_site_info end
 
 function get_canopy_height end
 
+function get_site_igbp end
+
 end
