@@ -185,48 +185,23 @@ function update_lake_sw_fluxes!(
     nir_d = p.canopy.radiative_transfer.nir_d
     f_trans_par = p.canopy.radiative_transfer.par.trans
     f_trans_nir = p.canopy.radiative_transfer.nir.trans
-    @. SW_net_lake = -(
-        f_trans_nir * nir_d * (1 - α_lake) + f_trans_par * par_d * (1 - α_lake)
-    )
+    @. SW_net_lake = sw_n(f_trans_nir * nir_d, α_lake) + sw_n(f_trans_par * par_d, α_lake)
     return nothing
 end
 
 """
-    update_lake_lw_fluxes!(lake::SlabLakeModel, p, LW_u_lake, LW_d_canopy, _σ)
+    update_lake_lw_fluxes!(lake::SlabLakeModel, p, _σ)
 """
 function update_lake_lw_fluxes!(
     lake::SlabLakeModel,
     p,
-    LW_u_lake,
-    LW_d_canopy,
     _σ,
 )
 
     LW_net_lake = p.lake.LW_n
     ϵ_lake = lake.parameters.emissivity
     T_lake = p.lake.T
-    @. LW_u_lake = ϵ_lake * _σ * T_lake^4 + (1 - ϵ_lake) * LW_d_canopy
-    @. LW_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
+    LW_d = p.drivers.LW_d
+    @. LW_net_lake = lw_n(LW_d, ϵ_lake, _σ, T_lake)
     return nothing
-end
-
-"""
-    ground_lw_upwelling(lake::SlabLakeModel, p, LW_u_soil, LW_u_snow, LW_u_lake)
-
-Return the area-weighted ground LW upwelling flux when a lake is modelled,
-"""
-function ground_lw_upwelling(
-    lake::SlabLakeModel,
-    p,
-    LW_u_soil,
-    LW_u_snow,
-    LW_u_lake,
-)
-    snow_frac = p.snow.snow_cover_fraction
-    f_lake = p.lake_fraction
-    return @. lazy(
-        p.bare_soil_fraction * LW_u_soil +
-        snow_frac * LW_u_snow +
-        f_lake * LW_u_lake,
-    )
 end

@@ -580,12 +580,6 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
-
-        # Effective (radiative) land properties
-        _σ = LP.Stefan(earth_param_set)
-        @. p.α_sfc = p.SW_u / max(p.drivers.SW_d, eps(FT))
-        @. p.ϵ_sfc = 1
-        @. p.T_sfc = (p.LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
     end
     return update_boundary_fluxes!
 end
@@ -671,8 +665,6 @@ NVTX.@annotate function update_radiation_fluxes!(
     @. p.soil.SW_n = sw_n(f_trans_nir * nir_d, α_soil_NIR) + sw_n(f_trans_par * par_d, α_soil_PAR)
     @. p.snow.SW_n = sw_n(f_trans_nir * nir_d, α_snow_NIR) + sw_n(f_trans_par * par_d, α_snow_PAR)
     update_lake_sw_fluxes!(land.lake, p)
-    # Canopy
-    @. p.canopy.radiative_transfer.SW_n = -(f_abs_par * par_d + f_abs_nir * nir_d)
     # SW upwelling  = reflected par + reflected nir
     @. p.SW_u = par_d * f_refl_par + f_refl_nir * nir_d
 
@@ -693,7 +685,6 @@ NVTX.@annotate function update_radiation_fluxes!(
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4)
-
     @. p.soil.LW_n = lw_n(LW_d_canopy, ϵ_soil, _σ, T_soil)
     #now solve for the snow surface temperature:
     Snow.update_surf_temp!(
@@ -710,10 +701,8 @@ NVTX.@annotate function update_radiation_fluxes!(
 
     @. LW_u_soil = lw_ug(LW_d_canopy, ϵ_soil, T_soil, _σ)
     @. LW_u_snow = lw_ug(LW_d_canopy, ϵ_snow, T_snow, _σ)
-    LW_u_lake = p.sfc_scratch
-    update_lake_lw_fluxes!(land.lake, p, LW_u_lake, LW_d_canopy, _σ)
-    LW_u_ground =
-        ground_lw_upwelling(land.lake, p, LW_u_soil, LW_u_snow, LW_u_lake)
+    update_lake_lw_fluxes!(land.lake, p, _σ)
+    LW_u_ground = @. lazy((p.bare_soil_fraction * LW_u_soil + p.snow.snow_cover_fraction * LW_u_snow)/(p.bare_soil_fraction + p.snow.snow_cover_fraction + eps(FT))
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_ground
@@ -721,7 +710,11 @@ NVTX.@annotate function update_radiation_fluxes!(
         p.drivers.LW_d +
         p.canopy.radiative_transfer.LW_n +
         p.soil.LW_n * p.bare_soil_fraction +
-        p.snow.snow_cover_fraction * p.snow.LW_n + p.lake.LW_n * lake_fraction
+        p.snow.snow_cover_fraction * p.snow.LW_n + p.lake.LW_n * p.lake_fraction
+
+    @. p.α_sfc = p.SW_u / max(p.drivers.SW_d, eps(FT))
+    @. p.ϵ_sfc = 1
+    @. p.T_sfc = (p.LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
 end
 
 """
@@ -758,23 +751,15 @@ function implicit_radiation_fluxes!(
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
-
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
     ϵ_snow = land.snow.parameters.ϵ_snow
     T_snow = p.snow.T_sfc
 
-    # Working through the math, this satisfies: LW_u - LW_d = LW_c + LW_soil + LW_snow
-    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-
-    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
-    # updates lake p.lake.LW_n and LW_u_lake
-    LW_u_lake = p.sfc_scratch
-    update_lake_lw_fluxes!(land.lake, p, LW_u_lake, LW_d_canopy, _σ)
-    LW_u_ground =
-        ground_lw_upwelling(land.lake, p, LW_u_soil, LW_u_snow, LW_u_lake)
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4)
+    @. LW_u_soil = lw_ug(LW_d_canopy, ϵ_soil, T_soil, _σ)
+    @. LW_u_snow = lw_ug(LW_d_canopy, ϵ_snow, T_snow, _σ)
+    LW_u_ground = @. lazy((1-p.snow.snow_cover_fraction) * LW_u_soil + snow_frac * LW_u_snow)
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_ground
@@ -782,7 +767,10 @@ function implicit_radiation_fluxes!(
         p.drivers.LW_d +
         p.canopy.radiative_transfer.LW_n +
         p.soil.LW_n * p.bare_soil_fraction +
-        p.snow.snow_cover_fraction * p.snow.LW_n + p.lake.LW_n * lake_fraction
+        p.snow.snow_cover_fraction * p.snow.LW_n + p.lake.LW_n * p.lake_fraction
+    @. p.ϵ_sfc = 1
+    @. p.T_sfc = (p.LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
+
 end
 ### Extensions of existing functions to account for prognostic soil/canopy
 """

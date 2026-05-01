@@ -208,40 +208,6 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
-    canopy_shortwave_fluxes!(p::NamedTuple,
-                                  ground,
-                                  canopy,
-                                  radiation,
-                                  earth_param_set::PSE,
-                                  Y::ClimaCore.Fields.FieldVector,
-                                  t,
-                                 ) where {PSE}
-
-
-Computes and stores the net short wave radiation, in W/m^2, over all bands,
-absorbed by the canopy. 
-
-SW net radiation is stored `p.canopy.radiative_transfer.SW_n`.
-"""
-function canopy_shortwave_fluxes!(
-    p::NamedTuple,
-    ground,
-    canopy,
-    radiation,
-    earth_param_set::PSE,
-    Y::ClimaCore.Fields.FieldVector,
-    t,
-) where {PSE}
-    FT = eltype(earth_param_set)
-    par_d = p.canopy.radiative_transfer.par_d
-    nir_d = p.canopy.radiative_transfer.nir_d
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    f_abs_nir = p.canopy.radiative_transfer.nir.abs
-    @. p.canopy.radiative_transfer.SW_n =
-        -(f_abs_par * par_d + f_abs_nir * nir_d)
-end
-
-"""
     canopy_longwave_fluxes!(p::NamedTuple,
                                   ground::PrescribedGroundConditions
                                   canopy,
@@ -873,6 +839,10 @@ function update_radiative_transfer!(
             t,
         ),
     )
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_nir = p.canopy.radiative_transfer.nir.abs
+    @. p.canopy.radiative_transfer.SW_n =
+        -(f_abs_par * par_d + f_abs_nir * nir_d)
 end
 
 """

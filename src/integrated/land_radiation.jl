@@ -49,18 +49,6 @@ function Canopy.canopy_longwave_fluxes!(
     nothing
 end
 
-function Canopy.canopy_shortwave_fluxes!(
-    p::NamedTuple,
-    s::PrognosticGroundConditions,
-    canopy,
-    radiation::AbstractRadiativeDrivers,
-    earth_param_set::PSE,
-    Y::ClimaCore.Fields.FieldVector,
-    t,
-) where {PSE}
-    nothing
-end
-
 """
     Canopy.ground_albedo_PAR(
         prognostic_land_components::Val{(:canopy, :soil, :soilco2)},

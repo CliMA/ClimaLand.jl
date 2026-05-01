@@ -136,15 +136,7 @@ NVTX.@annotate function canopy_boundary_fluxes!(
     p::NamedTuple
     t)
 
-    # Update the canopy radiation
-    canopy_shortwave_fluxes!(
-        p,
-        canopy,
-        bc.radiation,
-        canopy.earth_param_set,
-        Y,
-        t,
-    )
+    # Update the canopy LW radiation
     canopy_longwave_fluxes!(
         p,
         canopy,
