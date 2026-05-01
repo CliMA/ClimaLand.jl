@@ -51,12 +51,12 @@ obs_var_dict["et"] =
                 context = "evspsbl_MODIS_et_0.5x0.5.nc",
             ),
             "et",
-            # start_date is used to align the dates in the observational data
-            # with the simulation data
-            new_start_date = start_date,
-            # Shift dates to the first day of the month before aligning the dates
-            shift_by = Dates.firstdayofmonth,
         )
+        # Shift dates to the first day of the month before aligning the dates
+        ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+        # start_date is used to align the dates in the observational data
+        # with the simulation data
+        ClimaAnalysis.set_reference_date!(obs_var, start_date)
         # More preprocessing to match the units with the simulation data
         ClimaAnalysis.units(obs_var) == "kg/m2/s" &&
             (obs_var = ClimaAnalysis.set_units(obs_var, "kg m^-2 s^-1"))

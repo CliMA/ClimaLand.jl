@@ -163,9 +163,9 @@ function get_ilamb_obs_var_dict()
             obs_var = ClimaAnalysis.OutputVar(
                 ClimaLand.Artifacts.ilamb_dataset_path("gpp_FLUXCOM_gpp.nc"),
                 "gpp",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
                 (obs_var.dim_attributes["lon"]["units"] = "degrees_east")
             ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
@@ -181,9 +181,9 @@ function get_ilamb_obs_var_dict()
                     "reco_FLUXCOM_reco.nc",
                 ),
                 "reco",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
                 (obs_var.dim_attributes["lon"]["units"] = "degrees_east")
             ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
@@ -200,9 +200,9 @@ function get_ilamb_obs_var_dict()
                     "nee_FLUXCOM_nee.nc",
                 ),
                 "nee",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
                 (obs_var.dim_attributes["lon"]["units"] = "degrees_east")
             ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
@@ -239,9 +239,9 @@ function get_era5_obs_var_dict()
             obs_var = ClimaAnalysis.OutputVar(
                 era5_data_path,
                 "mslhf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             (ClimaAnalysis.units(obs_var) == "W m**-2") && (
                 obs_var = ClimaAnalysis.convert_units(
                     obs_var,
@@ -258,10 +258,9 @@ function get_era5_obs_var_dict()
             obs_var = ClimaAnalysis.OutputVar(
                 era5_data_path,
                 "msshf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
-
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             (ClimaAnalysis.units(obs_var) == "W m**-2") && (
                 obs_var = ClimaAnalysis.convert_units(
                     obs_var,
@@ -278,9 +277,9 @@ function get_era5_obs_var_dict()
             obs_var = ClimaAnalysis.OutputVar(
                 era5_data_path,
                 "msuwlwrf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             (ClimaAnalysis.units(obs_var) == "W m**-2") &&
                 (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
             obs_var.attributes["short_name"] = "lwu"
@@ -292,10 +291,9 @@ function get_era5_obs_var_dict()
             obs_var = ClimaAnalysis.OutputVar(
                 era5_data_path,
                 "msuwswrf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
             )
-
+            ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+            ClimaAnalysis.set_reference_date!(obs_var, start_date)
             (ClimaAnalysis.units(obs_var) == "W m**-2") &&
                 (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
             obs_var.attributes["short_name"] = "swu"
