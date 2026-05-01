@@ -6,8 +6,9 @@
 
 """Noise scalars for the covariance matrix of each observed variable.
 
-Units follow the observational dataset:
-- `lwu`: W m^-2 (ERA5)
+These multiply the identity in `ScalarCovariance`, so they are variances.
+Units are the square of the observational dataset units:
+- `lwu`: (W m^-2)^2 (ERA5)
 """
 const NOISE_SCALARS = Dict("lwu" => 1.0)
 

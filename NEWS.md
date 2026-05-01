@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -----
 - Remove `convert_cb` function PR[#1730](https://github.com/CliMA/ClimaLand.jl/pull/1730)
+- ![breaking change][badge-💥breaking] Rewrite DAMM soil respiration in centered-Arrhenius form: `soilCO2_pre_exponential_factor` is replaced by `soilCO2_reference_rate` and `soilCO2_reference_temperature`, with retuned `Ea_sx` and `kM_sx` defaults PR[#1714](https://github.com/CliMA/ClimaLand.jl/pull/1714)
+- ![][badge-🔥behavioralΔ] Diffuse soil CO2/O2 using an effective porosity that includes Henry's-law dissolved gas; initialize prognostic SOC from SoilGrids and hold it constant; pass soil ice into the biogeochemistry PR[#1714](https://github.com/CliMA/ClimaLand.jl/pull/1714)
 - Use nearest neighbor to create higher resolution soil retention parameter data; use these by default and corresponding spun up initial condition PR[#1712](https://github.com/CliMA/ClimaLand.jl/pull/1712)
 - ![breaking change][badge-💥breaking] Refactor `PlantHydraulicsModel` to a
   single above-ground compartment; `PlantHydraulics` submodule has been

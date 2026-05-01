@@ -25,6 +25,8 @@ for FT in (Float32, Float64)
         forcing = (; atmos, radiation)
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
 
+        dt = FT(180)
+
         # Soil model
         soil = Soil.EnergyHydrology{FT}(
             domain,
@@ -43,6 +45,7 @@ for FT in (Float32, Float64)
             domain,
             soilco2_drivers,
             toml_dict,
+            dt,
         )
 
         # Canopy model
@@ -59,7 +62,6 @@ for FT in (Float32, Float64)
         )
 
         # Snow model
-        dt = FT(180)
         snow = SnowModel(
             FT,
             surface_domain,
@@ -357,15 +359,12 @@ end
     @test all(parent(Y.snow.S)[1, 1, 1, Array(binary_mask)] .≈ 0)
     @test all(parent(Y.snow.S_l)[1, 1, 1, Array(binary_mask)] .≈ 0)
     @test all(
-        parent(Y.soilco2.CO2)[:, 1, 1, 1, Array(binary_mask)] .- FT(0.000412) .≈
-        0,
+        parent(Y.soilco2.CO2)[:, 1, 1, 1, Array(binary_mask)] .- FT(6e-5) .≈ 0,
     )
     @test all(
         parent(Y.soilco2.O2_f)[:, 1, 1, 1, Array(binary_mask)] .- FT(0.21) .≈ 0,
     )
-    @test all(
-        parent(Y.soilco2.SOC)[:, 1, 1, 1, Array(binary_mask)] .- FT(5) .≈ 0,
-    )
+    @test all(parent(Y.soilco2.SOC)[:, 1, 1, 1, Array(binary_mask)] .>= 0)
 end
 
 

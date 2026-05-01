@@ -103,7 +103,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     soilco2 = SoilCO2Model{FT}(
         domain,
         drivers,
-        toml_dict;
+        toml_dict,
+        dt;
         parameters = co2_parameters,
     )
 

@@ -98,6 +98,110 @@ function set_soil_initial_conditions!(
 end
 
 """
+    set_soilco2_initial_conditions!(Y, p, land)
+
+Initialize soil CO2 state to be consistent with atmospheric CO2 and soil state.
+CO2 is stored as carbon mass per soil volume (kg C m⁻³ soil).
+
+This assumes that the soil moisture state (`Y.soil.ϑ_l` and `Y.soil.θ_i`)
+has already been set.
+"""
+function set_soilco2_initial_conditions!(Y, p, land)
+    FT = eltype(Y.soilco2.CO2)
+    soil = land.soil
+    soilco2 = land.soilco2
+    params = soilco2.parameters
+
+    θ_i = Y.soil.θ_i
+    ν = soil.parameters.ν
+    # Clip ϑ_l so total water θ_l + θ_i ≤ ν; otherwise effective_porosity
+    # is computed from unphysical θ_l.
+    θ_l = min.(Y.soil.ϑ_l, ν .- θ_i)
+    θ_w = θ_l .+ θ_i
+
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            θ_l,
+            θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
+    T_soil =
+        ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            θ_i,
+            ρc_s,
+            soil.parameters.earth_param_set,
+        )
+
+    θ_a = ClimaLand.Soil.Biogeochemistry.volumetric_air_content.(θ_w, ν)
+    R = ClimaLand.Parameters.gas_constant(params.earth_param_set)
+    M_C = params.M_C
+
+    K_H = @. ClimaLand.Soil.Biogeochemistry.henry_constant(
+        params.K_H_co2_298,
+        params.dln_K_H_co2_dT,
+        T_soil,
+        params.T_ref_henry,
+    )
+    β = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H, R, T_soil)
+    θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β)
+
+    @. Y.soilco2.CO2 =
+        θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
+    # Exponential O2 profile: 0.21 at z=0, 0.15 at z=-1 m (k = ln(0.21/0.15)).
+    # Soil O2 decreases with depth as roots and microbes consume it; the exact
+    # profile depends on porosity, biological activity, and water content, but a
+    # decaying profile is a more realistic starting point than uniform atmospheric
+    # 0.21.
+    z = soil.domain.fields.z
+    k_o2 = FT(log(0.21 / 0.15))
+    @. Y.soilco2.O2_f = FT(0.21) * exp(k_o2 * z)
+
+    set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+    return nothing
+end
+
+"""
+    set_soilco2_SOC_from_soilgrids!(SOC_field)
+
+Initialize the prognostic soil organic carbon field `SOC_field` (kgC m⁻³)
+using the SoilGrids organic carbon density dataset.
+
+The data is regridded onto the 3D subsurface space of `SOC_field`. Above
+the shallowest data level (-0.025 m) values are extrapolated flat in depth,
+matching the convention used for the SoilGrids-based soil composition
+parameters. Below the deepest data level (-1.5 m) the regridder also holds
+the value flat; we then apply an exponential decay with e-folding depth
+`L_decay` to better represent the typical decline of SOC at depth (e.g.
+Jobbágy & Jackson, 2000). Ocean / missing-data grid points are zero in the
+source file and therefore come through as zero.
+"""
+function set_soilco2_SOC_from_soilgrids!(SOC_field)
+    FT = eltype(SOC_field)
+    subsurface_space = axes(SOC_field)
+    path = ClimaLand.Artifacts.soil_grids_ocd_artifact_path(;
+        context = ClimaComms.context(subsurface_space),
+    )
+    SOC_field .= SpaceVaryingInput(
+        path,
+        "ocd",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    z = ClimaCore.Fields.coordinate_field(subsurface_space).z
+    z_data_bottom = FT(-1.5)
+    L_decay = FT(0.5)
+    @. SOC_field = ifelse(
+        z < z_data_bottom,
+        SOC_field * exp((z - z_data_bottom) / L_decay),
+        SOC_field,
+    )
+    return nothing
+end
+
+"""
     clip_to_bounds(
     T::FT,
     lb::FT,
@@ -256,12 +360,6 @@ function make_set_initial_state_from_file(
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
         end
-        # SoilCO2 IC
-        if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-        end
         # Soil IC
         if enforce_constraints
             # get only the values over land
@@ -279,6 +377,11 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # SoilCO2 IC (requires soil state)
+        if !isnothing(land.soilco2)
+            set_soilco2_initial_conditions!(Y, p, land)
+        end
 
         # Snow IC
         # Use soil temperature at top to set IC
@@ -396,10 +499,6 @@ function make_set_initial_state_from_file(
             evaluate!(p.drivers.T, atmos.T, t0)
         end
 
-        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-
         if enforce_constraints
             # get only the values over land
             T_atmos = Array(parent(p.drivers.T))[:]
@@ -416,6 +515,11 @@ function make_set_initial_state_from_file(
             T_bounds,
             enforce_constraints,
         )
+
+        # SoilCO2 IC (requires soil state)
+        if !isnothing(land.soilco2)
+            set_soilco2_initial_conditions!(Y, p, land)
+        end
 
         # Canopy IC
         # First determine if leaf water potential is in the file. If so, use
@@ -548,10 +652,17 @@ function make_set_subseasonal_initial_conditions(
         subsurface_space = domain.space.subsurface
         FT = eltype(Y.soil.ϑ_l)
 
-        # Set initial conditions that aren't read in from file
-        Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-        Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
+        # Set initial conditions that aren't read in from file.
+        # Y.soilco2.CO2 stores total CO₂ as carbon mass per soil volume
+        # (kg C m⁻³ soil) = θ_eff · c_g; the value below is a representative
+        # atmospheric-equilibrium initial guess (~412 ppm at 1 atm, 283 K,
+        # θ_eff ≈ 0.3) and is rapidly replaced by the diffusive boundary
+        # condition on the first time step.
+        if !isnothing(land.soilco2)
+            Y.soilco2.CO2 .= FT(6e-5)
+            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+        end
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
 
         # Set snow T first to use in computing snow internal energy from IC file
@@ -781,12 +892,6 @@ function make_set_initial_state_from_atmos_and_parameters(
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
         end
-        # SoilCO2 IC
-        if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
-            Y.soilco2.SOC .= FT(5.0)      # default SOC concentration (kg C/m³)
-        end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
         @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
         Y.soil.θ_i .= FT(0.0)
@@ -804,6 +909,17 @@ function make_set_initial_state_from_atmos_and_parameters(
                 p.drivers.T,
                 earth_param_set,
             )
+
+        # SoilCO2 IC (requires soil state).
+        # Y.soilco2.CO2 stores total CO₂ as carbon mass per soil volume
+        # (kg C m⁻³ soil) = θ_eff · c_g; the value below is a representative
+        # atmospheric-equilibrium initial guess and is rapidly replaced by
+        # the diffusive boundary condition on the first time step.
+        if !isnothing(land.soilco2)
+            Y.soilco2.CO2 .= FT(6e-5)
+            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
+        end
 
         Y.snow.S .= FT(0)
         Y.snow.S_l .= FT(0)

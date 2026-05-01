@@ -166,6 +166,7 @@ end
                 forcing.atmos,
             ),
             toml_dict,
+            Δt,
         ) : nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -238,6 +239,7 @@ function LandModel{FT}(
             forcing.atmos,
         ),
         toml_dict,
+        Δt,
     ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -297,6 +299,7 @@ end
                 forcing.atmos,
             ),
             toml_dict,
+            Δt,
         ) : nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -360,6 +363,7 @@ function LandModel{FT}(
             forcing.atmos,
         ),
         toml_dict,
+        Δt,
     ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
