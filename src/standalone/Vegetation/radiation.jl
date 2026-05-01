@@ -219,8 +219,7 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
 
 
 Computes and stores the net short wave radiation, in W/m^2, over all bands,
-absorbed by the canopy. Currently this function is able to be used in canopy
-standalone runs and in runs with integrated models.
+absorbed by the canopy. 
 
 SW net radiation is stored `p.canopy.radiative_transfer.SW_n`.
 """
@@ -277,14 +276,14 @@ function canopy_longwave_fluxes!(
     _σ = FT(LP.Stefan(earth_param_set))
     LW_d = p.drivers.LW_d
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
-    LW_u_ground = @. ϵ_ground * _σ * T_ground^4 + (1 - ϵ_ground) * LW_d_canopy
     @. p.canopy.radiative_transfer.LW_n = -(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
-        ϵ_canopy * LW_u_ground
+            ϵ_canopy * LW_u_ground(ϵ_ground * T_ground^4, LW_d, ϵ_ground, ϵ_canopy, _σ, T_canopy)
     )
 end
 
+LW_d_under_canopy(ϵ_canopy, LW_d, σ, T_canopy) = (1 - ϵ_canopy) * LW_d + ϵ_canopy * σ * T_canopy^4
+LW_u_ground(ϵT4_ground, LW_d, ϵ_ground, ϵ_canopy, σ, T_canopy) = ϵT4_ground*σ + (1-ϵ_ground)*LW_d_under_canopy(ϵ_canopy, LW_d, σ, T_canopy)
 
 """
     ground_albedo_PAR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)

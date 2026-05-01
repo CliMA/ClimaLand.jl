@@ -265,7 +265,8 @@ function ClimaLand.auxiliary_vars(::SlabLakeModel)
         :runoff,
         :albedo,
         :turbulent_fluxes,
-        :R_n,
+        :LW_n,
+        :SW_n,
     )
 end
 get_turb_fluxes_type(FT, ::AtmosDrivenLakeBC) = NamedTuple{
@@ -290,7 +291,8 @@ function ClimaLand.auxiliary_types(m::SlabLakeModel{FT}) where {FT}
         FT, # runoff
         FT, # albedo
         turb_fluxes_type,
-        FT, # R_n
+        FT, # LW_n
+        FT # SW_n
     )
 end
 
@@ -303,7 +305,8 @@ function ClimaLand.auxiliary_domain_names(::SlabLakeModel)
         :surface, # runoff
         :surface, # albedo
         :surface, # turbulent_fluxes
-        :surface, # R_n
+        :surface, # LW_n
+        :surface, # SW_n
     )
 end
 
@@ -419,7 +422,8 @@ function lake_boundary_fluxes!(
     turbulent_fluxes!(p.lake.turbulent_fluxes, bc.atmos, model, Y, p, t)
 
     # Compute net radiation in standalone mode
-    ClimaLand.net_radiation!(p.lake.R_n, bc.radiation, model, Y, p, t)
+    ClimaLand.net_LW_radiation!(p.lake.LW_n, bc.radiation, model, Y, p, t)
+    ClimaLand.net_SW_radiation!(p.lake.SW_n, bc.radiation, model, Y, p, t)
 
     earth_param_set = model.parameters.earth_param_set
 
@@ -457,7 +461,7 @@ function ClimaLand.make_compute_exp_tendency(
         _LH_f0 = LP.LH_f0(earth_param_set)
 
         @. dY.lake.U = -(
-            p.lake.R_n +
+            p.lake.LW_n + p.lake.SW_n + 
             p.lake.turbulent_fluxes.lhf +
             p.lake.turbulent_fluxes.shf +
             p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +

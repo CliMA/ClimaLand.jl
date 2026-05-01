@@ -206,7 +206,7 @@ function update_lake_lw_fluxes!(
     ϵ_lake = lake.parameters.emissivity
     T_lake = p.lake.T
     @. LW_u_lake = ϵ_lake * _σ * T_lake^4 + (1 - ϵ_lake) * LW_d_canopy
-    @. lW_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
+    @. LW_net_lake -= ϵ_lake * LW_d_canopy - ϵ_lake * _σ * T_lake^4
     return nothing
 end
 

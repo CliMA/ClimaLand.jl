@@ -1,3 +1,7 @@
+sw_n(sw_d, α) = -(1-α)*sw_d
+lw_n(lw_d, ϵ, T, σ) = -(ϵ * lw_d - ϵ * σ * T^4)
+lw_ug(lw_d, ϵ, T, σ) = ϵ * σ * T^4 + (1-ϵ)*lw_d
+
 """
     set_eff_land_radiation_properties!(p, earth_param_set)
 
@@ -34,6 +38,18 @@ In integrated mode, we have already computed those quantities in
 LW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
 """
 function Canopy.canopy_longwave_fluxes!(
+    p::NamedTuple,
+    s::PrognosticGroundConditions,
+    canopy,
+    radiation::AbstractRadiativeDrivers,
+    earth_param_set::PSE,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {PSE}
+    nothing
+end
+
+function Canopy.canopy_shortwave_fluxes!(
     p::NamedTuple,
     s::PrognosticGroundConditions,
     canopy,
