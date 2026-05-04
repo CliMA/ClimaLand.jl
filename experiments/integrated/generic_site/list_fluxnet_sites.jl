@@ -1,12 +1,15 @@
-# Print every FLUXNET2015 site ID known to the `fluxnet2015` artifact, one per
-# line, sorted. Sized for use as a Slurm array index source (see
-# `calibrate_all_fluxnet.sbatch`).
+# Print (or write) every FLUXNET2015 site ID known to the `fluxnet2015`
+# artifact, one per line, sorted. Sized for use as a Slurm/PBS array index
+# source (see `calibrate_all_fluxnet.sbatch`, `calibrate_all_fluxnet.pbs`).
 #
 # The `fluxnet2015` artifact is HPC-only (no download URL), so this only works
 # on a machine where it has been pre-staged (central HPC, Derecho).
 #
 # Usage:
+#   # Print to stdout:
 #   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl
+#   # Write to a file (avoids shell redirection — useful when copy-pasting):
+#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl path/to/site_ids.txt
 #
 # Or programmatically:
 #   include("list_fluxnet_sites.jl"); ids = list_fluxnet_sites()
@@ -34,7 +37,19 @@ function list_fluxnet_sites()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    for s in list_fluxnet_sites()
-        println(s)
+    sites = list_fluxnet_sites()
+    if length(ARGS) >= 1
+        out = ARGS[1]
+        mkpath(dirname(abspath(out)))
+        open(out, "w") do io
+            for s in sites
+                println(io, s)
+            end
+        end
+        @info "Wrote $(length(sites)) site IDs to $out"
+    else
+        for s in sites
+            println(s)
+        end
     end
 end
