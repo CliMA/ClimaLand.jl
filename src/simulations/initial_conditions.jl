@@ -893,7 +893,7 @@ function make_set_initial_state_from_atmos_and_parameters(
             evaluate!(p.drivers.T, atmos.T, t0)
         end
         (; θ_r, ν, ρc_ds) = land.soil.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r)*FT(0.98)
         Y.soil.θ_i .= FT(0.0)
         ρc_s =
             ClimaLand.Soil.volumetric_heat_capacity.(

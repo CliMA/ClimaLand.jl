@@ -93,7 +93,7 @@ function setup_model(
 
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
-    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :snow, :soil)
 
     # Construct the P model manually since it is not a default
     photosynthesis = PModel{FT}(domain, toml_dict)
@@ -121,7 +121,7 @@ function setup_model(
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
-    surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+ #   surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
 
     snow = Snow.SnowModel(
         FT,
@@ -132,7 +132,7 @@ function setup_model(
         prognostic_land_components,
         α_snow,
         scf,
-        surf_temp
+#        surf_temp
     )
 
     # Construct the land model with all default components except for snow
@@ -158,7 +158,7 @@ start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 450.0
 domain =
-    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
+    ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99), nelements = (180,360, 25), depth = FT(25), dz_tuple = FT.((6, 0.05)))
 
 if UNCALIBRATED
     override_params_path = "toml/uncalibrated_parameters.toml"

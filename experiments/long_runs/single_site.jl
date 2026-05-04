@@ -39,7 +39,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_deeper"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -63,7 +63,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -136,12 +135,12 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = DateTime("2008-01-01")
-stop_date = DateTime("2010-01-01")
+stop_date = DateTime("2014-01-01")
 Δt = 450.0
 longlat = FT.((-74.4, 47.7))
-zlim = FT.((-15, 0))
-nelements = 15
-dz_tuple = FT.((3, 0.05))
+zlim = FT.((-25, 0))
+nelements = 25
+dz_tuple = FT.((6, 0.05))
 domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
@@ -171,9 +170,9 @@ diagnostics = ClimaLand.default_diagnostics(
         "infc",
     ],
 )
-
+#set_ic! = ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(model)
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)#, set_ic!)
 
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
@@ -188,7 +187,7 @@ LandSimVis.make_timeseries(simulation; savedir = root_path)
 times = collect(keys(diagnostics[1].output_writer.dict["tsoil_1d_average"]))
 fig = CairoMakie.Figure(size = (800, 1200))
 ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Tsoil")
-for i in 1:2:15
+for i in 1:2:nelements
     lines!(
         ax1,
         [
@@ -200,7 +199,7 @@ for i in 1:2:15
 end
 
 ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Ice")
-for i in 1:2:15
+for i in 1:2:nelements
     lines!(
         ax2,
         [
@@ -212,12 +211,12 @@ for i in 1:2:15
 end
 fig[2, 2] = Legend(fig, ax2)
 
-ax3 = CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Liquid Water")
-for i in 1:2:15
+ax3 = CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Effective Saturation")
+for i in 1:2:nelements
     lines!(
         ax3,
         [
-            parent(diagnostics[1].output_writer.dict["swc_1d_average"][t])[i]
+            (parent(diagnostics[1].output_writer.dict["si_1d_average"][t])[i] .+ parent(diagnostics[1].output_writer.dict["swc_1d_average"][t])[i] - parent(model.soil.parameters.θ_r)[i])/(parent(model.soil.parameters.ν)[i]- parent(model.soil.parameters.θ_r)[i])
             for t in times
         ],
         label = "$i",
