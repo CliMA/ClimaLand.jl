@@ -52,8 +52,9 @@ echo "Array task $SLURM_ARRAY_TASK_ID -> site $SITE_ID"
 export HDF5_USE_FILE_LOCKING=FALSE
 
 # Match the AU-Cum buildkite settings; override per-submission with --export.
+# Window length comes from the CALIBRATION_CONFIG file (er.jl: 365 days);
+# only N_ITERS is honored as an env override in calibrate_site.jl.
 export SITE_ID
-export CAL_DURATION_DAYS="${CAL_DURATION_DAYS:-365}"
 export N_ITERS="${N_ITERS:-5}"
 export LOCAL="false"
 
