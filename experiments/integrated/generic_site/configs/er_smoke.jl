@@ -3,9 +3,9 @@
 
 const CALIBRATE_CONFIG = (;
     short_names = ["er"],
-    n_iterations = 2,
-    cal_window_days = 90,
-    spinup_days = 30,
+    n_iterations = 1,
+    cal_window_days = 30,
+    spinup_days = 15,
     minibatch_size = 1,
     max_n_samples = 1,
     rng_seed = 42,

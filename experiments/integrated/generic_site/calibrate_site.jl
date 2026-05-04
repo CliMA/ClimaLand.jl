@@ -63,6 +63,14 @@ const OUTPUT_DIR = joinpath(
 mkpath(OUTPUT_DIR)
 
 const SAMPLES_PATH = joinpath(OUTPUT_DIR, "samples.jld2")
+
+# In-process handoff for sample-window state. `generate_observation_series` and
+# the resume-from-disk path populate this; `forward_model` and the driver read
+# from it instead of round-tripping through `samples.jld2`. Reading the file we
+# just wrote was racy on Lustre (occasional InvalidDataException: Did not find
+# a Superblock) — the on-disk artifact is still written for inspection.
+const SAMPLE_STATE = Ref{NamedTuple}()
+
 const SITE_RESULTS_CSV = joinpath(
     pkgdir(ClimaLand),
     "experiments",
@@ -275,6 +283,8 @@ function generate_observation_series()
         short_names = SHORT_NAMES,
         site_ID = SITE_ID,
     )
+    SAMPLE_STATE[] =
+        (; samples, data_start, time_offset = coords.time_offset)
     @info "Built observation series" SITE_ID n_samples = length(obs_vec) MINIBATCH_SIZE
     return obs_series
 end
@@ -347,10 +357,10 @@ function ClimaCalibrate.forward_model(iteration, member)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
     minibatch = EKP.get_current_minibatch(ekp)
 
-    state = JLD2.load(SAMPLES_PATH)
-    samples = state["samples"]
-    data_start = state["data_start"]
-    time_offset = state["time_offset"]
+    state = SAMPLE_STATE[]
+    samples = state.samples
+    data_start = state.data_start
+    time_offset = state.time_offset
 
     @info "[iter=$iteration mem=$member] running minibatch=$minibatch ($(length(minibatch)) windows)"
 
@@ -491,6 +501,12 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     obs_path = joinpath(OUTPUT_DIR, "observation_series.jld2")
     obs_series = if isfile(obs_path) && isfile(SAMPLES_PATH)
+        st = JLD2.load(SAMPLES_PATH)
+        SAMPLE_STATE[] = (;
+            samples = st["samples"],
+            data_start = st["data_start"],
+            time_offset = st["time_offset"],
+        )
         JLD2.jldopen(obs_path, "r") do f
             f["observation_series"]
         end
@@ -501,7 +517,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     end
 
     prior = get_calibration_prior()
-    samples = JLD2.load(SAMPLES_PATH)["samples"]
+    samples = SAMPLE_STATE[].samples
 
     rng = Random.MersenneTwister(CALIBRATE_CONFIG.rng_seed)
     ekp = EKP.EnsembleKalmanProcess(

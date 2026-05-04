@@ -23,7 +23,7 @@ year of data degenerate cleanly (single window, repeated each iteration).
 | `configs/default.jl` | Production GPP + LHF config: 365-day window, 5 EKP iterations, no spinup, no minibatching. |
 | `configs/smoke_test.jl` | GPP + LHF, 90-day window, 2 iterations — buildkite CI smoke. |
 | `configs/er.jl` | Production Reco/DAMM config: 4 DAMM kinetic parameters, 365-day windows, 90-day spinup, up to 5 yearly samples per site, `minibatch_size=1`. |
-| `configs/er_smoke.jl` | Reco config trimmed for buildkite CI (1 sample, 90-day window, 30-day spinup, 2 iterations). |
+| `configs/er_smoke.jl` | Reco config trimmed for buildkite CI (1 sample, 30-day window, 15-day spinup, 1 iteration). |
 
 ## Configs
 
