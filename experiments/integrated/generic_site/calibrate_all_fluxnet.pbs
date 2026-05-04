@@ -18,8 +18,7 @@
 # Usage on Derecho:
 #   module load climacommon/2025_02_25
 #   # Generate the site list once on the login node:
-#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl \
-#       > experiments/integrated/generic_site/calibration_out/site_ids.txt
+#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl experiments/integrated/generic_site/calibration_out/site_ids.txt
 #   N=$(wc -l < experiments/integrated/generic_site/calibration_out/site_ids.txt)
 #   qsub -J 0-$((N-1)) -v CALIBRATION_CONFIG=er.jl \
 #       experiments/integrated/generic_site/calibrate_all_fluxnet.pbs

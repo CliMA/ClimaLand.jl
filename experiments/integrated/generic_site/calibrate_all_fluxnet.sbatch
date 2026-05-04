@@ -18,8 +18,7 @@
 # Usage:
 #   module load climacommon/2024_10_09          # central HPC
 #   # Generate the site list once on the login node:
-#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl \
-#       > experiments/integrated/generic_site/calibration_out/site_ids.txt
+#   julia --project=.buildkite experiments/integrated/generic_site/list_fluxnet_sites.jl experiments/integrated/generic_site/calibration_out/site_ids.txt
 #   N=$(wc -l < experiments/integrated/generic_site/calibration_out/site_ids.txt)
 #   sbatch --array=0-$((N-1))%50 experiments/integrated/generic_site/calibrate_all_fluxnet.sbatch
 
