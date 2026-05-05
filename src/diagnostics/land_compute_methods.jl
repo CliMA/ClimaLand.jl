@@ -126,7 +126,7 @@ function compute_net_ecosystem_exchange!(
         fill!(field_values(out), NaN)
     end
     compute_total_respiration!(out, Y, p, t, land_model)
-    @. out -= p.canopy.photosynthesis.GPP
+    @. out -= get_GPP(p, land_model.canopy.photosynthesis)
     return out
 end
 
@@ -201,7 +201,7 @@ function compute_stomatal_conductance!(
     (; Drel) = conductance_model.parameters
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
-    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa
+    ci = p.canopy.photosynthesis.InstVars.ci             # internal CO2 partial pressure, Pa
     An_leaf = get_An_leaf(p, canopy.photosynthesis)
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
@@ -306,31 +306,15 @@ end
     SoilCanopyModel,
     LandModel,
     CanopyModel,
-} p.canopy.photosynthesis.GPP
-
-@diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} get_An_leaf(
+} get_GPP(p, get_canopy(land_model).photosynthesis)
+@diagnostic_compute "respiration_canopy" Union{
+    CanopyModel,
+    SoilCanopyModel,
+    LandModel,
+} get_Rd_canopy(p, get_canopy(land_model).photosynthesis)
+@diagnostic_compute "vcmax25" Union{CanopyModel, SoilCanopyModel, LandModel} get_Vcmax25_canopy(
     p,
-    land_model.canopy.photosynthesis,
-)
-@diagnostic_compute "photosynthesis_net_leaf" CanopyModel get_An_leaf(
-    p,
-    land_model.photosynthesis,
-)
-@diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} get_Rd_leaf(
-    p,
-    land_model.canopy.photosynthesis,
-)
-@diagnostic_compute "respiration_leaf" CanopyModel get_Rd_leaf(
-    p,
-    land_model.photosynthesis,
-)
-@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} get_Vcmax25_leaf(
-    p,
-    land_model.canopy.photosynthesis,
-)
-@diagnostic_compute "vcmax25" CanopyModel get_Vcmax25_leaf(
-    p,
-    land_model.photosynthesis,
+    get_canopy(land_model).photosynthesis,
 )
 
 # Canopy - Radiative Transfer

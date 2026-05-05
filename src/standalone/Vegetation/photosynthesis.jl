@@ -9,8 +9,10 @@ abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 export get_Vcmax25_leaf,
     get_Rd_leaf,
     get_An_leaf,
+    get_Rd_canopy,
+    get_An_canopy,
     get_J_over_Jmax,
-    get_GPP_canopy,
+    get_GPP,
     net_photosynthesis,
     gross_photosynthesis,
     arrhenius_function

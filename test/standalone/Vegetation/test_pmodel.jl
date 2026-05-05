@@ -408,10 +408,10 @@ function setup_and_initialize_model(
 
     Y, p, _ = ClimaLand.initialize(land)
 
-    parent(p.canopy.photosynthesis.An) .= NaN
-    parent(p.canopy.photosynthesis.GPP) .= NaN
-    parent(p.canopy.photosynthesis.Rd) .= NaN
-    parent(p.canopy.photosynthesis.ci) .= NaN
+    parent(p.canopy.photosynthesis.InstVars.An) .= NaN
+    parent(p.canopy.photosynthesis.InstVars.GPP) .= NaN
+    parent(p.canopy.photosynthesis.InstVars.Rd) .= NaN
+    parent(p.canopy.photosynthesis.InstVars.ci) .= NaN
 
     set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
         ClimaLand.Artifacts.saturated_land_ic_path(;
@@ -472,13 +472,13 @@ end
     )
 
     # These quantities are weighted averages of c3
-    GPP1 = p_ones.canopy.photosynthesis.GPP
-    Rd1 = p_ones.canopy.photosynthesis.Rd
-    ci1 = p_ones.canopy.photosynthesis.ci
+    GPP1 = p_ones.canopy.photosynthesis.InstVars.GPP
+    Rd1 = p_ones.canopy.photosynthesis.InstVars.Rd
+    ci1 = p_ones.canopy.photosynthesis.InstVars.ci
 
-    GPP2 = p_ones2.canopy.photosynthesis.GPP
-    Rd2 = p_ones2.canopy.photosynthesis.Rd
-    ci2 = p_ones2.canopy.photosynthesis.ci
+    GPP2 = p_ones2.canopy.photosynthesis.InstVars.GPP
+    Rd2 = p_ones2.canopy.photosynthesis.InstVars.Rd
+    ci2 = p_ones2.canopy.photosynthesis.InstVars.ci
 
     @test isequal(parent(GPP1), parent(GPP2))
     @test isequal(parent(Rd1), parent(Rd2))
@@ -515,13 +515,13 @@ end
         land_half.canopy,
     )
 
-    GPP0 = p_zeros.canopy.photosynthesis.GPP
-    Rd0 = p_zeros.canopy.photosynthesis.Rd
-    ci0 = p_zeros.canopy.photosynthesis.ci
+    GPP0 = p_zeros.canopy.photosynthesis.InstVars.GPP
+    Rd0 = p_zeros.canopy.photosynthesis.InstVars.Rd
+    ci0 = p_zeros.canopy.photosynthesis.InstVars.ci
 
-    GPP_half = p_half.canopy.photosynthesis.GPP
-    Rd_half = p_half.canopy.photosynthesis.Rd
-    ci_half = p_half.canopy.photosynthesis.ci
+    GPP_half = p_half.canopy.photosynthesis.InstVars.GPP
+    Rd_half = p_half.canopy.photosynthesis.InstVars.Rd
+    ci_half = p_half.canopy.photosynthesis.InstVars.ci
 
     GPP_weighted = similar(GPP0)
     Rd_weighted = similar(Rd0)
