@@ -107,7 +107,7 @@ T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
 ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l)[1] for k in 1:length(sol.t)]
 GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
+    parent(get_GPP(sv.saveval[k], canopy.photosynthesis))[1] * 1e6 for
     k in 1:length(sol.t)
 ]
 resp = [

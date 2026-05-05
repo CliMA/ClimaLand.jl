@@ -93,7 +93,14 @@ function setup_model(
 
     # Construct the land model with all default components
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt)
+    land = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+    )
     return land
 end
 

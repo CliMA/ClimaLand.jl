@@ -1,7 +1,10 @@
 ClimaLand.jl Release Notes
 ========================
-
 main
+----
+- Change default land model to use the pmodel, piecewise soil moisture stress, and snow albedo zenith angle parameterization PR[#1726](https://github.com/CliMA/ClimaLand.jl/pull/1726)
+
+v1.8.0
 -----
 - Remove `convert_cb` function PR[#1730](https://github.com/CliMA/ClimaLand.jl/pull/1730)
 - ![breaking change][badge-💥breaking] Rewrite DAMM soil respiration in centered-Arrhenius form: `soilCO2_pre_exponential_factor` is replaced by `soilCO2_reference_rate` and `soilCO2_reference_temperature`, with retuned `Ea_sx` and `kM_sx` defaults PR[#1714](https://github.com/CliMA/ClimaLand.jl/pull/1714)

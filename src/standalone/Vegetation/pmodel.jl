@@ -275,12 +275,9 @@ and dark respiration at the canopy level (`Rd`), and
     and c4 variant), respectively. These are updated using an exponential moving
     average (EMA) at local noon.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:An, :GPP, :Rd, :ci, :OptVars)
+ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
+    NamedTuple{(:ci, :Rd, :GPP, :An), Tuple{FT, FT, FT, FT}},
     NamedTuple{
         (
             :ξ_opt_c3,
@@ -293,8 +290,7 @@ ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
         Tuple{FT, FT, FT, FT, FT, FT},
     },
 )
-ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface)
 
 
 """
@@ -918,148 +914,154 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     FT = eltype(parameters)
 
     # Unpack preallocated variables to short names
-    An = p.canopy.photosynthesis.An
-    GPP = p.canopy.photosynthesis.GPP
-    Rd = p.canopy.photosynthesis.Rd
-    ci = p.canopy.photosynthesis.ci
+    InstVars = p.canopy.photosynthesis.InstVars
     OptVars = p.canopy.photosynthesis.OptVars
 
     # drivers
     P_air = p.drivers.P
-    ca_pp = @. lazy(p.drivers.c_co2 * P_air) # partial pressure of co2
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    c_co2_air = p.drivers.c_co2
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-
-    APAR_canopy_moles = @. lazy(
-        compute_APAR_canopy_moles(
-            p.canopy.radiative_transfer.par.abs,
-            p.canopy.radiative_transfer.par_d,
-            canopy.radiative_transfer.parameters.λ_γ_PAR,
-            constants.lightspeed,
-            constants.planck_h,
-            constants.N_a,
-        ),
-    )
-
-    # compute intermediate vars
-    Γstar = @. lazy(
-        co2_compensation_pmodel(
-            T_canopy,
-            constants.To,
-            P_air,
-            constants.R,
-            constants.ΔHΓstar,
-            constants.Γstar25,
-        ),
-    )
-    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     thermo_params = LP.thermodynamic_parameters(canopy.earth_param_set)
-    VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                thermo_params,
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            sqrt(eps(FT)),
-        ),
+    λ_γ_PAR = canopy.radiative_transfer.parameters.λ_γ_PAR
+    fAPAR = p.canopy.radiative_transfer.par.abs
+    PAR = p.canopy.radiative_transfer.par_d
+    @. InstVars = compute_blended_pmodel_photosynthesis(
+        OptVars,
+        model.fractional_c3,
+        P_air,
+        T_air,
+        q_air,
+        c_co2_air,
+        T_canopy,
+        fAPAR,
+        PAR,
+        λ_γ_PAR,
+        parameters,
+        constants,
+        thermo_params,
+        FT,
     )
-    ci_c3 =
-        @. lazy(intercellular_co2_pmodel(OptVars.ξ_opt_c3, ca_pp, Γstar, VPD))
-    ci_c4 =
-        @. lazy(intercellular_co2_pmodel(OptVars.ξ_opt_c4, ca_pp, Γstar, VPD))
 
-    @. ci = blend(ci_c3, ci_c4, model.fractional_c3)
-    Kmm = @. lazy(
-        compute_Kmm(
-            T_canopy,
+end
+
+function compute_blended_pmodel_photosynthesis(
+    OptVars,
+    fractional_c3,
+    P_air,
+    T_air,
+    q_air,
+    c_co2_air,
+    T_canopy,
+    fAPAR,
+    PAR,
+    λ_γ_PAR,
+    parameters,
+    constants,
+    thermo_params,
+    FT,
+)
+    (;
+        Vcmax25_opt_c3,
+        Vcmax25_opt_c4,
+        Jmax25_opt_c3,
+        Jmax25_opt_c4,
+        ξ_opt_c3,
+        ξ_opt_c4,
+    ) = OptVars
+    ca_pp = c_co2_air * P_air # partial pressure of co2
+    VPD = max(
+        Thermodynamics.vapor_pressure_deficit(
+            thermo_params,
+            T_air,
             P_air,
-            constants.Kc25,
-            constants.Ko25,
-            constants.ΔHkc,
-            constants.ΔHko,
-            constants.To,
-            constants.R,
-            constants.oi,
+            q_air,
         ),
+        sqrt(eps(FT)),
+    )
+    APAR_canopy_moles = compute_APAR_canopy_moles(
+        fAPAR,
+        PAR,
+        λ_γ_PAR,
+        constants.lightspeed,
+        constants.planck_h,
+        constants.N_a,
+    )
+    Γstar = co2_compensation_pmodel(
+        T_canopy,
+        constants.To,
+        P_air,
+        constants.R,
+        constants.ΔHΓstar,
+        constants.Γstar25,
+    )
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    Kmm = compute_Kmm(
+        T_canopy,
+        P_air,
+        constants.Kc25,
+        constants.Ko25,
+        constants.ΔHkc,
+        constants.ΔHko,
+        constants.To,
+        constants.R,
+        constants.oi,
     )
     # compute instantaneous max photosynthetic rates and assimilation rates
-    inst_temp_scaling_Jmax_factor = @. lazy(
-        inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Jmax,
-            constants.Hd_Jmax,
-            constants.aS_Jmax,
-            constants.bS_Jmax,
-            constants.R,
-        ),
+    inst_temp_scaling_Jmax_factor = inst_temp_scaling(
+        T_canopy,
+        T_canopy,
+        constants.To,
+        constants.Ha_Jmax,
+        constants.Hd_Jmax,
+        constants.aS_Jmax,
+        constants.bS_Jmax,
+        constants.R,
+    )
+    Jmax_c3 = Jmax25_opt_c3 * inst_temp_scaling_Jmax_factor
+    Jmax_c4 = Jmax25_opt_c4 * inst_temp_scaling_Jmax_factor
+
+    J_c3 = electron_transport_pmodel(
+        c3_intrinsic_quantum_yield(T_canopy, parameters),
+        APAR_canopy_moles,
+        Jmax_c3,
+    )
+    J_c4 = electron_transport_pmodel(
+        c4_intrinsic_quantum_yield(T_canopy, parameters),
+        APAR_canopy_moles,
+        Jmax_c4,
     )
 
-    Jmax_c3 = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt_c3 *
-        inst_temp_scaling_Jmax_factor,
+    inst_temp_scaling_Vcmax_factor = inst_temp_scaling(
+        T_canopy,
+        T_canopy,
+        constants.To,
+        constants.Ha_Vcmax,
+        constants.Hd_Vcmax,
+        constants.aS_Vcmax,
+        constants.bS_Vcmax,
+        constants.R,
     )
-    Jmax_c4 = @. lazy(
-        p.canopy.photosynthesis.OptVars.Jmax25_opt_c4 *
-        inst_temp_scaling_Jmax_factor,
-    )
+    Vcmax_c3 = Vcmax25_opt_c3 * inst_temp_scaling_Vcmax_factor
+    Vcmax_c4 = Vcmax25_opt_c4 * inst_temp_scaling_Vcmax_factor
 
-    J_c3 = @. lazy(
-        electron_transport_pmodel(
-            c3_intrinsic_quantum_yield(T_canopy, parameters),
-            APAR_canopy_moles,
-            Jmax_c3,
-        ),
-    )
-    J_c4 = @. lazy(
-        electron_transport_pmodel(
-            c4_intrinsic_quantum_yield(T_canopy, parameters),
-            APAR_canopy_moles,
-            Jmax_c4,
-        ),
-    )
-
-    inst_temp_scaling_Vcmax_factor = @. lazy(
-        inst_temp_scaling(
-            T_canopy,
-            T_canopy,
-            constants.To,
-            constants.Ha_Vcmax,
-            constants.Hd_Vcmax,
-            constants.aS_Vcmax,
-            constants.bS_Vcmax,
-            constants.R,
-        ),
-    )
-
-    Vcmax_c3 = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c3 *
-        inst_temp_scaling_Vcmax_factor,
-    )
-    Vcmax_c4 = @. lazy(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c4 *
-        inst_temp_scaling_Vcmax_factor,
-    )
-
-    # rubisco limited assimilation rate
-    # c3 or c4 is reflected in the value of mc and Vcmax
-    Ac_c3 = @. lazy(Vcmax_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm))
-    Ac_c4 = @. lazy(Vcmax_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm))
+    Ac_c3 = Vcmax_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm)
+    Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm)
 
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
-    Aj_c3 = @. lazy(J_c3 / 4 * c3_compute_mj(Γstar, ca_pp, ci_c3, VPD))
-    Aj_c4 = @. lazy(J_c4 / 4 * c4_compute_mj(Γstar, ca_pp, ci_c4, VPD))
+    Aj_c3 = J_c3 / 4 * c3_compute_mj(Γstar, ca_pp, ci_c3, VPD)
+    Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ca_pp, ci_c4, VPD)
 
     # dark respiration
     # Here we make an assumption about how to relate Rd25 to Vcmax25_opt
     # To extend to C4, defined `compute_dark_respiration_pmodel() which dispatches off of the is_c3 field
     # This function below would become c3_dark_respiration_pmodel
-    @. Rd = blend(
+    Rd = blend(
         constants.fC3 *
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c3 *
+        Vcmax25_opt_c3 *
         inst_temp_scaling_rd(
             T_canopy,
             constants.To,
@@ -1067,26 +1069,35 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             constants.bRd,
         ),
         constants.fC3 *
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c4 *
+        Vcmax25_opt_c4 *
         inst_temp_scaling_rd(
             T_canopy,
             constants.To,
             constants.aRd,
             constants.bRd,
         ),
-        model.fractional_c3,
+        fractional_c3,
     )
 
     # Note: net_photosynthesis applies the moisture stress to GPP, but since the P-model already applies
     # this factor to Vcmax and Jmax, we do not apply it again here
-    @. GPP = blend(
+    GPP = blend(
         gross_photosynthesis(Ac_c3, Aj_c3),
         gross_photosynthesis(Ac_c4, Aj_c4),
-        model.fractional_c3,
+        fractional_c3,
     )
-    @. An = net_photosynthesis(GPP, Rd)
-
+    An = net_photosynthesis(GPP, Rd)
+    ci = blend(ci_c3, ci_c4, fractional_c3)
+    return (; ci, Rd, GPP, An)
 end
+
+get_Vcmax25_canopy(p, m::PModel) = @. lazy(
+    blend(
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c3,
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c4,
+        m.fractional_c3,
+    ),
+)
 
 get_Vcmax25_leaf(p, m::PModel) = @. lazy(
     blend(
@@ -1096,16 +1107,18 @@ get_Vcmax25_leaf(p, m::PModel) = @. lazy(
     ) /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
+get_Rd_canopy(p, m::PModel) = p.canopy.photosynthesis.InstVars.Rd
 get_Rd_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.Rd /
+    p.canopy.photosynthesis.InstVars.Rd /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
+get_An_canopy(p, m::PModel) = p.canopy.photosynthesis.InstVars.An
 get_An_leaf(p, m::PModel) = @. lazy(
-    p.canopy.photosynthesis.An /
+    p.canopy.photosynthesis.InstVars.An /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
 )
 
-get_GPP_canopy(p, m::PModel) = p.canopy.photosynthesis.GPP
+get_GPP(p, m::PModel) = p.canopy.photosynthesis.InstVars.GPP
 
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
     Jmax_c3, Jmax_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
