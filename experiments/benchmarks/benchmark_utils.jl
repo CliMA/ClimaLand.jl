@@ -47,7 +47,9 @@ function profile_and_benchmark(
         GC.gc()
         # if the profiler is run before the benchmarks, the timing seems less consistent
         run_profiler(setup_simulation, device, outdir)
-        if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+        buildkite_slug = get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing)
+        if buildkite_slug == "climaland-benchmark" ||
+           buildkite_slug == "climaland-dot-jl-short-benchmarks"
             if average_timing_s > reference_time + std_timing_s
                 @info "Possible performance regression, previous average time was $(reference_time)"
                 extra_note_string = "If this is unexpected, it may be caused by someone "
