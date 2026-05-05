@@ -5,7 +5,7 @@
 #PBS -l walltime=02:00:00
 #PBS -l select=1:ncpus=2:mem=16GB
 #PBS -j oe
-#PBS -o experiments/integrated/generic_site/calibration_out/pbs_logs/^array_index^.out
+#PBS -o experiments/integrated/generic_site/calibration_out/pbs_^array_index^.out
 # Set -J at submit time so it matches the actual site count, e.g.
 #   qsub -J 0-199 experiments/integrated/generic_site/calibrate_all_fluxnet.pbs
 # PBSPro caps concurrent array tasks via queue limits — tune via
@@ -28,7 +28,6 @@ set -euo pipefail
 cd "$PBS_O_WORKDIR"
 
 SITE_LIST="experiments/integrated/generic_site/calibration_out/site_ids.txt"
-mkdir -p experiments/integrated/generic_site/calibration_out/pbs_logs
 
 if [[ ! -s "$SITE_LIST" ]]; then
     echo "Site list $SITE_LIST is missing or empty. Generate it first with:"
