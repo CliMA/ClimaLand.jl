@@ -181,7 +181,7 @@ println("Simulating $start_date → $stop_date (spinup until $spinup_date)")
 dz_bottom = FT(2) #FT(1.5),
 dz_top = FT(0.038)
 dz_tuple = (dz_bottom, dz_top)
-nelements = 10#24
+nelements = 24
 zmin = FT(-6.2)
 zmax = FT(0)
 # Domain
