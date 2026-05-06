@@ -249,18 +249,15 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
     T_bot = p.snow.T
-    #@. lazy(
-    #    T_bottom(
-    #        κ_snow,
-    #        g_eff,
-    #        T_soil,
-    #        T̄,
-    #        T_sfc,
-    #        max(p.snow.z_snow, eps(FT)),
-    #        p.snow.ρ_snow,
-    #        snow_params.earth_param_set,
-    #    ),
-    #)
+    @. p.snow.T_bot = T_bottom(κ_snow,
+                               g_eff,
+                               T_soil,
+                               T̄,
+                               T_sfc,
+                               max(p.snow.z_snow, eps(FT)),
+                               p.snow.ρ_snow,
+                               snow_params.earth_param_set,
+                               )
     @. p.ground_heat_flux = -g_eff * (T_bot - T_soil)
     return nothing
 end

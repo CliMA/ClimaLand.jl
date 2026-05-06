@@ -39,7 +39,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_deeper"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_ic_fover"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -63,6 +63,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
+        use_lowres_forcing = true
     )
     forcing = (; atmos, radiation)
 
@@ -112,7 +113,7 @@ function setup_model(
         prognostic_land_components,
         α_snow,
         scf,
-        #        surf_temp,
+        surf_temp,
     )
 
     # Construct the land model with all default components except for snow
@@ -134,13 +135,13 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = DateTime("2008-01-01")
-stop_date = DateTime("2014-01-01")
+start_date = DateTime("2008-06-01")
+stop_date = DateTime("2014-06-01")
 Δt = 450.0
-longlat = FT.((-74.4, 47.7))
-zlim = FT.((-25, 0))
-nelements = 25
-dz_tuple = FT.((6, 0.05))
+longlat = FT.((143.2, 63.25))
+zlim = FT.((-15, 0))
+nelements = 15
+dz_tuple = FT.((2, 0.05))
 domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
@@ -168,11 +169,14 @@ diagnostics = ClimaLand.default_diagnostics(
         "sr",
         "ssr",
         "infc",
+        "snowtbot",
+        "snowκ",
+        "ghf",
     ],
 )
-#set_ic! = ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(model)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(model)
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)#, set_ic!)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
 
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
@@ -253,6 +257,14 @@ lines!(
 lines!(
     ax3,
     [
+        parent(diagnostics[1].output_writer.dict["snowtbot_1d_average"][t])[1] for
+        t in times
+    ],
+    label = "Bottom Snow",
+)
+lines!(
+    ax3,
+    [
         parent(diagnostics[1].output_writer.dict["snowtsfc_1d_average"][t])[1]
         for t in times
     ],
@@ -270,11 +282,11 @@ fig[3, 2] = Legend(fig, ax3)
 CairoMakie.save(joinpath(root_path, "snow.png"), fig)
 
 fig = CairoMakie.Figure(size = (800, 1200))
-ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Inf c")
+ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "SSR")
 lines!(
     ax1,
     [
-        parent(diagnostics[1].output_writer.dict["infc_1d_average"][t])[1] for
+        parent(diagnostics[1].output_writer.dict["ssr_1d_average"][t])[1] for
         t in times
     ],
 )
@@ -287,6 +299,25 @@ lines!(
     ],
 )
 CairoMakie.save(joinpath(root_path, "runoff.png"), fig)
+fig = CairoMakie.Figure(size = (800, 1200))
+ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "GHF")
+lines!(
+    ax1,
+    [
+        parent(diagnostics[1].output_writer.dict["ghf_1d_average"][t])[1] * parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1] for
+        t in times
+    ],
+)
+ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Snow κ")
+lines!(
+    ax2,
+    [
+        parent(diagnostics[1].output_writer.dict["snowκ_1d_average"][t])[1] * ClimaLand.heaviside(parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1], 0.1) for
+        t in times
+    ],
+)
+CairoMakie.save(joinpath(root_path, "ghf.png"), fig)
+
 @show sum([
     parent(diagnostics[1].output_writer.dict["sr_1d_average"][t])[1] for
     t in times

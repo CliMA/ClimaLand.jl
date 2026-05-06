@@ -528,7 +528,7 @@ function get_possible_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
-    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb", "snowtbot", "snowκ"]
 end
 function get_possible_diagnostics(model::BucketModel)
     return [
@@ -604,7 +604,7 @@ function get_possible_diagnostics(model::LandModel)
     )
 
     additional_diagnostics =
-        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg"]
+        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg", "ghf"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
