@@ -73,7 +73,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     dz_bottom = FT(2) #FT(1.5),
     dz_top = FT(0.038)
     dz_tuple = (dz_bottom, dz_top)
-    nelements = 24
+    nelements = 10#24
     zmin = FT(-6.2)
     zmax = FT(0)
 
@@ -133,6 +133,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     conductance = PModelConductance{FT}(toml_dict_base)
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict_base)
+    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(land_domain, LAI, toml_dict_base)
 
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         canopy_domain,
@@ -143,6 +144,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         photosynthesis,
         conductance,
         soil_moisture_stress,
+        biomass,
     )
 
     # Snow model with zenith-angle-dependent albedo
@@ -217,30 +219,27 @@ function ClimaCalibrate.forward_model(iteration, member)
         Y.soilco2.SOC .= model_value
     end=#
     
+    #= old SOC-only custom_set_ic! (uniform-column SWC from base_set_ic!)
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
-        Y.soilco2.CO2 .= FT(0.000412)
-        Y.soilco2.O2_f .= FT(0.21)
-        #read csv file with depth and SOC values, then interpolate to model layers
+        #Y.soilco2.CO2 .= FT(0.000412)
+        #Y.soilco2.O2_f .= FT(0.21)
         model_value = ClimaCore.Fields.zeros(land_domain.space.subsurface)
         data = CSV.read("/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean.csv", DataFrame)
         valid = .!ismissing.(data[!, "$(SITE_ID)_estimatedOC_kg_m3"])
         raw_z::Vector{Float64} = Float64.(data.depth[valid])
         sort_idx = sortperm(raw_z)
         raw_vals::Vector{Float64} = Float64.(data[valid, "$(SITE_ID)_estimatedOC_kg_m3"])
-        
-        #get extrapolation values
-        # get the first entry in raw_z, which is the most negative value (deepest depth)
+
         z_extrap_top = (raw_z[sort_idx])[1]
         SOC_extrap_top = (raw_vals[sort_idx])[1]
         SOC_extrap_bot = FT(0.5)
         z_extrap_bot = minimum(parent(ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z))
-        
+
         zvalues = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
 
         alpha_soc = FT(log(SOC_extrap_top / SOC_extrap_bot) / (z_extrap_bot - z_extrap_top))
 
-        # append the two parts to get the full profile 
         model_value .= map(zvalues) do z
             if z > z_extrap_top
                 linear_interpolation(raw_z[sort_idx], raw_vals[sort_idx], z)
@@ -249,7 +248,100 @@ function ClimaCalibrate.forward_model(iteration, member)
             end
         end
         Y.soilco2.SOC .= model_value
+    end
+    =#
 
+    # New custom_set_ic! — SOC profile from NEON CSV + soil-moisture profile
+    # derived from NEON VSWCMean sensors (time- and plot-mean per depth code).
+    function custom_set_ic!(Y, p, t, model)
+        base_set_ic!(Y, p, t, model)
+
+        # ── 1. SOC profile (NEON CSV with exponential extrapolation below) ──
+        soc_field = ClimaCore.Fields.zeros(land_domain.space.subsurface)
+        soc_data = CSV.read(
+            "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean.csv",
+            DataFrame,
+        )
+        valid_soc = .!ismissing.(soc_data[!, "$(SITE_ID)_estimatedOC_kg_m3"])
+        raw_z::Vector{Float64} = Float64.(soc_data.depth[valid_soc])
+        sort_idx_soc = sortperm(raw_z)
+        raw_vals::Vector{Float64} =
+            Float64.(soc_data[valid_soc, "$(SITE_ID)_estimatedOC_kg_m3"])
+
+        z_extrap_top = (raw_z[sort_idx_soc])[1]
+        SOC_extrap_top = (raw_vals[sort_idx_soc])[1]
+        SOC_extrap_bot = FT(0.05)
+        z_extrap_bot = minimum(parent(
+            ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z,
+        ))
+        zvalues = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+        alpha_soc =
+            FT(log(SOC_extrap_top / SOC_extrap_bot) / (z_extrap_bot - z_extrap_top))
+
+        soc_field .= map(zvalues) do z
+            if z > z_extrap_top
+                linear_interpolation(raw_z[sort_idx_soc], raw_vals[sort_idx_soc], z)
+            else
+                FT(0) #SOC_extrap_top * exp(-alpha_soc * (z - z_extrap_top))
+            end
+        end
+        Y.soilco2.SOC .= soc_field
+
+        # ── 2. Soil moisture profile from NEON VSWCMean columns ─────────────
+        # Standard NEON soil sensor depths (m, negative = below surface).
+        # 501 ≈ 6 cm, 502 ≈ 16 cm, 503 ≈ 26 cm, 504 ≈ 46 cm, 505 ≈ 66 cm,
+        # 506 ≈ 86 cm, 507 ≈ 106 cm, 508 ≈ 166 cm
+        neon_depths = FT[-0.06, -0.16, -0.26, -0.46, -0.66, -0.86, -1.06, -1.66]
+        depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
+        n_plots = 5
+
+        csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
+        swc_data = CSV.read(csv_path, DataFrame)
+        swc_colnames = names(swc_data)
+
+        swc_per_depth = FT[]
+        for code in depth_codes
+            vals = Float64[]
+            for plot_id in 1:n_plots
+                colname = "VSWCMean_$(lpad(plot_id, 3, '0'))_$code"
+                colname in swc_colnames || continue
+                for v in swc_data[!, colname]
+                    (ismissing(v) || isnan(Float64(v))) && continue
+                    push!(vals, Float64(v))
+                end
+            end
+            push!(swc_per_depth, isempty(vals) ? FT(NaN) : FT(mean(vals)))
+        end
+
+        valid_swc = .!isnan.(swc_per_depth)
+        swc_z_valid = neon_depths[valid_swc]
+        swc_vals_valid = swc_per_depth[valid_swc]
+        sort_idx_swc = sortperm(swc_z_valid)
+        swc_z_sorted = swc_z_valid[sort_idx_swc]
+        swc_vals_sorted = swc_vals_valid[sort_idx_swc]
+
+        @info "NEON-derived SWC profile" depths = swc_z_sorted theta_l = swc_vals_sorted
+
+        z_top_data = swc_z_sorted[end]
+        z_bot_data = swc_z_sorted[1]
+        swc_top = swc_vals_sorted[end]
+        swc_bot = swc_vals_sorted[1]
+
+        z_soil = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
+        Y.soil.ϑ_l .= map(z_soil) do z
+            if z > z_top_data
+                FT(swc_top)
+            elseif z < z_bot_data
+                FT(swc_bot)
+            else
+                FT(linear_interpolation(swc_z_sorted, swc_vals_sorted, z))
+            end
+        end
+
+        ν_field = land.soil.parameters.ν
+        θ_r_field = land.soil.parameters.θ_r
+        @. Y.soil.ϑ_l =
+            clamp(Y.soil.ϑ_l, θ_r_field + FT(1e-4), ν_field - FT(1e-4))
     end
     #=
     function custom_set_ic!(Y, p, t, model)

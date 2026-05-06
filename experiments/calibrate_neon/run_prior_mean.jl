@@ -103,10 +103,10 @@ atmos_h = FT(metadata.atmos_h)
 # ── Prior mean values ─────────────────────────────────────────────────────────
 const PRIOR_TOML = joinpath(OUTPUT_DIR, "prior_mean_parameters.toml")
 function set_prior()
-    soilCO2_reference_rate = 7.8494e-10
-    soilCO2_activation_energy = 113650.0
-    michaelis_constant = 4.3271e-5
-    O2_michaelis_constant = 0.0010347
+    soilCO2_reference_rate = 1.554e-7
+    soilCO2_activation_energy = 113120.0
+    michaelis_constant = 0.033763
+    O2_michaelis_constant = 0.018213
 
     # read the prior values from final_parameter_means.txt if it exists, otherwise use the defaults above
     if isfile(Prior_filepath)
@@ -181,7 +181,7 @@ println("Simulating $start_date → $stop_date (spinup until $spinup_date)")
 dz_bottom = FT(2) #FT(1.5),
 dz_top = FT(0.038)
 dz_tuple = (dz_bottom, dz_top)
-nelements = 24
+nelements = 10#24
 zmin = FT(-6.2)
 zmax = FT(0)
 # Domain
@@ -290,7 +290,7 @@ base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
     time_offset,
     land,
 )
-
+#=
 function set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
     Y.soilco2.CO2 .= FT(0.000412)
@@ -300,7 +300,7 @@ function set_ic!(Y, p, t, model)
     τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
     z = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
     @. Y.soilco2.SOC = SOC_bot + (SOC_top - SOC_bot) * exp(z / τ_soc)
-end
+end=#
 
 
 ocd_path = ClimaLand.Artifacts.soil_grids_ocd_artifact_path()
@@ -342,11 +342,12 @@ function set_ic!(Y, p, t, model)
     end
     Y.soilco2.SOC .= model_value
 end=#
-#=
+
+#= old SOC-only set_ic! (uniform-column SWC from base_set_ic!)
 function set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
-    Y.soilco2.CO2 .= FT(0.000412)
-    Y.soilco2.O2_f .= FT(0.21)
+    #Y.soilco2.CO2 .= FT(0.000412)
+    #Y.soilco2.O2_f .= FT(0.21)
     #read csv file with depth and SOC values, then interpolate to model layers
     model_value = ClimaCore.Fields.zeros(land_domain.space.subsurface)
     data = CSV.read("/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean.csv", DataFrame)
@@ -354,19 +355,19 @@ function set_ic!(Y, p, t, model)
     raw_z::Vector{Float64} = Float64.(data.depth[valid])
     sort_idx = sortperm(raw_z)
     raw_vals::Vector{Float64} = Float64.(data[valid, "$(SITE_ID)_estimatedOC_kg_m3"])
-    
+
     #get extrapolation values
     # get the first entry in raw_z, which is the most negative value (deepest depth)
     z_extrap_top = (raw_z[sort_idx])[1]
     SOC_extrap_top = (raw_vals[sort_idx])[1]
     SOC_extrap_bot = FT(0.5)
     z_extrap_bot = minimum(parent(ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z))
-    
+
     zvalues = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
 
     alpha_soc = FT(log(SOC_extrap_top / SOC_extrap_bot) / (z_extrap_bot - z_extrap_top))
 
-    # append the two parts to get the full profile 
+    # append the two parts to get the full profile
     model_value .= map(zvalues) do z
         if z > z_extrap_top
             linear_interpolation(raw_z[sort_idx], raw_vals[sort_idx], z)
@@ -378,6 +379,105 @@ function set_ic!(Y, p, t, model)
 
 end
 =#
+
+# New set_ic! — SOC profile from NEON CSV + soil-moisture profile derived from
+# NEON VSWCMean sensors (time- and plot-mean per depth code).
+function set_ic!(Y, p, t, model)
+    base_set_ic!(Y, p, t, model)
+
+    # ── 1. SOC profile (NEON CSV with exponential extrapolation below data) ──
+    soc_field = ClimaCore.Fields.zeros(land_domain.space.subsurface)
+    soc_data = CSV.read(
+        "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean.csv",
+        DataFrame,
+    )
+    valid_soc = .!ismissing.(soc_data[!, "$(SITE_ID)_estimatedOC_kg_m3"])
+    raw_z::Vector{Float64} = Float64.(soc_data.depth[valid_soc])
+    sort_idx_soc = sortperm(raw_z)
+    raw_vals::Vector{Float64} =
+        Float64.(soc_data[valid_soc, "$(SITE_ID)_estimatedOC_kg_m3"])
+
+    z_extrap_top = (raw_z[sort_idx_soc])[1]
+    SOC_extrap_top = (raw_vals[sort_idx_soc])[1]
+    SOC_extrap_bot = FT(0.05)
+    z_extrap_bot = minimum(parent(
+        ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z,
+    ))
+    zvalues = ClimaCore.Fields.coordinate_field(axes(Y.soilco2.SOC)).z
+    alpha_soc =
+        FT(log(SOC_extrap_top / SOC_extrap_bot) / (z_extrap_bot - z_extrap_top))
+
+    soc_field .= map(zvalues) do z
+        if z > z_extrap_top
+            linear_interpolation(raw_z[sort_idx_soc], raw_vals[sort_idx_soc], z)
+        else
+            SOC_extrap_top * exp(-alpha_soc * (z - z_extrap_top))
+        end
+    end
+    Y.soilco2.SOC .= soc_field
+
+    # ── 2. Soil moisture profile from NEON VSWCMean columns ─────────────────
+    # Standard NEON soil sensor depths (m, negative = below surface).
+    # 501 ≈ 6 cm, 502 ≈ 16 cm, 503 ≈ 26 cm, 504 ≈ 46 cm, 505 ≈ 66 cm,
+    # 506 ≈ 86 cm, 507 ≈ 106 cm, 508 ≈ 166 cm
+    neon_depths = FT[-0.06, -0.16, -0.26, -0.46, -0.66, -0.86, -1.06, -1.66]
+    depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
+    n_plots = 5
+
+    csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
+    swc_data = CSV.read(csv_path, DataFrame)
+    swc_colnames = names(swc_data)
+
+    # Time- and plot-mean SWC per depth code
+    swc_per_depth = FT[]
+    for code in depth_codes
+        vals = Float64[]
+        for plot_id in 1:n_plots
+            colname = "VSWCMean_$(lpad(plot_id, 3, '0'))_$code"
+            colname in swc_colnames || continue
+            for v in swc_data[!, colname]
+                (ismissing(v) || isnan(Float64(v))) && continue
+                push!(vals, Float64(v))
+            end
+        end
+        push!(swc_per_depth, isempty(vals) ? FT(NaN) : FT(mean(vals)))
+    end
+
+    valid_swc = .!isnan.(swc_per_depth)
+    swc_z_valid = neon_depths[valid_swc]
+    swc_vals_valid = swc_per_depth[valid_swc]
+    sort_idx_swc = sortperm(swc_z_valid)
+    swc_z_sorted = swc_z_valid[sort_idx_swc]
+    swc_vals_sorted = swc_vals_valid[sort_idx_swc]
+
+    println("NEON-derived SWC profile (z [m], θ_l):")
+    for (zd, vd) in zip(swc_z_sorted, swc_vals_sorted)
+        println("  z = $(round(zd, digits=3)), θ_l = $(round(vd, digits=4))")
+    end
+
+    z_top_data = swc_z_sorted[end]
+    z_bot_data = swc_z_sorted[1]
+    swc_top = swc_vals_sorted[end]
+    swc_bot = swc_vals_sorted[1]
+
+    z_soil = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
+    Y.soil.ϑ_l .= map(z_soil) do z
+        if z > z_top_data
+            FT(swc_top)
+        elseif z < z_bot_data
+            FT(swc_bot)
+        else
+            FT(0) #FT(linear_interpolation(swc_z_sorted, swc_vals_sorted, z))
+        end
+    end
+
+    # Clip to physical range (θ_r + ε, ν - ε) to avoid retention-curve issues
+    ν_field = land.soil.parameters.ν
+    θ_r_field = land.soil.parameters.θ_r
+    @. Y.soil.ϑ_l =
+        clamp(Y.soil.ϑ_l, θ_r_field + FT(1e-4), ν_field - FT(1e-4))
+end
+
 #=
 function set_ic!(Y, p, t, model)
     base_set_ic!(Y, p, t, model)
@@ -395,7 +495,6 @@ output_vars = [
     "sco2",
     "soc",
     "hr",
-    "sod",
     "so2",
     "sco2_ppm",
     "scd",
@@ -449,6 +548,33 @@ sco2_daily = get_diag_layer(simulation, "sco2_ppm_30m_average", target_layer)
 so2_daily = get_diag_layer(simulation, "so2_30m_average", target_layer)
 swc_daily = get_diag_layer(simulation, "swc_30m_average", target_layer)
 tsoil_daily = get_diag_layer(simulation, "tsoil_30m_average", target_layer)
+
+# ── SOC depth profile plot ────────────────────────────────────────────────────
+# SOC is time-invariant (dY.soilco2.SOC = 0), so the first timestep is enough
+soc_vals = Float64[]
+for layer in 1:nelements
+    (_, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+        simulation.diagnostics[1].output_writer,
+        "soc_30m_average";
+        layer = layer,
+    )
+    push!(soc_vals, data[1])
+end
+
+fig_soc = Figure(size = (500, 700))
+ax_soc = Axis(
+    fig_soc[1, 1];
+    xlabel = "SOC (kg C m⁻³)",
+    ylabel = "Depth (m)",
+    title  = "$SITE_ID — SOC Profile",
+)
+lines!(ax_soc, soc_vals, z_vals; color = :brown, linewidth = 2.0, label = "Model SOC")
+scatter!(ax_soc, soc_vals, z_vals; color = :brown, markersize = 6)
+axislegend(ax_soc; position = :rb, framevisible = false)
+
+outpath_soc = joinpath(OUTPUT_DIR, "soc_profile_$(SITE_ID).png")
+CairoMakie.save(outpath_soc, fig_soc)
+println("Saved SOC profile plot: $outpath_soc")
 
 #instability analyses
 #=

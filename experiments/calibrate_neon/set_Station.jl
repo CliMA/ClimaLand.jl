@@ -48,9 +48,9 @@ ENV["NEON_SITE_ID"] = "NEON-jorn"; ENV["NEON_START_DATE"] = "2021-01-01";  ENV["
 #ENV["NEON_SITE_ID"] = "NEON-moab"; ENV["NEON_START_DATE"] = "2023-01-01";  ENV["NEON_STOP_DATE"] = "2023-12-31"
 
 ENV["NEON_SPINUP_DAYS"] = "20"
-ENV["NEON_N_ITERATIONS"] = "10"
+ENV["NEON_N_ITERATIONS"] = "5"
 ENV["CALL_DEPTH"] = "0.06" #in X.XXm
-settingsdesc = "SOC18kgto05kgexp_newSO2_dt180s"#"NEONextrapReal_newSO2_dt180s" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
+settingsdesc = "NeonExpTo005_10layers_newSWCInit_main20260504_dt180s"#"NEONextrapReal_newSO2_dt180s" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
 # TimeVaryNoise_
 # Output path for both observations and calibration results
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")

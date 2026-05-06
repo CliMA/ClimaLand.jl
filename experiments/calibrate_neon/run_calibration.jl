@@ -65,10 +65,29 @@ const Caldepthnum = get(ENV, "CALL_DEPTH", "0.00")
 # Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
 # parameter TOMLs using these names
 
-soilCO2_reference_rate = [2.0e-9, 1.0e-9, 1.0e-12, 1.0e-6]
-soilCO2_activation_energy = [10000.0, 5000.0, 10.0, 120000.0]
-michaelis_constant = [0.0003, 0.0001, 0, Inf]
-O2_michaelis_constant = [0.0003, 0.0001, 0, Inf]
+# Prior format: [mean, std, lower_bound, upper_bound]
+#
+# Davidson et al. (2011) DAMM defaults (ClimaParams) for reference:
+#   soilCO2_pre_exponential_factor = 194e3  (V_ref_sx; not directly used here)
+#   soilCO2_activation_energy      = 61e3   (J/mol)
+#   michaelis_constant             = 5e-3   (kg C / m³)
+#   O2_michaelis_constant          = 4e-3   (m³ / m³)
+#
+# Rationale for the values below:
+# - soilCO2_reference_rate (V_ref_sx): controls absolute respiration magnitude.
+#   Centered at the previously calibrated NEON value (~5e-9) but with broader
+#   spread so the calibration can move up/down by an order of magnitude.
+# - soilCO2_activation_energy (Ea_sx): centered near Davidson default 61 kJ/mol
+#   with moderate spread covering typical Q10 behavior across sites.
+# - michaelis_constant (kM_sx): centered at Davidson default 5e-3. At this value
+#   MM_sx stays substrate-limited so the θ_l^3 pulse signal propagates into
+#   respiration. Previous prior (3e-4) saturated MM_sx and damped the pulses.
+# - O2_michaelis_constant (kM_o2): centered at Davidson default 4e-3 so O2
+#   limitation only kicks in for genuinely wet conditions.
+soilCO2_reference_rate    = [1.4335e-7, 5.0e-8, 1.0e-12, 1.0e-6]
+soilCO2_activation_energy = [110550.0, 20000.0, 10.0, 200000.0]
+michaelis_constant        = [0.014905, 8.0e-3, 0.0, Inf]
+O2_michaelis_constant     = [0.040358, 2.0e-2, 0.0, Inf]
 
 priors = [
     PD.constrained_gaussian(
