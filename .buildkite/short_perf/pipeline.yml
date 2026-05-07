@@ -67,7 +67,8 @@ steps:
                     command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
                     agents:
                       slurm_mem: 8GB
-                      slurm_gpus: 1
+                      # a bug in this plugin ignores non-strings properties
+                      slurm_gpus: "1"
                     concurrency: 1
                     concurrency_group: "depot/climaland-perf-regression-tests"
                     artifact_paths:
@@ -84,7 +85,8 @@ steps:
                     concurrency_group: "depot/climaland-perf-regression-tests"
                     agents:
                       slurm_mem: 24GB
-                      slurm_gpus: 1
+                      # a bug in this plugin ignores non-strings properties
+                      slurm_gpus: "1"
                     artifact_paths:
                       - "snowy_land_benchmark_gpu/*"
                 - path:
@@ -101,6 +103,7 @@ steps:
                     concurrency_group: "depot/climaland-perf-regression-tests"
                     agents:
                       slurm_mem: 16GB
-                      slurm_gpus: 1
+                      # a bug in this plugin ignores non-strings properties
+                      slurm_gpus: "1"
                     artifact_paths:
                       - "soil_benchmark_gpu/*"
