@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.8.1
+-----
 - Change default land model to use the pmodel, piecewise soil moisture stress, and snow albedo zenith angle parameterization PR[#1726](https://github.com/CliMA/ClimaLand.jl/pull/1726)
 
 v1.8.0
