@@ -148,8 +148,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     (; Drel) = canopy.conductance.parameters
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
-    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
-    An_canopy = p.canopy.photosynthesis.An          # net assimilation rate, mol m^-2 s^-1, canopy level
+    ci = p.canopy.photosynthesis.InstVars.ci             # internal CO2 partial pressure, Pa 
+    An_canopy = p.canopy.photosynthesis.InstVars.An          # net assimilation rate, mol m^-2 s^-1, canopy level
     R = LP.gas_constant(earth_param_set)
     FT = eltype(model.parameters)
 

@@ -2,6 +2,7 @@ using Test
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand
+using ClimaLand.Snow
 import ClimaLand
 import ClimaParams as CP
 import ClimaLand.Parameters as LP
@@ -14,7 +15,17 @@ domain =
 (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
 forcing = (; atmos, radiation)
 Δt = FT(180.0)
-land_model = ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt)
+snow = Snow.SnowModel(
+    FT,
+    ClimaLand.Domains.obtain_surface_domain(domain),
+    forcing,
+    toml_dict,
+    Δt;
+    prognostic_land_components = (:snow, :soil),
+    α_snow = Snow.ConstantAlbedoModel(toml_dict["snow_albedo"]),
+    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+)
+land_model = ClimaLand.SoilSnowModel{FT}(forcing, toml_dict, domain, Δt; snow)
 
 Y, p, coords = ClimaLand.initialize(land_model)
 p_soil_alone = deepcopy(p)

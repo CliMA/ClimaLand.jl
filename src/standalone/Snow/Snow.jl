@@ -356,7 +356,7 @@ end
         ρ_snow = toml_dict["snow_density"],
         α_snow_param = toml_dict["snow_albedo"],
         density::DM = MinimumDensityModel(ρ_snow),
-        α_snow::AM = ConstantAlbedoModel(α_snow_param),
+        α_snow::AM = ZenithAngleAlbedoModel(toml_dict),
         scf::SCFM = WuWuSnowCoverFractionModel(
             toml_dict,
             CP.float_type(toml_dict)(1.0),
@@ -512,7 +512,7 @@ end
         ϵ_snow = toml_dict["snow_emissivity"],
         α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
         density = MinimumDensityModel(toml_dict["snow_density"]),
-        scf = WuWuSnowCoverFractionModel(toml_dict, FT(1)),
+        scf = WuWuSnowCoverFractionModel(toml_dict, sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2),
         surf_temp = BulkSurfaceTemperatureModel{FT}(),
         θ_r = toml_dict["holding_capacity_of_water_in_snow"],
         Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
@@ -537,9 +537,13 @@ function SnowModel(
     z_0m = toml_dict["snow_momentum_roughness_length"],
     z_0b = toml_dict["snow_scalar_roughness_length"],
     ϵ_snow = toml_dict["snow_emissivity"],
-    α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+    α_snow = ZenithAngleAlbedoModel(toml_dict),
     density = MinimumDensityModel(toml_dict["snow_density"]),
-    scf = WuWuSnowCoverFractionModel(toml_dict, FT(1.0)),
+    scf = WuWuSnowCoverFractionModel(
+        toml_dict,
+        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) /
+        2,
+    ),
     surf_temp = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],

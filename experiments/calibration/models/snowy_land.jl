@@ -45,53 +45,13 @@ function setup_model(
         start_date,
         stop_date,
     )
-    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
-    # Snow model setup
-    # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
-    horz_degree_res =
-        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
-    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
-    snow = Snow.SnowModel(
-        FT,
-        surface_domain,
-        forcing,
-        toml_dict,
-        Δt;
-        prognostic_land_components,
-        α_snow,
-        scf,
-    )
-
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    canopy_forcing = (; atmos, radiation, ground)
-    photosynthesis = PModel{FT}(domain, toml_dict)
-    conductance = PModelConductance{FT}(toml_dict)
-    soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass =
-        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        canopy_forcing,
-        LAI,
-        toml_dict;
-        prognostic_land_components,
-        photosynthesis,
-        conductance,
-        soil_moisture_stress,
-        biomass,
-    )
-
-    # Construct the land model with all default components except for snow
+    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
     land = LandModel{FT}(
         forcing,
         LAI,
         toml_dict,
         domain,
         Δt;
-        snow,
-        canopy,
         prognostic_land_components,
     )
     return land

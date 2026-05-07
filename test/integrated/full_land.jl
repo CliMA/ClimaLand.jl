@@ -687,8 +687,12 @@ end
     @test all(parent(p.canopy.turbulent_fluxes.vapor_flux)[lake_mask] .== 0)
     @test all(parent(p.canopy.radiative_transfer.LW_n)[lake_mask] .== 0)
     @test all(parent(p.canopy.radiative_transfer.SW_n)[lake_mask] .== 0)
-    @test all(parent(p.canopy.photosynthesis.An)[lake_mask] .== 0)
-    @test all(parent(p.canopy.photosynthesis.GPP)[lake_mask] .== 0)
+    @test all(
+        parent(
+            Base.materialize(get_An_canopy(p, land.canopy.photosynthesis)),
+        )[lake_mask] .== 0,
+    )
+    @test all(parent(get_GPP(p, land.canopy.photosynthesis))[lake_mask] .== 0)
     @test all(parent(p.canopy.sif.SIF)[lake_mask] .== 0)
     @test all(parent(p.canopy.autotrophic_respiration.Ra)[lake_mask] .== 0)
 

@@ -271,7 +271,7 @@ for FT in (Float32, Float64)
         h_canopy = FT(1.0) # h planck defined above
         Nl, Nr, Ns = ClimaLand.Canopy.nitrogen_content(
             ARparams.ne,
-            photosynthesisparams.Vcmax25,
+            photosynthesisparams.Vcmax25 * LAI,
             LAI,
             SAI,
             RAI,
@@ -281,11 +281,21 @@ for FT in (Float32, Float64)
             ARparams.μr,
             ARparams.μs,
         )
-        Rpm = ClimaLand.Canopy.plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
-        Rg = ClimaLand.Canopy.plant_respiration_growth.(ARparams.Rel, An, Rpm)
+        Rpm = ClimaLand.Canopy.plant_respiration_maintenance(
+            Rd * LAI,
+            β,
+            Nl,
+            Nr,
+            Ns,
+        )
+        Rg =
+            ClimaLand.Canopy.plant_respiration_growth.(
+                ARparams.Rel,
+                An * LAI,
+                Rpm,
+            )
 
-        @test Nl ==
-              photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl * LAI
+        @test Nl == photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl
         @test Nr ==
               ARparams.μr * photosynthesisparams.Vcmax25 / ARparams.ne *
               ARparams.σl *
@@ -296,8 +306,8 @@ for FT in (Float32, Float64)
               h_canopy *
               LAI *
               ClimaLand.heaviside(SAI)# == gives a very small error
-        @test Rpm == Rd * (β + (Nr + Ns) / Nl)
-        @test all(@.(Rg ≈ ARparams.Rel * (An - Rpm)))
+        @test Rpm == Rd * LAI * (β + (Nr + Ns) / Nl)
+        @test all(@.(Rg ≈ ARparams.Rel * (An * LAI - Rpm)))
 
     end
 end

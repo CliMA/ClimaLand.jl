@@ -302,7 +302,7 @@ SHF = [
 ]
 
 GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
+    parent(get_GPP(sv.saveval[k], land.canopy.photosynthesis))[1] for
     k in model_idx1:1:model_idxend
 ]
 

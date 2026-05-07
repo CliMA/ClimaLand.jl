@@ -63,7 +63,6 @@ end
 LAI = TimeVaryingInput(fakeLAIfunction)
 SAI = RAI = FT(0)
 rooting_depth = FT(1)
-hydraulics = PlantHydraulicsModel{FT}(land_domain, toml_dict);
 height = FT(1)
 biomass =
     Canopy.PrescribedBiomassModel{FT}(; LAI, SAI, RAI, rooting_depth, height)
@@ -72,7 +71,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     forcing,
     LAI,
     toml_dict;
-    hydraulics,
     biomass,
 )
 
@@ -109,7 +107,7 @@ T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
 ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l)[1] for k in 1:length(sol.t)]
 GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
+    parent(get_GPP(sv.saveval[k], canopy.photosynthesis))[1] * 1e6 for
     k in 1:length(sol.t)
 ]
 resp = [
