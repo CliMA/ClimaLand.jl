@@ -136,7 +136,7 @@ function setup_model(
         prognostic_land_components,
         α_snow,
         scf,
-        surf_temp
+        surf_temp,
         density
     )
 
@@ -173,7 +173,11 @@ else
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+set_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        model,
+    )
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"

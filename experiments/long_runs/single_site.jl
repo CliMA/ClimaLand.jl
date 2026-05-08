@@ -67,7 +67,7 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true
+        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -119,7 +119,7 @@ function setup_model(
         α_snow,
         scf,
         surf_temp,
-        density
+        density,
     )
 
     # Construct the land model with all default components except for snow
@@ -180,9 +180,19 @@ diagnostics = ClimaLand.default_diagnostics(
         "ghf",
     ],
 )
-set_ic! = ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(model)
-simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
+set_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        model,
+    )
+simulation = LandSimulation(
+    start_date,
+    stop_date,
+    Δt,
+    model;
+    outdir,
+    diagnostics,
+    set_ic!,
+)
 
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
@@ -221,13 +231,22 @@ for i in 1:2:nelements
 end
 fig[2, 2] = Legend(fig, ax2)
 
-ax3 = CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Effective Saturation")
+ax3 =
+    CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Effective Saturation")
 for i in 1:2:nelements
     lines!(
         ax3,
         [
-            (parent(diagnostics[1].output_writer.dict["si_1d_average"][t])[i] .+ parent(diagnostics[1].output_writer.dict["swc_1d_average"][t])[i] - parent(model.soil.parameters.θ_r)[i])/(parent(model.soil.parameters.ν)[i]- parent(model.soil.parameters.θ_r)[i])
-            for t in times
+            (
+                parent(
+                    diagnostics[1].output_writer.dict["si_1d_average"][t],
+                )[i] .+ parent(
+                    diagnostics[1].output_writer.dict["swc_1d_average"][t],
+                )[i] - parent(model.soil.parameters.θ_r)[i]
+            ) / (
+                parent(model.soil.parameters.ν)[i] -
+                parent(model.soil.parameters.θ_r)[i]
+            ) for t in times
         ],
         label = "$i",
     )
@@ -263,8 +282,8 @@ lines!(
 lines!(
     ax3,
     [
-        parent(diagnostics[1].output_writer.dict["snowtbot_1d_average"][t])[1] for
-        t in times
+        parent(diagnostics[1].output_writer.dict["snowtbot_1d_average"][t])[1]
+        for t in times
     ],
     label = "Bottom Snow",
 )
@@ -310,7 +329,8 @@ ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "GHF")
 lines!(
     ax1,
     [
-        parent(diagnostics[1].output_writer.dict["ghf_1d_average"][t])[1] * parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1] for
+        parent(diagnostics[1].output_writer.dict["ghf_1d_average"][t])[1] *
+        parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1] for
         t in times
     ],
 )
@@ -318,8 +338,11 @@ ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Snow κ")
 lines!(
     ax2,
     [
-        parent(diagnostics[1].output_writer.dict["snowκ_1d_average"][t])[1] * ClimaLand.heaviside(parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1], 0.1) for
-        t in times
+        parent(diagnostics[1].output_writer.dict["snowκ_1d_average"][t])[1] *
+        ClimaLand.heaviside(
+            parent(diagnostics[1].output_writer.dict["snowc_1d_average"][t])[1],
+            0.1,
+        ) for t in times
     ],
 )
 CairoMakie.save(joinpath(root_path, "ghf.png"), fig)
