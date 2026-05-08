@@ -19,7 +19,7 @@ tag = "SoilMoistureStress"
 # TOPMODELRunoff model
 
 ["f_over"]
-value = 0.28
+value = 3.28
 type = "float"
 description = "Units are 1/m"
 tag = "TOPMODELRunoff"

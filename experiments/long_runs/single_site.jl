@@ -23,7 +23,11 @@ using Dates
 
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
 
+ClimaComms.@import_required_backends
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -39,7 +43,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_ic_fover"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_ic_density"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -104,6 +108,7 @@ function setup_model(
     horz_degree_res = FT(1)
     scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
     snow = Snow.SnowModel(
         FT,
         surface_domain,
@@ -114,6 +119,7 @@ function setup_model(
         α_snow,
         scf,
         surf_temp,
+        density
     )
 
     # Construct the land model with all default components except for snow
@@ -135,8 +141,8 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = DateTime("2008-06-01")
-stop_date = DateTime("2014-06-01")
+start_date = DateTime("2000-09-01")
+stop_date = DateTime("2015-09-01")
 Δt = 450.0
 longlat = FT.((143.2, 63.25))
 zlim = FT.((-15, 0))

@@ -262,9 +262,15 @@ function snow_thermal_conductivity(
 ) where {FT}
     _κ_air = FT(LP.K_therm(earth_param_set))
     _ρ_ice = FT(LP.ρ_cloud_ice(earth_param_set))
-    return (_κ_air +
-           (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
-           (κ_ice - _κ_air))
+    x = min(ρ_snow/_ρ_ice, FT(600)/_ρ_ice)
+    if x < FT(0.17)
+        return FT(0.023) + FT(0.20)*x
+    else 
+        return 0.138-FT(0.93)*x+FT(2.72)*x^2
+    end
+   # return (_κ_air +
+   #        (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
+   #        (κ_ice - _κ_air))
 end
 
 """
