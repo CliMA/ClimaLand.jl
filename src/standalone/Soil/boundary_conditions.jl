@@ -992,9 +992,10 @@ function compute_infiltration_energy_flux(
     t,
 )
     earth_param_set = model.parameters.earth_param_set
+    _T_freeze = eltype(p.soil.infiltration)(273.15)
     return @. lazy(
         p.soil.infiltration *
-        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set),
+        Soil.volumetric_internal_energy_liq(max(p.drivers.T, _T_freeze), earth_param_set),
     )
 end
 
