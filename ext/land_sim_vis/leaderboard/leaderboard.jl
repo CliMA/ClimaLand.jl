@@ -28,6 +28,43 @@ function _percentile_contour_kwargs(
 end
 
 """
+    _monthly_climatology_global_mean(var, mask_fn = ClimaAnalysis.apply_oceanmask)
+
+Return a 12-element vector of global, lonlat-weighted monthly climatology
+means for `var`. Index `i` corresponds to month `i` (1=Jan ... 12=Dec).
+Months that have no valid samples are filled with `NaN`.
+
+`mask_fn` is the same per-variable mask used by `global_bias` /  `global_rmse`
+elsewhere in this module (e.g. `apply_oceanmask` for ERA5 vars, the FLUXCOM
+NaN mask for ILAMB vars). Applying it to sim and obs identically guarantees
+that both lines are averaged over the same set of valid pixels, so the gap
+between the lines matches the global bias shown in the ANN column.
+"""
+function _monthly_climatology_global_mean(
+    var,
+    mask_fn = ClimaAnalysis.apply_oceanmask,
+)
+    times = ClimaAnalysis.times(var)
+    isempty(times) && return fill(NaN, 12)
+    start_date = Dates.DateTime(var.attributes["start_date"])
+    months =
+        [Dates.month(start_date + Dates.Second(round(Int, t))) for t in times]
+    global_means = [
+        ClimaAnalysis.weighted_average_lonlat(
+            mask_fn(ClimaAnalysis.slice(var, time = t)),
+        ).data[] for t in times
+    ]
+    out = fill(NaN, 12)
+    for m in 1:12
+        idxs = findall(==(m), months)
+        isempty(idxs) && continue
+        vals = filter(isfinite, global_means[idxs])
+        isempty(vals) || (out[m] = sum(vals) / length(vals))
+    end
+    return out
+end
+
+"""
     _nee_diverging_contour_kwargs(var, q; nlevels = 21)
 
 Build `more_kwargs` for `contour2D_on_globe!` that uses a diverging
@@ -369,6 +406,9 @@ function compute_seasonal_leaderboard(
     sim_obs_season_comparsion_dict = Dict()
     # Map short name to time series of time averages for each season
     sim_obs_time_avg_over_seasons_comparsion_dict = Dict()
+    # Map short name to (sim_var, obs_var) full windowed time series, used by
+    # the MON column to compute a monthly climatology.
+    sim_obs_full_dict = Dict()
     seasons = ["ANN", "MAM", "JJA", "SON", "DJF"]
 
     spin_up_months = 12
@@ -413,6 +453,9 @@ function compute_seasonal_leaderboard(
         # Resample
         obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
         obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
+        # Stash the full windowed time series so the MON column can compute a
+        # monthly climatology before we collapse along time below.
+        sim_obs_full_dict[short_name] = (sim_var, obs_var)
         sim_var_seasons = (sim_var, ClimaAnalysis.split_by_season(sim_var)...)
         obs_var_seasons = (obs_var, ClimaAnalysis.split_by_season(obs_var)...)
 
@@ -512,7 +555,7 @@ function compute_seasonal_leaderboard(
     # Cols correspond to "SIM" and "ANN"
     annual_compare_vars_biases_plot_extrema =
         get_compare_vars_biases_plot_extrema(; annual = true)
-    groups = ["SIM", "ANN"]
+    groups = ["SIM", "ANN", "MON"]
     fig_sim_ann = CairoMakie.Figure(;
         size = (600 * length(groups), 400 * length(short_names)),
     )
@@ -567,11 +610,104 @@ function compute_seasonal_leaderboard(
                     short_name == "nee" ?
                     _nee_diverging_contour_kwargs(sim_var, 0.95) :
                     _percentile_contour_kwargs(sim_var)
+                # Replace the auto-generated panel title (which leaks raw
+                # seconds-since-start_date) with a clean summary that names
+                # the variable, the year range averaged over, and the actual
+                # min/max of the field shown — the colorbar is clipped to
+                # [5%, 95%] so the data range is otherwise invisible.
+                sim_var_full, _ = sim_obs_full_dict[short_name]
+                start_date =
+                    Dates.DateTime(sim_var_full.attributes["start_date"])
+                ts = ClimaAnalysis.times(sim_var_full)
+                y0 =
+                    Dates.year(start_date + Dates.Second(round(Int, first(ts))))
+                y1 = Dates.year(start_date + Dates.Second(round(Int, last(ts))))
+                year_str = y0 == y1 ? "$(y0)" : "$(y0)–$(y1)"
+                # Use the un-averaged var's `long_name` and strip the
+                # `, average within …` annotation that ClimaAnalysis appends
+                # for monthly diagnostics — otherwise it leaks into the title
+                # alongside our explicit "mean over <years>" phrase.
+                long_name =
+                    get(sim_var_full.attributes, "long_name", short_name)
+                long_name = String(split(long_name, ", average")[1])
+                units_str = ClimaAnalysis.units(sim_var)
+                masked_data = mask_fn_dict[short_name](sim_var).data
+                finite = filter(isfinite, vec(masked_data))
+                panel_title = if isempty(finite)
+                    "$long_name, mean over $year_str [$units_str]"
+                else
+                    lo, hi = extrema(finite)
+                    Printf.@sprintf(
+                        "%s, mean over %s, range %.3g to %.3g [%s]",
+                        long_name,
+                        year_str,
+                        lo,
+                        hi,
+                        units_str,
+                    )
+                end
+                more_kwargs[:axis] = Dict(:title => panel_title)
                 ClimaAnalysis.Visualize.contour2D_on_globe!(
                     layout,
                     sim_var,
                     mask = mask_fn_dict[short_name];
                     more_kwargs,
+                )
+            elseif group == "MON"
+                sim_var_full, obs_var_full = sim_obs_full_dict[short_name]
+                isempty(sim_var_full) && break
+                mask_fn = mask_fn_dict[short_name]
+                sim_monthly =
+                    _monthly_climatology_global_mean(sim_var_full, mask_fn)
+                obs_monthly =
+                    _monthly_climatology_global_mean(obs_var_full, mask_fn)
+                units_str = ClimaAnalysis.units(sim_var_full)
+                ax = CairoMakie.Axis(
+                    fig_sim_ann[row_idx, col_idx],
+                    xlabel = "Month",
+                    ylabel = "$short_name ($units_str)",
+                    xticks = (
+                        1:12,
+                        [
+                            "J",
+                            "F",
+                            "M",
+                            "A",
+                            "M",
+                            "J",
+                            "J",
+                            "A",
+                            "S",
+                            "O",
+                            "N",
+                            "D",
+                        ],
+                    ),
+                )
+                CairoMakie.lines!(
+                    ax,
+                    1:12,
+                    obs_monthly;
+                    color = :black,
+                    linewidth = 4,
+                    label = "OBS",
+                )
+                CairoMakie.lines!(
+                    ax,
+                    1:12,
+                    sim_monthly;
+                    color = :firebrick,
+                    linewidth = 4,
+                    label = "SIM",
+                )
+                # Show the legend only on the top-right panel (first row of
+                # MON); per review feedback (kmdeck/AlexisRenchon), repeating
+                # it on every row clutters the figure and on some variables
+                # (e.g. SWU, NEE) the curves intersect the :rt anchor.
+                row_idx == 1 && CairoMakie.axislegend(
+                    ax,
+                    position = :rt,
+                    framevisible = false,
                 )
             else
                 sim_var, obs_var =
