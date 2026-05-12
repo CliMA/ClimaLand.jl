@@ -964,3 +964,36 @@ function set_lake_initial_conditions!(
     )
     return nothing
 end
+
+function make_set_initial_state_from_atmos_and_parameters(
+    land::ClimaLand.Soil.EnergyHydrology{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        earth_param_set = ClimaLand.get_earth_param_set(land)
+	surface_space = land.domain.space.surface
+	p.drivers.T .= SpaceVaryingInput(
+            "/home/kdeck/ClimaLand.jl/mean_tair.nc",
+            "tair_mean",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        (; θ_r, ν, ρc_ds) = land.parameters
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r)*FT(0.98)
+        Y.soil.θ_i .= FT(0.0)
+        ρc_s =
+            ClimaLand.Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            )
+        Y.soil.ρe_int .=
+            ClimaLand.Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+		p.drivers.T,
+                earth_param_set,
+            )
+    end
+end
