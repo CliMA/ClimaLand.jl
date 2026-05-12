@@ -83,9 +83,8 @@ diagnostics = ClimaLand.default_diagnostics(
         "si",
         "sr",
         "ssr",
-        "tair",
         "precip",
-	"et"
+	"et", "tair"
     ],
 )
 set_ic! =
