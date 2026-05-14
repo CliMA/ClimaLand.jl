@@ -90,9 +90,9 @@ function lake_temperature(
     _cp_i = LP.cp_i(earth_param_set)
     _cp_l = LP.cp_l(earth_param_set)
     depth = params.depth
-    if q_l < eps(FT)
+    if q_l < floatmin(FT)
         return _T_ref + (U + _ρ_l * depth * _LH_f0) / (_ρ_l * depth * _cp_i)
-    elseif q_l > FT(1) - eps(FT)
+    elseif q_l > FT(1) - floatmin(FT)
         return _T_ref + U / (_ρ_l * depth * _cp_l)
     else
         return _T_freeze

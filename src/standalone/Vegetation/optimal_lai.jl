@@ -110,7 +110,7 @@ function compute_L_max(
     # Handle edge case: very small or zero Ao_annual (e.g., polar regions)
     # When Ao_annual ~ 0, z / (k * Ao_annual) -> Inf, causing numerical issues.
     # Use ifelse for GPU compatibility.
-    Ao_annual_safe = max(Ao_annual, eps(FT))
+    Ao_annual_safe = max(Ao_annual, floatmin(FT))
 
     # Energy-limited fAPAR (Equation 11, first term)
     # Plants optimize leaf area to maximize carbon gain minus construction cost
@@ -120,7 +120,7 @@ function compute_L_max(
     # fAPAR_water = f0 * P / A0 * (ca(1-chi)) / (1.6*D)
     # The iWUE factor (ca(1-chi))/(1.6*D) converts water flux to carbon flux
     # Guard against zero VPD
-    vpd_safe = max(vpd_gs, eps(FT))
+    vpd_safe = max(vpd_gs, floatmin(FT))
     iWUE_factor = (ca_pa * (FT(1) - chi)) / (FT(1.6) * vpd_safe)
     fAPAR_water = f0 * precip_annual / Ao_annual_safe * iWUE_factor
 
@@ -133,7 +133,7 @@ function compute_L_max(
     # Convert fAPAR to LAI using Beer's law (Equation 12)
     # fAPAR = 1 - exp(-k * LAI)  ->  LAI = -(1/k) * ln(1 - fAPAR)
     # Guard against fAPAR_max = 1 which would give -log(0) = Inf
-    fAPAR_max_safe = min(fAPAR_max, FT(1) - eps(FT))
+    fAPAR_max_safe = min(fAPAR_max, FT(1) - floatmin(FT))
     LAI_max = -(FT(1) / k) * log(FT(1) - fAPAR_max_safe)
 
     return LAI_max
@@ -180,8 +180,8 @@ function compute_m(
 
     # Guard against division by zero: when LAI_max ~ 0, fAPAR_max ~ 0,
     # but the numerator (sigma * GSL * LAI_max) is also ~ 0, so m ~ 0 naturally.
-    fAPAR_max_safe = max(fAPAR_max, eps(FT))
-    Ao_annual_safe = max(Ao_annual, eps(FT))
+    fAPAR_max_safe = max(fAPAR_max, floatmin(FT))
+    Ao_annual_safe = max(Ao_annual, floatmin(FT))
     m = (sigma * GSL * LAI_max) / (Ao_annual_safe * fAPAR_max_safe)
     return m
 end
@@ -495,7 +495,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
                 p.drivers.P,
                 p.drivers.q,
             ),
-            sqrt(eps(FT)),
+            sqrt(floatmin(FT)),
         ),
     )
 

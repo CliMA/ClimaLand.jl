@@ -279,7 +279,7 @@ function update_subsurface_energy_runoff!(
             model.parameters.earth_param_set,
         )
     column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actual just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
-    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
+    @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, floatmin(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
 end
 update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
 
@@ -326,7 +326,7 @@ function ClimaLand.source!(
     model::RichardsModel{FT},
 ) where {FT}
     h∇ = p.soil.h∇
-    ϵ = eps(FT)
+    ϵ = floatmin(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
 end
@@ -351,7 +351,7 @@ function ClimaLand.source!(
     model::EnergyHydrology{FT},
 ) where {FT}
     h∇ = p.soil.h∇
-    ϵ = eps(FT)
+    ϵ = floatmin(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
     @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux

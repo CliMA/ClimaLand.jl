@@ -193,7 +193,7 @@ function nitrogen_content(
 ) where {FT}
     Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
     Rc = σl * RAI
-    nm = Vcmax25_canopy / (ne * max(LAI, sqrt(eps(FT))))
+    nm = Vcmax25_canopy / (ne * max(LAI, sqrt(floatmin(FT))))
     Nl = nm * σl
     Nr = μr * nm * Rc
     Ns = μs * nm * Sc
@@ -221,7 +221,7 @@ function plant_respiration_maintenance(
     Ns::FT, # Nitrogen content of stems
 ) where {FT}
     # When LAI is zero, Nl = 0
-    Rpm = Rd * (β + (Nr + Ns) / max(Nl, eps(FT)))
+    Rpm = Rd * (β + (Nr + Ns) / max(Nl, floatmin(FT)))
     return Rpm
 end
 

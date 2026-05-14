@@ -670,7 +670,7 @@ the parameter `S_c`. The linear interpolation is taken from Lague et al 2019.
 Note that if our snow_cover_fraction function was smoothly varying, the albedo
 would simply be σα_snow + (1-σ)α_bareground. Since we cannot support snow cover
 fractions that are not a heaviside function, we have a small inconsistency
-for 0 < σS < eps(FT) where the snow cover fraction is zero, but there is a small
+for 0 < σS < floatmin(FT) where the snow cover fraction is zero, but there is a small
 contribution of snow to the albedo.
 """
 function next_albedo!(

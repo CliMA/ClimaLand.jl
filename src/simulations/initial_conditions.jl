@@ -320,7 +320,7 @@ end
 Enforces the constraint that T < 273.15 if S > 0.
 """
 function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
-    if S > sqrt(eps(FT)) # if snow is on the ground
+    if S > sqrt(floatmin(FT)) # if snow is on the ground
         return min(T, FT(273.15))
     else
         return FT(273.16)
@@ -364,7 +364,7 @@ function make_set_initial_state_from_file(
         if enforce_constraints
             # get only the values over land
             T_atmos = Array(parent(p.drivers.T))[:]
-            T_bounds = extrema(T_atmos[T_atmos .> sqrt(eps(FT))])
+            T_bounds = extrema(T_atmos[T_atmos .> sqrt(floatmin(FT))])
         else
             T_bounds = nothing
         end
@@ -502,7 +502,7 @@ function make_set_initial_state_from_file(
         if enforce_constraints
             # get only the values over land
             T_atmos = Array(parent(p.drivers.T))[:]
-            T_bounds = extrema(T_atmos[T_atmos .> sqrt(eps(FT))])
+            T_bounds = extrema(T_atmos[T_atmos .> sqrt(floatmin(FT))])
         else
             T_bounds = nothing
         end
@@ -606,7 +606,7 @@ function make_set_initial_state_from_file(
         if enforce_constraints
             # get only the values over land
             T_atmos = Array(parent(p.drivers.T))[:]
-            T_bounds = extrema(T_atmos[T_atmos .> sqrt(eps(FT))])
+            T_bounds = extrema(T_atmos[T_atmos .> sqrt(floatmin(FT))])
         else
             T_bounds = nothing
         end

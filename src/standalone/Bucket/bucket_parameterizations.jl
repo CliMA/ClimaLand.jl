@@ -204,7 +204,7 @@ sufficiently.
 Over snow, x_c taken a default of 10% of the value around which snow starts to become patchy,
 since snow sublimates at the potential rate in general. We use the β function
 mainly to damp sublimation to zero for vanishing snowpacks. Note that the snow cover fraction
-returns zero for 0 < σS < eps(FT) while this function returns a nonzero function.
+returns zero for 0 < σS < floatmin(FT) while this function returns a nonzero function.
 """
 function β(x::FT, x_c::FT, p::FT) where {FT}
     safe_x = max(0, x)

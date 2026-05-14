@@ -9,7 +9,7 @@ function set_eff_land_radiation_properties!(p, earth_param_set)
     # Effective (radiative) land properties
     _σ = LP.Stefan(earth_param_set)
     FT = typeof(_σ)
-    @. p.α_sfc = p.SW_u / max(p.drivers.SW_d, eps(FT))
+    @. p.α_sfc = p.SW_u / max(p.drivers.SW_d, floatmin(FT))
     @. p.ϵ_sfc = 1
     @. p.T_sfc = (p.LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
 end

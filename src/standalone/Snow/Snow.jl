@@ -214,12 +214,12 @@ struct WuWuSnowCoverFractionModel{FT} <: AbstractSnowCoverFractionModel{FT}
         horz_degree_res::FT,
     ) where {FT}
         expected_β_scf = max(β0 - γ * (horz_degree_res - FT(1.5)), β_min)
-        @assert z0 > eps(FT)
+        @assert z0 > floatmin(FT)
         @assert expected_β_scf ≈ β_scf
-        @assert β0 > eps(FT)
-        @assert β_min > eps(FT)
-        @assert γ > eps(FT)
-        @assert horz_degree_res > eps(FT)
+        @assert β0 > floatmin(FT)
+        @assert β_min > floatmin(FT)
+        @assert γ > floatmin(FT)
+        @assert horz_degree_res > floatmin(FT)
         new{FT}(z0, β_scf, γ, β0, β_min, horz_degree_res)
     end
 end
@@ -231,11 +231,11 @@ function WuWuSnowCoverFractionModel(
     horz_degree_res::FT;
     z0 = FT(0.106),
 ) where {FT}
-    @assert β_min > eps(FT)
-    @assert β0 > eps(FT)
-    @assert γ > eps(FT)
-    @assert z0 > eps(FT)
-    @assert horz_degree_res > eps(FT)
+    @assert β_min > floatmin(FT)
+    @assert β0 > floatmin(FT)
+    @assert γ > floatmin(FT)
+    @assert z0 > floatmin(FT)
+    @assert horz_degree_res > floatmin(FT)
     β_scf = max(β0 - γ * (horz_degree_res - FT(1.5)), β_min)
     return WuWuSnowCoverFractionModel(z0, β_scf, γ, β0, β_min, horz_degree_res)
 end

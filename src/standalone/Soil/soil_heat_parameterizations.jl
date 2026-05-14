@@ -247,7 +247,7 @@ function κ_sat(
     κ_sat_frozen::FT,
 ) where {FT}
     θ_w = θ_l + θ_i
-    if θ_w < eps(FT)
+    if θ_w < floatmin(FT)
         return (κ_sat_unfrozen + κ_sat_frozen) / FT(2)
     else
         return FT(κ_sat_unfrozen^(θ_l / θ_w) * κ_sat_frozen^(θ_i / θ_w))
@@ -307,7 +307,7 @@ function kersten_number(
     ν_ss_quartz::FT,
     ν_ss_gravel::FT,
 ) where {FT}
-    if θ_i < eps(FT)
+    if θ_i < floatmin(FT)
         K_e =
             S_r^((FT(1) + ν_ss_om - α * ν_ss_quartz - ν_ss_gravel) / FT(2)) *
             (

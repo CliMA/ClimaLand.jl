@@ -167,7 +167,7 @@ ClimaLand.auxiliary_domain_names(model::PlantHydraulicsModel) =
 Computes the harmonic mean of x >=0 and y >=0; returns zero if either
 x or y are zero.
 """
-harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
+harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, floatmin(FT))
 
 """
     water_flux(
@@ -355,7 +355,7 @@ available for storage in a plant compartment.
 """
 function augmented_liquid_fraction(ν::FT, S_l::FT) where {FT}
     ϑ_l = S_l * ν # ϑ_l can be > ν
-    safe_ϑ_l = max(ϑ_l, eps(FT))
+    safe_ϑ_l = max(ϑ_l, floatmin(FT))
     return safe_ϑ_l # (m3 m-3)
 end
 
@@ -368,7 +368,7 @@ Computes the effective saturation given the augmented liquid fraction.
 """
 function effective_saturation(ν::FT, ϑ_l::FT) where {FT}
     S_l = ϑ_l / ν # S_l can be > 1
-    safe_S_l = max(S_l, eps(FT))
+    safe_S_l = max(S_l, floatmin(FT))
     return safe_S_l # (m3 m-3)
 end
 
@@ -388,7 +388,7 @@ where `dz` is the canopy height from the biomass model.
 
 Note that if `LAI` is zero because no plant is present, `LAI * dz` is zero,
 and both fluxes in the numerator are also zero (they are scaled by area indices).
-To prevent dividing by zero, we use `max(LAI * dz, eps(FT))` in the denominator.
+To prevent dividing by zero, we use `max(LAI * dz, floatmin(FT))` in the denominator.
 """
 function make_compute_exp_tendency(
     model::PlantHydraulicsModel{FT},
@@ -399,7 +399,7 @@ function make_compute_exp_tendency(
         fa_roots = p.canopy.hydraulics.fa_roots
         dz = canopy.biomass.height
         @. dY.canopy.hydraulics.ϑ_l =
-            1 / max(LAI * dz, eps(FT)) *
+            1 / max(LAI * dz, floatmin(FT)) *
             (fa_roots - p.canopy.turbulent_fluxes.vapor_flux)
     end
     return compute_exp_tendency!
@@ -453,7 +453,7 @@ function root_water_flux_per_ground_area!(
                 Soil.effective_saturation(ground.ν, p.drivers.θ, ground.θ_r),
                 1,
             ),
-            eps(FT),
+            floatmin(FT),
         ),
     )
     ψ_soil = @. lazy(matric_potential(ground.hydrology_cm, soil_saturation))

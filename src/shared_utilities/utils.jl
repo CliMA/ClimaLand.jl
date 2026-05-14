@@ -91,7 +91,7 @@ Computes the heaviside function H(y) = 1 (y ≥0), 0 (y < 0),
 where y = x-a.
 """
 function heaviside(x::FT, a::FT)::FT where {FT}
-    if x - a > eps(FT)
+    if x - a > floatmin(FT)
         return FT(1.0)
     else
         return FT(0.0)

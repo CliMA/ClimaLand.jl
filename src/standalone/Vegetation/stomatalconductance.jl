@@ -71,7 +71,7 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
                 T_air,
                 R,
                 P_air,
-            ) * max(LAI, sqrt(eps(FT)))
+            ) * max(LAI, sqrt(floatmin(FT)))
         ) # multiply by LAI treating all leaves as if they are in parallel
 end
 
@@ -161,6 +161,6 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
                 T_air,
                 R,
                 P_air,
-            ) + eps(FT)
+            ) + floatmin(FT)
         ) # avoids division by zero, since conductance is zero when An is zero 
 end

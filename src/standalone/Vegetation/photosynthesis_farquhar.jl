@@ -412,7 +412,7 @@ function get_J_over_Jmax(Y, p, canopy, m::FarquharModel)
     Jmax = compute_Jmax_leaf(Y, p, canopy, m) # lazy
     J = compute_J_leaf(Y, p, canopy, m) # lazy
     FT = eltype(canopy.earth_param_set)
-    return @. lazy(J / max(Jmax, sqrt(eps(FT))))
+    return @. lazy(J / max(Jmax, sqrt(floatmin(FT))))
 end
 
 function compute_Jmax_leaf(Y, p, canopy, m::FarquharModel) # used internally to farquhar; helper function

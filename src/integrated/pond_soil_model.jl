@@ -107,7 +107,7 @@ and precipitation.
 This is defined such that positive means into soil.
 """
 infiltration_at_point(η::FT, i_c::FT, P::FT) where {FT <: AbstractFloat} =
-    η > eps(FT) ? i_c : min(i_c, P)
+    η > floatmin(FT) ? i_c : min(i_c, P)
 
 """
     function infiltration_capacity(

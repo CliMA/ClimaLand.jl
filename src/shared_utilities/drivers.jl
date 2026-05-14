@@ -1669,7 +1669,7 @@ function empirical_diffuse_fraction(
     RH = Thermodynamics.relative_humidity(thermo_params, T, P, q) # Note: This used RH over liquid before; not it's RH over ice when below freezing
     # TODO Replace magic numbers with appropriate constants; for example 1370 probably is TSI and should come from ClimaParams for consistency with rest of model
     # TODO Nondimensionalize equations appropriately; here we have dimensional constants that are not clearly identified as such, easily leading to errors
-    cosθs = max(cosθs, eps(FT))
+    cosθs = max(cosθs, floatmin(FT))
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
     kₜ = SW_d / k₀
     if kₜ ≤ 0.3

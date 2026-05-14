@@ -169,7 +169,7 @@ function make_compute_imp_tendency(
 
         # d(energy.T) = - net_energy_flux / specific_heat_capacity
         # To prevent dividing by zero, change AI" to
-        # "max(AI, eps(FT))"
+        # "max(AI, floatmin(FT))"
 
         @. dY.canopy.energy.T =
             -(
@@ -177,7 +177,8 @@ function make_compute_imp_tendency(
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+            ) /
+            (ac_canopy * max(area_index.leaf + area_index.stem, floatmin(FT)))
     end
     return compute_imp_tendency!
 end
@@ -245,8 +246,10 @@ function ClimaLand.make_compute_jacobian(
         @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
-                (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
-                (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
+                (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) / (
+                    ac_canopy *
+                    max(area_index.leaf + area_index.stem, floatmin(FT))
+                ),
             ) - (I,)
     end
     return compute_jacobian!

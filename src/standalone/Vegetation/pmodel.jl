@@ -420,8 +420,8 @@ function compute_full_pmodel_outputs(
     # check for negative arg before taking sqrt
     arg_c3 = (mj_c3 / (βm * mprime_c3))^2 - 1
     arg_c4 = (mj_c4 / (βm * mprime_c4))^2 - 1
-    Jmax_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg_c3, 0)) + eps(FT))
-    Jmax_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg_c4, 0)) + eps(FT))
+    Jmax_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg_c3, 0)) + floatmin(FT))
+    Jmax_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg_c4, 0)) + floatmin(FT))
     inst_temp_scaling_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -705,7 +705,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
                 p.drivers.P,
                 p.drivers.q,
             ),
-            sqrt(eps(FT)),
+            sqrt(floatmin(FT)),
         ),
     )
     APAR_canopy_moles = @. lazy(
@@ -797,7 +797,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
                 p.drivers.P,
                 p.drivers.q,
             ),
-            sqrt(eps(FT)),
+            sqrt(floatmin(FT)),
         ),
     )
     APAR_canopy_moles = @. lazy(
@@ -978,7 +978,7 @@ function compute_blended_pmodel_photosynthesis(
             P_air,
             q_air,
         ),
-        sqrt(eps(FT)),
+        sqrt(floatmin(FT)),
     )
     APAR_canopy_moles = compute_APAR_canopy_moles(
         fAPAR,
@@ -1126,8 +1126,8 @@ function get_J_over_Jmax(Y, p, canopy, m::PModel)
     FT = eltype(m.constants)
     return @. lazy(
         blend(
-            J_c3 / max(Jmax_c3, sqrt(eps(FT))),
-            J_c4 / max(Jmax_c4, sqrt(eps(FT))),
+            J_c3 / max(Jmax_c3, sqrt(floatmin(FT))),
+            J_c4 / max(Jmax_c4, sqrt(floatmin(FT))),
             m.fractional_c3,
         ),
     )
@@ -1469,7 +1469,7 @@ assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of wa
 factor Drel (default value = 1.6).
 """
 function gs_co2_pmodel(χ::FT, ca::FT, A::FT) where {FT}
-    return A / (ca * (1 - χ) + eps(FT))
+    return A / (ca * (1 - χ) + floatmin(FT))
 end
 
 """
@@ -1656,7 +1656,7 @@ function compute_chi(
     ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
 
     # Compute ci and chi
-    VPD_safe = max(VPD, eps(FT))
+    VPD_safe = max(VPD, floatmin(FT))
     ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD_safe)
     ci_c4 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD_safe)
     return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
@@ -1691,7 +1691,7 @@ end
 Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
 """
 function electron_transport_pmodel(ϕ0::FT, APAR::FT, Jmax::FT) where {FT}
-    J = 4 * ϕ0 * APAR / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, eps(FT)))^2)
+    J = 4 * ϕ0 * APAR / sqrt(1 + (4 * ϕ0 * APAR / max(Jmax, floatmin(FT)))^2)
     return J
 end
 

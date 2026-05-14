@@ -614,20 +614,22 @@ function canopy_sw_rt_two_stream(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-    α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
-    cosθs = max(eps(FT), cosθs) # The insolations package returns cosθs=0 (nighttime), but this assumes cosθs >0
+    α_soil = max(floatmin(FT), α_soil) # this prevents division by zero, below.
+    cosθs = max(floatmin(FT), cosθs) # The insolations package returns cosθs=0 (nighttime), but this assumes cosθs >0
     G = compute_G(G_Function, cosθs)
     K = extinction_coeff(G_Function, cosθs)
     # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / max(2G, eps(FT))
+    μ̄ = 1 / max(2G, floatmin(FT))
 
-    # Clip this to prevent dividing by zero; the sum must also be < 1. Note that using eps(FT)
+    # Clip this to prevent dividing by zero; the sum must also be < 1. Note that using floatmin(FT)
     # as the threshold leads to numerical errors, so we use 1e-4
     ω = min(max(α_leaf + τ_leaf, FT(1e-4)), 1 - FT(1e-4))
 
     # Compute aₛ, the single scattering albedo
     aₛ =
-        0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), eps(FT))))
+        0.5 *
+        ω *
+        (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), floatmin(FT))))
 
     # Compute β₀, the direct upscattering parameter
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
@@ -788,7 +790,7 @@ Here we clip it to 1e6.
 """
 function extinction_coeff(G_Function, cosθs::FT) where {FT}
     G = compute_G(G_Function, cosθs)
-    K = min(G / max(cosθs, eps(FT)), FT(1e6))
+    K = min(G / max(cosθs, floatmin(FT)), FT(1e6))
     return K
 end
 

@@ -167,14 +167,14 @@ function update_albedo!(
         N = p.soil.sfc_scratch
         # zero all centers lower than boundary, set everything above to one
         @. p.soil.sub_sfc_scratch = ClimaLand.heaviside(
-            albedo_calc_top_thickness + sqrt(eps(FT)),
+            albedo_calc_top_thickness + sqrt(floatmin(FT)),
             soil_domain.fields.z_sfc - soil_domain.fields.z,
         )
         ClimaCore.Operators.column_integral_definite!(N, p.soil.sub_sfc_scratch)
         # zeros all effective saturation at levels centered lower than boundary
         @. p.soil.sub_sfc_scratch =
             ClimaLand.heaviside(
-                albedo_calc_top_thickness + sqrt(eps(FT)),
+                albedo_calc_top_thickness + sqrt(floatmin(FT)),
                 soil_domain.fields.z_sfc - soil_domain.fields.z,
             ) * p.soil.θ_l / N
         # Now use scratch space to compute normed integral

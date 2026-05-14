@@ -59,7 +59,7 @@ function medlyn_term(
         ),
         FT(0),
     ) # clip negative values of VPD to zero
-    return 1 + g1 / sqrt(VPD + sqrt(eps(FT))) # regularize values of VPD which are smaller than sqrt(eps(FT))
+    return 1 + g1 / sqrt(VPD + sqrt(floatmin(FT))) # regularize values of VPD which are smaller than sqrt(floatmin(FT))
 end
 
 

@@ -412,7 +412,7 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. dY.soilco2.O2_f =
             -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2)) *
             R *
-            T_soil / max(p.soilco2.θ_eff_o2 * P_sfc * M_O2, eps(FT))
+            T_soil / max(p.soilco2.θ_eff_o2 * P_sfc * M_O2, floatmin(FT))
 
         # SOC has no diffusion, only source/sink from microbial activity
         @. dY.soilco2.SOC = 0.0
@@ -502,7 +502,7 @@ NVTX.@annotate function ClimaLand.source!(
     O2_f = Y.soilco2.O2_f
 
     @. dY.soilco2.O2_f -=
-        (R * T_soil) / max(M_C * θ_eff_o2 * P_sfc, eps(FT)) *
+        (R * T_soil) / max(M_C * θ_eff_o2 * P_sfc, floatmin(FT)) *
         p.soilco2.Sm *
         (O2_f / (O2_f + K_O2_lim))
 end
@@ -698,7 +698,8 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # Compute air-equivalent CO2 concentration for diffusion.
         # Clamp negative CO2 to zero (can occur from numerical diffusion).
         @. Y.soilco2.CO2 = max(Y.soilco2.CO2, FT(0))
-        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
+        @. p.soilco2.CO2_air_eq =
+            Y.soilco2.CO2 / max(p.soilco2.θ_eff, floatmin(FT))
 
         # Safety guard: cap CO2_air_eq at 100 million ppm equivalent.
         # Values above this indicate numerical blow-up, not physical conditions.

@@ -48,7 +48,7 @@ function update_snow_albedo!(
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     @. α =
         min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) *
-        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
+        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, floatmin(FT))))
     @. α = max(min(α, 1), 0)
 end
 
@@ -306,7 +306,7 @@ while preventing from division by zero and enforcing that q_l = S_l/S must
 lie between 0 and 1.
 """
 function liquid_mass_fraction(S::FT, S_l::FT)::FT where {FT}
-    S_safe = max(S, eps(FT))
+    S_safe = max(S, floatmin(FT))
     S_l_safe = min(max(S_l, FT(0)), S_safe)
     return S_l_safe / S_safe
 end
@@ -355,7 +355,7 @@ function snow_bulk_density(
     earth_param_set,
 )::FT where {FT}
     _ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    ε = eps(FT) #for preventing dividing by zero
+    ε = floatmin(FT) #for preventing dividing by zero
     #return SWE/z * ρ_l but tend to ρ_l as SWE → 0
     #also handle instabilities when z, SWE both near machine precision
     return max(SWE_area, ε) / max(z_area, SWE_area, ε) * _ρ_l
@@ -673,7 +673,7 @@ function flux_balance(
     # be attempted as part of the iteration trajectory - however, the algorithm
     # can sometimes recover and still converge to the right value with the branch
     # below. Negative T_sfc cause domain errors in SurfaceFluxes, which would prevent such recovery.
-    if T_sfc_guess <= eps(FT)
+    if T_sfc_guess <= floatmin(FT)
         return κ * (T_sfc_guess - T_bulk)
     end
 
@@ -828,7 +828,8 @@ function surface_residual_flux(
     earth_param_set,
 )::FT where {FT}
     _T_freeze = FT(LP.T_freeze(earth_param_set))
-    d_safe = max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), eps(FT))
+    d_safe =
+        max(surface_temp_scaling_length(κ, ρ, z, earth_param_set), floatmin(FT))
     return T_sfc_root > _T_freeze ? FT(-κ * (T_sfc_root - _T_freeze) / d_safe) :
            FT(0)
 end

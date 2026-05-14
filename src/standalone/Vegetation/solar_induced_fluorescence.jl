@@ -125,12 +125,12 @@ function compute_SIF_at_a_point(
     kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
     x = 1 - J_over_Jmax
     kn = (kn_p1 * x - kn_p2) * x
-    ϕp0 = kp / max(kf + kp + kn, eps(FT))
+    ϕp0 = kp / max(kf + kp + kn, floatmin(FT))
     ϕp = J_over_Jmax * ϕp0
-    ϕf = kf / max(kf + kd + kn, eps(FT)) * (1 - ϕp)
+    ϕf = kf / max(kf + kd + kn, floatmin(FT)) * (1 - ϕp)
     κ = kappa_p1 * Vcmax25_leaf * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
     F = APAR_canopy_moles * ϕf
-    SIF_755 = F / max(κ, eps(FT))
+    SIF_755 = F / max(κ, floatmin(FT))
 
     return SIF_755
 end

@@ -1126,7 +1126,7 @@ function ClimaLand.get_update_surface_humidity_function(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + eps(FT))
+    @. θ_l_sfc = max(θ_l_sfc, θ_r_sfc + floatmin(FT))
     S_l_sfc = p.soil.sfc_scratch # currently set to θ_l_sfc
     @. S_l_sfc = effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc) # overwrite with S_l_sfc
     _D_vapor = FT(LP.D_vapor(earth_param_set))
@@ -1343,7 +1343,7 @@ function soil_conductance(
     _D_vapor::FT,
 ) where {FT}
     dsl::FT = dry_soil_layer_thickness(S_l, α * S_c, d_ds, p)
-    g_soil = _D_vapor / max(dsl, eps(FT)) # [m/s]
+    g_soil = _D_vapor / max(dsl, floatmin(FT)) # [m/s]
     return g_soil
 end
 

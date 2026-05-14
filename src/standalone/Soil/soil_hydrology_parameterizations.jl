@@ -20,8 +20,8 @@ For Richards model, `ν_eff = ν`; and the clipping below is not required,
 simpler interface.
 """
 function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
-    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
-    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(floatmin(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(floatmin(FT)))
     if ϑ_l_safe < ν_eff_safe
         θ_l = ϑ_l_safe
     else
@@ -43,8 +43,8 @@ relevant, ν_eff = ν; and the clipping below is not required,
 simpler interface.
 """
 function effective_saturation(ν_eff::FT, ϑ_l::FT, θr::FT) where {FT}
-    ϑ_l_safe = max(ϑ_l, θr + sqrt(eps(FT)))
-    ν_eff_safe = max(ν_eff, θr + sqrt(eps(FT)))
+    ϑ_l_safe = max(ϑ_l, θr + sqrt(floatmin(FT)))
+    ν_eff_safe = max(ν_eff, θr + sqrt(floatmin(FT)))
     S_l = (ϑ_l_safe - θr) / (ν_eff_safe - θr)
     return S_l
 end
@@ -116,8 +116,8 @@ function pressure_head(
     # The effective saturation function clips ν_eff and ϑ_l internally
     # To be consistent, we need to do so here for the other branch
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
-    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
-    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(floatmin(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(floatmin(FT)))
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else
@@ -137,7 +137,7 @@ function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
     # but we use ν_eff alone, so we clip that here.
     # The second clipping in effective saturation
     # will not change it further.
-    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(floatmin(FT)))
     S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; α, m, n) = cm
     if S < 1.0
@@ -220,7 +220,7 @@ with respect to ϑ for the Brooks and Corey formulation.
 function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
     # The effective saturation function clips ν_eff and ϑ_l internally
     # To be consistent, we need to do so here for the first branch
-    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(floatmin(FT)))
     S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; ψb, c) = cm
     if S < 1.0
@@ -277,8 +277,8 @@ function pressure_head(
     # The effective saturation function clips ν_eff and ϑ_l internally
     # To be consistent, we need to do so here for the second branch
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
-    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
-    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(floatmin(FT)))
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(floatmin(FT)))
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else

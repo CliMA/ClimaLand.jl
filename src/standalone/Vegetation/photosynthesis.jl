@@ -207,5 +207,5 @@ function compute_APAR_leaf_moles(
         planck_h,
         N_a,
     )
-    return APAR_canopy / max(LAI, sqrt(eps(FT)))
+    return APAR_canopy / max(LAI, sqrt(floatmin(FT)))
 end
