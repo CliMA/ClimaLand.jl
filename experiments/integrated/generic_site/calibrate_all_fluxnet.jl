@@ -38,9 +38,10 @@ end
 
 function calibrate_all()
     sites = _selected_sites()
-    @info "Calibrating $(length(sites)) sites" first = first(sites) last = last(sites)
+    @info "Calibrating $(length(sites)) sites" first = first(sites) last =
+        last(sites)
 
-    failures = Tuple{String,String}[]
+    failures = Tuple{String, String}[]
     for (i, site) in enumerate(sites)
         @info "[$i/$(length(sites))] === $site ==="
         try

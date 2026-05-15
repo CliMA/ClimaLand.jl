@@ -74,8 +74,9 @@ function _porosity_at_site(lat, long)
     # itself downloads, so we never have to fetch a second one just for the
     # CSV row. Variable name in the NetCDF is the literal "ν".
     try
-        soil_params_dir =
-            ClimaLand.Artifacts.soil_params_artifact_folder_path(; lowres = false)
+        soil_params_dir = ClimaLand.Artifacts.soil_params_artifact_folder_path(;
+            lowres = false,
+        )
         nc_path = joinpath(
             soil_params_dir,
             "porosity_map_gupta_etal2020_0.1x0.1x4.nc",
@@ -154,7 +155,8 @@ function compute_site_drivers(site_ID, coords, samples; soc_default = 5.0)
             NaN
         else
             (times, vals) = ret
-            total = _aggregate_in_windows(times, vals, samples; reducer = sum)
+            total =
+                _aggregate_in_windows(times, vals, samples; reducer = sum)
             total / n_years
         end
     end

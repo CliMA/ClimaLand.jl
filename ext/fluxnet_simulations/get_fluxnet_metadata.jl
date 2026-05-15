@@ -157,8 +157,13 @@ function FluxnetSimulations.get_site_igbp(
     isnothing(row_idx) && error("Site ID $site_ID not found in metadata.")
     site_metadata = data[row_idx, :]
 
-    candidates =
-        ("igbp_class", "igbp_landcover_class", "IGBP", "biome_code", "IGBP_class")
+    candidates = (
+        "igbp_class",
+        "igbp_landcover_class",
+        "IGBP",
+        "biome_code",
+        "IGBP_class",
+    )
     col_idx = nothing
     for cand in candidates
         col_idx = findfirst(header[:] .== cand)

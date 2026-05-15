@@ -5,16 +5,8 @@ module FluxnetSimulations
 # observation/simulation window in sync — e.g. site-level calibration — can pass
 # this list to `get_data_dates(...; required_columns)` and get the same advanced
 # start_date the forward model uses internally.
-const FLUXNET_FORCING_COLUMNS = (
-    "TA_F",
-    "VPD_F",
-    "PA_F",
-    "P_F",
-    "WS_F",
-    "LW_IN_F",
-    "SW_IN_F",
-    "CO2_F_MDS",
-)
+const FLUXNET_FORCING_COLUMNS =
+    ("TA_F", "VPD_F", "PA_F", "P_F", "WS_F", "LW_IN_F", "SW_IN_F", "CO2_F_MDS")
 
 function prescribed_forcing_fluxnet end
 

@@ -142,7 +142,7 @@ function _sample_windows(time_offset)
     spinup = Day(SPINUP_DAYS)
     win = Day(CAL_WINDOW_DAYS)
     cursor = data_start + spinup
-    samples = NTuple{2,DateTime}[]
+    samples = NTuple{2, DateTime}[]
     # Allow a 1-day slack on the upper bound — fluxnet records typically end
     # 30 min before the final calendar boundary (last `TIMESTAMP_END` is the
     # start of the last half-hour), so a strict `<=` would reject an exactly
@@ -203,7 +203,7 @@ end
 # ── Per-window observation builder ───────────────────────────────────────────
 
 function _build_window_observation(comparison, window_start, window_stop, name)
-    per_var = Dict{String,Vector{Float64}}()
+    per_var = Dict{String, Vector{Float64}}()
     bins = DateTime[]
     for var in SHORT_NAMES
         haskey(NOISE_VARIANCES, var) ||
@@ -226,15 +226,15 @@ function _build_window_observation(comparison, window_start, window_stop, name)
 
     y_obs = reduce(vcat, per_var[v] for v in SHORT_NAMES)
     n_bins = length(first(values(per_var)))
-    noise_diag = reduce(
-        vcat,
-        fill(NOISE_VARIANCES[v], n_bins) for v in SHORT_NAMES
+    noise_diag =
+        reduce(vcat, fill(NOISE_VARIANCES[v], n_bins) for v in SHORT_NAMES)
+    return EKP.Observation(
+        Dict(
+            "samples" => y_obs,
+            "covariances" => Diagonal(noise_diag),
+            "names" => name,
+        ),
     )
-    return EKP.Observation(Dict(
-        "samples" => y_obs,
-        "covariances" => Diagonal(noise_diag),
-        "names" => name,
-    ))
 end
 
 """
@@ -248,7 +248,8 @@ function generate_observation_series()
     coords = _resolve_coords(SITE_ID)
     (samples, data_start) = _sample_windows(coords.time_offset)
 
-    comparison = FluxnetSimulations.get_comparison_data(SITE_ID, coords.time_offset)
+    comparison =
+        FluxnetSimulations.get_comparison_data(SITE_ID, coords.time_offset)
 
     obs_vec = EKP.Observation[]
     for (i, (ws, we)) in enumerate(samples)
@@ -263,15 +264,15 @@ function generate_observation_series()
         )
     end
 
-    minibatcher = ClimaCalibrate.minibatcher_over_samples(
-        length(obs_vec),
-        MINIBATCH_SIZE,
+    minibatcher =
+        ClimaCalibrate.minibatcher_over_samples(length(obs_vec), MINIBATCH_SIZE)
+    obs_series = EKP.ObservationSeries(
+        Dict(
+            "observations" => obs_vec,
+            "minibatcher" => minibatcher,
+            "names" => ["$(SITE_ID)_y$i" for i in 1:length(obs_vec)],
+        ),
     )
-    obs_series = EKP.ObservationSeries(Dict(
-        "observations" => obs_vec,
-        "minibatcher" => minibatcher,
-        "names" => ["$(SITE_ID)_y$i" for i in 1:length(obs_vec)],
-    ))
 
     JLD2.jldsave(
         SAMPLES_PATH;
@@ -283,8 +284,7 @@ function generate_observation_series()
         short_names = SHORT_NAMES,
         site_ID = SITE_ID,
     )
-    SAMPLE_STATE[] =
-        (; samples, data_start, time_offset = coords.time_offset)
+    SAMPLE_STATE[] = (; samples, data_start, time_offset = coords.time_offset)
     @info "Built observation series" SITE_ID n_samples = length(obs_vec) MINIBATCH_SIZE
     return obs_series
 end
@@ -366,13 +366,8 @@ function ClimaCalibrate.forward_model(iteration, member)
 
     g_member = Float64[]
     for window_idx in minibatch
-        g_window = _run_window(
-            window_idx,
-            samples,
-            data_start,
-            time_offset,
-            toml_dict,
-        )
+        g_window =
+            _run_window(window_idx, samples, data_start, time_offset, toml_dict)
         append!(g_member, g_window)
     end
 
@@ -422,13 +417,12 @@ function append_site_csv(eki, prior, samples)
     # the unscented sigma points; std across them is a usable posterior SD.
     final_ens = EKP.get_ϕ_final(prior, eki)
     final_sds = vec(std(final_ens; dims = 2))
-    final_cost =
-        try
-            errs = EKP.get_error(eki)
-            isempty(errs) ? NaN : last(errs)
-        catch
-            NaN
-        end
+    final_cost = try
+        errs = EKP.get_error(eki)
+        isempty(errs) ? NaN : last(errs)
+    catch
+        NaN
+    end
 
     mkpath(dirname(SITE_RESULTS_CSV))
 
