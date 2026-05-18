@@ -18,6 +18,8 @@ export TimeVaryingInput, evaluate!
 import ClimaUtilities.SpaceVaryingInputs
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 
+import UnrolledUtilities
+
 import NCDatasets # Needed to load the ClimaUtilities.*VaryingInput
 using .Domains
 
@@ -158,9 +160,7 @@ function make_imp_tendency(land::AbstractLandModel)
     update_imp_c! = make_update_implicit_cache(land)
     NVTX.@annotate function imp_tendency!(dY, Y, p, t)
         update_imp_c!(p, Y, t)
-        for f! in compute_imp_tendency_list
-            f!(dY, Y, p, t)
-        end
+        UnrolledUtilities.unrolled_foreach(f! -> f!(dY, Y, p, t), compute_imp_tendency_list)
     end
     return imp_tendency!
 end
