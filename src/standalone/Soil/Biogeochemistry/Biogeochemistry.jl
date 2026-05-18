@@ -431,12 +431,11 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         # an O2 sink). For multi-stage RK integrators the bounds are slightly
         # conservative (per-stage step is a fraction of Δt) but still safe.
         if model.Δt > 0
-            inv_Δt = 1 / model.Δt # model.Δt is already type FT
             O2_f_atm = model.parameters.O2_f_atm
             @. dY.soilco2.O2_f = clamp(
                 dY.soilco2.O2_f,
-                -max(Y.soilco2.O2_f, 0) * inv_Δt,
-                max(O2_f_atm - Y.soilco2.O2_f, 0) * inv_Δt,
+                -max(Y.soilco2.O2_f, 0) / model.Δt,
+                max(O2_f_atm - Y.soilco2.O2_f, 0) / model.Δt,
             )
         end
 
@@ -646,7 +645,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
         θ_i = soil_ice(model.drivers.met, p, Y, t, z)
-        Csom = @. lazy(max(Y.soilco2.SOC, 0))  # Clamp SOC to non-negative (lazy, no allocation)
+        Csom = Y.soilco2.SOC
         P_sfc = p.drivers.P
         ν = model.drivers.met.ν
         θ_a100 = model.drivers.met.θ_a100
@@ -697,36 +696,38 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
 
         # Compute air-equivalent CO2 concentration for diffusion.
         # Clamp negative CO2 to zero (can occur from numerical diffusion).
-        @. Y.soilco2.CO2 = max(Y.soilco2.CO2, FT(0))
-        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
+        @. p.soilco2.CO2_air_eq =
+            max(Y.soilco2.CO2, 0) / max(p.soilco2.θ_eff, eps(FT))
 
         # Safety guard: cap CO2_air_eq at 100 million ppm equivalent.
-        # Values above this indicate numerical blow-up, not physical conditions.
-        # 100M ppm = 100 (mol/mol) → CO2_air_eq_max = 100 * M_C * P / (R * T)
-        M_C = FT(params.M_C)
-        CO2_air_eq_max = @. FT(100) * M_C * P_sfc / (R * T_soil)
+        # Values above this indicate numerical instability, not physical conditions.
+        # With this adjustment, in these columns the simulation will not break,
+        # but it will be incorrect.
+        M_C = params.M_C
         @. p.soilco2.CO2_air_eq = ifelse(
-            p.soilco2.CO2_air_eq > CO2_air_eq_max,
+            p.soilco2.CO2_air_eq > 100 * M_C * P_sfc / (R * T_soil),
             FT(NaN),
             p.soilco2.CO2_air_eq,
         )
 
         # Clamp O2_f to physical range [0, 1]; explicit diffusion can
         # overshoot in hot/dry columns where effective diffusivity D_o2/θ_eff_o2
-        # exceeds the CFL limit. Clamping keeps the simulation alive with
-        # physically meaningful values — the overshoot is a numerical artifact,
-        # not a real state.
-        @. Y.soilco2.O2_f = clamp(Y.soilco2.O2_f, 0, 1)
-
+        # exceeds the CFL limit.
+        # Note that in these columns the simulation will not break but will be incorrect.
         @. p.soilco2.O2 =
-            o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
+            o2_concentration(clamp(Y.soilco2.O2_f, 0, 1), T_soil, P_sfc, params)
 
         (; D_oa) = params
         @. p.soilco2.O2_avail =
-            o2_availability(Y.soilco2.O2_f, p.soilco2.θ_a, D_oa)
+            o2_availability(clamp(Y.soilco2.O2_f, 0, 1), p.soilco2.θ_a, D_oa)
 
-        @. p.soilco2.Sm =
-            microbe_source.(T_soil, θ_l, Csom, p.soilco2.O2_avail, params)
+        @. p.soilco2.Sm = microbe_source(
+            T_soil,
+            θ_l,
+            max(Csom, 0),
+            p.soilco2.O2_avail,
+            params,
+        ) # in case Csom < 0 due to numerical issues
     end
     return update_aux!
 end
