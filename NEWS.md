@@ -3,6 +3,12 @@ ClimaLand.jl Release Notes
 main
 ----
 
+v1.8.2
+-----
+- Remove allocation and clipping of Y PR[#1748](https://github.com/CliMA/ClimaLand.jl/pull/1748)
+- Improve benchmarks pipeline PR[#1741](https://github.com/CliMA/ClimaLand.jl/pull/1741)
+- Add plots to CI PR[#1740](https://github.com/CliMA/ClimaLand.jl/pull/1740)
+
 v1.8.1
 -----
 - Change default land model to use the pmodel, piecewise soil moisture stress, and snow albedo zenith angle parameterization PR[#1726](https://github.com/CliMA/ClimaLand.jl/pull/1726)
