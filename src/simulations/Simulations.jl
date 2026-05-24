@@ -17,7 +17,7 @@ import ..Diagnostics: close_output_writers
 """
     LandSimulation{
         M <: ClimaLand.AbstractModel,
-        T <: ClimaTimeSteppers.DistributedODEAlgorithm,
+        T <: ClimaTimeSteppers.TimeSteppingAlgorithm,
         UC,
         DI,
         RC,
@@ -45,7 +45,7 @@ forcing and update the LAI using prescribed data.
 """
 struct LandSimulation{
     M <: ClimaLand.AbstractModel,
-    T <: ClimaTimeSteppers.DistributedODEAlgorithm,
+    T <: ClimaTimeSteppers.TimeSteppingAlgorithm,
     UC,
     DI,
     RC,
