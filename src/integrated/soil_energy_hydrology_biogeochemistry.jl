@@ -57,8 +57,7 @@ end
     LandSoilBiogeochemistry{FT}(
         forcing,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
-        Δt;
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -71,7 +70,6 @@ end
                 forcing.atmos,
             ),
             toml_dict,
-            Δt,
         ),
     ) where {FT}
 
@@ -81,7 +79,6 @@ or passed in via the `toml_dict`. The boundary conditions of all models
 correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
 of the form `(;atmos, radiation)`, with `atmos` an `AbstractAtmosphericDriver` and `radiation`
 an `AbstractRadiativeDriver`. The domain must be a ClimaLand domain with a vertical extent.
-`Δt` is the model timestep in seconds, used by the SoilCO2Model O2_f tendency limiter.
 """
 function LandSoilBiogeochemistry{FT}(
     forcing,
@@ -90,8 +87,7 @@ function LandSoilBiogeochemistry{FT}(
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
-    },
-    Δt;
+    };
     soil = Soil.EnergyHydrology{FT}(domain, forcing, toml_dict;),
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
         domain,
@@ -100,7 +96,6 @@ function LandSoilBiogeochemistry{FT}(
             forcing.atmos,
         ),
         toml_dict,
-        Δt,
     ),
 ) where {FT}
     return LandSoilBiogeochemistry{FT}(soil, soilco2)

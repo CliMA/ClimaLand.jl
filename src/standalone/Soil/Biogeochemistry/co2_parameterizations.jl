@@ -85,7 +85,6 @@ function o2_concentration(
     return ρ_O2_air
 end
 
-
 """
     o2_fraction_from_concentration(ρ_O2_air::FT,
                                     T_soil::FT,
@@ -200,7 +199,7 @@ Compute effective porosity accounting for gas and dissolved storage.
 When θ_a → 0 (saturated soil) but θ_l > 0, θ_eff remains finite,
 preventing blow-up in concentration calculations. A minimum floor
 of 1e-4 is applied for numerical stability in extreme conditions
-(e.g., very dry desert soils where both θ_a and θ_l are small).
+(saturated but frozen soil).
 
 Arguments:
 - θ_a: Volumetric air content (m³/m³)
@@ -263,10 +262,9 @@ function gas_diffusivity_in_soil(
     T_ref = LP.T_0(earth_param_set)
     P_ref = LP.P_ref(earth_param_set)
     θ_a = volumetric_air_content(θ_w, ν)
-    D0 = D_ref * max((T_soil / T_ref), 0)^T_exp * (P_ref / P_sfc)
-    # Cap the ratio to prevent diffusivity blow-up in very dry conditions
-    # (e.g., Sahara where θ_a can greatly exceed θ_a100)
-    ratio = min(θ_a / max(θ_a100, eps(FT)), FT(5))
+    D0 = D_ref * (T_soil / T_ref)^T_exp * (P_ref / P_sfc)
+    # Cap the ratio to prevent diffusivity blow-up when θ_a100 << θ_a
+    ratio = min(θ_a / θ_a100, FT(5))
     D = D0 * (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) * ratio^(FT(2) + FT(3) / b)
     return D
 end

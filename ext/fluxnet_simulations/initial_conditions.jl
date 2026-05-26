@@ -227,10 +227,19 @@ end
 """
      set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Soil.Biogeochemistry.SoilCO2Model)
 
-Sets Y.soilco2.CO2, Y.soilco2.O2_f, and Y.soilco2.SOC in place with initial values:
-- CO2: atmospheric CO2 concentration in mol co2 per mol air
-- O2_f: volumetric fraction of O2 in soil air (~0.21)
+Sets Y.soilco2.CO2, Y.soilco2.O2, and Y.soilco2.SOC in place with initial values.
+
+The CO2 and O2 prognostic variables are stored as total mass per unit *bulk soil
+volume* (storage = θ_eff · gas-phase concentration, where θ_eff = θ_a + β·θ_l
+accounts for both the air-filled pore space and the gas dissolved in pore water):
+- CO2: total CO₂ as carbon mass per bulk soil volume (kg C m⁻³ soil)
+- O2: total O₂ (gas-phase in air-filled pores + dissolved in pore water) per bulk
+  soil volume (kg O₂ m⁻³ soil)
 - SOC: soil organic carbon concentration (kg C/m³)
+
+The CO2/O2 values are representative atmospheric-equilibrium initial guesses
+(assuming θ_eff ≈ 0.3 at standard T, P); the near-surface values are rapidly
+replaced by the diffusive boundary condition.
 """
 function set_fluxnet_ic!(
     Y,
@@ -239,7 +248,8 @@ function set_fluxnet_ic!(
     Δ_date,
     model::ClimaLand.Soil.Biogeochemistry.SoilCO2Model,
 )
-    Y.soilco2.CO2 .= 0.000412
-    Y.soilco2.O2_f .= 0.21  # Atmospheric O2 volumetric fraction
+    # Representative bulk densities (kg m⁻³ soil) ≈ θ_eff · gas-phase density.
+    Y.soilco2.CO2 .= 6e-5   # ≈ θ_eff · c_atm · P·M_C/(R·T), kg C m⁻³ soil
+    Y.soilco2.O2 .= 0.08    # ≈ θ_eff · 0.21 · P·M_O2/(R·T), kg O₂ m⁻³ soil
     Y.soilco2.SOC .= 5.0    # Default SOC concentration (kg C/m³)
 end

@@ -145,8 +145,7 @@ soil = Soil.EnergyHydrology{FT}(
 # Soil microbes model
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
 drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-soilco2 =
-    Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict, dt)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(soil_domain, drivers, toml_dict)
 
 # Now we set up the canopy model, one component at a time.
 # Set up radiative transfer
@@ -243,6 +242,7 @@ output_vars = [
     "swu",
     "lwu",
     "er",
+    "hr",
     "et",
     "msf",
     "shf",
@@ -293,4 +293,12 @@ LandSimVis.make_timeseries(
     short_names = ["swc", "tsoil", "swe"],
     spinup_date = start_date + Day(20),
     comparison_data,
+)
+LandSimVis.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["hr"],
+    spinup_date = start_date + Day(20),
 )

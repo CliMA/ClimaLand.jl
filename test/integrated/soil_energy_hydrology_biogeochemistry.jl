@@ -28,7 +28,7 @@ for FT in (Float32, Float64)
         (atmos, radiation) = prescribed_analytic_forcing(FT; toml_dict)
         forcing = (; atmos, radiation)
         Δt = FT(450)
-        model = LandSoilBiogeochemistry{FT}(forcing, toml_dict, domain, Δt)
+        model = LandSoilBiogeochemistry{FT}(forcing, toml_dict, domain)
         @test ClimaComms.context(model) == ClimaComms.context()
         @test ClimaComms.device(model) == ClimaComms.device()
 
@@ -76,7 +76,7 @@ for FT in (Float32, Float64)
 
         function init_co2!(Y, C_0)
             Y.soilco2.CO2 .= C_0
-            Y.soilco2.O2_f .= FT(0.21)  # Initialize O2_f
+            Y.soilco2.O2 .= FT(0.23)
             Y.soilco2.SOC .= FT(5.0)    # Initialize SOC
         end
 
