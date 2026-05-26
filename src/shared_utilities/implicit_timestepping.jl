@@ -95,12 +95,10 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     # The full jacobian used by the model is Δt ∂X_t_i/∂X_j - δ_{i,j}, so
     # explicit variables have a full jacobian equal to minus the identity matrix.
     implicit_vars =
-        (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T))
+        (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T), @name(soilco2.CO2),@name(soilco2.O2_f),)
     explicit_vars = (
         @name(soil.∫F_vol_liq_water_dt),
         @name(soil.∫F_e_dt),
-        @name(soilco2.CO2),
-        @name(soilco2.O2_f),
         @name(soilco2.SOC),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),

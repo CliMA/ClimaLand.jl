@@ -5,6 +5,8 @@ using DocStringExtensions
 using ClimaCore
 using LazyBroadcast: lazy
 import ...Parameters as LP
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name, ⋅
 using NVTX
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
@@ -12,8 +14,12 @@ import ClimaLand.Domains: AbstractDomain
 import ClimaLand:
     AbstractExpModel,
     make_update_aux,
+    make_update_implicit_aux,
     make_compute_exp_tendency,
+    make_compute_imp_tendency,
     make_update_boundary_fluxes,
+    make_update_implicit_boundary_fluxes,
+    make_compute_jacobian,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -372,8 +378,23 @@ apply diffusion, then convert back to O2_f tendency.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
+function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model{FT}) where {FT}
     NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
+        dY.soilco2.CO2 .= FT(0)
+        dY.soilco2.O2_f .= FT(0)
+        dY.soilco2.SOC .= FT(0)
+
+        for src in model.sources
+            source!(dY, src, Y, p, model.parameters) # explicit sources
+        end
+    end
+    return compute_exp_tendency!
+end
+
+function ClimaLand.make_compute_imp_tendency(
+    model::SoilCO2Model{FT},
+    ) where {FT}
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
         @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
@@ -401,7 +422,6 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         @. dY.soilco2.CO2 =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(p.soilco2.CO2_air_eq))
 
-        FT = eltype(Y.soilco2.CO2)
         T_soil = p.soilco2.T
         P_sfc = p.drivers.P
         R = LP.gas_constant(model.parameters.earth_param_set)
@@ -414,34 +434,35 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
             R *
             T_soil / max(p.soilco2.θ_eff_o2 * P_sfc * M_O2, eps(FT))
 
-        # SOC has no diffusion, only source/sink from microbial activity
+        # SOC has no implicit piece
         @. dY.soilco2.SOC = 0.0
-
-        for src in model.sources
-            source!(dY, src, Y, p, model.parameters)
-        end
-
-        # Bracket the net O2_f tendency so a single explicit step cannot drive
-        # O2_f outside [0, O2_f_atm]. With CFL-violating diffusivities (common
-        # in hot/dry columns with fine near-surface layers), the unlimited
-        # tendency oscillates wildly in both directions. The lower cap
-        # -max(Y, 0)/Δt guarantees Y_new ≥ 0; the upper cap
-        # max(O2_f_atm - Y, 0)/Δt guarantees Y_new ≤ O2_f_atm (the soil air
-        # cannot physically exceed the atmospheric O2 fraction since soil is
-        # an O2 sink). For multi-stage RK integrators the bounds are slightly
-        # conservative (per-stage step is a fraction of Δt) but still safe.
-        if model.Δt > 0
-            O2_f_atm = model.parameters.O2_f_atm
-            @. dY.soilco2.O2_f = clamp(
-                dY.soilco2.O2_f,
-                -max(Y.soilco2.O2_f, 0) / model.Δt,
-                max(O2_f_atm - Y.soilco2.O2_f, 0) / model.Δt,
-            )
-        end
-
     end
-    return compute_exp_tendency!
+    return compute_imp_tendency!
 end
+
+function ClimaLand.make_update_implicit_aux(model::SoilCO2Model)
+    NVTX.@annotate function update_imp_aux!(p, Y, t)
+        FT = eltype(Y.soilco2.CO2)
+
+        params = model.parameters
+        z = model.domain.fields.z
+        T_soil = p.soilco2.T
+        Csom = Y.soilco2.SOC
+        P_sfc = p.drivers.P
+        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
+        @. p.soilco2.O2 =
+            o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
+    end
+    return update_imp_aux!
+end
+
+function ClimaLand.make_update_implicit_boundary_fluxes(model::SoilCO2Model)
+    function update_imp_bf!(p, Y, t)
+        nothing
+    end
+    return update_imp_bf!
+end
+
 
 """
     AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT}
@@ -698,28 +719,14 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # Clamp negative CO2 to zero (can occur from numerical diffusion).
         @. p.soilco2.CO2_air_eq =
             max(Y.soilco2.CO2, 0) / max(p.soilco2.θ_eff, eps(FT))
-
-        # Safety guard: cap CO2_air_eq at 100 million ppm equivalent.
-        # Values above this indicate numerical instability, not physical conditions.
-        # With this adjustment, in these columns the simulation will not break,
-        # but it will be incorrect.
         M_C = params.M_C
-        @. p.soilco2.CO2_air_eq = ifelse(
-            p.soilco2.CO2_air_eq > 100 * M_C * P_sfc / (R * T_soil),
-            FT(NaN),
-            p.soilco2.CO2_air_eq,
-        )
 
-        # Clamp O2_f to physical range [0, 1]; explicit diffusion can
-        # overshoot in hot/dry columns where effective diffusivity D_o2/θ_eff_o2
-        # exceeds the CFL limit.
-        # Note that in these columns the simulation will not break but will be incorrect.
         @. p.soilco2.O2 =
-            o2_concentration(clamp(Y.soilco2.O2_f, 0, 1), T_soil, P_sfc, params)
+            o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
 
         (; D_oa) = params
         @. p.soilco2.O2_avail =
-            o2_availability(clamp(Y.soilco2.O2_f, 0, 1), p.soilco2.θ_a, D_oa)
+            o2_availability(Y.soilco2.O2_f, p.soilco2.θ_a, D_oa)
 
         @. p.soilco2.Sm = microbe_source(
             T_soil,
@@ -985,6 +992,47 @@ function ClimaLand.get_drivers(model::SoilCO2Model)
 end
 
 Base.broadcastable(ps::SoilCO2ModelParameters) = tuple(ps)
+
+function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
+    NVTX.@annotate function compute_jacobian!(
+        jacobian::MatrixFields.FieldMatrixWithSolver,
+        Y,
+        p,
+        dtγ,
+        t,
+    )
+        (; matrix) = jacobian
+
+        # Create divergence operator
+        divf2c_op = Operators.DivergenceF2C()
+        divf2c_matrix = MatrixFields.operator_matrix(divf2c_op)
+        # Create gradient operator, and set gradient at boundaries to 0
+        gradc2f_op = Operators.GradientC2F(
+            top = Operators.SetGradient(Geometry.WVector(FT(0))),
+            bottom = Operators.SetGradient(Geometry.WVector(FT(0))),
+        )
+        gradc2f_matrix = MatrixFields.operator_matrix(gradc2f_op)
+        # Create interpolation operator
+        interpc2f_op = Operators.InterpolateC2F(
+            bottom = Operators.Extrapolate(),
+            top = Operators.Extrapolate(),
+        )
+
+        # The derivative of the residual with respect to the prognostic variable
+        ∂O2res∂O2 = matrix[@name(soilco2.O2_f), @name(soilco2.O2_f)]
+        ∂CO2res∂CO2 = matrix[@name(soilco2.CO2), @name(soilco2.CO2)]
+        # dtγ can be an ITime or a float
+        @. ∂CO2res∂CO2 =
+            FT(-1) *
+            float(dtγ) *
+            (divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D)) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(1/p.soilco2.θ_eff)) - (I,)
+        @. ∂O2res∂O2 =
+            FT(- 1 / max(p.soilco2.θ_eff_o2, eps(FT))) *
+            float(dtγ) *
+            (divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D_o2)) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(FT(1))) - (I,)
+    end
+    return compute_jacobian!
+end
 
 include("./co2_parameterizations.jl")
 
