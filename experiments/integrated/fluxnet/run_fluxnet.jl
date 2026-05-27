@@ -243,6 +243,7 @@ output_vars = [
     "swu",
     "lwu",
     "er",
+    "hr",
     "et",
     "msf",
     "shf",
@@ -293,4 +294,12 @@ LandSimVis.make_timeseries(
     short_names = ["swc", "tsoil", "swe"],
     spinup_date = start_date + Day(20),
     comparison_data,
+)
+LandSimVis.make_timeseries(
+    land_domain,
+    diags,
+    start_date;
+    savedir,
+    short_names = ["hr"],
+    spinup_date = start_date + Day(20),
 )

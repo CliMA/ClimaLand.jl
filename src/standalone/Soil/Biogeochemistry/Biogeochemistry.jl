@@ -1,6 +1,7 @@
 module Biogeochemistry
 using ClimaLand
 import ClimaParams as CP
+using LinearAlgebra
 using DocStringExtensions
 using ClimaCore
 using LazyBroadcast: lazy
@@ -391,9 +392,7 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model{FT}) where {FT}
     return compute_exp_tendency!
 end
 
-function ClimaLand.make_compute_imp_tendency(
-    model::SoilCO2Model{FT},
-    ) where {FT}
+function ClimaLand.make_compute_imp_tendency(model::SoilCO2Model{FT}) where {FT}
     NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
@@ -432,7 +431,7 @@ function ClimaLand.make_compute_imp_tendency(
         @. dY.soilco2.O2_f =
             -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2)) *
             R *
-            T_soil / max(p.soilco2.θ_eff_o2 * P_sfc * M_O2, eps(FT))
+            T_soil / (p.soilco2.θ_eff_o2 * P_sfc * M_O2)
 
         # SOC has no implicit piece
         @. dY.soilco2.SOC = 0.0
@@ -522,7 +521,7 @@ NVTX.@annotate function ClimaLand.source!(
     O2_f = Y.soilco2.O2_f
 
     @. dY.soilco2.O2_f -=
-        (R * T_soil) / max(M_C * θ_eff_o2 * P_sfc, eps(FT)) *
+        (R * T_soil) / (M_C * θ_eff_o2 * P_sfc) *
         p.soilco2.Sm *
         (O2_f / (O2_f + K_O2_lim))
 end
@@ -1025,11 +1024,21 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         @. ∂CO2res∂CO2 =
             FT(-1) *
             float(dtγ) *
-            (divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D)) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(1/p.soilco2.θ_eff)) - (I,)
+            (
+                divf2c_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D)) ⋅
+                gradc2f_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff)
+            ) - (I,)
         @. ∂O2res∂O2 =
-            FT(- 1 / max(p.soilco2.θ_eff_o2, eps(FT))) *
+            FT(-1 / p.soilco2.θ_eff_o2) *
             float(dtγ) *
-            (divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D_o2)) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(FT(1))) - (I,)
+            (
+                divf2c_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soilco2.D_o2)) ⋅
+                gradc2f_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(one(p.soilco2.θ_eff_o2))
+            ) - (I,)
     end
     return compute_jacobian!
 end
