@@ -392,11 +392,14 @@ for a list of different covariance matrices that can be used.
 To add additional variables or change how a variable is preprocessed, you must
 add the variable to the data sources and specify how the variable should be
 preprocessed. The name of the variable should match the name in the diagnostics.
-As of now, each variable from the ERA5 data is loaded by the function
-`get_era5_obs_var_dict` in `ext/land_sim_vis/leaderboard/data_sources.jl`. See
-the documentation of `get_obs_var_dict` for how to add a new variable. In
-addition, you should also add the same variable to `get_sim_var_dict` in the
-same file as before.
+Observational data is loaded via the `ERA5DataLoader` and `ILAMBDataLoader`
+structs defined in `ext/land_sim_vis/leaderboard/data_sources.jl`. The function
+`get_calibration_obs_var_dict` combines both loaders into a single dictionary of
+preprocessed `OutputVar`s. To add a new variable, register it with the
+appropriate loader (see the leaderboard documentation for details) and add a
+`preprocess` method for the new short name. The simulation-side preprocessing is
+handled by `preprocess_sim_var` (and the corresponding `_preprocess_sim_var`
+function) in the same file.
 
 Further preprocessing is done in the function `preprocess_single_era5_var` in
 `generate_observations.jl`. After adding the variable, you should specify any

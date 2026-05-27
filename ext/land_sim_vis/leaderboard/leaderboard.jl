@@ -101,27 +101,28 @@ latitude, and time. The observational data is determined by `data_source` and ca
 The parameter `leaderboard_base_path` is the path to save the leaderboards and bias plots,
 and `diagnostics_folder_path` is the path to the simulation data.
 
-Loading and preprocessing simulation data is done by `get_sim_var_dict`. Loading and
-preprocessing observational data is done by `get_obs_var_dict`. The masks are normalizing
-the global RMSE and bias are determined by `get_mask_dict`. The ranges of the bias plots are
-determined by `get_compare_vars_biases_plot_extrema`. See the functions defined in
-data_sources.jl.
+Loading and preprocessing simulation data is done by loading `OutputVar`s from a
+`SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The masks for
+normalizing the global RMSE and bias are determined by `get_mask_dict`. The ranges
+of the bias plots are determined by `get_compare_vars_biases_plot_extrema`. See
+the functions defined in data_sources.jl.
 """
 function compute_monthly_leaderboard(
     leaderboard_base_path,
     diagnostics_folder_path,
     data_source,
 )
-    sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
-    obs_var_dict = get_obs_var_dict(data_source)
-    mask_dict = get_mask_dict(data_source)
+    sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
+    data_loader =
+        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
+    mask_dict = get_mask_dict(data_loader)
 
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
-    available_sim_vars = ClimaAnalysis.available_vars(
-        ClimaAnalysis.SimDir(diagnostics_folder_path),
+    short_names = intersect(
+        ClimaAnalysis.available_vars(sim_dir),
+        available_vars(data_loader),
     )
-    short_names =
-        intersect(keys(sim_var_dict), keys(obs_var_dict), available_sim_vars)
     issubset(short_names, keys(mask_dict)) ||
         error("Not all variables ($short_names) have a mask $(keys(mask_dict))")
 
@@ -129,11 +130,10 @@ function compute_monthly_leaderboard(
 
     # Set up dict for storing simulation and observational data after processing
     # and for storing the month we are interested in
-    sim_obs_comparsion_dict = Dict()
+    sim_obs_comparison_dict = Dict()
 
     # Print dates for debugging
-    _, var_func = first(sim_var_dict)
-    var = var_func()
+    var = preprocess_sim_var(get(sim_dir, first(short_names)))
     output_dates =
         Dates.DateTime(var.attributes["start_date"]) .+
         Dates.Second.(ClimaAnalysis.times(var))
@@ -143,10 +143,10 @@ function compute_monthly_leaderboard(
     for short_name in short_names
         @info short_name
         # Simulation data
-        sim_var = sim_var_dict[short_name]()
+        sim_var = get(sim_dir, short_name)
 
         # Observational data
-        obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+        obs_var = get(data_loader, short_name)
 
         # Remove first spin_up_months months from simulation
         spin_up_months = 12
@@ -154,6 +154,15 @@ function compute_monthly_leaderboard(
         ClimaAnalysis.times(sim_var)[end] >= spinup_cutoff && (
             sim_var =
                 ClimaAnalysis.window(sim_var, "time", left = spinup_cutoff)
+        )
+
+        # Preprocess sim var to match conventions of data loaders
+        sim_var = preprocess_sim_var(sim_var)
+
+        # Make the relative time the same between observational and simulation data
+        ClimaAnalysis.set_reference_date!(
+            obs_var,
+            sim_var.attributes["start_date"],
         )
 
         # Get the first valid time and last valid time
@@ -180,12 +189,12 @@ function compute_monthly_leaderboard(
         obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
         obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
 
-        sim_obs_comparsion_dict[short_name] = (sim_var, obs_var)
+        sim_obs_comparison_dict[short_name] = (sim_var, obs_var)
     end
 
-    # Plot monthly comparsions
+    # Plot monthly comparisons
     for short_name in short_names
-        sim_var, obs_var = sim_obs_comparsion_dict[short_name]
+        sim_var, obs_var = sim_obs_comparison_dict[short_name]
 
         # Grab the last 12 months if possible for plotting
         times = ClimaAnalysis.times(sim_var)
@@ -248,7 +257,7 @@ function compute_monthly_leaderboard(
     fig = CairoMakie.Figure(size = (250 + 450 * length(short_names), 900))
     fig_rmse_bias = fig[1, 1] = CairoMakie.GridLayout()
     for (col, short_name) in enumerate(short_names)
-        sim_var, obs_var = sim_obs_comparsion_dict[short_name]
+        sim_var, obs_var = sim_obs_comparison_dict[short_name]
         times = ClimaAnalysis.times(sim_var)
         mask = mask_dict[short_name](sim_var, obs_var)
 
@@ -372,11 +381,12 @@ latitude, and time. The observational data is determined by `data_source` and ca
 The parameter `leaderboard_base_path` is the path to save the leaderboards and bias plots,
 and `diagnostics_folder_path` is the path to the simulation data.
 
-Loading and preprocessing simulation data is done by `get_sim_var_dict`. Loading and
-preprocessing observational data is done by `get_obs_var_dict`. The masks are normalizing
-the global RMSE and bias are determined by `get_mask_dict`. The ranges of the bias plots are
-determined by `get_compare_vars_biases_plot_extrema`. See the functions defined in
-data_sources.jl.
+Loading and preprocessing simulation data is done by loading `OutputVar`s from a
+`SimDir` and passing them through `preprocess_sim_var`. Loading and preprocessing
+observational data is done by `ERA5DataLoader` or `ILAMBDataLoader`. The masks for
+normalizing the global RMSE and bias are determined by `get_mask_dict`. The ranges
+of the bias plots are determined by `get_compare_vars_biases_plot_extrema`. See
+the functions defined in data_sources.jl.
 """
 function compute_seasonal_leaderboard(
     leaderboard_base_path,
@@ -384,18 +394,16 @@ function compute_seasonal_leaderboard(
     data_source,
 )
     # Get everything we need from data_sources.jl
-    sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
-    obs_var_dict = get_obs_var_dict(data_source)
-    available_sim_vars = ClimaAnalysis.available_vars(
-        ClimaAnalysis.SimDir(diagnostics_folder_path),
+    sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
+    data_loader =
+        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
+    short_names = intersect(
+        ClimaAnalysis.available_vars(sim_dir),
+        available_vars(data_loader),
     )
-    short_names =
-        intersect(keys(sim_var_dict), keys(obs_var_dict), available_sim_vars)
 
-    # Need to intialize mask function
-    mask_dict = get_mask_dict(data_source)
-    issubset(short_names, keys(mask_dict)) ||
-        error("Not all variables ($short_names) have a mask $(keys(mask_dict))")
+    # Need to initialize mask function
+    mask_dict = get_mask_dict(data_loader)
     # Store the mask functions after initialization
     mask_fn_dict = Dict()
 
@@ -403,9 +411,9 @@ function compute_seasonal_leaderboard(
 
     # Set up dict for storing simulation and observational data after processing
     # Map short name to Dict which maps season to tuple of OutputVars
-    sim_obs_season_comparsion_dict = Dict()
+    sim_obs_season_comparison_dict = Dict()
     # Map short name to time series of time averages for each season
-    sim_obs_time_avg_over_seasons_comparsion_dict = Dict()
+    sim_obs_time_avg_over_seasons_comparison_dict = Dict()
     # Map short name to (sim_var, obs_var) full windowed time series, used by
     # the MON column to compute a monthly climatology.
     sim_obs_full_dict = Dict()
@@ -415,10 +423,10 @@ function compute_seasonal_leaderboard(
     for short_name in short_names
         @info short_name
         # Simulation data
-        sim_var = sim_var_dict[short_name]()
+        sim_var = get(sim_dir, short_name)
 
         # Observational data
-        obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+        obs_var = get(data_loader, short_name)
 
         # Make masking function
         mask_fn_dict[short_name] = mask_dict[short_name](sim_var, obs_var)
@@ -428,6 +436,15 @@ function compute_seasonal_leaderboard(
         ClimaAnalysis.times(sim_var)[end] >= spinup_cutoff && (
             sim_var =
                 ClimaAnalysis.window(sim_var, "time", left = spinup_cutoff)
+        )
+
+        # Preprocess sim var to match conventions of data loaders
+        sim_var = preprocess_sim_var(sim_var)
+
+        # Make the relative time the same between observational and simulation data
+        ClimaAnalysis.set_reference_date!(
+            obs_var,
+            sim_var.attributes["start_date"],
         )
 
         # Determine which times can be used
@@ -451,7 +468,6 @@ function compute_seasonal_leaderboard(
         )
 
         # Resample
-        obs_var = ClimaAnalysis.shift_longitude(obs_var, -180.0, 180.0)
         obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
         # Stash the full windowed time series so the MON column can compute a
         # monthly climatology before we collapse along time below.
@@ -468,7 +484,7 @@ function compute_seasonal_leaderboard(
         )
 
         # Save observation and simulation data
-        sim_obs_season_comparsion_dict[short_name] = Dict(
+        sim_obs_season_comparison_dict[short_name] = Dict(
             season => (sim_var_s, obs_var_s) for
             (season, sim_var_s, obs_var_s) in
             zip(seasons, sim_var_seasons, obs_var_seasons)
@@ -487,7 +503,7 @@ function compute_seasonal_leaderboard(
         time_averages_obs_var =
             ClimaAnalysis.average_time.(obs_var_seasons_over_time)
 
-        sim_obs_time_avg_over_seasons_comparsion_dict[short_name] =
+        sim_obs_time_avg_over_seasons_comparison_dict[short_name] =
             (time_averages_sim_var, time_averages_obs_var)
     end
 
@@ -506,7 +522,7 @@ function compute_seasonal_leaderboard(
             fontsize = 30,
         )
         for (col_idx, group) in enumerate(groups)
-            sim_var, obs_var = sim_obs_season_comparsion_dict[short_name][group]
+            sim_var, obs_var = sim_obs_season_comparison_dict[short_name][group]
             isempty(sim_var) && break
             layout = fig_bias[row_idx, col_idx] = CairoMakie.GridLayout()
             sim_var.attributes["short_name"] = "mean $(ClimaAnalysis.short_name(sim_var))"
@@ -595,7 +611,7 @@ function compute_seasonal_leaderboard(
         )
         for (col_idx, group) in enumerate(groups)
             if group == "SIM"
-                sim_var, _ = sim_obs_season_comparsion_dict[short_name]["ANN"]
+                sim_var, _ = sim_obs_season_comparison_dict[short_name]["ANN"]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
                 # Clip the colorbar to the 5th-95th percentile of the
@@ -711,7 +727,7 @@ function compute_seasonal_leaderboard(
                 )
             else
                 sim_var, obs_var =
-                    sim_obs_season_comparsion_dict[short_name][group]
+                    sim_obs_season_comparison_dict[short_name][group]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
                 ClimaAnalysis.Visualize.plot_bias_on_globe!(
@@ -741,10 +757,10 @@ function compute_seasonal_leaderboard(
     fig_rmse_bias = fig[1, 1] = CairoMakie.GridLayout()
 
 
-    # Loop over sim_obs_season_over_time_comparsion_dict
+    # Loop over sim_obs_season_over_time_comparison_dict
     for (col, short_name) in enumerate(short_names)
         sim_vars, obs_vars =
-            sim_obs_time_avg_over_seasons_comparsion_dict[short_name]
+            sim_obs_time_avg_over_seasons_comparison_dict[short_name]
         mask = mask_fn_dict[short_name]
 
         # Get season and compute global bias and global rmse

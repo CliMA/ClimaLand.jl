@@ -115,7 +115,8 @@ function preprocess_obs_vars(short_names, start_date, nelements)
         )
     end
     vars = map(short_names) do short_name
-        var = obs_var_dict[short_name](start_date)
+        var = obs_var_dict[short_name]
+        ClimaAnalysis.set_reference_date!(var, start_date)
         preprocess_single_obs_var(var, short_name, nelements)
     end
     return vars

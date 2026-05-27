@@ -4,6 +4,18 @@ import ClimaCalibrate
 import ClimaCalibrate.EnsembleBuilder
 import ClimaCalibrate.Checker
 
+# For now, we will reuse `data_sources.jl` that is used for making the
+# leaderboard, since it is the easiest option.
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "ext",
+        "land_sim_vis",
+        "leaderboard",
+        "data_sources.jl",
+    ),
+)
+
 include(
     joinpath(
         pkgdir(ClimaLand),
@@ -89,9 +101,10 @@ function process_member_data!(
         )
     end
 
-    sim_var_dict = ext.get_sim_var_dict(diagnostics_folder_path)
+    simdir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     vars = map(short_names) do short_name
-        var = sim_var_dict[short_name]()
+        var = get(simdir, short_name)
+        var = preprocess_sim_var(var)
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         # To prevent double counting along the longitudes since -180 and 180
