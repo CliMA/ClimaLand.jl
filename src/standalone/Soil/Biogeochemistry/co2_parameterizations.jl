@@ -263,10 +263,10 @@ function gas_diffusivity_in_soil(
     T_ref = LP.T_0(earth_param_set)
     P_ref = LP.P_ref(earth_param_set)
     θ_a = volumetric_air_content(θ_w, ν)
-    D0 = D_ref * max((T_soil / T_ref), 0)^T_exp * (P_ref / P_sfc)
+    D0 = D_ref * (T_soil / T_ref)^T_exp * (P_ref / P_sfc)
     # Cap the ratio to prevent diffusivity blow-up in very dry conditions
     # (e.g., Sahara where θ_a can greatly exceed θ_a100)
-    ratio = min(θ_a / max(θ_a100, eps(FT)), FT(5))
+    ratio = min(θ_a / θ_a100, FT(5))
     D = D0 * (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) * ratio^(FT(2) + FT(3) / b)
     return D
 end

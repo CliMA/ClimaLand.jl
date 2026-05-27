@@ -428,6 +428,7 @@ function ClimaLand.make_compute_imp_tendency(model::SoilCO2Model{FT}) where {FT}
 
         # O₂ diffusion: compute ∇·[D_O2 * ∇ρ_O2] on mass concentration,
         # then convert to O2_f tendency using θ_eff_o2 for stability in saturated soils
+        # Note that θ_eff is already clipped to never be zero.
         @. dY.soilco2.O2_f =
             -divf2c_O2(-interpc2f(p.soilco2.D_o2) * gradc2f_O2(p.soilco2.O2)) *
             R *
@@ -448,7 +449,7 @@ function ClimaLand.make_update_implicit_aux(model::SoilCO2Model)
         T_soil = p.soilco2.T
         Csom = Y.soilco2.SOC
         P_sfc = p.drivers.P
-        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / max(p.soilco2.θ_eff, eps(FT))
+        @. p.soilco2.CO2_air_eq = Y.soilco2.CO2 / p.soilco2.θ_eff
         @. p.soilco2.O2 =
             o2_concentration(Y.soilco2.O2_f, T_soil, P_sfc, params)
     end
@@ -514,16 +515,14 @@ NVTX.@annotate function ClimaLand.source!(
     θ_eff_o2 = p.soilco2.θ_eff_o2
 
     # Extra Michaelis-Menten attenuation in O2_f drives consumption to ~O2_f^2
-    # near zero (Sm already carries an MM_o2 ~O2_f factor). Combined with the
-    # tendency-level limiter in compute_exp_tendency!, this prevents the explicit
-    # step from pulling O2_f below zero.
-    K_O2_lim = FT(1e-4)
+    # near zero (Sm already carries an MM_o2 ~O2_f factor).
+    O2_f_lim = FT(1e-4)
     O2_f = Y.soilco2.O2_f
-
+    # Note that θ_eff is already clipped to never be zero.
     @. dY.soilco2.O2_f -=
         (R * T_soil) / (M_C * θ_eff_o2 * P_sfc) *
         p.soilco2.Sm *
-        (O2_f / (O2_f + K_O2_lim))
+        (O2_f / (O2_f + O2_f_lim))
 end
 
 """
@@ -715,9 +714,8 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         )
 
         # Compute air-equivalent CO2 concentration for diffusion.
-        # Clamp negative CO2 to zero (can occur from numerical diffusion).
-        @. p.soilco2.CO2_air_eq =
-            max(Y.soilco2.CO2, 0) / max(p.soilco2.θ_eff, eps(FT))
+        # Note that θ_eff is already clipped to never be zero.
+        @. p.soilco2.CO2_air_eq = max(Y.soilco2.CO2, 0) / p.soilco2.θ_eff
         M_C = params.M_C
 
         @. p.soilco2.O2 =
@@ -1020,6 +1018,7 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         # The derivative of the residual with respect to the prognostic variable
         ∂O2res∂O2 = matrix[@name(soilco2.O2_f), @name(soilco2.O2_f)]
         ∂CO2res∂CO2 = matrix[@name(soilco2.CO2), @name(soilco2.CO2)]
+        # Note that θ_eff is already clipped to never be zero.
         # dtγ can be an ITime or a float
         @. ∂CO2res∂CO2 =
             FT(-1) *
