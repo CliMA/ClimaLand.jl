@@ -81,7 +81,7 @@ or passed in via the `toml_dict`. The boundary conditions of all models
 correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedTuple
 of the form `(;atmos, radiation)`, with `atmos` an `AbstractAtmosphericDriver` and `radiation`
 an `AbstractRadiativeDriver`. The domain must be a ClimaLand domain with a vertical extent.
-`Δt` is the model timestep in seconds, used by the SoilCO2Model O2_f tendency limiter.
+`Δt` is the model timestep in seconds.
 """
 function LandSoilBiogeochemistry{FT}(
     forcing,

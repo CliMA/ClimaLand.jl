@@ -63,8 +63,6 @@ for FT in (Float32, Float64)
         drivers = SoilDrivers(prescribed_met, atmos)
 
         # Create model
-        # Δt = 0 disables the O2_f tendency limiter; this test only checks
-        # tendency assembly, not multi-step time integration.
         model = SoilCO2Model{FT}(
             domain,
             drivers,
@@ -83,7 +81,7 @@ for FT in (Float32, Float64)
         # Set initial conditions with physically reasonable values
         # CO2 ~ 10,000 ppm equivalent (elevated soil CO2)
         Y.soilco2.CO2 .= FT(0.003)  # kg C m⁻³ (well below 100k ppm threshold)
-        Y.soilco2.O2_f .= FT(0.2)
+        Y.soilco2.O2 .= FT(0.21)
         Y.soilco2.SOC .= FT(5.0)
 
         # Update cache and compute tendencies
@@ -104,7 +102,7 @@ for FT in (Float32, Float64)
 
         # Test that O2 consumption generally occurs in interior
         # (boundary diffusion may affect edge values)
-        @test sum(parent(dY.soilco2.O2_f)[interior_indices]) < FT(0)
+        @test sum(parent(dY.soilco2.O2)[interior_indices]) < FT(0)
 
         # Test boundary condition variables are set (finite values)
         @test all(isfinite.(parent(p.soilco2.top_bc)))
@@ -168,8 +166,6 @@ for FT in (Float32, Float64)
         drivers = SoilDrivers(prescribed_met, atmos)
 
         # Create model
-        # Δt = 0 disables the O2_f tendency limiter; this test only checks
-        # tendency assembly, not multi-step time integration.
         model = SoilCO2Model{FT}(
             domain,
             drivers,
@@ -202,7 +198,7 @@ for FT in (Float32, Float64)
         CO2_total = θ_eff * CO2_air_eq_atm
 
         Y.soilco2.CO2 .= CO2_total
-        Y.soilco2.O2_f .= FT(0.2)
+        Y.soilco2.O2 .= FT(0.21)
         Y.soilco2.SOC .= FT(5.0)
 
         # Update cache and compute tendencies

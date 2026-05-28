@@ -214,8 +214,6 @@ soil = Soil.EnergyHydrology{FT}(
 # Soil microbes model setup
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
 drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-# Δt = 0 disables the O2_f tendency limiter so this convergence test
-# measures the bare equations across the dt sweep below.
 soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
     land_domain,
     drivers,

@@ -136,11 +136,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             C = FT(0.0)
             return FT(C)
         end
-        # Initialize O2_f (volumetric fraction of O₂ in the soil air)
-        function O2_f_profile(z::FT) where {FT}
+        # Initialize O2
+        function O2_profile(z::FT) where {FT}
             # Typical atmospheric O2 volume fraction is ~0.21
-            O2_f = FT(0.21)
-            return FT(O2_f)
+            O2 = FT(0.21)
+            return FT(O2)
         end
         # Initialize SOC (soil organic carbon) concentration (kg C m⁻³)
         function SOC_profile(z::FT) where {FT}
@@ -149,7 +149,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             return FT(Csom)
         end
         Y.soilco2.CO2 .= CO2_profile.(z)
-        Y.soilco2.O2_f .= O2_f_profile.(z)
+        Y.soilco2.O2 .= O2_profile.(z)
         Y.soilco2.SOC .= SOC_profile.(z)
     end
 

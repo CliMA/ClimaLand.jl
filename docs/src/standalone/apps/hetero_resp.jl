@@ -50,7 +50,7 @@ function Rh_app_f()
             FT.([50e3, 70e3]), # Ea_sx
             FT.([1e-10, 0.1]), # kM_sx
             FT.([1e-10, 0.1]), # kM_o2
-            FT.([0.005, 0.5]), # O2_f
+            FT.([0.005, 0.5]), # O2
             FT.([0.005, 0.5]), # p_sx
             FT.([1.0, 10.0]), # Csom
         ),
@@ -60,7 +60,7 @@ function Rh_app_f()
             (J * mol^-1, J * mol^-1), # Ea_sx
             (kg * m^-3, kg * m^-3), # kM_sx
             (m^3 * m^-3, m^3 * m^-3), # kM_O2
-            (m, m), # O2_f
+            (m, m), # O2
             (m, m), # p_sx
             (kg * m^-3, kg * m^-3), # Csom
         ),

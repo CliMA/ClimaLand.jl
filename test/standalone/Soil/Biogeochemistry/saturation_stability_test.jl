@@ -6,7 +6,7 @@ The Henry's law air-water partitioning scheme should prevent blow-up when:
 - θ_l + θ_i → ν (saturated with ice)
 
 Key invariants:
-- CO2, O2_f, and their tendencies should never be NaN or Inf
+- CO2, O2, and their tendencies should never be NaN or Inf
 - θ_eff and θ_eff_o2 should remain positive even when θ_a = 0
 """
 
@@ -161,7 +161,7 @@ end
 
             # Set initial conditions
             Y.soilco2.CO2 .= FT(0.001)  # Small positive CO2
-            Y.soilco2.O2_f .= FT(0.2)   # Near-atmospheric O2 fraction
+            Y.soilco2.O2 .= FT(0.21)
             Y.soilco2.SOC .= FT(5.0)    # Soil organic carbon
 
             # Update cache
@@ -173,6 +173,7 @@ end
             @test all(isfinite.(parent(p.soilco2.θ_eff)))
             @test all(isfinite.(parent(p.soilco2.θ_eff_o2)))
             @test all(isfinite.(parent(p.soilco2.CO2_air_eq)))
+            @test all(isfinite.(parent(p.soilco2.O2_air_eq)))
             @test all(isfinite.(parent(p.soilco2.D)))
             @test all(isfinite.(parent(p.soilco2.Sm)))
 
@@ -185,12 +186,12 @@ end
 
             # Check tendencies are finite (no blow-up)
             @test all(isfinite.(parent(dY.soilco2.CO2)))
-            @test all(isfinite.(parent(dY.soilco2.O2_f)))
+            @test all(isfinite.(parent(dY.soilco2.O2)))
             @test all(isfinite.(parent(dY.soilco2.SOC)))
 
             # Check prognostic variables remain finite
             @test all(isfinite.(parent(Y.soilco2.CO2)))
-            @test all(isfinite.(parent(Y.soilco2.O2_f)))
+            @test all(isfinite.(parent(Y.soilco2.O2)))
         end
     end
 end
@@ -249,7 +250,7 @@ end
             t = Float64(0)
 
             Y.soilco2.CO2 .= FT(0.001)
-            Y.soilco2.O2_f .= FT(0.2)
+            Y.soilco2.O2 .= FT(0.21)
             Y.soilco2.SOC .= FT(5.0)
 
             set_initial_cache! = make_set_initial_cache(model)
@@ -259,7 +260,7 @@ end
             # All values should be finite
             @test all(isfinite.(parent(p.soilco2.θ_eff)))
             @test all(isfinite.(parent(dY.soilco2.CO2)))
-            @test all(isfinite.(parent(dY.soilco2.O2_f)))
+            @test all(isfinite.(parent(dY.soilco2.O2)))
         end
     end
 end

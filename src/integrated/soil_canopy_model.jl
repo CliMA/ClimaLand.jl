@@ -141,7 +141,7 @@ correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedT
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
 as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
-`Δt` is the model timestep in seconds, used by the SoilCO2Model O2_f tendency limiter.
+`Δt` is the model timestep in seconds.
 """
 function SoilCanopyModel{FT}(
     forcing,

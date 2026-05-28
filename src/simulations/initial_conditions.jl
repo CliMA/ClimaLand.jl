@@ -663,7 +663,7 @@ function make_set_subseasonal_initial_conditions(
         # condition on the first time step.
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(6e-5)
-            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            Y.soilco2.O2 .= FT(0.21)    # atmospheric O2 volumetric fraction
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
@@ -916,7 +916,7 @@ function make_set_initial_state_from_atmos_and_parameters(
         # SoilCO2 IC (requires soil state).
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(6e-5)
-            Y.soilco2.O2 .= FT(0)
+            Y.soilco2.O2 .= FT(0.21)
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
 

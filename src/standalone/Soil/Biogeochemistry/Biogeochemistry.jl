@@ -349,7 +349,7 @@ end
 An extension of the function `make_compute_exp_tendency`, for the soilco2 equation.
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `CO2`, `O2`, and `SOC`, and updates `dY.soilco2.CO2`,
-`dY.soilco2.O2_f`, and `dY.soilco2.SOC` in place with those values.
+`dY.soilco2.O2`, and `dY.soilco2.SOC` in place with those values.
 These quantities will be stepped explicitly.
 
 This has been written so as to work with Differential Equations.jl.
