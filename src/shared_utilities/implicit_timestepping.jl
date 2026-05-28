@@ -99,7 +99,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         @name(soil.ρe_int),
         @name(canopy.energy.T),
         @name(soilco2.CO2),
-        @name(soilco2.O2_f),
+        @name(soilco2.O2),
     )
     explicit_vars = (
         @name(soil.∫F_vol_liq_water_dt),

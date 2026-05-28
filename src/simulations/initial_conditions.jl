@@ -146,7 +146,6 @@ function set_soilco2_initial_conditions!(Y, p, land)
     )
     β = @. ClimaLand.Soil.Biogeochemistry.beta_gas(K_H, R, T_soil)
     θ_eff = @. ClimaLand.Soil.Biogeochemistry.effective_porosity(θ_a, θ_l, β)
-
     @. Y.soilco2.CO2 =
         θ_eff * p.drivers.c_co2 * p.drivers.P * M_C / (R * T_soil)
     # Exponential O2 profile: 0.21 at z=0, 0.15 at z=-1 m (k = ln(0.21/0.15)).
@@ -156,7 +155,9 @@ function set_soilco2_initial_conditions!(Y, p, land)
     # 0.21.
     z = soil.domain.fields.z
     k_o2 = FT(log(0.21 / 0.15))
-    @. Y.soilco2.O2_f = FT(0.21) * exp(k_o2 * z)
+    @. Y.soilco2.O2 =
+        θ_eff * FT(0.21) * p.drivers.P * params.M_O2 / (R * T_soil) *
+        exp(k_o2 * z)
 
     set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
     return nothing
@@ -359,6 +360,8 @@ function make_set_initial_state_from_file(
         atmos = land.soil.boundary_conditions.top.atmos
         if atmos isa ClimaLand.PrescribedAtmosphere
             evaluate!(p.drivers.T, atmos.T, t0)
+            evaluate!(p.drivers.P, atmos.P, t0)
+            evaluate!(p.drivers.c_co2, atmos.c_co2, t0)
         end
         # Soil IC
         if enforce_constraints
@@ -911,13 +914,9 @@ function make_set_initial_state_from_atmos_and_parameters(
             )
 
         # SoilCO2 IC (requires soil state).
-        # Y.soilco2.CO2 stores total CO₂ as carbon mass per soil volume
-        # (kg C m⁻³ soil) = θ_eff · c_g; the value below is a representative
-        # atmospheric-equilibrium initial guess and is rapidly replaced by
-        # the diffusive boundary condition on the first time step.
         if !isnothing(land.soilco2)
             Y.soilco2.CO2 .= FT(6e-5)
-            Y.soilco2.O2_f .= FT(0.21)    # atmospheric O2 volumetric fraction
+            Y.soilco2.O2 .= FT(0)
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
 

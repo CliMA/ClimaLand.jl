@@ -85,7 +85,6 @@ function o2_concentration(
     return ρ_O2_air
 end
 
-
 """
     o2_fraction_from_concentration(ρ_O2_air::FT,
                                     T_soil::FT,

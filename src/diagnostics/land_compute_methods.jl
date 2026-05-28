@@ -57,6 +57,8 @@ get_canopy(m::CanopyModel) = m
 
 get_soil(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) = m.soil
 get_soil(m::EnergyHydrology) = m
+get_soilco2(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) = m.soilco2
+get_soilco2(m::SoilCO2Model) = m
 
 get_surface_space(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
     m.soil.domain.space.surface
@@ -546,8 +548,36 @@ end
 @diagnostic_compute "soc" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.SOC
 
 @diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.CO2
-
-@diagnostic_compute "soilo2" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.O2_f
+function compute_soilo2!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCO2Model{FT}, SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    T_soil = p.soilco2.T  # soil temperature (K)
+    P_sfc = p.drivers.P   # atmospheric pressure (Pa)
+    soilco2 = get_soilco2(land_model)
+    params = soilco2.parameters
+    if isnothing(out)
+        out = zeros(soilco2.domain.space.subsurface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration(
+            p.soilco2.O2_air_eq,
+            T_soil,
+            P_sfc,
+            params,
+        )
+        return out
+    else
+        @. out = ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration(
+            p.soilco2.O2_air_eq,
+            T_soil,
+            P_sfc,
+            params,
+        )
+    end
+end #
 @diagnostic_compute "soilco2_diffusivity" Union{
     SoilCO2Model,
     SoilCanopyModel,
