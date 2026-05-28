@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 main
 ----
 
+v1.8.3
+-----
+- Replace `CTS.DistributedODEAlgorithm` with `CTS.TimeSteppingAlgorithm` to match upstream CTS callback rename PR[#1751](https://github.com/CliMA/ClimaLand.jl/pull/1751)
+
 v1.8.2
 -----
 - Remove allocation and clipping of Y PR[#1748](https://github.com/CliMA/ClimaLand.jl/pull/1748)
