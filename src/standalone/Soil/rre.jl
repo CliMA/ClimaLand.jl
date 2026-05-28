@@ -448,11 +448,10 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
                 MatrixFields.LowerDiagonalMatrixRow(p.soil.topBC_scratch)
         end
         # Compute divergence matrix
+        negative_dtγ = FT(-float(dtγ))
         @. ∂ϑres∂ϑ =
-            FT(-1) *
-            float(dtγ) *
+            negative_dtγ *
             (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
-
 
     end
     return compute_jacobian!
