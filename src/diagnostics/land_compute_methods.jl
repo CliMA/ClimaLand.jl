@@ -563,7 +563,7 @@ function compute_soilo2!(
         out = zeros(soilco2.domain.space.subsurface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out = ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration(
-            p.soilco2.O2_air_eq,
+            max(Y.soilco2.O2, 0)/p.soilco2.θ_eff_o2,
             T_soil,
             P_sfc,
             params,
@@ -571,7 +571,7 @@ function compute_soilo2!(
         return out
     else
         @. out = ClimaLand.Soil.Biogeochemistry.o2_fraction_from_concentration(
-            p.soilco2.O2_air_eq,
+            max(Y.soilco2.O2, 0)/p.soilco2.θ_eff_o2,
             T_soil,
             P_sfc,
             params,
