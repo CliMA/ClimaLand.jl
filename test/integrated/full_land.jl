@@ -210,14 +210,17 @@ snow, soil, soilco2).
 Useful for checking if land model functions are updating the
 values over the ocean.
 """
-function check_ocean_values_Y(Y, binary_mask; val = 0.0)
+function check_ocean_values_Y(Y, binary_mask; val = 0.0, broken = false)
+    # broken kwarg is used because ClimaCore 0.14.52 changed the tridiagnal solver to
+    # be not mask aware, which causes some of these to break. Once we update ClimaCore,
+    # we can remove the broken kwargs and the conditionals below.
     @test extrema(Array(parent(Y.soil.ϑ_l))[:, 1, 1, 1, Array(binary_mask)]) ==
-          (val, val)
+          (val, val) broken = broken
     @test extrema(Array(parent(Y.soil.θ_i))[:, 1, 1, 1, Array(binary_mask)]) ==
           (val, val)
     @test extrema(
         Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
-    ) == (val, val)
+    ) == (val, val) broken = broken
     @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
           (val, val)
     @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
@@ -584,7 +587,17 @@ end
         jac_prototype.matrix,
         b,
     )
-    check_ocean_values_Y(x, binary_mask; val = 1.0)
+    # ClimaCore 0.14.52 changed the tridiagnal solver to
+    # be not mask aware
+    tridiagonal_solve_not_mask_aware =
+        pkgversion(ClimaCore) == v"0.14.52" &&
+        ClimaComms.device() isa ClimaComms.CUDADevice
+    check_ocean_values_Y(
+        x,
+        binary_mask;
+        val = 1.0,
+        broken = tridiagonal_solve_not_mask_aware,
+    )
 
     # Take a step
     jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
@@ -619,7 +632,11 @@ end
         saveat = [t0, t0 + Δt],
     )
     u = sol.u[end]
-    check_ocean_values_Y(u, binary_mask)
+    check_ocean_values_Y(
+        u,
+        binary_mask;
+        broken = tridiagonal_solve_not_mask_aware,
+    )
 end
 
 @testset "Default LandModel with inland waters" begin
