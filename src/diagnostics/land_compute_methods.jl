@@ -649,17 +649,16 @@ function compute_soilco2_ppm!(
     M_C = FT(params.M_C)
     R = FT(LP.gas_constant(params.earth_param_set))
 
-    CO2_air_eq = p.soilco2.CO2_air_eq  # kg C / m³ air-equivalent
     T_soil = p.soilco2.T               # K
     P_sfc = p.drivers.P                # Pa
 
     if isnothing(out)
-        out = zeros(axes(CO2_air_eq))
+        out = zeros(axes(Y.soilco2.CO2))
         fill!(field_values(out), NaN)
-        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+        @. out = Y.soilco2.CO2/p.soilco2.θ_eff * R * T_soil / (M_C * P_sfc) * FT(1e6)
         return out
     else
-        @. out = CO2_air_eq * R * T_soil / (M_C * P_sfc) * FT(1e6)
+        @. out =  Y.soilco2.CO2/p.soilco2.θ_eff * R * T_soil / (M_C * P_sfc) * FT(1e6)
     end
 end
 
