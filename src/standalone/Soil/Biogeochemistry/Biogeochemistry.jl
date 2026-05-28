@@ -33,12 +33,16 @@ import ClimaLand:
     AbstractBC,
     boundary_flux!,
     AbstractSource,
-    source!
+    source!,
+    boundary_vars,
+    boundary_var_types,
+    boundary_var_domain_names
 export SoilCO2ModelParameters,
     SoilCO2Model,
     PrescribedMet,
     MicrobeProduction,
     SoilCO2FluxBC,
+    SoilO2FluxBC,
     AtmosCO2StateBC,
     AtmosO2StateBC,
     SoilCO2StateBC,
@@ -220,7 +224,7 @@ function SoilCO2Model{FT}(
         ),
         bottom = (
             co2 = SoilCO2FluxBC((p, t) -> 0.0),
-            o2 = SoilCO2FluxBC((p, t) -> 0.0),
+            o2 = SoilO2FluxBC((p, t) -> 0.0),
         ),
     )
     args = (parameters, domain, boundary_conditions, sources, drivers)
@@ -250,10 +254,17 @@ ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
         ClimaLand.BottomBoundary(),
     )...,
     # O2 boundary vars (top_bc_o2, bottom_bc_o2, top_bc_o2_wvec, bottom_bc_o2_wvec)
-    :top_bc_o2,
-    :bottom_bc_o2,
-    :top_bc_o2_wvec,
-    :bottom_bc_o2_wvec,
+    ClimaLand.boundary_vars(
+        model.boundary_conditions.top.o2,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_vars(
+        model.boundary_conditions.bottom.o2,
+        ClimaLand.BottomBoundary(),
+    )...,
+    :bidiag_matrix_scratch,
+    :full_bidiag_matrix_scratch,
+    :topBC_scratch, # useful for most cases, so we always include it
 )
 
 
@@ -275,11 +286,19 @@ ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
         model.boundary_conditions.bottom.co2,
         ClimaLand.BottomBoundary(),
     )...,
-    # O2 boundary var types
-    FT,
-    FT,
-    Geometry.WVector{FT},
-    Geometry.WVector{FT},
+    ClimaLand.boundary_var_types(
+        model,
+        model.boundary_conditions.top.o2,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_var_types(
+        model,
+        model.boundary_conditions.bottom.o2,
+        ClimaLand.BottomBoundary(),
+    )...,
+    MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
+    MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
+    ClimaCore.Geometry.Covariant3Vector{FT},
 )
 ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
     :subsurface,
@@ -297,11 +316,17 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
         model.boundary_conditions.bottom.co2,
         ClimaLand.BottomBoundary(),
     )...,
-    # O2 boundary var domain names
-    :surface,
-    :surface,
-    :surface,
-    :surface,
+    ClimaLand.boundary_var_domain_names(
+        model.boundary_conditions.top.o2,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_var_domain_names(
+        model.boundary_conditions.bottom.o2,
+        ClimaLand.BottomBoundary(),
+    )...,
+    :subsurface_face,
+    :subsurface_face,
+    :subsurface_face,
 )
 
 function ClimaLand.make_update_implicit_boundary_fluxes(model::SoilCO2Model)
@@ -382,13 +407,17 @@ function ClimaLand.make_compute_imp_tendency(model::SoilCO2Model{FT}) where {FT}
         # CO₂ diffusion using air-equivalent concentration for stable saturated soil behavior
         # D from Ryan et al. already accounts for air-filled porosity via tortuosity
         @. dY.soilco2.CO2 =
-            -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(max(Y.soilco2.CO2, 0) / p.soilco2.θ_eff))
+            -divf2c_C(
+                -interpc2f(p.soilco2.D) *
+                gradc2f_C(max(Y.soilco2.CO2, 0) / p.soilco2.θ_eff),
+            )
 
         # O₂ diffusion: compute ∇·[D_O2 * ∇ρ_O2] on mass concentration,
         # then convert to O2 tendency using θ_eff_o2 for stability in saturated soils
         @. dY.soilco2.O2 =
             -divf2c_O2(
-                -interpc2f(p.soilco2.D_o2) * gradc2f_O2(max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2),
+                -interpc2f(p.soilco2.D_o2) *
+                gradc2f_O2(max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2),
             )
 
         # SOC has no implicit piece
@@ -810,7 +839,18 @@ function ClimaLand.boundary_flux!(
     C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.CO2)
     θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_eff)
     C_bc = FT.(bc.bc(p, t))
-    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c/θ_eff, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c / θ_sfc, Δz)
+    levels =
+        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
+    local_geometry_faceN = ClimaCore.Fields.level(
+        Fields.local_geometry_field(
+            ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
+        ),
+        levels - ClimaCore.Utilities.half,
+    )
+    @. p.soilco2.dfluxBCdY =
+        ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
+        (D_c / θ_sfc / Δz)
 end
 
 """
@@ -844,7 +884,7 @@ function ClimaLand.boundary_flux!(
     C_c = ClimaLand.Domains.bottom_center_to_surface(Y.soilco2.CO2)
     θ_sfc = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.θ_eff)
     C_bc = FT.(bc.bc(p, t))
-    @. bc_field = ClimaLand.diffusive_flux(D_c, C_c/θ_sfc, C_bc, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_c / θ_sfc, C_bc, Δz)
 end
 
 """
@@ -906,9 +946,58 @@ function ClimaLand.boundary_flux!(
     @. bc_field = ClimaLand.diffusive_flux(
         D_c,
         p.drivers.c_co2 * P_sfc * M_C / (R * T_sfc),
-        max(C_c/θ_sfc, 0),
+        max(C_c / θ_sfc, 0),
         Δz,
     )
+    levels =
+        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
+    local_geometry_faceN = ClimaCore.Fields.level(
+        Fields.local_geometry_field(
+            ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
+        ),
+        levels - ClimaCore.Utilities.half,
+    )
+    @. p.soilco2.dfluxBCdY =
+        ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
+        (D_c / θ_sfc / Δz)
+end
+
+"""
+    SoilO2FluxBC <: ClimaLand.AbstractBC
+
+A container holding the O2 flux boundary condition,
+which is a function `f(p,t)`, where `p` is the auxiliary state
+vector.
+"""
+struct SoilO2FluxBC{F <: Function} <: ClimaLand.AbstractBC
+    bc::F
+end
+
+"""
+    ClimaLand.boundary_flux!(bc_field,
+        bc::SoilO2FluxBC,
+        boundary::ClimaLand.AbstractBoundary,
+        Δz::ClimaCore.Fields.Field,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        t,
+    )
+
+A method of ClimaLand.boundary_flux which updates the soil o2
+flux (kg C m⁻² s⁻¹) in the case of a prescribed flux BC at either the top
+or bottom of the domain.
+"""
+function ClimaLand.boundary_flux!(
+    bc_field,
+    bc::SoilO2FluxBC,
+    boundary::ClimaLand.AbstractBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    FT = eltype(Δz)
+    bc_field .= FT.(bc.bc(p, t))
 end
 
 """
@@ -937,6 +1026,49 @@ function AtmosO2StateBC(earth_param_set, M_O2::FT, O2_f_atm::FT) where {FT}
     R = LP.gas_constant(earth_param_set)
     return AtmosO2StateBC{FT}(R, M_O2, O2_f_atm)
 end
+
+# CO2 BC names; the default applies for SoilCO2FluxBC
+boundary_vars(
+    ::Union{AtmosCO2StateBC, SoilCO2StateBC},
+    ::ClimaLand.TopBoundary,
+) = (:top_bc, :top_bc_wvec, :dfluxBCdY)
+boundary_var_domain_names(
+    ::Union{AtmosCO2StateBC, SoilCO2StateBC},
+    ::ClimaLand.TopBoundary,
+) = (:surface, :surface, :surface)
+function boundary_var_types(
+    model::SoilCO2Model{FT},
+    ::Union{AtmosCO2StateBC, SoilCO2StateBC},
+    ::ClimaLand.TopBoundary,
+) where {FT}
+    (
+        FT,
+        ClimaCore.Geometry.WVector{FT},
+        ClimaCore.Geometry.Covariant3Vector{FT},
+    )
+end
+# O2 BC names. The default will *not* work because we would have duplicate "top_bc" etc names. so O2 BC types always need new methods
+boundary_vars(::AtmosO2StateBC, ::ClimaLand.TopBoundary) =
+    (:top_bc_o2, :top_bc_o2_wvec, :dfluxBCdY_o2)
+boundary_var_domain_names(::AtmosO2StateBC, ::ClimaLand.TopBoundary) =
+    (:surface, :surface, :surface)
+function boundary_var_types(
+    model::SoilCO2Model{FT},
+    ::AtmosO2StateBC,
+    ::ClimaLand.TopBoundary,
+) where {FT}
+    (
+        FT,
+        ClimaCore.Geometry.WVector{FT},
+        ClimaCore.Geometry.Covariant3Vector{FT},
+    )
+end
+boundary_vars(
+    ::Union{SoilO2FluxBC, AtmosO2StateBC},
+    ::ClimaLand.BottomBoundary,
+) = (:bottom_bc_o2, :bottom_bc_o2_wvec)
+boundary_vars(::Union{SoilO2FluxBC, AtmosO2StateBC}, ::ClimaLand.TopBoundary) =
+    (:top_bc_o2, :top_bc_o2_wvec)
 
 """
     ClimaLand.boundary_flux!(bc_field,
@@ -970,9 +1102,20 @@ function ClimaLand.boundary_flux!(
     @. bc_field = ClimaLand.diffusive_flux(
         D_o2,
         O2_f_atm * P_sfc * bc.M_O2 / (bc.R * T_sfc),
-        max(O2_c/θ_sfc,0),
+        max(O2_c / θ_sfc, 0),
         Δz,
     )
+    levels =
+        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soilco2.D)))
+    local_geometry_faceN = ClimaCore.Fields.level(
+        Fields.local_geometry_field(
+            ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
+        ),
+        levels - ClimaCore.Utilities.half,
+    )
+    @. p.soilco2.dfluxBCdY_o2 =
+        ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
+        (D_o2 / θ_sfc / Δz)
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)
@@ -1007,75 +1150,53 @@ function ClimaLand.make_compute_jacobian(model::SoilCO2Model{FT}) where {FT}
         )
 
         # The derivative of the residual with respect to the prognostic variable
-        ∂O2res∂O2 = matrix[@name(soilco2.O2), @name(soilco2.O2)]
         ∂CO2res∂CO2 = matrix[@name(soilco2.CO2), @name(soilco2.CO2)]
-
-        levels = ClimaCore.Spaces.nlevels(
-            ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
-        )
-        local_geometry_faceN = ClimaCore.Fields.level(
-            Fields.local_geometry_field(
-                ClimaCore.Spaces.face_space(axes(p.soilco2.D)),
-            ),
-            levels - ClimaCore.Utilities.half,
-        )
-        Δz_top = model.domain.fields.Δz_top
-
-        DN = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
-        θ_effN = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_eff)
-        Do2N = ClimaLand.Domains.top_center_to_surface(p.soilco2.D_o2)
-        θ_eff_o2N = ClimaLand.Domains.top_center_to_surface(p.soilco2.θ_eff_o2)
-        dfluxBCdY = @. lazy(
-            ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
-            (DN / θ_effN / Δz_top),
-        )
-        dfluxBCdY_O2 = @. lazy(
-            ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
-            (Do2N / θ_eff_o2N / Δz_top),
-        )
-
-        topBC_op = Operators.SetBoundaryOperator(
-            top = Operators.SetValue(dfluxBCdY),
-            bottom = Operators.SetValue(Geometry.Covariant3Vector(zero(FT))),
-        )
-        topBC_op_O2 = Operators.SetBoundaryOperator(
-            top = Operators.SetValue(dfluxBCdY_O2),
-            bottom = Operators.SetValue(Geometry.Covariant3Vector(zero(FT))),
-        )
-
+        @. p.soilco2.bidiag_matrix_scratch =
+            gradc2f_matrix() ⋅
+            MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff)
+        @. p.soilco2.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D)) ⋅
+            p.soilco2.bidiag_matrix_scratch
+        if haskey(p.soilco2, :dfluxBCdY)
+            topBC_op = Operators.SetBoundaryOperator(
+                top = Operators.SetValue(p.soilco2.dfluxBCdY),
+                bottom = Operators.SetValue(
+                    Geometry.Covariant3Vector(zero(FT)),
+                ),
+            )
+            @. p.soilco2.topBC_scratch = topBC_op(
+                Geometry.Covariant3Vector(zero(interpc2f_op(p.soilco2.D))),
+            )
+            @. p.soilco2.full_bidiag_matrix_scratch +=
+                -MatrixFields.LowerDiagonalMatrixRow(p.soilco2.topBC_scratch)
+        end
         @. ∂CO2res∂CO2 =
-            float(dtγ) * (
-                divf2c_matrix() ⋅ (
-                    MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D)) ⋅
-                    gradc2f_matrix() ⋅
-                    MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff) -
-                    MatrixFields.LowerDiagonalMatrixRow(
-                        topBC_op(
-                            Geometry.Covariant3Vector(
-                                zero(interpc2f_op(p.soilco2.D)),
-                            ),
-                        ),
-                    )
-                )
-            ) - (I,)
-        @. ∂O2res∂O2 =
-            FT(-1) *
             float(dtγ) *
-            (
-                divf2c_matrix() ⋅ (
-                    MatrixFields.DiagonalMatrixRow(
-                        interpc2f_op(-p.soilco2.D_o2),
-                    ) ⋅ gradc2f_matrix() ⋅
-                    MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff_o2) +
-                    MatrixFields.LowerDiagonalMatrixRow(
-                        topBC_op_O2(
-                            Geometry.Covariant3Vector(
-                                zero(interpc2f_op(p.soilco2.D_o2)),
-                            ),
-                        ),
-                    )
-                )
-            ) - (I,)
+            (divf2c_matrix() ⋅ p.soilco2.full_bidiag_matrix_scratch) - (I,)
+
+        ∂O2res∂O2 = matrix[@name(soilco2.O2), @name(soilco2.O2)]
+        @. p.soilco2.bidiag_matrix_scratch =
+            gradc2f_matrix() ⋅
+            MatrixFields.DiagonalMatrixRow(1 / p.soilco2.θ_eff_o2)
+        @. p.soilco2.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soilco2.D_o2)) ⋅
+            p.soilco2.bidiag_matrix_scratch
+        if haskey(p.soilco2, :dfluxBCdY_o2)
+            topBC_op_o2 = Operators.SetBoundaryOperator(
+                top = Operators.SetValue(p.soilco2.dfluxBCdY_o2),
+                bottom = Operators.SetValue(
+                    Geometry.Covariant3Vector(zero(FT)),
+                ),
+            )
+            @. p.soilco2.topBC_scratch = topBC_op_o2(
+                Geometry.Covariant3Vector(zero(interpc2f_op(p.soilco2.D_o2))),
+            )
+            @. p.soilco2.full_bidiag_matrix_scratch +=
+                -MatrixFields.LowerDiagonalMatrixRow(p.soilco2.topBC_scratch)
+        end
+        @. ∂O2res∂O2 =
+            float(dtγ) *
+            (divf2c_matrix() ⋅ p.soilco2.full_bidiag_matrix_scratch) - (I,)
     end
     return compute_jacobian!
 end

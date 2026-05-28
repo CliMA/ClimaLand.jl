@@ -169,11 +169,8 @@ end
             set_initial_cache!(p, Y, t)
 
             # Check auxiliary variables are finite
-            @test all(isfinite.(parent(p.soilco2.θ_a)))
             @test all(isfinite.(parent(p.soilco2.θ_eff)))
             @test all(isfinite.(parent(p.soilco2.θ_eff_o2)))
-            @test all(isfinite.(parent(p.soilco2.CO2_air_eq)))
-            @test all(isfinite.(parent(p.soilco2.O2_air_eq)))
             @test all(isfinite.(parent(p.soilco2.D)))
             @test all(isfinite.(parent(p.soilco2.Sm)))
 
