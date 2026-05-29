@@ -483,8 +483,9 @@ end
 """
     AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT}
 
-An abstract type for soil CO2 sources. There are two sources:
-roots and microbes, in struct RootProduction and MicrobeProduction.
+An abstract type for soil CO2 sources. The model is currently
+heterotrophic-only, with a single concrete source `MicrobeProduction`
+(microbial decomposition of soil organic matter).
 """
 abstract type AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT} end
 
@@ -522,19 +523,22 @@ NVTX.@annotate function ClimaLand.source!(
     dY.soilco2.CO2 .+= p.soilco2.Sm
 
     FT = eltype(p.soilco2.Sm)
-    M_C = FT(params.M_C)
-    R = LP.gas_constant(params.earth_param_set)
+    # Stoichiometry of aerobic respiration C + O₂ → CO₂: 1 mol O₂ consumed per
+    # mol C respired, i.e. (M_O2 / M_C) kg O₂ per kg C respired. Sm is in
+    # kg C m⁻³ s⁻¹ and dY.soilco2.O2 is in kg O₂ m⁻³ s⁻¹, so this mass-ratio
+    # factor (= 32/12 = 8/3) is required for the O₂ sink to balance the C source.
+    stoich_O2_per_C = FT(params.M_O2 / params.M_C)
     T_soil = p.soilco2.T  # soil temperature (K)
     P_sfc = p.drivers.P   # atmospheric pressure (Pa)
 
-    # Use θ_eff_o2 for stability in saturated soils
-    θ_eff_o2 = p.soilco2.θ_eff_o2
-
-    # Extra Michaelis-Menten attenuation in O2_f drives consumption to ~O2_f^2
-    # near zero (Sm already carries an MM_o2 ~O2_f factor).
+    # Extra Michaelis-Menten attenuation drives O₂ consumption to ~O2_f² near
+    # zero (Sm already carries an MM_o2 ~O2_f factor), keeping O₂ from being
+    # pulled below zero by the explicit source step.
     O2_f_lim = FT(1e-4)
     @. dY.soilco2.O2 -=
-        p.soilco2.Sm * (
+        stoich_O2_per_C *
+        p.soilco2.Sm *
+        (
             o2_fraction_from_concentration(
                 max(Y.soilco2.O2, 0) / p.soilco2.θ_eff_o2,
                 T_soil,

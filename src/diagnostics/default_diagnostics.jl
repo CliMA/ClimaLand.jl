@@ -490,7 +490,6 @@ function get_possible_diagnostics(model::SoilCO2Model)
         "soc_int",
         "sco2_ppm",
         "sod",
-        "scd",
     ]
 end
 function get_possible_diagnostics(model::CanopyModel)

@@ -990,8 +990,8 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "so2",
         long_name = "Soil O2 Volumetric Fraction",
         standard_name = "soil_o2_volumetric_fraction",
-        units = "kg O m^-3",
-        comments = "Mass concentration of O₂ in the soil pore space (O2). (depth resolved)",
+        units = "m^3 m^-3",
+        comments = "Volumetric fraction of O₂ in the soil air (gas phase), computed from the prognostic O₂ mass concentration via the ideal gas law. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilo2!(out, Y, p, t, land_model),
     )
 

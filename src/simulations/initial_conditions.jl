@@ -662,8 +662,10 @@ function make_set_subseasonal_initial_conditions(
         # θ_eff ≈ 0.3) and is rapidly replaced by the diffusive boundary
         # condition on the first time step.
         if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(6e-5)
-            Y.soilco2.O2 .= FT(0.21)    # atmospheric O2 volumetric fraction
+            # Bulk densities: storage = θ_eff · gas-phase concentration, with
+            # θ_eff = θ_a + β·θ_l (air-filled pores + dissolved in pore water).
+            Y.soilco2.CO2 .= FT(6e-5)   # kg C m⁻³ soil (≈ θ_eff · c_atm · P·M_C/(R·T))
+            Y.soilco2.O2 .= FT(0.08)    # kg O₂ m⁻³ soil (≈ θ_eff · 0.21 · P·M_O2/(R·T))
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
@@ -913,10 +915,16 @@ function make_set_initial_state_from_atmos_and_parameters(
                 earth_param_set,
             )
 
-        # SoilCO2 IC (requires soil state).
+        # SoilCO2 IC (requires soil state). Y.soilco2.CO2 and Y.soilco2.O2 store
+        # total mass per unit bulk soil volume (kg C m⁻³ soil and kg O₂ m⁻³ soil),
+        # i.e. storage = θ_eff · gas-phase concentration, with θ_eff = θ_a + β·θ_l
+        # accounting for the air-filled pore space plus gas dissolved in pore water.
+        # The values below are representative atmospheric-equilibrium initial guesses
+        # (θ_eff ≈ 0.3 at standard T, P) and are rapidly replaced by the diffusive
+        # boundary condition on the first time step.
         if !isnothing(land.soilco2)
-            Y.soilco2.CO2 .= FT(6e-5)
-            Y.soilco2.O2 .= FT(0.21)
+            Y.soilco2.CO2 .= FT(6e-5)   # ≈ θ_eff · c_atm · P·M_C/(R·T)
+            Y.soilco2.O2 .= FT(0.08)    # ≈ θ_eff · 0.21 · P·M_O2/(R·T)
             set_soilco2_SOC_from_soilgrids!(Y.soilco2.SOC)
         end
 
