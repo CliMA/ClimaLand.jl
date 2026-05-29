@@ -10,7 +10,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 730 d
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every new Newton iteration
@@ -111,7 +111,7 @@ end
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
 stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
-Δt = 450.0
+Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 

@@ -405,7 +405,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.AtmosDrivenFluxBC,
 )
-    append!(diagnostics, ["soilrn", "soillhf", "soilshf", "salb"])
+    append!(diagnostics, ["salb"])
     return nothing
 end
 function add_diagnostics!(
@@ -413,7 +413,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.SurfaceRunoff,
 )
-    append!(diagnostics, ["sr", "tr"])
+    append!(diagnostics, ["sr"])
     return nothing
 end
 function add_diagnostics!(
@@ -421,7 +421,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.Soil.Runoff.TOPMODELRunoff,
 )
-    append!(diagnostics, ["sr", "ssr", "tr", "sfsat", "sath", "infc"])
+    append!(diagnostics, ["sr", "ssr"])
     return nothing
 end
 function add_diagnostics!(
@@ -615,13 +615,13 @@ end
 Return a shortened list of highlighted diagnostics for the given model.
 """
 function get_short_diagnostics(model::EnergyHydrology)
-    return ["swc", "si", "sie", "tsoil", "et"]
+    return ["swc", "si", "sie", "tsoil"]
 end
 function get_short_diagnostics(model::SoilCO2Model)
-    return ["sco2", "hr", "soc", "soc_int", "sco2_ppm"]
+    return ["sco2", "hr", "so2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "ct", "lai", "trans", "er", "sif"]
+    diagnostics = ["gpp", "lai", "trans", "er"]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end
@@ -632,7 +632,7 @@ function get_possible_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
     return ["lkie", "tlake", "qlake", "alake", "shflake", "lhflake", "rnlake"]
 end
 function get_short_diagnostics(model::ClimaLand.InlandWater.SlabLakeModel)
-    return ["tlake", "alake"]
+    return ["tlake"]
 end
 function get_short_diagnostics(model::SoilCanopyModel)
     component_diagnostics =
@@ -656,18 +656,13 @@ function get_short_diagnostics(model::LandModel)
         "lwu",
         "swu",
         "shf",
-        "swd",
-        "lwd",
         "tair",
         "precip",
         "lhf",
         "msf",
-        "lwp",
         "iwc",
-        "sdr",
         "nee",
         "ra",
-        "cveg",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

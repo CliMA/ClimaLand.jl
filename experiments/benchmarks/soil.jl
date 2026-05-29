@@ -2,7 +2,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every new Newton iteration
@@ -49,7 +49,7 @@ function setup_soil()
     start_date = DateTime(2008)
     duration = Hour(6)
     stop_date = start_date + duration
-    Δt = 450.0
+    Δt = 900.0
     nelements = (101, 101, 15)
     domain = ClimaLand.Domains.global_box_domain(FT; context, nelements)
     forcing = ClimaLand.prescribed_forcing_era5(

@@ -10,7 +10,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 730 d
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every new Newton iteration
@@ -74,7 +74,7 @@ function ClimaCalibrate.forward_model(
     # Determine start date and end date from the sample date ranges
     start_date = first(sample_date_ranges[minimum(minibatch)]) - spinup
     stop_date = last(sample_date_ranges[maximum(minibatch)]) + extend
-    Δt = 450.0
+    Δt = 900.0
 
     # Convert to ITimes
     t0 = ITime(0, Dates.Second(1), start_date)

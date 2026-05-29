@@ -9,7 +9,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 2-20 years, based on LONGER_RUN setting
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every new Newton iteration
@@ -57,7 +57,7 @@ outdir =
 # If LONGER run, run for 20 years, with the correct forcing each year.
 start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
 stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
-Δt = 450.0
+Δt = 900.0
 domain = ClimaLand.Domains.global_box_domain(FT; context)
 toml_dict = LP.create_toml_dict(FT)
 

@@ -7,7 +7,7 @@
 # Number of spatial elements: 180, 360, 15
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every Newton iteration
@@ -55,7 +55,7 @@ function setup_snowyland()
     start_date = DateTime(2008)
     duration = Dates.Hour(6)
     stop_date = start_date + duration
-    Δt = 450.0
+    Δt = 900.0
     time_interpolation_method = LinearInterpolation(PeriodicCalendar())
     nelements = (180, 360, 15)
     earth_param_set = LP.LandParameters(toml_dict)
