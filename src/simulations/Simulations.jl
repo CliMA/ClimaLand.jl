@@ -172,14 +172,17 @@ function LandSimulation(
     exp_tendency! = make_exp_tendency(model)
     if model isa ClimaLand.AbstractExpModel
         T_imp! = nothing
+        cache_imp! = nothing
     else
         imp_tendency! = ClimaLand.make_imp_tendency(model)
-        jacobian! = ClimaLand.make_jacobian(model)
+        jacobian! = ClimaLand.make_compute_jacobian(model)
         jac_kwargs = (;
             jac_prototype = ClimaLand.initialize_jacobian(Y),
             Wfact = jacobian!,
         )
         T_imp! = ClimaTimeSteppers.ODEFunction(imp_tendency!; jac_kwargs...)
+        CL_cache_imp! = ClimaLand.make_update_implicit_cache(model)
+        cache_imp! = (Y, p, t) -> CL_cache_imp!(p, Y, t)
     end
 
     # Create SciML ODE Problem
@@ -188,6 +191,7 @@ function LandSimulation(
             T_exp! = exp_tendency!,
             T_imp! = T_imp!,
             dss! = ClimaLand.dss!,
+            cache_imp! = cache_imp!,
         ),
         Y,
         (t0, tf),

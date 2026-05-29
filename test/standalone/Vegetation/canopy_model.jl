@@ -177,7 +177,7 @@ import ClimaParams
         set_initial_cache! = make_set_initial_cache(canopy)
         exp_tendency! = make_exp_tendency(canopy)
         imp_tendency! = ClimaLand.make_imp_tendency(canopy)
-        jacobian! = ClimaLand.make_jacobian(canopy)
+        jacobian! = ClimaLand.make_compute_jacobian(canopy)
         # set up jacobian info
         jac_kwargs = (;
             jac_prototype = ClimaLand.initialize_jacobian(Y),
@@ -435,7 +435,7 @@ end
         set_initial_cache! = make_set_initial_cache(canopy)
         t0 = FT(0.0)
         imp_tendency! = ClimaLand.make_imp_tendency(canopy)
-        jacobian! = ClimaLand.make_jacobian(canopy)
+        jacobian! = ClimaLand.make_compute_jacobian(canopy)
 
         set_initial_cache!(p, Y, t0)
         T_sfc = Y.canopy.energy.T

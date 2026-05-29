@@ -525,10 +525,11 @@ end
     # Jacobian checks
     @info("testing Jacobian updates")
 
-    jacobian! = ClimaLand.make_jacobian(land)
+    jacobian! = ClimaLand.make_compute_jacobian(land)
     jac_prototype = ClimaLand.initialize_jacobian(Y)
-
+    update_implicit_cache! = ClimaLand.make_update_implicit_cache(land)
     # Check that the jacobian update respects the mask
+    update_implicit_cache!(p, Y, t0)
     jacobian!(jac_prototype, Y, p, Δt, t0)
     (; matrix) = jac_prototype
     ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
@@ -608,6 +609,7 @@ end
                 jac_kwargs...,
             ),
             dss! = ClimaLand.dss!,
+            cache_imp! = (Y, p, t) -> update_implicit_cache!(p, Y, t),
         ),
         Y,
         (t0, t0 + Δt),

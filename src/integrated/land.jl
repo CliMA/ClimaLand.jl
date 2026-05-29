@@ -623,8 +623,8 @@ function make_update_implicit_cache(
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_soilco2!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
-        # Radiation - updates Rn for soil, snow, lake also
-        lsm_radiant_energy_fluxes!(
+        # Implicit Radiation terms
+        implicit_radiant_energy_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
@@ -642,7 +642,6 @@ function make_update_implicit_cache(
     end
     return update_implicit_cache!
 end
-
 
 """
     lsm_radiant_energy_fluxes!(p,land::LandModel{FT},
@@ -756,6 +755,69 @@ NVTX.@annotate function lsm_radiant_energy_fluxes!(
     @. LW_u = (1 - ϵ_canopy) * LW_u_ground + ϵ_canopy * _σ * T_canopy^4
 end
 
+"""
+    implicit_radiant_energy_fluxes!(p,land::LandModel{FT},
+                                    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+                                    Y,
+                                    t,
+                                    ) where {FT}
+
+
+A function which updates terms which depend on canopy temperature
+and are implicit.
+"""
+NVTX.@annotate function implicit_radiant_energy_fluxes!(
+    p,
+    land::LandModel{FT},
+    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    Y,
+    t,
+) where {FT}
+    canopy = land.canopy
+    canopy_bc = canopy.boundary_conditions
+    snow = land.snow
+    radiation = canopy_bc.radiation
+    earth_param_set = canopy.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    LW_d = p.drivers.LW_d
+
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
+
+    ϵ_soil = ClimaLand.surface_emissivity(land.soil, Y, p)
+    T_soil = ClimaLand.component_temperature(land.soil, Y, p)
+
+    ϵ_snow = land.snow.parameters.ϵ_snow
+    T_snow = p.snow.T_sfc
+
+    # in W/m^2
+    LW_d_canopy = p.scratch1
+    LW_u_soil = p.scratch2
+    LW_u_snow = p.scratch3
+    LW_net_canopy = p.canopy.radiative_transfer.LW_n
+    LW_u = p.LW_u
+
+    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+
+    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
+    LW_u_lake = p.sfc_scratch
+    # updates lake p.lake.R_n and LW_u_lake
+    if land.lake isa Nothing
+        LW_u_lake .= 0
+    else
+        ϵ_lake = land.lake.parameters.emissivity
+        T_lake = p.lake.T
+        @. LW_u_lake = ϵ_lake * _σ * T_lake^4 + (1 - ϵ_lake) * LW_d_canopy
+    end
+    LW_u_ground =
+        ground_lw_upwelling(land.lake, p, LW_u_soil, LW_u_snow, LW_u_lake)
+    @. LW_net_canopy =
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
+        ϵ_canopy * LW_u_ground
+    @. LW_u = (1 - ϵ_canopy) * LW_u_ground + ϵ_canopy * _σ * T_canopy^4
+end
 
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
@@ -950,15 +1012,18 @@ NVTX.@annotate function snow_boundary_fluxes!(
         model.parameters.earth_param_set,
     )
 
+    residual_surface_flux =
+        Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p)
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
-    p.snow.total_energy_flux .=
-        e_flux_falling_snow .* (1 .- p.lake_fraction) .+
+    @. p.snow.total_energy_flux =
+        e_flux_falling_snow * (1 - p.lake_fraction) +
         (
-            Snow.get_residual_surface_flux(model.parameters.surf_temp, Y, p) .+
-            p.snow.turbulent_fluxes.lhf .+ p.snow.turbulent_fluxes.shf .+
-            p.snow.R_n .- p.snow.energy_runoff .- p.ground_heat_flux .+
+            residual_surface_flux +
+            p.snow.turbulent_fluxes.lhf +
+            p.snow.turbulent_fluxes.shf +
+            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
             e_flux_falling_rain
-        ) .* p.snow.snow_cover_fraction
+        ) * p.snow.snow_cover_fraction
     return nothing
 end
 

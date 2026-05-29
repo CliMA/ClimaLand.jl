@@ -38,7 +38,6 @@ ClimaLand.boundary_var_types
 ClimaLand.make_imp_tendency
 ClimaLand.make_compute_imp_tendency
 ClimaLand.make_compute_jacobian
-ClimaLand.make_jacobian
 ClimaLand.initialize_jacobian
 ```
 

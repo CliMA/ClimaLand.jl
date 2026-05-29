@@ -5,30 +5,7 @@ import LinearAlgebra
 import LinearAlgebra: I
 using NVTX
 
-export make_jacobian, make_compute_jacobian, set_dfluxBCdY!, initialize_jacobian
-
-"""
-    make_jacobian(model::AbstractModel)
-
-Creates and returns a function which updates the auxiliary
-variables `p` in place and then updates the entries of the
-Jacobian matrix `W` for the `model` in place.
-
-The default is that no updates are required, no implicit tendency is
-present, and hence the timestepping is entirely explicit.
-
-Note that the returned function `jacobian!` should be
-used as `Wfact!` in `ClimaTimeSteppers.jl`.
-"""
-function make_jacobian(model::AbstractModel)
-    update_implicit_cache! = make_update_implicit_cache(model)
-    compute_jacobian! = make_compute_jacobian(model)
-    NVTX.@annotate function jacobian!(W, Y, p, dtγ, t)
-        update_implicit_cache!(p, Y, t)
-        compute_jacobian!(W, Y, p, dtγ, t)
-    end
-    return jacobian!
-end
+export make_compute_jacobian, set_dfluxBCdY!, initialize_jacobian
 
 """
     make_compute_jacobian(model::AbstractModel)
