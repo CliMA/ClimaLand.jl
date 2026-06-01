@@ -24,6 +24,8 @@ export prescribed_forcing_fluxnet,
     get_site_info,
     get_canopy_height
 
+import ClimaCore
+
 # Include the data processing, forcing, and initial conditions utilities.
 include("fluxnet_simulations/data_processing.jl")
 include("fluxnet_simulations/forcing.jl")

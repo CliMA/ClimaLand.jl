@@ -97,6 +97,7 @@ function _generic_site_simulation(
     canopy = nothing,
     soil = nothing,
     snow = nothing,
+    space_type = "single",
 ) where {FT <: AbstractFloat}
     # 1. Resolve coordinates from FLUXNET2015 metadata if any are missing
     if any(isnothing, (lat, long, time_offset, atmos_h))
@@ -118,12 +119,22 @@ function _generic_site_simulation(
     end
 
     # 2. Column domain at (long, lat) — enables spatially-varying defaults
+    if space_type == "single"
     land_domain = ClimaLand.Domains.Column(;
         zlim = (FT(domain_kwargs.zmin), FT(domain_kwargs.zmax)),
         nelements = domain_kwargs.nelements,
         dz_tuple = (FT(domain_kwargs.dz_bottom), FT(domain_kwargs.dz_top)),
         longlat = (long, lat),
     )
+    else
+    land_domain = ClimaLand.Domains.ColumnEnsemble(;
+        zlim = (FT(domain_kwargs.zmin), FT(domain_kwargs.zmax)),
+        nelements = domain_kwargs.nelements,
+        longlat = (long, lat),
+        dz_tuple = (FT(domain_kwargs.dz_bottom), FT(domain_kwargs.dz_top)),
+    )
+    end
+
     surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     surface_space = land_domain.space.surface
 
@@ -153,6 +164,7 @@ function _generic_site_simulation(
 
     # 5. LAI from MODIS climatology (year-agnostic, periodic)
     LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
+    # Main.@infiltrate
 
     # 6. PModel canopy by default; user can pass `canopy = ...` to override
     if isnothing(canopy)

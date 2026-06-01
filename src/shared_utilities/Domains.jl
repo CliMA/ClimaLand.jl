@@ -228,7 +228,101 @@ function Column(;
         subsurface_space =
             ClimaCore.Spaces.column(box_domain.space.subsurface, colidx)
     end
+    # Main.@infiltrate
+    surface_space = obtain_surface_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
+    fields = get_additional_coordinate_field_data(subsurface_space)
+    # Main.@infiltrate
+    return Column{FT, typeof(space), typeof(fields)}(
+        zlim,
+        (nelements,),
+        dz_tuple,
+        boundary_names,
+        space,
+        fields,
+    )
+end
 
+"""
+    ColumnEnsemble{FT} <: AbstractDomain{FT}
+A struct holding the necessary information
+to construct a domain, a mesh, a center and face
+space, etc. for use when a finite difference in
+1D is suitable, as for a soil column model.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
+# Fields
+$(DocStringExtensions.FIELDS)
+
+TODO: Fix this docstring!
+"""
+struct ColumnEnsemble{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
+    "Domain interval limits, (zmin, zmax), in meters"
+    zlim::Tuple{FT, FT}
+    "Number of elements used to discretize the interval"
+    nelements::Tuple{Int}
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
+    "Boundary face identifiers"
+    boundary_names::Tuple{Symbol, Symbol}
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NT1
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
+    fields::NT2
+end
+
+# TODO: Add docstring here
+function ColumnEnsemble(;
+    zlim::Tuple{FT, FT},
+    nelements::Int,
+    device = ClimaComms.device(),
+    longlat::Union{Tuple{FT, FT}, Nothing} = nothing,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+) where {FT}
+    @assert zlim[1] < zlim[2]
+    boundary_names = (:bottom, :top)
+
+    long = longlat[1]
+    lat = longlat[2]
+    z_min = zlim[1]
+    z_max = zlim[2]
+    stretch = ClimaCore.Meshes.Uniform()
+
+    vertdomain = ClimaCore.Domains.IntervalDomain(
+        ClimaCore.Geometry.ZPoint(zlim[1]),
+        ClimaCore.Geometry.ZPoint(zlim[2]);
+        boundary_names = (:bottom, :top),
+    )
+
+    subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
+        FT;
+        points = [ClimaCore.Geometry.LatLongPoint{FT}(lat, long)],
+        z_elem = nelements,
+        z_min,
+        z_max,
+        device = ClimaComms.device(),
+        context = ClimaComms.SingletonCommsContext(device),
+        stretch,
+        # z_mesh = ClimaCore.CommonGrids.DefaultZMesh(FT; z_min, z_max, z_elem = nelements, stretch),
+        z_mesh = ClimaCore.Meshes.IntervalMesh(
+            vertdomain,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements,
+            reverse_mode = true,
+        ),
+        staggering = ClimaCore.Grids.CellCenter(),
+    )
+    # Main.@infiltrate
     surface_space = obtain_surface_space(subsurface_space)
     subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
     space = (;
@@ -246,7 +340,6 @@ function Column(;
         fields,
     )
 end
-
 
 """
     Plane{FT} <: AbstractDomain{FT}
@@ -841,6 +934,14 @@ function obtain_surface_space(cs::ClimaCore.Spaces.FiniteDifferenceSpace)
     )
 end
 
+function obtain_surface_space(cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace)
+    fs = ClimaCore.Spaces.face_space(cs)
+    return ClimaCore.Spaces.level(
+        fs,
+        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
+    )
+end
+
 """
     top_center_to_surface(center_field::ClimaCore.Fields.Field)
 
@@ -945,6 +1046,7 @@ function get_Δz(z::ClimaCore.Fields.Field)
     Δz_bottom = ClimaCore.Fields.level(Δz_face, ClimaCore.Utilities.PlusHalf(0))
 
     #Layer widths:
+    # Main.@infiltrate
     Δz_center = ClimaCore.Fields.Δz_field(z)
     return Δz_top ./ 2, Δz_bottom ./ 2, Δz_center
 end
@@ -993,6 +1095,7 @@ function get_long(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
+        ClimaCore.Spaces.PointCloudLevelSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)
@@ -1083,6 +1186,7 @@ function depth(
     space::Union{
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.CenterFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 )
     zmin, zmax = extrema(

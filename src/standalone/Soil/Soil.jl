@@ -299,6 +299,8 @@ function EnergyHydrology{FT}(
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
     sources = (additional_sources..., PhaseChange{FT}())
+    # TODO: This might be because the z coordinates are not the same...
+    # Main.@infiltrate
     parameters = EnergyHydrologyParameters(
         toml_dict;
         retention_parameters...,

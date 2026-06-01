@@ -100,6 +100,8 @@ function set_fluxnet_ic!(
     FT = eltype(Y.soil.ρe_int)
     tmp_ic = @. model.parameters.θ_r +
        (model.parameters.ν - model.parameters.θ_r) * FT(0.95)
+    # These parameters are not intialized correctly
+    # Main.@infiltrate
     swc_idx = column_name_map["SWC_F_MDS_1"]
     if isnothing(swc_idx) || all_missing(data[:, swc_idx]; val)
         θ_l_0 = tmp_ic
@@ -118,6 +120,7 @@ function set_fluxnet_ic!(
                 tmp_ic,
             )
     end
+    # Main.@infiltrate
     Y.soil.ϑ_l .= θ_l_0
     Y.soil.θ_i .= 0
 
@@ -151,7 +154,7 @@ function set_fluxnet_ic!(
     Y.soil.ρe_int =
         ClimaLand.Soil.volumetric_internal_energy.(
             Y.soil.θ_i,
-            ρc_s,
+            ρc_s, # TODO: This is different between the two :(
             FT(T_soil_0),
             model.parameters.earth_param_set,
         )

@@ -248,6 +248,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
     # compute the flux
+    # Main.@infiltrate
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
         (T_snow - T_soil)

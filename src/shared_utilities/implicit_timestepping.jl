@@ -130,14 +130,15 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         space::Union{
             Spaces.FiniteDifferenceSpace,
             Spaces.ExtrudedFiniteDifferenceSpace,
+            Spaces.MultiColumnFiniteDifferenceSpace,
         },
         FT,
     ) = MatrixFields.TridiagonalMatrixRow{FT}
     get_jac_type(
-        space::Union{Spaces.PointSpace, Spaces.SpectralElementSpace2D},
+        space::Union{Spaces.PointSpace, Spaces.SpectralElementSpace2D, Spaces.PointCloudLevelSpace},
         FT,
     ) = MatrixFields.DiagonalMatrixRow{FT}
-
+    # Main.@infiltrate
     get_j_field(space, FT) = zeros(get_jac_type(space, FT), space)
 
     implicit_blocks = MatrixFields.unrolled_map(

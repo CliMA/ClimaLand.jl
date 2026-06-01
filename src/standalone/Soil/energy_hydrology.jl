@@ -127,7 +127,8 @@ function EnergyHydrologyParameters(
     evap_α = toml_dict["evaporation_scalar"],
 ) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
-
+    # error("YOOO")
+    # Main.@infiltrate
     # Obtain parameters needed to calculate the derived parameters
     derived_param_name_map = (;
         :thermal_conductivity_of_quartz => :κ_quartz,
@@ -410,7 +411,8 @@ function ClimaLand.make_compute_imp_tendency(
                     ) * p.soil.K,
                 ) * gradc2f(p.soil.ψ + z),
             )
-
+        # TODO: Slight differences here?
+        # Main.@infiltrate
         @. dY.soil.θ_i = 0
 
         # Source terms
