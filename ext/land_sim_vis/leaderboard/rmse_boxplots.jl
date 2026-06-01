@@ -150,20 +150,23 @@ function _annual_global_rmse(
     data_source;
     spin_up_months = 12,
 )
-    sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
-    obs_var_dict = get_obs_var_dict(data_source)
-    mask_dict = get_mask_dict(data_source)
+    sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
+    data_loader =
+        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
+    mask_dict = get_mask_dict(data_loader)
     available = ClimaAnalysis.available_vars(
         ClimaAnalysis.SimDir(diagnostics_folder_path),
     )
-    (
-        short_name in keys(sim_var_dict) &&
-        short_name in keys(obs_var_dict) &&
-        short_name in available
-    ) || return NaN
+    (short_name in available_vars(data_loader) && short_name in available) ||
+        return NaN
 
-    sim_var = sim_var_dict[short_name]()
-    obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+    sim_var = get(sim_dir, short_name)
+    obs_var = get(data_loader, short_name)
+
+    # Preprocess sim var to match conventions of data loaders
+    sim_var = preprocess_sim_var(sim_var)
+
+    ClimaAnalysis.set_reference_date!(obs_var, sim_var.attributes["start_date"])
 
     spinup_cutoff = spin_up_months * 31 * 86400.0
     if ClimaAnalysis.times(sim_var)[end] >= spinup_cutoff
