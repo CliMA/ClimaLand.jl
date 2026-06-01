@@ -2,7 +2,7 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
-- Change timestep to 900s from 450s; reduce the number of short/default diagnostics PR[#1756](https://github.com/CliMA/ClimaLand.jl/pull/1756)
+- Change timestep to 900s from 450s in calibration, longruns and benchmarks; reduce the number of short/default diagnostics PR[#1756](https://github.com/CliMA/ClimaLand.jl/pull/1756)
 
 v1.8.3
 -----
