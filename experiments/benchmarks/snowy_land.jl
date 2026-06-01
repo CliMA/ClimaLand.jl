@@ -7,7 +7,7 @@
 # Number of spatial elements: 180, 360, 15
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
 # Jacobian update: every Newton iteration
@@ -36,9 +36,9 @@ const FT = Float64
 
 ######################################################################
 ## This result is from a benchmark run on an A100 on the clima cluster
-const PREVIOUS_GPU_TIME_S = 0.515
+const PREVIOUS_GPU_TIME_S = 0.279
 ## This result is from a benchmark run with a single process on the clima cluster
-const PREVIOUS_CPU_TIME_S = 15.8
+const PREVIOUS_CPU_TIME_S = 19.0
 ######################################################################
 
 include("benchmark_utils.jl")
@@ -55,7 +55,7 @@ function setup_snowyland()
     start_date = DateTime(2008)
     duration = Dates.Hour(6)
     stop_date = start_date + duration
-    Δt = 450.0
+    Δt = 900.0
     time_interpolation_method = LinearInterpolation(PeriodicCalendar())
     nelements = (180, 360, 15)
     earth_param_set = LP.LandParameters(toml_dict)
