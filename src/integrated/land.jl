@@ -166,7 +166,6 @@ end
                 forcing.atmos,
             ),
             toml_dict,
-            Δt,
         ) : nothing,
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -240,7 +239,6 @@ function LandModel{FT}(
             forcing.atmos,
         ),
         toml_dict,
-        Δt,
     ) : nothing,
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -610,13 +608,20 @@ function make_update_implicit_cache(
     SnM <: Snow.SnowModel{FT},
     LM <: Union{InlandWater.SlabLakeModel{FT}, Nothing},
 }
-    # We assume/know that soilco2 and the lake models do not have any implicit variables.
+    # We assume/know that the lake and snow models do not have any implicit variables.
     update_imp_aux_soil! = make_update_implicit_aux(land.soil)
+    update_imp_aux_soilco2! =
+        isnothing(land.soilco2) ? Returns(nothing) :
+        make_update_implicit_aux(land.soilco2)
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
     update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
+    update_imp_bf_soilco2! =
+        isnothing(land.soilco2) ? Returns(nothing) :
+        make_update_implicit_boundary_fluxes(land.soilco2)
     update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
     NVTX.@annotate function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
+        update_imp_aux_soilco2!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil, snow, lake also
         lsm_radiant_energy_fluxes!(
@@ -632,6 +637,7 @@ function make_update_implicit_cache(
             land.soil.parameters.earth_param_set,
         )
         update_imp_bf_soil!(p, Y, t)
+        update_imp_bf_soilco2!(p, Y, t)
         update_imp_bf_canopy!(p, Y, t)
     end
     return update_implicit_cache!

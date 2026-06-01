@@ -160,12 +160,8 @@ for float_type in (Float32, Float64)
     # Soil microbes model
     co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
     drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
-        land_domain,
-        drivers,
-        toml_dict,
-        dt,
-    )
+    soilco2 =
+        Soil.Biogeochemistry.SoilCO2Model{FT}(land_domain, drivers, toml_dict)
 
     # Canopy model
     # Set up radiative transfer

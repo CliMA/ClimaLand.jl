@@ -18,7 +18,7 @@ for FT in (Float32, Float64)
         toml_dict = ClimaLand.Parameters.create_toml_dict(FT)
         LAI = TimeVaryingInput((t) -> FT(1.0))
         Δt = FT(450)
-        model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain, Δt)
+        model = SoilCanopyModel{FT}(forcing, LAI, toml_dict, domain)
         # The constructor has many asserts that check the model
         # components, so we don't need to check them again here.
         Y, p, cds = initialize(model)

@@ -7,7 +7,7 @@ This section describes the coupled soil biogeochemistry model implemented in Cli
 The biogeochemistry model carries three prognostic fields that evolve in space (with soil depth) and time. The variables, listed in the units used internally, are:
 
 - the total CO₂ stored per unit soil volume (gas phase plus dissolved), $Y_{CO_2}$ (kg C m⁻³ soil), with $Y_{CO_2} = \theta_{\rm eff}\, c_g$ where $c_g$ is the air-phase carbon mass concentration (kg C m⁻³ air) and $\theta_{\rm eff}$ is the effective porosity, defined as the sum of the gas-filled pore volume and the dissolved-equivalent volume of the liquid pore water (see Effective Porosity below);
-- the volumetric O₂ fraction in soil air, $Y_{\theta_{O_2}}$ (dimensionless);
+- the total O₂ stored per unit soil volume (gas phase plus dissolved), $Y_{O_2}$ (kg O m⁻³ soil), with $Y_{O_2} = \theta_{\rm {eff,o2}}\, c_{g, O_2}$ where $c_{g, O_2}$ is the air-phase carbon mass concentration (kg $O_2$ m⁻³ air) and $\theta_{\rm {eff, o2}}$ is the effective porosity, as above;
 - the soil organic carbon density, $Y_{C_{som}}$ (kg C m⁻³), held fixed at its initial value (no tendency, see below).
 
 The model captures the fundamental processes of aerobic decomposition: microbes consume soluble carbon and oxygen to produce carbon dioxide. CO₂ and O₂ diffuse through the soil pore space, with diffusion rates controlled by soil structure (porosity, tortuosity), moisture, temperature, and pressure.
@@ -49,28 +49,24 @@ Oxygen transport and consumption in soil is described by:
 ```math
 \begin{equation}
 \frac{\partial Y_{\theta_{O_2}}}{\partial t}
-= \frac{R\, T}{\theta_{\rm eff,O_2}\, P\, M_{O_2}}\,
-\nabla \cdot \left[D_{O_2}\, \nabla c_{O_2}\right]
-- \frac{R\, T}{\theta_{\rm eff,O_2}\, P\, M_{C}}\, S_m
+= \nabla \cdot \left[D_{O_2}\, \nabla c_{g, O_2}\right]
+- \frac{M_{O_2}}{M_C}\, S_m
 \end{equation}
 ```
 
 where:
 
 - the effective porosity for O₂, $\theta_{\rm eff,O_2} = \theta_a + \beta_{O_2}\, \theta_l$ (m³ m⁻³ soil) — same construction as the CO₂ effective porosity defined above, but with the O₂-specific Henry's-law factor. Because O₂ is much less soluble than CO₂ ($\beta_{O_2} \approx 0.032$ vs $\beta_{CO_2} \approx 0.84$ at 298 K), the dissolved-equivalent term contributes much less for O₂;
-- the O₂ mass concentration in air, $c_{O_2}$ (kg O₂ m⁻³ air), recovered from $Y_{\theta_{O_2}}$ via the ideal gas law;
+- the O₂ mass concentration in air, $c_{O_2}$ (kg O₂ m⁻³ air);
 - the effective diffusivity of O₂ in soil, $D_{O_2}$ (m² s⁻¹);
-- the universal gas constant, $R$ (8.314 J mol⁻¹ K⁻¹);
-- the soil temperature, $T$ (K);
-- the atmospheric surface pressure, $P$ (Pa);
 - the molar mass of O₂, $M_{O_2}$ (0.032 kg mol⁻¹);
 - the molar mass of carbon, $M_C$ (0.012 kg mol⁻¹).
 
-The second term represents O₂ consumption by microbial respiration. The stoichiometry follows C + O₂ → CO₂: each 12 g of carbon respired consumes 32 g of O₂. The conversion factor $R T / (\theta_{\rm eff,O_2}\, P\, M_C)$ translates the carbon mass source $S_m$ (kg C m⁻³ s⁻¹ soil) into a tendency on the volumetric fraction $Y_{\theta_{O_2}}$.
+The second term represents O₂ consumption by microbial respiration. The stoichiometry follows C + O₂ → CO₂: each 12 g of carbon respired consumes 32 g of O₂. The conversion factor $M_{O_2}/ M_C)$ translates the carbon mass source $S_m$ (kg C m⁻³ s⁻¹ soil) into an oxygen source.
 
 ### Soil Organic Carbon
 
-The $Y_{C_{som}}$ pool is held fixed at its initial value:
+The $Y_{C_{som}}$ pool is held fixed at its initial value under the assumption of steady state:
 
 ```math
 \begin{equation}
@@ -150,7 +146,7 @@ The oxygen availability for microbial respiration accounts for diffusion limitat
 
 ```math
 \begin{equation}
-O_{2,{\rm avail}} = D_{oa} \cdot Y_{\theta_{O_2}} \cdot \theta_a^{4/3}
+O_{2,{\rm avail}} = D_{oa} \cdot O_{2,f} \cdot \theta_a^{4/3}
 \end{equation}
 ```
 
@@ -158,7 +154,7 @@ where:
 
 - the dimensionless O₂ availability metric, $O_{2,{\rm avail}}$;
 - the dimensionless O₂ diffusion coefficient used in the availability scaling, $D_{oa}$;
-- the volumetric O₂ fraction in air, $Y_{\theta_{O_2}}$ (dimensionless);
+- the volumetric O₂ fraction in air, $O_{2,f}$ (dimensionless) is computed from the mass concentration via the ideal gas law;
 - the Millington–Quirk tortuosity factor, $\theta_a^{4/3}$.
 
 The exponent 4/3 captures how tortuous diffusion pathways limit gas transport in partially saturated porous media.
@@ -275,11 +271,11 @@ The O₂ mass concentration in air is computed from the volumetric fraction usin
 
 ```math
 \begin{equation}
-c_{O_2} = Y_{\theta_{O_2}}\, \frac{P\, M_{O_2}}{R\, T}
+c_{O_2} = O_{2,f} \frac{P\, M_{O_2}}{R\, T}
 \end{equation}
 ```
 
-where the O₂ mass concentration in air, $c_{O_2}$ (kg O₂ m⁻³ air), is recovered from the dimensionless volumetric fraction $Y_{\theta_{O_2}}$ together with the surface pressure $P$, the molar mass $M_{O_2} = 0.032$ kg mol⁻¹, the gas constant $R = 8.314$ J mol⁻¹ K⁻¹, and the soil temperature $T$.
+where the O₂ mass concentration in air, $c_{O_2}$ (kg O₂ m⁻³ air), is recovered from the dimensionless volumetric fraction $O_{2,f}$ together with the surface pressure $P$, the molar mass $M_{O_2} = 0.032$ kg mol⁻¹, the gas constant $R = 8.314$ J mol⁻¹ K⁻¹, and the soil temperature $T$.
 
 ### From Mass Concentration to Volumetric Fraction
 
@@ -287,7 +283,7 @@ The inverse transformation is:
 
 ```math
 \begin{equation}
-Y_{\theta_{O_2}} = c_{O_2}\, \frac{R\, T}{P\, M_{O_2}}
+O_{2,f} = c_{O_2}\, \frac{R\, T}{P\, M_{O_2}}
 \end{equation}
 ```
 
@@ -328,15 +324,6 @@ F_{O_2,{\rm top}} = -D_{O_2}\, \frac{c_{O_2,{\rm atm}} - c_{O_2,{\rm top}}}{\Del
 
 At the bottom boundary, a zero-flux condition is applied: $F_{O_2,{\rm bottom}} = 0$.
 
-## Numerical Safeguards
-
-The continuous PDE above is integrated with an explicit scheme. Several pragmatic safeguards keep the discrete update well-behaved in extreme regimes (e.g. very dry hot columns or saturated ice-rich columns), without changing the equations in their physical regime:
-
-- the floor on the effective porosity, $\theta_{\rm eff,min} = 10^{-4}$, prevents a singular $c_g = Y_{CO_2}/\theta_{\rm eff}$ when both $\theta_a$ and $\theta_l$ are vanishingly small (saturated, frozen soil);
-- the diffusivity ratio is capped at $\theta_a / \theta_{a100} \le 5$, preventing the Ryan/Moldrup expression from producing unphysically large $D$ in soils much drier than their reference state ($\theta_a \gg \theta_{a100}$);
-- the per-step bracket on the $Y_{\theta_{O_2}}$ tendency clamps $\partial Y_{\theta_{O_2}}/\partial t$ so that one explicit step cannot push $Y_{\theta_{O_2}}$ outside $[0,\ \theta_{O_2,{\rm atm}}]$; this kicks in only when the explicit step would otherwise violate the diffusion CFL bound, and is conservative for multi-stage Runge-Kutta integrators;
-- an extra Michaelis-Menten attenuation $Y_{\theta_{O_2}} / (Y_{\theta_{O_2}} + K_{O_2,{\rm lim}})$ with $K_{O_2,{\rm lim}} = 10^{-4}$ multiplies the O₂ consumption term, which together with the tendency bracket prevents the explicit step from driving $Y_{\theta_{O_2}}$ negative in the rare cells where $Y_{\theta_{O_2}}$ becomes very small.
-
 ## Summary Tables
 
 ### Model Outputs
@@ -345,7 +332,7 @@ The continuous PDE above is integrated with an explicit scheme. Several pragmati
 | :--- | :---: | :---: | :--- |
 | Total CO₂ | $Y_{CO_2}$ | kg C m⁻³ soil | Gas plus dissolved, $\theta_{\rm eff} c_g$ |
 | Air-phase CO₂ | $c_g$ | kg C m⁻³ air | Diagnosed as $Y_{CO_2}/\theta_{\rm eff}$ |
-| O₂ volumetric fraction | $Y_{\theta_{O_2}}$ | dimensionless | O₂ fraction in soil air |
+| O₂ volumetric fraction | $O_{2,f}$ | dimensionless | O₂ fraction in soil air |
 | Soil organic carbon | $Y_{C_{som}}$ | kg C m⁻³ | Initialized from SoilGrids, fixed |
 | Microbial respiration | $S_m$ | kg C m⁻³ s⁻¹ | CO₂ production rate |
 

@@ -23,6 +23,7 @@ ClimaLand.Soil.SoilCO2ModelParameters(toml_dict::CP.ParamDict)
 ```@docs
 ClimaLand.Soil.Biogeochemistry.MicrobeProduction
 ClimaLand.Soil.Biogeochemistry.SoilCO2FluxBC
+ClimaLand.Soil.Biogeochemistry.SoilO2FluxBC
 ClimaLand.Soil.Biogeochemistry.SoilCO2StateBC
 ClimaLand.Soil.Biogeochemistry.AtmosCO2StateBC
 ClimaLand.Soil.Biogeochemistry.AtmosO2StateBC

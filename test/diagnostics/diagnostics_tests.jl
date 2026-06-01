@@ -376,7 +376,6 @@ end
         LAI,
         toml_dict,
         domain,
-        dt,
     )
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()
@@ -405,7 +404,6 @@ end
         LAI,
         toml_dict,
         domain,
-        dt,
     )
 
     output_writer = ClimaDiagnostics.Writers.DictWriter()

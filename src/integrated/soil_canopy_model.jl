@@ -102,8 +102,7 @@ end
         forcing,
         LAI,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
-        Δt;
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -118,7 +117,6 @@ end
                 forcing.atmos,
             ),
             toml_dict,
-            Δt,
         ),
         canopy = Canopy.CanopyModel{FT}(
             Domains.obtain_surface_domain(domain),
@@ -141,14 +139,13 @@ correspond to `forcing` with the atmosphere, as specified by `forcing`, a NamedT
 of the form (;atmos, radiation), with `atmos` an AbstractAtmosphericDriver and `radiation`
 and AbstractRadiativeDriver. The leaf area index `LAI` must be provided (prescribed)
 as a TimeVaryingInput, and the domain must be a ClimaLand domain with a vertical extent.
-`Δt` is the model timestep in seconds, used by the SoilCO2Model O2_f tendency limiter.
+`Δt` is the model timestep in seconds.
 """
 function SoilCanopyModel{FT}(
     forcing,
     LAI,
     toml_dict::CP.ParamDict,
-    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
-    Δt;
+    domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -163,7 +160,6 @@ function SoilCanopyModel{FT}(
             forcing.atmos,
         ),
         toml_dict,
-        Δt,
     ),
     canopy = Canopy.CanopyModel{FT}(
         Domains.obtain_surface_domain(domain),
@@ -295,11 +291,14 @@ function make_update_implicit_cache(
     RM <: Canopy.CanopyModel{FT},
 }
     update_imp_aux_soil! = make_update_implicit_aux(land.soil)
+    update_imp_aux_soilco2! = make_update_implicit_aux(land.soilco2)
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
     update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
+    update_imp_bf_soilco2! = make_update_implicit_boundary_fluxes(land.soilco2)
     update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
     NVTX.@annotate function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
+        update_imp_aux_soilco2!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
@@ -315,6 +314,7 @@ function make_update_implicit_cache(
             land.soil.parameters.earth_param_set,
         )
         update_imp_bf_soil!(p, Y, t)
+        update_imp_bf_soilco2!(p, Y, t)
         update_imp_bf_canopy!(p, Y, t)
     end
     return update_implicit_cache!

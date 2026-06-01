@@ -75,7 +75,7 @@ soil = Soil.EnergyHydrology{FT}(
 # Soil microbes model
 co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
 drivers = Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
-soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict, dt)
+soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers, toml_dict)
 
 # Now we set up the canopy model, which mostly use defaults for:
 ground = ClimaLand.PrognosticGroundConditions{FT}()
