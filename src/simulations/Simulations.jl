@@ -172,7 +172,7 @@ function LandSimulation(
     exp_tendency! = make_exp_tendency(model)
     if model isa ClimaLand.AbstractExpModel
         T_imp! = nothing
-        cache_imp! = nothing
+        cache_imp! = Returns(nothing)
     else
         imp_tendency! = ClimaLand.make_imp_tendency(model)
         jacobian! = ClimaLand.make_compute_jacobian(model)
