@@ -60,24 +60,43 @@ include(
     ),
 )
 
-"""
-    _loaded_climacommon()
+# Workaround for ClimaCalibrate v0.3.0: its job script inlines a multi-line
+# program into `julia -e`, which Derecho's set_gpu_rank wrapper word-splits on
+# newlines so julia only parses `import`. Restore v0.2.2's behavior of writing
+# model_run.jl to disk and passing the path. Remove once fixed upstream.
+function ClimaCalibrate.Calibration.generate_job_script_for_ensemble_member(
+    backend::ClimaCalibrate.Backend.HPCBackend,
+    iter,
+    member,
+    output_dir,
+    model_interface_filepath,
+    experiment_dir,
+    exeflags,
+)
+    job_body = """
+    import ClimaCalibrate
+    iteration = $iter; member = $member
+    model_interface_filepath = "$model_interface_filepath"
+    include(model_interface_filepath)
+    interface = ClimaCalibrate._load(joinpath("$output_dir", "interface.jld2"))
+    ClimaCalibrate.forward_model(interface, iteration, member)
+    ClimaCalibrate.write_model_completed("$output_dir", iteration, member)
+    """
+    member_path =
+        ClimaCalibrate.Calibration.path_to_ensemble_member(output_dir, iter, member)
+    mkpath(member_path)
+    julia_filepath = joinpath(member_path, "model_run.jl")
+    write(julia_filepath, job_body)
 
-Return the `climacommon/<version>` module name currently loaded in the parent
-shell, by scanning the `LOADEDMODULES` environment variable (colon-separated).
-Falls back to `"climacommon"` (default version) if none is found.
+    julia_command = "julia --project=$experiment_dir $exeflags $julia_filepath"
 
-This lets forward-model jobs pick up whichever `climacommon` the driver script
-loaded, instead of hardcoding a version per backend.
-"""
-function _loaded_climacommon()
-    loaded = get(ENV, "LOADEDMODULES", "")
-    # Expect entries of the form `climacommon/YYYY_MM_DD`. If multiple are
-    # loaded, the last one wins (matches `module`'s own resolution order).
-    pattern = r"^climacommon/\d{4}_\d{2}_\d{2}$"
-    matches = filter(mod -> occursin(pattern, mod), split(loaded, ':'))
-    isempty(matches) && return "climacommon"
-    return String(last(matches))
+    member_log = ClimaCalibrate.Calibration.path_to_model_log(output_dir, iter, member)
+    return ClimaCalibrate.Backend.make_job_script(
+        backend,
+        julia_command;
+        job_name = "run_$(iter)_$(member)",
+        output = member_log,
+    )
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
@@ -154,11 +173,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
         # 180 minutes is 3 hours
         :time => 180,
     ]
-    # Modules to load with `module load`
-    modules = [_loaded_climacommon()]
-    # Environment variables to set for each job
-    env_vars =
-        ["CLIMACOMMS_CONTEXT" => "SINGLETON", "CLIMACOMMS_DEVICE" => "CUDA"]
+    # Pin the module version so forward-model jobs match the project Manifests;
+    # unversioned `climacommon` resolves to whatever is current.
+    modules = ["climacommon/2025_02_25"]
+    # HDF5_USE_FILE_LOCKING=FALSE is required on Derecho's Lustre scratch.
+    env_vars = [
+        "CLIMACOMMS_CONTEXT" => "SINGLETON",
+        "CLIMACOMMS_DEVICE" => "CUDA",
+        "HDF5_USE_FILE_LOCKING" => "FALSE",
+    ]
 
     # Determine which backend to submit job scripts to
     if curr_backend == ClimaCalibrate.DerechoBackend

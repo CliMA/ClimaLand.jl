@@ -61,6 +61,19 @@ function _preprocess_sim_var(var, ::Val{:nee})
     return var
 end
 
+function _preprocess_sim_var(var, ::Val{:hr})
+    # heterotrophic respiration: convert `mol CO2 m^-2 s^-1` in sim to
+    # `g C m-2 day-1` in obs (used for the inv_hr inversion target).
+    (ClimaAnalysis.units(var) == "mol CO2 m^-2 s^-1") && (
+        var = ClimaAnalysis.convert_units(
+            var,
+            "g m-2 day-1",
+            conversion_function = units -> units * 86400.0 * 12.011,
+        )
+    )
+    return var
+end
+
 _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
@@ -439,6 +452,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "gpp" => (-6.0, 6.0) .* factor,
         "er" => (-6.0, 6.0) .* factor,
         "nee" => (-4.0, 4.0) .* factor,
+        "hr" => (-4.0, 4.0) .* factor,
         "lwu" => (-40.0, 40.0) .* factor,
         "shf" => (-50.0, 50.0) .* factor,
         "lhf" => (-40.0, 40.0) .* factor,
@@ -448,11 +462,180 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
 end
 
 """
+    _monthly_total_to_daily_rate!(obs_var)
+
+In-place: convert `obs_var.data` from `g C m⁻² month⁻¹` to `g C m⁻² day⁻¹` by
+dividing each time slice by its real days-in-month (28–31), rather than the
+constant 365.25/12 ≈ 30.4375. Avoids a ±5% spurious seasonality the constant
+would introduce. Updates the `units` attribute.
+"""
+function _monthly_total_to_daily_rate!(obs_var)
+    dates_vec = ClimaAnalysis.dates(obs_var)
+    factors = 1.0 ./ Float64.(Dates.daysinmonth.(dates_vec))
+    t_idx = obs_var.dim2index[ClimaAnalysis.time_name(obs_var)]
+    shape = ntuple(d -> d == t_idx ? length(factors) : 1, ndims(obs_var.data))
+    obs_var.data .*= reshape(factors, shape)
+    obs_var.attributes["units"] = "g m-2 day-1"
+    return obs_var
+end
+
+"""
+    get_inversion_obs_var_dict()
+
+Inversion-derived NEE/GPP/ER/Rh observations from the `inversion_nee` artifact
+(`derived_nee_gpp_er_rh_2002_2020.nc`, monthly 1°×1°, 2002–2020), returned as
+full-timeseries `OutputVar`s (the framework sets the per-sample reference date
+and windows by season in `generate_observations.jl`).
+
+Variables (all positive = source except gpp = uptake):
+  - `nee` from CarbonTracker CT2022, g C m⁻² month⁻¹
+  - `gpp` from GOSIF-GPP v2,        g C m⁻² month⁻¹
+  - `er`  residual = nee + gpp,     g C m⁻² month⁻¹
+  - `rh`  from Hashimoto 2015,      **g C m⁻² day⁻¹** (native units)
+
+All four are returned in g C m⁻² day⁻¹ (nee/gpp/er divided by actual
+days-in-month; rh already daily), with the units *string* set to `"g m-2 day-1"`
+to match the model diagnostics — ClimaCalibrate's `UnitsChecker` does a raw
+string compare. Short_names are retagged to `inv_nee`/`sif_gpp`/`res_er`/`inv_hr`
+so they don't collide with the FLUXCOM `gpp`/`er`/`nee` keys.
+"""
+function get_inversion_obs_var_dict()
+    inversion_path = ClimaLand.Artifacts.inversion_nee_dataset_path()
+
+    _load(varname) = begin
+        obs_var = ClimaAnalysis.OutputVar(inversion_path, varname)
+        ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
+            ClimaAnalysis.set_dim_units!(obs_var, "lon", "degrees_east")
+        ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
+            ClimaAnalysis.set_dim_units!(obs_var, "lat", "degrees_north")
+        ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
+        return ClimaAnalysis.replace(obs_var, missing => NaN)
+    end
+
+    obs_var_dict = Dict{String, Any}()
+    for (alias, varname, monthly) in (
+        ("inv_nee", "nee", true),
+        ("sif_gpp", "gpp", true),
+        ("res_er", "er", true),
+        ("inv_hr", "rh", false), # rh already a daily rate; relabeled below
+    )
+        obs_var = _load(varname)
+        if monthly
+            # Convert to a daily rate and set units to "g m-2 day-1".
+            _monthly_total_to_daily_rate!(obs_var)
+        else
+            # rh is already daily; only relabel its units to "g m-2 day-1" so
+            # the UnitsChecker's raw string compare matches the model hr
+            # diagnostic (a mismatch NaN-fills the member's whole G column).
+            obs_var.attributes["units"] = "g m-2 day-1"
+        end
+        # Like ILAMB obs: sort lat ascending and shift lon to [-180, 180] so
+        # preprocess_single_obs_var aligns these with the model grid.
+        # `_preprocess_var` leaves "g m-2 day-1" and the short_name untouched.
+        obs_var = _preprocess_var(obs_var)
+        obs_var.attributes["short_name"] = alias
+        obs_var_dict[alias] = obs_var
+    end
+    return obs_var_dict
+end
+
+# Map the calibration aliases (artifact-derived short names) to the model
+# diagnostic short names used by the simulation output and the leaderboard.
+const _INVERSION_ALIAS_TO_MODEL_NAME = Dict(
+    "inv_nee" => "nee",
+    "sif_gpp" => "gpp",
+    "res_er" => "er",
+    "inv_hr" => "hr",
+)
+
+"""
+    InversionDataLoader
+
+Loads the inversion-derived carbon observations (CT2022 NEE, GOSIF GPP, residual
+ER, Hashimoto Rh from the `inversion_nee` artifact) for the leaderboard. The
+inversion analogue of `ILAMBDataLoader`: same seasonal machinery, but against the
+inversion product instead of FLUXCOM. Keyed by the *model* short names
+`nee`/`gpp`/`er`/`hr` (not the `inv_*` aliases) so they intersect with the
+simulation diagnostics.
+"""
+struct InversionDataLoader <: AbstractDataLoader
+    """Preprocessed inversion `OutputVar`s, keyed by model short name."""
+    obs_var_dict::Dict{String, Any}
+
+    """A list of available variables to load."""
+    available_vars::Set{String}
+end
+
+"""
+    InversionDataLoader()
+
+Construct a data loader for the inversion-derived carbon targets. The variables
+are already preprocessed (monthly total → daily rate, latitude sorted ascending,
+longitude shifted to [-180, 180], units set to `g m-2 day-1`) by
+`get_inversion_obs_var_dict`; here they are re-keyed and re-tagged from
+`inv_nee`/`sif_gpp`/`res_er`/`inv_hr` to `nee`/`gpp`/`er`/`hr` so they match the
+simulation diagnostics.
+"""
+function InversionDataLoader()
+    inversion_dict = get_inversion_obs_var_dict()
+    obs_var_dict = Dict{String, Any}()
+    for (alias, model_name) in _INVERSION_ALIAS_TO_MODEL_NAME
+        obs_var = inversion_dict[alias]
+        obs_var.attributes["short_name"] = model_name
+        obs_var_dict[model_name] = obs_var
+    end
+    return InversionDataLoader(obs_var_dict, Set(keys(obs_var_dict)))
+end
+
+"""
+    get(loader::InversionDataLoader, short_name::String)
+
+Get the preprocessed inversion `OutputVar` with the model short name
+`short_name` (one of `nee`, `gpp`, `er`, `hr`).
+"""
+function Base.get(loader::InversionDataLoader, short_name::String)
+    short_name in loader.available_vars ||
+        error("$short_name is not available to load")
+    return loader.obs_var_dict[short_name]
+end
+
+"""
+    get_mask_dict(data_loader::InversionDataLoader)
+
+Return a dictionary mapping model short names to a masking function that masks
+out grid points where the inversion observation is missing (NaN), mirroring the
+ILAMB carbon-variable masks (used to normalize global bias and RMSE).
+"""
+function get_mask_dict(data_loader::InversionDataLoader)
+    mask_dict = Dict{String, Any}()
+
+    make_mask_fn =
+        (sim_var, obs_var) -> begin
+            return ClimaAnalysis.make_lonlat_mask(
+                ClimaAnalysis.slice(
+                    obs_var,
+                    time = ClimaAnalysis.times(obs_var) |> first,
+                );
+                set_to_val = isnan,
+            )
+        end
+
+    for short_name in available_vars(data_loader)
+        mask_dict[short_name] = make_mask_fn
+    end
+
+    @assert keys(mask_dict) == available_vars(data_loader)
+    return mask_dict
+end
+
+"""
     get_calibration_obs_var_dict(; short_names = nothing)
 
 Return a dictionary mapping short names to `OutputVar` containing preprocessed
 observational data for calibration. This combines ERA5 energy flux variables
-(`lhf`, `shf`, `lwu`, `swu`) with ILAMB variables (`gpp`, `er`, `nee`).
+(`lhf`, `shf`, `lwu`, `swu`), ILAMB variables (`gpp`, `er`, `nee`), and the
+inversion-derived carbon targets (`inv_nee`, `sif_gpp`, `res_er`, `inv_hr`)
+from the `inversion_nee` artifact.
 
 If `short_names` is provided, only the requested variables are returned.
 """
@@ -471,6 +654,10 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     for short_name in ("gpp", "er", "nee")
         obs_var_dict[short_name] = get(ilamb_data_loader, short_name)
     end
+
+    # Inversion-derived carbon targets (CT2022 NEE + GOSIF GPP + residual ER +
+    # Hashimoto Rh), keyed by inv_nee/sif_gpp/res_er/inv_hr.
+    merge!(obs_var_dict, get_inversion_obs_var_dict())
 
     if !isnothing(short_names)
         filter!(p -> p.first in short_names, obs_var_dict)

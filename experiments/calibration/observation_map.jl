@@ -101,10 +101,23 @@ function process_member_data!(
         )
     end
 
+    # Inversion calibration targets read the underlying model diagnostic
+    # (nee/gpp/er/hr) but are retagged to the obs alias so fill_g_ens_col!
+    # matches the inversion observations (see get_inversion_obs_var_dict).
+    sim_alias = Dict(
+        "inv_nee" => "nee",
+        "sif_gpp" => "gpp",
+        "res_er" => "er",
+        "inv_hr" => "hr",
+    )
     simdir = ClimaAnalysis.SimDir(diagnostics_folder_path)
     vars = map(short_names) do short_name
-        var = get(simdir, short_name)
+        diag_name = get(sim_alias, short_name, short_name)
+        var = get(simdir, diag_name)
+        # preprocess_sim_var dispatches on the diagnostic name (e.g. :nee),
+        # so unit conversion happens before we retag to the obs alias.
         var = preprocess_sim_var(var)
+        diag_name == short_name || (var.attributes["short_name"] = short_name)
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         # To prevent double counting along the longitudes since -180 and 180
@@ -178,37 +191,10 @@ function ClimaCalibrate.analyze_iteration(
     plot_output_path = ClimaCalibrate.path_to_iteration(output_dir, iteration)
     plot_constrained_params_and_errors(plot_output_path, ekp, prior)
 
-    # Leaderboard plots can only be plotted when the model saves swu, lwu, shf, lhf diagnostics
-    # Plot ERA5 bias plots for only the first ensemble member
-    # This can take a while to plot, so we plot only one of the members.
-    # We choose the first ensemble member because the parameters for the first
-    # ensemble member are supposed to be the mean of the parameters of the
-    # ensemble members if it is EKP.TransformUnscented
-    output_path =
-        ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, 1)
-
-    diagnostics_folder_path =
-        joinpath(output_path, "global_diagnostics", "output_active")
-    ext.compute_monthly_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ERA5",
-    )
-    ext.compute_seasonal_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ERA5",
-    )
-    ext.compute_monthly_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ILAMB",
-    )
-    ext.compute_seasonal_leaderboard(
-        output_path,
-        diagnostics_folder_path,
-        "ILAMB",
-    )
+    # Inter-iteration leaderboards are disabled: they reproducibly SEGV the
+    # orchestrator on Derecho. Regenerate them offline from each iteration's
+    # member_001/global_diagnostics/output_active/ NetCDFs after calibration.
+    return nothing
 end
 
 """

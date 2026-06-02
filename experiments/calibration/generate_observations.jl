@@ -204,6 +204,20 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
         by = ClimaAnalysis.Index(),
     )
 
+    # Force all time slices to share one NaN mask (the union of NaN locations
+    # across every season/year). The inversion obs have year/season-varying NaN
+    # coverage, so otherwise each yearly Observation flattens to a different
+    # length; EKP's minibatch update-group indexing assumes equal sample lengths
+    # and overruns get_obs (BoundsError in succ_gauss_analysis!, seen at iter 4).
+    time_idx = var.dim2index[ClimaAnalysis.time_name(var)]
+    common_nan_mask =
+        reduce((a, b) -> a .| b, eachslice(isnan.(var.data); dims = time_idx))
+    masked_data = copy(var.data)
+    for time_slice in eachslice(masked_data; dims = time_idx)
+        time_slice[common_nan_mask] .= eltype(masked_data)(NaN)
+    end
+    var = ClimaAnalysis.remake(var; data = masked_data)
+
     var = ClimaCalibrate.ObservationRecipe.change_data_type(var, Float32)
     var.attributes["short_name"] = short_name
     return var

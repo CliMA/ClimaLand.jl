@@ -14,10 +14,7 @@ latitude-weighted scalar covariance matrix.
    `CALIBRATION_CONFIG=gpp.jl bash experiments/calibration/run_calibration.sh`.
    When `TEST_CALIBRATION` is set, the single-parameter `configs/test.jl` is
    loaded instead.
-2. Load the `climacommon` version appropriate for your cluster (for example,
-   `module load climacommon/2025_02_25` on Derecho). The loaded version is
-   forwarded to the compute jobs automatically.
-3. Run the calibration script on the cluster:
+2. Run the calibration script on the cluster:
     - Execute `bash experiments/calibration/run_calibration.sh [OUTPUT_DIR]` in
       the terminal. `OUTPUT_DIR` is optional; on Derecho you typically want to
       pass a scratch path (e.g. `/glade/derecho/scratch/$USER/calibration_gpp`).
@@ -25,30 +22,29 @@ latitude-weighted scalar covariance matrix.
       submission for the forward models.
     - You may want to use `tmux` to keep a persistent session on the cluster.
 
-For example, launching er.jl on Derecho
-Go into tmux:
+Before invoking the script you still need to `module load climacommon/<version>`
+to put Julia on the orchestrator's PATH. The version forward-model PBS jobs
+load is pinned separately in `run_calibration.jl` via the `modules` keyword on
+the backend constructor — edit that line directly to change it.
+
+For example, launching er.jl on Derecho.
+
+Note Derecho has multiple login nodes (`derecho1`–`derecho7`); tmux sessions are
+per-node, so SSH to a specific one (e.g. `ssh derecho7.hpc.ucar.edu`) so you can
+reattach later from the same node.
+
+Go into tmux (`-s` sets the session name; `-t` is for target-session groups and
+won't do what you want here):
 
 ```
-tmux new -t calibration
+tmux new -s calibration
 ```
 
 (later on, attach via `tmux attach -t calibration`, and detach via `ctrl+b, release, press d`)
-Start the calibration:
+Start the calibration *inside* the tmux session:
 
 ```
 module load climacommon/2025_02_25
-export HDF5_USE_FILE_LOCKING=FALSE
 export CALIBRATION_CONFIG=er.jl
 bash experiments/calibration/run_calibration.sh /glade/derecho/scratch/$USER/calibration_er
 ```
-
-# Debugging
-
-ClimaCalibrate tries to keep `climacommon` up to date. If errors result from
-Julia version mismatches, use the `climacommon` versions below. These versions
-are compatible with ClimaCalibrate v0.2.2.
-
-- `ClimaGPUBackend`: `climacommon/2026_02_18`
-- `DerechoBackend`: `climacommon/2025_02_25`
-- `CaltechHPCBackend`: `climacommon/2024_10_09`
-- `GCPBackend`: `climacommon` is not supported
