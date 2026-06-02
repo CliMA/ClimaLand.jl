@@ -46,6 +46,32 @@ function setup_model(
         stop_date,
     )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+
+    # Build the canopy explicitly so SAI/RAI track spatially-varying max LAI
+    # (MODIS 2000-2020), which sets the AR winter maintenance baseline, instead
+    # of LandModel's default constant SAI/RAI. Other canopy defaults are unchanged.
+    maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        surface_domain,
+        (;
+            atmos,
+            radiation,
+            ground = ClimaLand.PrognosticGroundConditions{FT}(),
+        ),
+        LAI,
+        toml_dict;
+        prognostic_land_components,
+        soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
+            domain,
+            toml_dict,
+        ),
+        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+            surface_domain,
+            LAI,
+            maxLAI,
+            toml_dict,
+        ),
+    )
     land = LandModel{FT}(
         forcing,
         LAI,
@@ -53,6 +79,7 @@ function setup_model(
         domain,
         Δt;
         prognostic_land_components,
+        canopy,
     )
     return land
 end
@@ -110,13 +137,19 @@ function ClimaCalibrate.forward_model(
         ClimaLand.LandModel,
     )
 
-    # Set up diagnostics
-    # Need to include "lhf", "shf", "lwu", "swu" because plotting the
-    # leaderboard requires these diagnostics
+    # Set up diagnostics. lhf/shf/lwu/swu are needed for the leaderboard.
+    # Observation-alias short_names (inv_nee, ...) map to their model diagnostic
+    # names here; the aliases are reconstructed in data_sources.jl.
+    obs_alias_to_diag = Dict(
+        "inv_nee" => "nee",
+        "sif_gpp" => "gpp",
+        "res_er" => "er",
+        "inv_hr" => "hr",
+    )
     (; short_names) = config
     short_names = unique!(
         [
-            short_names
+            [get(obs_alias_to_diag, sn, sn) for sn in short_names]
             ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
         ],
     )

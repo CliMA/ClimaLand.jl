@@ -80,6 +80,18 @@ type = "float"
 description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
+["SAI_coeff"]
+value = 0.16
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff"]
+value = 1.0
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI."
+tag = "PrescribedAreaIndices"
+
 [canopy_height]
 value = 1.0
 type = "float"
@@ -736,13 +748,31 @@ tag = "SlabLakeParameters"
 
 # Autotrophic respiration (JULES) parameters
 ["root_leaf_nitrogen_ratio"]
-value = 2.3992909128669666
+value = 1.0
 type = "float"
-description = "Ratio of root nitrogen to top leaf nitrogen (unitless)."
+description = "Ratio of root nitrogen to top leaf nitrogen (unitless). Fixed at the JULES value 1.0 (not calibrated): exactly degenerate with autotrophic_respiration_Rd_ref in R_root = Rd_ref*mu_r*RAI*beta, so Rd_ref carries the magnitude."
 tag = "AutotrophicRespirationParameters"
 
 ["relative_contribution_factor"]
-value = 1.1321179749274621
+value = 0.3
 type = "float"
-description = "Factor of relative contribution for growth respiration, Rgrowth (unitless)."
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless). Fixed (not calibrated); was degenerate with the Rh/AR partition during inversion-NEE calibration."
+tag = "AutotrophicRespirationParameters"
+
+["autotrophic_respiration_Q10"]
+value = 1.0
+type = "float"
+description = "Q10 temperature sensitivity of maintenance respiration (unitless): multiplies Rpm by Q10^((T_air - T_ref)/10). Fixed at 1.0 (not calibrated), keeping the maintenance baseline seasonally flat."
+tag = "AutotrophicRespirationParameters"
+
+["autotrophic_respiration_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature for the Q10 maintenance-respiration factor (K)."
+tag = "AutotrophicRespirationParameters"
+
+["autotrophic_respiration_Rd_ref"]
+value = 5.0e-7
+type = "float"
+description = "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) for the LAI-independent root and stem maintenance respiration. Unlike the canopy dark respiration (which vanishes in winter), this persists when LAI -> 0, scaled by the standing area indices RAI/SAI."
 tag = "AutotrophicRespirationParameters"
