@@ -55,9 +55,9 @@ outdir =
 
 # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
 # If LONGER run, run for 20 years, with the correct forcing each year.
-start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
-stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
-Δt = 900.0
+start_date = DateTime(2000)
+stop_date = DateTime(2060)
+Δt = 1800.0
 domain = ClimaLand.Domains.global_box_domain(FT; context)
 toml_dict = LP.create_toml_dict(FT)
 
@@ -69,6 +69,7 @@ forcing = ClimaLand.prescribed_forcing_era5(
     toml_dict,
     FT;
     max_wind_speed = 25.0,
+    use_lowres_forcing=true
     context,
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
@@ -76,8 +77,15 @@ diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date,
     outdir;
-    conservation = true,
-    conservation_period = Day(10),
+      reduction_period = :monthly,
+    output_vars = [
+        "tsoil",
+        "swc",
+        "si",
+        "sr",
+        "ssr",
+        "tair",
+    ],
 )
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
@@ -89,13 +97,3 @@ simulation =
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
-
-short_names = ["swc", "sie", "si"]
-LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
-LandSimVis.make_heatmaps(
-    simulation;
-    savedir = root_path,
-    date = stop_date,
-    short_names,
-)
-LandSimVis.check_conservation(simulation; savedir = root_path)

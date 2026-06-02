@@ -76,12 +76,12 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = DateTime("2000-09-01")
-stop_date = DateTime("2010-09-01")
-Δt = 900.0
+stop_date = DateTime("2100-09-01")
+Δt = 1800.0
 longlat = FT.((-71.65, 49.23))
-zlim = FT.((-15, 0))
-nelements = 15
-dz_tuple = FT.((3, 0.05))
+zlim = FT.((-12, 0))
+nelements = 12
+dz_tuple = FT.((2, 0.05))
 domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
@@ -103,7 +103,6 @@ diagnostics = ClimaLand.default_diagnostics(
         "si",
         "sr",
         "ssr",
-        "infc",
         "tair",
         "precip",
     ],
@@ -139,7 +138,7 @@ mean_T_air = mean([
             for t in times
         ])
 ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Tsoil -mean(T_air)")
-for i in 1:2:nelements
+for i in 1:3:nelements
     lines!(
         ax1,
         [
@@ -151,7 +150,7 @@ for i in 1:2:nelements
 end
 
 ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Ice")
-for i in 1:2:nelements
+for i in 1:3:nelements
     lines!(
         ax2,
         [
@@ -165,7 +164,7 @@ fig[2, 2] = Legend(fig, ax2)
 
 ax3 =
     CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Effective Saturation")
-for i in 1:2:nelements
+for i in 1:3:nelements
     lines!(
         ax3,
         [
@@ -205,7 +204,7 @@ CairoMakie.save(joinpath(root_path, "runoff.png"), fig)
 
 fig = CairoMakie.Figure(size = (800, 1200))
 ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Tsoil -mean(T_air)")
-for i in 1:2:9
+for i in 1:3:nelements
     lines!(
         ax1,
         [
@@ -219,7 +218,7 @@ ylims!(ax1, -4, 4)
 
 ax2 =
     CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Effective Saturation")
-for i in 1:2:9
+for i in 1:3:nelements
     lines!(
         ax2,
         [
@@ -239,32 +238,19 @@ for i in 1:2:9
 end
 fig[2, 2] = Legend(fig, ax2)
 CairoMakie.save(joinpath(root_path, "zoom_in.png"), fig)
-avg = zeros(15)
+avg = zeros(nelements)
 for i in 1:nelements
     @show i
     avg[i] = mean([parent(diagnostics[1].output_writer.dict["tsoil_1M_average"][t])[i]
             for t in times[length(times)-11-12:end]
         ])
 end
-avg2 = zeros(14)
-for i in 1:(nelements-1)
-    blank = []
-    for t in times[length(times)-11-12:end]
-        θl = diagnostics[1].output_writer.dict["swc_1M_average"][t]
-        θi = diagnostics[1].output_writer.dict["si_1M_average"][t]
-        ψ = parent(ClimaLand.Soil.pressure_head.(model.parameters.hydrology_cm, model.parameters.θ_r, θl,model.parameters.ν .- θi, model.parameters.S_s))
-        z = parent(model.domain.fields.z)
-        S = (θl .- model.parameters.θ_r) ./ ( model.parameters.ν .-  model.parameters.θ_r)
-        K = parent(ClimaLand.Soil.hydraulic_conductivity.(model.parameters.hydrology_cm, model.parameters.K_sat, max.(S, 0)) .* ClimaLand.Soil.impedance_factor.(θi./(θi .+max.(θl, 0)), model.parameters.Ω))[:]
-        push!(blank, (K[i+1] + K[i])*(ψ[i+1]-ψ[i])/(z[i+1]-z[i])/2)
-    end
-    avg2[i] = mean(blank)
-end
+
 fig = CairoMakie.Figure(size = (800, 800))
 ax = Axis(fig[1,1])
 lines!(ax, avg, parent(model.domain.fields.z)[:])
-lines!(ax, zeros(15) .+ mean_T_air, parent(model.domain.fields.z)[:])
-lines!(ax, zeros(15) .+ 273.15, parent(model.domain.fields.z)[:])
+lines!(ax, zeros(nelements) .+ mean_T_air, parent(model.domain.fields.z)[:])
+lines!(ax, zeros(nelements) .+ 273.15, parent(model.domain.fields.z)[:])
 CairoMakie.save(joinpath(root_path, "mean_profile.png"), fig)
 
 @show sum(  [
