@@ -164,8 +164,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         forcing,
         LAI,
         toml_dict,
-        land_domain,
-        DT;
+        land_domain;
         prognostic_land_components,
         snow,
         canopy,
@@ -197,8 +196,8 @@ function ClimaCalibrate.forward_model(iteration, member)
     #=
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
-        Y.soilco2.CO2 .= FT(0.000412)
-        Y.soilco2.O2_f .= FT(0.21)
+        Y.soilco2.CO2 .= FT(6e-5)
+        Y.soilco2.O2 .= FT(0.08)
         #read csv file with depth and SOC values, then interpolate to model layers
         model_value = ClimaCore.Fields.zeros(land_domain.space.subsurface)
         data = CSV.read("/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean_extrapolated.csv", DataFrame)
@@ -222,8 +221,8 @@ function ClimaCalibrate.forward_model(iteration, member)
     #= old SOC-only custom_set_ic! (uniform-column SWC from base_set_ic!)
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
-        #Y.soilco2.CO2 .= FT(0.000412)
-        #Y.soilco2.O2_f .= FT(0.21)
+        #Y.soilco2.CO2 .= FT(6e-5)
+        #Y.soilco2.O2 .= FT(0.08)
         model_value = ClimaCore.Fields.zeros(land_domain.space.subsurface)
         data = CSV.read("/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data/NEON_all_sites_estimatedOC_2cm_mean.csv", DataFrame)
         valid = .!ismissing.(data[!, "$(SITE_ID)_estimatedOC_kg_m3"])
@@ -346,15 +345,15 @@ function ClimaCalibrate.forward_model(iteration, member)
     #=
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
-        Y.soilco2.CO2 .= FT(0.000412)
-        Y.soilco2.O2_f .= FT(0.21)
+        Y.soilco2.CO2 .= FT(6e-5)
+        Y.soilco2.O2 .= FT(0.08)
         Y.soilco2.SOC .= SOC_from_artifact
     end=#
     #=
     function custom_set_ic!(Y, p, t, model)
         base_set_ic!(Y, p, t, model)
-        Y.soilco2.CO2 .= FT(0.000412)
-        Y.soilco2.O2_f .= FT(0.21)
+        Y.soilco2.CO2 .= FT(6e-5)
+        Y.soilco2.O2 .= FT(0.08)
         SOC_top = FT(15.0)
         SOC_bot = FT(0.5)
         τ_soc = FT(1.0 / log(SOC_top / SOC_bot))
