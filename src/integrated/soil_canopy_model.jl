@@ -301,7 +301,7 @@ function make_update_implicit_cache(
         update_imp_aux_soilco2!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil and snow also
-        lsm_radiant_energy_fluxes!(
+        implicit_radiant_energy_fluxes!(
             p,
             land,
             land.canopy.radiative_transfer,
@@ -391,6 +391,48 @@ function lsm_radiant_energy_fluxes!(
     @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
+    @. LW_net_canopy =
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
+
+    @. LW_u = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
+end
+
+"""
+    implicit_radiant_energy_fluxes!(p, land::SoilCanopyModel{FT},
+                                    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+                                    Y,
+                                    t,
+                                    ) where {FT}
+
+
+A function which updates terms which depend on canopy temperature
+and are implicit.
+"""
+function implicit_radiant_energy_fluxes!(
+    p,
+    land::SoilCanopyModel{FT},
+    canopy_radiation::Canopy.AbstractRadiationModel{FT},
+    Y,
+    t,
+) where {FT}
+    canopy = land.canopy
+    earth_param_set = canopy.earth_param_set
+    _σ = LP.Stefan(earth_param_set)
+    LW_d = p.drivers.LW_d
+
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
+    ϵ_soil = land.soil.parameters.emissivity
+    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+
+    # in W/m^2
+    LW_d_canopy = p.scratch1
+    LW_u_soil = p.scratch2
+    LW_net_canopy = p.canopy.radiative_transfer.LW_n
+    LW_u = p.LW_u
+    # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
 
