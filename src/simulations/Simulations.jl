@@ -174,7 +174,7 @@ function LandSimulation(
         T_imp! = nothing
         cache_imp! = Returns(nothing)
     else
-        imp_tendency! = ClimaLand.make_imp_tendency(model)
+        imp_tendency! = ClimaLand.make_compute_imp_tendency(model)
         jacobian! = ClimaLand.make_compute_jacobian(model)
         jac_kwargs = (;
             jac_prototype = ClimaLand.initialize_jacobian(Y),

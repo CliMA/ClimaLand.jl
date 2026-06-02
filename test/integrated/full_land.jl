@@ -509,8 +509,8 @@ end
     dY = similar(Y)
     # Implicit tendency
     @. dY = 0
-    imp_tendency! = make_imp_tendency(land)
-    imp_tendency!(dY, Y, p, t0)
+    compute_imp_tendency! = make_compute_imp_tendency(land)
+    compute_imp_tendency!(dY, Y, p, t0)
     @info("testing implicit tendency")
     check_ocean_values_Y(dY, binary_mask)
 
@@ -605,7 +605,7 @@ end
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = ClimaTimeSteppers.ODEFunction(
-                imp_tendency!;
+                compute_imp_tendency!;
                 jac_kwargs...,
             ),
             dss! = ClimaLand.dss!,

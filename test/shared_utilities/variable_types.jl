@@ -42,11 +42,6 @@ FT = Float32
     @test tendency_args == ((default = [0],), 2, 3, 4)
 
     tendency_args = ((default = [1],), 2, 3, 4)
-    dm_imp_tendency! = make_imp_tendency(dm)
-    @test dm_imp_tendency!(tendency_args...) == [0]
-    @test tendency_args == ((default = [0],), 2, 3, 4)
-
-    tendency_args = ((default = [1],), 2, 3, 4)
     dm_compute_imp_tendency! = make_compute_imp_tendency(dm)
     @test dm_compute_imp_tendency!(tendency_args...) == [0]
     @test tendency_args == ((default = [0],), 2, 3, 4)
@@ -64,11 +59,6 @@ end
     struct DefaultImExModel{FT} <: AbstractImExModel{FT} end
     dm_imex = DefaultImExModel{FT}()
     ClimaLand.name(::DefaultImExModel) = :default_imex
-
-    tendency_args = ((default_imex = [1],), 2, 3, 4)
-    dm_imp_tendency! = make_imp_tendency(dm_imex)
-    @test dm_imp_tendency!(tendency_args...) == [0]
-    @test tendency_args == ((default_imex = [0],), 2, 3, 4)
 
     tendency_args = ((default_imex = [1],), 2, 3, 4)
     dm_compute_imp_tendency! = make_compute_imp_tendency(dm_imex)

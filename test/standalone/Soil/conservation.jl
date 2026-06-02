@@ -144,8 +144,8 @@ for FT in (Float32, Float64)
                     ),
                 ),
             ) < sqrt(eps(FT))
-            imp_tendency! = make_imp_tendency(soil)
-            imp_tendency!(dY, Y, p, t0)
+            compute_imp_tendency! = make_compute_imp_tendency(soil)
+            compute_imp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫F_vol_liq_water_dt ==
                   ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
         end
@@ -239,8 +239,8 @@ for FT in (Float32, Float64)
                     ),
                 ),
             ) < sqrt(eps(FT)) * abs(FT(((cmax - cmin) * -1e-5)))
-            imp_tendency! = make_imp_tendency(soil)
-            imp_tendency!(dY, Y, p, t0)
+            compute_imp_tendency! = make_compute_imp_tendency(soil)
+            compute_imp_tendency!(dY, Y, p, t0)
             # test that ∫ dY = -[F_sfc - F_bot] + ∫Sdz
             cache .*= 0
             ClimaCore.Operators.column_integral_definite!(

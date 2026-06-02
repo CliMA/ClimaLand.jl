@@ -235,7 +235,7 @@ for float_type in (Float32, Float64)
     # Integrated plant hydraulics and soil model
     land = SoilCanopyModel{FT}(soilco2, soil, canopy)
     exp_tendency! = make_exp_tendency(land)
-    imp_tendency! = make_imp_tendency(land)
+    imp_tendency! = make_compute_imp_tendency(land)
     jacobian! = make_compute_jacobian(land)
     set_initial_cache! = make_set_initial_cache(land)
     Y, p, cds = initialize(land)
