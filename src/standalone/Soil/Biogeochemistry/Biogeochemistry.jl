@@ -96,7 +96,6 @@ function SoilCO2ModelParameters(
 )
     name_map = (;
         :soil_C_substrate_diffusivity => :D_liq,
-        :soilCO2_pre_exponential_factor => :α_sx,
         :soilCO2_activation_energy => :Ea_sx,
         :michaelis_constant => :kM_sx,
         :O2_michaelis_constant => :kM_o2,
@@ -114,6 +113,20 @@ function SoilCO2ModelParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
+
+    # Accept either legacy α_sx or centered Arrhenius soilCO2_reference_rate.
+    α_sx = if haskey(toml_dict, "soilCO2_reference_rate")
+        R = FT(LP.gas_constant(earth_param_set))
+        T_ref_sx = FT(288.15)
+        V_ref_sx = FT(toml_dict["soilCO2_reference_rate"])
+        V_ref_sx / exp(-parameters.Ea_sx / (R * T_ref_sx))
+    elseif haskey(toml_dict, "soilCO2_pre_exponential_factor")
+        FT(toml_dict["soilCO2_pre_exponential_factor"])
+    else
+        error("Missing soil CO2 rate parameter: expected soilCO2_reference_rate or soilCO2_pre_exponential_factor")
+    end
+    parameters = merge(parameters, (; α_sx = α_sx))
+
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
         D_ref,

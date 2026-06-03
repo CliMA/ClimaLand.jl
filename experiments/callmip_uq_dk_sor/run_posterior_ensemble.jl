@@ -108,7 +108,8 @@ function write_parameter_toml(path, names, values)
             # all other parameters use "getindex" scope
             used_in = name == "soilCO2_reference_rate" ||
                       name == "michaelis_constant"              ||
-                      name == "O2_michaelis_constant" ? "[\"Land\"]" : "[\"getindex\"]"
+                      name == "O2_michaelis_constant"           ||
+                      name == "soilCO2_activation_energy" ? "[\"Land\"]" : "[\"getindex\"]"
             println(io, "[\"$name\"]")
             println(io, "value = $val")
             println(io, "type = \"float\"")

@@ -1,11 +1,9 @@
 """
 ClimaCalibrate driver for DK-Sor single-site calibration.
 
-Calibrates 17 parameters against daily NEE, Qle, Qh using TransformUnscented
-Kalman Inversion (N_ens = 35). All ~10 years of observations (2004-2013,
-wind-filtered) are used at each iteration (no minibatching).
-
-Copernicus LAI is used for the vegetation forcing. DT = 900 s.
+Runs the PR1693 DK-Sor workflow with Alexis-style minibatching: an
+ObservationSeries over fixed-size windows and a FixedMinibatcher with
+batch size = 2.
 
 Usage:
     julia --project=.buildkite experiments/calibrate_dk_sor/run_calibration.jl
@@ -25,6 +23,7 @@ using LinearAlgebra
 
 const SITE_ID = "DK-Sor"
 const N_ITERATIONS = 10
+const MINIBATCH_SIZE = 2
 const DT = Float64(900)
 
 const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
@@ -41,24 +40,33 @@ prior, priors = build_dk_sor_priors()
 # ── Load Observations ────────────────────────────────────────────────────────
 
 obs_data = JLD2.load(OBS_FILEPATH)
-y_obs = obs_data["y_obs"]
-noise_cov = obs_data["noise_cov"]
-obs_dates = obs_data["obs_dates"]
-cal_years = obs_data["cal_years"]
+observation_vector = obs_data["observation_vector"]
+window_names = obs_data["window_names"]
+window_dates = obs_data["window_dates"]
 
-n_obs = length(obs_dates)
-println("Loaded $n_obs valid observation days ($(first(cal_years))-$(last(cal_years)))")
-println("Observation vector length: $(length(y_obs)) (3 × $n_obs)")
+obs_series = EKP.ObservationSeries(
+    Dict(
+        "observations" => observation_vector,
+        "names" => window_names,
+        "minibatcher" => ClimaCalibrate.minibatcher_over_samples(
+            length(observation_vector),
+            MINIBATCH_SIZE,
+        ),
+    ),
+)
+
+println("Loaded $(length(observation_vector)) observation windows ($(first(window_names)) … $(last(window_names)))")
+println("Minibatch size: $MINIBATCH_SIZE")
 
 # ── Create EKP ───────────────────────────────────────────────────────────────
 
 rng = Random.MersenneTwister(1234)
 ekp = EKP.EnsembleKalmanProcess(
-    y_obs,
-    noise_cov,
+    obs_series,
     EKP.TransformUnscented(prior; impose_prior = true),
     verbose = true,
     rng = rng,
+    scheduler = EKP.DataMisfitController(terminate_at = 100),
 )
 
 N_ens = EKP.get_N_ens(ekp)
@@ -93,7 +101,8 @@ println("\n=== Starting ClimaCalibrate calibration ===")
 println("  Backend: WorkerBackend")
 println("  Iterations: $N_ITERATIONS")
 println("  Ensemble size: $N_ens")
-println("  Observation days: $n_obs (wind-filtered, $(first(cal_years))-$(last(cal_years)))")
+println("  Windows: $(length(window_names)) ($(first(window_names))–$(last(window_names))), minibatch=$MINIBATCH_SIZE")
+println("  Days per window: $(length(window_dates[1]))")
 println("  Parameters: $(length(priors))")
 println("  LAI: Copernicus")
 println("  Output: $OUTPUT_DIR")

@@ -4,7 +4,8 @@ ClimaCalibrate model interface for DK-Sor single-site calibration.
 Defines `forward_model(iteration, member)` and `observation_map(iteration)`.
 This file is `@everywhere include`d on all workers.
 
-Uses MODIS LAI and all 10 years of observations (no minibatching).
+Observation map returns the stacked window vector used by minibatched
+ObservationSeries calibration.
 """
 
 import ClimaCalibrate
@@ -300,22 +301,23 @@ end
 """
     ClimaCalibrate.observation_map(iteration)
 
-Return G ensemble matrix matching the filtered observation dates.
+Return stacked G ensemble matrix matching all saved observation windows.
 
-The observation vector layout is [NEE_1,...,NEE_n, Qle_1,...,Qle_n, Qh_1,...,Qh_n]
-where n = number of valid observation days (wind-filtered, non-NaN).
+For each window, the layout is [NEE..., Qle..., Qh...], and windows are
+concatenated in the same order as `window_names` written by
+generate_observations.jl.
 """
 function ClimaCalibrate.observation_map(iteration)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    # Load valid observation dates
+    # Load window date sets
     obs_data = JLD2.load(OBS_FILEPATH)
-    obs_dates = obs_data["obs_dates"]
-    n_obs = length(obs_dates)
-    g_len = 3 * n_obs
+    window_dates = obs_data["window_dates"]
+    n_windows = length(window_dates)
+    g_len = sum(3 * length(dates) for dates in window_dates)
 
-    @info "Observation map: $n_obs valid days, G length $g_len"
+    @info "Observation map: $n_windows windows, G length $g_len"
 
     G_ens = zeros(g_len, ensemble_size)
 
@@ -339,15 +341,19 @@ function ClimaCalibrate.observation_map(iteration)
             model_dict_qle = Dict(zip(model_dates, qle_model))
             model_dict_qh = Dict(zip(model_dates, qh_model))
 
-            # Extract model values at observation dates
-            nee_out = [get(model_dict_nee, d, NaN) for d in obs_dates]
-            qle_out = [get(model_dict_qle, d, NaN) for d in obs_dates]
-            qh_out = [get(model_dict_qh, d, NaN) for d in obs_dates]
+            blocks = Vector{Float64}()
+            for dates in window_dates
+                nee_out = [get(model_dict_nee, d, 0.0) for d in dates]
+                qle_out = [get(model_dict_qle, d, 0.0) for d in dates]
+                qh_out = [get(model_dict_qh, d, 0.0) for d in dates]
 
-            # Convert NEE from mol CO2/m2/s to gC/m2/d
-            nee_out .*= 12.0 * 86400.0
-
-            G_ens[:, m] = vcat(nee_out, qle_out, qh_out)
+                # Convert NEE from mol CO2/m2/s to gC/m2/d
+                nee_out .*= 12.0 * 86400.0
+                append!(blocks, nee_out)
+                append!(blocks, qle_out)
+                append!(blocks, qh_out)
+            end
+            G_ens[:, m] = blocks
         catch e
             @error "Error processing member $m" exception = e
             G_ens[:, m] .= NaN

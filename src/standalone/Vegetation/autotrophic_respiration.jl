@@ -24,6 +24,8 @@ Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     μs::FT
     "Relative contribution or Rgrowth (-)"
     Rel::FT
+    "Q10 temperature sensitivity for maintenance respiration (-)"
+    Q10::FT
 end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
@@ -100,6 +102,7 @@ function update_autotrophic_respiration!(
         Ω,
         An_leaf,
         Rd_leaf,
+        p.canopy.energy.T,
         β,
         h_canopy,
     )
@@ -134,19 +137,23 @@ function compute_autrophic_respiration(
     Ω,
     An,
     Rd,
+    T_leaf,
     β,
     h,
 )
 
-    (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
+    (; ne, ηsl, σl, μr, μs, Rel, Q10) = model.parameters
     FT = typeof(LAI)
+    T_ref = FT(298.15)
+    fT = Q10^((T_leaf - T_ref) / FT(10))
+    Rd_eff = Rd * clamp(fT, FT(0.05), FT(50))
 
     # Root and stem maintenance respiration: LAI-independent (trees keep roots and stems in winter)
-    Ra_root = Rd * μr * RAI
-    Ra_stem = Rd * μs * ηsl * h * SAI / σl
+    Ra_root = Rd_eff * μr * RAI
+    Ra_stem = Rd_eff * μs * ηsl * h * SAI / σl
 
     # Leaf maintenance and growth respiration: canopy-scaled (→ 0 as LAI → 0)
-    Rpm_leaf = Rd * β
+    Rpm_leaf = Rd_eff * β
     Rg = plant_respiration_growth(Rel, An, Rpm_leaf)
     canopy_scale = (1 - exp(-K * LAI * Ω)) / (K * Ω)
     Ra_canopy = max(FT(0), Rpm_leaf + Rg) * canopy_scale
@@ -176,9 +183,12 @@ function AutotrophicRespirationParameters(
     μr = toml_dict["root_leaf_nitrogen_ratio"],
     Rel = toml_dict["relative_contribution_factor"],
     μs = toml_dict["stem_leaf_nitrogen_ratio"],
+    Q10 = haskey(toml_dict, "autotrophic_respiration_Q10") ?
+        toml_dict["autotrophic_respiration_Q10"] :
+        CP.float_type(toml_dict)(2.0),
 )
     FT = CP.float_type(toml_dict)
-    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs)
+    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs, Q10)
 end
 
 
