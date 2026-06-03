@@ -43,7 +43,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)_main_short_ic_density"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -81,34 +81,10 @@ function setup_model(
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
     prognostic_land_components = (:canopy, :snow, :soil)
-
-    # Construct the P model manually since it is not a default
-    photosynthesis = PModel{FT}(domain, toml_dict)
-    conductance = PModelConductance{FT}(toml_dict)
-    # Use the soil moisture stress function based on soil moisture only
-    soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    biomass =
-        ClimaLand.Canopy.PrescribedBiomassModel{FT}(domain, LAI, toml_dict)
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        canopy_forcing,
-        LAI,
-        toml_dict;
-        prognostic_land_components,
-        photosynthesis,
-        conductance,
-        soil_moisture_stress,
-        biomass,
-    )
-
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    α_snow = Snow.ZenithAngleAlbedoModel(toml_dict)
-    horz_degree_res = FT(1)
-    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, horz_degree_res)
     surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
-    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
+#    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
     snow = Snow.SnowModel(
         FT,
         surface_domain,
@@ -116,10 +92,7 @@ function setup_model(
         toml_dict,
         Δt;
         prognostic_land_components,
-        α_snow,
-        scf,
         surf_temp,
-        density,
     )
 
     # Construct the land model with all default components except for snow
@@ -131,7 +104,6 @@ function setup_model(
         Δt;
         prognostic_land_components,
         snow,
-        canopy,
     )
     return land
 end

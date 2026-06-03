@@ -35,7 +35,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "soil_main_no_water_fluxes_long"
+root_path = "soil_main_no_water_fluxes_long_eastern_kersten"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -76,12 +76,12 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = DateTime("2000-09-01")
-stop_date = DateTime("2100-09-01")
+stop_date = DateTime("2040-09-01")
 Δt = 1800.0
-longlat = FT.((-71.65, 49.23))
-zlim = FT.((-12, 0))
-nelements = 12
-dz_tuple = FT.((2, 0.05))
+longlat = FT.((140.0, 58.0))#FT.((-128.3, 69.1))
+zlim = FT.((-15, 0))
+nelements = 15
+dz_tuple = FT.((3, 0.05))
 domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
@@ -138,7 +138,7 @@ mean_T_air = mean([
             for t in times
         ])
 ax1 = CairoMakie.Axis(fig[1, 1], xlabel = "Time", ylabel = "Tsoil -mean(T_air)")
-for i in 1:3:nelements
+for i in 1:1:nelements
     lines!(
         ax1,
         [
@@ -150,7 +150,7 @@ for i in 1:3:nelements
 end
 
 ax2 = CairoMakie.Axis(fig[2, 1], xlabel = "Time", ylabel = "Ice")
-for i in 1:3:nelements
+for i in 1:1:nelements
     lines!(
         ax2,
         [
@@ -164,7 +164,7 @@ fig[2, 2] = Legend(fig, ax2)
 
 ax3 =
     CairoMakie.Axis(fig[3, 1], xlabel = "Time", ylabel = "Effective Saturation")
-for i in 1:3:nelements
+for i in 1:1:nelements
     lines!(
         ax3,
         [

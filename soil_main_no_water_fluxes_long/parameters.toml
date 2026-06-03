@@ -1,0 +1,501 @@
+[thermal_conductivity_of_soil_minerals]
+used_in = ["Land"]
+value = 2.5
+type = "float"
+description = "Thermal conductivity of soil minerals, excluding quartz (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[orbit_eccentricity_at_epoch]
+used_in = ["Insolation"]
+value = 0.016708634
+type = "float"
+description = "Orbital eccentricity at epoch (unitless)."
+
+[potential_temperature_reference_pressure]
+used_in = ["Thermodynamics"]
+value = 100000.0
+type = "float"
+description = "Reference pressure for potential temperature calculations ($p_0$) (Pa)."
+
+[coefficient_a_m_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 5.0
+type = "float"
+description = "Coefficient $a_m$ for the Gryanik momentum universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[temperature_triple_point]
+used_in = ["Thermodynamics"]
+value = 273.16
+type = "float"
+description = "Triple point temperature of water (K)."
+
+[specific_humidity_minimum]
+used_in = ["Thermodynamics"]
+value = 1.0e-10
+type = "float"
+description = "Minimum specific humidity threshold (kg kg⁻¹). Used as a lower bound when comparing or regularizing humidity values."
+
+[length_orbit_semi_major]
+used_in = ["Insolation"]
+value = 149597870000
+type = "float"
+description = "Semi-major axis of the planetary orbit (m). Derived as 1 * `astronomical_unit`."
+
+[particle_density_quartz]
+used_in = ["Land"]
+value = 2660.0
+type = "float"
+description = "Particle density of quartz (kg m⁻³). Source: Hillel (1982); De Vries (1966)."
+
+[temperature_surface_reference]
+used_in = ["Thermodynamics"]
+value = 290
+type = "float"
+description = "Surface temperature in a reference temperature profile (K)."
+
+[f_over]
+tag = "TOPMODELRunoff"
+used_in = ["getindex"]
+value = 3.28
+type = "float"
+description = "Units are 1/m"
+
+[soil_scalar_roughness_length]
+used_in = ["getindex"]
+value = 0.007
+type = "float"
+description = "Scalar roughness length for soil (m), assuming friction velocity $u_*$ of 5 m s⁻¹. Source: CLM5 Technical Note."
+
+[default_scalar_roughness_length]
+used_in = ["SurfaceFluxes"]
+value = 2.0e-5
+type = "float"
+description = "Default scalar roughness length (m)."
+
+[latent_heat_sublimation_at_reference]
+used_in = ["Thermodynamics", "Land"]
+value = 2834400
+type = "float"
+description = "Latent heat of sublimation at the reference temperature (J kg⁻¹)."
+
+[isobaric_specific_heat_ice]
+used_in = ["Thermodynamics", "Land"]
+value = 2070.0
+type = "float"
+description = "Isobaric specific heat of ice (J kg⁻¹ K⁻¹)."
+
+[isobaric_specific_heat_dry_air]
+used_in = ["Thermodynamics"]
+value = 1004.5
+type = "float"
+description = "Isobaric specific heat of dry air (J kg⁻¹ K⁻¹)."
+
+[day]
+used_in = ["Insolation"]
+value = 86400
+type = "float"
+description = "Length of a day (s)."
+
+[isobaric_specific_heat_vapor]
+used_in = ["Thermodynamics"]
+value = 1859
+type = "float"
+description = "Isobaric specific heat of water vapor (J kg⁻¹ K⁻¹)."
+
+[vol_heat_capacity_quartz]
+used_in = ["Land"]
+value = 2.01e6
+type = "float"
+description = "Volumetric heat capacity of quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[molar_mass_water]
+used_in = ["Land"]
+value = 0.01801528
+type = "float"
+description = "Molar mass of water (kg mol⁻¹)."
+
+[diffusivity_of_water_vapor]
+used_in = ["Land"]
+value = 2.26e-5
+type = "float"
+description = "Diffusivity of water vapor in air (m² s⁻¹)."
+
+[vol_heat_capacity_minerals]
+used_in = ["Land"]
+value = 2.01e6
+type = "float"
+description = "Volumetric heat capacity of soil minerals excluding quartz (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[thermal_conductivity_of_water_ice]
+used_in = ["Land"]
+value = 2.21
+type = "float"
+description = "Thermal conductivity of water ice at its freezing temperature (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[temperature_saturation_adjustment_min]
+used_in = ["Thermodynamics"]
+value = 1
+type = "float"
+description = "Minimum temperature difference for unsaturated case in saturation adjustment (K)."
+
+[thermal_conductivity_of_air]
+used_in = ["Land"]
+value = 0.024
+type = "float"
+description = "Thermal conductivity of air (J m⁻¹ s⁻¹ K⁻¹)."
+
+[coefficient_b_h_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 0.4
+type = "float"
+description = "Coefficient $b_h$ for the Gryanik heat universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[stefan_boltzmann_constant]
+used_in = ["Land"]
+value = 5.67e-8
+type = "float"
+description = "Stefan-Boltzmann constant ($\\sigma$) (W m⁻² K⁻⁴)."
+
+[longitude_perihelion_at_epoch]
+used_in = ["Insolation"]
+value = 4.938188299449
+type = "float"
+description = "Longitude of perihelion at epoch (radians). Corresponds to 282.9373°."
+
+[vol_heat_capacity_organic_matter]
+used_in = ["Land"]
+value = 2.51e6
+type = "float"
+description = "Volumetric heat capacity of organic matter (J m⁻³ K⁻¹). Source: Balland and Arp (2005)."
+
+[entropy_water_vapor]
+used_in = ["Thermodynamics"]
+value = 10513.6
+type = "float"
+description = "Specific entropy of water vapor at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+
+[light_speed]
+used_in = ["Land"]
+value = 299792458
+type = "float"
+description = "Speed of light in vacuum (c) (m s⁻¹)."
+
+[planck_constant]
+used_in = ["Land"]
+value = 6.626e-34
+type = "float"
+description = "Planck's constant (h) (J s)."
+
+[entropy_dry_air]
+used_in = ["Thermodynamics"]
+value = 6864.8
+type = "float"
+description = "Specific entropy of dry air at the reference temperature and pressure (J kg⁻¹ K⁻¹)."
+
+[density_ice_water]
+used_in = ["Land"]
+value = 916.7
+type = "float"
+description = "Density of water ice (kg m⁻³)."
+
+[prandtl_number_0_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 0.98
+type = "float"
+description = "The turbulent Prandtl number in neutral conditions ($Pr_0$) for the Gryanik universal functions (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[temperature_saturation_adjustment_max]
+used_in = ["Thermodynamics"]
+value = 1000
+type = "float"
+description = "Maximum temperature for saturation adjustment (K)."
+
+[coefficient_b_m_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 0.3
+type = "float"
+description = "Coefficient $b_m$ for the Gryanik momentum universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[thermal_conductivity_of_liquid_water]
+used_in = ["Land"]
+value = 0.57
+type = "float"
+description = "Thermal conductivity of liquid water at 10°C (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[most_stability_parameter_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 7.25
+type = "float"
+description = "The MOST stability parameter ($\\zeta_a$) for the Gryanik universal functions (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[default_momentum_roughness_length]
+used_in = ["SurfaceFluxes"]
+value = 0.0002
+type = "float"
+description = "Default momentum roughness length (m)."
+
+[kersten_number_alpha]
+used_in = ["Land"]
+value = 0.24
+type = "float"
+description = "A unitless empirical constant ($\\alpha$) used in computing the Kersten number. Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[coefficient_a_h_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 5.0
+type = "float"
+description = "Coefficient $a_h$ for the Gryanik heat universal function (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[temperature_reference_soil_hydraulic_conductivity]
+used_in = ["Land"]
+value = 288
+type = "float"
+description = "The reference temperature for adjusting soil hydraulic conductivity (K)."
+
+[temperature_saturation_adjustment_init_min]
+used_in = ["Thermodynamics"]
+value = 150
+type = "float"
+description = "Minimum temperature for saturation adjustment initialization (K)."
+
+[evaporation_exponent]
+tag = "EnergyHydrologyParameters"
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "Exponent of dry soil layer factor in evaporation"
+
+[kersten_number_beta]
+used_in = ["Land"]
+value = 18.3
+type = "float"
+description = "A unitless empirical constant ($\\beta$) used in computing the Kersten number. Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[orbit_obliquity_at_epoch]
+used_in = ["Insolation"]
+value = 0.408979125113246
+type = "float"
+description = "Obliquity of the ecliptic at epoch (radians). Corresponds to 23.43278°."
+
+[temperature_min_reference]
+used_in = ["Thermodynamics"]
+value = 220
+type = "float"
+description = "Minimum temperature in a reference temperature profile (K)."
+
+[temperature_homogenous_nucleation]
+used_in = ["Thermodynamics"]
+value = 233
+type = "float"
+description = "Temperature for homogeneous ice nucleation (K)."
+
+[evaporation_scalar]
+tag = "EnergyHydrologyParameters"
+used_in = ["getindex"]
+value = 1.0
+type = "float"
+description = "Scalar multiplying soil critical moisture for evaporation"
+
+[entropy_reference_temperature]
+used_in = ["Thermodynamics"]
+value = 298.15
+type = "float"
+description = "Reference temperature for entropy calculations (K)."
+
+[epoch_time]
+used_in = ["Insolation"]
+value = 2000-01-01T11:58:55.816Z
+type = "datetime"
+description = "J2000 epoch (Jan 1, 2000 11:58:55.816 UTC) as a DateTime"
+
+[density_liquid_water]
+used_in = ["Land"]
+value = 1000
+type = "float"
+description = "Density of liquid water (kg m⁻³)."
+
+[coefficient_b_m_businger]
+used_in = ["SurfaceFluxes"]
+value = 15.0
+type = "float"
+description = "Coefficient $b_m$ for the Businger momentum universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[emissivity_bare_soil]
+used_in = ["getindex"]
+value = 0.96
+type = "float"
+description = "Emissivity of bare soil (unitless). Source: CLM5 Technical Note (2020)."
+
+[thermal_conductivity_of_organic_matter]
+used_in = ["Land"]
+value = 0.25
+type = "float"
+description = "Thermal conductivity of organic matter (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[thermal_conductivity_of_quartz]
+used_in = ["Land"]
+value = 8.0
+type = "float"
+description = "Thermal conductivity of quartz (W m⁻¹ K⁻¹). Source: Balland and Arp, J. Environ. Eng. Sci. 4: 549-558 (2005)."
+
+[universal_gas_constant]
+used_in = ["Land"]
+value = 8.3144598
+type = "float"
+description = "Universal gas constant (R) (J mol⁻¹ K⁻¹)."
+
+[R_sb]
+tag = "TOPMODELRunoff"
+used_in = ["getindex"]
+value = 1.484e-7
+type = "float"
+description = "Units are m/s"
+
+[isobaric_specific_heat_liquid]
+used_in = ["Thermodynamics", "Land"]
+value = 4181
+type = "float"
+description = "Isobaric specific heat of liquid water (J kg⁻¹ K⁻¹)."
+
+[latent_heat_vaporization_at_reference]
+used_in = ["Thermodynamics", "Land"]
+value = 2500800
+type = "float"
+description = "Latent heat of vaporization at the reference temperature (J kg⁻¹)."
+
+[gravitational_acceleration]
+used_in = ["Thermodynamics", "Land"]
+value = 9.81
+type = "float"
+description = "Gravitational acceleration on the planet (m s⁻²)."
+
+[gustiness_zi]
+used_in = ["SurfaceFluxes"]
+value = 1000.0
+type = "float"
+description = "Thickness of boundary layer assumed in the gustiness parameterization based on the Deardorff convective velocity scale (m)."
+
+[coefficient_b_h_businger]
+used_in = ["SurfaceFluxes"]
+value = 9.0
+type = "float"
+description = "Coefficient $b_h$ for the Businger heat universal function (unitless). Source: Businger et al. (1971), DOI: 10.1175/1520-0469(1971)028<0181:FPRITA>2.0.CO;2."
+
+[soil_momentum_roughness_length]
+used_in = ["getindex"]
+value = 0.01
+type = "float"
+description = "Momentum roughness length for soil (m). Source: CLM5 Technical Note."
+
+[pow_icenuc]
+used_in = ["Thermodynamics"]
+value = 1
+type = "float"
+description = "Exponent in the ice nucleation parameterization (unitless)."
+
+[avogadro_constant]
+used_in = ["Land"]
+value = 6.02214076e23
+type = "float"
+description = "Avogadro's constant ($N_A$) (mol⁻¹)."
+
+[pressure_triple_point]
+used_in = ["Thermodynamics"]
+value = 611.657
+type = "float"
+description = "Triple point pressure of water (Pa)."
+
+[thermodynamics_temperature_reference]
+used_in = ["Thermodynamics", "Land"]
+value = 273.16
+type = "float"
+description = "Reference temperature for thermodynamics (K)."
+
+[temperature_water_freeze]
+used_in = ["Thermodynamics", "Land"]
+value = 273.15
+type = "float"
+description = "Freezing temperature of water (K)."
+
+[total_solar_irradiance]
+used_in = ["Insolation"]
+value = 1362
+type = "float"
+description = "Total solar irradiance (TSI) at the mean orbital distance (W m⁻²)."
+
+[mean_anomaly_at_epoch]
+used_in = ["Insolation"]
+value = 6.24006014121
+type = "float"
+description = "Mean anomaly at epoch (radians). Corresponds to 357.52911°."
+
+[maximum_dry_soil_layer_depth]
+used_in = ["getindex"]
+value = 0.015
+type = "float"
+description = "Maximum depth of the dry soil layer that can develop under evaporation (m). Source: Shokri and Or (2011), DOI: 10.1029/2010WR010284"
+
+[ice_impedance_omega]
+used_in = ["getindex"]
+value = 7.0
+type = "float"
+description = "A unitless impedance parameter ($\\Omega$) used to adjust soil hydraulic conductivity for ice presence. Source: Lundin, J. Hydrol. 118:289-310 (1990)."
+
+[gustiness_coeff]
+used_in = ["SurfaceFluxes"]
+value = 1.25
+type = "float"
+description = "Coefficient multiplying Deardorff convective velocity scale in gustiness parameterization (unitless)."
+
+[temperature_factor_soil_hydraulic_conductivity]
+used_in = ["Land"]
+value = 0.0264
+type = "float"
+description = "An empirical parameter for adjusting soil hydraulic conductivity based on temperature (K⁻¹)."
+
+[von_karman_constant]
+used_in = ["SurfaceFluxes"]
+value = 0.4
+type = "float"
+description = "The von Kármán constant ($\\kappa$), a dimensionless constant describing the logarithmic velocity profile near a boundary."
+
+[gas_constant_vapor]
+used_in = ["Thermodynamics"]
+value = 461.5
+type = "float"
+description = "Gas constant for water vapor (J kg⁻¹ K⁻¹)."
+
+[mean_sea_level_pressure]
+used_in = ["Thermodynamics", "Land"]
+value = 101325
+type = "float"
+description = "Mean sea level pressure ($p_{MSL}$) (Pa)."
+
+[gas_constant_dry_air]
+used_in = ["Thermodynamics"]
+value = 287.0
+type = "float"
+description = "Gas constant for dry air (J kg⁻¹ K⁻¹)."
+
+[particle_density_organic_matter]
+used_in = ["Land"]
+value = 1300.0
+type = "float"
+description = "Particle density of organic matter (kg m⁻³). Source: Hillel (1982)."
+
+[anomalistic_year_length]
+used_in = ["Insolation"]
+value = 31558464
+type = "float"
+description = "Length of an anomalistic year (s). Derived as 365.25 * `day`."
+
+[most_stability_exponent_gryanik]
+used_in = ["SurfaceFluxes"]
+value = 3.62
+type = "float"
+description = "The MOST stability exponent ($\\gamma$) for the Gryanik universal functions (unitless). Source: Gryanik et al. (2020), DOI: 10.1175/JAS-D-19-0255.1."
+
+[particle_density_minerals]
+used_in = ["Land"]
+value = 2650.0
+type = "float"
+description = "Particle density of soil minerals (kg m⁻³). Source: Hillel (1982)."
