@@ -53,8 +53,10 @@ for FT in (Float32, Float64)
             # we want to test that it is updated correctly in
             # the jacobian correctly.
             jacobian = ClimaLand.initialize_jacobian(Y)
-            jac_tendency! = make_jacobian(soil)
+            uic! = ClimaLand.make_update_implicit_cache(soil)
+            jac_tendency! = make_compute_jacobian(soil)
             dtγ = FT(1.0)
+            uic!(p, Y, FT(0.0))
             jac_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
             K_ic = hydraulic_conductivity(
@@ -186,8 +188,10 @@ for FT in (Float32, Float64)
             # we want to test that it is updated correctly in
             # the jacobian correctly.
             jacobian = ClimaLand.initialize_jacobian(Y)
-            jacobian_tendency! = make_jacobian(soil)
+            uic! = ClimaLand.make_update_implicit_cache(soil)
+            jacobian_tendency! = make_compute_jacobian(soil)
             dtγ = FT(1.0)
+            uic!(p, Y, FT(0.0))
             jacobian_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
             K_ic = hydraulic_conductivity(
