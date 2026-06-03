@@ -7,8 +7,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=24:00:00
-#SBATCH --output=logs/callmip_sims_%j.out
-#SBATCH --error=logs/callmip_sims_%j.err
+#SBATCH --output=experiments/callmip_uq_dk_sor/logs/callmip_sims_%j.out
+#SBATCH --error=experiments/callmip_uq_dk_sor/logs/callmip_sims_%j.err
 
 # =============================================================================
 # CalLMIP Phase 1 – Prior + Posterior Simulations (DK-Sor)
