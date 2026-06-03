@@ -85,6 +85,8 @@ const CALLMIP_COLUMN_VARS = [
     "soc",      # Soil organic carbon profile (kg C/m³) → TotSoilCarb
 ]
 
+const OUTPUT_START_DATE = Date(1997, 1, 1)
+
 # ── Forward Model ──────────────────────────────────────────────────────────────
 
 function ClimaCalibrate.forward_model(iteration, member)
@@ -92,8 +94,9 @@ function ClimaCalibrate.forward_model(iteration, member)
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 
-    sim_start = DateTime(2003, 1, 1)
-    sim_stop  = DateTime(2014, 1, 1)
+    # One-year spinup (1996), then retained output period 1997-2014.
+    sim_start = DateTime(1996, 1, 1)
+    sim_stop  = DateTime(2015, 1, 1)
     @info "Member $member: simulating $sim_start to $sim_stop"
 
     calibrate_params_path =
@@ -348,9 +351,23 @@ function save_callmip_diagnostics(simulation, member_path, surface_vars,
         Float64[]
     end
 
+    # Discard the spinup year so exported diagnostics are exactly 1997-2014.
+    keep_mask = ref_dates .>= OUTPUT_START_DATE
+    kept_dates = ref_dates[keep_mask]
+    for (k, v) in surface_data
+        if v isa Vector && length(v) == length(ref_dates)
+            surface_data[k] = v[keep_mask]
+        end
+    end
+    for (k, v) in column_data
+        if v isa Matrix && size(v, 2) == length(ref_dates)
+            column_data[k] = v[:, keep_mask]
+        end
+    end
+
     JLD2.jldsave(
         joinpath(member_path, "callmip_diagnostics.jld2");
-        dates        = ref_dates,
+        dates        = kept_dates,
         surface_data = surface_data,
         column_data  = column_data,
         z_soil       = z_soil,

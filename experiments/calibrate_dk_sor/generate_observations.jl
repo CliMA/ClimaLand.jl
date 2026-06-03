@@ -111,6 +111,15 @@ observation_vector = EKP.Observation[]
 window_names = String[]
 window_dates = Vector{Vector{Date}}()
 
+# Legacy aggregated fields kept for CES/emulator consumers.
+obs_dates = Date[]
+nee_all = FT[]
+qle_all = FT[]
+qh_all = FT[]
+nee_var_all = FT[]
+qle_var_all = FT[]
+qh_var_all = FT[]
+
 println("Building per-window observations ($(length(window_pairs)) uniform windows, 2003-2014):")
 for (y0, y1) in window_pairs
     dates_full = collect(Date(y0, 1, 1):Day(1):Date(y1, 12, 31))
@@ -148,6 +157,14 @@ for (y0, y1) in window_pairs
     push!(window_dates, dates)
     println("  Window $(length(window_names)) ($(y0)-01-01–$(y1)-12-31): $(n_valid)/$(length(dates)) valid days")
 
+    append!(obs_dates, dates)
+    append!(nee_all, nee)
+    append!(qle_all, qle)
+    append!(qh_all, qh)
+    append!(nee_var_all, nee_var)
+    append!(qle_var_all, qle_var)
+    append!(qh_var_all, qh_var)
+
     push!(
         observation_vector,
         EKP.Observation(
@@ -163,6 +180,10 @@ end
 uniform_days = length(window_dates[1])
 println("\nTotal windows: $(length(window_pairs)), uniform length: $(3 * uniform_days)")
 
+# Aggregated vector/covariance for CES + legacy plotting utilities.
+y_obs = vcat(nee_all, qle_all, qh_all)
+noise_cov = Diagonal(vcat(nee_var_all, qle_var_all, qh_var_all))
+
 # ── Save ──────────────────────────────────────────────────────────────────────
 obs_filepath =
     joinpath(climaland_dir, "experiments/calibrate_dk_sor/observations.jld2")
@@ -172,5 +193,8 @@ JLD2.jldsave(
     window_names = window_names,
     window_dates = window_dates,
     window_pairs = window_pairs,
+    y_obs = y_obs,
+    noise_cov = noise_cov,
+    obs_dates = obs_dates,
 )
 println("Saved $obs_filepath  ($(length(observation_vector)) windows, length $(3 * uniform_days) each)")

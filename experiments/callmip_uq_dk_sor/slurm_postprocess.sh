@@ -12,7 +12,12 @@
 
 set -euo pipefail
 
-cd /resnick/home/renatob/ClimaLand.jl
+# Navigate to repo root (directory containing .buildkite) from submit location.
+REPO_ROOT="$SLURM_SUBMIT_DIR"
+while [[ ! -d "$REPO_ROOT/.buildkite" && "$REPO_ROOT" != "/" ]]; do
+      REPO_ROOT="$(dirname "$REPO_ROOT")"
+done
+cd "$REPO_ROOT"
 
 module use /groups/esm/modules
 module load climacommon

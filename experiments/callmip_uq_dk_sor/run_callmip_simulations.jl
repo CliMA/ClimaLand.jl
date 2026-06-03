@@ -35,7 +35,7 @@ using Dates
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 const SITE_ID     = "DK-Sor"
-const DT          = Float64(450)        # model time step (s), must match calibration
+const DT          = Float64(900)        # model time step (s), must match calibration
 const MODEL_NAME  = "ClimaLand"         # used in CalLMIP output file names
 const MODEL_VER   = "CalLMIP1.0"        # CalLMIP submission version label
 

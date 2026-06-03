@@ -45,7 +45,7 @@ using LinearAlgebra, Dates
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 const SITE_ID    = "DK-Sor"
-const DT         = Float64(450)     # model time step (seconds), matches calibration
+const DT         = Float64(900)     # model time step (seconds), matches calibration
 const N_SAMPLES  = 50               # number of posterior parameter draws to run
 
 const climaland_dir  = pkgdir(ClimaLand)

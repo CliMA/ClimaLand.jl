@@ -40,8 +40,9 @@ function ClimaCalibrate.forward_model(iteration, member)
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 
-    # Fixed simulation window: 1-year spinup before 2004, run through end of 2013
-    sim_start = DateTime(2003, 1, 1)
+    # Fixed simulation window: 1-year spinup before 2003, run through end of 2013.
+    # Calibration windows start in 2003, so 2002 is pure spinup.
+    sim_start = DateTime(2002, 1, 1)
     sim_stop = DateTime(2014, 1, 1)
     @info "Member $member: simulating $sim_start to $sim_stop"
 
