@@ -555,6 +555,34 @@ function ilamb_respiration_nee_dataset_path(filename; context = nothing)
 end
 
 """
+    inversion_nee_dataset_path(; context = nothing)
+
+Triggers the download of the inversion-derived NEE, GPP, ER, and Rh dataset
+(monthly, 1°×1°, 2002–2020), and returns the path to the NetCDF file.
+
+The file `derived_nee_gpp_er_rh_2002_2020.nc` contains:
+  - `nee` — NEE from CarbonTracker CT2022 `bio_flux_opt`, g C m⁻² month⁻¹
+    (positive = source, fire separated, includes residual LUC and lateral
+    fluxes)
+  - `gpp` — GOSIF-GPP v2, regridded to 1°, g C m⁻² month⁻¹
+    (positive = uptake)
+  - `er`  — Ecosystem respiration, residual ER = NEE + GPP, g C m⁻² month⁻¹
+    (positive = source)
+  - `rh`  — Heterotrophic respiration derived from Hashimoto 2015 monthly
+    Rs × annual Rh/Rs ratio, **g C m⁻² day⁻¹** (Hashimoto native units;
+    different from nee/gpp/er, see artifact README). Positive = source.
+    Hashimoto coverage 1965–2012; 2013–2020 are filled with the 2002–2012
+    monthly climatology.
+  - `fire_ct`, `fire_gfed5` — diagnostic fire fluxes (GFED4.1s and GFED5.1)
+
+See the artifact README for sign conventions, biases, and citations.
+"""
+function inversion_nee_dataset_path(; context = nothing)
+    dir = @clima_artifact("inversion_nee", context)
+    return joinpath(dir, "derived_nee_gpp_er_rh_2002_2020.nc")
+end
+
+"""
     imerg_landsea_mask_path(; context = nothing)
 
 Return the path to the IMERG land-sea mask NetCDF file.
