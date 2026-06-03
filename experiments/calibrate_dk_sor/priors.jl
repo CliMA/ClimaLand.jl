@@ -3,53 +3,42 @@ Shared prior definitions for DK-Sor single-site calibration.
 
 Include this file (via `include`) in both `run_calibration.jl` and
 `experiments/callmip_uq_dk_sor/emulate_sample.jl` to guarantee both scripts
-use exactly the same 16-parameter priors — avoiding the fragility of
-duplicating and manually keeping two copies in sync.
+use exactly the same 17-parameter priors.
 
-Call `build_dk_sor_priors()` to get `(prior, priors_vec)` where:
-  - `prior`      is the `ParameterDistribution` for the combined prior
-  - `priors_vec` is the Vector of individual per-parameter distributions
-
-Prior names MUST match ClimaParams TOML keys, since ClimaCalibrate writes
-parameter TOMLs using these names and LandParameterTypes.create_toml_dict reads them.
-
-16 parameters total:
-  9 canopy / conductance parameters
-  3 DAMM soil-CO₂ parameters
-  3 autotrophic respiration parameters (winter NEE bias fix)
-  1 canopy heat capacity
+The prior table below is transplanted from
+`ar/calibrate_inversion_nee/experiments/calibration/configs/inversionnee_sifgpp_er_lhf_shf_lwu.jl`
+as requested, while keeping the CalLMIP pipeline structure from
+`rb/callmip_phase1a`.
 """
 
 import EnsembleKalmanProcesses.ParameterDistributions as PD
 
 function build_dk_sor_priors()
     priors_vec = [
-        # ── Canopy / conductance ─────────────────────────────────────────────
-        PD.constrained_gaussian("moisture_stress_c",              0.5,      0.3,      0.01,     5.0),
-        PD.constrained_gaussian("pmodel_cstar",                   0.43,     0.15,     0.05,     2.0),
-        PD.constrained_gaussian("pmodel_β",                      20.0,      8.0,      2.0,     80.0),  # prior mean lowered: old 51 → GPP 2× too large
-        PD.constrained_gaussian("leaf_Cd",                        0.1,      0.05,     0.005,    1.0),
-        PD.constrained_gaussian("canopy_z_0m_coeff",              0.10,     0.04,     0.01,    0.25),  # raised: z0m ≈ 0.1h for tall forest
-        PD.constrained_gaussian("canopy_z_0b_coeff",              0.001,    0.0005,   1e-5,    0.01),
-        PD.constrained_gaussian("canopy_d_coeff",                 0.65,     0.12,     0.30,    0.92),  # raised: d ≈ 0.65h; default 0.007 gives d=17cm (wrong for 25m forest)
-        PD.constrained_gaussian("canopy_K_lw",                    0.85,     0.25,     0.1,     2.0),
-        PD.constrained_gaussian("canopy_emissivity",              0.97,     0.02,     0.9,     1.0),
-        # ── DAMM soil-CO₂ ───────────────────────────────────────────────────
-        PD.constrained_gaussian("soilCO2_pre_exponential_factor", 25000.0,  10000.0,  1000.0,  200000.0),
-        PD.constrained_gaussian("michaelis_constant",             0.01,     0.005,    1e-4,     0.1),
-        PD.constrained_gaussian("O2_michaelis_constant",          0.01,     0.005,    1e-4,     0.1),
-        # ── Autotrophic respiration (winter NEE fix) ─────────────────────────
-        # soilCO2_activation_energy [J/mol]: Arrhenius Ea for DAMM; default causes
-        # excessive cold-temperature suppression → winter respiration too low.
-        PD.constrained_gaussian("soilCO2_activation_energy",      61000.0,  15000.0,  30000.0, 100000.0),
-        # root_leaf_nitrogen_ratio (μr): Ra_root = Rd * μr * RAI; calibrated to ~5 → more winter Ra
-        PD.constrained_gaussian("root_leaf_nitrogen_ratio",       1.0,      0.5,      0.1,      5.0),
-        # stem_leaf_nitrogen_ratio (μs): Ra_stem = Rd * μs * ... (LAI-independent)
-        PD.constrained_gaussian("stem_leaf_nitrogen_ratio",       0.1,      0.05,     0.01,     0.5),
-        # ── Canopy heat capacity ─────────────────────────────────────────────
-        # ac_canopy [J/m²/K]: DK-Sor is dense beech forest with high wood thermal mass;
-        # default 2500 J/m²/K likely too low → ac_canopy calibrated to ~9000 J/m²/K
-        PD.constrained_gaussian("ac_canopy",                      2500.0,   1500.0,   500.0,   10000.0),
+    # P-model + moisture stress
+    PD.constrained_gaussian("pmodel_cstar", 0.4126532780348918, 0.05, 0.2, 0.7),
+    PD.constrained_gaussian("pmodel_β_c3", 68.19135215644542, 40.0, 10.0, 300.0),
+    PD.constrained_gaussian("pmodel_β_c4", 53.92806481016041, 10.0, 5.0, 100.0),
+    PD.constrained_gaussian("pmodel_α", 0.9758442675597523, 0.01, 0.85, 0.999),
+    PD.constrained_gaussian("moisture_stress_c", 0.5675395275525799, 0.15, 0.05, 1.0),
+
+    # DAMM heterotrophic respiration
+    PD.constrained_gaussian("soilCO2_reference_rate", 7.885402642122577e-8, 5.0e-8, 1.0e-9, 2.0e-6),
+    PD.constrained_gaussian("soilCO2_activation_energy", 65432.29096630613, 25000.0, 5000.0, 150000.0),
+    PD.constrained_gaussian("michaelis_constant", 0.3668980114900562, 0.25, 0.001, 2.0),
+    PD.constrained_gaussian("O2_michaelis_constant", 0.00018610344999027417, 1.0e-4, 1.0e-6, 1.0e-2),
+
+    # JULES autotrophic respiration
+    PD.constrained_gaussian("root_leaf_nitrogen_ratio", 2.3992909128669666, 1.0, 0.1, 6.0),
+    PD.constrained_gaussian("relative_contribution_factor", 1.1321179749274621, 0.3, 0.0, 3.0),
+    PD.constrained_gaussian("autotrophic_respiration_Q10", 2.0, 0.5, 1.0, 3.5),
+
+    # Canopy turbulent / radiative transfer
+    PD.constrained_gaussian("leaf_Cd", 0.08, 0.03, 0.0, Inf),
+    PD.constrained_gaussian("canopy_z_0m_coeff", 0.13, 0.05, 0.0, 0.5),
+    PD.constrained_gaussian("canopy_z_0b_coeff", 0.013, 0.005, 0.0, 0.05),
+    PD.constrained_gaussian("canopy_d_coeff", 0.67, 0.2, 0.0, 1.0),
+    PD.constrained_gaussian("canopy_K_lw", 1.0, 0.2, 0.0, 2.0),
     ]
 
     prior = PD.combine_distributions(priors_vec)

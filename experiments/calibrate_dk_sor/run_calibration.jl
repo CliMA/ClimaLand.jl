@@ -1,9 +1,9 @@
 """
 ClimaCalibrate driver for DK-Sor single-site calibration.
 
-Calibrates 16 parameters (9 canopy + 3 DAMM soilCO2 + 3 respiration + ac_canopy) against daily NEE, Qle, Qh
-using TransformUnscented Kalman Inversion (N_ens = 33). All ~10 years of observations
-(2004-2013, wind-filtered) are used at each iteration (no minibatching).
+Calibrates 17 parameters against daily NEE, Qle, Qh using TransformUnscented
+Kalman Inversion (N_ens = 35). All ~10 years of observations (2004-2013,
+wind-filtered) are used at each iteration (no minibatching).
 
 Copernicus LAI is used for the vegetation forcing. DT = 900 s.
 
@@ -94,7 +94,7 @@ println("  Backend: WorkerBackend")
 println("  Iterations: $N_ITERATIONS")
 println("  Ensemble size: $N_ens")
 println("  Observation days: $n_obs (wind-filtered, $(first(cal_years))-$(last(cal_years)))")
-println("  Parameters: $(length(priors)) (9 canopy + 3 DAMM soilCO2)")
+println("  Parameters: $(length(priors))")
 println("  LAI: Copernicus")
 println("  Output: $OUTPUT_DIR")
 
