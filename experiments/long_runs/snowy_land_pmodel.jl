@@ -42,6 +42,12 @@ using Dates
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
+ 
+ClimaComms.@import_required_backends
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
+
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -93,6 +99,20 @@ function setup_model(
 
     # Construct the land model with all default components
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    α_snow = NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt);
+    surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt)
+    snow = Snow.SnowModel(
+        FT,
+        surface_domain,
+        forcing,
+        toml_dict,
+        Δt;
+        prognostic_land_components,
+        surf_temp,
+        density,
+        α_snow
+    )
     land = LandModel{FT}(
         forcing,
         LAI,

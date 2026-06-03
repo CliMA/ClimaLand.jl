@@ -240,20 +240,42 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depths
-    Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
     Δz_soil = soil_domain.fields.Δz_top
-
+    g_eff = @. lazy(κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, FT(0.1)) / 2))
     # Temperatures
-    T_snow = p.snow.T
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
+    T̄ = p.snow.T
+    T_sfc = p.snow.T_sfc
     # compute the flux
-    @. p.ground_heat_flux =
-        -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
-        (T_snow - T_soil)
+    @. p.ground_heat_flux = -g_eff * (T_bottom(κ_snow,
+                                               g_eff,
+                                               T_soil,
+                                               T̄,
+                                               T_sfc,
+                                               max(p.snow.z_snow, eps(FT)),
+                                               p.snow.ρ_snow,
+                                               snow_params.earth_param_set,
+                                               )
+                                      - T_soil)
     return nothing
 end
-
+function T_bottom(
+    κ::FT,
+    g_eff::FT,
+    T_soil::FT,
+    T̄::FT,
+    T_sfc::FT,
+    z::FT,
+    ρ::FT,
+    earth_param_set,
+) where {FT}
+    d = Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
+    return min(
+        (2 * T̄ - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
+        (g_eff / κ * (z - d) + 1 + (z - d) / z),
+        FT(273.15),
+    )
+end
 
 ### Extensions of existing functions to account for prognostic soil/snow
 """
