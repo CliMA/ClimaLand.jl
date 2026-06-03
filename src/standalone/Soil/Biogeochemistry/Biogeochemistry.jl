@@ -949,9 +949,16 @@ function ClimaLand.boundary_flux!(
         ),
         levels - ClimaCore.Utilities.half,
     )
+    # error("NOOOO")
+    # TODO: This is the reason for why they are not bit wise the same I think
+    # Main.@infiltrate
+    # @info D_c |> ClimaCore.Fields.field2array
+    # @info θ_sfc |> ClimaCore.Fields.field2array
+    # @info Δz |> ClimaCore.Fields.field2array
     @. p.soilco2.dfluxBCdY =
         ClimaLand.Soil.covariant3_unit_vector(local_geometry_faceN) *
         (D_c / θ_sfc / Δz)
+    # Main.@infiltrate
 end
 
 """

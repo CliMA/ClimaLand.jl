@@ -53,58 +53,63 @@ function setup_simulation(; site_ID = "US-MOz", duration_days = 7, space_type = 
 end
 
 
-single_simulation = setup_simulation(; site_ID = "US-MOz", duration_days = 7, space_type = "single")
-# multi_simulation = setup_simulation(; site_ID = "US-MOz", duration_days = 7, space_type = "multi")
+single_simulation = setup_simulation(; site_ID = "US-MOz", duration_days = 300, space_type = "single")
+multi_simulation = setup_simulation(; site_ID = "US-MOz", duration_days = 300, space_type = "multi")
 
-# import ClimaCore
-# import ClimaTimeSteppers
+import ClimaCore
+import ClimaTimeSteppers
 
-# function compare_contents(sim1, sim2)
-#     u1 = sim1._integrator.u
-#     u2 = sim2._integrator.u
-#     p1 = sim1._integrator.p
-#     p2 = sim2._integrator.p
-#     _compare_contents(u1, u2, [])
-#     _compare_contents(p1, p2, [])
-#     return nothing
-# end
+function compare_contents(sim1, sim2)
+    u1 = sim1._integrator.u
+    u2 = sim2._integrator.u
+    p1 = sim1._integrator.p
+    p2 = sim2._integrator.p
+    _compare_contents(u1, u2, [])
+    _compare_contents(p1, p2, [])
+    return nothing
+end
 
-# function _compare_contents(u1, u2, curr_field_names)
-#     field_names = propertynames(u1)
-#     for field_name in field_names
-#         push!(curr_field_names, field_name)
-#         _compare_contents(getproperty(u1, field_name), getproperty(u2, field_name), curr_field_names)
-#         pop!(curr_field_names)
-#     end
-# end
+function _compare_contents(u1, u2, curr_field_names)
+    field_names = propertynames(u1)
+    for field_name in field_names
+        push!(curr_field_names, field_name)
+        _compare_contents(getproperty(u1, field_name), getproperty(u2, field_name), curr_field_names)
+        pop!(curr_field_names)
+    end
+end
 
-# function _compare_contents(u1::Union{ClimaCore.Fields.Field}, u2::Union{ClimaCore.Fields.Field}, field_names)
-#     try
-#         l2_norm = sum((ClimaCore.Fields.field2array(u1) .- ClimaCore.Fields.field2array(u2)).^2)
-#         if !iszero(l2_norm)
-#             @info join(field_names, ".") l2_norm
-#         end
-#     catch
-#     end
-# end
+function _compare_contents(u1::Union{ClimaCore.Fields.Field}, u2::Union{ClimaCore.Fields.Field}, field_names)
+    try
+        N = ClimaCore.Fields.field2array(u1) |> length
+        mse = (1 / N) * sum((ClimaCore.Fields.field2array(u1) .- ClimaCore.Fields.field2array(u2)).^2)
+        if !iszero(l2_norm)
+            @info join(field_names, ".") mse
+        end
+    catch
+    end
+end
 
-# compare_contents(single_simulation, multi_simulation)
+compare_contents(single_simulation, multi_simulation)
 
-# for step in 1:100
-#     @info step
-#     ClimaTimeSteppers.step!(single_simulation._integrator)
+for step in 1:10000
+    @info step
+    ClimaTimeSteppers.step!(single_simulation._integrator)
+    ClimaTimeSteppers.step!(multi_simulation._integrator)
+    compare_contents(single_simulation, multi_simulation)
+end
+
+# solve!(single_simulation);
+# solve!(multi_simulation);
+
+# for i in 1:100000
 #     ClimaTimeSteppers.step!(multi_simulation._integrator)
-#     compare_contents(single_simulation, multi_simulation)
 # end
-
-solve!(single_simulation)
-# solve!(multi_simulation)
 
 # import ClimaCore: Fields
 # import JLD2
 
 
-# for (i, simulation) in enumerate((single_simulation, multi_simulation))
+# for (i, simulation) in enumerate((multi_simulation,))
 #     varnames = keys(simulation.diagnostics[1].output_writer)
 
 #     var_to_vals = Dict()
@@ -115,5 +120,14 @@ solve!(single_simulation)
 #         var_to_vals[varname] = diag_vals
 #     end
 
-#     JLD2.save_object("$i.jld2", var_to_vals)
+#     JLD2.save_object("multi.jld2", var_to_vals)
 # end
+
+
+# fig = CairoMakie.Figure()
+# single_var = single["lhf_30m_average"][1100:1250]
+# multi_var = multi["lhf_30m_average"][1100:1250]
+# lines(fig[1,1], single_var)
+# lines(fig[1,2], multi_var)
+# lines(fig[1,3], single_var - multi_var)
+# save("yo.png", fig)

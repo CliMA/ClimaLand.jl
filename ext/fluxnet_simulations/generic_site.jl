@@ -126,6 +126,7 @@ function _generic_site_simulation(
         dz_tuple = (FT(domain_kwargs.dz_bottom), FT(domain_kwargs.dz_top)),
         longlat = (long, lat),
     )
+    # Main.@infiltrate
     else
     land_domain = ClimaLand.Domains.ColumnEnsemble(;
         zlim = (FT(domain_kwargs.zmin), FT(domain_kwargs.zmax)),

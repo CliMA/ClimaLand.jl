@@ -223,6 +223,7 @@ function Column(;
             nelements = (1, 1, nelements),
             dz_tuple = dz_tuple,
         )
+        # Main.@infiltrate
         # Extract a column from the 3D space
         colidx = ClimaCore.Grids.ColumnIndex((1, 1), 1)
         subsurface_space =
@@ -303,6 +304,9 @@ function ColumnEnsemble(;
 
     subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
         FT;
+        # TODO: Make sure this works with more than one point
+        # From inspecting at the diagnostics, this seems to work out (using the same point
+        # gives the same solution)
         points = [ClimaCore.Geometry.LatLongPoint{FT}(lat, long)],
         z_elem = nelements,
         z_min,

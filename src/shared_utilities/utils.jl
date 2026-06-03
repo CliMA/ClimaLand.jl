@@ -604,6 +604,7 @@ function call_count_nans_state(
     space::Union{
         ClimaCore.Spaces.AbstractSpectralElementSpace,
         ClimaCore.Spaces.AbstractPointSpace,
+        ClimaCore.Spaces.PointCloudLevelSpace,
     };
     mask = nothing,
     verbose = false,
@@ -616,6 +617,7 @@ function call_count_nans_state(
     space::Union{
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.FiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace
     };
     mask = nothing,
     verbose = false,
