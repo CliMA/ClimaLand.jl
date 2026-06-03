@@ -266,7 +266,7 @@ function make_update_boundary_fluxes(
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
-    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
+    function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land)
         # Radiation
@@ -298,7 +298,7 @@ function make_update_implicit_cache(
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
     update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
     update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
-    NVTX.@annotate function update_implicit_cache!(p, Y, t)
+    function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil and snow also

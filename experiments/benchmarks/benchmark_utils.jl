@@ -142,7 +142,7 @@ function run_profiler(
     ClimaLand.Simulations.step!(simulation)
     if use_external_profiler
         @info "Profiling using external profiler"
-        CUDA.@profile external = true step_N_times!(simulation, 3)
+        CUDA.@profile external = true step_N_times!(simulation, 6)
         @info "Profiling complete"
     else
         @info "Profiling using internal profiler"

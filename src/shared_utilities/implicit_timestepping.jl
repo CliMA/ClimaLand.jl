@@ -23,7 +23,7 @@ used as `Wfact!` in `ClimaTimeSteppers.jl`.
 function make_jacobian(model::AbstractModel)
     update_implicit_cache! = make_update_implicit_cache(model)
     compute_jacobian! = make_compute_jacobian(model)
-    NVTX.@annotate function jacobian!(W, Y, p, dtγ, t)
+    function jacobian!(W, Y, p, dtγ, t)
         update_implicit_cache!(p, Y, t)
         compute_jacobian!(W, Y, p, dtγ, t)
     end
