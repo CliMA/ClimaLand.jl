@@ -32,8 +32,15 @@ met_nc_path = joinpath(
     "DK-Sor_1997-2014_FLUXNET2015_Met.nc",
 )
 
-# Two-year fixed windows for minibatching (exactly as in prior DK-Sor runs)
-window_pairs = [(2003, 2004), (2005, 2006), (2007, 2008), (2009, 2010), (2011, 2012)]
+# Two-year fixed windows for minibatching. Keep sample count divisible by 2.
+window_pairs = [
+    (2003, 2004),
+    (2005, 2006),
+    (2007, 2008),
+    (2009, 2010),
+    (2011, 2012),
+    (2013, 2014),
+]
 
 # ── Read flux observations ───────────────────────────────────────────────────
 flux_ds = NCDataset(flux_nc_path, "r")
@@ -104,7 +111,7 @@ observation_vector = EKP.Observation[]
 window_names = String[]
 window_dates = Vector{Vector{Date}}()
 
-println("Building per-window observations ($(length(window_pairs)) uniform windows, 2003-2012):")
+println("Building per-window observations ($(length(window_pairs)) uniform windows, 2003-2014):")
 for (y0, y1) in window_pairs
     dates_full = collect(Date(y0, 1, 1):Day(1):Date(y1, 12, 31))
     # Drop leap day to force identical window length (730 days)
