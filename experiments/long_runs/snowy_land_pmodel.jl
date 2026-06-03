@@ -99,9 +99,9 @@ function setup_model(
 
     # Construct the land model with all default components
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    α_snow = NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt);
+    α_snow = NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface; Δt);
     surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
-    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt)
+    density = NeuralSnow.NeuralDepthModel(toml_dict; Δt)
     snow = Snow.SnowModel(
         FT,
         surface_domain,
