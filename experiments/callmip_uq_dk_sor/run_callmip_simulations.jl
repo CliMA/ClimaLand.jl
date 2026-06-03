@@ -53,7 +53,7 @@ isdir(OUTPUT_DIR) || mkpath(OUTPUT_DIR)
 const MEMBER_PRIOR     = 1    # prior simulation slot
 const MEMBER_POSTERIOR = 2    # posterior simulation slot
 
-# ── Priors: load canonical 16-parameter definitions from priors.jl ─────────────
+# ── Priors: load canonical shared definitions from priors.jl ────────────────────
 # This ensures the parameter set, bounds, and names here are always in sync
 # with the calibrate_dk_sor experiment that actually produced the EKI results.
 include(joinpath(cal_dir, "priors.jl"))
@@ -64,7 +64,7 @@ param_names = [only(PD.get_name(d)) for d in priors_vec]
 function write_parameter_toml(path, names, values)
     open(path, "w") do io
         for (name, val) in zip(names, values)
-            used_in = (name == "soilCO2_pre_exponential_factor" ||
+            used_in = (name == "soilCO2_reference_rate" ||
                        name == "michaelis_constant"              ||
                        name == "O2_michaelis_constant"           ||
                        name == "soilCO2_activation_energy") ? "[\"Land\"]" : "[\"getindex\"]"

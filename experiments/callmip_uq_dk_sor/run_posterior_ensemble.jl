@@ -104,9 +104,9 @@ isdir(OUTPUT_DIR) || mkpath(OUTPUT_DIR)
 function write_parameter_toml(path, names, values)
     open(path, "w") do io
         for (name, val) in zip(names, values)
-            # soilCO2_pre_exponential_factor uses "Land" scope;
+            # DAMM soil-CO2 parameters use "Land" scope;
             # all other parameters use "getindex" scope
-            used_in = name == "soilCO2_pre_exponential_factor" ||
+            used_in = name == "soilCO2_reference_rate" ||
                       name == "michaelis_constant"              ||
                       name == "O2_michaelis_constant" ? "[\"Land\"]" : "[\"getindex\"]"
             println(io, "[\"$name\"]")
