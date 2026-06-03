@@ -46,7 +46,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 [compat]
 ClimaAnalysis = "0.5.22"
 ClimaCalibrate = "0.3"
-ClimaCore = "=0.14.53"
+ClimaCore = "=0.14.51"
 ClimaDiagnostics = "0.3.4"
 ClimaTimeSteppers = "0.8.11, 0.9"
 EnsembleKalmanProcesses = "2.5.0, 2.6.0, 2.7.0"
