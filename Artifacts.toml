@@ -253,3 +253,10 @@ git-tree-sha1 = "1e10a01d843f8e2a12ae7691a997c2c5c9a8c72d"
     [[ilamb_respiration_nee.download]]
     sha256 = "a7ff814d3b89fa80826670185079960b5cd3d5bf634d4d9cb502a3741d2ed437"
     url = "https://caltech.box.com/shared/static/mb69shq9y8wnhi7hx23cf70v1b1cf1ln.gz"
+
+[inversion_nee]
+git-tree-sha1 = "d400472ea191639cb1dafac41b09ce36383aee54"
+
+    [[inversion_nee.download]]
+    sha256 = "84ccc2b60b276575342886535d78faa83f64dd83e327f65b31a10da8f9da721c"
+    url = "https://caltech.box.com/shared/static/13xeg76obc5cc73h2sqzhogx0hr97poz.gz"

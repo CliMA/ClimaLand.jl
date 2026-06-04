@@ -486,7 +486,7 @@ of `ClimaLand.source!` for soil sublimation with snow or lakes present.
 """
 @kwdef struct PartialAreaSoilSublimation{FT} <:
               ClimaLand.Soil.AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 
 """

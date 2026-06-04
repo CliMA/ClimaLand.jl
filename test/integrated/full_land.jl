@@ -209,17 +209,14 @@ snow, soil, soilco2).
 Useful for checking if land model functions are updating the
 values over the ocean.
 """
-function check_ocean_values_Y(Y, binary_mask; val = 0.0, broken = false)
-    # broken kwarg is used because ClimaCore 0.14.52 changed the tridiagnal solver to
-    # be not mask aware, which causes some of these to break. Once we update ClimaCore,
-    # we can remove the broken kwargs and the conditionals below.
+function check_ocean_values_Y(Y, binary_mask; val = 0.0)
     @test extrema(Array(parent(Y.soil.ϑ_l))[:, 1, 1, 1, Array(binary_mask)]) ==
-          (val, val) broken = broken
+          (val, val)
     @test extrema(Array(parent(Y.soil.θ_i))[:, 1, 1, 1, Array(binary_mask)]) ==
           (val, val)
     @test extrema(
         Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
-    ) == (val, val) broken = broken
+    ) == (val, val)
     @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
           (val, val)
     @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
@@ -509,8 +506,8 @@ end
     dY = similar(Y)
     # Implicit tendency
     @. dY = 0
-    imp_tendency! = make_imp_tendency(land)
-    imp_tendency!(dY, Y, p, t0)
+    compute_imp_tendency! = make_compute_imp_tendency(land)
+    compute_imp_tendency!(dY, Y, p, t0)
     @info("testing implicit tendency")
     check_ocean_values_Y(dY, binary_mask)
 
@@ -525,10 +522,11 @@ end
     # Jacobian checks
     @info("testing Jacobian updates")
 
-    jacobian! = ClimaLand.make_jacobian(land)
+    jacobian! = ClimaLand.make_compute_jacobian(land)
     jac_prototype = ClimaLand.initialize_jacobian(Y)
-
+    update_implicit_cache! = ClimaLand.make_update_implicit_cache(land)
     # Check that the jacobian update respects the mask
+    update_implicit_cache!(p, Y, t0)
     jacobian!(jac_prototype, Y, p, Δt, t0)
     (; matrix) = jac_prototype
     ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
@@ -586,17 +584,7 @@ end
         jac_prototype.matrix,
         b,
     )
-    # ClimaCore 0.14.52 changed the tridiagnal solver to
-    # be not mask aware
-    tridiagonal_solve_not_mask_aware =
-        pkgversion(ClimaCore) == v"0.14.52" &&
-        ClimaComms.device() isa ClimaComms.CUDADevice
-    check_ocean_values_Y(
-        x,
-        binary_mask;
-        val = 1.0,
-        broken = tridiagonal_solve_not_mask_aware,
-    )
+    check_ocean_values_Y(x, binary_mask; val = 1.0)
 
     # Take a step
     jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
@@ -604,10 +592,11 @@ end
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = ClimaTimeSteppers.ODEFunction(
-                imp_tendency!;
+                compute_imp_tendency!;
                 jac_kwargs...,
             ),
             dss! = ClimaLand.dss!,
+            cache_imp! = (Y, p, t) -> update_implicit_cache!(p, Y, t),
         ),
         Y,
         (t0, t0 + Δt),
@@ -631,11 +620,7 @@ end
         saveat = [t0, t0 + Δt],
     )
     u = sol.u[end]
-    check_ocean_values_Y(
-        u,
-        binary_mask;
-        broken = tridiagonal_solve_not_mask_aware,
-    )
+    check_ocean_values_Y(u, binary_mask;)
 end
 
 @testset "Default LandModel with inland waters" begin

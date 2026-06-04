@@ -2,6 +2,8 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Reduce unnecessary computation for sublimation, shortwave radiation, and implicit cache; removal of make_imp_tendency and make_update_jacobian functions PR[#1757](https://github.com/CliMA/ClimaLand.jl/pull/1757)
+- Add `inversion_nee` artifact (inversion-derived NEE/GPP/ER/Rh, monthly 1°×1°, 2002–2020) and `inversion_nee_dataset_path` accessor PR[#1760](https://github.com/CliMA/ClimaLand.jl/pull/1760)
 - Make SoilCO2 and O2 implicitly stepped PR[#1752](https://github.com/CliMA/ClimaLand.jl/pull/1752)
 - Change timestep to 900s from 450s in calibration, longruns and benchmarks; reduce the number of short/default diagnostics PR[#1756](https://github.com/CliMA/ClimaLand.jl/pull/1756)
 

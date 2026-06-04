@@ -42,7 +42,7 @@ this interface and it should not be used for that purpose.
 Many methods taking an argument of type `AbstractLandModel` are
 extensions of functions defined for `AbstractModel`s.
 There are default methods that apply for all `AbstractLandModel`s,
-including `make_update_aux`, `make_exp_tendency`, `make_imp_tendency`,
+including `make_update_aux`, `make_exp_tendency`,
 `make_compute_exp_tendency`, `make_compute_imp_tendency`,
 `initialize_prognostic`, `initialize_auxiliary`, `initialize`,
 and `coordinates`.
@@ -151,18 +151,16 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords)
 end
 
 
-function make_imp_tendency(land::AbstractLandModel)
+function make_compute_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
-    update_imp_c! = make_update_implicit_cache(land)
-    NVTX.@annotate function imp_tendency!(dY, Y, p, t)
-        update_imp_c!(p, Y, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
     end
-    return imp_tendency!
+    return compute_imp_tendency!
 end
 
 function make_exp_tendency(land::AbstractLandModel)

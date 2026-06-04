@@ -53,8 +53,8 @@ using Test
     dY = similar(Y)
     @. dY = 2.0
 
-    imp_tendency! = make_imp_tendency(soil)
-    imp_tendency!(dY, Y, p, t0)
+    compute_imp_tendency! = make_compute_imp_tendency(soil)
+    compute_imp_tendency!(dY, Y, p, t0)
 
     binary_mask = .~parent(domain.space.surface.grid.mask.is_active)[:]
     # Test that the masked parts of dY did not update and are still equal to 2.0

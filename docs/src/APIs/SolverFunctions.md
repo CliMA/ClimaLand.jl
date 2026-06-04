@@ -35,10 +35,8 @@ ClimaLand.boundary_var_types
 ## Implicit Tendencies
 
 ```@docs
-ClimaLand.make_imp_tendency
 ClimaLand.make_compute_imp_tendency
 ClimaLand.make_compute_jacobian
-ClimaLand.make_jacobian
 ClimaLand.initialize_jacobian
 ```
 
