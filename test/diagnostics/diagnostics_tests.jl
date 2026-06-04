@@ -308,7 +308,8 @@ end
         return
     end
 
-    ClimaLand.make_imp_tendency(::ClimaLand.LandModel) = Returns(nothing)
+    ClimaLand.make_compute_imp_tendency(::ClimaLand.LandModel) =
+        Returns(nothing)
     ClimaLand.make_exp_tendency(::ClimaLand.LandModel) = Returns(nothing)
     ClimaLand.make_update_aux(::ClimaLand.LandModel) = Returns(nothing)
     ClimaLand.make_update_boundary_fluxes(::ClimaLand.LandModel) =

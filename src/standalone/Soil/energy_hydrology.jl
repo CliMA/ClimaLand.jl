@@ -909,12 +909,11 @@ end
 """
     SoilSublimation{FT} <: AbstractSoilSource{FT}
 
-Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation; treated implicitly
-in ϑ_l, ρe_int but explicitly in θ_i.
+Soil Sublimation source type. Treated explicitly since the turbulent
+fluxes for SHF and LHF are also treated explicitly.
 """
 @kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
-    explicit::Bool = false
+    explicit::Bool = true
 end
 """
     source!(dY::ClimaCore.Fields.FieldVector,

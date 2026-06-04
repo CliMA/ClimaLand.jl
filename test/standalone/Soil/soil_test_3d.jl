@@ -407,10 +407,10 @@ for FT in (Float32, Float64)
         t0 = FT(0)
         set_initial_cache! = make_set_initial_cache(soil)
         set_initial_cache!(p, Y, t0)
-        imp_tendency! = make_imp_tendency(soil)
+        compute_imp_tendency! = make_compute_imp_tendency(soil)
         exp_tendency! = make_exp_tendency(soil)
         dY = similar(Y)
-        imp_tendency!(dY, Y, p, t0)
+        compute_imp_tendency!(dY, Y, p, t0)
 
         ## vertical change should be zero except at the boundary, where it should be ±30.
         @test (

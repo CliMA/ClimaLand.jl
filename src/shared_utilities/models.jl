@@ -1,7 +1,6 @@
 export AbstractModel,
     AbstractImExModel,
     AbstractExpModel,
-    make_imp_tendency,
     make_exp_tendency,
     make_compute_imp_tendency,
     make_compute_exp_tendency,
@@ -44,7 +43,7 @@ abstract type AbstractModel{FT <: AbstractFloat} end
 
 An abstract type for models which have both implicit and explicitly stepped variables
 This inherits all the default function definitions from AbstractModel, as well
-as `make_imp_tendency` and `make_compute_imp_tendency` defaults.
+as `make_compute_imp_tendency` defaults.
 """
 abstract type AbstractImExModel{FT} <: AbstractModel{FT} end
 
@@ -53,7 +52,7 @@ abstract type AbstractImExModel{FT} <: AbstractModel{FT} end
 
 An abstract type for models with only explicitly stepped variables.
 This inherits all the default function definitions from AbstractModel, as well
-as a `make_imp_tendency` default.
+as a `make_compute_imp_tendency` default.
 """
 abstract type AbstractExpModel{FT} <: AbstractModel{FT} end
 
@@ -268,37 +267,6 @@ add anything, consistent with the default of no additional
 driver variables in the cache.
 """
 add_drivers_to_cache(p, model::AbstractModel) = p
-
-"""
-    make_imp_tendency(model::AbstractImExModel)
-
-Returns an `imp_tendency` that updates auxiliary variables and
-updates the prognostic state of variables that are stepped implicitly.
-
-`compute_imp_tendency!` should be compatible with ClimaTimeSteppers.jl solvers.
-"""
-function make_imp_tendency(model::AbstractImExModel)
-    compute_imp_tendency! = make_compute_imp_tendency(model)
-    update_implicit_cache! = make_update_implicit_cache(model)
-    function imp_tendency!(dY, Y, p, t)
-        update_implicit_cache!(p, Y, t)
-        compute_imp_tendency!(dY, Y, p, t)
-    end
-    return imp_tendency!
-end
-
-"""
-    make_imp_tendency(model::AbstractModel)
-
-Returns an `imp_tendency` that does nothing. This model type is not
-stepped implicitly.
-"""
-function make_imp_tendency(model::AbstractModel)
-    compute_imp_tendency! = make_compute_imp_tendency(model)
-    function imp_tendency!(dY, Y, p, t)
-        compute_imp_tendency!(dY, Y, p, t)
-    end
-end
 
 """
     make_exp_tendency(model::AbstractModel)
