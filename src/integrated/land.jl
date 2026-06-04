@@ -851,6 +851,7 @@ NVTX.@annotate function soil_boundary_fluxes!(
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # Liquid influx is a combination of precipitation and snowmelt in general
+    exposed_fraction = @. lazy(exp(- p.canopy.biomass.area_index.leaf/3))
     liquid_influx =
         Soil.compute_liquid_influx(p, soil, prognostic_land_components)
     # This partitions the influx into runoff and infiltration
@@ -876,7 +877,7 @@ NVTX.@annotate function soil_boundary_fluxes!(
     @. p.soil.top_bc.water =
         p.soil.infiltration +
         p.excess_water_flux +
-        p.bare_soil_fraction * p.soil.turbulent_fluxes.vapor_flux_liq
+        p.bare_soil_fraction * p.soil.turbulent_fluxes.vapor_flux_liq * exposed_fraction
     # The actual boundary condition is a mix of liquid water infiltration and
     # evaporation. The infiltration already has accounted for snow cover fraction,
     # because the influx it is computed from has accounted for that.
@@ -886,8 +887,8 @@ NVTX.@annotate function soil_boundary_fluxes!(
     @. p.soil.top_bc.heat =
         p.bare_soil_fraction * (
             p.soil.R_n +
-            p.soil.turbulent_fluxes.lhf +
-            p.soil.turbulent_fluxes.shf
+            p.soil.turbulent_fluxes.lhf * exposed_fraction+
+            p.soil.turbulent_fluxes.shf* exposed_fraction
         ) +
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
@@ -989,15 +990,15 @@ NVTX.@annotate function snow_boundary_fluxes!(
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
     P_liq = p.drivers.P_liq
-
+    exposed_fraction = @. lazy(exp(- p.canopy.biomass.area_index.leaf/3))
     @. p.snow.total_water_flux =
         P_snow * (1 - p.lake_fraction) +
-        (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
+        (P_liq + p.snow.turbulent_fluxes.vapor_flux * exposed_fraction - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
 
     @. p.snow.liquid_water_flux =
         (
-            P_liq + p.snow.turbulent_fluxes.vapor_flux * p.snow.q_l -
+            P_liq + p.snow.turbulent_fluxes.vapor_flux * exposed_fraction * p.snow.q_l -
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
@@ -1019,8 +1020,8 @@ NVTX.@annotate function snow_boundary_fluxes!(
         e_flux_falling_snow * (1 - p.lake_fraction) +
         (
             residual_surface_flux +
-            p.snow.turbulent_fluxes.lhf +
-            p.snow.turbulent_fluxes.shf +
+            p.snow.turbulent_fluxes.lhf * exposed_fraction +
+            p.snow.turbulent_fluxes.shf * exposed_fraction +
             p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
             e_flux_falling_rain
         ) * p.snow.snow_cover_fraction
