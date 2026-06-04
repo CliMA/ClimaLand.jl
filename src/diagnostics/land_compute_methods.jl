@@ -954,24 +954,25 @@ function compute_latent_heat_flux!(
     t,
     land_model::LandModel{FT},
 ) where {FT}
+    exposed_fraction = @. lazy(exp(- p.canopy.biomass.area_index.leaf/3))
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out =
-            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
+            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction * exposed_fraction +
             p.canopy.turbulent_fluxes.lhf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf * exposed_fraction
         if !(land_model.lake isa Nothing)
-            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf * exposed_fraction
         end
         return out
     else
         @. out =
-            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction +
+            p.soil.turbulent_fluxes.lhf * p.bare_soil_fraction * exposed_fraction +
             p.canopy.turbulent_fluxes.lhf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf * exposed_fraction
         if !(land_model.lake isa Nothing)
-            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.lhf * exposed_fraction
         end
     end
 end
@@ -983,24 +984,25 @@ function compute_sensible_heat_flux!(
     t,
     land_model::LandModel{FT},
 ) where {FT}
+    exposed_fraction = @. lazy(exp(- p.canopy.biomass.area_index.leaf/3))
     if isnothing(out)
         out = zeros(land_model.canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
         @. out =
-            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
+            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction * exposed_fraction +
             p.canopy.turbulent_fluxes.shf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf * exposed_fraction 
         if !(land_model.lake isa Nothing)
-            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf * exposed_fraction
         end
         return out
     else
         @. out =
-            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction +
+            p.soil.turbulent_fluxes.shf * p.bare_soil_fraction * exposed_fraction +
             p.canopy.turbulent_fluxes.shf +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf * exposed_fraction
         if !(land_model.lake isa Nothing)
-            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf
+            @. out += p.lake_fraction * p.lake.turbulent_fluxes.shf * exposed_fraction
         end
     end
 end
