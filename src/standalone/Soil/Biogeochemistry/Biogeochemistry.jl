@@ -115,15 +115,33 @@ function SoilCO2ModelParameters(
     earth_param_set = LP.LandParameters(toml_dict)
 
     # Accept either legacy α_sx or centered Arrhenius soilCO2_reference_rate.
-    α_sx = if haskey(toml_dict, "soilCO2_reference_rate")
-        R = FT(LP.gas_constant(earth_param_set))
-        T_ref_sx = FT(288.15)
-        V_ref_sx = FT(toml_dict["soilCO2_reference_rate"])
-        V_ref_sx / exp(-parameters.Ea_sx / (R * T_ref_sx))
-    elseif haskey(toml_dict, "soilCO2_pre_exponential_factor")
-        FT(toml_dict["soilCO2_pre_exponential_factor"])
-    else
-        error("Missing soil CO2 rate parameter: expected soilCO2_reference_rate or soilCO2_pre_exponential_factor")
+    α_sx = begin
+        reference_rate = try
+            toml_dict["soilCO2_reference_rate"]
+        catch err
+            err isa KeyError || rethrow(err)
+            nothing
+        end
+
+        if reference_rate !== nothing
+            R = FT(LP.gas_constant(earth_param_set))
+            T_ref_sx = FT(288.15)
+            V_ref_sx = FT(reference_rate)
+            V_ref_sx / exp(-parameters.Ea_sx / (R * T_ref_sx))
+        else
+            pre_exponential = try
+                toml_dict["soilCO2_pre_exponential_factor"]
+            catch err
+                err isa KeyError || rethrow(err)
+                nothing
+            end
+
+            if pre_exponential !== nothing
+                FT(pre_exponential)
+            else
+                error("Missing soil CO2 rate parameter: expected soilCO2_reference_rate or soilCO2_pre_exponential_factor")
+            end
+        end
     end
     parameters = merge(parameters, (; α_sx = α_sx))
 
@@ -632,7 +650,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         @. p.soilco2.D =
             co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
         @. p.soilco2.D_o2 =
-            co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
+            o2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
 
         # Compute Henry's law factors (temperature-dependent)
         R = FT(LP.gas_constant(params.earth_param_set))
@@ -667,6 +685,10 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
             microbe_source.(T_soil, θ_l, Csom, p.soilco2.O2_avail, params)
     end
     return update_aux!
+end
+
+function ClimaLand.make_update_implicit_aux(model::SoilCO2Model)
+    return ClimaLand.make_update_aux(model)
 end
 
 # Boundary condition types/methods for Soil CO2

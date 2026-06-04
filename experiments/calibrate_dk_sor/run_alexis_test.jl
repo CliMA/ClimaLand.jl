@@ -25,13 +25,15 @@ const OUT_DIR      = abspath(joinpath(@__DIR__, "..", "..", "experiments/calibra
 const DT           = Float64(450)
 
 # Single-worker serial run — no Distributed needed.
-# model_interface.jl defines ClimaCalibrate.forward_model(iteration, member).
+# model_interface.jl defines DKSorModelInterface and ClimaCalibrate.forward_model(interface, iteration, member).
 include(
     abspath(joinpath(@__DIR__, "..", "..", "experiments/calibrate_dk_sor/model_interface.jl"))
 )
 
+model_interface = DKSorModelInterface()
+
 println("Running forward model with Alexis posterior params (iteration=999, member=1)…")
-ClimaCalibrate.forward_model(999, 1)
+ClimaCalibrate.forward_model(model_interface, 999, 1)
 println("Forward run complete.")
 
 # ── Load results and compute RMSE ─────────────────────────────────────────────

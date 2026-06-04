@@ -172,12 +172,14 @@ end
     joinpath(pkgdir(ClimaLand), "experiments", "calibrate_dk_sor", "model_interface.jl"),
 )
 
+model_interface = DKSorModelInterface()
+
 # ── Run posterior ensemble ────────────────────────────────────────────────────
 @info "Launching $N_SAMPLES forward model runs (posterior ensemble)…"
 
 results = pmap(1:N_SAMPLES) do m
     try
-        ClimaCalibrate.forward_model(0, m)
+        ClimaCalibrate.forward_model(model_interface, 0, m)
         return (member = m, status = :ok)
     catch e
         @error "Forward model failed for member $m" exception = e

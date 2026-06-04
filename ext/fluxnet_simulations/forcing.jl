@@ -226,6 +226,126 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
 end
 
 """
+     prescribed_forcing_netcdf(met_nc_path,
+                               lat,
+                               long,
+                               hour_offset_from_UTC,
+                               atmos_h,
+                               start_date,
+                               toml_dict::CP.ParamDict,
+                               FT;
+                               gustiness=1,
+                               split_precip=true)
+
+Constructs `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` from
+site-level Fluxnet-style NetCDF forcing files.
+"""
+function FluxnetSimulations.prescribed_forcing_netcdf(
+    met_nc_path,
+    lat,
+    long,
+    hour_offset_from_UTC,
+    atmos_h,
+    start_date,
+    toml_dict::CP.ParamDict,
+    FT;
+    split_precip = true,
+    gustiness = 1,
+)
+    earth_param_set = LP.LandParameters(toml_dict)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    # Build a TVI from a time vector and raw data, dropping NaN/-9999 entries.
+    function tvi_from_netcdf(times, values; preprocess_func = identity)
+        valid = .!isnan.(values) .& (values .!= -9999)
+        return TimeVaryingInput(times[valid], preprocess_func.(values[valid]))
+    end
+
+    NCDataset(met_nc_path, "r") do ds
+        time_vals = ds["time"][:]
+        seconds_since_start_date = [
+            Float64(Second(t - Hour(hour_offset_from_UTC) - start_date).value)
+            for t in time_vals
+        ]
+
+        atmos_T_data = Float64.(coalesce.(ds["Tair"][1, 1, :], NaN))
+        atmos_u_data = Float64.(coalesce.(ds["Wind"][1, 1, :], NaN))
+        atmos_q_data = Float64.(coalesce.(ds["Qair"][1, 1, :], NaN))
+        atmos_P_data = Float64.(coalesce.(ds["Psurf"][1, 1, :], NaN))
+        SW_d_data = Float64.(coalesce.(ds["SWdown"][1, 1, :], NaN))
+        LW_d_data = Float64.(coalesce.(ds["LWdown"][1, 1, :], NaN))
+        c_co2_data = Float64.(coalesce.(ds["CO2air"][1, 1, :], NaN))
+        precip_data = Float64.(coalesce.(ds["Precip"][1, 1, :], NaN))
+        VPD_data = Float64.(coalesce.(ds["VPD"][1, 1, :], NaN))
+
+        atmos_T = tvi_from_netcdf(seconds_since_start_date, atmos_T_data)
+        atmos_u = tvi_from_netcdf(seconds_since_start_date, atmos_u_data)
+        atmos_q = tvi_from_netcdf(seconds_since_start_date, atmos_q_data)
+        atmos_P = tvi_from_netcdf(seconds_since_start_date, atmos_P_data)
+        SW_d = tvi_from_netcdf(seconds_since_start_date, SW_d_data)
+        LW_d = tvi_from_netcdf(seconds_since_start_date, LW_d_data)
+        c_co2 = tvi_from_netcdf(seconds_since_start_date, c_co2_data; preprocess_func = (x) -> x * 1e-6)
+
+        if split_precip
+            snow_frac_data = snow_precip_fraction.(atmos_T_data .- 273.15, VPD_data; thermo_params = thermo_params)
+            compute_rain(precip, snow_frac) = -1 * precip * (1 - snow_frac)
+            compute_snow(precip, snow_frac) = -1 * precip * snow_frac
+            atmos_P_liq = tvi_from_netcdf(
+                seconds_since_start_date,
+                compute_rain.(precip_data, snow_frac_data),
+            )
+            atmos_P_snow = tvi_from_netcdf(
+                seconds_since_start_date,
+                compute_snow.(precip_data, snow_frac_data),
+            )
+        else
+            atmos_P_liq = tvi_from_netcdf(
+                seconds_since_start_date,
+                precip_data;
+                preprocess_func = (x) -> -x,
+            )
+            atmos_P_snow = tvi_from_netcdf(
+                seconds_since_start_date,
+                precip_data;
+                preprocess_func = (x) -> zero(x),
+            )
+        end
+
+        atmos = ClimaLand.PrescribedAtmosphere(
+            atmos_P_liq,
+            atmos_P_snow,
+            atmos_T,
+            atmos_u,
+            atmos_q,
+            atmos_P,
+            start_date,
+            atmos_h,
+            toml_dict;
+            c_co2,
+        )
+
+        cos_zenith_angle =
+            (t, s) -> default_cos_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                longitude = long,
+                latitude = lat,
+            )
+        radiation = ClimaLand.PrescribedRadiativeFluxes(
+            FT,
+            SW_d,
+            LW_d,
+            start_date,
+            cosθs = cos_zenith_angle,
+            toml_dict = toml_dict,
+        )
+
+        return (; atmos, radiation)
+    end
+end
+
+"""
     get_maxLAI_at_site(date, lat, long;
                        ncd_path = ClimaLand.Artifacts.modis_lai_single_year_path(;year = Dates.year(date)))
 

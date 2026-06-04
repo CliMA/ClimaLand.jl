@@ -102,7 +102,7 @@ function update_autotrophic_respiration!(
         Ω,
         An_leaf,
         Rd_leaf,
-        p.canopy.energy.T,
+        p.drivers.T,
         β,
         h_canopy,
     )
@@ -183,9 +183,12 @@ function AutotrophicRespirationParameters(
     μr = toml_dict["root_leaf_nitrogen_ratio"],
     Rel = toml_dict["relative_contribution_factor"],
     μs = toml_dict["stem_leaf_nitrogen_ratio"],
-    Q10 = haskey(toml_dict, "autotrophic_respiration_Q10") ?
-        toml_dict["autotrophic_respiration_Q10"] :
-        CP.float_type(toml_dict)(2.0),
+    Q10 = try
+        toml_dict["autotrophic_respiration_Q10"]
+    catch err
+        err isa KeyError || rethrow(err)
+        CP.float_type(toml_dict)(2.0)
+    end,
 )
     FT = CP.float_type(toml_dict)
     AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs, Q10)

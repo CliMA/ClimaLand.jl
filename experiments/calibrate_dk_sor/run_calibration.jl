@@ -95,6 +95,8 @@ end
     joinpath(abspath(joinpath(@__DIR__, "..", "..")), "experiments/calibrate_dk_sor/model_interface.jl"),
 )
 
+model_interface = DKSorModelInterface()
+
 # ── Run Calibration ──────────────────────────────────────────────────────────
 
 println("\n=== Starting ClimaCalibrate calibration ===")
@@ -108,8 +110,9 @@ println("  LAI: Copernicus")
 println("  Output: $OUTPUT_DIR")
 
 eki = ClimaCalibrate.calibrate(
-    ClimaCalibrate.WorkerBackend,
+    ClimaCalibrate.WorkerBackend(),
     ekp,
+    model_interface,
     N_ITERATIONS,
     prior,
     OUTPUT_DIR,
