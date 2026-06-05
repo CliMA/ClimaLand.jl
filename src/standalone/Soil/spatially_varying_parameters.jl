@@ -232,6 +232,82 @@ function soil_vangenuchten_parameters(
     return (; ν = ν, hydrology_cm = hydrology_cm, K_sat = K_sat, θ_r = θ_r)
 end
 
+function rosetta_soil_vangenuchten_parameters(
+    subsurface_space,
+    FT;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    interpolation_method = Interpolations.Constant(),
+)
+    context = ClimaComms.context(subsurface_space)
+    soil_params_artifact_path = "/home/kdeck/ClimaLand.jl/soil_params_rosetta.nc"
+    vg_α = SpaceVaryingInput(
+            soil_params_artifact_path,
+        "vg_α",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    vg_n = SpaceVaryingInput(
+            soil_params_artifact_path,
+        "vg_n",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    masked_to_value(field,value) =
+        field == 0.0 ? eltype(field)(value) : field
+
+    μ = FT(0.14)
+    vg_α .= masked_to_value.(vg_α, 10.0^μ)
+    μ = FT(1.52)
+    vg_n .= masked_to_value.(vg_n,  μ)
+
+    vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
+        ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
+    hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
+
+    θ_r = SpaceVaryingInput(
+            soil_params_artifact_path,
+        "θ_r",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    ν = SpaceVaryingInput(
+            soil_params_artifact_path,
+        "ν",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+    K_sat = SpaceVaryingInput(
+            soil_params_artifact_path,
+        "Ksat",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc, interpolation_method),
+    )
+
+    # Set missing values to the mean. For Ksat, we use the mean in log space.
+    μ = FT(-5.4)
+    K_sat .= masked_to_value.(K_sat, 10.0^μ)
+    K_sat .= max.(K_sat, sqrt(eps(FT)))
+
+    ν .= masked_to_value.(ν,0.44)
+
+    θ_r .= masked_to_value.(θ_r, 0.07)
+
+    return (; ν = ν, hydrology_cm = hydrology_cm, K_sat = K_sat, θ_r = θ_r)
+end
+    
+
+
 """
     soil_composition_parameters(
         surface_space,
