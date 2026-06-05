@@ -114,6 +114,12 @@ function era5_land_forcing_data2008_lowres_path(; context = nothing)
     )
 end
 
+function era5_land_forcing_data2008_path(; context = nothing)
+    era5_forty_yrs_path =
+        		era5_land_forcing_data_forty_years_folder_path(context = context)
+		return joinpath(era5_forty_yrs_path, "era5_2008_1.0x1.0.nc")
+end
+
 """
     era5_monthly_averages_single_level_path(; context)
 

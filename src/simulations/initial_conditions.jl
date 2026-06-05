@@ -11,7 +11,8 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 interpolation_method = Interpolations.Constant()
-mean_tair_path = "/Users/katherinedeck/Desktop/code/ClimaLand.jl/mean_tair.nc"
+mean_tair_path = "/home/kdeck/ClimaLand.jl/mean_tair.nc"
+#mean_tair_path = "/Users/katherinedeck/Desktop/code/ClimaLand.jl/mean_tair.nc"
 """
     set_soil_initial_conditions!(Y, subsurface_space, soil_ic_path, soil; enforce_constraints = false, T_bounds = nothing)
 

@@ -48,7 +48,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "soil_longrun_$(device_suffix)"
+root_path = "soil_longrun_$(device_suffix)_varying_type"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -57,7 +57,7 @@ outdir =
 # If LONGER run, run for 20 years, with the correct forcing each year.
 start_date = DateTime(2000)
 stop_date = DateTime(2060)
-Δt = 1800.0
+Δt = 1200.0
 domain = ClimaLand.Domains.global_box_domain(FT; context)
 toml_dict = LP.create_toml_dict(FT)
 
@@ -69,10 +69,11 @@ forcing = ClimaLand.prescribed_forcing_era5(
     toml_dict,
     FT;
     max_wind_speed = 25.0,
-    use_lowres_forcing=true
     context,
+    use_lowres_forcing=true
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
+
 set_ic! =
     ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
         model,
@@ -89,6 +90,7 @@ diagnostics = ClimaLand.default_diagnostics(
         "sr",
         "ssr",
         "tair",
+	"precip"
     ],
 )
 simulation =

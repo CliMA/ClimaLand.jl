@@ -1381,7 +1381,7 @@ function prescribed_forcing_era5(
     # Determine the ERA5 dataset and interpolation method based on the simulation years and resolution
     if use_lowres_forcing
         era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(;
+            ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
                 context,
             )
         interpolation_method = Interpolations.Constant()
