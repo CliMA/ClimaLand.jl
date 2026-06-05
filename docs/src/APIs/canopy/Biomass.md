@@ -18,11 +18,6 @@ ClimaLand.Canopy.PrescribedBiomassModel{FT}(
 ) where {FT <: AbstractFloat}
 ClimaLand.Canopy.PrescribedBiomassModel{FT}(; LAI, SAI::FT, RAI::FT, rooting_depth, height::FT) where {FT}
 ClimaLand.Canopy.PrescribedAreaIndices
-ClimaLand.Canopy.PrescribedAreaIndices{FT}(
-    LAI::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
-) where {FT <: AbstractFloat}
 ClimaLand.Canopy.prescribed_lai_era5
 ClimaLand.Canopy.prescribed_lai_modis
 ClimaLand.Canopy.prescribed_climatological_lai_modis

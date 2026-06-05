@@ -140,3 +140,35 @@ end
     evaluate!(tmp2, LAI, t2)
     # checks that both evaluate without error even though beyond the bounds of the data
 end
+
+@testset "Max LAI" begin
+    FT = Float32
+    toml_dict = LP.create_toml_dict(FT)
+    domain = ClimaLand.Domains.global_box_domain(
+        FT;
+        nelements = (180, 360, 5),
+        mask_threshold = FT(-1), # make it so nothing is "ocean"; uninitialized values can be random and making equalities harder to check below
+    )
+    surface_space = domain.space.surface
+    LAI = ClimaLand.Canopy.prescribed_climatological_lai_modis(surface_space)
+    maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
+    biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+        domain,
+        LAI,
+        maxLAI,
+        toml_dict,
+    )
+    @test biomass.plant_area_index.SAI == toml_dict["SAI_coeff"] .* maxLAI
+    @test biomass.plant_area_index.RAI == toml_dict["RAI_coeff"] .* maxLAI
+    p = (;
+        canopy = (;
+            biomass = (;
+                area_index = (;
+                    leaf = ClimaCore.Fields.zeros(surface_space),
+                    root = ClimaCore.Fields.zeros(surface_space),
+                    stem = ClimaCore.Fields.zeros(surface_space),
+                )
+            )
+        )
+    )
+end

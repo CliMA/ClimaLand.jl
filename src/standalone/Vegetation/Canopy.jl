@@ -5,10 +5,11 @@ using Thermodynamics
 using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
+using NCDatasets
 using ClimaCore.MatrixFields
 using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
-import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
+using ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
@@ -331,31 +332,75 @@ end
         domain,
         LAI::AbstractTimeVaryingInput,
         toml_dict::CP.ParamDict;
-        SAI::FT = toml_dict["SAI"],
-        RAI::FT = toml_dict["RAI"],
+        SAI::FS = toml_dict["SAI"],
+        RAI::FS = toml_dict["RAI"],
         rooting_depth = clm_rooting_depth(domain.space.surface),
         height = toml_dict["canopy_height"]
-    ) where {FT <: AbstractFloat}
+    ) where {FS, FT <: AbstractFloat}
 
 Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`.
 
 The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index.
 
 The following default parameters are used:
-- SAI = 0 (m2/m2) - stem area index
-- RAI = 1 (m2/m2) - root area index
 - height = 1m
+- SAI = 0
+- RAI = 1
 """
 function PrescribedBiomassModel{FT}(
     domain,
     LAI::AbstractTimeVaryingInput,
     toml_dict::CP.ParamDict;
-    SAI::FT = toml_dict["SAI"],
-    RAI::FT = toml_dict["RAI"],
+    SAI::FS = toml_dict["SAI"],
+    RAI::FS = toml_dict["RAI"],
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FS, FT <: AbstractFloat}
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
+    return PrescribedBiomassModel{
+        FT,
+        typeof(plant_area_index),
+        typeof(rooting_depth),
+        typeof(height),
+    }(
+        plant_area_index,
+        rooting_depth,
+        height,
+    )
+end
+
+"""
+    PrescribedBiomassModel{FT}(
+        domain,
+        LAI::AbstractTimeVaryingInput,
+        maxLAI,
+        toml_dict::CP.ParamDict;
+        SAI = toml_dict["SAI_coeff"] .* maxLAI,
+        RAI = toml_dict["RAI_coeff"] .* maxLAI,
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"]
+    ) where {FT <: AbstractFloat}
+
+Creates a PrescribedBiomassModel on the provided domain, using parameters from `toml_dict`,
+assuming that the SAI and RAI are computed as a linear multiple of the maximum LAI.
+
+The required argument `LAI` should be a ClimaUtilities TimeVaryingInput for leaf area index,
+and the maxLAI argument should be a ClimaCore Field or a scalar.
+
+The following default parameters are used:
+- height = 1m
+"""
+function PrescribedBiomassModel{FT}(
+    domain,
+    LAI::AbstractTimeVaryingInput,
+    maxLAI,
+    toml_dict::CP.ParamDict;
+    SAI = toml_dict["SAI_coeff"] .* maxLAI,
+    RAI = toml_dict["RAI_coeff"] .* maxLAI,
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
-    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
         FT,
         typeof(plant_area_index),
@@ -395,13 +440,7 @@ energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
-- `height`: Canopy height (m), default spatially varying from CLM data
-
-# Example
-```julia
-biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict)
-canopy = CanopyModel{FT}(...; biomass, ...)
-```
+- `height`: Canopy height (m), default from toml dict
 
 # References
 Zhou et al. (2025) "A General Model for the Seasonal to Decadal Dynamics of Leaf Area"
@@ -414,7 +453,44 @@ function ZhouOptimalLAIModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = clm_canopy_height(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FT <: AbstractFloat}
+    parameters = OptimalLAIParameters{FT}(toml_dict)
+    return ZhouOptimalLAIModel{FT}(
+        parameters,
+        optimal_lai_inputs;
+        SAI,
+        RAI,
+        rooting_depth,
+        height,
+    )
+end
+
+"""
+    ZhouOptimalLAIModel{FT}(
+        domain,
+        toml_dict::CP.ParamDict,
+        maxLAI;
+        optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+        SAI = toml_dict["SAI_coeff"] .* maxLAI,
+        RAI = toml_dict["RAI_coeff"] .* maxLAI,
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"],
+    ) where {FT <: AbstractFloat}
+
+Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the provided domain,
+using parameters from `toml_dict`; the SAI and RAI are computed using the maximum LAI from 
+MODIS over the years 2000-2020.
+"""
+function ZhouOptimalLAIModel{FT}(
+    domain,
+    toml_dict::CP.ParamDict,
+    maxLAI;
+    optimal_lai_inputs = optimal_lai_initial_conditions(domain.space.surface),
+    SAI = toml_dict["SAI_coeff"] .* maxLAI,
+    RAI = toml_dict["RAI_coeff"] .* maxLAI,
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
     return ZhouOptimalLAIModel{FT}(
@@ -1366,8 +1442,8 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
         update_cache!(p, Y0, t0)
-        set_historical_cache!(p, Y0, model.photosynthesis, model)
         set_historical_cache!(p, Y0, model.biomass, model)
+        set_historical_cache!(p, Y0, model.photosynthesis, model)
     end
     return set_initial_cache!
 end
