@@ -1,10 +1,10 @@
 [soil_params_rosetta]
-git-tree-sha1 = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+git-tree-sha1 = "3835c13c2dbf2ee26b2c5ca8a709a2298a57bf5c"
 
     [[soil_params_rosetta.download]]
-    sha256 = "07f860c9b817cf1c24f7740e154f837d67c24c749b3d44823315a07560ee0348"
+    sha256 = "e026f72dc05ee946357d95e2acf71ad3a8d149b4511397a47e0047278757357e"
     url = "https://caltech.box.com/shared/static/2vz4nevjbo1t80nxc6m4ozyy5f5eusfo.gz"
-    
+
 [modis_lai_climatology]
 git-tree-sha1 = "cd070348ab70f5d1b165c814f70e3822c0173eed"
 
