@@ -142,7 +142,7 @@ function run_profiler(
     ClimaLand.Simulations.step!(simulation)
     if use_external_profiler
         @info "Profiling using external profiler"
-        CUDA.@profile external = true step_N_times!(simulation, 3)
+        CUDA.@profile external = true step_N_times!(simulation, 10)
         @info "Profiling complete"
     else
         @info "Profiling using internal profiler"
@@ -186,7 +186,7 @@ Benchmark solving the simulation returned by `setup_simulation()`, with
 function run_timing_benchmarks(
     setup_simulation::Function,
     device::ClimaComms.AbstractDevice;
-    MAX_PROFILING_TIME_SECONDS::Number = 400,
+    MAX_PROFILING_TIME_SECONDS::Number = 300,
     MAX_PROFILING_SAMPLES::Number = 100,
 )
     time_now = time()
@@ -200,8 +200,12 @@ function run_timing_benchmarks(
         ClimaLand.Simulations.step!(simulation)
         push!(
             timings_s,
-            ClimaComms.@elapsed device step_or_solve!(simulation, device)
-        )
+            ClimaComms.@elapsed device begin
+                step_N_times!(simulation, 20)
+            end
+            )
+            ClimaLand.Simulations.close_output_writers(simulation.diagnostics)
+            ClimaLand.Simulations.close_all_ncfiles()
     end
     length(timings_s) == 1 && error(
         "Only one sample was obtained. Try increasing MAX_PROFILING_TIME_SECONDS",
