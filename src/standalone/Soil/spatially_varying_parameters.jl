@@ -232,6 +232,36 @@ function soil_vangenuchten_parameters(
     return (; ν = ν, hydrology_cm = hydrology_cm, K_sat = K_sat, θ_r = θ_r)
 end
 
+"""
+    soil_vangenuchten_parameters(
+        surface_space,
+        subsurface_space,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+       interpolation_method = Interpolations.Constant(),
+    )
+
+Reads spatially varying van Genuchten parameters for the soil model, from NetCDF files
+based the van Genuchten data product from Montzka, C et al. (2017)
+ and regrids them to the grid defined by the
+`subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
+Returns a NamedTuple of ClimaCore Fields.
+
+In particular, this file returns a field for
+- (α, n, m) (van Genuchten parameters)
+- Ksat
+- porosity
+- residual water content
+
+Please see the docstring for `soil_vangenuchten_parameters` for more
+details.
+
+Note that saved initial conditions are parameter dependent.
+"""
 function rosetta_soil_vangenuchten_parameters(
     subsurface_space,
     FT;
@@ -244,7 +274,7 @@ function rosetta_soil_vangenuchten_parameters(
     interpolation_method = Interpolations.Constant(),
 )
     context = ClimaComms.context(subsurface_space)
-    soil_params_artifact_path = "/home/kdeck/ClimaLand.jl/soil_params_rosetta.nc"
+    soil_params_artifact_path =  Artifacts.rosetta_soil_params_artifact_path(; context)
     vg_α = SpaceVaryingInput(
             soil_params_artifact_path,
         "vg_α",
