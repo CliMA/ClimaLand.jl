@@ -210,6 +210,28 @@ function anderson_clip_dZdt(
     return (new_safe_z - Z) / Δt
 end
 
+function test_time_anderson(model::Anderson1976, input, output)
+    #input order is [:z, :dprecipdt_snow, :SWE, :sol_rad_avg, :air_temp_avg, :dzdt, :dswedt, :ql, :snowT]
+    output .= get_dzdt.(
+        Ref(model),
+        input[5, :],
+        input[9, :],
+        input[2, :],
+        input[3, :],
+        input[1, :],
+        input[9, :],
+        86400.0,
+    )
+    output .= anderson_clip_dZdt.(
+        input[3, :],
+        input[1, :],
+        input[7, :],
+        output,
+        86400.0,
+        model.min_density
+    )
+end
+
 """
     update_density_and_depth!(ρ_snow, z_snow, density::Anderson1976, Y, p, earth_param_set)
 

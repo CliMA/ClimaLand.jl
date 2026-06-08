@@ -24,7 +24,7 @@ const me_outputs = combine_clima_data(my_param_dir)
 const old_outputs = combine_clima_data(old_param_dir)
 const others_outputs = combine_clima_data(htessel_param_dir)
 const clm5_outputs = NCDataset(joinpath(clm5_dir, "all_clm_outputs.nc"))
-const era5_rad_outputs = NCDataset("/home/acharbon/my_clima_api_rad.nc/era_means_monthly_rad.nc")
+const era5_rad_outputs = NCDataset(joinpath(obs_param_dir), "era_means_monthly_rad.nc") #"/home/acharbon/my_clima_api_rad.nc/era_means_monthly_rad.nc")
 const era5_swu = permutedims(era5_rad_outputs[:swd][:,:,:] .- era5_rad_outputs[:swn][:,:,:], (3, 1, 2)); #circshift (180, 0, 0) away from clima artifact
 const era5_lwu = permutedims(era5_rad_outputs[:lwd][:,:,:] .- era5_rad_outputs[:lwn][:,:,:], (3, 1, 2)); #circshift (180, 0, 0) away from clima artifact
 const era5_snow_outputs = NCDataset(joinpath(obs_param_dir, "all_snow_vars.nc"))
@@ -238,11 +238,13 @@ function quantilef(v, q::AbstractFloat)
     return Statistics.quantile(xs, q)
 end
 mae(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.(sim .- obs))
+mse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs2.(sim .- obs))
 rmse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.(sim .- obs)))
 bias(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(sim .- obs)
 mae_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.((sim .- obs) ./ obs))
 rel_mae(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = mae(sim, obs) / nonzero_meanf(obs)
 rmse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.((sim .- obs) ./ obs)))
+mse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs2.((sim .- obs) ./ obs))
 bias_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf((sim .- obs) ./ obs)
 function nse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray})
     idxs = is_data.(sim) .& is_data.(obs)
@@ -345,23 +347,23 @@ function binary_stats(sim, obs; thresh = 0.5)
     FN = view(cm, :, 2, 1)
     out["accuracy"] = Dict()
     out["accuracy"]["vals"] = (TP .+ TN) ./ (TP .+ FP .+ TN .+ FN)
-    out["accuracy"]["stats"] = stat_spread(out["accuracy"]["vals"])
+    out["accuracy"]["stats"] = stat_spread(out["accuracy"]["vals"], globe_int = true)
 
     out["precision"] = Dict()
     out["precision"]["vals"] = TP ./ (TP .+ FP)
-    out["precision"]["stats"] = stat_spread(out["precision"]["vals"])
+    out["precision"]["stats"] = stat_spread(out["precision"]["vals"], globe_int = true)
 
     out["recall"] = Dict()
     out["recall"]["vals"] = TP ./ (TP .+ FN)
-    out["recall"]["stats"] = stat_spread(out["recall"]["vals"])
+    out["recall"]["stats"] = stat_spread(out["recall"]["vals"], globe_int = true)
 
     out["f1"] = Dict()
     out["f1"]["vals"] = 2 .* TP ./ (2 .* TP .+ FP .+ FN)
-    out["f1"]["stats"] = stat_spread(out["f1"]["vals"])
+    out["f1"]["stats"] = stat_spread(out["f1"]["vals"], globe_int = true)
 
     out["csi"] = Dict()
     out["csi"]["vals"] = TP ./ (TP .+ FN .+ FP)
-    out["csi"]["stats"] = stat_spread(out["csi"]["vals"])
+    out["csi"]["stats"] = stat_spread(out["csi"]["vals"], globe_int = true)
     return out
 end
 function time_stat(f, arr)
@@ -405,7 +407,8 @@ function space_stat(f, arr1, arr2)
     return out
 end
 
-function stat_spread(v; globe_int = false, weights = nothing)
+const grid_weights = collect(transpose(hcat([cosd.((-90:89)) for _ in 1:360]...)))
+function stat_spread(v; globe_int = false)
     data = Dict(
         "min" => minf(v),
         "max" => maxf(v),
@@ -418,7 +421,7 @@ function stat_spread(v; globe_int = false, weights = nothing)
     if globe_int
         data["grid_mean"] = data["mean"]
         delete!(data, "mean")
-        data["global_int_mean"] = wmeanf(v, weights)
+        data["global_int_mean"] = wmeanf(v, grid_weights)
     end
     return data
 end
@@ -437,7 +440,7 @@ function depth_analysis(; args = snow_args)
     @info "Running Depth Analysis..."
     print("   Extracting data...\n")
     z, dates = field_data(:snd, :snd, :SNOWDP_month; args = args)
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     z_era_m = apply_mask(agg_time_indices(z.era5, dates.era5, :month, meanf)[1], mask)
@@ -465,7 +468,8 @@ function depth_analysis(; args = snow_args)
         for (stat_f, f) in calcs
             print("   Assessing $(string(f))...\n")
             calc_d = stat_f(f, z_month[m_tidx, :, :], z_era_m[era_tidx, :, :])
-            metrics[string(tag)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+            sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+            metrics[string(tag)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
             if tag != :me
                 print("    + hypothesis test\n")
                 my_vals = metrics["me"][string(f)]["vals"][:]
@@ -482,7 +486,7 @@ function depth_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, apply_mask(z.me .- z.old, mask))
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -491,7 +495,7 @@ function swe_analysis(; args = snow_args)
     print("   Extracting data...\n")
     swe, dates = field_data(:swe, :swe, :SNOWICE_month; args = args)
     swe.clm5 .= (swe.clm5 .+ get_data(args.clm5[:SNOWLIQ_month])) ./ 1000
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     swe_era_m = apply_mask(agg_time_indices(swe.era5, dates.era5, :month, meanf)[1], mask)
@@ -519,7 +523,8 @@ function swe_analysis(; args = snow_args)
         for (stat_f, f) in calcs
             print("   Assessing $(string(f))...\n")
             calc_d = stat_f(f, swe_month[m_tidx, :, :], swe_era_m[era_tidx, :, :])
-            metrics[string(tag)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+            sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+            metrics[string(tag)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
             if tag != :me
                 print("    + hypothesis test\n")
                 my_vals = metrics["me"][string(f)]["vals"][:]
@@ -536,7 +541,7 @@ function swe_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, apply_mask(swe.me .- swe.old, mask))
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -556,7 +561,7 @@ function snow_alb_analysis(; args = snow_args)
     print("   Extracting data...\n")
     snalb, dates = field_data(:snalb, :snalb, :ALBSN_HIST_month; args = args)
     snalb = (snalb..., modis_1 = get_data(args.era5["bsa_1"]), modis_2 = get_data(args.era5["bsa_2"]))
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     #what threshold of scf to compare snow albedo? 0.95?
     scf, _ = field_data(:snowc, :snowc, :FSNO_EFF_month, args = args) #FNO or FNO_EFF?
@@ -599,7 +604,8 @@ function snow_alb_analysis(; args = snow_args)
             for (stat_f, f) in calcs
                 print("   Assessing $(string(f)) in $(dlabel)...\n")
                 calc_d = stat_f(f, snalb_month[m_tidx, :, :], compare_data[era_tidx, :, :])
-                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+                sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
@@ -617,7 +623,7 @@ function snow_alb_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, snalb.me .- snalb.old)
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -630,7 +636,7 @@ function surface_alb_analysis(; args = snow_args)
     swa.old .= (swa.old .+ get_data(args.old[:rnir])) ./ 2
     swa.others .= (swa.others .+ get_data(args.others[:rnir])) ./ 2
 
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     swa_era_m = agg_time_indices(swa.era5, dates.era5, :month, meanf)[1]
     modis_1_m = agg_time_indices(swa.modis_1, dates.era5, :month, meanf)[1]
@@ -664,7 +670,8 @@ function surface_alb_analysis(; args = snow_args)
             for (stat_f, f) in calcs
                 print("   Assessing $(string(f)) in $(dlabel)...\n")
                 calc_d = stat_f(f, swa_month[m_tidx, :, :], compare_data[era_tidx, :, :])
-                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+                sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
@@ -682,7 +689,7 @@ function surface_alb_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, swa.me .- swa.old)
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -717,8 +724,7 @@ function radiation_analysis(rad_type)
     print("   Extracting data...\n")
     rad, dates = rad_data(rad_type)
 
-    grid_weights = collect(transpose(hcat([cosd.((-90:89)) for _ in 1:360]...)))
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
 
     metrics = Dict()
     for tag in [:me, :old, :others]
@@ -730,7 +736,7 @@ function radiation_analysis(rad_type)
         for (stat_f, f) in calcs
             print("   Assessing $(string(f))...\n")
             calc_d = stat_f(f, rad_month[m_tidx, :, :], rad.era5[era_tidx, :, :])
-            sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true, weights = grid_weights) : stat_spread(calc_d)
+            sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
             metrics[string(tag)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
             if tag != :me
                 print("    + hypothesis test\n")
@@ -745,7 +751,7 @@ function radiation_analysis(rad_type)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, rad.me .- rad.old)
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true, weights = grid_weights)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -758,7 +764,7 @@ function scf_analysis(; args = snow_args)
     scf = (scf..., modis_1 = get_data(args.era5["scf_1"]) ./ 100, modis_2 = get_data(args.era5["scf_2"]) ./ 100)
     
     mask = make_nosnow_mask()
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
 
     scf_era_m = apply_mask(agg_time_indices(scf.era5, dates.era5, :month, meanf)[1], mask)
     modis_1_m = apply_mask(agg_time_indices(scf.modis_1, dates.era5, :month, meanf)[1], mask)
@@ -792,7 +798,8 @@ function scf_analysis(; args = snow_args)
             for (stat_f, f) in calcs
                 print("   Assessing $(string(f)) in $(dlabel)...\n")
                 calc_d = stat_f(f, scf_month[m_tidx, :, :], compare_data[era_tidx, :, :])
-                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+                sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+                metrics[string(tag)][string(dlabel)][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][string(dlabel)][string(f)]["vals"][:]
@@ -822,7 +829,7 @@ function scf_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     model_diff = time_stat(meanf, apply_mask(scf.me .- scf.old, mask))
     metrics["upgrade_diff"]["vals"] = model_diff
-    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff)
+    metrics["upgrade_diff"]["stats"] = stat_spread(model_diff, globe_int = true)
     return metrics
 end
 
@@ -988,7 +995,7 @@ function phenology_analysis(; args = snow_args)
     print("   Extracting data...\n")
 
     z, dates = field_data(:snd, :snd, :SNOWDP_month; args = args)
-    calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mae), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     for tag in propertynames(z)
@@ -1028,7 +1035,8 @@ function phenology_analysis(; args = snow_args)
             for (stat_f, f) in calcs
                 print("    Assessing $(string(f))...\n")
                 calc_d = stat_f(f, sim, obs)
-                metrics[string(tag)][feature][string(f)] = Dict("stats" => stat_spread(calc_d), "vals" => calc_d)
+                sspread = string(stat_f) == "time_stat" ? stat_spread(calc_d, globe_int = true) : stat_spread(calc_d)
+                metrics[string(tag)][feature][string(f)] = Dict("stats" => sspread, "vals" => calc_d)
                 if tag != :me
                     print("    + hypothesis test\n")
                     my_vals = metrics["me"][feature][string(f)]["vals"][:]
@@ -1043,7 +1051,7 @@ function phenology_analysis(; args = snow_args)
     metrics["upgrade_diff"] = Dict()
     for field in fields
         model_diff = time_stat(meanf, metrics[field]["me"] .- metrics[field]["old"])
-        metrics["upgrade_diff"][field] = Dict("vals" => model_diff, "stats" => stat_spread(model_diff))
+        metrics["upgrade_diff"][field] = Dict("vals" => model_diff, "stats" => stat_spread(model_diff, globe_int = true))
     end
     return metrics
 end
@@ -1107,7 +1115,7 @@ function full_analysis(output_path; args = snow_args)
         end
         data["scf_gantt"][string(tag1)] = scf_gantt
     end
-    print("  getting phenology binning data\n:")
+    print("  getting phenology binning data:\n")
     data["lon_bin_dates"] = Dict()
     for (tag1, tag2) in [(:me, :clima), (:old, :clima), (:others, :clima), (:era5, :era5)]
         print("    - :$(tag1)\n")
@@ -1123,6 +1131,7 @@ function full_analysis(output_path; args = snow_args)
         "scoring" => analysis,
         "meta" => data,
     )
+    print("   getting snow age data:\n")
     print("Writing file (size: $(round(Base.summarysize(full_data) / 1e6, digits = 2)) MB)\n")
     jldsave(output_path, data = full_data)
 end
@@ -1130,9 +1139,7 @@ end
 #full_analysis("./stats/first_stats.jld2")
 
 # see what happens when you don't use an over-fit neural depth model?
-# see what the averages look like on clima analysis versus yours for an easy example array to see who needs to be fixed
 
-# should I do the compression via time_stat or space_stat before doing stat_spread, or do the stat_spread over the whole array?
 # split up these errors by season? by year? by land type?
 # update your model with GPU fixes
 
