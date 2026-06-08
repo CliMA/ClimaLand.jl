@@ -58,7 +58,7 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land 52"
         command:
-          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(\"ClimaCore\"; version=0.14.52); Pkg.instantiate(;verbose=true)'"
+          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(name=\"ClimaCore\"; version=\"0.14.52\"); Pkg.instantiate(;verbose=true)'"
           - >
             nsys profile --start-later=true --capture-range=cudaProfilerApi --trace=nvtx,mpi,cuda,osrt --cuda-memory-usage=true --kill=none --output=snowy_land_benchmark_gpu/report_52
             julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
@@ -77,7 +77,7 @@ steps:
         continue_on_failure: true
       - label: ":snow_capped_mountain: Snowy Land 51"
         command:
-          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(\"ClimaCore\"; version=0.14.51); Pkg.instantiate(;verbose=true)'"
+          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(name=\"ClimaCore\"; version=\"0.14.51\"); Pkg.instantiate(;verbose=true)'"
           - >
             nsys profile --start-later=true --capture-range=cudaProfilerApi --trace=nvtx,mpi,cuda,osrt --cuda-memory-usage=true --kill=none --output=snowy_land_benchmark_gpu/report_51
             julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
@@ -96,7 +96,7 @@ steps:
         continue_on_failure: true
       - label: ":snow_capped_mountain: Snowy Land 50"
         command:
-          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(\"ClimaCore\"; version=0.14.50); Pkg.instantiate(;verbose=true)'"
+          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(name=\"ClimaCore\"; version=\"0.14.50\"); Pkg.instantiate(;verbose=true)'"
           - >
             nsys profile --start-later=true --capture-range=cudaProfilerApi --trace=nvtx,mpi,cuda,osrt --cuda-memory-usage=true --kill=none --output=snowy_land_benchmark_gpu/report_50
             julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
@@ -115,7 +115,7 @@ steps:
         continue_on_failure: true
       - label: ":snow_capped_mountain: Snowy Land 502"
         command:
-          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(\"ClimaCore\"; version=0.14.50); Pkg.instantiate(;verbose=true)'"
+          - "julia --project=.buildkite -e 'using Pkg; Pkg.add(name=\"ClimaCore\"; version=\"0.14.50\"); Pkg.instantiate(;verbose=true)'"
           - >
             nsys profile --start-later=true --capture-range=cudaProfilerApi --trace=nvtx,mpi,cuda,osrt --cuda-memory-usage=true --kill=none --output=snowy_land_benchmark_gpu/report_502
             julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
