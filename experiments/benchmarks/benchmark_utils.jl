@@ -73,10 +73,6 @@ function profile_and_benchmark(
         end
     else
         run_profiler(setup_simulation, device, outdir)
-        (average_timing_s, std_timing_s) =
-            run_timing_benchmarks(setup_simulation, device)
-        @show average_timing_s
-        @show std_timing_s
     end
     return
 end
