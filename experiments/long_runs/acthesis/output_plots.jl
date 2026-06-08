@@ -347,23 +347,23 @@ function binary_stats(sim, obs; thresh = 0.5)
     FN = view(cm, :, 2, 1)
     out["accuracy"] = Dict()
     out["accuracy"]["vals"] = (TP .+ TN) ./ (TP .+ FP .+ TN .+ FN)
-    out["accuracy"]["stats"] = stat_spread(out["accuracy"]["vals"], globe_int = true)
+    out["accuracy"]["stats"] = stat_spread(out["accuracy"]["vals"])
 
     out["precision"] = Dict()
     out["precision"]["vals"] = TP ./ (TP .+ FP)
-    out["precision"]["stats"] = stat_spread(out["precision"]["vals"], globe_int = true)
+    out["precision"]["stats"] = stat_spread(out["precision"]["vals"])
 
     out["recall"] = Dict()
     out["recall"]["vals"] = TP ./ (TP .+ FN)
-    out["recall"]["stats"] = stat_spread(out["recall"]["vals"], globe_int = true)
+    out["recall"]["stats"] = stat_spread(out["recall"]["vals"])
 
     out["f1"] = Dict()
     out["f1"]["vals"] = 2 .* TP ./ (2 .* TP .+ FP .+ FN)
-    out["f1"]["stats"] = stat_spread(out["f1"]["vals"], globe_int = true)
+    out["f1"]["stats"] = stat_spread(out["f1"]["vals"])
 
     out["csi"] = Dict()
     out["csi"]["vals"] = TP ./ (TP .+ FN .+ FP)
-    out["csi"]["stats"] = stat_spread(out["csi"]["vals"], globe_int = true)
+    out["csi"]["stats"] = stat_spread(out["csi"]["vals"])
     return out
 end
 function time_stat(f, arr)
