@@ -126,7 +126,7 @@ within the explicit tendency of the canopy model.
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
 """
-NVTX.@annotate function canopy_boundary_fluxes!(
+function canopy_boundary_fluxes!(
     p::NamedTuple,
     canopy::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,

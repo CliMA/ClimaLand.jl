@@ -73,6 +73,10 @@ function profile_and_benchmark(
         end
     else
         run_profiler(setup_simulation, device, outdir)
+        (average_timing_s, std_timing_s) =
+            run_timing_benchmarks(setup_simulation, device)
+        @show average_timing_s
+        @show std_timing_s
     end
     return
 end
@@ -140,9 +144,12 @@ function run_profiler(
     simulation = setup_simulation()
     # step once for closures that may recompile
     ClimaLand.Simulations.step!(simulation)
+    ClimaLand.Simulations.step!(simulation)
+    ClimaLand.Simulations.step!(simulation)
+    ClimaLand.Simulations.step!(simulation)
     if use_external_profiler
         @info "Profiling using external profiler"
-        CUDA.@profile external = true step_N_times!(simulation, 3)
+        CUDA.@profile external = true step_N_times!(simulation, 15)
         @info "Profiling complete"
     else
         @info "Profiling using internal profiler"
@@ -186,7 +193,7 @@ Benchmark solving the simulation returned by `setup_simulation()`, with
 function run_timing_benchmarks(
     setup_simulation::Function,
     device::ClimaComms.AbstractDevice;
-    MAX_PROFILING_TIME_SECONDS::Number = 400,
+    MAX_PROFILING_TIME_SECONDS::Number = 200,
     MAX_PROFILING_SAMPLES::Number = 100,
 )
     time_now = time()
@@ -198,10 +205,13 @@ function run_timing_benchmarks(
         simulation = setup_simulation()
         # step once for closures that may recompile
         ClimaLand.Simulations.step!(simulation)
+        ClimaLand.Simulations.step!(simulation)
         push!(
             timings_s,
             ClimaComms.@elapsed device step_or_solve!(simulation, device)
         )
+        ClimaLand.Simulations.close_output_writers(simulation.diagnostics)
+    ClimaLand.Simulations.close_all_ncfiles()
     end
     length(timings_s) == 1 && error(
         "Only one sample was obtained. Try increasing MAX_PROFILING_TIME_SECONDS",
@@ -242,13 +252,11 @@ end
 If device is a ClimaComms.CUDADevice, solve `sim`. Otherwise step `sim` 5 times and close
 all output writers and file readers.
 """
-step_or_solve!(
-    sim::ClimaLand.Simulations.LandSimulation,
-    device::ClimaComms.CUDADevice,
-) = ClimaLand.Simulations.solve!(sim)
+# step_or_solve!(
+#     sim::ClimaLand.Simulations.LandSimulation,
+#     device::ClimaComms.CUDADevice,
+# ) = ClimaLand.Simulations.solve!(sim)
 function step_or_solve!(sim::ClimaLand.Simulations.LandSimulation, device)
-    step_N_times!(sim, 5)
-    ClimaLand.Simulations.close_output_writers(sim.diagnostics)
-    ClimaLand.Simulations.close_all_ncfiles()
+    step_N_times!(sim, 10)
     return
 end
