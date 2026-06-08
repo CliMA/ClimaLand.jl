@@ -545,7 +545,7 @@ function make_update_boundary_fluxes(
         isnothing(land.lake) ? Returns(nothing) :
         make_update_boundary_fluxes(land.lake)
 
-    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
+    function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
         update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
@@ -615,7 +615,7 @@ function make_update_implicit_cache(
     update_imp_aux_canopy! = make_update_implicit_aux(land.canopy)
     update_imp_bf_soil! = make_update_implicit_boundary_fluxes(land.soil)
     update_imp_bf_canopy! = make_update_implicit_boundary_fluxes(land.canopy)
-    NVTX.@annotate function update_implicit_cache!(p, Y, t)
+    function update_implicit_cache!(p, Y, t)
         update_imp_aux_soil!(p, Y, t)
         update_imp_aux_canopy!(p, Y, t)
         # Radiation - updates Rn for soil, snow, lake also
@@ -655,7 +655,7 @@ where the canopy LAI is zero. Note also that this serves the role of
 `canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
 when the Canopy is run in standalone mode.
 """
-NVTX.@annotate function lsm_radiant_energy_fluxes!(
+function lsm_radiant_energy_fluxes!(
     p,
     land::LandModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
@@ -768,7 +768,7 @@ energy and water flux at the surface of the soil for use as boundary
 conditions when a canopy and Soil CO2  model is also included, though only
 the presence of the canopy modifies the soil BC.
 """
-NVTX.@annotate function soil_boundary_fluxes!(
+function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
     prognostic_land_components::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
@@ -900,7 +900,7 @@ function Soil.compute_infiltration_energy_flux(
     )
 end
 
-NVTX.@annotate function snow_boundary_fluxes!(
+function snow_boundary_fluxes!(
     bc::Snow.AtmosDrivenSnowBC,
     prognostic_land_components::Union{
         Val{(:canopy, :snow, :soil, :soilco2)},
@@ -1099,7 +1099,7 @@ function make_update_aux(land::LandModel)
     update_snow_aux! = make_update_aux(land.snow)
     update_lake_aux! =
         isnothing(land.lake) ? Returns(nothing) : make_update_aux(land.lake)
-    NVTX.@annotate function update_aux!(p, Y, t)        # we require the following ordering so that soil and snow albedo fields
+    function update_aux!(p, Y, t)        # we require the following ordering so that soil and snow albedo fields
         # in p are updated to the current step, so that they can be used by the canopy
         # to compute shortwave radiation
         # In principle radiation, GPP, etc should be computed as a flux in boundary_fluxes,

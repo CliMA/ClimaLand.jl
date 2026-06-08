@@ -74,7 +74,7 @@ ClimaLand.auxiliary_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLand.auxiliary_domain_names(model::PondModel) = (:surface,)
 
 function ClimaLand.make_update_boundary_fluxes(model::PondModel)
-    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
+    function update_boundary_fluxes!(p, Y, t)
         p.surface_water.runoff .= surface_runoff(model.runoff, Y, p, t)
     end
     return update_boundary_fluxes!

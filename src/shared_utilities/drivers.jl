@@ -1181,7 +1181,7 @@ function make_update_drivers(driver_tuple::Tuple)
         update_driver_list = map(driver_tuple) do (driver)
             make_update_drivers(driver)
         end
-        NVTX.@annotate function update_drivers!(p, t)
+        function update_drivers!(p, t)
             for ud! in update_driver_list
                 ud!(p, t)
             end

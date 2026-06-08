@@ -156,7 +156,7 @@ function make_imp_tendency(land::AbstractLandModel)
     compute_imp_tendency_list =
         map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
     update_imp_c! = make_update_implicit_cache(land)
-    NVTX.@annotate function imp_tendency!(dY, Y, p, t)
+    function imp_tendency!(dY, Y, p, t)
         update_imp_c!(p, Y, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
@@ -170,7 +170,7 @@ function make_exp_tendency(land::AbstractLandModel)
     compute_exp_tendency_list =
         map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
     update_cache! = make_update_cache(land)
-    NVTX.@annotate function exp_tendency!(dY, Y, p, t)
+    function exp_tendency!(dY, Y, p, t)
         update_cache!(p, Y, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
@@ -183,7 +183,7 @@ function make_update_aux(land::AbstractLandModel)
     components = land_components(land)
     update_aux_function_list =
         map(x -> make_update_aux(getproperty(land, x)), components)
-    NVTX.@annotate function update_aux!(p, Y, t)
+    function update_aux!(p, Y, t)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
@@ -195,7 +195,7 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
     components = land_components(land)
     update_fluxes_function_list =
         map(x -> make_update_boundary_fluxes(getproperty(land, x)), components)
-    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
+    function update_boundary_fluxes!(p, Y, t)
         for f! in update_fluxes_function_list
             f!(p, Y, t)
         end
@@ -233,7 +233,7 @@ function make_compute_jacobian(land::AbstractLandModel)
     components = land_components(land)
     compute_jacobian_function_list =
         map(x -> make_compute_jacobian(getproperty(land, x)), components)
-    NVTX.@annotate function compute_jacobian!(jacobian, Y, p, dtγ, t)
+    function compute_jacobian!(jacobian, Y, p, dtγ, t)
         for f! in compute_jacobian_function_list
             f!(jacobian, Y, p, dtγ, t)
         end
@@ -265,7 +265,7 @@ the same function for the component models.
 
 The `sfc_cache` field is available as scratch space.
 """
-NVTX.@annotate function total_energy_per_area!(
+function total_energy_per_area!(
     surface_field,
     land::AbstractLandModel,
     Y,
@@ -299,7 +299,7 @@ the same function for the component models.
 
 The `sfc_cache` field is available as scratch space.
 """
-NVTX.@annotate function total_liq_water_vol_per_area!(
+function total_liq_water_vol_per_area!(
     surface_field,
     land::AbstractLandModel,
     Y,
