@@ -914,6 +914,7 @@ function make_set_initial_state_from_atmos_and_parameters(
     function set_ic!(Y, p, t0, land)
         atmos = ClimaLand.get_drivers(land)[1]
         earth_param_set = ClimaLand.get_earth_param_set(land.soil)
+	surface_space = land.soil.domain.space.surface
         p.drivers.T .= SpaceVaryingInput(
             mean_tair_path,
             "tair_mean",

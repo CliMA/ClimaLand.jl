@@ -73,7 +73,6 @@ forcing = ClimaLand.prescribed_forcing_era5(
     use_lowres_forcing=true
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
-
 set_ic! =
     ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
         model,
@@ -82,7 +81,7 @@ diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date,
     outdir;
-      reduction_period = :monthly,
+    reduction_period=:monthly,
     output_vars = [
         "tsoil",
         "swc",
@@ -103,3 +102,12 @@ simulation =
 @info "Stop Date: $stop_date"
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
+
+short_names = ["swc", "si", "tsoil", "tair", "sr", "ssr"]
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
+LandSimVis.make_heatmaps(
+    simulation;
+    savedir = root_path,
+    date = stop_date,
+    short_names,
+)

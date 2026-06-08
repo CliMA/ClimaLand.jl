@@ -424,7 +424,7 @@ end
     CanopyModel,
 } p.drivers.SW_d
 @diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_snow
-@diagnostic_compute "tair" Union{SoilCanopyModel, EnergyHydrology, LandModel, CanopyModel} p.drivers.T
+@diagnostic_compute "tair" Union{EnergyHydrology, SoilCanopyModel, LandModel, CanopyModel} p.drivers.T
 @diagnostic_compute "specific_humidity" Union{
     SoilCanopyModel,
     LandModel,

@@ -470,6 +470,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "infil",
         "iwc",
         "precip",
+	"tair",
         "sdr",
         "tair",
     ]
