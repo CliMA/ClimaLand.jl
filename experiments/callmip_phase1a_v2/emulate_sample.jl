@@ -172,7 +172,7 @@ function run_fixed_window_ensemble(ekp, final_iter)
         toml_dict = LP.create_toml_dict(Float64; override_files = [param_toml])
 
         # Spinup: 2 years before 1997 → start 1995-01-01
-        sim_start = DateTime(1995, 1, 1)
+        sim_start = DateTime(1996, 1, 1)
         sim_stop  = DateTime(2013, 1, 1)
 
         try

@@ -112,21 +112,36 @@ function load_dk_sor_forcing(
 
     valid = .!isnan.(T_arr) .& .!isnan.(q_arr) .& .!isnan.(P_arr) .&
             .!isnan.(SW_arr) .& .!isnan.(LW_arr) .& .!isnan.(wind_arr)
-    tv = t_seconds[valid]
-    # Flat extrapolation so spinup years (before met data start) clamp to boundary
+    tv   = t_seconds[valid]
     flat = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
 
-    atmos_T   = TimeVaryingInput(tv, T_arr[valid];   method = flat)
-    atmos_q   = TimeVaryingInput(tv, q_arr[valid];   method = flat)
-    atmos_P   = TimeVaryingInput(tv, P_arr[valid];   method = flat)
-    atmos_SW  = TimeVaryingInput(tv, SW_arr[valid];  method = flat)
-    atmos_LW  = TimeVaryingInput(tv, LW_arr[valid];  method = flat)
+    # Cyclic 1-year spinup: prepend a shifted copy of the first year of met data
+    # so the spinup gap (sim_start → first obs) gets realistic diurnal/seasonal forcing
+    t0       = tv[1]                                  # time of first valid obs (s)
+    yr1_idx  = tv .<= t0 + 365.25 * 86400            # indices covering first ~year
+    tv_pre   = tv[yr1_idx] .- t0                      # shift to start near t=0
+
+    tv_full   = vcat(tv_pre, tv)
+    T_full    = vcat(T_arr[valid][yr1_idx],    T_arr[valid])
+    q_full    = vcat(q_arr[valid][yr1_idx],    q_arr[valid])
+    P_full    = vcat(P_arr[valid][yr1_idx],    P_arr[valid])
+    SW_full   = vcat(SW_arr[valid][yr1_idx],   SW_arr[valid])
+    LW_full   = vcat(LW_arr[valid][yr1_idx],   LW_arr[valid])
+    prec_full = vcat(prec_arr[valid][yr1_idx], prec_arr[valid])
+    wind_full = vcat(wind_arr[valid][yr1_idx], wind_arr[valid])
+    co2_full  = vcat(co2_arr[valid][yr1_idx],  co2_arr[valid])
+
     # Split total precip into rain/snow by 0°C threshold (negative = downward flux)
-    is_snow   = T_arr[valid] .< 273.15
-    atmos_Pr  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* .!is_snow; method = flat)
-    atmos_Ps  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* is_snow;   method = flat)
-    atmos_u   = TimeVaryingInput(tv, wind_arr[valid];  method = flat)
-    atmos_co2 = TimeVaryingInput(tv, co2_arr[valid];   method = flat)
+    is_snow   = T_full .< 273.15
+    atmos_T   = TimeVaryingInput(tv_full, T_full;    method = flat)
+    atmos_q   = TimeVaryingInput(tv_full, q_full;    method = flat)
+    atmos_P   = TimeVaryingInput(tv_full, P_full;    method = flat)
+    atmos_SW  = TimeVaryingInput(tv_full, SW_full;   method = flat)
+    atmos_LW  = TimeVaryingInput(tv_full, LW_full;   method = flat)
+    atmos_Pr  = TimeVaryingInput(tv_full, -abs.(prec_full) .* .!is_snow; method = flat)
+    atmos_Ps  = TimeVaryingInput(tv_full, -abs.(prec_full) .* is_snow;   method = flat)
+    atmos_u   = TimeVaryingInput(tv_full, wind_full; method = flat)
+    atmos_co2 = TimeVaryingInput(tv_full, co2_full;  method = flat)
 
     atmos = ClimaLand.PrescribedAtmosphere(
         atmos_Pr, atmos_Ps, atmos_T, atmos_u, atmos_q, atmos_P,
@@ -156,8 +171,13 @@ function load_dk_sor_lai(met_nc_path::String, sim_start::DateTime)
     t_seconds = [Float64(Second(t - Hour(_UTC_OFFSET) - sim_start).value)
                  for t in met_times]
     valid = .!isnan.(lai_data)
-    flat = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
-    TimeVaryingInput(t_seconds[valid], lai_data[valid]; method = flat)
+    flat  = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
+    tv    = t_seconds[valid]
+    t0    = tv[1]
+    yr1_idx  = tv .<= t0 + 365.25 * 86400
+    tv_full  = vcat(tv[yr1_idx] .- t0, tv)
+    lai_full = vcat(lai_data[valid][yr1_idx], lai_data[valid])
+    TimeVaryingInput(tv_full, lai_full; method = flat)
 end
 
 """Build DK-Sor LandModel with site-specific soil/canopy parameters."""
@@ -369,8 +389,8 @@ function ClimaCalibrate.forward_model(iteration, member)
     year_start      = minimum(selected_years)
     year_end        = maximum(selected_years)
 
-    # 2-year spinup before the first selected year, but never before 1995
-    spinup_start = max(year_start - 2, 1995)
+    # 1-year spinup before the first selected year, but never before 1996
+    spinup_start = max(year_start - 1, 1996)
     sim_start    = DateTime(spinup_start, 1, 1)
     sim_stop     = DateTime(year_end + 1, 1, 1)   # exclusive end = Jan 1 of year+1
 

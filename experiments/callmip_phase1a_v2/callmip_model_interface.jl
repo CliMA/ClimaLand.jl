@@ -56,7 +56,7 @@ function ClimaCalibrate.forward_model(iteration, member)
                              "DK-Sor_1997-2014_FLUXNET2015_Met.nc")
 
     # Full simulation: 2-year spinup (1995-1996) + full 1997-2014
-    sim_start = DateTime(1995, 1, 1)
+    sim_start = DateTime(1996, 1, 1)
     sim_stop  = DateTime(2015, 1, 1)
     @info "CalLMIP simulation: member $member  ($sim_start → $sim_stop)"
 

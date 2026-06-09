@@ -50,7 +50,7 @@ include(joinpath(@__DIR__, "model_interface.jl"))
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
 
 # 2-year spinup (1995-1996) then full 1997-2014
-sim_start = DateTime(1995, 1, 1)
+sim_start = DateTime(1996, 1, 1)
 sim_stop  = DateTime(2015, 1, 1)
 
 println("Prior mean check: $sim_start → $sim_stop")
