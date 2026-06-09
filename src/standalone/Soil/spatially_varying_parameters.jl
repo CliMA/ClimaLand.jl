@@ -328,7 +328,7 @@ function rosetta_soil_vangenuchten_parameters(
     μ = FT(-5.4)
     K_sat .= masked_to_value.(K_sat, 10.0^μ)
     K_sat .= max.(K_sat, sqrt(eps(FT)))
-    K_sat .= min.(K_sat, FT(1e-4))
+    K_sat .= min.(K_sat, FT(5e-5))
 
     ν .= masked_to_value.(ν,0.44)
 

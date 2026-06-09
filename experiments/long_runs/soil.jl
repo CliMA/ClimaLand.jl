@@ -102,7 +102,7 @@ simulation =
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-short_names = ["swc", "si", "tsoil", "tair"]
+short_names = ["swc", "si", "tsoil", "tair", "sr", "ssr"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
 LandSimVis.make_heatmaps(
     simulation;
