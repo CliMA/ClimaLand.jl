@@ -1,0 +1,102 @@
+# Prior mean parameters for CalLMIP Phase 1a DK-Sor pipeline.
+# These values are the constrained-space means of the prior distributions
+# defined in priors.jl.  Used by run_prior_check.jl and run_callmip_simulations.jl.
+#
+# TOML format: ClimaParams parameter override file.
+# Each block overrides the default value in toml/default_parameters.toml.
+
+["pmodel_α"]
+value = 0.9758
+type = "float"
+used_in = ["getindex"]
+
+["pmodel_β_c3"]
+value = 68.19
+type = "float"
+used_in = ["getindex"]
+
+["pmodel_β_c4"]
+value = 53.93
+type = "float"
+used_in = ["getindex"]
+
+["pmodel_cstar"]
+value = 0.4127
+type = "float"
+used_in = ["getindex"]
+
+[moisture_stress_c]
+value = 0.5675
+type = "float"
+used_in = ["getindex"]
+
+["soilCO2_reference_rate"]
+value = 6.0e-8
+type = "float"
+used_in = ["Land"]
+
+["soilCO2_activation_energy"]
+value = 65432.0
+type = "float"
+used_in = ["Land"]
+
+["michaelis_constant"]
+value = 0.3669
+type = "float"
+used_in = ["Land"]
+
+["O2_michaelis_constant"]
+value = 0.000186
+type = "float"
+used_in = ["Land"]
+
+["root_leaf_nitrogen_ratio"]
+value = 2.399
+type = "float"
+used_in = ["getindex"]
+
+["relative_contribution_factor"]
+value = 1.132
+type = "float"
+used_in = ["getindex"]
+
+["leaf_Cd"]
+value = 0.08
+type = "float"
+used_in = ["getindex"]
+
+["canopy_z_0m_coeff"]
+value = 0.13
+type = "float"
+used_in = ["getindex"]
+
+["canopy_z_0b_coeff"]
+value = 0.013
+type = "float"
+used_in = ["getindex"]
+
+["canopy_d_coeff"]
+value = 0.67
+type = "float"
+used_in = ["getindex"]
+
+["canopy_K_lw"]
+value = 1.0
+type = "float"
+used_in = ["getindex"]
+
+# DK-Sor site-specific structural parameters (not calibrated)
+["SAI"]
+value = 1.5
+type = "float"
+used_in = ["getindex"]
+
+["RAI"]
+value = 1.5
+type = "float"
+used_in = ["getindex"]
+
+["canopy_height"]
+value = 25.0
+type = "float"
+used_in = ["getindex"]
