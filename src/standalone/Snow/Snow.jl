@@ -677,6 +677,7 @@ auxiliary_vars(snow::SnowModel) = (
     :κ,
     :T,
     :T_sfc,
+    :T_bot,
     :z_snow,
     :α_snow,
     :ρ_snow,
@@ -713,6 +714,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     surf_temp_auxiliary_types(snow.parameters.surf_temp)...,
     boundary_var_types(
         snow,
@@ -722,6 +724,7 @@ auxiliary_types(snow::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(snow::SnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,

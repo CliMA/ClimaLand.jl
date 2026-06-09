@@ -248,7 +248,6 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
-    T_bot = p.snow.T
     @. p.snow.T_bot = T_bottom(κ_snow,
                                g_eff,
                                T_soil,
@@ -258,7 +257,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
                                p.snow.ρ_snow,
                                snow_params.earth_param_set,
                                )
-    @. p.ground_heat_flux = -g_eff * (T_bot - T_soil)
+    @. p.ground_heat_flux = -g_eff * (p.snow.T_bot - T_soil)
     return nothing
 end
 
