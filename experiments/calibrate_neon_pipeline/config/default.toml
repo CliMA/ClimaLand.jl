@@ -1,0 +1,63 @@
+# Default / template pipeline config.
+# Copy this file and edit for your experiment. Run with:
+#   julia --project=.buildkite experiments/calibrate_neon_pipeline/run_pipeline.jl \
+#       experiments/calibrate_neon_pipeline/config/default.toml
+
+[settings]
+spinup_days  = 20
+n_iterations = 10
+cal_depth    = 0.02              # m; must be 0.02 (->501) or 0.06 (->502)
+settingsdesc = "PipelineDefault"
+dt           = 900.0
+output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
+results_csv  = "calibration_results.csv"   # relative -> under output_root
+# run_identifier defaults to the pipeline-start datetime (yyyymmdd-HHMMSS).
+# Set it explicitly to get a stable name you can later reference via restart_from:
+# run_identifier = "exp_a"
+
+[steps]
+generate_observations = true
+calibrate             = true
+plot_eki_diagnostics  = true
+run_prior_mean        = true     # forward run at the optimized parameters
+
+# ── Default priors: constrained_gaussian(mean, std, lower, upper) ──
+# The parameters PRESENT here are the ones calibrated. labile_depth_scale is the
+# optional 5th parameter (see below) — omit it to NOT calibrate it (model runs
+# with k=0, i.e. the plain non-labile behaviour).
+[priors.soilCO2_reference_rate]
+mean  = 1.0e-7
+std   = 5.0e-8
+lower = 1.0e-12
+upper = 1.0e-6
+
+[priors.soilCO2_activation_energy]
+mean  = 110550.0
+std   = 40000.0
+lower = 10.0
+upper = 200000.0
+
+[priors.michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"                    # TOML can't store Inf; use the string "Inf"/"-Inf"
+
+[priors.O2_michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+# Uncomment to ALSO calibrate the depth-dependent labile factor exp(k*z):
+# [priors.labile_depth_scale]
+# mean  = 2.0
+# std   = 1.0
+# lower = 0.0
+# upper = 10.0
+
+# ── Run list. Each [[runs]] entry is one calibration. ──
+[[runs]]
+site  = "NEON-srer"
+start = "2019-01-01"
+stop  = "2019-12-31"

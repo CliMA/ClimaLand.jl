@@ -1,0 +1,59 @@
+# Example: calibrate NEON-cper for several years in one go, demonstrating
+#   - the `years = [...]` sugar (all years for one station, looped),
+#   - a per-run prior override,
+#   - calibrating the optional labile_depth_scale on some runs,
+#   - restarting a run from a previous run's posterior.
+
+[settings]
+spinup_days  = 20
+n_iterations = 10
+cal_depth    = 0.02
+settingsdesc = "NeonExp_main20260603"
+dt           = 900.0
+output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
+results_csv  = "calibration_results.csv"
+run_identifier = "cper_main"       # stable id so restart_from can reference it
+
+[steps]
+generate_observations = true
+calibrate             = true
+plot_eki_diagnostics  = true
+run_prior_mean        = true
+
+[priors.soilCO2_reference_rate]
+mean  = 1.0e-7
+std   = 5.0e-8
+lower = 1.0e-12
+upper = 1.0e-6
+
+[priors.soilCO2_activation_energy]
+mean  = 110550.0
+std   = 40000.0
+lower = 10.0
+upper = 200000.0
+
+[priors.michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+[priors.O2_michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+# ── A run that ALSO calibrates labile_depth_scale (5 params) ──
+[[runs]]
+site  = "NEON-cper"
+start = "2019-01-01"
+stop  = "2019-12-31"
+settingsdesc = "NeonExp_cper2022_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 2.0
+  std   = 1.0
+  lower = 0.0
+  upper = 10.0
+
+
