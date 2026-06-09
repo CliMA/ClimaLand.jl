@@ -241,11 +241,13 @@ mae(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.(sim
 mse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs2.(sim .- obs))
 rmse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.(sim .- obs)))
 bias(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(sim .- obs)
+bias_sq(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = abs2(meanf(sim .- obs))
 mae_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs.((sim .- obs) ./ obs))
 rel_mae(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = mae(sim, obs) / nonzero_meanf(obs)
 rmse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = sqrt(meanf(abs2.((sim .- obs) ./ obs)))
 mse_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf(abs2.((sim .- obs) ./ obs))
 bias_perc(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = meanf((sim .- obs) ./ obs)
+bias_perc_sq(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray}) = abs2(meanf((sim .- obs) ./ obs))
 function nse(sim::Union{Vector, SubArray}, obs::Union{Vector, SubArray})
     idxs = is_data.(sim) .& is_data.(obs)
     count(idxs) == 0 && return NaN
@@ -440,7 +442,7 @@ function depth_analysis(; args = snow_args)
     @info "Running Depth Analysis..."
     print("   Extracting data...\n")
     z, dates = field_data(:snd, :snd, :SNOWDP_month; args = args)
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     z_era_m = apply_mask(agg_time_indices(z.era5, dates.era5, :month, meanf)[1], mask)
@@ -495,7 +497,7 @@ function swe_analysis(; args = snow_args)
     print("   Extracting data...\n")
     swe, dates = field_data(:swe, :swe, :SNOWICE_month; args = args)
     swe.clm5 .= (swe.clm5 .+ get_data(args.clm5[:SNOWLIQ_month])) ./ 1000
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     swe_era_m = apply_mask(agg_time_indices(swe.era5, dates.era5, :month, meanf)[1], mask)
@@ -561,7 +563,7 @@ function snow_alb_analysis(; args = snow_args)
     print("   Extracting data...\n")
     snalb, dates = field_data(:snalb, :snalb, :ALBSN_HIST_month; args = args)
     snalb = (snalb..., modis_1 = get_data(args.era5["bsa_1"]), modis_2 = get_data(args.era5["bsa_2"]))
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, bias_perc_sq), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     #what threshold of scf to compare snow albedo? 0.95?
     scf, _ = field_data(:snowc, :snowc, :FSNO_EFF_month, args = args) #FNO or FNO_EFF?
@@ -636,7 +638,7 @@ function surface_alb_analysis(; args = snow_args)
     swa.old .= (swa.old .+ get_data(args.old[:rnir])) ./ 2
     swa.others .= (swa.others .+ get_data(args.others[:rnir])) ./ 2
 
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     swa_era_m = agg_time_indices(swa.era5, dates.era5, :month, meanf)[1]
     modis_1_m = agg_time_indices(swa.modis_1, dates.era5, :month, meanf)[1]
@@ -724,7 +726,7 @@ function radiation_analysis(rad_type)
     print("   Extracting data...\n")
     rad, dates = rad_data(rad_type)
 
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
 
     metrics = Dict()
     for tag in [:me, :old, :others]
@@ -764,7 +766,7 @@ function scf_analysis(; args = snow_args)
     scf = (scf..., modis_1 = get_data(args.era5["scf_1"]) ./ 100, modis_2 = get_data(args.era5["scf_2"]) ./ 100)
     
     mask = make_nosnow_mask()
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, nse), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
 
     scf_era_m = apply_mask(agg_time_indices(scf.era5, dates.era5, :month, meanf)[1], mask)
     modis_1_m = apply_mask(agg_time_indices(scf.modis_1, dates.era5, :month, meanf)[1], mask)
@@ -995,7 +997,7 @@ function phenology_analysis(; args = snow_args)
     print("   Extracting data...\n")
 
     z, dates = field_data(:snd, :snd, :SNOWDP_month; args = args)
-    calcs = [(time_stat, bias), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     mask = make_nosnow_mask()
 
     for tag in propertynames(z)
