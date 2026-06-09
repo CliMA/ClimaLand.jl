@@ -34,7 +34,7 @@ import ClimaParams as CP
 using Insolation
 
 using Dates
-using Statistics
+using Statistics    
 using CairoMakie
 using CSV
 using DataFrames
@@ -49,9 +49,17 @@ catch err
     @warn "Using the following CLimaland dir:."
     println(pwd())
 end
-#const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
-#const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
-const DT = Float64(180) #(450)
+# Define SITE_ID / SPINUP_DAYS only if they aren't already set in the session.
+# - Standalone / via set_Station.jl: they are already defined as globals → keep them.
+# - Via run_priormean_pipeline_mult.jl (re-included in a loop): not defined → read
+#   from ENV here. Plain globals (not const) so they stay reassignable across runs.
+if !@isdefined(SITE_ID)
+    SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
+end
+if !@isdefined(SPINUP_DAYS)
+    SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
+end
+const DT = Float64(900) #(450)
 const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
 const Caldepthnum = get(ENV, "CALL_DEPTH", "0.00")
 const outfolder = get(ENV, "outfolder", "output")
@@ -124,12 +132,15 @@ long = FT(metadata.long)
 atmos_h = FT(metadata.atmos_h)
 
 # ── Prior mean values ─────────────────────────────────────────────────────────
-const PRIOR_TOML = joinpath(OUTPUT_DIR, "prior_mean_parameters.toml")
+# NOTE: plain global (not const): OUTPUT_DIR changes between runs when this
+# script is re-included in a loop (see run_priormean_pipeline_mult.jl), so
+# PRIOR_TOML must be reassignable. A `const` would freeze it on the first run.
+PRIOR_TOML = joinpath(OUTPUT_DIR, "prior_mean_parameters.toml")
 function set_prior()
-    soilCO2_reference_rate = 8.0329e-8
-    soilCO2_activation_energy = 161640.0
-    michaelis_constant = 0.049396
-    O2_michaelis_constant = 0.035488
+    soilCO2_reference_rate = 1.4559e-7
+    soilCO2_activation_energy = 71058.0
+    michaelis_constant = 0.050714
+    O2_michaelis_constant = 0.022321
 
     # read the prior values from final_parameter_means.txt if it exists, otherwise use the defaults above
     if isfile(Prior_filepath)
@@ -204,7 +215,7 @@ println("Simulating $start_date → $stop_date (spinup until $spinup_date)")
 dz_bottom = FT(2) #FT(1.5),
 dz_top = FT(0.038)
 dz_tuple = (dz_bottom, dz_top)
-nelements = 10#24
+nelements = 24#24
 zmin = FT(-6.2)
 zmax = FT(0)
 # Domain
@@ -294,7 +305,8 @@ land = LandModel{FT}(
     forcing,
     LAI,
     toml_dict,
-    land_domain;
+    land_domain,
+    DT;
     prognostic_land_components,
     snow,
     canopy,

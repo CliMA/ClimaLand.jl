@@ -39,9 +39,17 @@ using DataFrames
 using CSV
 using DelimitedFiles
 
+# ── Model Interface ──────────────────────────────────────────────────────────
+# ClimaCalibrate's current API dispatches forward_model / observation_map on a
+# user-defined AbstractModelInterface subtype, and calibrate() takes an instance
+# as its 3rd argument. This struct carries no state — config still flows through
+# module globals / ENV — it exists purely as a dispatch tag (cf. the official
+# experiments/calibration/ LandModelInterface, which instead stores a config).
+struct NeonModelInterface <: ClimaCalibrate.AbstractModelInterface end
+
 # ── Forward Model ────────────────────────────────────────────────────────────
 
-function ClimaCalibrate.forward_model(iteration, member)
+function ClimaCalibrate.forward_model(::NeonModelInterface, iteration, member)
     FT = Float64
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = pkgdir(ClimaLand)
@@ -73,7 +81,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     dz_bottom = FT(2) #FT(1.5),
     dz_top = FT(0.038)
     dz_tuple = (dz_bottom, dz_top)
-    nelements = 10#24
+    nelements = 24#24
     zmin = FT(-6.2)
     zmax = FT(0)
 
@@ -164,7 +172,8 @@ function ClimaCalibrate.forward_model(iteration, member)
         forcing,
         LAI,
         toml_dict,
-        land_domain;
+        land_domain,
+        DT;
         prognostic_land_components,
         snow,
         canopy,
@@ -429,7 +438,7 @@ Return G ensemble matrix matching the filtered observation dates.
 
 The observation vector is daily mean soil CO₂ concentration (ppm) at ~2 cm depth.
 """
-function ClimaCalibrate.observation_map(iteration)
+function ClimaCalibrate.observation_map(::NeonModelInterface, iteration)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 

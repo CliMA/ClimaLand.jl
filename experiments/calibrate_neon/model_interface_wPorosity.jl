@@ -162,7 +162,8 @@ function ClimaCalibrate.forward_model(iteration, member)
         forcing,
         LAI,
         toml_dict,
-        land_domain;
+        land_domain,
+        DT;
         prognostic_land_components,
         snow,
         canopy,
