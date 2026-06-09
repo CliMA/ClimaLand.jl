@@ -30,7 +30,7 @@ using ClimaLand.Canopy
 using ClimaCore
 using ClimaDiagnostics
 using ClimaUtilities
-import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!, LinearInterpolation, Flat
 import ClimaUtilities.TimeManager: date
 
 import EnsembleKalmanProcesses as EKP
@@ -113,7 +113,7 @@ function load_dk_sor_forcing(
     valid = .!isnan.(T_arr) .& .!isnan.(q_arr) .& .!isnan.(P_arr) .&
             .!isnan.(SW_arr) .& .!isnan.(LW_arr) .& .!isnan.(wind_arr)
     tv   = t_seconds[valid]
-    flat = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
+    flat = LinearInterpolation(Flat())
 
     # Cyclic 1-year spinup: prepend a shifted copy of the first year of met data
     # so the spinup gap (sim_start → first obs) gets realistic diurnal/seasonal forcing
@@ -171,7 +171,7 @@ function load_dk_sor_lai(met_nc_path::String, sim_start::DateTime)
     t_seconds = [Float64(Second(t - Hour(_UTC_OFFSET) - sim_start).value)
                  for t in met_times]
     valid = .!isnan.(lai_data)
-    flat  = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
+    flat  = LinearInterpolation(Flat())
     tv    = t_seconds[valid]
     t0    = tv[1]
     yr1_idx  = tv .<= t0 + 365.25 * 86400
