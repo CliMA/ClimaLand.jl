@@ -6,6 +6,9 @@ Steps:
 2) generate_observations.jl
 3) run_calibration.jl
 """
+using Pkg
+Pkg.activate(".buildkite")
+Pkg.update()
 
 function run_step(step_name, script_path)
 	println("\n=== START: " * step_name * " ===")

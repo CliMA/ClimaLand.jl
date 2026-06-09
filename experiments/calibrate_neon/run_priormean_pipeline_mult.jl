@@ -1,10 +1,9 @@
 """
-Run the NEON calibration pipeline sequentially with clear step logging.
+Run the NEON prior-mean forward model sequentially over multiple date ranges
+with clear step logging.
 
-Steps:
-1) set_Station.jl
-2) generate_observations.jl
-3) run_calibration.jl
+Steps (per date range):
+1) run_prior_mean.jl
 """
 
 using Dates
@@ -26,15 +25,16 @@ function run_step(step_name, script_path)
 	end
 end
 
-println("Starting NEON calibration pipeline...")
+println("Starting NEON prior-mean pipeline...")
 
-site_id = "NEON-jorn"
-settingsdesc = "NEONextrapReal_newSO2_dt450s" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
+site_id = "NEON-sjer"
+settingsdesc = "NeonExpTo005_main20260602" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
 
 run_prior_script = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/run_prior_mean.jl"
+generate_observations_script = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/generate_observations.jl"
 
 date_ranges = [
-	("2019-01-01", "2019-12-31"),
+	("2019-01-02", "2019-12-31"),
 	("2020-01-01", "2020-12-31"),
 	("2021-01-01", "2021-12-31"),
 	("2022-01-01", "2022-12-31"),
@@ -47,25 +47,35 @@ ENV["NEON_SPINUP_DAYS"] = "20"
 ENV["NEON_N_ITERATIONS"] = "10"
 ENV["CALL_DEPTH"] = "0.02" #in X.XXm
 ENV["outfolder"] = "output"
-const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
-const N_ITERATIONS = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
-const SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
+ENV["NEON_SITE_ID"] = site_id
 
-for (start_date, stop_date) in date_ranges
+# IMPORTANT: do NOT declare `SITE_ID`, `N_ITERATIONS`, `SPINUP_DAYS`, etc. as
+# globals or consts here. The included script (`run_prior_mean.jl`) already
+# declares them as `const`. If we declare them here as plain globals first,
+# Julia raises:
+#   "cannot declare Main.X constant; it was already declared global"
+# when the included script tries to make them const. So: pass everything via
+# ENV only, and let the included script read ENV itself.
+
+for (start_date_str, stop_date_str) in date_ranges
 	ENV["NEON_SITE_ID"] = site_id
-	ENV["NEON_START_DATE"] = start_date
-	ENV["NEON_STOP_DATE"] = stop_date
+	ENV["NEON_START_DATE"] = start_date_str
+	ENV["NEON_STOP_DATE"] = stop_date_str
 
-	start_date = DateTime(get(ENV, "NEON_START_DATE", string(Date(2009,1,1))))
-	stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(2009,12,31))))
+	start_date = DateTime(start_date_str)
+	stop_date  = DateTime(stop_date_str)
 	#replace . with _ in depth for folder naming
-	Caldepthnumstr = replace(string(get(ENV, "CALL_DEPTH", "0.00")), "." => "_")
-	Caldepth = "$(Caldepthnumstr)M"
-	ENV["CALL_OUTPUT_PATH"] = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration/$(SITE_ID)/$(SITE_ID)_$(Date(start_date))_$(Date(stop_date))/SpinUP-$(SPINUP_DAYS)d/CalDepth-$(Caldepth)/$(N_ITERATIONS)-It/$(settingsdesc)/"
+	spinup_days_str = get(ENV, "NEON_SPINUP_DAYS", "20")
+	n_iter_str      = get(ENV, "NEON_N_ITERATIONS", "10")
+	Caldepthnumstr  = replace(string(get(ENV, "CALL_DEPTH", "0.00")), "." => "_")
+	Caldepth        = "$(Caldepthnumstr)M"
+	ENV["CALL_OUTPUT_PATH"] = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration/$(site_id)/$(site_id)_$(Date(start_date))_$(Date(stop_date))/SpinUP-$(spinup_days_str)d/CalDepth-$(Caldepth)/$(n_iter_str)-It/$(settingsdesc)/"
 	println("NEON_SITE_ID: ", ENV["NEON_SITE_ID"])
-	
+	println("Outputpath:   ", ENV["CALL_OUTPUT_PATH"])
+
+	run_step("Generate observations", generate_observations_script)
 	run_step("Run prior mean", run_prior_script)
 end
 
 
-println("\nNEON calibration pipeline completed successfully.")
+println("\nNEON prior-mean pipeline completed successfully.")

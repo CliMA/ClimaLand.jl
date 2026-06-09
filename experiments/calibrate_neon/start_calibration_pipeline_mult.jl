@@ -28,16 +28,18 @@ end
 
 println("Starting NEON calibration pipeline...")
 
-site_id = "NEON-sjer"
-settingsdesc = "NeonExpTo005_10layers_newSWCInit_main20260504_dt180s" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
+site_id = "NEON-jorn"
+settingsdesc = "NeonExpTo005_main20260602_wLabile" #name of folder to save results in, e.g. "SPINUPdays_calDepth"
 
 generate_observations_script = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/generate_observations.jl"
-run_calibration_script = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/run_calibration.jl"
+run_calibration_script = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/run_calibration_wLabile.jl"
 
 date_ranges = [
-	("2019-01-02", "2019-12-31"),
-	("2020-01-01", "2020-12-31"),
-	("2021-01-01", "2021-12-31"),
+	#("2017-01-02", "2017-12-31"),
+	#("2018-01-02", "2018-12-31"),
+	#("2019-01-01", "2019-12-31"),
+	#("2020-01-01", "2020-12-31"),
+	#("2021-01-01", "2021-12-31"),
 	("2022-01-01", "2022-12-31"),
 	("2023-01-01", "2023-12-31"),
 	("2024-01-01", "2024-12-31"),
