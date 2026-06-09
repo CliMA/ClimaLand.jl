@@ -113,18 +113,20 @@ function load_dk_sor_forcing(
     valid = .!isnan.(T_arr) .& .!isnan.(q_arr) .& .!isnan.(P_arr) .&
             .!isnan.(SW_arr) .& .!isnan.(LW_arr) .& .!isnan.(wind_arr)
     tv = t_seconds[valid]
+    # Flat extrapolation so spinup years (before met data start) clamp to boundary
+    flat = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
 
-    atmos_T   = TimeVaryingInput(tv, T_arr[valid])
-    atmos_q   = TimeVaryingInput(tv, q_arr[valid])
-    atmos_P   = TimeVaryingInput(tv, P_arr[valid])
-    atmos_SW  = TimeVaryingInput(tv, SW_arr[valid])
-    atmos_LW  = TimeVaryingInput(tv, LW_arr[valid])
+    atmos_T   = TimeVaryingInput(tv, T_arr[valid];   method = flat)
+    atmos_q   = TimeVaryingInput(tv, q_arr[valid];   method = flat)
+    atmos_P   = TimeVaryingInput(tv, P_arr[valid];   method = flat)
+    atmos_SW  = TimeVaryingInput(tv, SW_arr[valid];  method = flat)
+    atmos_LW  = TimeVaryingInput(tv, LW_arr[valid];  method = flat)
     # Split total precip into rain/snow by 0°C threshold (negative = downward flux)
     is_snow   = T_arr[valid] .< 273.15
-    atmos_Pr  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* .!is_snow)
-    atmos_Ps  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* is_snow)
-    atmos_u   = TimeVaryingInput(tv, wind_arr[valid])
-    atmos_co2 = TimeVaryingInput(tv, co2_arr[valid])
+    atmos_Pr  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* .!is_snow; method = flat)
+    atmos_Ps  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* is_snow;   method = flat)
+    atmos_u   = TimeVaryingInput(tv, wind_arr[valid];  method = flat)
+    atmos_co2 = TimeVaryingInput(tv, co2_arr[valid];   method = flat)
 
     atmos = ClimaLand.PrescribedAtmosphere(
         atmos_Pr, atmos_Ps, atmos_T, atmos_u, atmos_q, atmos_P,
@@ -154,7 +156,8 @@ function load_dk_sor_lai(met_nc_path::String, sim_start::DateTime)
     t_seconds = [Float64(Second(t - Hour(_UTC_OFFSET) - sim_start).value)
                  for t in met_times]
     valid = .!isnan.(lai_data)
-    TimeVaryingInput(t_seconds[valid], lai_data[valid])
+    flat = TimeVaryingInputs.LinearInterpolation(TimeVaryingInputs.Flat())
+    TimeVaryingInput(t_seconds[valid], lai_data[valid]; method = flat)
 end
 
 """Build DK-Sor LandModel with site-specific soil/canopy parameters."""
