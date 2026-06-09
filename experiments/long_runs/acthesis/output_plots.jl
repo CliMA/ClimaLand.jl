@@ -638,7 +638,7 @@ function surface_alb_analysis(; args = snow_args)
     swa.old .= (swa.old .+ get_data(args.old[:rnir])) ./ 2
     swa.others .= (swa.others .+ get_data(args.others[:rnir])) ./ 2
 
-    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, bias_perc), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
+    calcs = [(time_stat, rel_mae), (time_stat, bias), (time_stat, bias_sq), (time_stat, rmse), (time_stat, mse), (time_stat, mae), (time_stat, mae_perc), (time_stat, nse), (time_stat, bias_perc), (time_stat, bias_perc_sq), (time_stat, rmse_perc), (time_stat, mse_perc), (time_stat, r2), (space_stat, ssim), (space_stat, spatial_r2)]
     
     swa_era_m = agg_time_indices(swa.era5, dates.era5, :month, meanf)[1]
     modis_1_m = agg_time_indices(swa.modis_1, dates.era5, :month, meanf)[1]
