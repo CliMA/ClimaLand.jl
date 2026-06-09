@@ -351,6 +351,21 @@ used_in = ["Land"]
     obs_daily = filter(row -> !isnan(row.daily_mean), obs_daily)
     sort!(obs_daily, :date)
 
+    # Observed SWC daily means at the calibration depth (same depth code + ≥24
+    # valid half-hours/day filter as the CO₂ obs above), for the scatter figure.
+    swc_obs_cols = [c for c in
+        (Symbol("VSWCMean_$(lpad(p,3,'0'))_$obs_depth") for p in 1:5)
+        if String(c) in names(obs_df)]
+    obs_df[!, :swc_mean] = isempty(swc_obs_cols) ? fill(NaN, nrow(obs_df)) :
+        [rowmean_skipinvalid(row, swc_obs_cols) for row in eachrow(obs_df)]
+    obs_swc_daily = combine(groupby(obs_df, :date),
+        :swc_mean => (x -> begin
+            valid = filter(!isnan, x); length(valid) >= 24 ? mean(valid) : NaN
+        end) => :daily_mean)
+    obs_swc_daily = filter(row -> row.date >= Date(spinup_date), obs_swc_daily)
+    obs_swc_daily = filter(row -> !isnan(row.daily_mean), obs_swc_daily)
+    sort!(obs_swc_daily, :date)
+
     # ── Main figure: model vs obs + SWC + Tsoil ──────────────────────────────
     fig = Figure(size = (1200, 1000))
     ax1 = Axis(fig[1, 1]; ylabel = "Soil CO₂ (ppm)",
@@ -580,6 +595,65 @@ used_in = ["Land"]
     end
     CairoMakie.save(joinpath(output_dir, "co2_budget_$(site_id).png"), fig_budget)
 
+    # ── Scatter figure: obs/model CO₂ vs SWC relationships ────────────────────
+    # Each panel pairs two daily-mean series on common dates. Title carries the
+    # Pearson correlation r and the RMSE of the (x, y) pair.
+    #   model CO₂  = sco2_daily,  model SWC = swc_daily,
+    #   obs   CO₂  = obs_daily,   obs   SWC = obs_swc_daily.
+    function _pair_on_date(dfx, dfy)
+        (nrow(dfx) == 0 || nrow(dfy) == 0) && return (Float64[], Float64[])
+        j = innerjoin(
+            rename(dfx[:, [:date, :daily_mean]], :daily_mean => :x),
+            rename(dfy[:, [:date, :daily_mean]], :daily_mean => :y),
+            on = :date)
+        return (Float64.(j.x), Float64.(j.y))
+    end
+    _corr(x, y) = length(x) >= 2 && std(x) > 0 && std(y) > 0 ? cor(x, y) : NaN
+    _rmse(x, y) = isempty(x) ? NaN : sqrt(mean((x .- y) .^ 2))
+    function _scatter_panel!(ax, x, y; with_rmse, base_title)
+        r = _corr(x, y)
+        t = "$base_title\nr = $(round(r, digits=3)) (n = $(length(x)))"
+        if with_rmse
+            t *= ", RMSE = $(round(_rmse(x, y), sigdigits=3))"
+        end
+        ax.title = t
+        isempty(x) || scatter!(ax, x, y; color = (:steelblue, 0.6), markersize = 6)
+    end
+
+    # obs vs model, paired on common dates
+    obs_mod_co2_x, obs_mod_co2_y = _pair_on_date(obs_daily, sco2_daily)
+    obs_mod_swc_x, obs_mod_swc_y = _pair_on_date(obs_swc_daily, swc_daily)
+    # obs CO₂ vs obs SWC, and model CO₂ vs model SWC
+    obs_co2_swc_x, obs_co2_swc_y = _pair_on_date(obs_daily, obs_swc_daily)
+    mod_co2_swc_x, mod_co2_swc_y = _pair_on_date(sco2_daily, swc_daily)
+
+    fig_scat = Figure(size = (1100, 950))
+    Label(fig_scat[0, 1:2], "$site_id — CO₂ / SWC scatter relationships (depth $obs_depth)";
+        fontsize = 18, font = :bold)
+    sax1 = Axis(fig_scat[1, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Model soil CO₂ (ppm)")
+    _scatter_panel!(sax1, obs_mod_co2_x, obs_mod_co2_y;
+        with_rmse = true, base_title = "Obs vs model soil CO₂")
+    sax2 = Axis(fig_scat[1, 2]; xlabel = "Obs SWC (m³/m³)", ylabel = "Model SWC (m³/m³)")
+    _scatter_panel!(sax2, obs_mod_swc_x, obs_mod_swc_y;
+        with_rmse = true, base_title = "Obs vs model soil water content")
+    sax3 = Axis(fig_scat[2, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Obs SWC (m³/m³)")
+    _scatter_panel!(sax3, obs_co2_swc_x, obs_co2_swc_y;
+        with_rmse = false, base_title = "Obs soil CO₂ vs obs SWC")
+    sax4 = Axis(fig_scat[2, 2]; xlabel = "Model soil CO₂ (ppm)", ylabel = "Model SWC (m³/m³)")
+    _scatter_panel!(sax4, mod_co2_swc_x, mod_co2_swc_y;
+        with_rmse = false, base_title = "Model soil CO₂ vs model SWC")
+    CairoMakie.save(joinpath(output_dir, "scatter_co2_swc_$(site_id).png"), fig_scat)
+
+    # Stats handed back to the pipeline for the master CSV.
+    scatter_stats = (;
+        rmse_sco2 = _rmse(obs_mod_co2_x, obs_mod_co2_y),
+        rmse_swc = _rmse(obs_mod_swc_x, obs_mod_swc_y),
+        corr_obs_model_sco2 = _corr(obs_mod_co2_x, obs_mod_co2_y),
+        corr_obs_model_swc = _corr(obs_mod_swc_x, obs_mod_swc_y),
+        corr_obs_sco2_swc = _corr(obs_co2_swc_x, obs_co2_swc_y),
+        corr_model_sco2_swc = _corr(mod_co2_swc_x, mod_co2_swc_y),
+    )
+
     println("Forward run figures saved to $output_dir")
-    return (; figures_dir = output_dir)
+    return (; figures_dir = output_dir, scatter_stats)
 end

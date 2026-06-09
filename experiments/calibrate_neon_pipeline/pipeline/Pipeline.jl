@@ -176,18 +176,21 @@ function run_one(run, cfg::Config.PipelineConfig; skip_restart = false)
         final_rmse = diag.final_rmse
     end
 
-    # 4. Forward run at optimized params (+ figures)
+    # 4. Forward run at optimized params (+ figures + scatter RMSE/corr stats)
+    scatter_stats = nothing
     if cfg.steps[:run_prior_mean]
         fwd_params = _forward_params(run, posterior)
         fwd_dir = joinpath(output_dir, "prior_mean_optimized")
-        run_step("Forward run at optimized params",
+        fwd = run_step("Forward run at optimized params",
             () -> forward_run(run; output_dir = fwd_dir, params = fwd_params))
+        scatter_stats = get(fwd, :scatter_stats, nothing)
     end
 
     # 5. Record the row
     ResultsTable.append_row!(cfg.results_csv, run;
         status = "ok", output_dir = output_dir,
-        posterior = posterior, final_rmse = final_rmse, labile_pin = 0.0)
+        posterior = posterior, final_rmse = final_rmse, labile_pin = 0.0,
+        scatter_stats = scatter_stats)
     println("Appended results row to $(cfg.results_csv)")
 
     return (; output_dir, run, posterior, final_rmse, labile_on)

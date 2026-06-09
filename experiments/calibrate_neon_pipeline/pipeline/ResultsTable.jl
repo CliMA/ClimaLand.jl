@@ -35,6 +35,14 @@ const META_COLS = [
 
 const PRIOR_FIELDS = ["mean", "std", "lower", "upper"]
 
+# Forward-run scatter diagnostics (obs vs model CO₂/SWC). Appended after
+# `final_rmse`; all default to `missing` when no forward run was done.
+const SCATTER_COLS = [
+    "forward_rmse_sco2", "forward_rmse_swc",
+    "forward_corr_obs_model_sco2", "forward_corr_obs_model_swc",
+    "forward_corr_obs_sco2_swc", "forward_corr_model_sco2_swc",
+]
+
 prior_col(param, field) = "prior_$(param)_$(field)"
 post_col(param) = "post_$(param)"
 
@@ -48,6 +56,7 @@ function column_names()
         push!(cols, post_col(p))
     end
     push!(cols, "final_rmse")
+    append!(cols, SCATTER_COLS)
     return cols
 end
 
@@ -67,10 +76,32 @@ function append_row!(
     posterior::AbstractDict = Dict{String, Float64}(),
     final_rmse = missing,
     labile_pin::Float64 = 0.0,
+    scatter_stats = nothing,
 )
     row = _build_row(run, status, output_dir, posterior, final_rmse, labile_pin)
+    _fill_scatter_stats!(row, scatter_stats)
     _locked_append(csv_path, row)
     return nothing
+end
+
+# Map a forward_run `scatter_stats` NamedTuple onto the SCATTER_COLS cells. A
+# `nothing` (no forward run) leaves every scatter cell `missing`.
+function _fill_scatter_stats!(row, scatter_stats)
+    scatter_stats === nothing && return row
+    field_for = Dict(
+        "forward_rmse_sco2" => :rmse_sco2,
+        "forward_rmse_swc" => :rmse_swc,
+        "forward_corr_obs_model_sco2" => :corr_obs_model_sco2,
+        "forward_corr_obs_model_swc" => :corr_obs_model_swc,
+        "forward_corr_obs_sco2_swc" => :corr_obs_sco2_swc,
+        "forward_corr_model_sco2_swc" => :corr_model_sco2_swc,
+    )
+    for col in SCATTER_COLS
+        v = getfield(scatter_stats, field_for[col])
+        # NaN (empty/constant series) is stored as missing for a clean CSV cell.
+        row[col] = (v isa Real && isnan(v)) ? missing : v
+    end
+    return row
 end
 
 function _build_row(run, status, output_dir, posterior, final_rmse, labile_pin)

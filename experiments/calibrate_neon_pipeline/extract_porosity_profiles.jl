@@ -1,26 +1,30 @@
 """
 extract_porosity_profiles.jl
 
-Extract the *exact* soil porosity (ν) profile that the NEON calibration runs use,
-for every site referenced in the config/ directory.
+Extract the *exact* soil retention parameter profiles that the NEON calibration
+runs use, for every site referenced in the config/ directory.
 
 It reproduces, verbatim, the code path the runs take:
   - site lat/long via the same `_get_neon_site_metadata` helper (ForwardRun.jl)
   - the same `Column` domain (zlim, nelements, dz_tuple, longlat)  (ForwardRun.jl:133-140)
   - ClimaLand's own `Soil.soil_vangenuchten_parameters(subsurface, FT)`, which
-    reads + regrids the Gupta et al. (2020) porosity map (the default
+    reads + regrids the Gupta et al. (2020) maps (the default
     `retention_parameters` inside `Soil.EnergyHydrology` / `LandModel`).
 
-So the ν values printed/saved here are the same ones `land.soil.parameters.ν`
-holds in a run (before the `porosity_scale = 1` no-op multiply). No approximation.
+So the values printed/saved here are the same ones `land.soil.parameters` holds
+in a run (porosity before the `porosity_scale = 1` no-op multiply). No approximation.
+
+Parameters extracted (one CSV each):
+  - ν     : porosity            -> porosity_profiles.csv
+  - θ_r   : residual water content -> theta_r_profiles.csv
+  - vg_α  : van Genuchten α (1/m)  -> vg_alpha_profiles.csv
+  - vg_n  : van Genuchten n (-)    -> vg_n_profiles.csv
+
+Each CSV: site_id, lat, long, layer, z_m, <value>   (layers top-down).
 
 Run:
     julia --project=.buildkite \
         experiments/calibrate_neon_pipeline/extract_porosity_profiles.jl
-
-Output:
-    experiments/calibrate_neon_pipeline/porosity_profiles.csv
-    (columns: site_id, layer, z_m, nu)
 """
 
 using ClimaLand
@@ -63,7 +67,8 @@ function run_column(long, lat)
         dz_tuple = dz_tuple, longlat = (long, lat))
 end
 
-function porosity_profile(site_id)
+# Returns lat, long, layer depths, and a Dict param_name => per-layer values.
+function retention_profiles(site_id)
     md = _get_neon_site_metadata(site_id)
     lat = FT(md.lat)
     long = FT(md.long)
@@ -71,12 +76,22 @@ function porosity_profile(site_id)
 
     # Identical to the run's default retention_parameters source.
     rp = Soil.soil_vangenuchten_parameters(domain.space.subsurface, FT)
-    ν = rp.ν
 
     z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
     z_vals = parent(z)[:, 1]
-    ν_vals = parent(ν)[:, 1]
-    return (; lat, long, z_vals, ν_vals)
+
+    # hydrology_cm is a Field of vanGenuchten structs; pull α and n per layer.
+    hcm = rp.hydrology_cm
+    vg_alpha = parent(map(c -> c.α, hcm))[:, 1]
+    vg_n = parent(map(c -> c.n, hcm))[:, 1]
+
+    vals = Dict(
+        "nu" => parent(rp.ν)[:, 1],
+        "theta_r" => parent(rp.θ_r)[:, 1],
+        "vg_alpha" => vg_alpha,
+        "vg_n" => vg_n,
+    )
+    return (; lat, long, z_vals, vals)
 end
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -85,31 +100,47 @@ site_ids = sites_from_configs(config_dir)
 println("Sites found in configs ($(length(site_ids))): ", join(site_ids, ", "))
 println()
 
-rows = Vector{Any}[]
-push!(rows, Any["site_id", "lat", "long", "layer", "z_m", "nu"])
+# param key => (output filename, header column name)
+outputs = [
+    ("nu", "porosity_profiles.csv", "nu"),
+    ("theta_r", "theta_r_profiles.csv", "theta_r"),
+    ("vg_alpha", "vg_alpha_profiles.csv", "vg_alpha_1_per_m"),
+    ("vg_n", "vg_n_profiles.csv", "vg_n"),
+]
+
+# Initialize each output with a header row.
+rows = Dict(key => Vector{Any}[Any["site_id", "lat", "long", "layer", "z_m", col]]
+            for (key, _, col) in outputs)
 
 for site_id in site_ids
     local prof
     try
-        prof = porosity_profile(site_id)
+        prof = retention_profiles(site_id)
     catch err
         @warn "Failed for $site_id" exception = err
         continue
     end
     nlayer = length(prof.z_vals)
     println("── $site_id  (lat=$(prof.lat), long=$(prof.long)) ──")
+    @printf("    %-6s %10s %10s %10s %10s\n", "layer", "z_m", "nu", "theta_r", "vg_n")
     for i in 1:nlayer
-        # print top-down (surface first) for readability
-        j = nlayer - i + 1
-        @printf("    layer %2d  z = %8.4f m   ν = %.4f\n", j, prof.z_vals[j], prof.ν_vals[j])
-        push!(rows, Any[site_id, prof.lat, prof.long, j,
-            round(prof.z_vals[j]; digits = 5), round(prof.ν_vals[j]; digits = 5)])
+        j = nlayer - i + 1  # surface (top) first
+        @printf("    %-6d %10.4f %10.4f %10.4f %10.4f\n",
+            j, prof.z_vals[j], prof.vals["nu"][j], prof.vals["theta_r"][j],
+            prof.vals["vg_n"][j])
+        for (key, _, _) in outputs
+            push!(rows[key], Any[site_id, prof.lat, prof.long, j,
+                round(prof.z_vals[j]; digits = 5),
+                round(prof.vals[key][j]; digits = 6)])
+        end
     end
     println()
 end
 
-out_csv = joinpath(@__DIR__, "porosity_profiles.csv")
-open(out_csv, "w") do io
-    writedlm(io, rows, ',')
+for (key, fname, _) in outputs
+    out_csv = joinpath("/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/", fname)
+    open(out_csv, "w") do io
+        writedlm(io, rows[key], ',')
+    end
+    println("Wrote: $out_csv")
 end
-println("Wrote: $out_csv")
