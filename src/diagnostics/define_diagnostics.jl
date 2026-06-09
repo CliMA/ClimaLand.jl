@@ -864,6 +864,18 @@ function define_diagnostics!(land_model, possible_diags)
             compute_soilo2_diffusivity!(out, Y, p, t, land_model),
     )
 
+    # Soil O2 effective porosity
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "seffo2",
+        long_name = "Soil O2 Effective Porosity",
+        standard_name = "soil_o2_effective_porosity",
+        units = "m^3 m^-3",
+        comments = "Effective porosity for O2 transport, θ_eff_o2 = θ_a + β·θ_l, combining air-filled porosity and Henry's-law dissolved storage. (depth resolved)",
+        compute! = (out, Y, p, t) ->
+            compute_soilo2_effective_porosity!(out, Y, p, t, land_model),
+    )
+
     # Soil CO2 microbial source
     conditional_add_diagnostic_variable!(
         possible_diags;
@@ -993,6 +1005,17 @@ function define_diagnostics!(land_model, possible_diags)
         units = "m^3 m^-3",
         comments = "Volumetric fraction of O₂ in the soil air (gas phase), computed from the prognostic O₂ mass concentration via the ideal gas law. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilo2!(out, Y, p, t, land_model),
+    )
+
+    # Soil O2 prognostic mass (raw state variable, no θ_eff division)
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "so2prog",
+        long_name = "Soil O2 Prognostic Mass",
+        standard_name = "soil_o2_prognostic_mass",
+        units = "kg m^-3",
+        comments = "Raw prognostic O₂ mass per soil volume (air + dissolved), Y.soilco2.O2, without dividing by θ_eff_o2. (depth resolved)",
+        compute! = (out, Y, p, t) -> compute_soilo2_prognostic!(out, Y, p, t, land_model),
     )
 
     # Soil Organic Carbon

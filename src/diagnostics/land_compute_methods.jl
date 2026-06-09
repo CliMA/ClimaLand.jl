@@ -548,6 +548,7 @@ end
 @diagnostic_compute "soc" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.SOC
 
 @diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.CO2
+@diagnostic_compute "soilo2_prognostic" Union{SoilCanopyModel, LandModel, SoilCO2Model} Y.soilco2.O2
 function compute_soilo2!(
     out,
     Y,
@@ -593,6 +594,11 @@ end #
     SoilCanopyModel,
     LandModel,
 } p.soilco2.D_o2
+@diagnostic_compute "soilo2_effective_porosity" Union{
+    SoilCO2Model,
+    SoilCanopyModel,
+    LandModel,
+} p.soilco2.θ_eff_o2
 
 function compute_integrated_soc!(
     out,
