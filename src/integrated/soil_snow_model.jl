@@ -244,7 +244,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
 
     # Temperatures
     g_eff =
-        @. lazy(κ_soil * κ_snow / (κ_snow / 2 + κ_soil / 2)/snow_params.Δz_max)
+        @. lazy(κ_soil * κ_snow / (κ_snow / 2 + κ_soil / 2)/FT(0.1))
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
