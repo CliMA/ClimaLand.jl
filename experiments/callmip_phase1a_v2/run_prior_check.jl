@@ -75,10 +75,22 @@ simulation = LandSimulation(
 solve!(simulation)
 
 # ── Extract daily diagnostics ─────────────────────────────────────────────────
+# Print available DictWriter keys for debugging
+all_keys = unique(reduce(vcat, [collect(keys(d.output_writer.dict)) for d in simulation.diagnostics]))
+println("Available diagnostic keys: ", sort(all_keys))
+
 nee_dates, nee_vals = extract_daily_diag(simulation, "nee_1d_average")
 _,         qle_vals = extract_daily_diag(simulation, "lhf_1d_average")
 _,         qh_vals  = extract_daily_diag(simulation, "shf_1d_average")
 _,         gpp_vals = extract_daily_diag(simulation, "gpp_1d_average")
+
+# Diagnostic summary before spinup filtering
+println("NEE first 5: ", nee_vals[1:min(5,end)])
+println("GPP first 5: ", gpp_vals[1:min(5,end)])
+println("LHF first 5: ", qle_vals[1:min(5,end)])
+println("NEE NaN count: $(sum(isnan.(nee_vals))) / $(length(nee_vals))")
+println("GPP NaN count: $(sum(isnan.(gpp_vals))) / $(length(gpp_vals))")
+println("LHF NaN count: $(sum(isnan.(qle_vals))) / $(length(qle_vals))")
 
 # Discard spinup (keep 1997–2014)
 keep = year.(nee_dates) .>= 1997

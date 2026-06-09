@@ -316,10 +316,10 @@ function make_dk_sor_ic(atmos, ν, θ_r)
         Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
 
         if !isnothing(model.soilco2)
-            # CO2: ~412 ppm at 288 K, 1 atm → kg C/m³ air-equivalent
-            Y.soilco2.CO2 .= FT(6e-5)
-            # O2: ~21% by volume → kg O2/m³ soil
-            Y.soilco2.O2_f .= FT(0.08)
+            # CO2: atmospheric CO2 concentration in mol CO2 / mol air (~412 ppm)
+            Y.soilco2.CO2 .= FT(0.000412)
+            # O2_f: volumetric fraction of O2 in soil air (~0.21 atmospheric)
+            Y.soilco2.O2_f .= FT(0.21)
             # SOC exponential profile (kg C/m³): 15 at surface, 0.5 at -9 m
             SOC_top = FT(15.0)
             SOC_bot = FT(0.5)
