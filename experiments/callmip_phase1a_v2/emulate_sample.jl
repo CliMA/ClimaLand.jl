@@ -183,7 +183,7 @@ function run_fixed_window_ensemble(ekp, final_iter)
 
             output_writer = ClimaDiagnostics.Writers.DictWriter()
             diags = ClimaLand.default_diagnostics(
-                land, sim_start;
+                land, sim_start, "";   # outdir unused (DictWriter handles output)
                 output_writer,
                 output_vars      = :short,
                 reduction_period = :daily,

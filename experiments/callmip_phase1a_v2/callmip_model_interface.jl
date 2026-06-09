@@ -76,14 +76,14 @@ function ClimaCalibrate.forward_model(iteration, member)
     req_col  = filter(v -> v in possible, _CALLMIP_COLUMN_VARS)
 
     diags_short = ClimaLand.default_diagnostics(
-        land, sim_start;
+        land, sim_start, "";   # outdir unused (DictWriter handles output)
         output_writer,
         output_vars      = :short,
         reduction_period = :daily,
     )
     diags_col = isempty(req_col) ? [] :
         ClimaLand.default_diagnostics(
-            land, sim_start;
+            land, sim_start, "";   # outdir unused (DictWriter handles output)
             output_writer,
             output_vars      = req_col,
             reduction_period = :daily,

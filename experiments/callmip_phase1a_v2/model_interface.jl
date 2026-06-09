@@ -394,7 +394,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     # ── Diagnostics (daily, DictWriter) ──────────────────────────────────────
     output_writer = ClimaDiagnostics.Writers.DictWriter()
     diags = ClimaLand.default_diagnostics(
-        land, sim_start;
+        land, sim_start, "";          # outdir="" unused (DictWriter handles output)
         output_writer,
         output_vars      = :short,
         reduction_period = :daily,

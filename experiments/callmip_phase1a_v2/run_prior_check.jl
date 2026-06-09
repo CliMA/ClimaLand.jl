@@ -59,9 +59,9 @@ set_ic! = make_dk_sor_ic(forcing.atmos, ν, θ_r)
 
 output_writer = ClimaDiagnostics.Writers.DictWriter()
 diags = ClimaLand.default_diagnostics(
-    land, sim_start;
+    land, sim_start, "";   # outdir unused (DictWriter handles output)
     output_writer,
-    output_vars = [:short, "gpp"],
+    output_vars      = :short,
     reduction_period = :daily,
 )
 
