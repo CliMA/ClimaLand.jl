@@ -43,7 +43,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)"
+root_path = "snowy_land_pmodel_longrun_$(device_suffix)_lowres_forcing"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -83,7 +83,7 @@ function setup_model(
     prognostic_land_components = (:canopy, :snow, :soil)
     # Snow model setup
     # Set β = 0 in order to regain model without density dependence
-    surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
+#    surf_temp = Snow.EquilibriumGradientTemperatureModel{FT}()
 #    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = Δt)
     snow = Snow.SnowModel(
         FT,
@@ -92,7 +92,7 @@ function setup_model(
         toml_dict,
         Δt;
         prognostic_land_components,
-        surf_temp,
+        #surf_temp,
     )
 
     # Construct the land model with all default components except for snow
@@ -114,12 +114,12 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = DateTime("2000-09-01")
-stop_date = DateTime("2015-09-01")
-Δt = 450.0
-longlat = FT.((143.2, 63.25))
+stop_date = DateTime("2100-09-01")
+Δt = 1200.0
+longlat = FT.((159.1, 56.3))
 zlim = FT.((-15, 0))
 nelements = 15
-dz_tuple = FT.((2, 0.05))
+dz_tuple = FT.((3, 0.05))
 domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple)
 
 if UNCALIBRATED
@@ -134,7 +134,7 @@ diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date,
     outdir;
-    reduction_period = :daily,
+    reduction_period = :monthly,
     output_vars = [
         "tsoil",
         "swc",
@@ -146,7 +146,6 @@ diagnostics = ClimaLand.default_diagnostics(
         "snd",
         "sr",
         "ssr",
-        "infc",
         "snowtbot",
         "snowκ",
         "ghf",

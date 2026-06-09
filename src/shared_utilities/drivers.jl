@@ -1380,10 +1380,10 @@ function prescribed_forcing_era5(
 )
     # Determine the ERA5 dataset and interpolation method based on the simulation years and resolution
     if use_lowres_forcing
-        era5_ncdata_path =
-            ClimaLand.Artifacts.era5_land_forcing_data2008_path(;
+        era5_ncdata_path = 
+            ClimaLand.Artifacts.era5_land_forcing_data2008_lowres_path(;
                 context,
-            )
+            )#"/Users/katherinedeck/Desktop/code/ClimaLand.jl/era5_2008_1.0x1.0.nc"
         interpolation_method = Interpolations.Constant()
         # We can use the 2008 forcing outside of that year, but we need periodic boundaries for the time
         if year(start_date) != 2008 ||
