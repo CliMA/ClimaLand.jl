@@ -12,6 +12,7 @@
 export CLIMACOMMS_DEVICE="CPU"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 
+module purge
 module use /groups/esm/modules
 module load climacommon
 
