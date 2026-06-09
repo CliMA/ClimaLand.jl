@@ -10,8 +10,8 @@ Usage: julia --project=.buildkite experiments/calibrate_neon/plot_all_eki_diagno
 
 using Dates
 
-site_id      = "NEON-ster"
-settingsdesc = "NeonExpTo005_10layers_newSWCInit_main20260504_dt180s"
+site_id      = "NEON-jorn"
+settingsdesc = "NeonExpTo005_main20260602_wLabile"
 base_dir     = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 plot_script  = "/home/evametz/Github/ClimaLand/ClimaLand.jl/experiments/calibrate_neon/plot_eki_diagnostics.jl"
 ENV["CALL_DEPTH"] = "0.02" #in X.XXm

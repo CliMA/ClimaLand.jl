@@ -27,8 +27,8 @@ import ClimaLand
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 #set if script not called by pipeline
-outputfolder = "output"
-interation_folder = "iteration_004"
+outputfolder = "output_wLabile"
+interation_folder = "iteration_006"
 
 const SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-moab")
 const climaland_dir = pkgdir(ClimaLand)

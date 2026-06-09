@@ -52,7 +52,7 @@ start_date =
     DateTime(get(ENV, "NEON_START_DATE", string(Date(2009,1,1))))
 stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(2009,12,31))))
 
-const DT = Float64(180)
+const DT = Float64(900)
 const climaland_dir = pkgdir(ClimaLand)
 output_base = joinpath(outputpath, "output_wPorosity")
 const OUTPUT_DIR = find_available_dir(output_base)

@@ -48,7 +48,7 @@ start_date =
     DateTime(get(ENV, "NEON_START_DATE", string(Date(2009,1,1))))
 stop_date = DateTime(get(ENV, "NEON_STOP_DATE", string(Date(2009,12,31))))
 
-DT = Float64(180)#450)
+DT = Float64(900)#450)
 #SITE_ID = "NEON-cper"
 climaland_dir = pkgdir(ClimaLand)
 output_base = joinpath(outputpath, "output")
@@ -225,6 +225,7 @@ println("  Output: $OUTPUT_DIR")
 eki = ClimaCalibrate.calibrate(
     ClimaCalibrate.WorkerBackend(),
     ekp,
+    NeonModelInterface(),
     N_ITERATIONS,
     prior,
     OUTPUT_DIR,

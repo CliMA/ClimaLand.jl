@@ -34,8 +34,16 @@ ENV["NEON_SPINUP_DAYS"] = "20"        # optional
 =#
 
 # ── Configuration ────────────────────────────────────────────────────────────
-#SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
-#SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
+# Define SITE_ID / SPINUP_DAYS only if not already set in the session, so this
+# script is self-sufficient whether run standalone, via set_Station.jl, or
+# re-included in a loop (see run_priormean_pipeline_mult.jl). Plain globals
+# (not const) so they stay reassignable across runs.
+if !@isdefined(SITE_ID)
+    SITE_ID = get(ENV, "NEON_SITE_ID", "NEON-srer")
+end
+if !@isdefined(SPINUP_DAYS)
+    SPINUP_DAYS = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
+end
 outputpath = get(ENV, "CALL_OUTPUT_PATH", "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_siteruns/$(SITE_ID)/")
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 Caldepthnums = get(ENV, "CALL_DEPTH", "0.00")
