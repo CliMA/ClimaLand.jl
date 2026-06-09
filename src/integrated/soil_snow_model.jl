@@ -239,7 +239,7 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depths
-    Δz_snow = @. lazy(min(p.snow.z_snow, snow_params.Δz_max))
+    Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
