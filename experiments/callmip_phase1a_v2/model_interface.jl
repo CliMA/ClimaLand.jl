@@ -100,22 +100,15 @@ function load_dk_sor_forcing(
 
     # Read arrays directly for q computation
     ds = NCDataset(met_nc_path, "r")
-    T_arr   = Float64.(coalesce.(ds["Tair"][1, 1, :],  NaN))    # K
-    q_arr   = Float64.(coalesce.(ds["Qair"][1, 1, :],  NaN))    # kg/kg specific humidity
-    P_arr   = Float64.(coalesce.(ds["PSurf"][1, 1, :], NaN))    # Pa
-    SW_arr  = Float64.(coalesce.(ds["SWdown"][1, 1, :], NaN))   # W/m²
-    LW_arr  = Float64.(coalesce.(ds["LWdown"][1, 1, :], NaN))   # W/m²
-    rain_arr = Float64.(coalesce.(ds["Rainf"][1, 1, :], NaN))   # kg/m²/s
-    snow_arr = Float64.(coalesce.(ds["Snowf"][1, 1, :], NaN))   # kg/m²/s  (may be missing)
-    wind_arr = Float64.(coalesce.(ds["Wind"][1, 1, :],  NaN))   # m/s
+    T_arr    = Float64.(coalesce.(ds["Tair"][1, 1, :],   NaN))    # K
+    q_arr    = Float64.(coalesce.(ds["Qair"][1, 1, :],   NaN))    # kg/kg specific humidity
+    P_arr    = Float64.(coalesce.(ds["Psurf"][1, 1, :],  NaN))    # Pa  (note: Psurf not PSurf)
+    SW_arr   = Float64.(coalesce.(ds["SWdown"][1, 1, :], NaN))    # W/m²
+    LW_arr   = Float64.(coalesce.(ds["LWdown"][1, 1, :], NaN))    # W/m²
+    prec_arr = Float64.(coalesce.(ds["Precip"][1, 1, :], NaN))    # kg/m²/s total precip
+    wind_arr = Float64.(coalesce.(ds["Wind"][1, 1, :],   NaN))    # m/s
     co2_arr  = Float64.(coalesce.(ds["CO2air"][1, 1, :], 412e-6)) # mol/mol
     close(ds)
-
-    # Handle missing Snowf gracefully
-    if all(isnan.(snow_arr))
-        # Estimate snow fraction from temperature
-        snow_arr .= 0.0
-    end
 
     valid = .!isnan.(T_arr) .& .!isnan.(q_arr) .& .!isnan.(P_arr) .&
             .!isnan.(SW_arr) .& .!isnan.(LW_arr) .& .!isnan.(wind_arr)
@@ -126,9 +119,10 @@ function load_dk_sor_forcing(
     atmos_P   = TimeVaryingInput(tv, P_arr[valid])
     atmos_SW  = TimeVaryingInput(tv, SW_arr[valid])
     atmos_LW  = TimeVaryingInput(tv, LW_arr[valid])
-    # Precipitation: rain + snow as separate downward fluxes (negative sign in ClimaLand)
-    atmos_Pr  = TimeVaryingInput(tv, -abs.(rain_arr[valid]))
-    atmos_Ps  = TimeVaryingInput(tv, -abs.(snow_arr[valid]))
+    # Split total precip into rain/snow by 0°C threshold (negative = downward flux)
+    is_snow   = T_arr[valid] .< 273.15
+    atmos_Pr  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* .!is_snow)
+    atmos_Ps  = TimeVaryingInput(tv, -abs.(prec_arr[valid]) .* is_snow)
     atmos_u   = TimeVaryingInput(tv, wind_arr[valid])
     atmos_co2 = TimeVaryingInput(tv, co2_arr[valid])
 
