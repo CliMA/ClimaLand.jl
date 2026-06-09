@@ -5,7 +5,7 @@ Runs a single-column ClimaLand simulation for 2 randomly-drawn yearly windows
 (selected by EKP minibatcher) and returns NEE + LE + H daily diagnostics.
 
 Current-main API notes:
-  - Y.soilco2.O2 (not O2_f); initial value 0.08 kg O2/m³ (not 0.21 vol fraction)
+  - Y.soilco2.O2_f (not O2); initial value 0.08 kg O2/m³ (not 0.21 vol fraction)
   - Y.soilco2.CO2 initial: 6e-5 kg C/m³
   - Y.soilco2.SOC: prognostic (initialized via SOC profile below)
   - PlantHydraulics merged into Canopy — no separate import
@@ -319,7 +319,7 @@ function make_dk_sor_ic(atmos, ν, θ_r)
             # CO2: ~412 ppm at 288 K, 1 atm → kg C/m³ air-equivalent
             Y.soilco2.CO2 .= FT(6e-5)
             # O2: ~21% by volume → kg O2/m³ soil
-            Y.soilco2.O2  .= FT(0.08)
+            Y.soilco2.O2_f .= FT(0.08)
             # SOC exponential profile (kg C/m³): 15 at surface, 0.5 at -9 m
             SOC_top = FT(15.0)
             SOC_bot = FT(0.5)
