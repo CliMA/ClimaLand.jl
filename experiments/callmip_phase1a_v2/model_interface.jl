@@ -313,12 +313,7 @@ function make_dk_sor_ic(atmos, ν, θ_r)
             Y.canopy.energy.T .= p.drivers.T
         end
 
-        n_leaf = model.canopy.hydraulics.n_leaf
-        n_stem = model.canopy.hydraulics.n_stem
-        for i in 1:(n_stem + n_leaf)
-            Y.canopy.hydraulics.ϑ_l.:($i) .=
-                model.canopy.hydraulics.parameters.ν
-        end
+        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
 
         if !isnothing(model.soilco2)
             # CO2: ~412 ppm at 288 K, 1 atm → kg C/m³ air-equivalent
