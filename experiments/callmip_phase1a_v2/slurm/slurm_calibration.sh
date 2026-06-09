@@ -1,36 +1,29 @@
 #!/bin/bash
 #SBATCH --job-name=dk_sor_calibration
-#SBATCH --output=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2/slurm_logs/calibration_%j.out
-#SBATCH --error=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2/slurm_logs/calibration_%j.err
-#SBATCH --nodes=1
-#SBATCH --ntasks=32
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=512G
-#SBATCH --time=12:00:00
+#SBATCH --output=experiments/callmip_phase1a_v2/slurm_logs/calibration_%j.out
+#SBATCH --error=experiments/callmip_phase1a_v2/slurm_logs/calibration_%j.err
 #SBATCH --partition=expansion
+#SBATCH --account=esm
+#SBATCH --ntasks=34
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=256G
+#SBATCH --time=20:00:00
 
-# ── Environment ───────────────────────────────────────────────────────────────
-export JULIA_DEPOT_PATH=/central/scratch/renatob/julia_depot
-export JULIA_PROJECT=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2
-export JULIA_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export CLIMACOMMS_DEVICE="CPU"
+export CLIMACOMMS_CONTEXT="SINGLETON"
 
-# ── Navigate to repo root ──────────────────────────────────────────────────────
-cd /central/scratch/renatob/ClimaLand.jl
+module use /groups/esm/modules
+module load climacommon
 
-mkdir -p experiments/callmip_phase1a_v2/slurm_logs
+REPO_ROOT="$SLURM_SUBMIT_DIR"
+while [[ ! -d "$REPO_ROOT/.buildkite" && "$REPO_ROOT" != "/" ]]; do
+    REPO_ROOT="$(dirname "$REPO_ROOT")"
+done
+cd "$REPO_ROOT"
+echo "Running from: $PWD"
 
-echo "=== DK-Sor EKI calibration ==="
-echo "  Host: $(hostname)  Nodes: $(scontrol show hostnames | wc -l)"
-echo "  Julia: $(julia --version)"
-echo "  Procs: ${SLURM_NTASKS} (${SLURM_CPUS_PER_TASK} threads each)"
-echo "  Start: $(date)"
-
-# 33 ensemble members: run_calibration.jl uses WorkerBackend which spawns workers.
-# SLURM_NTASKS=32 leaves 1 task for the driver; each worker gets 8 threads.
-julia --project=experiments/callmip_phase1a_v2 \
-      -p $(( SLURM_NTASKS - 1 )) \
-      experiments/callmip_phase1a_v2/run_calibration.jl
-
-EXIT_CODE=$?
-echo "Exit code: $EXIT_CODE  at $(date)"
-exit $EXIT_CODE
+EXP=experiments/callmip_phase1a_v2
+mkdir -p ${EXP}/slurm_logs
+julia --project=${EXP} -e 'using Pkg; Pkg.instantiate()'
+julia --project=${EXP} ${EXP}/generate_observations.jl
+julia --project=${EXP} ${EXP}/run_calibration.jl

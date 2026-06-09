@@ -1,32 +1,28 @@
 #!/bin/bash
 #SBATCH --job-name=dk_sor_posterior_ens
-#SBATCH --output=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2/slurm_logs/posterior_ens_%j.out
-#SBATCH --error=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2/slurm_logs/posterior_ens_%j.err
-#SBATCH --nodes=1
-#SBATCH --ntasks=26
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=256G
-#SBATCH --time=08:00:00
+#SBATCH --output=experiments/callmip_phase1a_v2/slurm_logs/posterior_ens_%j.out
+#SBATCH --error=experiments/callmip_phase1a_v2/slurm_logs/posterior_ens_%j.err
 #SBATCH --partition=expansion
+#SBATCH --account=esm
+#SBATCH --ntasks=51
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=256G
+#SBATCH --time=12:00:00
 
-export JULIA_DEPOT_PATH=/central/scratch/renatob/julia_depot
-export JULIA_PROJECT=/central/scratch/renatob/ClimaLand.jl/experiments/callmip_phase1a_v2
-export JULIA_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export CLIMACOMMS_DEVICE="CPU"
+export CLIMACOMMS_CONTEXT="SINGLETON"
 
-cd /central/scratch/renatob/ClimaLand.jl
+module use /groups/esm/modules
+module load climacommon
 
-mkdir -p experiments/callmip_phase1a_v2/slurm_logs
+REPO_ROOT="$SLURM_SUBMIT_DIR"
+while [[ ! -d "$REPO_ROOT/.buildkite" && "$REPO_ROOT" != "/" ]]; do
+    REPO_ROOT="$(dirname "$REPO_ROOT")"
+done
+cd "$REPO_ROOT"
+echo "Running from: $PWD"
 
-echo "=== DK-Sor 50-member posterior ensemble ==="
-echo "  Host: $(hostname)"
-echo "  Procs: ${SLURM_NTASKS} (${SLURM_CPUS_PER_TASK} threads each)"
-echo "  Start: $(date)"
-
-# 25 workers for pmap (50 members / 2 rounds)
-julia --project=experiments/callmip_phase1a_v2 \
-      -p $(( SLURM_NTASKS - 1 )) \
-      experiments/callmip_phase1a_v2/run_posterior_ensemble.jl
-
-EXIT_CODE=$?
-echo "Exit code: $EXIT_CODE  at $(date)"
-exit $EXIT_CODE
+EXP=experiments/callmip_phase1a_v2
+mkdir -p ${EXP}/slurm_logs
+julia --project=${EXP} -e 'using Pkg; Pkg.instantiate()'
+julia -p $(( SLURM_NTASKS - 1 )) --project=${EXP} ${EXP}/run_posterior_ensemble.jl

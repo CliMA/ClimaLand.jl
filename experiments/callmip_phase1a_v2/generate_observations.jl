@@ -59,9 +59,9 @@ valid_mask = (
 )
 
 # Typical uncertainty variances from valid entries
-nee_var_typ = mean(filter(!isnan, nee_uc[valid_mask] .^ 2); init = 1.0)
-qle_var_typ = mean(filter(!isnan, qle_uc[valid_mask] .^ 2); init = 100.0)
-qh_var_typ  = mean(filter(!isnan, qh_uc[valid_mask]  .^ 2); init = 100.0)
+let v = filter(!isnan, nee_uc[valid_mask] .^ 2); nee_var_typ = isempty(v) ? 1.0   : mean(v); end
+let v = filter(!isnan, qle_uc[valid_mask] .^ 2); qle_var_typ = isempty(v) ? 100.0 : mean(v); end
+let v = filter(!isnan, qh_uc[valid_mask]  .^ 2); qh_var_typ  = isempty(v) ? 100.0 : mean(v); end
 
 const BIG_VAR = 1e12    # large variance for missing / gap-filled days
 
