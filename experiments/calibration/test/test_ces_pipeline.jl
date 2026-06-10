@@ -67,7 +67,11 @@ N_iterations = 8
 rng_ekp = Random.MersenneTwister(42)
 initial_ensemble = EKP.construct_initial_ensemble(rng_ekp, prior, N_ens)
 ekp = EKP.EnsembleKalmanProcess(
-    initial_ensemble, y_obs, noise, EKP.Inversion(); rng = rng_ekp,
+    initial_ensemble,
+    y_obs,
+    noise,
+    EKP.Inversion();
+    rng = rng_ekp,
 )
 
 # Save the initial EKP to iteration 0 so load_latest_ekp can find it
@@ -123,7 +127,14 @@ end
     ces_dir = joinpath(output_dir, "ces")
     mkpath(ces_dir)
     global emulator_file = joinpath(ces_dir, "emulators.jld2")
-    JLD2.jldsave(emulator_file; emulator, prior, y_obs = y_obs_from_ekp, obs_noise_cov, n_iterations = n_iter_loaded)
+    JLD2.jldsave(
+        emulator_file;
+        emulator,
+        prior,
+        y_obs = y_obs_from_ekp,
+        obs_noise_cov,
+        n_iterations = n_iter_loaded,
+    )
     @test isfile(emulator_file)
     @info "Emulator saved → $emulator_file"
 end
@@ -134,8 +145,8 @@ end
 @testset "Sample (MCMC posterior)" begin
     # Load from file — same as sample.jl
     emulator_loaded = JLD2.load(emulator_file, "emulator")
-    prior_loaded    = JLD2.load(emulator_file, "prior")
-    y_obs_loaded    = JLD2.load(emulator_file, "y_obs")
+    prior_loaded = JLD2.load(emulator_file, "prior")
+    y_obs_loaded = JLD2.load(emulator_file, "y_obs")
 
     # Start MCMC from EKI posterior mean — same as sample.jl
     init_params = EKP.get_u_mean_final(ekp_loaded)
@@ -151,11 +162,17 @@ end
         init_params,
     )
     new_step = MarkovChainMonteCarlo.optimize_stepsize(
-        mcmc; init_stepsize = 0.1, N = 2000, discard_initial = 0,
+        mcmc;
+        init_stepsize = 0.1,
+        N = 2000,
+        discard_initial = 0,
     )
     @info "MCMC step size: $new_step"
     chain = MarkovChainMonteCarlo.sample(
-        mcmc, 20_000; stepsize = new_step, discard_initial = 1_000,
+        mcmc,
+        20_000;
+        stepsize = new_step,
+        discard_initial = 1_000,
     )
     display(chain)
 
@@ -172,12 +189,16 @@ end
 
     samples_e = vec(constrained_posterior["emissivity_bare_soil"])
     post_mean = mean(samples_e)
-    post_std  = std(samples_e)
+    post_std = std(samples_e)
     ci_lo, ci_hi = quantile(samples_e, 0.025), quantile(samples_e, 0.975)
 
     @info @sprintf(
         "Posterior emissivity_bare_soil:  mean=%.4f  std=%.4f  95%% CI=[%.4f, %.4f]  true=%.4f",
-        post_mean, post_std, ci_lo, ci_hi, TOY_TRUE_EMISSIVITY,
+        post_mean,
+        post_std,
+        ci_lo,
+        ci_hi,
+        TOY_TRUE_EMISSIVITY,
     )
 
     # Posterior mean should be within 2 prior std of truth

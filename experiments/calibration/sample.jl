@@ -48,10 +48,8 @@ const OUTPUT_DIR = get(
 ces_output_dir = joinpath(OUTPUT_DIR, "ces")
 emulator_file = joinpath(ces_output_dir, "emulators.jld2")
 
-isfile(emulator_file) || error(
-    "Emulator file not found: $emulator_file\n" *
-    "Run emulate.jl first.",
-)
+isfile(emulator_file) ||
+    error("Emulator file not found: $emulator_file\n" * "Run emulate.jl first.")
 
 n_samples = parse(Int, get(ENV, "CES_N_SAMPLES", "100000"))
 init_stepsize = parse(Float64, get(ENV, "CES_INIT_STEPSIZE", "0.1"))
@@ -81,7 +79,12 @@ init_params = EKP.get_u_mean_final(ekp)
 mcmc = MCMCWrapper(RWMHSampling(), y_obs, prior, emulator; init_params)
 new_step = optimize_stepsize(mcmc; init_stepsize, N = 2000, discard_initial = 0)
 @info "MCMC step size optimised: $new_step"
-chain = MarkovChainMonteCarlo.sample(mcmc, n_samples; stepsize = new_step, discard_initial)
+chain = MarkovChainMonteCarlo.sample(
+    mcmc,
+    n_samples;
+    stepsize = new_step,
+    discard_initial,
+)
 
 display(chain)
 
