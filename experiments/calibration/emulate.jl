@@ -123,13 +123,6 @@ ces_output_dir = joinpath(OUTPUT_DIR, "ces")
 mkpath(ces_output_dir)
 emulator_file = joinpath(ces_output_dir, "emulators.jld2")
 
-JLD2.jldsave(
-    emulator_file;
-    emulator,
-    prior,
-    y_obs,
-    obs_noise_cov,
-    n_iterations,
-)
+JLD2.jldsave(emulator_file; emulator, prior, y_obs, obs_noise_cov, n_iterations)
 @info "Emulator saved → $emulator_file"
 @info "Next step: julia --project=.buildkite experiments/calibration/sample.jl"
