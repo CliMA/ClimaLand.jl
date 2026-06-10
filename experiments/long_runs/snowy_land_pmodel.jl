@@ -53,6 +53,8 @@ const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 # `export UNCALIBRATED=""` in the terminal and run this script, or
 # pass `UNCALIBRATED=""` as an environment variable on buildkite.
 const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
+const SPINUP_RUN = haskey(ENV, "SPINUP") ? true : false
+
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -74,18 +76,19 @@ function setup_model(
     surface_space = domain.space.surface
     # Forcing data - high resolution
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        start_date,
-        stop_date,
+        start_date, # assume start date is when we have data
+        min(stop_date, DateTime(2024)),# end of data
         surface_space,
         toml_dict,
         FT;
         max_wind_speed = 25.0,
         context,
+
     )
     forcing = (; atmos, radiation)
 
-    # Read in LAI from MODIS data
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+    # Read in LAI from MODIS data. Since we only have MODIS data from 2000-2020, use climatological LAI for LONGER_RUN
+    LAI = SPINUP_RUN ? prescribed_climatological_lai_modis(surface_space) : ClimaLand.Canopy.prescribed_lai_modis(
         surface_space,
         start_date,
         stop_date,
@@ -109,8 +112,6 @@ end
 # Note that since the Northern hemisphere's winter season is defined as DJF,
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
-start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -120,6 +121,13 @@ if UNCALIBRATED
     toml_dict = LP.create_toml_dict(FT, override_files = [override_params_path])
 else
     toml_dict = LP.create_toml_dict(FT)
+end
+
+start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
+if !SPINUP_RUN
+    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+else
+    stop_date = DateTime("2099-03-01")
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
