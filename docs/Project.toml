@@ -2,6 +2,7 @@
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CalibrateEmulateSample = "95e48a1f-0bec-4818-9538-3db4340308e3"
 ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
