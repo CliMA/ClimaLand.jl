@@ -49,9 +49,9 @@ include(joinpath(@__DIR__, "model_interface.jl"))
 # ── Run ───────────────────────────────────────────────────────────────────────
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
 
-# DEBUG: 30-day run to identify NaN source in soilco2
+# 1-year cyclic spinup (1996), then full 1997-2014 evaluation
 sim_start = DateTime(1996, 1, 1)
-sim_stop  = DateTime(1996, 2, 1)
+sim_stop  = DateTime(2015, 1, 1)
 
 println("Prior mean check: $sim_start → $sim_stop")
 land, forcing, ν, θ_r = build_dk_sor_model(FT, sim_start, sim_stop, toml_dict, met_nc_path)
@@ -107,8 +107,6 @@ _, sco2_vals = extract_daily_diag(simulation, "sco2_1d_average")
 println("SCO2 (soil CO2 conc) first 5: ", sco2_vals[1:min(5,end)])
 println("SCO2 NaN count: $(sum(isnan.(sco2_vals))) / $(length(sco2_vals)))")
 
-# Early exit — debug run only
-exit(0)
 
 # Discard spinup (keep 1997–2014)
 keep = year.(nee_dates) .>= 1997
