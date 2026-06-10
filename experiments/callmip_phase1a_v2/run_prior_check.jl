@@ -49,8 +49,8 @@ include(joinpath(@__DIR__, "model_interface.jl"))
 # ── Run ───────────────────────────────────────────────────────────────────────
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
 
-# 2-year spinup (1995-1996) then full 1997-2014
-sim_start = DateTime(1996, 1, 1)
+# Start at 1997 (FLUXNET data starts here; cyclic 1-year spinup prepended in load_dk_sor_forcing)
+sim_start = DateTime(1997, 1, 1)
 sim_stop  = DateTime(2015, 1, 1)
 
 println("Prior mean check: $sim_start → $sim_stop")
@@ -91,6 +91,17 @@ println("LHF first 5: ", qle_vals[1:min(5,end)])
 println("NEE NaN count: $(sum(isnan.(nee_vals))) / $(length(nee_vals))")
 println("GPP NaN count: $(sum(isnan.(gpp_vals))) / $(length(gpp_vals))")
 println("LHF NaN count: $(sum(isnan.(qle_vals))) / $(length(qle_vals))")
+
+# ── Extra diagnostics to pinpoint NaN source ─────────────────────────────────
+_, hr_vals  = extract_daily_diag(simulation, "hr_1d_average")
+_, ra_vals  = extract_daily_diag(simulation, "ra_1d_average")
+_, er_vals  = extract_daily_diag(simulation, "er_1d_average")
+println("HR (heterotrophic resp=soilco2 top_bc*83.26) first 5: ", hr_vals[1:min(5,end)])
+println("RA (autotrophic resp) first 5: ", ra_vals[1:min(5,end)])
+println("ER (total resp=HR+RA) first 5: ", er_vals[1:min(5,end)])
+println("HR NaN count: $(sum(isnan.(hr_vals))) / $(length(hr_vals))")
+println("RA NaN count: $(sum(isnan.(ra_vals))) / $(length(ra_vals))")
+println("ER NaN count: $(sum(isnan.(er_vals))) / $(length(er_vals))")
 
 # Discard spinup (keep 1997–2014)
 keep = year.(nee_dates) .>= 1997
