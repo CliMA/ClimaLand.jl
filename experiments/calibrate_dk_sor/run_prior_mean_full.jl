@@ -1,6 +1,7 @@
 """
-Run the calibration forward model at the prior mean parameters for 2004,
-to compare against experiments/integrated/fluxnet/run_dk_sor_default.jl.
+Run the calibration forward model at the prior mean parameters for the full
+period 1997–2014 (spinup 1997, analysis 1998–2013), as required by ME-org
+(CalLMIP Phase 1, 6574-day period).
 
 Uses prior mean values passed directly to constructors (avoids TOML unicode issues).
 """
@@ -29,10 +30,17 @@ using Statistics
 using CairoMakie
 CairoMakie.activate!()
 
+# Needed to access prescribed_forcing_netcdf internals for recycled spinup
+import ClimaLand.Parameters as LP
+
 const FT = Float64
 const climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 const SITE_ID = "DK-Sor"
 const DT = Float64(900)
+
+# Pass --smoke (or SMOKE=true env var) for a quick validation run:
+# runs full 1996 spinup + Jan 1997 analysis so NEE/H/LE are non-NaN
+const SMOKE_TEST = "--smoke" in ARGS || get(ENV, "SMOKE", "false") == "true"
 
 # ── Prior mean values (from run_calibration.jl) ───────────────────────────────
 # Centers match ClimaLand toml/default_parameters.toml exactly.
@@ -125,10 +133,14 @@ println("Wrote prior mean TOML: $PRIOR_TOML")
 # ── Setup ─────────────────────────────────────────────────────────────────────
 site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
 
-sim_start = DateTime(2003, 1, 1)
-sim_stop  = DateTime(2005, 1, 1)
-spinup_date = DateTime(2004, 1, 1)
-println("Simulating $sim_start → $sim_stop (spinup until $spinup_date)")
+# Spinup: 1996-01-01 to 1997-01-01 using recycled 1997 forcing (1996 is a leap year = 366 days)
+# Analysis: 1997-01-01 to 2015-01-01 (= 1997-2014 inclusive = 6574 days for ME-org)
+const SPINUP_SHIFT_DAYS = 366  # 1996 is a leap year
+sim_start   = DateTime(1996, 1, 1)
+sim_stop    = SMOKE_TEST ? DateTime(1997, 2, 1) : DateTime(2015, 1, 1)
+spinup_date = DateTime(1997, 1, 1)
+SMOKE_TEST && println("*** SMOKE TEST MODE: 1996 spinup + Jan 1997 analysis → $(sim_stop) ***")
+println("Simulating $sim_start → $sim_stop (spinup 1996 from recycled 1997 data, analysis from $spinup_date)")
 
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
 
@@ -140,20 +152,134 @@ land_domain   = Column(; zlim = (zmin, zmax), nelements, dz_tuple, longlat = (lo
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
 met_nc_path = joinpath(climaland_dir, "DK_Sor", "DK-Sor_1997-2014_FLUXNET2015_Met.nc")
-(; atmos, radiation) = FluxnetSimulations.prescribed_forcing_netcdf(
-    met_nc_path, lat, long, time_offset, atmos_h, sim_start, toml_dict, FT)
 
-# FLUXNET LAI — same as run_dk_sor_default.jl
-surface_space = canopy_domain.space.surface
-met_ds = NCDataset(met_nc_path, "r")
-lai_data = Float64.(coalesce.(met_ds["LAI"][1, 1, :], NaN))
-lai_times = met_ds["time"][:]
-close(met_ds)
-lai_seconds = [Float64(Second(t - Hour(time_offset) - sim_start).value) for t in lai_times]
-valid_lai = .!isnan.(lai_data)
-LAI = TimeVaryingInput(lai_seconds[valid_lai], lai_data[valid_lai])
+# ── Build recycled forcing: prepend shifted 1997 data for the 1996 spinup year ──
+# The natural data starts at 1997-01-01. We shift those 1997 timestamps back by
+# 366 days (leap year 1996) so the spinup period 1996-01-01→1997-01-01 uses real
+# 1997 meteorology. Then the actual 1997-2014 data follows seamlessly.
+#
+# prescribed_forcing_netcdf uses start_date to compute seconds_since_start.
+# We pass sim_start = 1997-01-01 so it builds the natural [0, …] time axis,
+# then we manually shift all timestamps to [+366d, …] and prepend the recycled
+# spinup block at [0, …+366d).  Finally we pass the combined arrays directly
+# to TimeVaryingInput and build PrescribedAtmosphere ourselves.
 
-# ── Explicit site-specific parameters — same as run_dk_sor_default.jl ────────
+# Step 1: load raw met data (seconds relative to 1997-01-01)
+period_offset = Hour(time_offset)
+_ds = NCDataset(met_nc_path, "r")
+_times = _ds["time"][:]
+function _read_var(varname)
+    v = _ds[varname]
+    ndims(v) == 3 ? Float64.(coalesce.(v[1,1,:], NaN)) :
+    ndims(v) == 1 ? Float64.(coalesce.(v[:], NaN)) :
+    error("Unexpected dims for $varname")
+end
+_T    = _read_var("Tair")
+_SW   = _read_var("SWdown")
+_LW   = _read_var("LWdown")
+_q    = _read_var("Qair")
+_P    = _read_var("Psurf")
+_prec = _read_var("Precip")
+_wind = _read_var("Wind")
+_co2  = _read_var("CO2air")
+_lai_raw  = Float64.(coalesce.(_ds["LAI"][1,1,:], NaN))
+close(_ds)
+
+# seconds since 1997-01-01 (the actual data reference)
+_ref_date = DateTime(1997, 1, 1)
+_t97 = Float64[Second(t - period_offset - _ref_date).value for t in _times]
+
+# Step 2: extract 1997 data only (t in [0, 366 days))
+_shift_s = Float64(SPINUP_SHIFT_DAYS * 86400)
+_mask97  = (_t97 .>= 0.0) .& (_t97 .< _shift_s)
+# _t97[_mask97] is in [0, 366d) relative to 1997-01-01.
+# sim_start is 1996-01-01 = 366d before 1997-01-01, so _t97 is already
+# in [0, 366d) relative to sim_start — use as-is for the spinup block.
+_t_spinup = _t97[_mask97]  # → [0, 366d) relative to sim_start
+
+# Step 3: full time axis for combined dataset (spinup + actual), relative to sim_start = 1996-01-01
+# sim_start is 366 days before 1997-01-01, so offset all _t97 by +366d
+_t_full_s = _shift_s  # seconds from 1996-01-01 to 1997-01-01
+_t_actual = _t97 .+ _t_full_s  # actual 1997-2014 data shifted to sim_start basis (→ [366d, 18y))
+
+# Combine: [recycled 1997 for spinup] ++ [actual 1997-2014]
+# NOTE: _t97 values for UTC-offset timestamps at the start of the file can be
+# negative (e.g., Denmark UTC+1 shifts 1996-12-31 23:00 UTC into _t97 = -3600s).
+# Those negative-_t97 points land at _t_actual = shift_s + negative = < shift_s,
+# overlapping the spinup range [0, shift_s).  Filter them out with _t97 >= 0.
+function _make_tvi(t_actual_vals, data, t_spinup_vals)
+    valid_sp  = .!isnan.(data[_mask97])
+    valid_act = (.!isnan.(data)) .& (_t97 .>= 0.0)   # exclude pre-1997 UTC-offset points
+    t_comb = vcat(t_spinup_vals[valid_sp], t_actual_vals[valid_act])
+    v_comb = vcat(data[_mask97][valid_sp], data[valid_act])
+    return TimeVaryingInput(t_comb, v_comb)
+end
+
+_make_co2(t_actual_vals, data, t_spinup_vals) = begin
+    valid_sp  = .!isnan.(data[_mask97])
+    valid_act = (.!isnan.(data)) .& (_t97 .>= 0.0)   # exclude pre-1997 UTC-offset points
+    t_comb = vcat(t_spinup_vals[valid_sp], t_actual_vals[valid_act])
+    v_comb = vcat(data[_mask97][valid_sp] .* FT(1e-6), data[valid_act] .* FT(1e-6))
+    TimeVaryingInput(t_comb, v_comb)
+end
+
+atmos_T    = _make_tvi(_t_actual, _T,    _t_spinup)
+atmos_P    = _make_tvi(_t_actual, _P,    _t_spinup)
+atmos_u    = _make_tvi(_t_actual, _wind, _t_spinup)
+atmos_q    = _make_tvi(_t_actual, _q,    _t_spinup)
+LW_d       = _make_tvi(_t_actual, _LW,   _t_spinup)
+SW_d       = _make_tvi(_t_actual, _SW,   _t_spinup)
+c_co2      = _make_co2(_t_actual, _co2,  _t_spinup)
+
+# Separate liquid/snow precip (use phase partitioning from temperature: T < 273.15 → snow)
+# Also exclude pre-1997 UTC-offset points (same reason as in _make_tvi above)
+_valid_prec     = .!isnan.(_prec) .& .!isnan.(_T) .& (_t97 .>= 0.0)
+_valid_prec97   = _valid_prec .& _mask97          # spinup: valid prec in 1997 window
+
+# Full (actual 1997-2014) precip, time-shifted to sim_start basis
+_rain_vals  = copy(_prec[_valid_prec])
+_snow_vals  = zero(_rain_vals)
+mask_snow   = _T[_valid_prec] .< FT(273.15)
+_snow_vals[mask_snow] .= _rain_vals[mask_snow]
+_rain_vals[mask_snow] .= 0.0
+
+# Spinup (recycled 1997) precip, time-shifted back by SPINUP_SHIFT_DAYS
+_rain97 = copy(_prec[_valid_prec97])
+_snow97 = zero(_rain97)
+mask_snow97 = _T[_valid_prec97] .< FT(273.15)
+_snow97[mask_snow97] .= _rain97[mask_snow97]; _rain97[mask_snow97] .= 0.0
+
+# Spinup timestamps: _t_spinup is relative to sim_start, indexed over all of _mask97;
+# we need only the subset where precip is also valid
+_t_spinup_prec = _t_spinup[_valid_prec97[_mask97]]
+
+atmos_P_liq  = TimeVaryingInput(
+    vcat(_t_spinup_prec, _t_actual[_valid_prec]),
+    vcat(_rain97, _rain_vals))
+atmos_P_snow = TimeVaryingInput(
+    vcat(_t_spinup_prec, _t_actual[_valid_prec]),
+    vcat(_snow97, _snow_vals))
+
+atmos = ClimaLand.PrescribedAtmosphere(
+    atmos_P_liq, atmos_P_snow,
+    atmos_T, atmos_u, atmos_q, atmos_P,
+    sim_start, FT(atmos_h), toml_dict;
+    gustiness = FT(1),
+    c_co2 = c_co2,
+)
+radiation = ClimaLand.PrescribedRadiativeFluxes(FT, SW_d, LW_d, sim_start)
+
+# LAI with recycled 1997 spinup
+_valid_lai97  = .!isnan.(_lai_raw) .& _mask97
+_valid_lai_all = .!isnan.(_lai_raw) .& (_t97 .>= 0.0)  # exclude pre-1997 UTC-offset points
+lai_seconds = vcat(
+    _t_spinup[_valid_lai97[_mask97]],
+    _t_actual[_valid_lai_all],
+)
+lai_vals = vcat(_lai_raw[_valid_lai97], _lai_raw[_valid_lai_all])
+LAI = TimeVaryingInput(lai_seconds, lai_vals)
+
+# ── Explicit site-specific parameters ────────────────────────────────────────
 χl          = FT(0.25)
 α_PAR_leaf  = FT(0.1)
 α_NIR_leaf  = FT(0.45)
@@ -242,6 +368,32 @@ println("Running calibration prior-mean model...")
 @time solve!(simulation)
 println("Done.")
 
+# ── Save raw diagnostics to disk immediately (so crashes in post-processing don't lose data)
+using JLD2
+const DIAG_CACHE = joinpath(@__DIR__, "calibrate_dk_sor_output",
+    SMOKE_TEST ? "prior_mean_full_diag_smoke.jld2" : "prior_mean_full_diag.jld2")
+mkpath(dirname(DIAG_CACHE))
+
+function _extract_raw(sim, name)
+    writer = nothing
+    for d in sim.diagnostics
+        haskey(d.output_writer.dict, name) && (writer = d.output_writer; break)
+    end
+    isnothing(writer) && return nothing, nothing
+    times, data = ClimaLand.Diagnostics.diagnostic_as_vectors(writer, name)
+    return times, Float64.(data)
+end
+
+raw = Dict{String,Any}()
+for var in ("nee_1d_average","lhf_1d_average","shf_1d_average","gpp_1d_average","er_1d_average")
+    t, d = _extract_raw(simulation, var)
+    raw["times"] = t  # same for all vars
+    raw[var] = d
+end
+raw["sim_start"] = sim_start
+JLD2.save(DIAG_CACHE, raw)
+println("Diagnostics saved to: $DIAG_CACHE")
+
 # ── Extract diagnostics ───────────────────────────────────────────────────────
 function get_diag(sim, name)
     writer = nothing
@@ -250,7 +402,8 @@ function get_diag(sim, name)
     end
     isnothing(writer) && error("$name not found")
     times, data = ClimaLand.Diagnostics.diagnostic_as_vectors(writer, name)
-    dates = Date.(times isa Vector{DateTime} ? times : date.(times))
+    # times may be Vector{DateTime} or Vector of seconds-since-sim_start
+    dates = Date.(date.(times))
     return dates, Float64.(data)
 end
 
@@ -265,16 +418,16 @@ nee_gC = nee_vals .* 12.0 .* 86400.0
 gpp_gC = gpp_vals .* 12.0 .* 86400.0
 er_gC  = er_vals  .* 12.0 .* 86400.0
 
-# filter to 2004 post-spinup
-mask2004 = (nee_dates .>= Date(2004,1,1)) .& (nee_dates .< Date(2005,1,1))
-nee_dates2 = nee_dates[mask2004]
-nee_gC2    = nee_gC[mask2004]
-gpp_gC2    = gpp_gC[mask2004]
-er_gC2     = er_gC[mask2004]
-lhf2       = lhf_vals[mask2004]
-shf2       = shf_vals[mask2004]
+# filter to full analysis period 1997-2014 (post-spinup)
+mask_analysis = (nee_dates .>= Date(1997,1,1)) .& (nee_dates .< Date(2015,1,1))
+nee_dates2 = nee_dates[mask_analysis]
+nee_gC2    = nee_gC[mask_analysis]
+gpp_gC2    = gpp_gC[mask_analysis]
+er_gC2     = er_gC[mask_analysis]
+lhf2       = lhf_vals[mask_analysis]
+shf2       = shf_vals[mask_analysis]
 
-# Load observations for 2004
+# Load observations for 1997-2013 (obs file only goes through 2013)
 flux_nc_path = joinpath(climaland_dir, "DK_Sor", "DK-Sor_daily_aggregated_1997-2013_FLUXNET2015_Flux.nc")
 flux_ds = NCDataset(flux_nc_path, "r")
 flux_times = Date.(flux_ds["time"][:])
@@ -283,7 +436,7 @@ qle_obs_raw = Float64.(coalesce.(flux_ds["Qle_daily"][:], NaN))
 qh_obs_raw  = Float64.(coalesce.(flux_ds["Qh_daily"][:], NaN))
 close(flux_ds)
 
-mask_obs = (flux_times .>= Date(2004,1,1)) .& (flux_times .< Date(2005,1,1))
+mask_obs = (flux_times .>= Date(1997,1,1)) .& (flux_times .< Date(2014,1,1))
 obs_dates = flux_times[mask_obs]
 nee_obs   = nee_obs_raw[mask_obs]
 qle_obs   = qle_obs_raw[mask_obs]
@@ -292,7 +445,7 @@ qh_obs    = qh_obs_raw[mask_obs]
 # ── Plot ──────────────────────────────────────────────────────────────────────
 fig = Figure(size=(1200, 1000))
 
-ax1 = Axis(fig[1,1]; ylabel="NEE (gC/m²/d)", title="DK-Sor 2004 — Prior Mean vs Default vs Obs")
+ax1 = Axis(fig[1,1]; ylabel="NEE (gC/m²/d)", title="DK-Sor 1997–2014 — Prior Mean vs Obs")
 lines!(ax1, nee_dates2, nee_gC2; color=:blue, linewidth=1.5, label="Prior mean (calib model)")
 lines!(ax1, obs_dates, nee_obs; color=:green, linewidth=1.5, label="Obs")
 axislegend(ax1; position=:rt, framevisible=false)
@@ -312,10 +465,11 @@ lines!(ax4, nee_dates2, shf2; color=:blue, linewidth=1.5, label="Prior mean")
 lines!(ax4, obs_dates, qh_obs; color=:green, linewidth=1.5, label="Obs")
 axislegend(ax4; position=:rt, framevisible=false)
 
-outpath = joinpath(@__DIR__, "calibrate_dk_sor_output", "prior_mean_2004.png")
+outpath = joinpath(@__DIR__, "calibrate_dk_sor_output", "prior_mean_full_1997_2014.png")
 mkpath(dirname(outpath))
 CairoMakie.save(outpath, fig)
 println("Saved: $outpath")
-println("\nNEE stats (2004): min=$(round(minimum(nee_gC2), digits=2)), max=$(round(maximum(nee_gC2), digits=2)), mean=$(round(mean(nee_gC2), digits=2)) gC/m²/d")
-println("GPP stats (2004): min=$(round(minimum(gpp_gC2), digits=2)), max=$(round(maximum(gpp_gC2), digits=2))")
-println("ER stats  (2004): min=$(round(minimum(er_gC2), digits=2)), max=$(round(maximum(er_gC2), digits=2))")
+_stats(v) = isempty(filter(!isnan,v)) ? "all NaN" : "min=$(round(minimum(filter(!isnan,v)), digits=2)), max=$(round(maximum(filter(!isnan,v)), digits=2)), mean=$(round(mean(filter(!isnan,v)), digits=2))"
+println("\nNEE stats (1997-2014): $(_stats(nee_gC2)) gC/m²/d")
+println("GPP stats (1997-2014): $(_stats(gpp_gC2))")
+println("ER stats  (1997-2014): $(_stats(er_gC2))")

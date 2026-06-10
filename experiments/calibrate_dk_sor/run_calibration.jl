@@ -44,7 +44,8 @@ obs_data = JLD2.load(OBS_FILEPATH)
 y_obs = obs_data["y_obs"]
 noise_cov = obs_data["noise_cov"]
 obs_dates = obs_data["obs_dates"]
-cal_years = obs_data["cal_years"]
+cal_years = haskey(obs_data, "cal_years") ? obs_data["cal_years"] :
+    Dates.year(first(obs_dates)):Dates.year(last(obs_dates))
 
 n_obs = length(obs_dates)
 println("Loaded $n_obs valid observation days ($(first(cal_years))-$(last(cal_years)))")
@@ -99,7 +100,7 @@ println("  LAI: Copernicus")
 println("  Output: $OUTPUT_DIR")
 
 eki = ClimaCalibrate.calibrate(
-    ClimaCalibrate.WorkerBackend,
+    ClimaCalibrate.WorkerBackend(),
     ekp,
     N_ITERATIONS,
     prior,

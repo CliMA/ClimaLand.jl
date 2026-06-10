@@ -45,7 +45,6 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Snow
 using ClimaCore
 using ClimaDiagnostics
@@ -92,8 +91,8 @@ function ClimaCalibrate.forward_model(iteration, member)
     site_ID_val = FluxnetSimulations.replace_hyphen(SITE_ID)
     climaland_dir = abspath(joinpath(@__DIR__, "..", ".."))
 
-    sim_start = DateTime(2003, 1, 1)
-    sim_stop  = DateTime(2014, 1, 1)
+    sim_start = DateTime(1997, 1, 1)
+    sim_stop  = DateTime(2015, 1, 1)
     @info "Member $member: simulating $sim_start to $sim_stop"
 
     calibrate_params_path =
@@ -172,10 +171,7 @@ function ClimaCalibrate.forward_model(iteration, member)
     )
     radiative_transfer = Canopy.TwoStreamModel{FT}(canopy_domain, toml_dict;
                                                     radiation_parameters)
-    hydraulics = Canopy.PlantHydraulicsModel{FT}(
-        canopy_domain, toml_dict;
-        n_stem = 1, h_stem = FT(24), h_leaf = FT(1),
-    )
+    hydraulics = Canopy.PlantHydraulicsModel{FT}(canopy_domain, toml_dict)
     canopy = Canopy.CanopyModel{FT}(
         canopy_domain, forcing_nt, LAI, toml_dict;
         prognostic_land_components,
@@ -216,12 +212,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         if model.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
-        n_stem = model.canopy.hydraulics.n_stem
-        n_leaf = model.canopy.hydraulics.n_leaf
-        for i in 1:(n_stem + n_leaf)
-            Y.canopy.hydraulics.ϑ_l.:($i) .=
-                model.canopy.hydraulics.parameters.ν
-        end
+        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
         if !isnothing(model.soilco2)
             Y.soilco2.CO2 .= FT(0.000412)
             Y.soilco2.O2_f .= FT(0.21)

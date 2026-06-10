@@ -171,7 +171,10 @@ test_pairs  = prune_bad_columns(test_pairs)
 
 # ── Build and train GP emulator ───────────────────────────────────────────────
 gppackage = GPJL()
-mlt       = GaussianProcess(gppackage; noise_learn = false)
+# noise_learn = true adds a learned diagonal noise term σ²I to the GP prediction
+# covariance, ensuring it is always positive definite during MCMC sampling.
+# (noise_learn = false caused PosDefException when the GP cov was near-singular.)
+mlt       = GaussianProcess(gppackage; noise_learn = true)
 
 emulator_path = joinpath(out_dir, "emulator_its$(first(train_iterations))to$(last(train_iterations)).jld2")
 

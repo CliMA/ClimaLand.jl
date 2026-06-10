@@ -52,6 +52,10 @@ const CAL_END_YEAR = 2012          # last year of calibration period (inclusive)
 
 import ClimaLand
 const climaland_dir         = abspath(joinpath(@__DIR__, "..", ".."))
+
+# DK-Sor site coordinates (WGS84)
+const SITE_LAT = 55.48587
+const SITE_LON = 11.64464
 const cal_dir               = joinpath(climaland_dir, "experiments", "calibrate_dk_sor")   # calibration artifacts
 const exp_dir               = joinpath(climaland_dir, "experiments", "callmip_uq_dk_sor")   # UQ/CalLMIP outputs
 const callmip_sim_dir       = joinpath(exp_dir, "output_callmip_sims")
@@ -338,8 +342,8 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
     fpath = joinpath(nc_output_dir, fname)
 
     n = length(out_dates)
-    # Time axis: days since 2003-01-01 (common epoch for this site)
-    epoch      = Date(2003, 1, 1)
+    # Time axis: days since first date in the full simulation
+    epoch      = first(dates)
     time_vals  = Float64.(Dates.value.(out_dates .- epoch))
     time_units = "days since $(epoch)"
 
@@ -363,6 +367,8 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
 
         # ── Dimensions ──────────────────────────────────────────────────
         NCDatasets.defDim(ds, "time", n)
+        NCDatasets.defDim(ds, "lat",  1)
+        NCDatasets.defDim(ds, "lon",  1)
 
         # ── Time coordinate ──────────────────────────────────────────────
         v = NCDatasets.defVar(ds, "time", Float64, ("time",))
@@ -372,6 +378,22 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
         v.attrib["long_name"] = "time"
         v.attrib["axis"]      = "T"
 
+        # ── Latitude coordinate ──────────────────────────────────────────
+        vlat = NCDatasets.defVar(ds, "lat", Float64, ("lat",))
+        vlat[:] = [SITE_LAT]
+        vlat.attrib["long_name"]     = "latitude"
+        vlat.attrib["units"]         = "degrees_north"
+        vlat.attrib["standard_name"] = "latitude"
+        vlat.attrib["axis"]          = "Y"
+
+        # ── Longitude coordinate ─────────────────────────────────────────
+        vlon = NCDatasets.defVar(ds, "lon", Float64, ("lon",))
+        vlon[:] = [SITE_LON]
+        vlon.attrib["long_name"]     = "longitude"
+        vlon.attrib["units"]         = "degrees_east"
+        vlon.attrib["standard_name"] = "longitude"
+        vlon.attrib["axis"]          = "X"
+
         # ── ALMA variables ───────────────────────────────────────────────
         for vname in ALMA_VARS
             haskey(vars, vname) || begin
@@ -380,15 +402,20 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
             end
             data = vars[vname]
             @assert length(data) >= length(out_dates) "$(vname): data shorter than dates"
-            # Subset to the requested period (using external mask indices)
-            # vars dict was already built for the full sim period;
-            # out_dates tells us which rows to keep (handled below via idx)
-            period_mask = cal_or_val == "Cal" ? cal_mask : val_mask
+            # Subset to the requested period
+            # out_dates already contains only the dates for this period
+            period_mask = if cal_or_val == "Cal"
+                cal_mask
+            elseif cal_or_val == "Val"
+                val_mask
+            else  # "Full" or any other value → all dates
+                trues(length(dates))
+            end
             period_data = data[period_mask]
 
-            dv = NCDatasets.defVar(ds, vname, Float64, ("time",),
+            dv = NCDatasets.defVar(ds, vname, Float64, ("time", "lat", "lon"),
                                    fillvalue = -9999.0)
-            dv[:] = period_data
+            dv[:] = reshape(period_data, :, 1, 1)
             meta = get(ALMA_META, vname, nothing)
             if !isnothing(meta)
                 dv.attrib["long_name"]    = meta.long_name
@@ -401,15 +428,21 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
 
         # ── Uncertainty percentiles (posterior files only) ───────────────
         if prior_or_post == "Posterior"
-            period_mask = cal_or_val == "Cal" ? cal_mask : val_mask
+            period_mask = if cal_or_val == "Cal"
+                cal_mask
+            elseif cal_or_val == "Val"
+                val_mask
+            else
+                trues(length(dates))
+            end
             for vname in UNCERTAINTY_VARS
                 for pct in ("p05", "p50", "p95")
                     key = "$(vname)_$(pct)"
                     haskey(vars, key) || continue
                     data = vars[key][period_mask]
-                    dv   = NCDatasets.defVar(ds, key, Float64, ("time",),
+                    dv   = NCDatasets.defVar(ds, key, Float64, ("time", "lat", "lon"),
                                              fillvalue = -9999.0)
-                    dv[:] = data
+                    dv[:] = reshape(data, :, 1, 1)
                     meta  = get(ALMA_META, vname, nothing)
                     pct_label = Dict("p05" => "5th",
                                      "p50" => "50th",
@@ -430,17 +463,19 @@ function write_callmip_nc(cal_or_val, prior_or_post, vars, out_dates)
     return fpath
 end
 
-# ── Write all 4 files ─────────────────────────────────────────────────────────
+# ── Write files ──────────────────────────────────────────────────────────────
 @info "Writing CalLMIP NetCDF files to $(nc_output_dir)…"
 
-# Protocol v1.2 Section 7 file naming:
-#   Cal period:  _Cal_Prior  /  _Cal_Posterior
-#   Val period:  _Val_Temporal  (one file per run — prior and posterior share same suffix per protocol)
-#   We write two val files with _Temporal_Prior / _Temporal_Posterior to preserve the prior/posterior distinction.
+# ME-org requires one file per Prior / Posterior for the full simulation period.
+# Cal/Val split files are also written for internal use.
 write_callmip_nc("Cal", "Prior",              prior_vars, dates[cal_mask])
 write_callmip_nc("Cal", "Posterior",          post_vars,  dates[cal_mask])
 write_callmip_nc("Val", "Temporal_Prior",     prior_vars, dates[val_mask])
 write_callmip_nc("Val", "Temporal_Posterior", post_vars,  dates[val_mask])
+
+# Full-period files for ME-org submission (Prior and Posterior, all dates)
+write_callmip_nc("Full", "Prior",     prior_vars, dates)
+write_callmip_nc("Full", "Posterior", post_vars,  dates)
 
 @info "Done! All CalLMIP NetCDF files written."
 @info "Output directory: $(nc_output_dir)"
