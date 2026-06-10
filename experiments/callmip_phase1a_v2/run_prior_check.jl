@@ -49,8 +49,8 @@ include(joinpath(@__DIR__, "model_interface.jl"))
 # ── Run ───────────────────────────────────────────────────────────────────────
 toml_dict = LP.create_toml_dict(FT; override_files = [PRIOR_TOML])
 
-# Start at 1997 (FLUXNET data starts here; cyclic 1-year spinup prepended in load_dk_sor_forcing)
-sim_start = DateTime(1997, 1, 1)
+# 1-year cyclic spinup (1996), then full 1997-2014 evaluation
+sim_start = DateTime(1996, 1, 1)
 sim_stop  = DateTime(2015, 1, 1)
 
 println("Prior mean check: $sim_start → $sim_stop")
