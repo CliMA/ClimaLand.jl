@@ -123,10 +123,11 @@ else
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-set_ic! =
-    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
-        model,
-    )
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file("/home/kdeck/ClimaArtifacts/rosetta_spunup_ic/rosetta_spunup_ic/rosetta_spunup_ic_20years.nc", model)
+#set_ic! =
+#    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+#        model,
+#    )
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"

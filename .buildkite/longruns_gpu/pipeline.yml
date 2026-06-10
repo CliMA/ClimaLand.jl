@@ -125,17 +125,6 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
 
-      - label: "Soil, 20 years"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-          LONGER_RUN: ""
-
   - wait
 
   # To check if the ILAMB leaderboard should be generated or not, we check for
