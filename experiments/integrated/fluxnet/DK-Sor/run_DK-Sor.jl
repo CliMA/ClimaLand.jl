@@ -250,7 +250,7 @@ end
 output_vars = [
     "sif", "ra", "gs", "gpp", "ct", "swu", "lwu",
     "er",  "hr", "et", "msf", "shf", "lhf", "rn",
-    "swe", "swc", "tsoil", "si",
+    "swe", "swc", "tsoil", "si", "nee",
 ]
 diags = ClimaLand.default_diagnostics(
     land,
@@ -277,19 +277,33 @@ savedir = joinpath(pkgdir(ClimaLand),
     "experiments/integrated/fluxnet/$(site_ID)/out")
 mkpath(savedir)
 
+# Load observed LE, H, NEE from daily flux NetCDF.
+# NEE is gC/m²/d → mol CO2/m²/s (÷ 12 g/mol ÷ 86400 s/d).
+# LHF (Qle) and SHF (Qh) are already in W/m².
+flux_nc_path = joinpath(climaland_dir,
+    "DK_Sor", "DK-Sor_daily_aggregated_1997-2013_FLUXNET2015_Flux.nc")
+comparison_data = NCDataset(flux_nc_path, "r") do ds
+    flux_times = DateTime.(ds["time"][:])
+    lhf_obs = Float64.(coalesce.(ds["Qle_daily"][:], NaN))
+    shf_obs = Float64.(coalesce.(ds["Qh_daily"][:],  NaN))
+    nee_obs = Float64.(coalesce.(ds["NEE_daily"][:], NaN)) ./ (12.0 * 86400.0)
+    mask = (flux_times .>= start_date) .& (flux_times .< stop_date)
+    (; UTC_datetime = flux_times[mask],
+       lhf = lhf_obs[mask], shf = shf_obs[mask], nee = nee_obs[mask])
+end
+
 LandSimVis.make_timeseries(
     land_domain, diags, start_date;
     savedir,
-    short_names  = ["gpp", "shf", "lhf", "swu", "lwu"],
+    short_names  = ["nee", "gpp", "shf", "lhf", "swu", "lwu"],
     spinup_date  = start_date + Day(20),
-    comparison_data = (;),
+    comparison_data,
 )
 LandSimVis.make_timeseries(
     land_domain, diags, start_date;
     savedir,
     short_names  = ["swc", "tsoil", "swe"],
     spinup_date  = start_date + Day(20),
-    comparison_data = (;),
 )
 LandSimVis.make_timeseries(
     land_domain, diags, start_date;
