@@ -9,7 +9,10 @@
 # Using real observations (rather than synthetic perfect-model data) means the
 # posterior captures genuine model-data discrepancy. The full posterior from
 # MCMC reveals parameter correlations, multi-modality, and uncertainty that a
-# single EKI MAP estimate cannot show.
+# single EKI MAP estimate cannot show. Both parameters are calibrated within
+# prior ranges where LHF is sensitive to each: Vcmax25 ∈ [0, 2e-3] keeps the
+# ensemble in a regime where canopy transpiration is significant, and g1
+# modulates stomatal aperture directly.
 #
 # ## Overview
 #
@@ -74,9 +77,8 @@ toml_dict = LP.create_toml_dict(FT)
 site_ID = "US-MOz"
 site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 
-(; time_offset, lat, long) = FluxnetSimulations.get_location(
-    FT, Val(site_ID_val)
-)
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
 (; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
 
 # Two months of data (May–Jun 2010)
@@ -91,7 +93,7 @@ stop_date = DateTime(2010, 7, 1)
 
 zmin = FT(-2)
 zmax = FT(0)
-domain = Column(; zlim=(zmin, zmax), nelements=10, longlat=(long, lat))
+domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat))
 
 # ## Model Setup
 
@@ -99,51 +101,61 @@ function model(Vcmax25, g1)
     Vcmax25 = FT(Vcmax25)
     g1 = FT(g1)
     forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
-        site_ID, lat, long, time_offset, atmos_h, start_date, toml_dict, FT
+        site_ID,
+        lat,
+        long,
+        time_offset,
+        atmos_h,
+        start_date,
+        toml_dict,
+        FT,
     )
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        domain.space.surface, start_date, stop_date
+        domain.space.surface,
+        start_date,
+        stop_date,
     )
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
     retention_parameters = (;
-        ν=FT(0.55),
-        θ_r=FT(0.04),
-        K_sat=FT(4e-7),
-        hydrology_cm=ClimaLand.Soil.vanGenuchten{FT}(; α=FT(0.05), n=FT(2.0)),
+        ν = FT(0.55),
+        θ_r = FT(0.04),
+        K_sat = FT(4e-7),
+        hydrology_cm = ClimaLand.Soil.vanGenuchten{FT}(;
+            α = FT(0.05),
+            n = FT(2.0),
+        ),
     )
-    composition_parameters = (;
-        ν_ss_om=FT(0.1), ν_ss_quartz=FT(0.1), ν_ss_gravel=FT(0.0)
-    )
+    composition_parameters =
+        (; ν_ss_om = FT(0.1), ν_ss_quartz = FT(0.1), ν_ss_gravel = FT(0.0))
     soil = ClimaLand.Soil.EnergyHydrology{FT}(
         domain,
         forcing,
         toml_dict;
         prognostic_land_components,
-        additional_sources=(ClimaLand.RootExtraction{FT}(),),
-        runoff=ClimaLand.Soil.Runoff.SurfaceRunoff(),
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
         retention_parameters,
         composition_parameters,
-        S_s=FT(1e-2),
+        S_s = FT(1e-2),
     )
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     canopy_forcing = (;
-        atmos=forcing.atmos,
-        radiation=forcing.radiation,
-        ground=ClimaLand.PrognosticGroundConditions{FT}(),
+        atmos = forcing.atmos,
+        radiation = forcing.radiation,
+        ground = ClimaLand.PrognosticGroundConditions{FT}(),
     )
-    photosyn_defaults = Canopy.clm_photosynthesis_parameters(
-        surface_domain.space.surface
-    )
+    photosyn_defaults =
+        Canopy.clm_photosynthesis_parameters(surface_domain.space.surface)
     photosynthesis = Canopy.FarquharModel{FT}(
         surface_domain,
         toml_dict;
-        photosynthesis_parameters=(;
-            fractional_c3=photosyn_defaults.fractional_c3, Vcmax25
+        photosynthesis_parameters = (;
+            fractional_c3 = photosyn_defaults.fractional_c3,
+            Vcmax25,
         ),
     )
-    conductance = Canopy.MedlynConductanceModel{FT}(
-        surface_domain, toml_dict; g1
-    )
+    conductance =
+        Canopy.MedlynConductanceModel{FT}(surface_domain, toml_dict; g1)
     canopy = Canopy.CanopyModel{FT}(
         surface_domain,
         canopy_forcing,
@@ -164,15 +176,18 @@ function model(Vcmax25, g1)
         canopy,
     )
     set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
-        site_ID, start_date, time_offset, land_model
+        site_ID,
+        start_date,
+        time_offset,
+        land_model,
     )
     output_vars = ["lhf"]
     diagnostics = ClimaLand.default_diagnostics(
         land_model,
         start_date;
-        output_writer=ClimaDiagnostics.Writers.DictWriter(),
+        output_writer = ClimaDiagnostics.Writers.DictWriter(),
         output_vars,
-        reduction_period=:halfhourly,
+        reduction_period = :halfhourly,
     )
     simulation = Simulations.LandSimulation(
         start_date,
@@ -180,8 +195,8 @@ function model(Vcmax25, g1)
         Δt,
         land_model;
         set_ic!,
-        updateat=Second(Δt),
-        user_callbacks=(),
+        updateat = Second(Δt),
+        user_callbacks = (),
         diagnostics,
     )
     solve!(simulation)
@@ -190,7 +205,8 @@ end
 
 function get_lhf(simulation)
     return ClimaLand.Diagnostics.diagnostic_as_vectors(
-        simulation.diagnostics[1].output_writer, "lhf_30m_average"
+        simulation.diagnostics[1].output_writer,
+        "lhf_30m_average",
     )
 end
 
@@ -245,9 +261,15 @@ observations = get_diurnal_average(
 noise_var = 0.05
 noise_covariance = noise_var * EKP.I
 
-# Priors: Vcmax25 ∈ [0, 1e-3], g1 ∈ [0, 1000]
+# Priors: Vcmax25 ∈ [0, 2e-3], g1 ∈ [0, 1000]
+#
+# The Vcmax25 prior is centred at 1e-3 mol m⁻² s⁻¹ so that canopy transpiration
+# contributes meaningfully to LHF and the forward map is sensitive to both
+# parameters. A prior centred at 1e-4 mol m⁻² s⁻¹ would put the ensemble in a
+# soil-evaporation-dominated regime where LHF is nearly flat in Vcmax25,
+# making it unidentifiable from LHF observations alone.
 priors = [
-    PD.constrained_gaussian("Vcmax25", 1e-4, 5e-5, 0, 1e-3),
+    PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3),
     PD.constrained_gaussian("g1", 150, 90, 0, 1000),
 ]
 prior = PD.combine_distributions(priors)
@@ -262,8 +284,9 @@ ensemble_kalman_process = EKP.EnsembleKalmanProcess(
     observations,
     noise_covariance,
     EKP.Inversion();
-    scheduler=EKP.DataMisfitController(;
-        terminate_at=Inf, on_terminate="continue"
+    scheduler = EKP.DataMisfitController(;
+        terminate_at = Inf,
+        on_terminate = "continue",
     ),
     rng,
 )
@@ -282,45 +305,49 @@ eki_map = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)
 
 # Calibration diagnostic plots
 dim_size = sum(length.(EKP.batch(prior)))
-fig = CairoMakie.Figure(; size=((dim_size + 1) * 500, 500))
+fig = CairoMakie.Figure(; size = ((dim_size + 1) * 500, 500))
 for i in 1:dim_size
     EKP.Visualize.plot_ϕ_over_iters(
-        fig[1, i], ensemble_kalman_process, prior, i
+        fig[1, i],
+        ensemble_kalman_process,
+        prior,
+        i,
     )
 end
 EKP.Visualize.plot_error_over_iters(
-    fig[1, dim_size + 1], ensemble_kalman_process
+    fig[1, dim_size + 1],
+    ensemble_kalman_process,
 )
 CairoMakie.save("obs_ces_params_and_error.png", fig)
 # ![](obs_ces_params_and_error.png)
 
-fig2 = CairoMakie.Figure(; size=(900, 400))
+fig2 = CairoMakie.Figure(; size = (900, 400))
 first_G = EKP.get_g(ensemble_kalman_process, 1)
 last_iter = EKP.get_N_iterations(ensemble_kalman_process)
 last_G = EKP.get_g(ensemble_kalman_process, last_iter)
 ax2 = Axis(
     fig2[1, 1];
-    title="G ensemble: first vs last EKI iteration",
-    xlabel="Hour of day",
-    ylabel="LHF [W m⁻²]",
+    title = "G ensemble: first vs last EKI iteration",
+    xlabel = "Hour of day",
+    ylabel = "LHF [W m⁻²]",
 )
 for g in eachcol(first_G)
-    lines!(ax2, 0:23, g; color=(:red, 0.4), linewidth=1.5)
+    lines!(ax2, 0:23, g; color = (:red, 0.4), linewidth = 1.5)
 end
 for g in eachcol(last_G)
-    lines!(ax2, 0:23, g; color=(:blue, 0.4), linewidth=1.5)
+    lines!(ax2, 0:23, g; color = (:blue, 0.4), linewidth = 1.5)
 end
-lines!(ax2, 0:23, observations; color=:black, linewidth=3)
+lines!(ax2, 0:23, observations; color = :black, linewidth = 3)
 axislegend(
     ax2,
     [
-        LineElement(; color=:red, linewidth=2),
-        LineElement(; color=:blue, linewidth=2),
-        LineElement(; color=:black, linewidth=3),
+        LineElement(; color = :red, linewidth = 2),
+        LineElement(; color = :blue, linewidth = 2),
+        LineElement(; color = :black, linewidth = 3),
     ],
     ["First ensemble", "Last ensemble", "FLUXNET observations"];
-    position=:rb,
-    framevisible=false,
+    position = :rb,
+    framevisible = false,
 )
 CairoMakie.resize_to_layout!(fig2)
 CairoMakie.save("obs_ces_G_first_last.png", fig2)
@@ -335,16 +362,15 @@ CairoMakie.save("obs_ces_G_first_last.png", fig2)
 n_iter_used = EKP.get_N_iterations(ensemble_kalman_process)
 @info "Building GP emulator from $n_iter_used iterations ($(n_iter_used * ensemble_size) training points)..."
 
-input_output_pairs = Utilities.get_training_points(
-    ensemble_kalman_process, n_iter_used
-)
+input_output_pairs =
+    Utilities.get_training_points(ensemble_kalman_process, n_iter_used)
 
 n_obs = length(observations)
 ## Same noise_var used in EKI ensures a consistent observation error model.
 obs_noise_cov = noise_var * Matrix(LinearAlgebra.I, n_obs, n_obs)
 
 gppackage = GPJL()
-gauss_proc = GaussianProcess(gppackage; noise_learn=false)
+gauss_proc = GaussianProcess(gppackage; noise_learn = false)
 emulator = Emulator(gauss_proc, input_output_pairs; obs_noise_cov)
 optimize_hyperparameters!(emulator)
 @info "GP emulator trained."
@@ -358,23 +384,30 @@ optimize_hyperparameters!(emulator)
 init_params = EKP.get_u_mean_final(ensemble_kalman_process)
 
 mcmc = MCMCWrapper(
-    RWMHSampling(), Float64.(observations), prior, emulator; init_params
+    RWMHSampling(),
+    Float64.(observations),
+    prior,
+    emulator;
+    init_params,
 )
 
-new_step = optimize_stepsize(
-    mcmc; init_stepsize=0.1, N=2_000, discard_initial=0
-)
+new_step =
+    optimize_stepsize(mcmc; init_stepsize = 0.1, N = 2_000, discard_initial = 0)
 @info "MCMC step size: $new_step"
 
 n_samples = 50_000
 discard_initial = 2_000
 chain = MarkovChainMonteCarlo.sample(
-    mcmc, n_samples; stepsize=new_step, discard_initial
+    mcmc,
+    n_samples;
+    stepsize = new_step,
+    discard_initial,
 )
 posterior = MarkovChainMonteCarlo.get_posterior(mcmc, chain)
 
 constrained_posterior = Emulators.transform_unconstrained_to_constrained(
-    prior, MarkovChainMonteCarlo.get_distribution(posterior)
+    prior,
+    MarkovChainMonteCarlo.get_distribution(posterior),
 )
 
 post_Vcmax25 = vec(constrained_posterior["Vcmax25"])
@@ -397,45 +430,48 @@ rng_prior = Random.MersenneTwister(99)
 prior_ens = EKP.construct_initial_ensemble(rng_prior, prior, 5_000)
 prior_constrained = EKP.get_ϕ(prior, prior_ens)
 
-fig3 = CairoMakie.Figure(; size=(1100, 450))
+fig3 = CairoMakie.Figure(; size = (1100, 450))
 
 ax_v = Axis(
     fig3[1, 1];
-    title="Marginal posterior: Vcmax25",
-    xlabel="Vcmax25 [mol m⁻² s⁻¹]",
-    ylabel="Density",
+    title = "Marginal posterior: Vcmax25",
+    xlabel = "Vcmax25 [mol m⁻² s⁻¹]",
+    ylabel = "Density",
 )
-density!(ax_v, prior_constrained[1, :]; label="Prior", color=(:grey, 0.4))
+density!(ax_v, prior_constrained[1, :]; label = "Prior", color = (:grey, 0.4))
 density!(
-    ax_v, post_Vcmax25; label="Posterior (CES-MCMC)", color=(:steelblue, 0.6)
+    ax_v,
+    post_Vcmax25;
+    label = "Posterior (CES-MCMC)",
+    color = (:steelblue, 0.6),
 )
 vlines!(
     ax_v,
     [eki_map[1]];
-    color=:orange,
-    linewidth=2.5,
-    linestyle=:dash,
-    label="EKI MAP",
+    color = :orange,
+    linewidth = 2.5,
+    linestyle = :dash,
+    label = "EKI MAP",
 )
-axislegend(ax_v; position=:rt, framevisible=false)
+axislegend(ax_v; position = :rt, framevisible = false)
 
 ax_g = Axis(
     fig3[1, 2];
-    title="Marginal posterior: g1",
-    xlabel="g1 [Pa^0.5]",
-    ylabel="Density",
+    title = "Marginal posterior: g1",
+    xlabel = "g1 [Pa^0.5]",
+    ylabel = "Density",
 )
-density!(ax_g, prior_constrained[2, :]; label="Prior", color=(:grey, 0.4))
-density!(ax_g, post_g1; label="Posterior (CES-MCMC)", color=(:coral, 0.6))
+density!(ax_g, prior_constrained[2, :]; label = "Prior", color = (:grey, 0.4))
+density!(ax_g, post_g1; label = "Posterior (CES-MCMC)", color = (:coral, 0.6))
 vlines!(
     ax_g,
     [eki_map[2]];
-    color=:orange,
-    linewidth=2.5,
-    linestyle=:dash,
-    label="EKI MAP",
+    color = :orange,
+    linewidth = 2.5,
+    linestyle = :dash,
+    label = "EKI MAP",
 )
-axislegend(ax_g; position=:rt, framevisible=false)
+axislegend(ax_g; position = :rt, framevisible = false)
 
 CairoMakie.resize_to_layout!(fig3)
 CairoMakie.save("obs_ces_marginal_posteriors.png", fig3)
@@ -448,31 +484,31 @@ CairoMakie.save("obs_ces_marginal_posteriors.png", fig3)
 # can be compensated by lower g1 and still produce similar LHF — a fundamental
 # equifinality issue in land surface modelling that EKI cannot show but UQ can.
 
-fig4 = CairoMakie.Figure(; size=(600, 500))
+fig4 = CairoMakie.Figure(; size = (600, 500))
 ax4 = Axis(
     fig4[1, 1];
-    title="Joint posterior: Vcmax25 vs g1",
-    xlabel="Vcmax25 [mol m⁻² s⁻¹]",
-    ylabel="g1 [Pa^0.5]",
+    title = "Joint posterior: Vcmax25 vs g1",
+    xlabel = "Vcmax25 [mol m⁻² s⁻¹]",
+    ylabel = "g1 [Pa^0.5]",
 )
 scatter!(
     ax4,
     post_Vcmax25[1:5:end],
     post_g1[1:5:end];
-    color=(:steelblue, 0.15),
-    markersize=4,
-    label="Posterior samples",
+    color = (:steelblue, 0.15),
+    markersize = 4,
+    label = "Posterior samples",
 )
 scatter!(
     ax4,
     [eki_map[1]],
     [eki_map[2]];
-    color=:orange,
-    markersize=14,
-    marker=:star5,
-    label="EKI MAP",
+    color = :orange,
+    markersize = 14,
+    marker = :star5,
+    label = "EKI MAP",
 )
-axislegend(ax4; position=:rt, framevisible=false)
+axislegend(ax4; position = :rt, framevisible = false)
 CairoMakie.resize_to_layout!(fig4)
 CairoMakie.save("obs_ces_joint_posterior.png", fig4)
 # ![](obs_ces_joint_posterior.png)
@@ -492,27 +528,33 @@ param_names_vec = EKP.get_name(prior)
 unc_samples = vcat([post_params_unc_dict[nm] for nm in param_names_vec]...)  # (2 × n_samples)
 pp_indices = rand(rng, 1:size(unc_samples, 2), n_pp)
 
-fig5 = CairoMakie.Figure(; size=(900, 400))
+fig5 = CairoMakie.Figure(; size = (900, 400))
 ax5 = Axis(
     fig5[1, 1];
-    title="GP emulator posterior predictive vs FLUXNET",
-    xlabel="Hour of day",
-    ylabel="LHF [W m⁻²]",
+    title = "GP emulator posterior predictive vs FLUXNET",
+    xlabel = "Hour of day",
+    ylabel = "LHF [W m⁻²]",
 )
 for idx in pp_indices
     θ = unc_samples[:, idx]
     pred_mean, _ = Emulators.predict(emulator, reshape(θ, :, 1))
-    lines!(ax5, 0:23, vec(pred_mean); color=(:steelblue, 0.2), linewidth=1.0)
+    lines!(
+        ax5,
+        0:23,
+        vec(pred_mean);
+        color = (:steelblue, 0.2),
+        linewidth = 1.0,
+    )
 end
 lines!(
     ax5,
     0:23,
     observations;
-    color=:black,
-    linewidth=3,
-    label="FLUXNET observations",
+    color = :black,
+    linewidth = 3,
+    label = "FLUXNET observations",
 )
-axislegend(ax5; position=:rb, framevisible=false)
+axislegend(ax5; position = :rb, framevisible = false)
 CairoMakie.resize_to_layout!(fig5)
 CairoMakie.save("obs_ces_predictive.png", fig5)
 # ![](obs_ces_predictive.png)

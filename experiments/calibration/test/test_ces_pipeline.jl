@@ -42,7 +42,7 @@ toy_G(emissivity) = [TOY_C * emissivity]
 
 # Prior matches energy_fluxes.jl
 prior = EKP.combine_distributions([
-    EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0)
+    EKP.constrained_gaussian("emissivity_bare_soil", 0.82, 0.12, 0.0, 2.0),
 ])
 
 # Generate synthetic observation at the true parameter value
@@ -67,7 +67,11 @@ N_iterations = 8
 rng_ekp = Random.MersenneTwister(42)
 initial_ensemble = EKP.construct_initial_ensemble(rng_ekp, prior, N_ens)
 ekp = EKP.EnsembleKalmanProcess(
-    initial_ensemble, y_obs, noise, EKP.Inversion(); rng=rng_ekp
+    initial_ensemble,
+    y_obs,
+    noise,
+    EKP.Inversion();
+    rng = rng_ekp,
 )
 
 # Save the initial EKP to iteration 0 so load_latest_ekp can find it
@@ -109,12 +113,12 @@ end
     global y_obs_from_ekp = EKP.get_obs(first_obs)
     global obs_noise_cov = EKP.get_obs_noise_cov(first_obs)
     @test length(y_obs_from_ekp) == 1
-    @test isapprox(y_obs_from_ekp[1], y_obs[1]; atol=1e-10)
+    @test isapprox(y_obs_from_ekp[1], y_obs[1]; atol = 1e-10)
 
     # Train GP emulator — same call as emulate.jl
     @info "Training GP emulator..."
     gppackage = GPJL()
-    gauss_proc = GaussianProcess(gppackage; noise_learn=false)
+    gauss_proc = GaussianProcess(gppackage; noise_learn = false)
     global emulator = Emulator(gauss_proc, iop; obs_noise_cov)
     optimize_hyperparameters!(emulator)
     @test emulator isa Emulator
@@ -127,9 +131,9 @@ end
         emulator_file;
         emulator,
         prior,
-        y_obs=y_obs_from_ekp,
+        y_obs = y_obs_from_ekp,
         obs_noise_cov,
-        n_iterations=n_iter_loaded,
+        n_iterations = n_iter_loaded,
     )
     @test isfile(emulator_file)
     @info "Emulator saved → $emulator_file"
@@ -158,11 +162,17 @@ end
         init_params,
     )
     new_step = MarkovChainMonteCarlo.optimize_stepsize(
-        mcmc; init_stepsize=0.1, N=2000, discard_initial=0
+        mcmc;
+        init_stepsize = 0.1,
+        N = 2000,
+        discard_initial = 0,
     )
     @info "MCMC step size: $new_step"
     chain = MarkovChainMonteCarlo.sample(
-        mcmc, 20_000; stepsize=new_step, discard_initial=1_000
+        mcmc,
+        20_000;
+        stepsize = new_step,
+        discard_initial = 1_000,
     )
     display(chain)
 
@@ -173,7 +183,8 @@ end
     @test isfile(posterior_file)
 
     constrained_posterior = Emulators.transform_unconstrained_to_constrained(
-        prior_loaded, MarkovChainMonteCarlo.get_distribution(posterior)
+        prior_loaded,
+        MarkovChainMonteCarlo.get_distribution(posterior),
     )
 
     samples_e = vec(constrained_posterior["emissivity_bare_soil"])

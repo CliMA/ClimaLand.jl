@@ -60,7 +60,11 @@ const OUTPUT_DIR = get(
 config_file = get(ENV, "CALIBRATION_CONFIG", "energy_fluxes.jl")
 include(
     joinpath(
-        pkgdir(ClimaLand), "experiments", "calibration", "configs", config_file
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        "configs",
+        config_file,
     ),
 )
 
@@ -79,7 +83,7 @@ isnothing(ekp) && error(
 
 n_iterations = length(ekp.g)
 @info "EKP loaded: $(EKP.get_N_ens(ekp)) members × $n_iterations iterations = " *
-    "$(EKP.get_N_ens(ekp) * n_iterations) training samples"
+      "$(EKP.get_N_ens(ekp) * n_iterations) training samples"
 
 # ------------------------------------------------------------------
 # Extract (parameter, G(parameter)) training pairs
@@ -107,7 +111,7 @@ obs_noise_cov = EKP.get_obs_noise_cov(first_obs)
 # ------------------------------------------------------------------
 @info "Training Gaussian Process emulator (this may take several minutes for large observation vectors)..."
 gppackage = GPJL()
-gauss_proc = GaussianProcess(gppackage; noise_learn=false)
+gauss_proc = GaussianProcess(gppackage; noise_learn = false)
 emulator = Emulator(gauss_proc, input_output_pairs; obs_noise_cov)
 optimize_hyperparameters!(emulator)
 @info "Emulator trained."
