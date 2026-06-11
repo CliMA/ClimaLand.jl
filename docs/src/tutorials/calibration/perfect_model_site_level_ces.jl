@@ -96,13 +96,13 @@ zmin = FT(-2)
 zmax = FT(0)
 domain = Column(; zlim=(zmin, zmax), nelements=10, longlat=(long, lat))
 
-forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
-    site_ID, lat, long, time_offset, atmos_h, start_date, toml_dict, FT
-)
-
 # ## Model Setup
 
 function model(Vcmax25)
+    ## Forcing is created inside the function so each model call is self-contained.
+    forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
+        site_ID, lat, long, time_offset, atmos_h, start_date, toml_dict, FT
+    )
     LAI = ClimaLand.Canopy.prescribed_lai_modis(
         domain.space.surface, start_date, stop_date
     )
@@ -200,7 +200,10 @@ end
 
 true_Vcmax25 = 0.0001
 observations = G(true_Vcmax25)
-noise_covariance = 0.05 * EKP.I
+## Noise variance: used for both EKI and the GP emulator likelihood so both
+## steps see a consistent observation error model.
+noise_var = 0.05
+noise_covariance = noise_var * EKP.I
 
 # Constrained Gaussian prior: Vcmax25 ∈ [0, 2e-3]
 prior = PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3)
@@ -294,9 +297,9 @@ input_output_pairs = Utilities.get_training_points(
     ensemble_kalman_process, n_iter_used
 )
 
-# Concrete noise covariance matrix (same variance as used in EKI)
+## Concrete noise covariance matrix — same variance as passed to EKP above
 n_obs = length(observations)
-obs_noise_cov = 0.05 * Matrix(LinearAlgebra.I, n_obs, n_obs)
+obs_noise_cov = noise_var * Matrix(LinearAlgebra.I, n_obs, n_obs)
 
 # Build, configure, and optimize the GP emulator.
 # GPJL uses GaussianProcesses.jl (squared-exponential kernel by default).
@@ -389,8 +392,11 @@ CairoMakie.save("perfect_model_ces_posterior.png", fig3)
 
 # ## Posterior Predictive Check
 #
-# Evaluate G at posterior mean samples to confirm the emulator posterior
-# is consistent with the calibration target.
+# We evaluate the GP *emulator* (not the land model) at posterior samples to
+# check that the emulator's likelihood is consistent with the calibration
+# observations. This is deliberately cheap — each call to `Emulators.predict`
+# takes microseconds. Running the actual land model at all 50 000 MCMC samples
+# would be infeasible; the emulator makes this possible.
 
 n_pp = 30
 ## unconstrained MCMC samples for the emulator (Dict keyed by parameter name)
