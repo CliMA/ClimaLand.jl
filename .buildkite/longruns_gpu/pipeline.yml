@@ -115,7 +115,7 @@ steps:
     steps:
       - label: "Snowy Land, 19 years"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/spinup_pmodel.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/spinup_model.jl
         agents:
           slurm_gpus: 1
           slurm_time: 20:00:00
