@@ -197,8 +197,15 @@ end
 #
 # Generate synthetic "truth" from the model at a known true parameter value,
 # then run EKI to recover it from noisy observations.
+#
+# The true value is set to 1.5e-3 mol m⁻² s⁻¹ — one standard deviation above
+# the prior mean of 1e-3. This puts the target firmly inside the identifiable
+# range: the forward map G (diurnal LHF) is sensitive to Vcmax25 here, so EKI
+# can distinguish the true parameter from the prior center. A value near zero
+# (e.g. 1e-4) would be in a regime where LHF is dominated by soil evaporation
+# and is nearly insensitive to Vcmax25, making calibration ill-posed.
 
-true_Vcmax25 = 0.0001
+true_Vcmax25 = 1.5e-3
 observations = G(true_Vcmax25)
 ## Noise variance: used for both EKI and the GP emulator likelihood so both
 ## steps see a consistent observation error model.
@@ -370,7 +377,7 @@ ax3 = Axis(
 # Sample prior for comparison
 rng_prior = Random.MersenneTwister(99)
 prior_ens = EKP.construct_initial_ensemble(rng_prior, prior, 5_000)
-prior_constrained = EKP.get_ϕ(prior, prior_ens)
+prior_constrained = EKP.transform_unconstrained_to_constrained(prior, prior_ens)
 
 density!(ax3, vec(prior_constrained); label="Prior", color=(:grey, 0.4))
 density!(
