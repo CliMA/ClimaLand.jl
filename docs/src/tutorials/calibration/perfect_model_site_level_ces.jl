@@ -230,7 +230,9 @@ true_Vcmax25 = 1.5e-3
 observations = G(true_Vcmax25)
 ## Noise variance: used for both EKI and the GP emulator likelihood so both
 ## steps see a consistent observation error model.
-noise_var = 0.05
+## σ = √noise_var ≈ 5 W m⁻² (≈ 7% of the ~70 W m⁻² synthetic peak LHF),
+## large enough to see ensemble spread in plots while still allowing recovery.
+noise_var = 25.0
 noise_covariance = noise_var * EKP.I
 
 # Constrained Gaussian prior: Vcmax25 ∈ [0, 2e-3]
@@ -329,19 +331,72 @@ n_iter_used = EKP.get_N_iterations(ensemble_kalman_process)
 input_output_pairs =
     Utilities.get_training_points(ensemble_kalman_process, n_iter_used)
 
-## Concrete noise covariance matrix — same variance as passed to EKP above
-n_obs = length(observations)
-obs_noise_cov = noise_var * Matrix(LinearAlgebra.I, n_obs, n_obs)
-
 # Build, configure, and optimize the GP emulator.
 # GPJL uses GaussianProcesses.jl (squared-exponential kernel by default).
 # The Decorrelator inside Emulator projects the 24D output onto its principal
 # components so each GP only needs to model a 1D output.
+# encoder_kwargs bundles the noise covariance and prior covariance from the
+# calibration step — the recommended way to configure the Emulator encoder.
+encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior)
 gppackage = GPJL()
 gauss_proc = GaussianProcess(gppackage; noise_learn = false)
-emulator = Emulator(gauss_proc, input_output_pairs; obs_noise_cov)
+emulator = Emulator(gauss_proc, input_output_pairs; encoder_kwargs)
 optimize_hyperparameters!(emulator)
 @info "GP emulator trained."
+
+# ### Emulator Validation
+#
+# Before running MCMC, verify that the GP accurately reproduces the model
+# outputs on the EKI training data. Red curves are the actual G(θ) values;
+# blue curves are the emulator's predictions at the same inputs. Close overlap
+# confirms the surrogate is fit for purpose before sampling begins.
+train_in = EKP.DataContainers.get_inputs(input_output_pairs)
+train_out = EKP.DataContainers.get_outputs(input_output_pairs)
+emul_pred_train, _ = Emulators.predict(emulator, train_in)
+n_train = size(train_in, 2)
+val_idx = rand(rng, 1:n_train, min(10, n_train))
+
+fig_val = CairoMakie.Figure(; size = (900, 400))
+ax_val = Axis(
+    fig_val[1, 1];
+    title = "Emulator validation: GP predictions vs EKI training data",
+    xlabel = "Hour of day",
+    ylabel = "LHF [W m⁻²]",
+)
+lines!(
+    ax_val,
+    0:23,
+    observations;
+    color = :black,
+    linewidth = 3,
+    label = "Truth",
+)
+for j in val_idx
+    lines!(ax_val, 0:23, train_out[:, j]; color = (:red, 0.5), linewidth = 1.5)
+end
+for j in val_idx
+    lines!(
+        ax_val,
+        0:23,
+        emul_pred_train[:, j];
+        color = (:steelblue, 0.5),
+        linewidth = 1.5,
+    )
+end
+axislegend(
+    ax_val,
+    [
+        LineElement(; color = :black, linewidth = 3),
+        LineElement(; color = :red, linewidth = 2),
+        LineElement(; color = :steelblue, linewidth = 2),
+    ],
+    ["Truth", "Model G(θ)", "Emulator GP(θ)"];
+    position = :rt,
+    framevisible = false,
+)
+CairoMakie.resize_to_layout!(fig_val)
+CairoMakie.save("perfect_model_ces_emulator_validation.png", fig_val)
+# ![](perfect_model_ces_emulator_validation.png)
 
 # ## Step 3 — Sample (MCMC Posterior)
 #
@@ -440,36 +495,30 @@ CairoMakie.save("perfect_model_ces_posterior.png", fig3)
 
 # ## Posterior Predictive Check
 #
-# We evaluate the GP *emulator* (not the land model) at posterior samples to
-# check that the emulator's likelihood is consistent with the calibration
-# observations. This is deliberately cheap — each call to `Emulators.predict`
-# takes microseconds. Running the actual land model at all 50 000 MCMC samples
-# would be infeasible; the emulator makes this possible.
+# Evaluate the TRUE forward model G at a small number of posterior samples.
+# This is the proper posterior predictive check: it uses the actual land model
+# (not the emulator) to validate that the emulator-based posterior is meaningful.
+# If the emulator were biased, the MCMC posterior could be biased too — but this
+# check would reveal the discrepancy since G itself is unbiased.
 
-n_pp = 30
-## unconstrained MCMC samples for the emulator (Dict keyed by parameter name)
+n_pp = 3
 post_params_unc_dict = MarkovChainMonteCarlo.get_distribution(posterior)
 unc_samples = post_params_unc_dict["Vcmax25"]  # (1 × n_samples)
-post_indices = rand(rng, 1:size(unc_samples, 2), n_pp)
+pp_idx = rand(rng, 1:size(unc_samples, 2), n_pp)
+pp_constrained =
+    EKP.transform_unconstrained_to_constrained(prior, unc_samples[:, pp_idx])
 
 fig4 = CairoMakie.Figure(; size = (900, 400))
 ax4 = Axis(
     fig4[1, 1];
-    title = "GP emulator: posterior predictive",
+    title = "Posterior predictive check (true model G)",
     xlabel = "Hour of day",
     ylabel = "LHF [W m⁻²]",
 )
 lines!(ax4, 0:23, observations; color = :black, linewidth = 3, label = "Truth")
-for idx in post_indices
-    θ = unc_samples[:, idx]
-    pred_mean, _ = Emulators.predict(emulator, reshape(θ, :, 1))
-    lines!(
-        ax4,
-        0:23,
-        vec(pred_mean);
-        color = (:steelblue, 0.25),
-        linewidth = 1.0,
-    )
+for j in 1:n_pp
+    G_j = G(pp_constrained[1, j])
+    lines!(ax4, 0:23, G_j; color = (:steelblue, 0.5), linewidth = 1.5)
 end
 axislegend(ax4; position = :rb, framevisible = false)
 CairoMakie.resize_to_layout!(fig4)
