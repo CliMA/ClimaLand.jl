@@ -470,6 +470,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "infil",
         "iwc",
         "precip",
+	"tair",
         "sdr",
     ]
 
@@ -614,7 +615,7 @@ function get_possible_diagnostics(model::LandModel)
     )
 
     additional_diagnostics =
-        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg"]
+        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg","tr"]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -631,7 +632,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "so2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "lai", "trans", "er"]
+    diagnostics = ["gpp", "lai", "trans", "er", "lwp"]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end

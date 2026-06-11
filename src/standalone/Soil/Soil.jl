@@ -270,7 +270,7 @@ function EnergyHydrology{FT}(
         toml_dict,
         f_max = topmodel_fmax(domain.space.surface, FT),
     ),
-    retention_parameters = soil_vangenuchten_parameters(
+    retention_parameters = rosetta_soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
     ),

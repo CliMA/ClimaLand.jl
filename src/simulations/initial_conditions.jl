@@ -11,6 +11,8 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 interpolation_method = Interpolations.Constant()
+mean_tair_path = "/home/kdeck/ClimaLand.jl/mean_tair.nc"
+#mean_tair_path = "/Users/katherinedeck/Desktop/code/ClimaLand.jl/mean_tair.nc"
 """
     set_soil_initial_conditions!(Y, subsurface_space, soil_ic_path, soil; enforce_constraints = false, T_bounds = nothing)
 
@@ -877,7 +879,25 @@ function make_set_initial_state_from_atmos_and_parameters(
     return set_ic!
 end
 
+function set_ice_ic(T::FT, ν::FT, θ_r::FT) where {FT}
+    if T < FT(273.15)
+        ϑ_l = FT(1.1)*θ_r
+        return max((ν - ϑ_l)*FT(0.9), FT(0))
+    else
+        return FT(0)
+    end
+end
 
+function set_liquid_ic(T::FT, ν::FT, θ_r::FT) where {FT}
+    if T < FT(273.15)
+        ϑ_l = FT(1.1)*θ_r
+        return ϑ_l
+    else
+        return (ν-θ_r)*FT(0.98) + θ_r
+    end
+end
+
+        
 """
     make_set_initial_state_from_atmos_and_parameters(land::LandModel{FT}) where {FT}
 
@@ -894,12 +914,17 @@ function make_set_initial_state_from_atmos_and_parameters(
     function set_ic!(Y, p, t0, land)
         atmos = ClimaLand.get_drivers(land)[1]
         earth_param_set = ClimaLand.get_earth_param_set(land.soil)
-        if atmos isa ClimaLand.PrescribedAtmosphere
-            evaluate!(p.drivers.T, atmos.T, t0)
-        end
+	surface_space = land.soil.domain.space.surface
+        p.drivers.T .= SpaceVaryingInput(
+            mean_tair_path,
+            "tair_mean",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
         (; θ_r, ν, ρc_ds) = land.soil.parameters
-        @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
-        Y.soil.θ_i .= FT(0.0)
+        @. Y.soil.ϑ_l = set_liquid_ic(p.drivers.T, ν, θ_r)
+        @. Y.soil.θ_i = set_ice_ic(p.drivers.T, ν, θ_r)
         ρc_s =
             ClimaLand.Soil.volumetric_heat_capacity.(
                 Y.soil.ϑ_l,
@@ -970,4 +995,37 @@ function set_lake_initial_conditions!(
         model.parameters,
     )
     return nothing
+end
+
+function make_set_initial_state_from_atmos_and_parameters(
+    land::ClimaLand.Soil.EnergyHydrology{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        surface_space=land.domain.space.surface
+        earth_param_set = ClimaLand.get_earth_param_set(land)
+        p.drivers.T .= SpaceVaryingInput(
+            mean_tair_path,
+            "tair_mean",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        (; θ_r, ν, ρc_ds) = land.parameters
+        @. Y.soil.ϑ_l = θ_r + (ν - θ_r)*FT(0.98)
+        Y.soil.θ_i .= FT(0.0)
+        ρc_s =
+            ClimaLand.Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                ρc_ds,
+                earth_param_set,
+            )
+        Y.soil.ρe_int .=
+            ClimaLand.Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                p.drivers.T,
+                earth_param_set,
+            )
+    end
 end

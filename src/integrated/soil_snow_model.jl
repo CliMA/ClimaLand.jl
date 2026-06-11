@@ -213,19 +213,18 @@ end
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
-    F_g =  - κ_eff (T_snow - T_soil)/Δz_eff,
+    F_g =  - g_eff (T_snow - T_soil)
 
 where:
-    κ_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)* (Δz_soil + Δz_snow)/2
-    Δz_eff =( Δz_soil + Δz_snow)/2
+    g_eff = g_snow g_soil/ (g_soil + g_snow);
+    g_soil = κ_soil/Δz_soil
+    g_snow = κ_snow/Δz_snow_eff
 
 This is what JULES does to compute the diffusive heat flux between snow and soil, for example,
-see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011
-
-However, this is for a multi-layer snow model, with
-T_snow and Δz_snow related to the bottom layer.
-We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep.
-Due to this, we cap Δz_snow at 10 cm.
+see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011,
+setting g_snow = κ_snow/Δz_snow. Since we do not have a multilayer model, 
+using  Δz_snow = z_snow (height of snow) leads to a very small flux when the snow is deep.
+Due to this, we set Δz_snow_eff = min(z_snow, Δz_max), with Δz_max = free parameter.
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -244,15 +243,42 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
-    T_snow = p.snow.T
+    g_eff =
+        @. lazy(κ_soil * κ_snow / (κ_snow / 2 + κ_soil / 2)/FT(0.1))
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
-    # compute the flux
-    @. p.ground_heat_flux =
-        -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
-        (T_snow - T_soil)
+    T̄ = p.snow.T
+    T_sfc = p.snow.T_sfc
+    @. p.snow.T_bot = T_bottom(κ_snow,
+                               g_eff,
+                               T_soil,
+                               T̄,
+                               T_sfc,
+                               max(p.snow.z_snow, eps(FT)),
+                               p.snow.ρ_snow,
+                               snow_params.earth_param_set,
+                               )
+    @. p.ground_heat_flux = -g_eff * (p.snow.T_bot - T_soil)
     return nothing
 end
+
+function T_bottom(
+    κ::FT,
+    g_eff::FT,
+    T_soil::FT,
+    T̄::FT,
+    T_sfc::FT,
+    z::FT,
+    ρ::FT,
+    earth_param_set,
+) where {FT}
+    d = Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
+    return min(
+        (2 * T̄ - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
+        (g_eff / κ * (z - d) + 1 + (z - d) / z),
+        FT(273.15),
+    )
+end
+
 
 
 ### Extensions of existing functions to account for prognostic soil/snow

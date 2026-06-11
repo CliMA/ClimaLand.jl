@@ -72,15 +72,27 @@ forcing = ClimaLand.prescribed_forcing_era5(
     context,
 )
 model = ClimaLand.Soil.EnergyHydrology{FT}(domain, forcing, toml_dict)
+set_ic! =
+    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+        model,
+    )
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date,
     outdir;
-    conservation = true,
-    conservation_period = Day(10),
+    reduction_period=:monthly,
+    output_vars = [
+        "tsoil",
+        "swc",
+        "si",
+        "sr",
+        "ssr",
+        "tair",
+	"precip"
+    ],
 )
 simulation =
-    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics, set_ic!)
 
 @info "Run: Global Soil Model"
 @info "Resolution: $(domain.nelements)"
@@ -90,7 +102,7 @@ simulation =
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation)
 
-short_names = ["swc", "sie", "si"]
+short_names = ["swc", "si", "tsoil", "tair", "sr", "ssr"]
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
 LandSimVis.make_heatmaps(
     simulation;
@@ -98,4 +110,3 @@ LandSimVis.make_heatmaps(
     date = stop_date,
     short_names,
 )
-LandSimVis.check_conservation(simulation; savedir = root_path)

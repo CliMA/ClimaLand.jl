@@ -266,6 +266,20 @@ function soil_params_artifact_folder_path(; context = nothing, lowres = false)
 end
 
 """
+    rosetta_soil_params_artifact_path(; context)
+
+Return the path to the folder that contains the soil hydraulic parameters 
+from Montzka, C et al. (2017): A global data set of soil hydraulic 
+properties and sub-grid variability of soil water retention and 
+hydraulic conductivity curves. Earth System Science Data, 9(2), 
+529-543, https://doi.org/10.5194/essd-9-529-2017..
+"""
+function rosetta_soil_params_artifact_path(; context = nothing)
+    dir = @clima_artifact("soil_params_rosetta", context)
+    return joinpath(dir, "soil_params_rosetta.nc")
+end
+
+"""
     soil_grids_params_artifact_path(; lowres = true, context)
 
 Return the path to the file that contains the soil texture parameters
