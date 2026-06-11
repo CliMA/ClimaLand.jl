@@ -428,7 +428,7 @@ post_g1 = vec(constrained_posterior["g1"])
 
 rng_prior = Random.MersenneTwister(99)
 prior_ens = EKP.construct_initial_ensemble(rng_prior, prior, 5_000)
-prior_constrained = EKP.get_ϕ(prior, prior_ens)
+prior_constrained = EKP.transform_unconstrained_to_constrained(prior, prior_ens)
 
 fig3 = CairoMakie.Figure(; size = (1100, 450))
 
