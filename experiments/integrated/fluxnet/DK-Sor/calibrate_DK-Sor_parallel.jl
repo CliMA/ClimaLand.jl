@@ -292,10 +292,15 @@ function run_model_year(params_vec, year)
         Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
             solve!(simulation)
         end
-        return extract_monthly_means(simulation, start_date)
+        result = extract_monthly_means(simulation, start_date)
+        n_nan = count(isnan, result)
+        if n_nan > 0
+            @warn "run_model_year($year): simulation produced NaN ($(n_nan)/$(length(result)) monthly means NaN) on worker $(myid())"
+        end
+        return result
 
     catch e
-        @warn "run_model_year($year) failed on worker $(myid()): $e"
+        @warn "run_model_year($year) failed on worker $(myid()): $(typeof(e)): $e"
         return fill(NaN, 36)
     finally
         rm(tmpfile; force = true)
@@ -495,6 +500,16 @@ function main()
             G_ens = hcat(G_results...)
         end
         @info "  Parallel forward models done in $(round(t_wall/60, digits=1)) min"
+
+        # Replace any NaN/Inf columns with large penalty + noise so that
+        # update_ensemble! receives a finite covariance matrix.
+        failed_cols = findall(j -> any(!isfinite, G_ens[:, j]), 1:N_ens)
+        if !isempty(failed_cols)
+            @warn "  $(length(failed_cols))/$(N_ens) members returned NaN/Inf — replacing with penalty (1e6 ± 1e3 noise)"
+            for j in failed_cols
+                G_ens[:, j] .= 1e6 .+ randn(rng, size(G_ens, 1)) .* 1e3
+            end
+        end
 
         EKP.update_ensemble!(ekp, G_ens)
         save_checkpoint(ekp, i)
