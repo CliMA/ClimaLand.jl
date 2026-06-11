@@ -241,7 +241,9 @@ observations = get_diurnal_average(
 )
 
 # Observation noise: flat 5% variance covariance (24 × 24)
-noise_covariance = 0.05 * EKP.I
+## noise_var is defined once and used for both EKI and the GP emulator likelihood.
+noise_var = 0.05
+noise_covariance = noise_var * EKP.I
 
 # Priors: Vcmax25 ∈ [0, 1e-3], g1 ∈ [0, 1000]
 priors = [
@@ -338,7 +340,8 @@ input_output_pairs = Utilities.get_training_points(
 )
 
 n_obs = length(observations)
-obs_noise_cov = 0.05 * Matrix(LinearAlgebra.I, n_obs, n_obs)
+## Same noise_var used in EKI ensures a consistent observation error model.
+obs_noise_cov = noise_var * Matrix(LinearAlgebra.I, n_obs, n_obs)
 
 gppackage = GPJL()
 gauss_proc = GaussianProcess(gppackage; noise_learn=false)
@@ -476,9 +479,11 @@ CairoMakie.save("obs_ces_joint_posterior.png", fig4)
 
 # ## Posterior Predictive Check
 #
-# Evaluate G at random posterior samples via the GP emulator and compare with
-# the FLUXNET observations. The spread of predicted diurnal LHF curves gives a
-# direct picture of the observation-constrained uncertainty in the model output.
+# We evaluate the GP *emulator* (not the land model) at random posterior samples
+# and compare the predicted diurnal LHF against FLUXNET. Each call to
+# `Emulators.predict` takes microseconds, making this check cheap. The spread of
+# curves directly visualises the observation-constrained uncertainty in the model
+# output — this is the key advantage of CES over a single EKI MAP estimate.
 
 n_pp = 50
 ## unconstrained MCMC samples for the emulator (Dict keyed by parameter name)
