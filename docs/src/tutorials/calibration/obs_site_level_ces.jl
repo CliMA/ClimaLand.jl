@@ -9,10 +9,9 @@
 # Using real observations (rather than synthetic perfect-model data) means the
 # posterior captures genuine model-data discrepancy. The full posterior from
 # MCMC reveals parameter correlations, multi-modality, and uncertainty that a
-# single EKI MAP estimate cannot show. Both parameters are calibrated within
-# prior ranges where LHF is sensitive to each: Vcmax25 ∈ [0, 2e-3] keeps the
-# ensemble in a regime where canopy transpiration is significant, and g1
-# modulates stomatal aperture directly.
+# single EKI MAP estimate cannot show. Prior ranges are centered on a parameter
+# region where the forward model's LHF output is sensitive to both Vcmax25 and
+# g1, as identified by a forward-model sensitivity scan.
 #
 # ## Overview
 #
@@ -256,26 +255,32 @@ observations = get_diurnal_average(
     stop_date,
 )
 
-# Observation noise: flat 5% variance covariance (24 × 24)
-## noise_var is defined once and used for both EKI and the GP emulator likelihood.
-noise_var = 0.05
+# Observation noise covariance (24 × 24, units W²/m⁴).
+#
+# noise_var must be set to reflect the actual model-data mismatch scale, not a
+# dimensionless fraction. The forward model has a structural RMSE of ~88 W m⁻²
+# against the FLUXNET diurnal average, so σ ≈ 100 W m⁻² per hourly bin is a
+# physically motivated choice. Using a noise much smaller than the model error
+# would make the likelihood degenerate (all parameter values score ≈ −∞),
+# causing MCMC to random-walk to the prior boundary with no signal.
+noise_var = 100.0^2   # σ = 100 W m⁻² per hourly LHF (≈ model structural error)
 noise_covariance = noise_var * EKP.I
 
-# Priors: Vcmax25 ∈ [0, 2e-3], g1 ∈ [0, 1000]
+# Priors: Vcmax25 ∈ [5e-5, 8e-4], g1 ∈ [100, 2500]
 #
-# The Vcmax25 prior is centred at 1e-3 mol m⁻² s⁻¹ so that canopy transpiration
-# contributes meaningfully to LHF and the forward map is sensitive to both
-# parameters. A prior centred at 1e-4 mol m⁻² s⁻¹ would put the ensemble in a
-# soil-evaporation-dominated regime where LHF is nearly flat in Vcmax25,
-# making it unidentifiable from LHF observations alone.
+# Prior ranges are informed by a sensitivity scan of the forward model against
+# FLUXNET LHF at US-MOz (May–Jun 2010). The scan revealed a clear RMSE minimum
+# near Vcmax25 ≈ 3.5e-4 mol m⁻² s⁻¹ and g1 ≈ 1200 Pa^0.5. Centering the
+# priors in this identifiable region ensures EKI explores the curvature rather
+# than a flat region where LHF is insensitive to parameter changes.
 priors = [
-    PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3),
-    PD.constrained_gaussian("g1", 150, 90, 0, 1000),
+    PD.constrained_gaussian("Vcmax25", 3e-4, 1e-4, 5e-5, 8e-4),
+    PD.constrained_gaussian("g1", 1000, 400, 100, 2500),
 ]
 prior = PD.combine_distributions(priors)
 
 ensemble_size = 10
-N_iterations = 4
+N_iterations = 6
 
 initial_ensemble = EKP.construct_initial_ensemble(rng, prior, ensemble_size)
 
