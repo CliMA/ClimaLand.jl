@@ -27,13 +27,13 @@
 using LinearAlgebra
 using Statistics
 using Printf
-import JLD2
+using JLD2: JLD2
 import EnsembleKalmanProcesses as EKP
 import EnsembleKalmanProcesses.ParameterDistributions
-import ClimaCalibrate
-import ClimaLand
+using ClimaCalibrate: ClimaCalibrate
+using ClimaLand: ClimaLand
 
-import CalibrateEmulateSample
+using CalibrateEmulateSample: CalibrateEmulateSample
 using CalibrateEmulateSample.Emulators
 using CalibrateEmulateSample.MarkovChainMonteCarlo
 
@@ -77,13 +77,10 @@ init_params = EKP.get_u_mean_final(ekp)
 # ------------------------------------------------------------------
 @info "Running MCMC: $n_samples samples (discarding first $discard_initial)..."
 mcmc = MCMCWrapper(RWMHSampling(), y_obs, prior, emulator; init_params)
-new_step = optimize_stepsize(mcmc; init_stepsize, N = 2000, discard_initial = 0)
+new_step = optimize_stepsize(mcmc; init_stepsize, N=2000, discard_initial=0)
 @info "MCMC step size optimised: $new_step"
 chain = MarkovChainMonteCarlo.sample(
-    mcmc,
-    n_samples;
-    stepsize = new_step,
-    discard_initial,
+    mcmc, n_samples; stepsize=new_step, discard_initial
 )
 
 display(chain)
@@ -98,8 +95,7 @@ JLD2.save_object(posterior_file, posterior)
 
 # Transform from unconstrained (MCMC) space back to physical parameter space
 constrained_posterior = Emulators.transform_unconstrained_to_constrained(
-    prior,
-    MarkovChainMonteCarlo.get_distribution(posterior),
+    prior, MarkovChainMonteCarlo.get_distribution(posterior)
 )
 
 param_names = ParameterDistributions.name(prior)
