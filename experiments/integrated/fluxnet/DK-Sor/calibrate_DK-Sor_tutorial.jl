@@ -124,7 +124,7 @@ const PARAM_NAMES = [
     "emissivity_bare_soil",
 ]
 const N_PARAMS = length(PARAM_NAMES)   # 11
-const N_ENS    = 2 * N_PARAMS + 1      # 23  (TransformUnscented)
+const N_ENS    = 30                    # EKI ensemble size (matches global calibration scale)
 
 # ── EKP prior ─────────────────────────────────────────────────────────────────────
 # Means are recentered on the posterior from the global gpp_er_nee_lhf calibration
@@ -143,7 +143,7 @@ function get_calibration_prior()
         PD.constrained_gaussian("O2_michaelis_constant",        0.00255006, 0.002,  1.0e-5, 0.1),
         PD.constrained_gaussian("root_leaf_nitrogen_ratio",     0.0625785,  0.04,   0.01,   3.0),
         PD.constrained_gaussian("relative_contribution_factor", 0.844417,   0.15,   0.0,    1.5),
-        PD.constrained_gaussian("emissivity_bare_soil",         0.96,       0.05,   0.6,    1.0),
+        PD.constrained_gaussian("emissivity_bare_soil",         0.96,       0.03,   0.6,    1.0),
     ]
     return PD.combine_distributions(priors)
 end
@@ -287,6 +287,12 @@ function run_model_year(params_vec, year)
 
     start_date = DateTime(year,     1, 1)
     stop_date  = DateTime(year + 1, 1, 1)
+
+    # Guard against NaN params (can occur with sigma-point methods near bounds)
+    if any(isnan, params_vec)
+        @warn "run_model_year($year): NaN in params_vec, skipping"
+        return fill(NaN, 36)
+    end
 
     # Write calibration parameter values to a temporary TOML override file.
     tmpfile = tempname() * ".toml"
@@ -623,12 +629,17 @@ function main()
     ekp, start_iter = load_checkpoint()
 
     if isnothing(ekp)
-        minibatcher = EKP.RandomFixedSizeMinibatcher(MINIBATCH_SIZE; rng)
+        minibatcher = EKP.RandomFixedSizeMinibatcher(MINIBATCH_SIZE)
         obs_series  = EKP.ObservationSeries(
             obs_per_year, minibatcher, string.(CALIB_YEARS))
+        # Use Inversion() (standard EKI) — TransformUnscented sigma points near
+        # prior bounds produce NaN in constrained space → invalid TOML.
+        # Inversion() requires an explicit initial ensemble sampled from the prior.
+        initial_ensemble = EKP.construct_initial_ensemble(rng, prior, N_ENS)
         ekp = EKP.EnsembleKalmanProcess(
+            initial_ensemble,
             obs_series,
-            EKP.TransformUnscented(prior; impose_prior = true);
+            EKP.Inversion();
             verbose  = true,
             rng,
             scheduler = EKP.DataMisfitController(terminate_at = 100),

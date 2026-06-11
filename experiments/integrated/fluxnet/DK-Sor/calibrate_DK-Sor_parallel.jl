@@ -30,13 +30,19 @@ addprocs(N_WORKERS;
 
 @info "Started $(nworkers()) Julia workers (requested $(N_WORKERS))"
 
+# ── ClimaComms backend must be loaded in two separate @everywhere calls because
+#    Julia lowers (macro-expands) an entire @everywhere begin...end block before
+#    evaluating any import statements.  If @import_required_backends is in the
+#    same block as `import ClimaComms`, workers fail with
+#    "UndefVarError: ClimaComms not defined".
+@everywhere import ClimaComms
+@everywhere ClimaComms.@import_required_backends
+
 # ══════════════════════════════════════════════════════════════════════════════════
 #  Everything inside @everywhere is loaded on all workers AND the master process.
 # ══════════════════════════════════════════════════════════════════════════════════
 @everywhere begin
 
-import ClimaComms
-ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
 using Dates
@@ -110,7 +116,7 @@ const PARAM_NAMES = [
     "emissivity_bare_soil",
 ]
 const N_PARAMS = length(PARAM_NAMES)
-const N_ENS    = 2 * N_PARAMS + 1
+const N_ENS    = 30   # EKI ensemble size (same order as global calibration)
 
 # ── Helper: write parameter override TOML ────────────────────────────────────────
 function write_override_toml(path, param_names, param_values)
@@ -154,6 +160,13 @@ function run_model_year(params_vec, year)
 
     start_date = DateTime(year,     1, 1)
     stop_date  = DateTime(year + 1, 1, 1)
+
+    # Guard: TransformUnscented sigma points near prior bounds can map to NaN
+    # in constrained space. Return NaN output so EKP update ignores this member.
+    if any(isnan, params_vec)
+        @warn "run_model_year($year): NaN in params_vec, skipping"
+        return fill(NaN, 36)
+    end
 
     tmpfile = tempname() * ".toml"
     write_override_toml(tmpfile, PARAM_NAMES, params_vec)
@@ -317,7 +330,7 @@ function get_calibration_prior()
         PD.constrained_gaussian("O2_michaelis_constant",        0.00255006, 0.002,  1.0e-5, 0.1),
         PD.constrained_gaussian("root_leaf_nitrogen_ratio",     0.0625785,  0.04,   0.01,   3.0),
         PD.constrained_gaussian("relative_contribution_factor", 0.844417,   0.15,   0.0,    1.5),
-        PD.constrained_gaussian("emissivity_bare_soil",         0.96,       0.05,   0.6,    1.0),
+        PD.constrained_gaussian("emissivity_bare_soil",         0.96,       0.03,   0.6,    1.0),
     ]
     return PD.combine_distributions(priors)
 end
@@ -447,12 +460,17 @@ function main()
 
     ekp, start_iter = load_checkpoint()
     if isnothing(ekp)
-        minibatcher = EKP.RandomFixedSizeMinibatcher(MINIBATCH_SIZE; rng)
+        minibatcher = EKP.RandomFixedSizeMinibatcher(MINIBATCH_SIZE)
         obs_series  = EKP.ObservationSeries(
             obs_per_year, minibatcher, string.(CALIB_YEARS))
+        # Use Inversion() (standard EKI) — TransformUnscented sigma points near
+        # prior bounds produce NaN in constrained space → invalid TOML.
+        # Inversion() requires an explicit initial ensemble sampled from the prior.
+        initial_ensemble = EKP.construct_initial_ensemble(rng, prior, N_ENS)
         ekp = EKP.EnsembleKalmanProcess(
+            initial_ensemble,
             obs_series,
-            EKP.TransformUnscented(prior; impose_prior = true);
+            EKP.Inversion();
             verbose   = true,
             rng,
             scheduler = EKP.DataMisfitController(terminate_at = 100),
