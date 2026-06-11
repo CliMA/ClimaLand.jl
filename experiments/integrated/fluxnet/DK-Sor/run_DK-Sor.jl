@@ -102,11 +102,20 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     met_nc_path, lat, long, time_offset, atmos_h, start_date, toml_dict, FT,
 )
 
-# ── LAI from MODIS ─────────────────────────────────────────────────────────────
+# ── LAI from DK-Sor NetCDF ─────────────────────────────────────────────────────
 surface_space = land_domain.space.surface
-LAI    = ClimaLand.Canopy.prescribed_lai_modis(surface_space, start_date, stop_date)
-maxLAI = FluxnetSimulations.get_maxLAI_at_site(start_date, lat, long)
-RAI    = maxLAI * f_root_to_shoot
+LAI, maxLAI = NCDataset(met_nc_path, "r") do ds
+    time_vals  = ds["time"][:]
+    lai_data   = Float64.(coalesce.(ds["LAI"][1, 1, :], NaN))
+    lai_secs   = Float64[
+        Second(t - Hour(time_offset) - start_date).value for t in time_vals
+    ]
+    valid      = .!isnan.(lai_data)
+    tvi        = TimeVaryingInput(lai_secs[valid], lai_data[valid])
+    mx         = maximum(lai_data[valid])
+    tvi, mx
+end
+RAI = maxLAI * f_root_to_shoot
 
 # ── Soil ───────────────────────────────────────────────────────────────────────
 forcing = (; atmos, radiation)
