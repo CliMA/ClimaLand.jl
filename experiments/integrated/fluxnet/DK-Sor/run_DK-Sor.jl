@@ -33,8 +33,8 @@ toml_dict = LP.create_toml_dict(FT)
 
 const site_ID     = "DK-Sor"
 const site_ID_val = :DK_Sor
-const start_date  = DateTime(1997, 1, 1)   # UTC
-const stop_date   = DateTime(1998, 1, 1)   # UTC
+const start_date  = DateTime(2004, 1, 1)   # UTC
+const stop_date   = DateTime(2005, 1, 1)   # UTC
 const dt          = Float64(450)           # 7.5-minute timestep
 
 climaland_dir = pkgdir(ClimaLand)

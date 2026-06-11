@@ -73,25 +73,37 @@ temperate deciduous broadleaf forest, and returns them as a NamedTuple.
 Default parameters are provided and can be overwritten using keyword arguments.
 
 These defaults target PModel photosynthesis with PModelConductance.
+
+Soil parameters based on:
+  - Nemes et al. 2001 (Eur. J. Soil Sci.) for sandy loam / glacial till hydraulics
+  - Jensen & Illangasekare 2011 (Vadose Zone J.) for Danish glacial loam K_sat
+Plant parameters based on:
+  - Bolte et al. 2004 (Eur. J. Forest Res.) for European beech rooting depth
+  - He et al. 2012 (Remote Sens. Environ.) for clumping index of temperate broadleaf
 """
 function FluxnetSimulations.get_parameters(
     FT,
     ::Val{:DK_Sor};
     soil_ν = FT(0.45),
-    soil_K_sat = FT(1e-5),
+    # Ksat for sandy loam / glacial loam: ~2e-6 m/s
+    # (Jensen & Illangasekare 2011; Nemes et al. 2001)
+    soil_K_sat = FT(2e-6),
     soil_S_s = FT(1e-3),
     soil_vg_n = FT(1.6),
     soil_vg_α = FT(1.6),
     θ_r = FT(0.07),
     ν_ss_quartz = FT(0.47),
-    ν_ss_om = FT(0.03),
+    # Slightly higher OM for beech forest litter/humus layer
+    ν_ss_om = FT(0.05),
     ν_ss_gravel = FT(0.12),
     z_0m_soil = FT(0.01),
     z_0b_soil = FT(0.001),
     soil_ϵ = FT(0.98),
     soil_α_PAR = FT(0.2),
     soil_α_NIR = FT(0.2),
-    Ω = FT(1),
+    # Clumping index ~0.85 for temperate broadleaf forest
+    # (He et al. 2012, MODIS-derived global clumping index map)
+    Ω = FT(0.85),
     χl = FT(0.25),
     α_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
@@ -114,7 +126,10 @@ function FluxnetSimulations.get_parameters(
     retention_model = Canopy.LinearRetentionCurve{FT}(a),
     plant_ν = FT(2.46e-4),
     plant_S_s = FT(1e-2 * 0.0098),
-    rooting_depth = FT(0.3),
+    # Effective rooting depth ~0.7 m for European beech
+    # (Bolte et al. 2004, Eur. J. Forest Res.; Jackson et al. 1996, Oecologia)
+    rooting_depth = FT(0.7),
+    # Canopy height from FLUXNET2015 site metadata (canopy_height variable = 25 m)
     h_canopy = FT(25),
 )
     return (;
