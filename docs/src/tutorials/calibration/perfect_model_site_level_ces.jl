@@ -86,13 +86,13 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 (start_date, stop_date) =
     FluxnetSimulations.get_data_dates(site_ID, time_offset)
 stop_date = DateTime(2010, 4, 1, 6, 30)
-Δt = 450.0
+Δt = 450.0;
 
 # ## Domain and Forcing Setup
 
 zmin = FT(-2)
 zmax = FT(0)
-domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat))
+domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));
 
 # ## Model Setup
 
@@ -293,13 +293,13 @@ ax2 = Axis(
     xlabel = "Hour of day",
     ylabel = "LHF [W m⁻²]",
 )
+lines!(ax2, 0:23, observations; color = :black, linewidth = 3)
 for g in eachcol(first_G)
     lines!(ax2, 0:23, g; color = (:red, 0.4), linewidth = 1.5)
 end
 for g in eachcol(last_G)
     lines!(ax2, 0:23, g; color = (:blue, 0.4), linewidth = 1.5)
 end
-lines!(ax2, 0:23, observations; color = :black, linewidth = 3)
 axislegend(
     ax2,
     [
@@ -459,6 +459,7 @@ ax4 = Axis(
     xlabel = "Hour of day",
     ylabel = "LHF [W m⁻²]",
 )
+lines!(ax4, 0:23, observations; color = :black, linewidth = 3, label = "Truth")
 for idx in post_indices
     θ = unc_samples[:, idx]
     pred_mean, _ = Emulators.predict(emulator, reshape(θ, :, 1))
@@ -470,7 +471,6 @@ for idx in post_indices
         linewidth = 1.0,
     )
 end
-lines!(ax4, 0:23, observations; color = :black, linewidth = 3, label = "Truth")
 axislegend(ax4; position = :rb, framevisible = false)
 CairoMakie.resize_to_layout!(fig4)
 CairoMakie.save("perfect_model_ces_predictive.png", fig4)
