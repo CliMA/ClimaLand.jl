@@ -187,6 +187,7 @@ function run_calibration(run; obs_filepath, output_dir)
         global DT = $DT_local
         global Caldepthnum = $caldepth_str
         global LABILE_ON = $labile_on
+        global THETA_R = $(run.theta_r)
         ENV["NEON_START_DATE"] = $start_str
         ENV["NEON_STOP_DATE"] = $stop_str
         nothing

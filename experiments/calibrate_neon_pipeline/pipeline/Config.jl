@@ -72,6 +72,10 @@ struct RunConfig
     restart_from::Union{String, Nothing}
     # ordered (name => Prior) for the params actually calibrated in this run
     priors::Vector{Pair{String, Prior}}
+    # optional per-run soil residual water content override (uniform over depth);
+    # `nothing` => use the model's default θ_r. When set, it is also appended to
+    # the run_identifier (see load_config) so its output dir is distinct.
+    theta_r::Union{Float64, Nothing}
 end
 
 # ── Pipeline config ──────────────────────────────────────────────────────────
@@ -272,10 +276,16 @@ function load_config(path::AbstractString; run_identifier = nothing)
         run_priors = get(entry, "priors", Dict{String, Any}())
         priors = _resolve_priors(default_priors, run_priors)
 
+        # Optional per-run θ_r override (uniform over depth); `nothing` keeps the
+        # model default. Set `settingsdesc` per-run to keep its output dir
+        # distinct, as with the labile runs.
+        theta_r = haskey(entry, "theta_r") ? Float64(entry["theta_r"]) : nothing
+
         for (start_date, stop_date) in _date_ranges(entry)
             push!(runs, RunConfig(
                 site, start_date, stop_date, spinup, n_iter, cal_depth,
                 settingsdesc, dt, output_root, id, restart_from, priors,
+                theta_r,
             ))
         end
     end
@@ -320,7 +330,7 @@ function run_from_env()
 
     return RunConfig(
         site, start_date, stop_date, spinup, n_iter, cal_depth,
-        settingsdesc, dt, output_root, id, nothing, priors,
+        settingsdesc, dt, output_root, id, nothing, priors, nothing,
     )
 end
 

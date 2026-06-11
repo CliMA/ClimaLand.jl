@@ -184,6 +184,13 @@ used_in = ["Land"]
     porosity_scale = FT(1)
     land.soil.parameters.ν .*= porosity_scale
 
+    # Optional per-run θ_r override (uniform over depth). Applied before solve!
+    # so both the set_ic! clamp (θ_r + 1e-4 floor) and the model dynamics use it.
+    if run.theta_r !== nothing
+        land.soil.parameters.θ_r .= FT(run.theta_r)
+        println("Overriding θ_r with config value: $(run.theta_r)")
+    end
+
     # ── Initial conditions (SOC × labile factor + NEON SWC profile) ──────────
     base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
         site_id, start_date, time_offset, land)
@@ -366,7 +373,23 @@ used_in = ["Land"]
     obs_swc_daily = filter(row -> !isnan(row.daily_mean), obs_swc_daily)
     sort!(obs_swc_daily, :date)
 
-    # ── Main figure: model vs obs + SWC + Tsoil ──────────────────────────────
+    # Observed soil temperature daily means at the calibration depth. NEON obs
+    # soilTemp is in °C; convert to K (+273.15) to match the model tsoil (K).
+    tsoil_obs_cols = [c for c in
+        (Symbol("soilTempMean_$(lpad(p,3,'0'))_$obs_depth") for p in 1:5)
+        if String(c) in names(obs_df)]
+    obs_df[!, :tsoil_mean] = isempty(tsoil_obs_cols) ? fill(NaN, nrow(obs_df)) :
+        [rowmean_skipinvalid(row, tsoil_obs_cols) for row in eachrow(obs_df)]
+    obs_tsoil_daily = combine(groupby(obs_df, :date),
+        :tsoil_mean => (x -> begin
+            valid = filter(!isnan, x); length(valid) >= 24 ? mean(valid) : NaN
+        end) => :daily_mean)
+    obs_tsoil_daily = filter(row -> row.date >= Date(spinup_date), obs_tsoil_daily)
+    obs_tsoil_daily = filter(row -> !isnan(row.daily_mean), obs_tsoil_daily)
+    obs_tsoil_daily.daily_mean .+= 273.15
+    sort!(obs_tsoil_daily, :date)
+
+    # ── Main figure: model vs obs + Tsoil ──────────────────────────────
     fig = Figure(size = (1200, 1000))
     ax1 = Axis(fig[1, 1]; ylabel = "Soil CO₂ (ppm)",
         title = "$site_id — Forward Model vs NEON Obs (depth $obs_depth)")
@@ -644,6 +667,10 @@ used_in = ["Land"]
         with_rmse = false, base_title = "Model soil CO₂ vs model SWC")
     CairoMakie.save(joinpath(output_dir, "scatter_co2_swc_$(site_id).png"), fig_scat)
 
+    # mean / min / max over each daily-mean series (NaN when the series is empty).
+    # These summarize the obs and model ranges for soil CO₂, SWC, and temperature.
+    _dstat(df, f) = nrow(df) == 0 ? NaN : f(Float64.(df.daily_mean))
+
     # Stats handed back to the pipeline for the master CSV.
     scatter_stats = (;
         rmse_sco2 = _rmse(obs_mod_co2_x, obs_mod_co2_y),
@@ -652,6 +679,27 @@ used_in = ["Land"]
         corr_obs_model_swc = _corr(obs_mod_swc_x, obs_mod_swc_y),
         corr_obs_sco2_swc = _corr(obs_co2_swc_x, obs_co2_swc_y),
         corr_model_sco2_swc = _corr(mod_co2_swc_x, mod_co2_swc_y),
+        # soil CO₂ (ppm)
+        obs_sco2_mean = _dstat(obs_daily, mean),
+        obs_sco2_min = _dstat(obs_daily, minimum),
+        obs_sco2_max = _dstat(obs_daily, maximum),
+        model_sco2_mean = _dstat(sco2_daily, mean),
+        model_sco2_min = _dstat(sco2_daily, minimum),
+        model_sco2_max = _dstat(sco2_daily, maximum),
+        # soil water content (m³/m³)
+        obs_swc_mean = _dstat(obs_swc_daily, mean),
+        obs_swc_min = _dstat(obs_swc_daily, minimum),
+        obs_swc_max = _dstat(obs_swc_daily, maximum),
+        model_swc_mean = _dstat(swc_daily, mean),
+        model_swc_min = _dstat(swc_daily, minimum),
+        model_swc_max = _dstat(swc_daily, maximum),
+        # soil temperature (K)
+        obs_tsoil_mean = _dstat(obs_tsoil_daily, mean),
+        obs_tsoil_min = _dstat(obs_tsoil_daily, minimum),
+        obs_tsoil_max = _dstat(obs_tsoil_daily, maximum),
+        model_tsoil_mean = _dstat(tsoil_daily, mean),
+        model_tsoil_min = _dstat(tsoil_daily, minimum),
+        model_tsoil_max = _dstat(tsoil_daily, maximum),
     )
 
     println("Forward run figures saved to $output_dir")

@@ -53,7 +53,11 @@ posterior, keeping std/bounds from `run`. Parameters absent from the previous
 posterior keep their config prior (so adding a parameter on restart works).
 """
 function seed_from_restart(run, csv_path, output_root)
-    prev_dir = ResultsTable.find_previous_run(csv_path, output_root, run.restart_from)
+    # Narrow the lookup to THIS run's site/period so a batch-shared run_identifier
+    # resolves to the matching site-year posterior (not an arbitrary one).
+    prev_dir = ResultsTable.find_previous_run(csv_path, output_root, run.restart_from;
+        site = run.site, settingsdesc = run.settingsdesc,
+        start = run.start_date, stop = run.stop_date)
     prev_means = ResultsTable.read_posterior_means(
         joinpath(prev_dir, "final_parameter_means.txt"))
     new_priors = map(run.priors) do (name, p)
@@ -65,7 +69,8 @@ function seed_from_restart(run, csv_path, output_root)
     return Config.RunConfig(
         run.site, run.start_date, run.stop_date, run.spinup_days,
         run.n_iterations, run.cal_depth, run.settingsdesc, run.dt,
-        run.output_root, run.run_identifier, run.restart_from, new_priors)
+        run.output_root, run.run_identifier, run.restart_from, new_priors,
+        run.theta_r)
 end
 
 """
@@ -86,7 +91,8 @@ function dedup_run_identifier(run)
         new_run = Config.RunConfig(
             run.site, run.start_date, run.stop_date, run.spinup_days,
             run.n_iterations, run.cal_depth, run.settingsdesc, run.dt,
-            run.output_root, "$(base_id)_$(n)", run.restart_from, run.priors)
+            run.output_root, "$(base_id)_$(n)", run.restart_from, run.priors,
+            run.theta_r)
         ispath(Config.output_dir_for(new_run)) || break
         n += 1
     end

@@ -35,12 +35,25 @@ const META_COLS = [
 
 const PRIOR_FIELDS = ["mean", "std", "lower", "upper"]
 
-# Forward-run scatter diagnostics (obs vs model CO₂/SWC). Appended after
-# `final_rmse`; all default to `missing` when no forward run was done.
+# Forward-run scatter/summary diagnostics. Appended after `final_rmse`; all
+# default to `missing` when no forward run was done. Each column is named
+# `forward_<field>` where <field> is the matching `scatter_stats` NamedTuple
+# field (see _fill_scatter_stats!), so the column↔field mapping is mechanical.
 const SCATTER_COLS = [
+    # RMSE + correlations (obs vs model CO₂/SWC)
     "forward_rmse_sco2", "forward_rmse_swc",
     "forward_corr_obs_model_sco2", "forward_corr_obs_model_swc",
     "forward_corr_obs_sco2_swc", "forward_corr_model_sco2_swc",
+    # mean / min / max of daily-mean series, obs and model:
+    # soil CO₂ (ppm)
+    "forward_obs_sco2_mean", "forward_obs_sco2_min", "forward_obs_sco2_max",
+    "forward_model_sco2_mean", "forward_model_sco2_min", "forward_model_sco2_max",
+    # soil water content (m³/m³)
+    "forward_obs_swc_mean", "forward_obs_swc_min", "forward_obs_swc_max",
+    "forward_model_swc_mean", "forward_model_swc_min", "forward_model_swc_max",
+    # soil temperature (K)
+    "forward_obs_tsoil_mean", "forward_obs_tsoil_min", "forward_obs_tsoil_max",
+    "forward_model_tsoil_mean", "forward_model_tsoil_min", "forward_model_tsoil_max",
 ]
 
 prior_col(param, field) = "prior_$(param)_$(field)"
@@ -84,20 +97,14 @@ function append_row!(
     return nothing
 end
 
-# Map a forward_run `scatter_stats` NamedTuple onto the SCATTER_COLS cells. A
+# Map a forward_run `scatter_stats` NamedTuple onto the SCATTER_COLS cells. Each
+# column "forward_<field>" reads NamedTuple field `<field>` (prefix stripped). A
 # `nothing` (no forward run) leaves every scatter cell `missing`.
 function _fill_scatter_stats!(row, scatter_stats)
     scatter_stats === nothing && return row
-    field_for = Dict(
-        "forward_rmse_sco2" => :rmse_sco2,
-        "forward_rmse_swc" => :rmse_swc,
-        "forward_corr_obs_model_sco2" => :corr_obs_model_sco2,
-        "forward_corr_obs_model_swc" => :corr_obs_model_swc,
-        "forward_corr_obs_sco2_swc" => :corr_obs_sco2_swc,
-        "forward_corr_model_sco2_swc" => :corr_model_sco2_swc,
-    )
     for col in SCATTER_COLS
-        v = getfield(scatter_stats, field_for[col])
+        field = Symbol(replace(col, r"^forward_" => ""))
+        v = getfield(scatter_stats, field)
         # NaN (empty/constant series) is stored as missing for a clean CSV cell.
         row[col] = (v isa Real && isnan(v)) ? missing : v
     end
@@ -217,30 +224,63 @@ function read_posterior_means(final_params_file::AbstractString)
 end
 
 """
-    find_previous_run(csv_path, output_root, run_identifier) -> output_dir
+    find_previous_run(csv_path, output_root, run_identifier;
+                      site=nothing, start=nothing, stop=nothing) -> output_dir
 
 Locate the output directory of a previous run by its `run_identifier`. Tries the
 master CSV first (fast path), then falls back to scanning `output_root` for
-`output_<id>` directories. Errors if zero or multiple matches are found.
+`output_<id>` directories.
+
+A single `run_identifier` is shared by every run in a batch, so on its own it is
+NOT unique (many site/year rows). Pass `site` + `start` + `stop` (a run's
+site/period) to narrow the match to that one calibration — this is what lets a
+forward-only batch seed each site-year from its own posterior. After filtering:
+  - one row → use it;
+  - several rows all pointing at the SAME output_dir (re-runs that overwrote the
+    same final_parameter_means.txt) → use that dir;
+  - several rows with DIFFERENT output_dirs → take the newest by timestamp.
+The unfiltered (id-only) path keeps the old strict behavior: error on >1 dir.
 """
 function find_previous_run(
     csv_path::AbstractString,
     output_root::AbstractString,
-    run_identifier::AbstractString,
+    run_identifier::AbstractString;
+    site = nothing,
+    settingsdesc = nothing,
+    start = nothing,
+    stop = nothing,
 )
     # Fast path: CSV lookup.
     if isfile(csv_path)
         df = CSV.read(csv_path, DataFrame)
         if "run_identifier" in names(df) && "output_dir" in names(df)
-            hits = df[
-                (string.(df.run_identifier) .== run_identifier) .&
-                (string.(df.status) .== "ok"),
-                :output_dir,
-            ]
-            length(hits) == 1 && return String(hits[1])
-            length(hits) > 1 &&
+            mask = (string.(df.run_identifier) .== run_identifier) .&
+                   (string.(df.status) .== "ok")
+            # Narrow by site/period when given (compared as strings for robustness
+            # against Date vs String parsing of the CSV columns).
+            site === nothing || (mask = mask .& (string.(df.site) .== string(site)))
+            settingsdesc === nothing ||
+                (mask = mask .& (string.(df.settingsdesc) .== string(settingsdesc)))
+            start === nothing || (mask = mask .& (string.(df.start) .== string(start)))
+            stop === nothing || (mask = mask .& (string.(df.stop) .== string(stop)))
+            sub = df[mask, :]
+
+            if nrow(sub) >= 1
+                dirs = unique(String.(sub.output_dir))
+                length(dirs) == 1 && return dirs[1]
+                # Multiple distinct dirs. With site/period given, take the newest
+                # by timestamp; without, keep the strict ambiguity error.
+                if site !== nothing || settingsdesc !== nothing ||
+                   start !== nothing || stop !== nothing
+                    if "timestamp" in names(sub)
+                        order = sortperm(string.(sub.timestamp))   # ISO ts sorts lexically
+                        return String(sub.output_dir[last(order)])
+                    end
+                    return String(sub.output_dir[end])
+                end
                 error("Multiple completed runs with identifier \"$run_identifier\" " *
-                      "in $csv_path; disambiguate by giving an explicit output_dir.")
+                      "in $csv_path; pass site/start/stop to disambiguate.")
+            end
         end
     end
 

@@ -197,6 +197,17 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         canopy,
     )
 
+    # Optional per-run θ_r override (uniform over depth), broadcast from the
+    # pipeline as the global THETA_R (set in run_calibration's globals_expr).
+    # `nothing`/undefined keeps the model default. Applied before custom_set_ic!
+    # so its clamp (θ_r + 1e-4 floor) and the model dynamics use the override —
+    # mirrors the same override in ForwardRun.jl so calibration and the final
+    # forward run see identical θ_r.
+    if (@isdefined THETA_R) && THETA_R !== nothing
+        land.soil.parameters.θ_r .= FT(THETA_R)
+        @info "Overriding θ_r with config value: $THETA_R"
+    end
+
     # Custom IC with SOC profile from SoilGrids OCD artifact
     base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
         SITE_ID,
