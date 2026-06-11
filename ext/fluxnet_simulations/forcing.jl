@@ -701,14 +701,10 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
             # VPD is in hPa; Tair is in K → pass T in °C to snow_precip_fraction
             snow_frac_data = snow_precip_fraction.(
                 atmos_T_data .- 273.15, VPD_data; thermo_params)
-            atmos_P_liq = tvi_from_netcdf(
-                seconds_since_start_date,
-                @. -precip_data * (1 - snow_frac_data),
-            )
-            atmos_P_snow = tvi_from_netcdf(
-                seconds_since_start_date,
-                @. -precip_data * snow_frac_data,
-            )
+            rain_data = @. -precip_data * (1 - snow_frac_data)
+            snow_data = @. -precip_data * snow_frac_data
+            atmos_P_liq  = tvi_from_netcdf(seconds_since_start_date, rain_data)
+            atmos_P_snow = tvi_from_netcdf(seconds_since_start_date, snow_data)
         else
             atmos_P_liq  = tvi_from_netcdf(seconds_since_start_date, precip_data;
                                             preprocess_func = x -> -x)

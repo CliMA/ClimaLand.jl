@@ -1,14 +1,10 @@
-"""
-DK-Sor FLUXNET site simulation using PModel photosynthesis.
-
-Site: Sorø Forest, Denmark (DK-Sor)
-Forest type: Temperate deciduous broadleaf (European beech, Fagus sylvatica)
-Lat: 55.49°N  Lon: 11.64°E  UTC offset: +1
-
-Forcing is read from the local NetCDF file in DK_Sor/.
-Runs from 1997-01-01 to 1998-01-01 (1 year).
-Output is written to experiments/integrated/fluxnet/DK-Sor/out/.
-"""
+# DK-Sor FLUXNET site simulation using PModel photosynthesis.
+# Site: Sorø Forest, Denmark (DK-Sor)
+# Forest type: Temperate deciduous broadleaf (European beech, Fagus sylvatica)
+# Lat: 55.49°N  Lon: 11.64°E  UTC offset: +1
+# Forcing is read from the local NetCDF file in DK_Sor/.
+# Runs from 1997-01-01 to 1998-01-01 (1 year).
+# Output is written to experiments/integrated/fluxnet/DK-Sor/out/.
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
