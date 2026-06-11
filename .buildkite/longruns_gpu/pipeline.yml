@@ -115,12 +115,12 @@ steps:
     steps:
       - label: "Snowy Land, 19 years"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/spinup_model.jl
         artifact_paths:
           - "snowy_land_pmodel_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
-          slurm_time: 15:00:00
+          slurm_time: 20:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""
