@@ -1071,7 +1071,7 @@ end
 function make_set_initial_state_from_previous_run(inpath, land::LandModel{FT}; enforce_constraints=false, infilestem = "_1M_average", outfilepath = joindir(inpath, "initial_conditions.nc")) where {FT}
     ic_path =  make_land_ic_file_from_output_diagnostics(inpath; infilestem, outfilepath)
     set_ic! = make_set_initial_state_from_file(ic_path,
-                                               land
+                                               land;
                                                enforce_constraints)
     return set_ic!
 end
