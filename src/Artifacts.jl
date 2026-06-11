@@ -318,10 +318,19 @@ end
         context = nothing,
     )
 
-Return the path to the file that contains a year of fluxnet data
-corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var).
+Return the path to the half-hourly (preferred) or hourly fluxnet CSV file for
+the given `site_ID`. Resolution order:
 
-Site publications and licenses:
+1. For the four bundled sites (US-MOz, US-NR1, US-Ha1, US-Var), always return
+   the curated single-year CSV from the `fluxnet_sites` artifact. These are
+   the date-windows the standalone fluxnet experiments are validated against;
+   using the FULLSET record here would silently change start/stop dates and
+   pull in years outside the `modis_lai` artifact's coverage.
+2. For any other `site_ID`, look up the directory in the `fluxnet2015`
+   artifact (HPC-only) by `occursin(site_ID, dir_name)` and return the
+   half-hourly (preferred) or hourly FULLSET CSV.
+
+Site publications and licenses for the bundled `fluxnet_sites` set:
 US-Ha1:
 
 Urbanski, S., Barford, C., Wofsy, S., Kucharik, C., Pyle, E., Budney, J., McKain, K., Fitzjarrald, D., Czikowsky, M., Munger, J. W. 2007. Factors Controlling CO2 Exchange On Timescales From Hourly To Decadal At Harvard Forest, Journal Of Geophysical Research, 112:G2, .
@@ -356,12 +365,50 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 
 AmeriFlux CC-BY-4.0 License
 """
-function experiment_fluxnet_data_path(site_ID; context = nothing)
-    @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
+const _BUNDLED_FLUXNET_SITES = ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
 
-    folder_path = @clima_artifact("fluxnet_sites", context)
-    data_path = joinpath(folder_path, "$(site_ID).csv")
-    return data_path
+function experiment_fluxnet_data_path(site_ID; context = nothing)
+    if site_ID in _BUNDLED_FLUXNET_SITES
+        folder_path = @clima_artifact("fluxnet_sites", context)
+        return joinpath(folder_path, "$(site_ID).csv")
+    end
+
+    full_fluxnet_path = @clima_artifact("fluxnet2015", context)
+    dirs = filter(
+        d -> isdir(joinpath(full_fluxnet_path, d)),
+        readdir(full_fluxnet_path),
+    )
+    match_idx = findfirst(d -> occursin(site_ID, d), dirs)
+    match_idx === nothing &&
+        error("No FLUXNET2015 directory matched site ID $site_ID")
+
+    site_dir = dirs[match_idx]
+    parts = split(site_dir, "FULLSET")
+    hh_csv = string(parts[1], "FULLSET_HH", parts[2], ".csv")
+    hr_csv = string(parts[1], "FULLSET_HR", parts[2], ".csv")
+
+    if isfile(joinpath(full_fluxnet_path, site_dir, hh_csv))
+        return joinpath(full_fluxnet_path, site_dir, hh_csv)
+    elseif isfile(joinpath(full_fluxnet_path, site_dir, hr_csv))
+        return joinpath(full_fluxnet_path, site_dir, hr_csv)
+    else
+        error(
+            "Site directory $site_dir for $site_ID does not contain a half-hourly or hourly CSV.",
+        )
+    end
+end
+
+"""
+    fluxnet2015_data_path(; context = nothing)
+
+Return the directory of the full FLUXNET2015 dataset (`fluxnet2015` artifact).
+Used by `FluxnetSimulations.get_site_info` to locate `metadata_DD_clean.csv`.
+
+The `fluxnet2015` artifact is HPC-only (no download URL); calling this on a
+machine without the artifact pre-staged will throw.
+"""
+function fluxnet2015_data_path(; context = nothing)
+    return @clima_artifact("fluxnet2015", context)
 end
 
 """

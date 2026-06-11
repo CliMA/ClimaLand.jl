@@ -1,6 +1,8 @@
 using NCDatasets
 import ClimaParams as CP
 
+# Bring the shared forcing-column list (defined in the stub module) into scope.
+import ClimaLand.FluxnetSimulations: FLUXNET_FORCING_COLUMNS
 
 """
      prescribed_forcing_fluxnet(site_ID,
@@ -58,18 +60,7 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     (data, columns) = read_fluxnet_data(site_ID)
 
     # Determine which column index corresponds to which varname
-    varnames = (
-        "TIMESTAMP_START",
-        "TIMESTAMP_END",
-        "TA_F",
-        "VPD_F",
-        "PA_F",
-        "P_F",
-        "WS_F",
-        "LW_IN_F",
-        "SW_IN_F",
-        "CO2_F_MDS",
-    )
+    varnames = ("TIMESTAMP_START", "TIMESTAMP_END", FLUXNET_FORCING_COLUMNS...)
     column_name_map =
         get_column_name_map(varnames, columns; error_on_missing = false)
 
@@ -300,6 +291,7 @@ end
         hour_offset_from_UTC;
         duration::Union{Nothing, Period} = nothing,
         start_offset::Period = Second(0),
+        required_columns = nothing,
     )
 
 A helper function to get the first and last dates, in UTC, for which we have
@@ -307,6 +299,13 @@ Fluxnet data at `site_ID`, given the offset in hours of local time
 from UTC. If `duration` is provided, it is used to determine the end date,
 otherwise the end date is the last date in the data. The `start_offset` is
 added to the start date, and must be non-negative.
+
+If `required_columns` is provided, the start date is advanced past any
+leading rows in which any of those columns equals the FLUXNET missing-data
+sentinel (-9999). This is needed when the start date will be passed to
+`prescribed_forcing_fluxnet`, which masks missing rows out of each
+TimeVaryingInput; without this advance, the resulting TVIs may not cover
+simulation time 0 and `evaluate!` throws.
 
 Please note that we use date halfway between the TIMESTAMP_START
 and TIMESTAMP_END date of the Fluxnet averaging window as the timestamp of
@@ -317,6 +316,7 @@ function FluxnetSimulations.get_data_dates(
     hour_offset_from_UTC;
     duration::Union{Nothing, Period} = nothing,
     start_offset::Period = Second(0),
+    required_columns = nothing,
 )
     (data, columns) = read_fluxnet_data(site_ID)
 
@@ -342,6 +342,28 @@ function FluxnetSimulations.get_data_dates(
     UTC_datetimes =
         UTC_datetimes_start .+ (UTC_datetimes_end .- UTC_datetimes_start) ./ 2
     earliest_date, latest_date = extrema(UTC_datetimes)
+
+    # Advance earliest_date past any leading rows where a required forcing column is
+    # missing. `prescribed_forcing_fluxnet` drops those rows when building each
+    # TimeVaryingInput; if any required column is missing in the first row, that
+    # variable's TVI starts at t > 0 and evaluating at simulation t=0 throws.
+    if !isnothing(required_columns) && !isempty(required_columns)
+        req = collect(required_columns)
+        req_map = get_column_name_map(req, columns; error_on_missing = true)
+        valid = trues(size(data, 1))
+        for v in req
+            valid .&= .~var_missing.(data[:, req_map[v]])
+        end
+        any(valid) || error(
+            "No row of $site_ID has all required columns $(req) non-missing.",
+        )
+        earliest_valid = minimum(UTC_datetimes[valid])
+        if earliest_valid > earliest_date
+            @info "Advancing $site_ID start past leading missing data" earliest_date earliest_valid gap =
+                earliest_valid - earliest_date
+            earliest_date = earliest_valid
+        end
+    end
 
     # Compute the start and stop dates, applying the start_offset and duration if provided
     @assert Dates.value(start_offset) >= 0 "start_offset must be non-negative, got $start_offset"
@@ -441,6 +463,7 @@ function FluxnetSimulations.get_comparison_data(
         "TIMESTAMP_START",
         "TIMESTAMP_END",
         "GPP_DT_VUT_REF",
+        "RECO_NT_VUT_REF",
         "LE_CORR",
         "H_CORR",
         "SW_OUT",
@@ -475,6 +498,15 @@ function FluxnetSimulations.get_comparison_data(
         column_name_map,
         "gpp";
         preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol/m^2/s
+        val,
+    )
+
+    er = FluxnetSimulations.get_comparison_data(
+        data,
+        "RECO_NT_VUT_REF",
+        column_name_map,
+        "er";
+        preprocess_func = (x) -> x * 1e-6, # converts from μmol/m^2/s to mol CO2/m^2/s
         val,
     )
 
@@ -599,6 +631,7 @@ function FluxnetSimulations.get_comparison_data(
     return merge(
         (; UTC_datetime = UTC_datetimes),
         gpp,
+        er,
         lhf,
         shf,
         swu,

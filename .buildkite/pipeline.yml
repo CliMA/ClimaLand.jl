@@ -81,6 +81,27 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
+      # Smoke test of FluxnetSimulations.generic_site_simulation on a non-bundled
+      # FLUXNET2015 site (BE-Vie, resolved via metadata — exercises the
+      # `LOCAL=false` path). No calibration: this is the canary that ensures we
+      # can keep running generic sites at all.
+      - label: "generic_site BE-Vie run"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/run_generic_site.jl BE-Vie"
+
+      # Exercises the all-sites driver (calibrate_all_fluxnet.jl) on AU-Cum and
+      # BE-Vie — both hemispheres, two julia subprocesses, shared site_results.csv
+      # append path. Uses the trimmed `er_smoke.jl` config so it fits in a CI
+      # step. Once green, the same driver is what calibrate_all_fluxnet.sbatch
+      # fans out across all sites on HPC.
+      - label: "generic_site_calibrate_er_all_fluxnet (smoke, 2 sites)"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/generic_site/calibrate_all_fluxnet.jl"
+        env:
+          SITES: "AU-Cum,BE-Vie"
+          CALIBRATION_CONFIG: "er_smoke.jl"
+        artifact_paths:
+          - "experiments/integrated/generic_site/calibration_out/*_30d/**/*"
+          - "experiments/integrated/generic_site/calibration_out/site_results.csv"
+
       - label: "ozark_pft"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/pft/out/*png"
