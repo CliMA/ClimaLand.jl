@@ -106,7 +106,7 @@ surface_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 surface_space = land_domain.space.surface
 LAI, maxLAI = NCDataset(met_nc_path, "r") do ds
     time_vals  = ds["time"][:]
-    lai_data   = Float64.(coalesce.(ds["LAI"][1, 1, :], NaN))
+    lai_data   = Float64.(coalesce.(ds["LAI_alternative"][1, 1, :], NaN))
     lai_secs   = Float64[
         Second(t - Hour(time_offset) - start_date).value for t in time_vals
     ]
