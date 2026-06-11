@@ -735,7 +735,7 @@ tag = "SoilCO2Parameters"
 
 # Soil Parameters
 ["evaporation_exponent"]
-value = 1.0
+value = 2.0
 type = "float"
 description = "Exponent of dry soil layer factor in evaporation"
 tag = "EnergyHydrologyParameters"

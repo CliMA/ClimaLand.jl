@@ -1,0 +1,95 @@
+agents:
+  queue: clima
+  slurm_mem: 8G
+  modules: climacommon/2026_02_18
+
+env:
+  JULIA_CUDA_MEMORY_POOL: "cuda"
+
+steps:
+  - label: "init :GPU:"
+    key: "init_gpu_env"
+    command:
+      - echo "--- Instantiate"
+
+      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.resolve()'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+      - julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+      - julia --project=.buildkite -e 'using Pkg; Pkg.resolve()'
+      - julia --project=.buildkite -e 'using Pkg; Pkg.precompile()'
+      - julia --project=.buildkite -e 'using CUDA; CUDA.precompile_runtime()'
+      - julia --project=.buildkite -e 'using Pkg; Pkg.status()'
+
+    agents:
+      slurm_gpus: 1
+      slurm_cpus_per_task: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+      JULIA_MAX_NUM_PRECOMPILE_FILES: 50
+
+  - wait
+
+  - group: "Spinup run of Global Land Model"
+    steps:
+      - label: "Snowy Land, 100 years"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/spinup_model.jl
+        agents:
+          slurm_gpus: 1
+          slurm_time: 20:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
+  - wait
+
+  - group: "10 year run from spun up IC"
+      - label: "Snowy Land, 10 years"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl $BUILDKITE_BUILD_NUMBER
+        artifact_paths:
+          - "snowy_land_pmodel_longrun_gpu/*png"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 5:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
+  - wait
+
+  - group: "ILAMB leaderboard"
+    steps:
+    - label: "Set up ILAMB leaderboard"
+      command:
+        - julia --color=yes --project=.buildkite/ experiments/ilamb/tests/test_ilamb_setup.jl
+        - julia --color=yes --project=.buildkite/ experiments/ilamb/ilamb_setup.jl $$ILAMB_DIAG_DIR $$ILAMB_BUILDKITE_DIR $BUILDKITE_BUILD_NUMBER $BUILDKITE_COMMIT
+      env:
+        ILAMB_DIAG_DIR: "snowy_land_pmodel_longrun_gpu/global_diagnostics/ILAMB_diagnostics"
+        ILAMB_BUILDKITE_DIR: "/net/sampo/data1/ilamb/buildkite"
+
+    - wait
+
+    - label: "Run ILAMB leaderboard"
+      key: "ilamb_dashboard"
+      command:
+        - export PATH="$${ILAMB_ROOT}/ilamb_env/bin:$PATH"
+        - ilamb-run --config $$ILAMB_ROOT/buildkite/buildkite_ilamb.cfg --model_root $$ILAMB_ROOT/buildkite/MODELS/ --regions global --build_dir $$ILAMB_ROOT/buildkite/_build
+        - tar czf $$ILAMB_ROOT/buildkite/ilamb_leaderboard.tar.gz -C $$ILAMB_ROOT/buildkite _build
+      env:
+        # This cannot be renamed as the ILAMB software checks for the existence
+        # of the `ILAMB_ROOT` environment variable.
+        ILAMB_ROOT: "/net/sampo/data1/ilamb"
+      artifact_paths:
+        - "/net/sampo/data1/ilamb/buildkite/ilamb_leaderboard.tar.gz"
+      agents:
+        - slurm_mem: 32GB
+        - slurm_time: "2:00:00"
+      concurrency: 1
+      concurrency_group: "ilamb-run"
+
+    - label: "Send ILAMB dashboard to Azure VM"
+      depends_on:
+        - "ilamb_dashboard"
+      command:
+        - rsync -avz /net/sampo/data1/ilamb/buildkite/_build azure-arenchon:/home/arenchon/ilamb
