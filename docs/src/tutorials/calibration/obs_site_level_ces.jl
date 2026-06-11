@@ -370,15 +370,69 @@ n_iter_used = EKP.get_N_iterations(ensemble_kalman_process)
 input_output_pairs =
     Utilities.get_training_points(ensemble_kalman_process, n_iter_used)
 
-n_obs = length(observations)
-## Same noise_var used in EKI ensures a consistent observation error model.
-obs_noise_cov = noise_var * Matrix(LinearAlgebra.I, n_obs, n_obs)
-
+# Build, configure, and optimize the GP emulator.
+# encoder_kwargs bundles the noise covariance and prior covariance from the
+# calibration step — the recommended way to configure the Emulator encoder.
+encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior)
 gppackage = GPJL()
 gauss_proc = GaussianProcess(gppackage; noise_learn = false)
-emulator = Emulator(gauss_proc, input_output_pairs; obs_noise_cov)
+emulator = Emulator(gauss_proc, input_output_pairs; encoder_kwargs)
 optimize_hyperparameters!(emulator)
 @info "GP emulator trained."
+
+# ### Emulator Validation
+#
+# Before running MCMC, verify the GP accurately reproduces the model outputs
+# on the EKI training data. Red curves are actual G(θ) values from the land
+# model; blue curves are the emulator's predictions at the same inputs.
+# Close overlap confirms the surrogate is fit for purpose before sampling.
+train_in = EKP.DataContainers.get_inputs(input_output_pairs)
+train_out = EKP.DataContainers.get_outputs(input_output_pairs)
+emul_pred_train, _ = Emulators.predict(emulator, train_in)
+n_train = size(train_in, 2)
+val_idx = rand(rng, 1:n_train, min(10, n_train))
+
+fig_val = CairoMakie.Figure(; size = (900, 400))
+ax_val = Axis(
+    fig_val[1, 1];
+    title = "Emulator validation: GP predictions vs EKI training data",
+    xlabel = "Hour of day",
+    ylabel = "LHF [W m⁻²]",
+)
+lines!(
+    ax_val,
+    0:23,
+    observations;
+    color = :black,
+    linewidth = 3,
+    label = "FLUXNET observations",
+)
+for j in val_idx
+    lines!(ax_val, 0:23, train_out[:, j]; color = (:red, 0.5), linewidth = 1.5)
+end
+for j in val_idx
+    lines!(
+        ax_val,
+        0:23,
+        emul_pred_train[:, j];
+        color = (:steelblue, 0.5),
+        linewidth = 1.5,
+    )
+end
+axislegend(
+    ax_val,
+    [
+        LineElement(; color = :black, linewidth = 3),
+        LineElement(; color = :red, linewidth = 2),
+        LineElement(; color = :steelblue, linewidth = 2),
+    ],
+    ["FLUXNET", "Model G(θ)", "Emulator GP(θ)"];
+    position = :rt,
+    framevisible = false,
+)
+CairoMakie.resize_to_layout!(fig_val)
+CairoMakie.save("obs_ces_emulator_validation.png", fig_val)
+# ![](obs_ces_emulator_validation.png)
 
 # ## Step 3 — Sample (MCMC Joint Posterior)
 #
@@ -520,37 +574,27 @@ CairoMakie.save("obs_ces_joint_posterior.png", fig4)
 
 # ## Posterior Predictive Check
 #
-# We evaluate the GP *emulator* (not the land model) at random posterior samples
-# and compare the predicted diurnal LHF against FLUXNET. Each call to
-# `Emulators.predict` takes microseconds, making this check cheap. The spread of
-# curves directly visualises the observation-constrained uncertainty in the model
-# output — this is the key advantage of CES over a single EKI MAP estimate.
+# Evaluate the TRUE forward model G at a small number of posterior samples.
+# This validates the emulator-based posterior against the actual land model:
+# if the emulator were biased, the MCMC posterior would be biased too, but
+# running G at posterior samples directly reveals any such discrepancy.
 
-n_pp = 50
-## unconstrained MCMC samples for the emulator (Dict keyed by parameter name)
 post_params_unc_dict = MarkovChainMonteCarlo.get_distribution(posterior)
 param_names_vec = EKP.get_name(prior)
 unc_samples = vcat([post_params_unc_dict[nm] for nm in param_names_vec]...)  # (2 × n_samples)
-pp_indices = rand(rng, 1:size(unc_samples, 2), n_pp)
+
+n_pp = 3
+pp_idx = rand(rng, 1:size(unc_samples, 2), n_pp)
+pp_constrained =
+    EKP.transform_unconstrained_to_constrained(prior, unc_samples[:, pp_idx])
 
 fig5 = CairoMakie.Figure(; size = (900, 400))
 ax5 = Axis(
     fig5[1, 1];
-    title = "GP emulator posterior predictive vs FLUXNET",
+    title = "Posterior predictive check (true model G)",
     xlabel = "Hour of day",
     ylabel = "LHF [W m⁻²]",
 )
-for idx in pp_indices
-    θ = unc_samples[:, idx]
-    pred_mean, _ = Emulators.predict(emulator, reshape(θ, :, 1))
-    lines!(
-        ax5,
-        0:23,
-        vec(pred_mean);
-        color = (:steelblue, 0.2),
-        linewidth = 1.0,
-    )
-end
 lines!(
     ax5,
     0:23,
@@ -559,6 +603,10 @@ lines!(
     linewidth = 3,
     label = "FLUXNET observations",
 )
+for j in 1:n_pp
+    G_j = G(pp_constrained[1, j], pp_constrained[2, j])
+    lines!(ax5, 0:23, G_j; color = (:steelblue, 0.5), linewidth = 1.5)
+end
 axislegend(ax5; position = :rb, framevisible = false)
 CairoMakie.resize_to_layout!(fig5)
 CairoMakie.save("obs_ces_predictive.png", fig5)
