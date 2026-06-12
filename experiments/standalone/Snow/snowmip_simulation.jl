@@ -86,6 +86,7 @@ model = ClimaLand.Snow.SnowModel(
     density,
     α_snow,
     surf_temp,
+    κ_snow = Snow.SturmSnowConductivityModel(toml_dict),
 )
 
 Y, p, coords = ClimaLand.initialize(model)

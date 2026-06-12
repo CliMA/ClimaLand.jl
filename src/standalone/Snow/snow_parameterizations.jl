@@ -239,8 +239,8 @@ end
 
 """
     snow_thermal_conductivity(
+        scheme::JordanSnowConductivityModel,
         ρ_snow::FT,
-        κ_ice::FT,
         earth_param_set,
     ) where {FT}
 
@@ -256,15 +256,48 @@ and the second by x², with ρ\\_ice in kg/m³.
 When ρ\\_snow = ρ\\_ice, we recover κ\\_snow = κ\\_ice.
 """
 function snow_thermal_conductivity(
+    scheme::JordanSnowConductivityModel,
     ρ_snow::FT,
-    κ_ice::FT,
     earth_param_set,
 ) where {FT}
-    _κ_air = FT(LP.K_therm(earth_param_set))
-    _ρ_ice = FT(LP.ρ_cloud_ice(earth_param_set))
+    κ_ice = scheme.κ_ice
+    _κ_air = LP.K_therm(earth_param_set)
+    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     return _κ_air +
-           (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
-           (κ_ice - _κ_air)
+           (
+        scheme.linear_coeff * (ρ_snow / _ρ_ice) +
+        scheme.quadratic_coeff * (ρ_snow / _ρ_ice)^2
+    ) * (κ_ice - _κ_air)
+end
+
+"""
+    snow_thermal_conductivity(
+        scheme::SturmSnowConductivityModel,
+        ρ_snow::FT,
+        earth_param_set,
+    ) where {FT}
+
+Computes the thermal conductivity, given the density
+of the snow, according to Sturm, M., Holmgren, J., König, M., 
+and Morris, K.: The thermal conductivity of seasonal snow, J. Glaciol., 43, 26–41,
+https://doi.org/10.3189/S0022143000002781, 1997.
+
+We have adjusted the original equation to make the coefficients
+non-dimensional by multiplying and dividing by ρ\\_ice as appropriate.
+"""
+function snow_thermal_conductivity(
+    scheme::SturmSnowConductivityModel,
+    ρ_snow::FT,
+    earth_param_set,
+) where {FT}
+    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+
+    x = min(ρ_snow / _ρ_ice, scheme.max / _ρ_ice)
+    if x < scheme.threshold
+        return scheme.b1 + scheme.m1 * x
+    else
+        return scheme.b2 + scheme.m2 * x + scheme.q2 * x^2
+    end
 end
 
 """

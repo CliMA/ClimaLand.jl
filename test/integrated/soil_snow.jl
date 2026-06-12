@@ -33,6 +33,7 @@ for lsm_aux_var in (
     :excess_water_flux,
     :excess_heat_flux,
     :ground_heat_flux,
+    :snow_T_bot,
     :effective_soil_sfc_T,
     :sfc_scratch,
     :subsfc_scratch,

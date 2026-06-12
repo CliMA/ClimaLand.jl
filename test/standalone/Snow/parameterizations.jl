@@ -100,8 +100,8 @@ for FT in (Float32, Float64)
         @test typeof(parameters.Ksat) == FT
         @test parameters.θ_r == θ_r
         @test typeof(parameters.θ_r) == FT
-        @test parameters.κ_ice == κ_ice
-        @test typeof(parameters.κ_ice) == FT
+        @test parameters.κ_snow.κ_ice == κ_ice
+        @test typeof(parameters.κ_snow) == Snow.JordanSnowConductivityModel{FT}
 
         roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
 
@@ -109,7 +109,7 @@ for FT in (Float32, Float64)
         @test specific_heat_capacity(FT(1.0), param_set) == _cp_l
         @test specific_heat_capacity(FT(0.0), param_set) == _cp_i
         ρ_snow = ρ_min
-        @test snow_thermal_conductivity(ρ_snow, parameters.κ_ice, param_set) ==
+        @test snow_thermal_conductivity(parameters.κ_snow, ρ_snow, param_set) ==
               κ_air +
               (FT(0.07) * (ρ_snow / _ρ_i) + FT(0.93) * (ρ_snow / _ρ_i)^2) *
               (κ_ice - κ_air)

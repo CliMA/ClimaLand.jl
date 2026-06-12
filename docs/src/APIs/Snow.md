@@ -56,6 +56,8 @@ ClimaLand.Snow.AtmosDrivenSnowBC
 
 ```@docs
 ClimaLand.Snow.WuWuSnowCoverFractionModel
+ClimaLand.Snow.JordanSnowConductivityModel
+ClimaLand.Snow.SturmSnowConductivityModel
 ClimaLand.Snow.ZenithAngleAlbedoModel
 ClimaLand.Snow.ConstantAlbedoModel
 ```
