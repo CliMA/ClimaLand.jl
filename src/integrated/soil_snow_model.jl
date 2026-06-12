@@ -135,7 +135,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_types(m::SoilSnowModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT,  FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilSnowModel)
@@ -215,19 +215,10 @@ end
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
-    F_g =  - κ_eff (T_snow - T_soil)/Δz_eff,
+    F_g =  F_g =  - g_eff (T_snow_bottom - T_soil_sfc)
 
 where:
-    κ_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)* (Δz_soil + Δz_snow)/2
-    Δz_eff =( Δz_soil + Δz_snow)/2
-
-This is what JULES does to compute the diffusive heat flux between snow and soil, for example,
-see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011
-
-However, this is for a multi-layer snow model, with
-T_snow and Δz_snow related to the bottom layer.
-We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep.
-Due to this, we cap Δz_snow at 10 cm.
+    g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2).
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -246,14 +237,76 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
-    T_snow = p.snow.T
+    T̄ = p.snow.T
+    T_sfc = p.snow.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-
+    @. p.snow_T_bot = snow_T_bottom(
+        κ_snow,
+        κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2), # g_eff
+        T_soil,
+        T̄,
+        T_sfc,
+        max(p.snow.z_snow, eps(FT)),
+        p.snow.ρ_snow,
+        snow_params.earth_param_set,
+    )
     # compute the flux
+    # g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
-        (T_snow - T_soil)
+        (p.snow_T_bot - T_soil)
     return nothing
+end
+
+"""
+    snow_T_bottom(
+        κ::FT,
+        g_eff::FT,
+        T_soil::FT,
+        T̄::FT,
+        T_sfc::FT,
+        z::FT,
+        ρ::FT,
+        earth_param_set,
+    ) where {FT}
+
+A parameterization for the temperature at the bottom of the snowpack, assuming a piecewise
+linear profile for temperature within the snowpack:
+T(x) = T_bot + (T(d)-T_bot)/(z-d)*x if 0 <= x <= z-d
+T(x) = T(d) + (T_sfc - T(d))/(d)*(x - (z-d)) if z-d <= x <= z
+
+with the following constraints:
+(1) ∑F(T_sfc) = -κ(T_sfc - T(d))/d OR T_sfc = T̄ # surface energy balance or assume surface temp equals the bulk
+(2) T̄ = 1/2[(T_sfc + T(d))*(d/z) + (T(d) + T_bot)*(z-d)/z] # Average of the profile is equal to the bulk temperature
+(3) -κ/(z-d)(T(d) - T_bot) = -g_eff (T_bot - T_soil) # bottom energy balance
+
+Then solve for T_bot to get the below formula.
+
+Note that if d << z, we obtain a T_bot which satisfies
+-κ/(z/2)(T̄ -T_bot) = -g_eff(T_bot -T_soil)
+which is reasonable.
+
+If d -> z, we get
+T_bot = 2T̄ - T_sfc; T̄ = 1/2(T(d) + T_sfc), so that
+T(d) = T_bot, which is also reasonable.
+"""
+function snow_T_bottom(
+    κ::FT,
+    g_eff::FT,
+    T_soil::FT,
+    T̄::FT,
+    T_sfc::FT,
+    z::FT,
+    ρ::FT,
+    earth_param_set,
+) where {FT}
+    d = Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    return min(
+        (2 * T̄ - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
+        (g_eff / κ * (z - d) + 1 + (z - d) / z),
+        _T_freeze,
+    )
 end
 
 

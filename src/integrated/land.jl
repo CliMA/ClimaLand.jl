@@ -426,6 +426,7 @@ The names of the additional auxiliary variables that are
 included in the land model.
 """
 lsm_aux_vars(m::LandModel) = (
+    :snow_T_bot,
     :root_extraction,
     :root_energy_extraction,
     :LW_u,
@@ -472,6 +473,7 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
     FT,
     FT,
@@ -484,6 +486,7 @@ The domain names of the additional auxiliary variables that are
 included in the land model.
 """
 lsm_aux_domain_names(m::LandModel) = (
+    :surface,
     :subsurface,
     :subsurface,
     :surface,
