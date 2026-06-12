@@ -110,7 +110,7 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+stop_date = LONGER_RUN ? DateTime("2010-03-01") : DateTime("2010-03-01")
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -123,7 +123,12 @@ else
 end
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file("/home/kdeck/ClimaArtifacts/rosetta_spunup_ic/rosetta_spunup_ic/rosetta_spunup_ic_20years.nc", model)
+#set_ic! =
+#    ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters(
+#        model,
+#    )
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir, set_ic!)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
