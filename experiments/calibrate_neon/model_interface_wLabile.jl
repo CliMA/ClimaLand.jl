@@ -185,6 +185,23 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         α_snow,
     )
 
+        # Build the soil model explicitly so we can use the Rosetta (Montzka et al.
+    # 2017) van Genuchten retention parameters instead of the default Gupta 2020.
+    # rosetta_soil_vangenuchten_parameters returns the same NamedTuple shape
+    # (; ν, hydrology_cm, K_sat, θ_r) as the default soil_vangenuchten_parameters.
+    soil = Soil.EnergyHydrology{FT}(
+        land_domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+            land_domain.space.subsurface,
+            FT,
+        ),
+    )
+
+
     # Full LandModel — calibrated TOML used for soil/soilCO2 parameters
     land = LandModel{FT}(
         forcing,
@@ -195,6 +212,7 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         prognostic_land_components,
         snow,
         canopy,
+        soil,
     )
 
     # Optional per-run θ_r override (uniform over depth), broadcast from the
