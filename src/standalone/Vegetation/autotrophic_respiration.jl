@@ -24,6 +24,12 @@ Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     μs::FT
     "Relative contribution or Rgrowth (-)"
     Rel::FT
+    "Q10 temperature sensitivity of maintenance respiration (-), JULES default 2.0"
+    Q10::FT
+    "Reference temperature for the Q10 maintenance-respiration factor (K), JULES default 298.15"
+    T_ref::FT
+    "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) used as the base rate for the LAI-independent root and stem maintenance respiration"
+    Rd_ref::FT
 end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
@@ -83,6 +89,10 @@ function update_autotrophic_respiration!(
     Vcmax25_canopy = get_Vcmax25_canopy(p, canopy.photosynthesis)
     Rd_canopy = get_Rd_canopy(p, canopy.photosynthesis)
     An_canopy = get_An_canopy(p, canopy.photosynthesis)
+    # Drive the Q10 factor with air temperature, not the prognostic canopy
+    # temperature: where LAI+SAI ≈ 0 the latter can diverge and overflow
+    # Q10^((T-T_ref)/10) to Inf, giving Ra = NaN. T_air stays bounded.
+    T_air = p.drivers.T
     @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
         autotrophic_respiration,
         Vcmax25_canopy,
@@ -93,6 +103,7 @@ function update_autotrophic_respiration!(
         Rd_canopy,
         β,
         h_canopy,
+        T_air,
     )
 end
 
@@ -106,10 +117,20 @@ end
                                   Rd_canopy,
                                   β,
                                   h,
+                                  T_air,
                                  )
 
 Computes the autotrophic respiration (mol co2 m^-2 s^-1) as the sum of the plant maintenance
-and growth respirations, according to the JULES model.
+and growth respirations, based on the JULES model.
+
+Maintenance respiration is split by tissue. The leaf term uses `Rd_canopy`
+(∝ LAI) so it vanishes when leafless; the root and stem terms use a reference
+rate `Rd_ref` scaled by the time-constant area indices RAI/SAI, so they persist
+through winter. This fixes the original JULES formulation, where all of `Rpm`
+scaled with `Rd_canopy ∝ LAI` and collapsed to ~0 whenever LAI → 0.
+
+The whole term is scaled by the Q10 factor `Q10^((T_air - T_ref)/10)`, driven by
+air temperature (see `update_autotrophic_respiration!` for why not canopy temp).
 
 Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 """
@@ -123,12 +144,19 @@ function compute_autrophic_respiration(
     Rd_canopy,
     β,
     h,
+    T_air,
 )
 
-    (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
-    Nl, Nr, Ns =
-        nitrogen_content(ne, Vcmax25_canopy, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance(Rd_canopy, β, Nl, Nr, Ns)
+    (; ηsl, σl, μr, μs, Rel, Q10, T_ref, Rd_ref) = model.parameters
+    FT = typeof(T_air)
+    f_T = Q10^((T_air - T_ref) / FT(10))
+    # Leaf maintenance scales with Rd_canopy (∝ LAI); root/stem use Rd_ref and
+    # the time-constant RAI/SAI so they persist when LAI → 0. μr/μs are the
+    # root/stem-to-leaf nitrogen ratios; ηsl*h*SAI is the live stem carbon.
+    R_leaf = Rd_canopy * β
+    R_root = Rd_ref * μr * RAI * β
+    R_stem = Rd_ref * μs * (ηsl * h / σl) * SAI
+    Rpm = f_T * (R_leaf + R_root + R_stem)
     Rg = plant_respiration_growth(Rel, An_canopy, Rpm)
     Ra = Rpm + Rg
     return Ra # already canopy level
@@ -156,9 +184,22 @@ function AutotrophicRespirationParameters(
     μr = toml_dict["root_leaf_nitrogen_ratio"],
     Rel = toml_dict["relative_contribution_factor"],
     μs = toml_dict["stem_leaf_nitrogen_ratio"],
+    Q10 = toml_dict["autotrophic_respiration_Q10"],
+    T_ref = toml_dict["autotrophic_respiration_T_ref"],
+    Rd_ref = toml_dict["autotrophic_respiration_Rd_ref"],
 )
     FT = CP.float_type(toml_dict)
-    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs)
+    AutotrophicRespirationParameters{FT}(;
+        ne,
+        ηsl,
+        σl,
+        μr,
+        Rel,
+        μs,
+        Q10,
+        T_ref,
+        Rd_ref,
+    )
 end
 
 
@@ -236,6 +277,8 @@ Computes plant growth respiration as a function of net photosynthesis (An),
 plant maintenance respiration (Rpm), and a relative contribution factor, Rel.
 """
 function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
-    Rg = Rel * (An - Rpm)
+    # Clamp at zero so a positive winter maintenance baseline (An ≈ 0) can't
+    # drive growth respiration, and hence Ra, negative.
+    Rg = Rel * max(An - Rpm, FT(0))
     return Rg
 end

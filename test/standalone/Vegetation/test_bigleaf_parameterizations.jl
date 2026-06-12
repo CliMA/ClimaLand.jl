@@ -307,7 +307,10 @@ for FT in (Float32, Float64)
               LAI *
               ClimaLand.heaviside(SAI)# == gives a very small error
         @test Rpm == Rd * LAI * (β + (Nr + Ns) / Nl)
-        @test all(@.(Rg ≈ ARparams.Rel * (An * LAI - Rpm)))
+        # plant_respiration_growth clamps net assimilation in excess of
+        # maintenance at zero (so a winter maintenance baseline cannot drive
+        # growth respiration negative).
+        @test all(@.(Rg ≈ ARparams.Rel * max(An * LAI - Rpm, 0)))
 
     end
 end
