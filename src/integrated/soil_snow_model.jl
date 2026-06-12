@@ -121,6 +121,7 @@ lsm_aux_vars(m::SoilSnowModel) = (
     :excess_water_flux,
     :excess_heat_flux,
     :ground_heat_flux,
+    :snow_T_bot,
     :effective_soil_sfc_T,
     :sfc_scratch,
     :subsfc_scratch,
@@ -134,7 +135,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_types(m::SoilSnowModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT,  FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilSnowModel)
@@ -143,6 +144,7 @@ The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_domain_names(m::SoilSnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
