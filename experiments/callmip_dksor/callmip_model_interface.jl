@@ -1,19 +1,26 @@
 """
-Full-period DK-Sor model interface for CalLMIP Phase 1b output generation.
+Per-year DK-Sor model interface for CalLMIP Phase 1b output generation.
 
-Runs a single continuous simulation 1996-11-02 → 2015-01-01 (60-day spinup
-ahead of the 1997-01-01 output start), using PeriodicCalendar to recycle the
-1997–2014 forcing into the spinup window. Daily diagnostics are extracted and
-the spinup period is discarded (dates < 1997-01-01).
+Runs each calendar year 1997–2014 as a separate single-year simulation with a
+60-day spinup (PeriodicCalendar recycles the 1997–2014 forcing into the spinup
+window), then concatenates the daily output. This mirrors the validated
+reference setup (ar/em/calibrate_neon:experiments/integrated/fluxnet/
+run_dk_sor_default.jl, which runs single years with a 60-day spinup).
 
-DT = 450 s. The shorter timestep prevents the van Genuchten saturation
-overshoot (S_l transiently > 1 → negative base in x^(1/n) → DomainError) that a
-900 s step triggered in this long default-parameter run.
+Why per-year, not one continuous 1996→2015 run: the default DK-Sor config at
+DT=900s carries a latent numerical instability — on a stiff cold-season /
+wet-after-dry transient the coupled soil-energy solve can momentarily produce
+T_soil < 0 K, and the soil-CO2 gas-diffusivity term D0 ∝ (T_soil/T_ref)^1.75
+then raises a negative base to a fractional power → DomainError
+(gas_diffusivity_in_soil, co2_parameterizations.jl). This is NOT fixed by a
+smaller timestep, a lower initial saturation, or a different forcing
+interpolation (all tested). Single-year runs start clean each year, so a bad
+transient in one year cannot propagate, exactly as the reference run avoids it.
 
 Provides:
-  build_callmip_model(FT, toml_dict, met_nc_path) -> (land, forcing, ν, θ_r)
-  make_callmip_ic(ν, θ_r, atmos)                  -> set_ic!
-  save_callmip_diagnostics(simulation, land, outdir)
+  run_one_year(year, toml_dict, met_nc_path) -> (surface_data, column_data,
+                                                 z_soil, dates)
+  save_callmip_diagnostics(all_surface, all_column, z_soil, all_dates, outdir)
 
 Usage (called from run_prior_simulation.jl / run_callmip_simulations.jl):
   include("callmip_model_interface.jl")
@@ -33,7 +40,7 @@ using ClimaCore
 using ClimaDiagnostics
 using ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar, evaluate!
 import ClimaUtilities.TimeManager: date
 using Dates
 using NCDatasets
@@ -44,8 +51,7 @@ using JLD2
 const SPINUP_DAYS  = 60
 const OUTPUT_START = Date(1997, 1, 1)
 const OUTPUT_STOP  = Date(2014, 12, 31)
-const SIM_START    = DateTime(OUTPUT_START) - Day(SPINUP_DAYS)   # 1996-11-02
-const SIM_STOP     = DateTime(2015, 1, 1)
+const OUTPUT_YEARS = year(OUTPUT_START):year(OUTPUT_STOP)   # 1997:2014
 
 # CalLMIP surface diagnostic names available for LandModel.
 # Note: "soillhf", "soilrn", "soilshf" are NOT in get_possible_diagnostics(LandModel).
@@ -55,10 +61,10 @@ const CALLMIP_SURFACE_VARS = [
 const CALLMIP_COLUMN_VARS = ["swc", "tsoil", "soc"]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Forcing loader
+# Forcing loader  (sim_start passed in — different per year)
 # ─────────────────────────────────────────────────────────────────────────────
 
-function load_forcing_periodic(met_nc_path::String, toml_dict, FT)
+function load_forcing_periodic(met_nc_path::String, toml_dict, FT, sim_start::DateTime)
     loc    = FluxnetSimulations.get_location(FT, Val(:DK_Sor))
     height = FluxnetSimulations.get_fluxtower_height(FT, Val(:DK_Sor))
     lat    = loc.lat; long = loc.long; time_offset = loc.time_offset
@@ -74,7 +80,7 @@ function load_forcing_periodic(met_nc_path::String, toml_dict, FT)
     NCDataset(met_nc_path, "r") do ds
         t_dates = ds["time"][:]
         t_secs  = Float64[
-            Second(t - Hour(time_offset) - SIM_START).value
+            Second(t - Hour(time_offset) - sim_start).value
             for t in t_dates
         ]
 
@@ -106,7 +112,7 @@ function load_forcing_periodic(met_nc_path::String, toml_dict, FT)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             atmos_Pr, atmos_Ps, atmos_T, atmos_u, atmos_q, atmos_P,
-            SIM_START, atmos_h, toml_dict; c_co2,
+            sim_start, atmos_h, toml_dict; c_co2,
         )
         cos_zenith_angle = (t, s) -> ClimaLand.default_cos_zenith_angle(
             t, s;
@@ -115,19 +121,19 @@ function load_forcing_periodic(met_nc_path::String, toml_dict, FT)
             latitude     = lat,
         )
         radiation = ClimaLand.PrescribedRadiativeFluxes(
-            FT, SW_d, LW_d, SIM_START; cosθs = cos_zenith_angle, toml_dict,
+            FT, SW_d, LW_d, sim_start; cosθs = cos_zenith_angle, toml_dict,
         )
         return (; atmos, radiation)
     end
 end
 
-function load_lai_periodic(met_nc_path::String, FT)
+function load_lai_periodic(met_nc_path::String, FT, sim_start::DateTime)
     loc    = FluxnetSimulations.get_location(FT, Val(:DK_Sor))
     method = LinearInterpolation(PeriodicCalendar())
     NCDataset(met_nc_path, "r") do ds
         t_dates = ds["time"][:]
         t_secs  = Float64[
-            Second(t - Hour(loc.time_offset) - SIM_START).value
+            Second(t - Hour(loc.time_offset) - sim_start).value
             for t in t_dates
         ]
         raw   = Float64.(coalesce.(ds["LAI_alternative"][1, 1, :], NaN))
@@ -141,10 +147,9 @@ end
 # Model builder
 # ─────────────────────────────────────────────────────────────────────────────
 
-function build_callmip_model(FT, toml_dict, met_nc_path::String)
-    DT = Float64(450)
-    forcing     = load_forcing_periodic(met_nc_path, toml_dict, FT)
-    LAI, maxLAI = load_lai_periodic(met_nc_path, FT)
+function build_callmip_model(FT, toml_dict, met_nc_path::String, sim_start::DateTime, DT)
+    forcing     = load_forcing_periodic(met_nc_path, toml_dict, FT, sim_start)
+    LAI, maxLAI = load_lai_periodic(met_nc_path, FT, sim_start)
 
     (; dz_tuple, nelements, zmin, zmax) =
         FluxnetSimulations.get_domain_info(FT, Val(:DK_Sor))
@@ -227,21 +232,11 @@ function build_callmip_model(FT, toml_dict, met_nc_path::String)
 end
 
 function make_callmip_ic(ν, θ_r, atmos)
-    # Soil is initialised at 70% effective saturation (not 95%). A near-saturated
-    # column (S=0.95) has a high heat capacity and a stiff coupled energy solve.
-    # Under strong surface forcing (e.g. the warm day + 11 mm rain of 1997-06-13,
-    # day 164, after a dry spell) the soil-temperature update can transiently
-    # overshoot to T_soil < 0 K in one iterate; the soil-CO2 gas-diffusivity term
-    # D0 ∝ (T_soil/T_ref)^1.75 then raises a negative base to a fractional power
-    # and throws a DomainError (confirmed via symbolized backtrace:
-    # gas_diffusivity_in_soil, co2_parameterizations.jl:265). 0.70 conditions the
-    # energy solve and is more physically realistic for the summer column.
-    S_INIT = 0.70
     function set_ic!(Y, p, t, model)
         FT_l = eltype(Y.soil.ρe_int)
         evaluate!(p.drivers.T, atmos.T, t)
 
-        Y.soil.ϑ_l .= FT_l(θ_r) + (FT_l(ν) - FT_l(θ_r)) * FT_l(S_INIT)
+        Y.soil.ϑ_l .= FT_l(θ_r) + (FT_l(ν) - FT_l(θ_r)) * FT_l(0.95)
         Y.soil.θ_i .= FT_l(0)
         ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
             Y.soil.ϑ_l, Y.soil.θ_i,
@@ -254,10 +249,7 @@ function make_callmip_ic(ν, θ_r, atmos)
         if model.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
-        # Start plant hydraulics slightly below turgor (S_l ≈ 0.9) rather than at
-        # ϑ_l = ν (ψ = 0, the retention-curve boundary), so the coupled solve has
-        # margin on the first high-VPD day.
-        Y.canopy.hydraulics.ϑ_l .= FT_l(0.9) * model.canopy.hydraulics.parameters.ν
+        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
 
         if !isnothing(model.soilco2)
             Y.soilco2.CO2 .= FT_l(6e-5)
@@ -308,11 +300,47 @@ function extract_daily_column_diag(simulation, diag_name)
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Save diagnostics to JLD2 (spinup discarded: keep dates >= OUTPUT_START)
+# Run one calendar year with a 60-day spinup
 # ─────────────────────────────────────────────────────────────────────────────
 
-function save_callmip_diagnostics(simulation, land, outdir::String)
-    mkpath(outdir)
+"""
+    run_one_year(yr, toml_dict, met_nc_path; FT=Float64, DT=900.0)
+        -> (surface_data, column_data, z_soil, dates)
+
+Run calendar year `yr` with a `SPINUP_DAYS`-day spinup preceding it. Returns
+daily diagnostics for the output year only (spinup discarded). `surface_data`
+maps each surface var to a Vector over the year's days; `column_data` maps each
+column var to an (n_z × n_days) Matrix; `dates` are the kept output days.
+"""
+function run_one_year(yr::Int, toml_dict, met_nc_path::String;
+                      FT = Float64, DT = Float64(900))
+    sim_start = DateTime(yr, 1, 1) - Day(SPINUP_DAYS)
+    sim_stop  = DateTime(yr + 1, 1, 1)
+    out_start = Date(yr, 1, 1)
+    out_stop  = Date(yr, 12, 31)
+
+    land, forcing, ν, θ_r =
+        build_callmip_model(FT, toml_dict, met_nc_path, sim_start, DT)
+    set_ic! = make_callmip_ic(ν, θ_r, forcing.atmos)
+
+    output_writer = ClimaDiagnostics.Writers.DictWriter()
+    diags_surface = ClimaLand.default_diagnostics(
+        land, sim_start, "";
+        output_writer, output_vars = CALLMIP_SURFACE_VARS,
+        reduction_period = :daily,
+    )
+    diags_col = ClimaLand.default_diagnostics(
+        land, sim_start, "";
+        output_writer, output_vars = CALLMIP_COLUMN_VARS,
+        reduction_period = :daily,
+    )
+
+    simulation = LandSimulation(
+        sim_start, sim_stop, DT, land;
+        set_ic!, updateat = Second(DT),
+        diagnostics = vcat(diags_surface, diags_col),
+    )
+    solve!(simulation)
 
     surface_data = Dict{String, Vector{Float64}}()
     ref_dates    = Date[]
@@ -320,11 +348,11 @@ function save_callmip_diagnostics(simulation, land, outdir::String)
         key = "$(var)_1d_average"
         try
             dates, vals = extract_daily_diag(simulation, key)
-            keep = dates .>= OUTPUT_START
+            keep = (dates .>= out_start) .& (dates .<= out_stop)
             surface_data[var] = vals[keep]
             isempty(ref_dates) && (ref_dates = dates[keep])
         catch
-            @warn "Surface diagnostic '$var' not found"
+            @warn "  [$yr] Surface diagnostic '$var' not found"
         end
     end
 
@@ -333,10 +361,10 @@ function save_callmip_diagnostics(simulation, land, outdir::String)
         key = "$(var)_1d_average"
         try
             dates, mat = extract_daily_column_diag(simulation, key)
-            keep = dates .>= OUTPUT_START
+            keep = (dates .>= out_start) .& (dates .<= out_stop)
             column_data[var] = mat[:, keep]
         catch
-            @warn "Column diagnostic '$var' not found"
+            @warn "  [$yr] Column diagnostic '$var' not found"
         end
     end
 
@@ -349,13 +377,35 @@ function save_callmip_diagnostics(simulation, land, outdir::String)
         Float64[]
     end
 
-    n = length(ref_dates)
+    return surface_data, column_data, z_soil, ref_dates
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Save concatenated multi-year diagnostics to JLD2
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+    save_callmip_diagnostics(all_surface, all_column, z_soil, all_dates, outdir)
+
+Save concatenated 1997–2014 diagnostics to `outdir/callmip_diagnostics.jld2`.
+`all_surface` maps var → full Vector over all kept days; `all_column` maps
+var → (n_z × n_days) Matrix; `all_dates` is the full Vector of days.
+"""
+function save_callmip_diagnostics(
+    all_surface::Dict{String, Vector{Float64}},
+    all_column::Dict{String, Matrix{Float64}},
+    z_soil::Vector{Float64},
+    all_dates::Vector{Date},
+    outdir::String,
+)
+    mkpath(outdir)
+    n = length(all_dates)
     @info "Saving $n days of CalLMIP diagnostics " *
-          "($(isempty(ref_dates) ? "—" : "$(ref_dates[1]) – $(ref_dates[end]))")"
+          "($(isempty(all_dates) ? "—" : "$(all_dates[1]) – $(all_dates[end]))")"
     jldsave(joinpath(outdir, "callmip_diagnostics.jld2");
-        dates        = ref_dates,
-        surface_data,
-        column_data,
+        dates        = all_dates,
+        surface_data = all_surface,
+        column_data  = all_column,
         z_soil,
     )
 end

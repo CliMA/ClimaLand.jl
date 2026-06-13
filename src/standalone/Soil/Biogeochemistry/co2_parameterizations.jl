@@ -262,7 +262,14 @@ function gas_diffusivity_in_soil(
     T_ref = LP.T_0(earth_param_set)
     P_ref = LP.P_ref(earth_param_set)
     θ_a = volumetric_air_content(θ_w, ν)
-    D0 = D_ref * (T_soil / T_ref)^T_exp * (P_ref / P_sfc)
+    # Guard the fractional power against a non-positive soil temperature. T_soil
+    # should always be well above 0 K, but if a stiff transient transiently
+    # drives the prognostic soil energy below 0 K, (T_soil/T_ref)^T_exp would
+    # raise a negative base to a fractional power and throw a DomainError,
+    # aborting the whole simulation. Clamp to a small positive temperature so
+    # the diffusivity stays finite and the step can recover.
+    T_soil_safe = max(T_soil, eps(FT))
+    D0 = D_ref * (T_soil_safe / T_ref)^T_exp * (P_ref / P_sfc)
     # Cap the ratio to prevent diffusivity blow-up when θ_a100 << θ_a
     ratio = min(θ_a / θ_a100, FT(5))
     D = D0 * (FT(2)θ_a100^FT(3) + FT(0.04)θ_a100) * ratio^(FT(2) + FT(3) / b)
