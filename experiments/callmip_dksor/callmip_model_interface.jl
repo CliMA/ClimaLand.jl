@@ -227,11 +227,21 @@ function build_callmip_model(FT, toml_dict, met_nc_path::String)
 end
 
 function make_callmip_ic(ν, θ_r, atmos)
+    # Soil is initialised at 70% effective saturation (not 95%). A near-saturated
+    # column (S=0.95) has a high heat capacity and a stiff coupled energy solve.
+    # Under strong surface forcing (e.g. the warm day + 11 mm rain of 1997-06-13,
+    # day 164, after a dry spell) the soil-temperature update can transiently
+    # overshoot to T_soil < 0 K in one iterate; the soil-CO2 gas-diffusivity term
+    # D0 ∝ (T_soil/T_ref)^1.75 then raises a negative base to a fractional power
+    # and throws a DomainError (confirmed via symbolized backtrace:
+    # gas_diffusivity_in_soil, co2_parameterizations.jl:265). 0.70 conditions the
+    # energy solve and is more physically realistic for the summer column.
+    S_INIT = 0.70
     function set_ic!(Y, p, t, model)
         FT_l = eltype(Y.soil.ρe_int)
         evaluate!(p.drivers.T, atmos.T, t)
 
-        Y.soil.ϑ_l .= FT_l(θ_r) + (FT_l(ν) - FT_l(θ_r)) * FT_l(0.95)
+        Y.soil.ϑ_l .= FT_l(θ_r) + (FT_l(ν) - FT_l(θ_r)) * FT_l(S_INIT)
         Y.soil.θ_i .= FT_l(0)
         ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
             Y.soil.ϑ_l, Y.soil.θ_i,
@@ -244,7 +254,10 @@ function make_callmip_ic(ν, θ_r, atmos)
         if model.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
-        Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
+        # Start plant hydraulics slightly below turgor (S_l ≈ 0.9) rather than at
+        # ϑ_l = ν (ψ = 0, the retention-curve boundary), so the coupled solve has
+        # margin on the first high-VPD day.
+        Y.canopy.hydraulics.ϑ_l .= FT_l(0.9) * model.canopy.hydraulics.parameters.ν
 
         if !isnothing(model.soilco2)
             Y.soilco2.CO2 .= FT_l(6e-5)

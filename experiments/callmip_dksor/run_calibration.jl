@@ -265,7 +265,13 @@ function run_model_year(params_vec, year)
             FT_l = eltype(Y.soil.ρe_int)
             ν_l  = FT_l(soil_ν)
             θr_l = FT_l(θ_r)
-            Y.soil.ϑ_l .= θr_l + (ν_l - θr_l) * FT_l(0.95)
+            # Start at 70% effective saturation, not 95%. A near-saturated column
+            # has a high heat capacity and a stiff coupled energy solve; under
+            # strong surface forcing the soil-temperature update can transiently
+            # overshoot to T < 0 K, and the soil-CO2 diffusivity term
+            # (T_soil/T_ref)^1.75 then raises a negative base to a fractional
+            # power → DomainError. 70% conditions the solve and is realistic.
+            Y.soil.ϑ_l .= θr_l + (ν_l - θr_l) * FT_l(0.70)
             Y.soil.θ_i .= FT_l(0)
             ρc_s = ClimaLand.Soil.volumetric_heat_capacity.(
                 Y.soil.ϑ_l, Y.soil.θ_i,
