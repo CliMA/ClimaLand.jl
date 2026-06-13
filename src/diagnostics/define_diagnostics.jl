@@ -1131,20 +1131,20 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "snowtb",
         long_name = "Snow bulk temperature",
         standard_name = "snow_bulk_temp",
-        units = "",
-        comments = "The snow bulk temperature",
+        units = "K",
+        comments = "The bulk (layer-averaged) temperature of the snowpack",
         compute! = (out, Y, p, t) ->
             compute_snow_bulk_temp!(out, Y, p, t, land_model),
     )
 
     conditional_add_diagnostic_variable!(
         possible_diags;
-        short_name = "snowκ",
+        short_name = "snowk",
         long_name = "Snow thermal conductivity",
-        standard_name = "snow_κ",
-        units = "",
-        comments = "The snow thermal K",
-        compute! = (out, Y, p, t) -> compute_snow_κ!(out, Y, p, t, land_model),
+        standard_name = "snow_thermal_conductivity",
+        units = "W m^-1 K^-1",
+        comments = "The thermal conductivity of the snowpack",
+        compute! = (out, Y, p, t) -> compute_snow_k!(out, Y, p, t, land_model),
     )
     # Snow sfc temperature
     conditional_add_diagnostic_variable!(
@@ -1152,7 +1152,7 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "snowtsfc",
         long_name = "Snow sfc temperature",
         standard_name = "snow_sfc_temp",
-        units = "",
+        units = "K",
         comments = "The snow surface temperature",
         compute! = (out, Y, p, t) ->
             compute_snow_sfc_temp!(out, Y, p, t, land_model),
@@ -1163,8 +1163,8 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "snowtbot",
         long_name = "Snow bot temperature",
         standard_name = "snow_bot_temp",
-        units = "",
-        comments = "The snow bottom temperature",
+        units = "K",
+        comments = "The temperature at the bottom of the snowpack",
         compute! = (out, Y, p, t) ->
             compute_snow_bot_temp!(out, Y, p, t, land_model),
     )
@@ -1172,9 +1172,10 @@ function define_diagnostics!(land_model, possible_diags)
     conditional_add_diagnostic_variable!(
         possible_diags;
         short_name = "ghf",
-        long_name = "Snow soil heat flux",
-        standard_name = "ghf",
-        units = "",
+        long_name = "Ground heat flux",
+        standard_name = "ground_heat_flux",
+        units = "W m^-2",
+        comments = "The conductive heat flux between the snow and the soil; positive values transfer energy from the soil up into the snowpack",
         compute! = (out, Y, p, t) -> compute_ghf!(out, Y, p, t, land_model),
     )
 

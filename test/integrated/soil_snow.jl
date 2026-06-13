@@ -148,3 +148,75 @@ ClimaLand.Snow.snow_boundary_fluxes!(
     parent(p_snow_alone.snow.total_energy_flux .- p.snow.total_energy_flux) .≈
     parent(p.snow.snow_cover_fraction .* p.ground_heat_flux),
 )
+
+@testset "snow_T_bottom analytic limits and cap" begin
+    κ = FT(0.3)
+    ρ = FT(300)
+    g_eff = FT(1.2)
+    T_soil = FT(272.0)
+    Tbar = FT(263.0)
+    T_sfc = FT(255.0)
+    _T_freeze = FT(LP.T_freeze(earth_param_set))
+
+    # Reproduces the documented closed-form solution
+    z = FT(1.5)
+    d = ClimaLand.Snow.surface_temp_scaling_length(κ, ρ, z, earth_param_set)
+    expected = min(
+        (2 * Tbar - d / z * T_sfc + g_eff * (z - d) / κ * T_soil) /
+        (g_eff / κ * (z - d) + 1 + (z - d) / z),
+        _T_freeze,
+    )
+    @test ClimaLand.snow_T_bottom(
+        κ,
+        g_eff,
+        T_soil,
+        Tbar,
+        T_sfc,
+        z,
+        ρ,
+        earth_param_set,
+    ) == expected
+
+    # Deep snow (d << z): T_bot -> (2 T̄ + g_eff z/κ T_soil) / (g_eff z/κ + 2)
+    z_deep = FT(100.0)
+    T_bot_deep = ClimaLand.snow_T_bottom(
+        κ,
+        g_eff,
+        T_soil,
+        Tbar,
+        T_sfc,
+        z_deep,
+        ρ,
+        earth_param_set,
+    )
+    deep_limit =
+        (2 * Tbar + g_eff * z_deep / κ * T_soil) / (g_eff * z_deep / κ + 2)
+    @test T_bot_deep ≈ deep_limit rtol = FT(1e-2)
+
+    # Shallow snow (d -> z): T_bot -> 2 T̄ - T_sfc
+    z_thin = FT(1e-4)
+    T_bot_thin = ClimaLand.snow_T_bottom(
+        κ,
+        g_eff,
+        T_soil,
+        Tbar,
+        T_sfc,
+        z_thin,
+        ρ,
+        earth_param_set,
+    )
+    @test T_bot_thin ≈ 2 * Tbar - T_sfc rtol = FT(1e-2)
+
+    # Warm soil drives T_bot above freezing -> capped at T_freeze
+    T_bot_cap = ClimaLand.snow_T_bottom(
+        κ,
+        g_eff,
+        FT(290.0),
+        FT(272.0),
+        FT(271.0),
+        z,
+        ρ,
+        earth_param_set,
+    )
+    @test T_bot_cap == _T_freeze
+end
