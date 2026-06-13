@@ -1,6 +1,6 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "1.8.3"
+version = "1.9.0"
 authors = ["Clima Land Team"]
 
 [deps]
@@ -45,7 +45,7 @@ LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Pr
 SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 
 [compat]
-Adapt = "4.6.0"
+Adapt = "4.6.1"
 CairoMakie = "0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.22"
 ClimaComms = "0.6.2"
