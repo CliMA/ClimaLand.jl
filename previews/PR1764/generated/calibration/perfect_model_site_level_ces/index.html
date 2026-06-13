@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Single site perfect model (CES/UQ) · ClimaLand.jl</title><meta name="title" content="Single site perfect model (CES/UQ) · ClimaLand.jl"/><meta property="og:title" content="Single site perfect model (CES/UQ) · ClimaLand.jl"/><meta property="twitter:title" content="Single site perfect model (CES/UQ) · ClimaLand.jl"/><meta name="description" content="Documentation for ClimaLand.jl."/><meta property="og:description" content="Documentation for ClimaLand.jl."/><meta property="twitter:description" content="Documentation for ClimaLand.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="ClimaLand.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">ClimaLand.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../fundamental_concepts/">Fundamental Concepts</a></li><li><a class="tocitem" href="../../../getting_started/">Running your first simulation</a></li><li><a class="tocitem" href="../../../available_models/">Available Models and Parameterizations</a></li><li><a class="tocitem" href="../../../parameters/">Parameters</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox" checked/><label class="tocitem" for="menuitem-6"><span class="docs-label">Tutorials</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1" type="checkbox"/><label class="tocitem" for="menuitem-6-1"><span class="docs-label">Running standalone component simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/bucket_tutorial/">Bucket</a></li><li><input class="collapse-toggle" id="menuitem-6-1-2" type="checkbox"/><label class="tocitem" for="menuitem-6-1-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/boundary_conditions/">Boundary conditions</a></li><li><a class="tocitem" href="../../standalone/Soil/richards_equation/">Richards Equation</a></li><li><a class="tocitem" href="../../standalone/Soil/soil_energy_hydrology/">Energy and Hydrology</a></li><li><input class="collapse-toggle" id="menuitem-6-1-2-4" type="checkbox"/><label class="tocitem" for="menuitem-6-1-2-4"><span class="docs-label">Phase Changes</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Soil/freezing_front/">Modeling a freezing front in unsaturated soil</a></li><li><a class="tocitem" href="../../standalone/Soil/phase_change_analytic/">The Stefan problem</a></li></ul></li><li><a class="tocitem" href="../../standalone/Soil/layered_soil/">Layered Soil</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation/">Coarse Sand Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/evaporation_gilat_loess/">Gilat Loess Evaporation</a></li><li><a class="tocitem" href="../../standalone/Soil/sublimation/">Bare soil site</a></li><li><a class="tocitem" href="../../standalone/Soil/changing_soil_parameterizations/">Changing soil parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-3" type="checkbox"/><label class="tocitem" for="menuitem-6-1-3"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Canopy/default_canopy/">Default canopy</a></li><li><a class="tocitem" href="../../standalone/Canopy/canopy_tutorial/">Default canopy fluxtower simulation </a></li><li><a class="tocitem" href="../../standalone/Canopy/changing_canopy_parameterizations/">Changing canopy parameterizations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-4" type="checkbox"/><label class="tocitem" for="menuitem-6-1-4"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Snow/base_tutorial/">Base tutorial</a></li><li><a class="tocitem" href="../../standalone/Snow/data_tutorial/">Data tutorial</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2"><span class="docs-label">Running Fluxnet simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../integrated/soil_canopy_fluxnet_tutorial/">Canopy and soil</a></li><li><a class="tocitem" href="../../integrated/snowy_land_fluxnet_tutorial/">Canopy, soil, and snow</a></li><li><a class="tocitem" href="../../integrated/changing_snowy_land_parameterizations/">Changing LandModel parameterizations</a></li><li><a class="tocitem" href="../../integrated/fluxnet_data/">Data processing</a></li><li><a class="tocitem" href="../../integrated/fluxnet_vis/">Visualization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-3" type="checkbox"/><label class="tocitem" for="menuitem-6-3"><span class="docs-label">Running global simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../global/bucket/">Bucket</a></li><li><a class="tocitem" href="../../global/snowy_land/">Snow, soil, canopy</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-4" type="checkbox" checked/><label class="tocitem" for="menuitem-6-4"><span class="docs-label">Calibrating a ClimaLand model</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../perfect_model_site_level_calibration/">Single site perfect model</a></li><li><a class="tocitem" href="../obs_site_level_calibration/">Single site observations</a></li><li class="is-active"><a class="tocitem" href>Single site perfect model (CES/UQ)</a><ul class="internal"><li><a class="tocitem" href="#Overview"><span>Overview</span></a></li><li><a class="tocitem" href="#Setup-and-Imports"><span>Setup and Imports</span></a></li><li><a class="tocitem" href="#Configuration-and-Site-Setup"><span>Configuration and Site Setup</span></a></li><li><a class="tocitem" href="#Domain-and-Forcing-Setup"><span>Domain and Forcing Setup</span></a></li><li><a class="tocitem" href="#Model-Setup"><span>Model Setup</span></a></li><li><a class="tocitem" href="#Step-1-—-Calibrate-(Ensemble-Kalman-Inversion)"><span>Step 1 — Calibrate (Ensemble Kalman Inversion)</span></a></li><li><a class="tocitem" href="#Step-2-—-Emulate-(Gaussian-Process-Surrogate)"><span>Step 2 — Emulate (Gaussian Process Surrogate)</span></a></li><li><a class="tocitem" href="#Step-3-—-Sample-(MCMC-Posterior)"><span>Step 3 — Sample (MCMC Posterior)</span></a></li><li><a class="tocitem" href="#UQ-Results:-Posterior-vs-Prior-vs-True-Value"><span>UQ Results: Posterior vs Prior vs True Value</span></a></li><li><a class="tocitem" href="#Posterior-Predictive-Check"><span>Posterior Predictive Check</span></a></li></ul></li><li><a class="tocitem" href="../obs_site_level_ces/">Single site observations (CES/UQ)</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-5" type="checkbox"/><label class="tocitem" for="menuitem-6-5"><span class="docs-label">Running coupled simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Bucket/coupled_bucket/">Coupled bucket model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-6" type="checkbox"/><label class="tocitem" for="menuitem-6-6"><span class="docs-label">For model developers</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/model_tutorial/">Intro to standalone models</a></li><li><input class="collapse-toggle" id="menuitem-6-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-6-2"><span class="docs-label">Intro to multi-component models</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../standalone/Usage/LSM_single_column_tutorial/">Single column tutorial</a></li><li><a class="tocitem" href="../../integrated/handling_soil_fluxes/">Adjusting boundary conditions for the soil</a></li><li><a class="tocitem" href="../../integrated/handling_snow_fluxes/">Adjusting boundary conditions for the snow</a></li></ul></li><li><a class="tocitem" href="../../standalone/Usage/domain_tutorial/">Intro to ClimaLand Domains</a></li><li><a class="tocitem" href="../../shared_utilities/driver_tutorial/">Intro to forced site-level runs</a></li><li><a class="tocitem" href="../../shared_utilities/timestepping/">Intro to implicit/explicit timestepping</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-7" type="checkbox"/><label class="tocitem" for="menuitem-7"><span class="docs-label">Writing and accessing outputs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../diagnostics/users_diagnostics/">For users</a></li><li><a class="tocitem" href="../../../diagnostics/developers_diagnostics/">For developers</a></li><li><a class="tocitem" href="../../../diagnostics/available_diagnostics/">Available diagnostics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8" type="checkbox"/><label class="tocitem" for="menuitem-8"><span class="docs-label">Model Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-1" type="checkbox"/><label class="tocitem" for="menuitem-8-1"><span class="docs-label">Inland Waters</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/inland_waters/slab_lake/">Slab Lake model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2" type="checkbox"/><label class="tocitem" for="menuitem-8-2"><span class="docs-label">Vegetation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-2-1" type="checkbox"/><label class="tocitem" for="menuitem-8-2-1"><span class="docs-label">Radiative transfer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/beer_model/">Beer model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/radiative_transfer/twostream_model/">Two-Stream model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-2" type="checkbox"/><label class="tocitem" for="menuitem-8-2-2"><span class="docs-label">Photosynthesis</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/farquhar_model/">Farquhar model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-3" type="checkbox"/><label class="tocitem" for="menuitem-8-2-3"><span class="docs-label">Stomatal conductance</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/stomatal_conductance/medlyn_model/">Medlyn model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/photosynthesis/pmodel/">P-model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-4" type="checkbox"/><label class="tocitem" for="menuitem-8-2-4"><span class="docs-label">Plant hydraulics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/plant_hydraulics/prognostic/">Prognostic model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-5" type="checkbox"/><label class="tocitem" for="menuitem-8-2-5"><span class="docs-label">Solar Induced Fluorescence</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/solar_induced_fluorescence/lee_model/">Lee model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-6" type="checkbox"/><label class="tocitem" for="menuitem-8-2-6"><span class="docs-label">Canopy structure</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/canopy_structure/prescribed_structure/">Prescribed structure</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/canopy_structure/optimal_lai/">Optimal LAI</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-7" type="checkbox"/><label class="tocitem" for="menuitem-8-2-7"><span class="docs-label">Canopy energy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/canopy_energy/canopy_energy/">Physics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-8" type="checkbox"/><label class="tocitem" for="menuitem-8-2-8"><span class="docs-label">Canopy energy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/turbulent_fluxes/turbulent_fluxes/">Physics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-9" type="checkbox"/><label class="tocitem" for="menuitem-8-2-9"><span class="docs-label">Soil moisture stress</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/soil_moisture_stress/piecewise_model/">Piecewise model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/soil_moisture_stress/tuzet_model/">Tuzet model</a></li><li><a class="tocitem" href="../../../standalone/pages/vegetation/soil_moisture_stress/no_moisture_stress/">No moisture stress</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-2-10" type="checkbox"/><label class="tocitem" for="menuitem-8-2-10"><span class="docs-label">Autotrophic respiration</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/vegetation/autotrophic_respiration/jules_model/">JULES model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-3" type="checkbox"/><label class="tocitem" for="menuitem-8-3"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-8-3-1" type="checkbox"/><label class="tocitem" for="menuitem-8-3-1"><span class="docs-label">Physics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/physics/richards_model/">Richards model</a></li><li><a class="tocitem" href="../../../standalone/pages/soil/physics/energy_model/">Energy+Hydrology model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-3-2" type="checkbox"/><label class="tocitem" for="menuitem-8-3-2"><span class="docs-label">Biogeochemistry</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/soil/biogeochemistry/DAMM_model/">DAMM model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-8-4" type="checkbox"/><label class="tocitem" for="menuitem-8-4"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../standalone/pages/snow/snow_model/">Snow model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-9" type="checkbox"/><label class="tocitem" for="menuitem-9"><span class="docs-label">Calibration and benchmark</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../calibration/">Calibrating model parameters</a></li><li><a class="tocitem" href="../../../leaderboard/leaderboard/">Model Benchmark</a></li></ul></li><li><a class="tocitem" href="../../../architectures/">Running on GPU or with MPI</a></li><li><input class="collapse-toggle" id="menuitem-11" type="checkbox"/><label class="tocitem" for="menuitem-11"><span class="docs-label">Additional resources</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../repo_structure/">Repository structure</a></li><li><a class="tocitem" href="../../../restarts/">Restarting a simulation</a></li><li><input class="collapse-toggle" id="menuitem-11-3" type="checkbox"/><label class="tocitem" for="menuitem-11-3"><span class="docs-label">Software utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../itime/">ITime type</a></li><li><a class="tocitem" href="../../../shared_utilities/">Shared utilities</a></li></ul></li><li><a class="tocitem" href="../../../physical_units/">Physical units</a></li></ul></li><li><a class="tocitem" href="../../../julia/">Julia background</a></li><li><input class="collapse-toggle" id="menuitem-13" type="checkbox"/><label class="tocitem" for="menuitem-13"><span class="docs-label">APIs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-13-1" type="checkbox"/><label class="tocitem" for="menuitem-13-1"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/soil/Soil/">Soil Energy and Hydrology</a></li><li><a class="tocitem" href="../../../APIs/soil/SoilSourcesandBCs/">Soil Sources and Boundary Conditions</a></li><li><a class="tocitem" href="../../../APIs/soil/SoilBiogeochemistry/">Soil Biogeochemistry</a></li><li><a class="tocitem" href="../../../APIs/soil/SoilAlbedo/">Soil Albedo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-13-2" type="checkbox"/><label class="tocitem" for="menuitem-13-2"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/canopy/Canopy/">Canopy Models</a></li><li><a class="tocitem" href="../../../APIs/canopy/PlantHydraulics/">Plant Hydraulics</a></li><li><a class="tocitem" href="../../../APIs/canopy/Biomass/">Leaf, stem, root dynamics</a></li><li><a class="tocitem" href="../../../APIs/canopy/LAI/">Optimal LAI</a></li><li><a class="tocitem" href="../../../APIs/canopy/Photosynthesis/">Photosynthesis</a></li><li><a class="tocitem" href="../../../APIs/canopy/RadiativeTransfer/">Radiative Transfer</a></li><li><a class="tocitem" href="../../../APIs/canopy/CanopyEnergy/">Energy</a></li><li><a class="tocitem" href="../../../APIs/canopy/StomatalConductance/">Stomatal Conductance</a></li><li><a class="tocitem" href="../../../APIs/canopy/AutotrophicRespiration/">Autotrophic Respiration</a></li></ul></li><li><a class="tocitem" href="../../../APIs/InlandWater/">Inland Water Models</a></li><li><a class="tocitem" href="../../../APIs/SurfaceWater/">Surface Water Models</a></li><li><a class="tocitem" href="../../../APIs/Bucket/">Bucket Model</a></li><li><a class="tocitem" href="../../../APIs/Snow/">Snow Model</a></li><li><a class="tocitem" href="../../../APIs/ClimaLand/">Integrated Models</a></li><li><input class="collapse-toggle" id="menuitem-13-8" type="checkbox"/><label class="tocitem" for="menuitem-13-8"><span class="docs-label">Shared Utilities</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../APIs/AbstractModels/">Abstract Models and Functions</a></li><li><a class="tocitem" href="../../../APIs/AuxiliaryVariablesCache/">Auxiliary Variables Cache</a></li><li><a class="tocitem" href="../../../APIs/Callbacks/">Callbacks</a></li><li><a class="tocitem" href="../../../APIs/Domains/">Domains</a></li><li><a class="tocitem" href="../../../APIs/Drivers/">Drivers</a></li><li><a class="tocitem" href="../../../APIs/Simulations/">Simulations</a></li><li><a class="tocitem" href="../../../APIs/SolverFunctions/">Solver Functions</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../contributing/">Contributor guide</a></li><li><a class="tocitem" href="../../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Calibrating a ClimaLand model</a></li><li class="is-active"><a href>Single site perfect model (CES/UQ)</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Single site perfect model (CES/UQ)</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl/../../../.." title="View source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Perfect-Model-Site-Level-CES-Tutorial-(Calibrate–Emulate–Sample)"><a class="docs-heading-anchor" href="#Perfect-Model-Site-Level-CES-Tutorial-(Calibrate–Emulate–Sample)">Perfect Model Site-Level CES Tutorial (Calibrate–Emulate–Sample)</a><a id="Perfect-Model-Site-Level-CES-Tutorial-(Calibrate–Emulate–Sample)-1"></a><a class="docs-heading-anchor-permalink" href="#Perfect-Model-Site-Level-CES-Tutorial-(Calibrate–Emulate–Sample)" title="Permalink"></a></h1><p>This tutorial extends the perfect model calibration experiment to the full <a href="https://github.com/CliMA/CalibrateEmulateSample.jl">CalibrateEmulateSample.jl</a> (CES) workflow. After EKI calibration converges to a MAP estimate, we train a Gaussian Process emulator on the ensemble trajectory, then run Markov Chain Monte Carlo (MCMC) over the cheap surrogate to obtain the full posterior uncertainty distribution.</p><p>The CES workflow is motivated by the fact that land model runs are expensive. EKI calibration requires O(10 × iterations) model evaluations to find the MAP. Full Bayesian UQ via direct MCMC would require O(100 000) evaluations — clearly infeasible. CES solves this by:</p><ol><li><strong>Calibrate</strong>: EKI explores parameter space efficiently (cheap).</li><li><strong>Emulate</strong>: Train a GP on the EKI trajectory (cheap once, reusable).</li><li><strong>Sample</strong>: MCMC over the GP — each evaluation costs microseconds.</li></ol><p>In this tutorial we calibrate <code>Vcmax25</code> against synthetic LHF at US-MOz.</p><h2 id="Overview"><a class="docs-heading-anchor" href="#Overview">Overview</a><a id="Overview-1"></a><a class="docs-heading-anchor-permalink" href="#Overview" title="Permalink"></a></h2><p>The tutorial covers:</p><ol><li>Setting up a land surface model for a FLUXNET site (US-MOz)</li><li>Creating a synthetic observation dataset</li><li><strong>Calibrate</strong>: Ensemble Kalman Inversion (EKI)</li><li><strong>Emulate</strong>: Gaussian Process surrogate trained on the EKI trajectory</li><li><strong>Sample</strong>: RWMH-MCMC over the GP posterior</li><li>Visualizing the posterior vs prior vs true value</li></ol><h2 id="Setup-and-Imports"><a class="docs-heading-anchor" href="#Setup-and-Imports">Setup and Imports</a><a id="Setup-and-Imports-1"></a><a class="docs-heading-anchor-permalink" href="#Setup-and-Imports" title="Permalink"></a></h2><pre><code class="language-julia hljs">using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Canopy
+using ClimaLand.Simulations
+import ClimaLand.FluxnetSimulations as FluxnetSimulations
+import ClimaLand.Parameters as LP
+using ClimaDiagnostics: ClimaDiagnostics
+import EnsembleKalmanProcesses as EKP
+import EnsembleKalmanProcesses.ParameterDistributions as PD
+using CalibrateEmulateSample.Emulators
+using CalibrateEmulateSample.MarkovChainMonteCarlo
+using CalibrateEmulateSample.Utilities
+using LinearAlgebra: LinearAlgebra
+using CairoMakie
+CairoMakie.activate!()
+using Statistics
+using Logging
+using Random: Random
+using Dates</code></pre><h2 id="Configuration-and-Site-Setup"><a class="docs-heading-anchor" href="#Configuration-and-Site-Setup">Configuration and Site Setup</a><a id="Configuration-and-Site-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Configuration-and-Site-Setup" title="Permalink"></a></h2><pre><code class="language-julia hljs">rng_seed = 1234
+rng = Random.MersenneTwister(rng_seed)
+const FT = Float32
+
+toml_dict = LP.create_toml_dict(FT)
+site_ID = &quot;US-MOz&quot;
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+
+(; time_offset, lat, long) =
+    FluxnetSimulations.get_location(FT, Val(site_ID_val))
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+
+(start_date, stop_date) =
+    FluxnetSimulations.get_data_dates(site_ID, time_offset)
+stop_date = DateTime(2010, 4, 1, 6, 30)
+Δt = 450.0;</code></pre><h2 id="Domain-and-Forcing-Setup"><a class="docs-heading-anchor" href="#Domain-and-Forcing-Setup">Domain and Forcing Setup</a><a id="Domain-and-Forcing-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Domain-and-Forcing-Setup" title="Permalink"></a></h2><pre><code class="language-julia hljs">zmin = FT(-2)
+zmax = FT(0)
+domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));</code></pre><h2 id="Model-Setup"><a class="docs-heading-anchor" href="#Model-Setup">Model Setup</a><a id="Model-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Setup" title="Permalink"></a></h2><pre><code class="language-julia hljs">function model(Vcmax25)
+    # Forcing is created inside the function so each model call is self-contained.
+    forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
+        site_ID,
+        lat,
+        long,
+        time_offset,
+        atmos_h,
+        start_date,
+        toml_dict,
+        FT,
+    )
+    LAI = ClimaLand.Canopy.prescribed_lai_modis(
+        domain.space.surface,
+        start_date,
+        stop_date,
+    )
+    Vcmax25 = FT(Vcmax25)
+    ground = ClimaLand.PrognosticGroundConditions{FT}()
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+    canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
+    canopy_forcing = (; forcing.atmos, forcing.radiation, ground)
+    photosyn_defaults =
+        Canopy.clm_photosynthesis_parameters(canopy_domain.space.surface)
+    photosynthesis = Canopy.FarquharModel{FT}(
+        canopy_domain,
+        toml_dict;
+        photosynthesis_parameters = (;
+            fractional_c3 = photosyn_defaults.fractional_c3,
+            Vcmax25,
+        ),
+    )
+    conductance = Canopy.MedlynConductanceModel{FT}(
+        canopy_domain,
+        toml_dict;
+        g1 = FT(141),
+    )
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(
+        canopy_domain,
+        canopy_forcing,
+        LAI,
+        toml_dict;
+        photosynthesis,
+        prognostic_land_components,
+        conductance,
+    )
+    land_model = LandModel{FT}(
+        forcing,
+        LAI,
+        toml_dict,
+        domain,
+        Δt;
+        prognostic_land_components,
+        canopy,
+    )
+    set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
+        site_ID,
+        start_date,
+        time_offset,
+        land_model,
+    )
+    output_vars = [&quot;shf&quot;, &quot;lhf&quot;]
+    diagnostics = ClimaLand.default_diagnostics(
+        land_model,
+        start_date;
+        output_writer = ClimaDiagnostics.Writers.DictWriter(),
+        output_vars,
+        reduction_period = :hourly,
+    )
+    simulation = Simulations.LandSimulation(
+        start_date,
+        stop_date,
+        Δt,
+        land_model;
+        set_ic!,
+        user_callbacks = (),
+        diagnostics,
+    )
+    solve!(simulation)
+    return simulation
+end
+
+function get_lhf(simulation)
+    return ClimaLand.Diagnostics.diagnostic_as_vectors(
+        simulation.diagnostics[1].output_writer,
+        &quot;lhf_1h_average&quot;,
+    )
+end
+
+function get_diurnal_average(var, start_date, spinup_date)
+    (times, data) = var
+    model_dates = if times isa Vector{DateTime}
+        times
+    else
+        Second.(getproperty.(times, :counter)) .+ start_date
+    end
+    spinup_idx = findfirst(spinup_date .&lt;= model_dates)
+    model_dates = model_dates[spinup_idx:end]
+    data = data[spinup_idx:end]
+    hour_of_day = Hour.(model_dates)
+    mean_by_hour = [mean(data[hour_of_day .== Hour(i)]) for i in 0:23]
+    return mean_by_hour
+end
+
+function G(Vcmax25)
+    simulation = model(Vcmax25)
+    lhf = get_lhf(simulation)
+    observation =
+        Float64.(
+            get_diurnal_average(
+                lhf,
+                simulation.start_date,
+                simulation.start_date + Day(20),
+            ),
+        )
+    return observation
+end</code></pre><pre><code class="nohighlight hljs">G (generic function with 1 method)</code></pre><h2 id="Step-1-—-Calibrate-(Ensemble-Kalman-Inversion)"><a class="docs-heading-anchor" href="#Step-1-—-Calibrate-(Ensemble-Kalman-Inversion)">Step 1 — Calibrate (Ensemble Kalman Inversion)</a><a id="Step-1-—-Calibrate-(Ensemble-Kalman-Inversion)-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1-—-Calibrate-(Ensemble-Kalman-Inversion)" title="Permalink"></a></h2><p>Generate synthetic &quot;truth&quot; from the model at a known true parameter value, then run EKI to recover it from noisy observations.</p><p>The true value is set to 1.5e-3 mol m⁻² s⁻¹ — one standard deviation above the prior mean of 1e-3. This puts the target firmly inside the identifiable range: the forward map G (diurnal LHF) is sensitive to Vcmax25 here, so EKI can distinguish the true parameter from the prior center. A value near zero (e.g. 1e-4) would be in a regime where LHF is dominated by soil evaporation and is nearly insensitive to Vcmax25, making calibration ill-posed.</p><pre><code class="language-julia hljs">true_Vcmax25 = 1.5e-3
+observations = G(true_Vcmax25)
+# Noise variance: used for both EKI and the GP emulator likelihood so both
+# steps see a consistent observation error model.
+# σ = √noise_var ≈ 5 W m⁻² (≈ 7% of the ~70 W m⁻² synthetic peak LHF),
+# large enough to see ensemble spread in plots while still allowing recovery.
+noise_var = 25.0
+noise_covariance = noise_var * EKP.I</code></pre><pre><code class="nohighlight hljs">LinearAlgebra.UniformScaling{Float64}
+25.0*I</code></pre><p>Constrained Gaussian prior: Vcmax25 ∈ [0, 2e-3]</p><pre><code class="language-julia hljs">prior = PD.constrained_gaussian(&quot;Vcmax25&quot;, 1e-3, 5e-4, 0, 2e-3)
+
+ensemble_size = 10
+N_iterations = 3
+
+initial_ensemble = EKP.construct_initial_ensemble(rng, prior, ensemble_size)
+
+ensemble_kalman_process = EKP.EnsembleKalmanProcess(
+    initial_ensemble,
+    observations,
+    noise_covariance,
+    EKP.Inversion();
+    scheduler = EKP.DataMisfitController(;
+        terminate_at = Inf,
+        on_terminate = &quot;continue&quot;,
+    ),
+    rng,
+)
+
+Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+    for i in 1:N_iterations
+        println(&quot;EKI iteration $i / $N_iterations&quot;)
+        params_i = EKP.get_ϕ_final(prior, ensemble_kalman_process)
+        G_ens = hcat([G(params_i[:, j]...) for j in 1:ensemble_size]...)
+        EKP.update_ensemble!(ensemble_kalman_process, G_ens)
+    end
+end
+
+eki_map = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)[1]
+@info &quot;EKI MAP estimate: Vcmax25 = $eki_map  (true: $true_Vcmax25)&quot;</code></pre><pre><code class="nohighlight hljs">EKI iteration 1 / 3
+EKI iteration 2 / 3
+EKI iteration 3 / 3
+[ Info: EKI MAP estimate: Vcmax25 = 0.0015021830858824798  (true: 0.0015)
+</code></pre><p>Plot calibration diagnostics: parameter convergence and ensemble vs observations.</p><pre><code class="language-julia hljs">dim_size = sum(length.(EKP.batch(prior)))
+fig = CairoMakie.Figure(; size = ((dim_size + 1) * 500, 500))
+for i in 1:dim_size
+    EKP.Visualize.plot_ϕ_over_iters(
+        fig[1, i],
+        ensemble_kalman_process,
+        prior,
+        i,
+    )
+end
+EKP.Visualize.plot_error_over_iters(
+    fig[1, dim_size + 1],
+    ensemble_kalman_process,
+)
+CairoMakie.save(&quot;perfect_model_ces_params_and_error.png&quot;, fig)</code></pre><p><img src="../perfect_model_ces_params_and_error.png" alt/></p><pre><code class="language-julia hljs">fig2 = CairoMakie.Figure(; size = (900, 400))
+first_G = EKP.get_g(ensemble_kalman_process, 1)
+last_iter = EKP.get_N_iterations(ensemble_kalman_process)
+last_G = EKP.get_g(ensemble_kalman_process, last_iter)
+ax2 = Axis(
+    fig2[1, 1];
+    title = &quot;G ensemble: first vs last EKI iteration&quot;,
+    xlabel = &quot;Hour of day&quot;,
+    ylabel = &quot;LHF [W m⁻²]&quot;,
+)
+lines!(ax2, 0:23, observations; color = :black, linewidth = 3)
+for g in eachcol(first_G)
+    lines!(ax2, 0:23, g; color = (:red, 0.4), linewidth = 1.5)
+end
+for g in eachcol(last_G)
+    lines!(ax2, 0:23, g; color = (:blue, 0.4), linewidth = 1.5)
+end
+axislegend(
+    ax2,
+    [
+        LineElement(; color = :red, linewidth = 2),
+        LineElement(; color = :blue, linewidth = 2),
+        LineElement(; color = :black, linewidth = 3),
+    ],
+    [&quot;First ensemble&quot;, &quot;Last ensemble&quot;, &quot;Truth&quot;];
+    position = :rb,
+    framevisible = false,
+)
+CairoMakie.resize_to_layout!(fig2)
+CairoMakie.save(&quot;perfect_model_ces_G_first_last.png&quot;, fig2)</code></pre><p><img src="../perfect_model_ces_G_first_last.png" alt/></p><h2 id="Step-2-—-Emulate-(Gaussian-Process-Surrogate)"><a class="docs-heading-anchor" href="#Step-2-—-Emulate-(Gaussian-Process-Surrogate)">Step 2 — Emulate (Gaussian Process Surrogate)</a><a id="Step-2-—-Emulate-(Gaussian-Process-Surrogate)-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2-—-Emulate-(Gaussian-Process-Surrogate)" title="Permalink"></a></h2><p>The EKI calibration produced (parameter, G(parameter)) pairs for all ensemble members across all iterations. We now train a GP emulator on this dataset. The surrogate maps from parameter space (1D) to observation space (24D, diurnal LHF) and is orders of magnitude cheaper to evaluate than the land model.</p><pre><code class="language-julia hljs">n_iter_used = EKP.get_N_iterations(ensemble_kalman_process)
+@info &quot;Building GP emulator from $n_iter_used EKI iterations ($(n_iter_used * ensemble_size) training points)...&quot;</code></pre><pre><code class="nohighlight hljs">[ Info: Building GP emulator from 3 EKI iterations (30 training points)...
+</code></pre><p>Extract all (θ_unconstrained, G(θ)) pairs from the EKP object</p><pre><code class="language-julia hljs">input_output_pairs =
+    Utilities.get_training_points(ensemble_kalman_process, n_iter_used)</code></pre><pre><code class="nohighlight hljs">PairedDataContainer
+  inputs : 1 × 30 params × samples
+  outputs: 24 × 30 obs × samples
+</code></pre><p>Build, configure, and optimize the GP emulator. GPJL uses GaussianProcesses.jl (squared-exponential kernel by default). The Decorrelator inside Emulator projects the 24D output onto its principal components so each GP only needs to model a 1D output. encoder_kwargs bundles the noise covariance and prior covariance from the calibration step — the recommended way to configure the Emulator encoder.</p><pre><code class="language-julia hljs">encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior)
+gppackage = GPJL()
+gauss_proc = GaussianProcess(gppackage; noise_learn = false)
+emulator = Emulator(gauss_proc, input_output_pairs; encoder_kwargs)
+optimize_hyperparameters!(emulator)
+@info &quot;GP emulator trained.&quot;</code></pre><pre><code class="nohighlight hljs">┌ Info: Detected fewer `samples_out` (3) than `samples_in` (4) and `dt` (4). Input-output structure vectors will be created from 3 samples.
+│ This commonly occurs when samples are built from `get_u(ekp), get_g(ekp)`.
+│ The final interation of output samples, (e.g., from evaluating `g=forward_map_ensemble(get_ϕ_final(ekp)`) can be provided by `encoder_kwargs_from(ekp, prior; final_samples_out=g)`
+└ 
+[ Info: Initialize encoding of data: &quot;in&quot; with Decorrelator: decorrelate_with=sample_cov
+┌ Warning: SVD representation is efficient when estimating high-dimensional covariance with few samples. 
+│  here # samples is 30, while the space dimension is 1, and representation will be inefficient.
+└ @ EnsembleKalmanProcesses ~/.julia/packages/EnsembleKalmanProcesses/1ArOR/src/Observations.jl:203
+[ Info: Initialize encoding of data: &quot;out&quot; with Decorrelator: decorrelate_with=structure_mat
+Using default squared exponential kernel, learning length scale and variance parameters
+Using default squared exponential kernel: Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 1
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 2
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 3
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 4
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 5
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 6
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 7
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 8
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 9
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 10
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 11
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 12
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 13
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 14
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 15
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 16
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 17
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 18
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 19
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 20
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 21
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 22
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 23
+kernel in GaussianProcess:
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0, 0.0]
+created GP: 24
+optimized hyperparameters of GP: 1
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.8695941067235621, 0.23613384484026917]
+optimized hyperparameters of GP: 2
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.12047715433849175, -11.506519323879019]
+optimized hyperparameters of GP: 3
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0014780339942606934, -11.50676527422597]
+optimized hyperparameters of GP: 4
+Type: GaussianProcesses.SEArd{Float64}, Params: [4.3663747946580944e-5, -11.501912662091643]
+optimized hyperparameters of GP: 5
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.021346715604299803, -11.508196159890634]
+optimized hyperparameters of GP: 6
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0011363570158891556, -11.508460794208874]
+optimized hyperparameters of GP: 7
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0008206455984921002, -11.502359201928936]
+optimized hyperparameters of GP: 8
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.00408026547367292, -11.506763537580493]
+optimized hyperparameters of GP: 9
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0006502544574795094, -11.503299921707404]
+optimized hyperparameters of GP: 10
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.000494657504360767, -11.501481930713046]
+optimized hyperparameters of GP: 11
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0024221301939115966, -11.508368494012231]
+optimized hyperparameters of GP: 12
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.00020998956549199462, -11.508181947895531]
+optimized hyperparameters of GP: 13
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.0002537842297326993, -11.501448973084655]
+optimized hyperparameters of GP: 14
+Type: GaussianProcesses.SEArd{Float64}, Params: [-0.00022367361658236353, -11.50282012629934]
+optimized hyperparameters of GP: 15
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0002502834523146627, -11.50113699905432]
+optimized hyperparameters of GP: 16
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0003672065362536365, -11.501381126788484]
+optimized hyperparameters of GP: 17
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.0386694280170785, -11.50779332828428]
+optimized hyperparameters of GP: 18
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.08399758115027, -11.50319793839533]
+optimized hyperparameters of GP: 19
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.07665920015385166, -11.506392850402662]
+optimized hyperparameters of GP: 20
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.33405143820089694, -0.7126882656030132]
+optimized hyperparameters of GP: 21
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.5465268272729166, -0.20743005287765365]
+optimized hyperparameters of GP: 22
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.44884280945176985, -0.4888581962343088]
+optimized hyperparameters of GP: 23
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.6447545607521009, 0.040954604587845014]
+optimized hyperparameters of GP: 24
+Type: GaussianProcesses.SEArd{Float64}, Params: [0.789295459523051, 0.17861919160613582]
+[ Info: GP emulator trained.
+</code></pre><h3 id="Emulator-Validation"><a class="docs-heading-anchor" href="#Emulator-Validation">Emulator Validation</a><a id="Emulator-Validation-1"></a><a class="docs-heading-anchor-permalink" href="#Emulator-Validation" title="Permalink"></a></h3><p>Before running MCMC, verify that the GP accurately reproduces the model outputs on the EKI training data. Red curves are the actual G(θ) values; blue curves are the emulator&#39;s predictions at the same inputs. Close overlap confirms the surrogate is fit for purpose before sampling begins.</p><pre><code class="language-julia hljs">train_in = EKP.DataContainers.get_inputs(input_output_pairs)
+train_out = EKP.DataContainers.get_outputs(input_output_pairs)
+emul_pred_train, _ = Emulators.predict(emulator, train_in)
+n_train = size(train_in, 2)
+val_idx = rand(rng, 1:n_train, min(10, n_train))
+
+fig_val = CairoMakie.Figure(; size = (900, 400))
+ax_val = Axis(
+    fig_val[1, 1];
+    title = &quot;Emulator validation: GP predictions vs EKI training data&quot;,
+    xlabel = &quot;Hour of day&quot;,
+    ylabel = &quot;LHF [W m⁻²]&quot;,
+)
+lines!(
+    ax_val,
+    0:23,
+    observations;
+    color = :black,
+    linewidth = 3,
+    label = &quot;Truth&quot;,
+)
+for j in val_idx
+    lines!(ax_val, 0:23, train_out[:, j]; color = (:red, 0.5), linewidth = 1.5)
+end
+for j in val_idx
+    lines!(
+        ax_val,
+        0:23,
+        emul_pred_train[:, j];
+        color = (:steelblue, 0.5),
+        linewidth = 1.5,
+    )
+end
+axislegend(
+    ax_val,
+    [
+        LineElement(; color = :black, linewidth = 3),
+        LineElement(; color = :red, linewidth = 2),
+        LineElement(; color = :steelblue, linewidth = 2),
+    ],
+    [&quot;Truth&quot;, &quot;Model G(θ)&quot;, &quot;Emulator GP(θ)&quot;];
+    position = :rt,
+    framevisible = false,
+)
+CairoMakie.resize_to_layout!(fig_val)
+CairoMakie.save(&quot;perfect_model_ces_emulator_validation.png&quot;, fig_val)</code></pre><p><img src="../perfect_model_ces_emulator_validation.png" alt/></p><h2 id="Step-3-—-Sample-(MCMC-Posterior)"><a class="docs-heading-anchor" href="#Step-3-—-Sample-(MCMC-Posterior)">Step 3 — Sample (MCMC Posterior)</a><a id="Step-3-—-Sample-(MCMC-Posterior)-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3-—-Sample-(MCMC-Posterior)" title="Permalink"></a></h2><p>Run Random Walk Metropolis-Hastings MCMC over the trained GP emulator. Each likelihood evaluation calls the GP instead of the land model — enabling 50 000 samples in seconds rather than years.</p><p>Initialize MCMC at the EKI posterior mean (unconstrained space)</p><pre><code class="language-julia hljs">init_params = EKP.get_u_mean_final(ensemble_kalman_process)
+
+mcmc = MCMCWrapper(
+    RWMHSampling(),
+    Float64.(observations),
+    prior,
+    emulator;
+    init_params,
+)</code></pre><pre><code class="nohighlight hljs">MCMCWrapper
+  prior_dim        : 1 parameter
+  obs_dim          : 24
+  n_obs            : 1 sample
+  sampler          : RWMetropolisHastings
+  encoder (input)  : 1 → 1  Decorrelator
+  encoder (output): 24 → 24  Decorrelator
+</code></pre><p>Tune step size to target ~0.2 acceptance rate</p><pre><code class="language-julia hljs">new_step =
+    optimize_stepsize(mcmc; init_stepsize = 0.1, N = 2_000, discard_initial = 0)
+@info &quot;MCMC step size: $new_step&quot;</code></pre><pre><code class="nohighlight hljs">0 starting params: encoded_param_1: 0.402
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:07:09
+Sampling   1%|▍                                         |  ETA: 0:03:36
+Sampling   2%|▋                                         |  ETA: 0:02:23
+Sampling   2%|▉                                         |  ETA: 0:01:47
+Sampling   2%|█                                         |  ETA: 0:01:25
+Sampling   3%|█▎                                        |  ETA: 0:01:11
+Sampling   4%|█▌                                        |  ETA: 0:01:00
+Sampling   4%|█▋                                        |  ETA: 0:00:53
+Sampling   4%|█▉                                        |  ETA: 0:00:47
+Sampling   5%|██▏                                       |  ETA: 0:00:42
+Sampling   6%|██▎                                       |  ETA: 0:00:38
+Sampling   6%|██▌                                       |  ETA: 0:00:35
+Sampling   6%|██▊                                       |  ETA: 0:00:32
+Sampling   7%|███                                       |  ETA: 0:00:29
+Sampling   8%|███▏                                      |  ETA: 0:00:27
+Sampling   8%|███▍                                      |  ETA: 0:00:26
+Sampling   8%|███▋                                      |  ETA: 0:00:24
+Sampling   9%|███▊                                      |  ETA: 0:00:22
+Sampling  10%|████                                      |  ETA: 0:00:21
+Sampling  10%|████▎                                     |  ETA: 0:00:20
+Sampling  10%|████▍                                     |  ETA: 0:00:19
+Sampling  11%|████▋                                     |  ETA: 0:00:18
+Sampling  12%|████▉                                     |  ETA: 0:00:17
+Sampling  12%|█████                                     |  ETA: 0:00:16
+Sampling  12%|█████▎                                    |  ETA: 0:00:16
+Sampling  13%|█████▌                                    |  ETA: 0:00:15
+Sampling  14%|█████▋                                    |  ETA: 0:00:14
+Sampling  14%|█████▉                                    |  ETA: 0:00:14
+Sampling  14%|██████▏                                   |  ETA: 0:00:13
+Sampling  15%|██████▎                                   |  ETA: 0:00:13
+Sampling  16%|██████▌                                   |  ETA: 0:00:12
+Sampling  16%|██████▊                                   |  ETA: 0:00:12
+Sampling  16%|██████▉                                   |  ETA: 0:00:11
+Sampling  17%|███████▏                                  |  ETA: 0:00:11
+Sampling  18%|███████▍                                  |  ETA: 0:00:11
+Sampling  18%|███████▌                                  |  ETA: 0:00:10
+Sampling  18%|███████▊                                  |  ETA: 0:00:10
+Sampling  19%|████████                                  |  ETA: 0:00:10
+Sampling  20%|████████▎                                 |  ETA: 0:00:09
+Sampling  20%|████████▍                                 |  ETA: 0:00:09
+Sampling  20%|████████▋                                 |  ETA: 0:00:09
+Sampling  21%|████████▉                                 |  ETA: 0:00:09
+Sampling  22%|█████████                                 |  ETA: 0:00:08
+Sampling  22%|█████████▎                                |  ETA: 0:00:08
+Sampling  22%|█████████▌                                |  ETA: 0:00:08
+Sampling  23%|█████████▋                                |  ETA: 0:00:08
+Sampling  24%|█████████▉                                |  ETA: 0:00:08
+Sampling  24%|██████████▏                               |  ETA: 0:00:07
+Sampling  24%|██████████▎                               |  ETA: 0:00:07
+Sampling  25%|██████████▌                               |  ETA: 0:00:07
+Sampling  26%|██████████▊                               |  ETA: 0:00:07
+Sampling  26%|██████████▉                               |  ETA: 0:00:07
+Sampling  26%|███████████▏                              |  ETA: 0:00:06
+Sampling  27%|███████████▍                              |  ETA: 0:00:06
+Sampling  28%|███████████▌                              |  ETA: 0:00:06
+Sampling  28%|███████████▊                              |  ETA: 0:00:06
+Sampling  28%|████████████                              |  ETA: 0:00:06
+Sampling  29%|████████████▏                             |  ETA: 0:00:06
+Sampling  30%|████████████▍                             |  ETA: 0:00:06
+Sampling  30%|████████████▋                             |  ETA: 0:00:05
+Sampling  30%|████████████▊                             |  ETA: 0:00:05
+Sampling  31%|█████████████                             |  ETA: 0:00:05
+Sampling  32%|█████████████▎                            |  ETA: 0:00:05
+Sampling  32%|█████████████▌                            |  ETA: 0:00:05
+Sampling  32%|█████████████▋                            |  ETA: 0:00:05
+Sampling  33%|█████████████▉                            |  ETA: 0:00:05
+Sampling  34%|██████████████▏                           |  ETA: 0:00:05
+Sampling  34%|██████████████▎                           |  ETA: 0:00:05
+Sampling  34%|██████████████▌                           |  ETA: 0:00:04
+Sampling  35%|██████████████▊                           |  ETA: 0:00:04
+Sampling  36%|██████████████▉                           |  ETA: 0:00:04
+Sampling  36%|███████████████▏                          |  ETA: 0:00:04
+Sampling  36%|███████████████▍                          |  ETA: 0:00:04
+Sampling  37%|███████████████▌                          |  ETA: 0:00:04
+Sampling  38%|███████████████▊                          |  ETA: 0:00:04
+Sampling  38%|████████████████                          |  ETA: 0:00:04
+Sampling  38%|████████████████▏                         |  ETA: 0:00:04
+Sampling  39%|████████████████▍                         |  ETA: 0:00:04
+Sampling  40%|████████████████▋                         |  ETA: 0:00:04
+Sampling  40%|████████████████▊                         |  ETA: 0:00:04
+Sampling  40%|█████████████████                         |  ETA: 0:00:04
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:03
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:03
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:03
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:03
+Sampling  43%|██████████████████                        |  ETA: 0:00:03
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:03
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:03
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:03
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:03
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:03
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:03
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:03
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:03
+Sampling  48%|████████████████████                      |  ETA: 0:00:03
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:03
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:03
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:03
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:02
+Sampling  50%|█████████████████████                     |  ETA: 0:00:02
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:02
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:02
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:02
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:02
+Sampling  52%|██████████████████████                    |  ETA: 0:00:02
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:02
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:02
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:02
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:02
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:02
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:02
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:02
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:02
+Sampling  57%|████████████████████████                  |  ETA: 0:00:02
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:02
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:02
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:02
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:02
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:02
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:02
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:02
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:02
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:02
+Sampling  62%|██████████████████████████                |  ETA: 0:00:02
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:02
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:01
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:01
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:01
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:01
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:01
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:01
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:01
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:01
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:01
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:01
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:01
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:01
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:01
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:01
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:01
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:01
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:01
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:01
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:01
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:01
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:01
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:01
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:01
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:01
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:01
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:01
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:01
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:01
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:01
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:01
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:01
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:01
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:01
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:01
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:01
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:01
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:01
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:01
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:01
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:01
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:01
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:01
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:01
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:02
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:04
+1 stepsize: 0.1 acc rate: 0.93
+	params: encoded_param_1: 0.157
+Set sampler to new stepsize: 0.2
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:00:01
+Sampling   1%|▍                                         |  ETA: 0:00:01
+Sampling   2%|▋                                         |  ETA: 0:00:01
+Sampling   2%|▉                                         |  ETA: 0:00:01
+Sampling   2%|█                                         |  ETA: 0:00:01
+Sampling   3%|█▎                                        |  ETA: 0:00:01
+Sampling   4%|█▌                                        |  ETA: 0:00:01
+Sampling   4%|█▋                                        |  ETA: 0:00:01
+Sampling   4%|█▉                                        |  ETA: 0:00:01
+Sampling   5%|██▏                                       |  ETA: 0:00:01
+Sampling   6%|██▎                                       |  ETA: 0:00:01
+Sampling   6%|██▌                                       |  ETA: 0:00:01
+Sampling   6%|██▊                                       |  ETA: 0:00:01
+Sampling   7%|███                                       |  ETA: 0:00:01
+Sampling   8%|███▏                                      |  ETA: 0:00:01
+Sampling   8%|███▍                                      |  ETA: 0:00:01
+Sampling   8%|███▋                                      |  ETA: 0:00:01
+Sampling   9%|███▊                                      |  ETA: 0:00:01
+Sampling  10%|████                                      |  ETA: 0:00:01
+Sampling  10%|████▎                                     |  ETA: 0:00:01
+Sampling  10%|████▍                                     |  ETA: 0:00:01
+Sampling  11%|████▋                                     |  ETA: 0:00:00
+Sampling  12%|████▉                                     |  ETA: 0:00:00
+Sampling  12%|█████                                     |  ETA: 0:00:00
+Sampling  12%|█████▎                                    |  ETA: 0:00:00
+Sampling  13%|█████▌                                    |  ETA: 0:00:00
+Sampling  14%|█████▋                                    |  ETA: 0:00:00
+Sampling  14%|█████▉                                    |  ETA: 0:00:00
+Sampling  14%|██████▏                                   |  ETA: 0:00:00
+Sampling  15%|██████▎                                   |  ETA: 0:00:00
+Sampling  16%|██████▌                                   |  ETA: 0:00:00
+Sampling  16%|██████▊                                   |  ETA: 0:00:00
+Sampling  16%|██████▉                                   |  ETA: 0:00:00
+Sampling  17%|███████▏                                  |  ETA: 0:00:00
+Sampling  18%|███████▍                                  |  ETA: 0:00:00
+Sampling  18%|███████▌                                  |  ETA: 0:00:00
+Sampling  18%|███████▊                                  |  ETA: 0:00:00
+Sampling  19%|████████                                  |  ETA: 0:00:00
+Sampling  20%|████████▎                                 |  ETA: 0:00:00
+Sampling  20%|████████▍                                 |  ETA: 0:00:00
+Sampling  20%|████████▋                                 |  ETA: 0:00:00
+Sampling  21%|████████▉                                 |  ETA: 0:00:00
+Sampling  22%|█████████                                 |  ETA: 0:00:00
+Sampling  22%|█████████▎                                |  ETA: 0:00:00
+Sampling  22%|█████████▌                                |  ETA: 0:00:00
+Sampling  23%|█████████▋                                |  ETA: 0:00:00
+Sampling  24%|█████████▉                                |  ETA: 0:00:00
+Sampling  24%|██████████▏                               |  ETA: 0:00:00
+Sampling  24%|██████████▎                               |  ETA: 0:00:00
+Sampling  25%|██████████▌                               |  ETA: 0:00:00
+Sampling  26%|██████████▊                               |  ETA: 0:00:00
+Sampling  26%|██████████▉                               |  ETA: 0:00:00
+Sampling  26%|███████████▏                              |  ETA: 0:00:00
+Sampling  27%|███████████▍                              |  ETA: 0:00:00
+Sampling  28%|███████████▌                              |  ETA: 0:00:00
+Sampling  28%|███████████▊                              |  ETA: 0:00:00
+Sampling  28%|████████████                              |  ETA: 0:00:00
+Sampling  29%|████████████▏                             |  ETA: 0:00:00
+Sampling  30%|████████████▍                             |  ETA: 0:00:00
+Sampling  30%|████████████▋                             |  ETA: 0:00:00
+Sampling  30%|████████████▊                             |  ETA: 0:00:00
+Sampling  31%|█████████████                             |  ETA: 0:00:00
+Sampling  32%|█████████████▎                            |  ETA: 0:00:00
+Sampling  32%|█████████████▌                            |  ETA: 0:00:00
+Sampling  32%|█████████████▋                            |  ETA: 0:00:00
+Sampling  33%|█████████████▉                            |  ETA: 0:00:00
+Sampling  34%|██████████████▏                           |  ETA: 0:00:00
+Sampling  34%|██████████████▎                           |  ETA: 0:00:00
+Sampling  34%|██████████████▌                           |  ETA: 0:00:00
+Sampling  35%|██████████████▊                           |  ETA: 0:00:00
+Sampling  36%|██████████████▉                           |  ETA: 0:00:00
+Sampling  36%|███████████████▏                          |  ETA: 0:00:00
+Sampling  36%|███████████████▍                          |  ETA: 0:00:00
+Sampling  37%|███████████████▌                          |  ETA: 0:00:00
+Sampling  38%|███████████████▊                          |  ETA: 0:00:00
+Sampling  38%|████████████████                          |  ETA: 0:00:00
+Sampling  38%|████████████████▏                         |  ETA: 0:00:00
+Sampling  39%|████████████████▍                         |  ETA: 0:00:00
+Sampling  40%|████████████████▋                         |  ETA: 0:00:00
+Sampling  40%|████████████████▊                         |  ETA: 0:00:00
+Sampling  40%|█████████████████                         |  ETA: 0:00:00
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:00
+Sampling  43%|██████████████████                        |  ETA: 0:00:00
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:00
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:00
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:00
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:00
+Sampling  48%|████████████████████                      |  ETA: 0:00:00
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:00
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:00
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:00
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:00
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:00
+Sampling  52%|██████████████████████                    |  ETA: 0:00:00
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:00
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:00
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:00
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:00
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:00
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:00
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:00
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:00
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:00
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:00
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:00
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:00
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:00
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:00
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:00
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:00
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:00
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:00
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:00
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:00
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+2 stepsize: 0.2 acc rate: 0.886
+	params: encoded_param_1: -0.357
+Set sampler to new stepsize: 0.4
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:00:01
+Sampling   1%|▍                                         |  ETA: 0:00:01
+Sampling   2%|▋                                         |  ETA: 0:00:01
+Sampling   2%|▉                                         |  ETA: 0:00:01
+Sampling   2%|█                                         |  ETA: 0:00:01
+Sampling   3%|█▎                                        |  ETA: 0:00:01
+Sampling   4%|█▌                                        |  ETA: 0:00:01
+Sampling   4%|█▋                                        |  ETA: 0:00:01
+Sampling   4%|█▉                                        |  ETA: 0:00:01
+Sampling   5%|██▏                                       |  ETA: 0:00:01
+Sampling   6%|██▎                                       |  ETA: 0:00:01
+Sampling   6%|██▌                                       |  ETA: 0:00:01
+Sampling   6%|██▊                                       |  ETA: 0:00:01
+Sampling   7%|███                                       |  ETA: 0:00:01
+Sampling   8%|███▏                                      |  ETA: 0:00:01
+Sampling   8%|███▍                                      |  ETA: 0:00:01
+Sampling   8%|███▋                                      |  ETA: 0:00:01
+Sampling   9%|███▊                                      |  ETA: 0:00:01
+Sampling  10%|████                                      |  ETA: 0:00:01
+Sampling  10%|████▎                                     |  ETA: 0:00:01
+Sampling  10%|████▍                                     |  ETA: 0:00:01
+Sampling  11%|████▋                                     |  ETA: 0:00:00
+Sampling  12%|████▉                                     |  ETA: 0:00:00
+Sampling  12%|█████                                     |  ETA: 0:00:00
+Sampling  12%|█████▎                                    |  ETA: 0:00:00
+Sampling  13%|█████▌                                    |  ETA: 0:00:00
+Sampling  14%|█████▋                                    |  ETA: 0:00:00
+Sampling  14%|█████▉                                    |  ETA: 0:00:00
+Sampling  14%|██████▏                                   |  ETA: 0:00:00
+Sampling  15%|██████▎                                   |  ETA: 0:00:00
+Sampling  16%|██████▌                                   |  ETA: 0:00:00
+Sampling  16%|██████▊                                   |  ETA: 0:00:00
+Sampling  16%|██████▉                                   |  ETA: 0:00:00
+Sampling  17%|███████▏                                  |  ETA: 0:00:00
+Sampling  18%|███████▍                                  |  ETA: 0:00:00
+Sampling  18%|███████▌                                  |  ETA: 0:00:00
+Sampling  18%|███████▊                                  |  ETA: 0:00:00
+Sampling  19%|████████                                  |  ETA: 0:00:00
+Sampling  20%|████████▎                                 |  ETA: 0:00:00
+Sampling  20%|████████▍                                 |  ETA: 0:00:00
+Sampling  20%|████████▋                                 |  ETA: 0:00:00
+Sampling  21%|████████▉                                 |  ETA: 0:00:00
+Sampling  22%|█████████                                 |  ETA: 0:00:00
+Sampling  22%|█████████▎                                |  ETA: 0:00:00
+Sampling  22%|█████████▌                                |  ETA: 0:00:00
+Sampling  23%|█████████▋                                |  ETA: 0:00:00
+Sampling  24%|█████████▉                                |  ETA: 0:00:00
+Sampling  24%|██████████▏                               |  ETA: 0:00:00
+Sampling  24%|██████████▎                               |  ETA: 0:00:00
+Sampling  25%|██████████▌                               |  ETA: 0:00:00
+Sampling  26%|██████████▊                               |  ETA: 0:00:00
+Sampling  26%|██████████▉                               |  ETA: 0:00:00
+Sampling  26%|███████████▏                              |  ETA: 0:00:00
+Sampling  27%|███████████▍                              |  ETA: 0:00:00
+Sampling  28%|███████████▌                              |  ETA: 0:00:00
+Sampling  28%|███████████▊                              |  ETA: 0:00:00
+Sampling  28%|████████████                              |  ETA: 0:00:00
+Sampling  29%|████████████▏                             |  ETA: 0:00:00
+Sampling  30%|████████████▍                             |  ETA: 0:00:00
+Sampling  30%|████████████▋                             |  ETA: 0:00:00
+Sampling  30%|████████████▊                             |  ETA: 0:00:00
+Sampling  31%|█████████████                             |  ETA: 0:00:00
+Sampling  32%|█████████████▎                            |  ETA: 0:00:00
+Sampling  32%|█████████████▌                            |  ETA: 0:00:00
+Sampling  32%|█████████████▋                            |  ETA: 0:00:00
+Sampling  33%|█████████████▉                            |  ETA: 0:00:00
+Sampling  34%|██████████████▏                           |  ETA: 0:00:00
+Sampling  34%|██████████████▎                           |  ETA: 0:00:00
+Sampling  34%|██████████████▌                           |  ETA: 0:00:00
+Sampling  35%|██████████████▊                           |  ETA: 0:00:00
+Sampling  36%|██████████████▉                           |  ETA: 0:00:00
+Sampling  36%|███████████████▏                          |  ETA: 0:00:00
+Sampling  36%|███████████████▍                          |  ETA: 0:00:00
+Sampling  37%|███████████████▌                          |  ETA: 0:00:00
+Sampling  38%|███████████████▊                          |  ETA: 0:00:00
+Sampling  38%|████████████████                          |  ETA: 0:00:00
+Sampling  38%|████████████████▏                         |  ETA: 0:00:00
+Sampling  39%|████████████████▍                         |  ETA: 0:00:00
+Sampling  40%|████████████████▋                         |  ETA: 0:00:00
+Sampling  40%|████████████████▊                         |  ETA: 0:00:00
+Sampling  40%|█████████████████                         |  ETA: 0:00:00
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:00
+Sampling  43%|██████████████████                        |  ETA: 0:00:00
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:00
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:00
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:00
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:00
+Sampling  48%|████████████████████                      |  ETA: 0:00:00
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:00
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:00
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:00
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:00
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:00
+Sampling  52%|██████████████████████                    |  ETA: 0:00:00
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:00
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:00
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:00
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:00
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:00
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:00
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:00
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:00
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:00
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:00
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:00
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:00
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:00
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:00
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:00
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:00
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:00
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:00
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:00
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:00
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+3 stepsize: 0.4 acc rate: 0.755
+	params: encoded_param_1: 0.195
+Set sampler to new stepsize: 0.8
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:00:03
+Sampling   1%|▍                                         |  ETA: 0:00:02
+Sampling   2%|▋                                         |  ETA: 0:00:01
+Sampling   2%|▉                                         |  ETA: 0:00:01
+Sampling   2%|█                                         |  ETA: 0:00:01
+Sampling   3%|█▎                                        |  ETA: 0:00:01
+Sampling   4%|█▌                                        |  ETA: 0:00:01
+Sampling   4%|█▋                                        |  ETA: 0:00:01
+Sampling   4%|█▉                                        |  ETA: 0:00:01
+Sampling   5%|██▏                                       |  ETA: 0:00:01
+Sampling   6%|██▎                                       |  ETA: 0:00:01
+Sampling   6%|██▌                                       |  ETA: 0:00:01
+Sampling   6%|██▊                                       |  ETA: 0:00:01
+Sampling   7%|███                                       |  ETA: 0:00:01
+Sampling   8%|███▏                                      |  ETA: 0:00:01
+Sampling   8%|███▍                                      |  ETA: 0:00:01
+Sampling   8%|███▋                                      |  ETA: 0:00:01
+Sampling   9%|███▊                                      |  ETA: 0:00:01
+Sampling  10%|████                                      |  ETA: 0:00:01
+Sampling  10%|████▎                                     |  ETA: 0:00:01
+Sampling  10%|████▍                                     |  ETA: 0:00:01
+Sampling  11%|████▋                                     |  ETA: 0:00:01
+Sampling  12%|████▉                                     |  ETA: 0:00:01
+Sampling  12%|█████                                     |  ETA: 0:00:01
+Sampling  12%|█████▎                                    |  ETA: 0:00:01
+Sampling  13%|█████▌                                    |  ETA: 0:00:01
+Sampling  14%|█████▋                                    |  ETA: 0:00:01
+Sampling  14%|█████▉                                    |  ETA: 0:00:01
+Sampling  14%|██████▏                                   |  ETA: 0:00:01
+Sampling  15%|██████▎                                   |  ETA: 0:00:01
+Sampling  16%|██████▌                                   |  ETA: 0:00:01
+Sampling  16%|██████▊                                   |  ETA: 0:00:01
+Sampling  16%|██████▉                                   |  ETA: 0:00:01
+Sampling  17%|███████▏                                  |  ETA: 0:00:01
+Sampling  18%|███████▍                                  |  ETA: 0:00:01
+Sampling  18%|███████▌                                  |  ETA: 0:00:01
+Sampling  18%|███████▊                                  |  ETA: 0:00:01
+Sampling  19%|████████                                  |  ETA: 0:00:00
+Sampling  20%|████████▎                                 |  ETA: 0:00:00
+Sampling  20%|████████▍                                 |  ETA: 0:00:00
+Sampling  20%|████████▋                                 |  ETA: 0:00:00
+Sampling  21%|████████▉                                 |  ETA: 0:00:00
+Sampling  22%|█████████                                 |  ETA: 0:00:00
+Sampling  22%|█████████▎                                |  ETA: 0:00:00
+Sampling  22%|█████████▌                                |  ETA: 0:00:00
+Sampling  23%|█████████▋                                |  ETA: 0:00:00
+Sampling  24%|█████████▉                                |  ETA: 0:00:00
+Sampling  24%|██████████▏                               |  ETA: 0:00:00
+Sampling  24%|██████████▎                               |  ETA: 0:00:00
+Sampling  25%|██████████▌                               |  ETA: 0:00:00
+Sampling  26%|██████████▊                               |  ETA: 0:00:00
+Sampling  26%|██████████▉                               |  ETA: 0:00:00
+Sampling  26%|███████████▏                              |  ETA: 0:00:00
+Sampling  27%|███████████▍                              |  ETA: 0:00:00
+Sampling  28%|███████████▌                              |  ETA: 0:00:00
+Sampling  28%|███████████▊                              |  ETA: 0:00:00
+Sampling  28%|████████████                              |  ETA: 0:00:00
+Sampling  29%|████████████▏                             |  ETA: 0:00:00
+Sampling  30%|████████████▍                             |  ETA: 0:00:00
+Sampling  30%|████████████▋                             |  ETA: 0:00:00
+Sampling  30%|████████████▊                             |  ETA: 0:00:00
+Sampling  31%|█████████████                             |  ETA: 0:00:00
+Sampling  32%|█████████████▎                            |  ETA: 0:00:00
+Sampling  32%|█████████████▌                            |  ETA: 0:00:00
+Sampling  32%|█████████████▋                            |  ETA: 0:00:00
+Sampling  33%|█████████████▉                            |  ETA: 0:00:00
+Sampling  34%|██████████████▏                           |  ETA: 0:00:00
+Sampling  34%|██████████████▎                           |  ETA: 0:00:00
+Sampling  34%|██████████████▌                           |  ETA: 0:00:00
+Sampling  35%|██████████████▊                           |  ETA: 0:00:00
+Sampling  36%|██████████████▉                           |  ETA: 0:00:00
+Sampling  36%|███████████████▏                          |  ETA: 0:00:00
+Sampling  36%|███████████████▍                          |  ETA: 0:00:00
+Sampling  37%|███████████████▌                          |  ETA: 0:00:00
+Sampling  38%|███████████████▊                          |  ETA: 0:00:00
+Sampling  38%|████████████████                          |  ETA: 0:00:00
+Sampling  38%|████████████████▏                         |  ETA: 0:00:00
+Sampling  39%|████████████████▍                         |  ETA: 0:00:00
+Sampling  40%|████████████████▋                         |  ETA: 0:00:00
+Sampling  40%|████████████████▊                         |  ETA: 0:00:00
+Sampling  40%|█████████████████                         |  ETA: 0:00:00
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:00
+Sampling  43%|██████████████████                        |  ETA: 0:00:00
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:00
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:00
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:00
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:00
+Sampling  48%|████████████████████                      |  ETA: 0:00:00
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:00
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:00
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:00
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:00
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:00
+Sampling  52%|██████████████████████                    |  ETA: 0:00:00
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:00
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:00
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:00
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:00
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:00
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:00
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:00
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:00
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:00
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:00
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:00
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:00
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:00
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:00
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:00
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:00
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:00
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:00
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:00
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:00
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+4 stepsize: 0.8 acc rate: 0.592
+	params: encoded_param_1: 0.381
+Set sampler to new stepsize: 1.6
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:00:00
+Sampling   1%|▍                                         |  ETA: 0:00:01
+Sampling   2%|▋                                         |  ETA: 0:00:01
+Sampling   2%|▉                                         |  ETA: 0:00:01
+Sampling   2%|█                                         |  ETA: 0:00:01
+Sampling   3%|█▎                                        |  ETA: 0:00:01
+Sampling   4%|█▌                                        |  ETA: 0:00:01
+Sampling   4%|█▋                                        |  ETA: 0:00:02
+Sampling   4%|█▉                                        |  ETA: 0:00:02
+Sampling   5%|██▏                                       |  ETA: 0:00:02
+Sampling   6%|██▎                                       |  ETA: 0:00:02
+Sampling   6%|██▌                                       |  ETA: 0:00:02
+Sampling   6%|██▊                                       |  ETA: 0:00:02
+Sampling   7%|███                                       |  ETA: 0:00:01
+Sampling   8%|███▏                                      |  ETA: 0:00:01
+Sampling   8%|███▍                                      |  ETA: 0:00:01
+Sampling   8%|███▋                                      |  ETA: 0:00:01
+Sampling   9%|███▊                                      |  ETA: 0:00:01
+Sampling  10%|████                                      |  ETA: 0:00:01
+Sampling  10%|████▎                                     |  ETA: 0:00:01
+Sampling  10%|████▍                                     |  ETA: 0:00:01
+Sampling  11%|████▋                                     |  ETA: 0:00:01
+Sampling  12%|████▉                                     |  ETA: 0:00:01
+Sampling  12%|█████                                     |  ETA: 0:00:01
+Sampling  12%|█████▎                                    |  ETA: 0:00:01
+Sampling  13%|█████▌                                    |  ETA: 0:00:01
+Sampling  14%|█████▋                                    |  ETA: 0:00:01
+Sampling  14%|█████▉                                    |  ETA: 0:00:01
+Sampling  14%|██████▏                                   |  ETA: 0:00:01
+Sampling  15%|██████▎                                   |  ETA: 0:00:01
+Sampling  16%|██████▌                                   |  ETA: 0:00:01
+Sampling  16%|██████▊                                   |  ETA: 0:00:01
+Sampling  16%|██████▉                                   |  ETA: 0:00:01
+Sampling  17%|███████▏                                  |  ETA: 0:00:01
+Sampling  18%|███████▍                                  |  ETA: 0:00:01
+Sampling  18%|███████▌                                  |  ETA: 0:00:01
+Sampling  18%|███████▊                                  |  ETA: 0:00:01
+Sampling  19%|████████                                  |  ETA: 0:00:01
+Sampling  20%|████████▎                                 |  ETA: 0:00:01
+Sampling  20%|████████▍                                 |  ETA: 0:00:01
+Sampling  20%|████████▋                                 |  ETA: 0:00:01
+Sampling  21%|████████▉                                 |  ETA: 0:00:01
+Sampling  22%|█████████                                 |  ETA: 0:00:01
+Sampling  22%|█████████▎                                |  ETA: 0:00:01
+Sampling  22%|█████████▌                                |  ETA: 0:00:01
+Sampling  23%|█████████▋                                |  ETA: 0:00:01
+Sampling  24%|█████████▉                                |  ETA: 0:00:01
+Sampling  24%|██████████▏                               |  ETA: 0:00:01
+Sampling  24%|██████████▎                               |  ETA: 0:00:01
+Sampling  25%|██████████▌                               |  ETA: 0:00:01
+Sampling  26%|██████████▊                               |  ETA: 0:00:01
+Sampling  26%|██████████▉                               |  ETA: 0:00:01
+Sampling  26%|███████████▏                              |  ETA: 0:00:01
+Sampling  27%|███████████▍                              |  ETA: 0:00:01
+Sampling  28%|███████████▌                              |  ETA: 0:00:01
+Sampling  28%|███████████▊                              |  ETA: 0:00:01
+Sampling  28%|████████████                              |  ETA: 0:00:01
+Sampling  29%|████████████▏                             |  ETA: 0:00:01
+Sampling  30%|████████████▍                             |  ETA: 0:00:01
+Sampling  30%|████████████▋                             |  ETA: 0:00:01
+Sampling  30%|████████████▊                             |  ETA: 0:00:01
+Sampling  31%|█████████████                             |  ETA: 0:00:01
+Sampling  32%|█████████████▎                            |  ETA: 0:00:01
+Sampling  32%|█████████████▌                            |  ETA: 0:00:01
+Sampling  32%|█████████████▋                            |  ETA: 0:00:01
+Sampling  33%|█████████████▉                            |  ETA: 0:00:01
+Sampling  34%|██████████████▏                           |  ETA: 0:00:01
+Sampling  34%|██████████████▎                           |  ETA: 0:00:01
+Sampling  34%|██████████████▌                           |  ETA: 0:00:01
+Sampling  35%|██████████████▊                           |  ETA: 0:00:00
+Sampling  36%|██████████████▉                           |  ETA: 0:00:00
+Sampling  36%|███████████████▏                          |  ETA: 0:00:00
+Sampling  36%|███████████████▍                          |  ETA: 0:00:00
+Sampling  37%|███████████████▌                          |  ETA: 0:00:00
+Sampling  38%|███████████████▊                          |  ETA: 0:00:00
+Sampling  38%|████████████████                          |  ETA: 0:00:00
+Sampling  38%|████████████████▏                         |  ETA: 0:00:00
+Sampling  39%|████████████████▍                         |  ETA: 0:00:00
+Sampling  40%|████████████████▋                         |  ETA: 0:00:00
+Sampling  40%|████████████████▊                         |  ETA: 0:00:00
+Sampling  40%|█████████████████                         |  ETA: 0:00:00
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:00
+Sampling  43%|██████████████████                        |  ETA: 0:00:00
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:00
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:00
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:00
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:00
+Sampling  48%|████████████████████                      |  ETA: 0:00:00
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:00
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:00
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:00
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:00
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:00
+Sampling  52%|██████████████████████                    |  ETA: 0:00:00
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:00
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:00
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:00
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:00
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:00
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:00
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:00
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:00
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:00
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:00
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:00
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:00
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:00
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:00
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:00
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:00
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:00
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:00
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:00
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:00
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+5 stepsize: 1.6 acc rate: 0.387
+	params: encoded_param_1: 0.533
+Set sampler to new stepsize: 3.2
+Sampling   0%|                                          |  ETA: N/A
+Sampling   0%|▎                                         |  ETA: 0:00:01
+Sampling   1%|▍                                         |  ETA: 0:00:01
+Sampling   2%|▋                                         |  ETA: 0:00:01
+Sampling   2%|▉                                         |  ETA: 0:00:01
+Sampling   2%|█                                         |  ETA: 0:00:01
+Sampling   3%|█▎                                        |  ETA: 0:00:01
+Sampling   4%|█▌                                        |  ETA: 0:00:01
+Sampling   4%|█▋                                        |  ETA: 0:00:01
+Sampling   4%|█▉                                        |  ETA: 0:00:01
+Sampling   5%|██▏                                       |  ETA: 0:00:01
+Sampling   6%|██▎                                       |  ETA: 0:00:01
+Sampling   6%|██▌                                       |  ETA: 0:00:01
+Sampling   6%|██▊                                       |  ETA: 0:00:01
+Sampling   7%|███                                       |  ETA: 0:00:01
+Sampling   8%|███▏                                      |  ETA: 0:00:01
+Sampling   8%|███▍                                      |  ETA: 0:00:01
+Sampling   8%|███▋                                      |  ETA: 0:00:01
+Sampling   9%|███▊                                      |  ETA: 0:00:01
+Sampling  10%|████                                      |  ETA: 0:00:01
+Sampling  10%|████▎                                     |  ETA: 0:00:01
+Sampling  10%|████▍                                     |  ETA: 0:00:01
+Sampling  11%|████▋                                     |  ETA: 0:00:01
+Sampling  12%|████▉                                     |  ETA: 0:00:01
+Sampling  12%|█████                                     |  ETA: 0:00:01
+Sampling  12%|█████▎                                    |  ETA: 0:00:00
+Sampling  13%|█████▌                                    |  ETA: 0:00:00
+Sampling  14%|█████▋                                    |  ETA: 0:00:00
+Sampling  14%|█████▉                                    |  ETA: 0:00:00
+Sampling  14%|██████▏                                   |  ETA: 0:00:00
+Sampling  15%|██████▎                                   |  ETA: 0:00:00
+Sampling  16%|██████▌                                   |  ETA: 0:00:00
+Sampling  16%|██████▊                                   |  ETA: 0:00:00
+Sampling  16%|██████▉                                   |  ETA: 0:00:00
+Sampling  17%|███████▏                                  |  ETA: 0:00:00
+Sampling  18%|███████▍                                  |  ETA: 0:00:00
+Sampling  18%|███████▌                                  |  ETA: 0:00:00
+Sampling  18%|███████▊                                  |  ETA: 0:00:00
+Sampling  19%|████████                                  |  ETA: 0:00:00
+Sampling  20%|████████▎                                 |  ETA: 0:00:00
+Sampling  20%|████████▍                                 |  ETA: 0:00:00
+Sampling  20%|████████▋                                 |  ETA: 0:00:00
+Sampling  21%|████████▉                                 |  ETA: 0:00:00
+Sampling  22%|█████████                                 |  ETA: 0:00:00
+Sampling  22%|█████████▎                                |  ETA: 0:00:00
+Sampling  22%|█████████▌                                |  ETA: 0:00:00
+Sampling  23%|█████████▋                                |  ETA: 0:00:00
+Sampling  24%|█████████▉                                |  ETA: 0:00:00
+Sampling  24%|██████████▏                               |  ETA: 0:00:00
+Sampling  24%|██████████▎                               |  ETA: 0:00:00
+Sampling  25%|██████████▌                               |  ETA: 0:00:00
+Sampling  26%|██████████▊                               |  ETA: 0:00:00
+Sampling  26%|██████████▉                               |  ETA: 0:00:00
+Sampling  26%|███████████▏                              |  ETA: 0:00:00
+Sampling  27%|███████████▍                              |  ETA: 0:00:00
+Sampling  28%|███████████▌                              |  ETA: 0:00:00
+Sampling  28%|███████████▊                              |  ETA: 0:00:00
+Sampling  28%|████████████                              |  ETA: 0:00:00
+Sampling  29%|████████████▏                             |  ETA: 0:00:00
+Sampling  30%|████████████▍                             |  ETA: 0:00:00
+Sampling  30%|████████████▋                             |  ETA: 0:00:00
+Sampling  30%|████████████▊                             |  ETA: 0:00:00
+Sampling  31%|█████████████                             |  ETA: 0:00:00
+Sampling  32%|█████████████▎                            |  ETA: 0:00:00
+Sampling  32%|█████████████▌                            |  ETA: 0:00:00
+Sampling  32%|█████████████▋                            |  ETA: 0:00:00
+Sampling  33%|█████████████▉                            |  ETA: 0:00:00
+Sampling  34%|██████████████▏                           |  ETA: 0:00:00
+Sampling  34%|██████████████▎                           |  ETA: 0:00:00
+Sampling  34%|██████████████▌                           |  ETA: 0:00:00
+Sampling  35%|██████████████▊                           |  ETA: 0:00:00
+Sampling  36%|██████████████▉                           |  ETA: 0:00:00
+Sampling  36%|███████████████▏                          |  ETA: 0:00:00
+Sampling  36%|███████████████▍                          |  ETA: 0:00:00
+Sampling  37%|███████████████▌                          |  ETA: 0:00:00
+Sampling  38%|███████████████▊                          |  ETA: 0:00:00
+Sampling  38%|████████████████                          |  ETA: 0:00:00
+Sampling  38%|████████████████▏                         |  ETA: 0:00:00
+Sampling  39%|████████████████▍                         |  ETA: 0:00:00
+Sampling  40%|████████████████▋                         |  ETA: 0:00:00
+Sampling  40%|████████████████▊                         |  ETA: 0:00:00
+Sampling  40%|█████████████████                         |  ETA: 0:00:00
+Sampling  41%|█████████████████▎                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▍                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▋                        |  ETA: 0:00:00
+Sampling  42%|█████████████████▉                        |  ETA: 0:00:00
+Sampling  43%|██████████████████                        |  ETA: 0:00:00
+Sampling  44%|██████████████████▎                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▌                       |  ETA: 0:00:00
+Sampling  44%|██████████████████▊                       |  ETA: 0:00:00
+Sampling  45%|██████████████████▉                       |  ETA: 0:00:00
+Sampling  46%|███████████████████▏                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▍                      |  ETA: 0:00:00
+Sampling  46%|███████████████████▌                      |  ETA: 0:00:00
+Sampling  47%|███████████████████▊                      |  ETA: 0:00:00
+Sampling  48%|████████████████████                      |  ETA: 0:00:00
+Sampling  48%|████████████████████▏                     |  ETA: 0:00:00
+Sampling  48%|████████████████████▍                     |  ETA: 0:00:00
+Sampling  49%|████████████████████▋                     |  ETA: 0:00:00
+Sampling  50%|████████████████████▊                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████                     |  ETA: 0:00:00
+Sampling  50%|█████████████████████▎                    |  ETA: 0:00:00
+Sampling  51%|█████████████████████▍                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▋                    |  ETA: 0:00:00
+Sampling  52%|█████████████████████▉                    |  ETA: 0:00:00
+Sampling  52%|██████████████████████                    |  ETA: 0:00:00
+Sampling  53%|██████████████████████▎                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▌                   |  ETA: 0:00:00
+Sampling  54%|██████████████████████▋                   |  ETA: 0:00:00
+Sampling  55%|██████████████████████▉                   |  ETA: 0:00:00
+Sampling  55%|███████████████████████▏                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▎                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▌                  |  ETA: 0:00:00
+Sampling  56%|███████████████████████▊                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████                  |  ETA: 0:00:00
+Sampling  57%|████████████████████████▏                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▍                 |  ETA: 0:00:00
+Sampling  58%|████████████████████████▋                 |  ETA: 0:00:00
+Sampling  59%|████████████████████████▊                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████                 |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▎                |  ETA: 0:00:00
+Sampling  60%|█████████████████████████▍                |  ETA: 0:00:00
+Sampling  61%|█████████████████████████▋                |  ETA: 0:00:00
+Sampling  62%|█████████████████████████▉                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████                |  ETA: 0:00:00
+Sampling  62%|██████████████████████████▎               |  ETA: 0:00:00
+Sampling  63%|██████████████████████████▌               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▋               |  ETA: 0:00:00
+Sampling  64%|██████████████████████████▉               |  ETA: 0:00:00
+Sampling  64%|███████████████████████████▏              |  ETA: 0:00:00
+Sampling  65%|███████████████████████████▎              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▌              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▊              |  ETA: 0:00:00
+Sampling  66%|███████████████████████████▉              |  ETA: 0:00:00
+Sampling  67%|████████████████████████████▏             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▍             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▌             |  ETA: 0:00:00
+Sampling  68%|████████████████████████████▊             |  ETA: 0:00:00
+Sampling  69%|█████████████████████████████             |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▎            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▍            |  ETA: 0:00:00
+Sampling  70%|█████████████████████████████▋            |  ETA: 0:00:00
+Sampling  71%|█████████████████████████████▉            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████            |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▎           |  ETA: 0:00:00
+Sampling  72%|██████████████████████████████▌           |  ETA: 0:00:00
+Sampling  73%|██████████████████████████████▋           |  ETA: 0:00:00
+Sampling  74%|██████████████████████████████▉           |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▏          |  ETA: 0:00:00
+Sampling  74%|███████████████████████████████▎          |  ETA: 0:00:00
+Sampling  75%|███████████████████████████████▌          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▊          |  ETA: 0:00:00
+Sampling  76%|███████████████████████████████▉          |  ETA: 0:00:00
+Sampling  76%|████████████████████████████████▏         |  ETA: 0:00:00
+Sampling  77%|████████████████████████████████▍         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▌         |  ETA: 0:00:00
+Sampling  78%|████████████████████████████████▊         |  ETA: 0:00:00
+Sampling  78%|█████████████████████████████████         |  ETA: 0:00:00
+Sampling  79%|█████████████████████████████████▏        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▍        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▋        |  ETA: 0:00:00
+Sampling  80%|█████████████████████████████████▊        |  ETA: 0:00:00
+Sampling  81%|██████████████████████████████████        |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▎       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▌       |  ETA: 0:00:00
+Sampling  82%|██████████████████████████████████▋       |  ETA: 0:00:00
+Sampling  83%|██████████████████████████████████▉       |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▏      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▎      |  ETA: 0:00:00
+Sampling  84%|███████████████████████████████████▌      |  ETA: 0:00:00
+Sampling  85%|███████████████████████████████████▊      |  ETA: 0:00:00
+Sampling  86%|███████████████████████████████████▉      |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▏     |  ETA: 0:00:00
+Sampling  86%|████████████████████████████████████▍     |  ETA: 0:00:00
+Sampling  87%|████████████████████████████████████▌     |  ETA: 0:00:00
+Sampling  88%|████████████████████████████████████▊     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████     |  ETA: 0:00:00
+Sampling  88%|█████████████████████████████████████▏    |  ETA: 0:00:00
+Sampling  89%|█████████████████████████████████████▍    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▋    |  ETA: 0:00:00
+Sampling  90%|█████████████████████████████████████▊    |  ETA: 0:00:00
+Sampling  90%|██████████████████████████████████████    |  ETA: 0:00:00
+Sampling  91%|██████████████████████████████████████▎   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▍   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▋   |  ETA: 0:00:00
+Sampling  92%|██████████████████████████████████████▉   |  ETA: 0:00:00
+Sampling  93%|███████████████████████████████████████   |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▎  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▌  |  ETA: 0:00:00
+Sampling  94%|███████████████████████████████████████▊  |  ETA: 0:00:00
+Sampling  95%|███████████████████████████████████████▉  |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▏ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▍ |  ETA: 0:00:00
+Sampling  96%|████████████████████████████████████████▌ |  ETA: 0:00:00
+Sampling  97%|████████████████████████████████████████▊ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████ |  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▏|  ETA: 0:00:00
+Sampling  98%|█████████████████████████████████████████▍|  ETA: 0:00:00
+Sampling  99%|█████████████████████████████████████████▋|  ETA: 0:00:00
+Sampling 100%|█████████████████████████████████████████▊|  ETA: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+Sampling 100%|██████████████████████████████████████████| Time: 0:00:00
+6 stepsize: 3.2 acc rate: 0.211
+	params: encoded_param_1: -0.357
+Returning optimized stepsize: 3.2
+[ Info: MCMC step size: 3.2
+</code></pre><p>Draw samples</p><pre><code class="language-julia hljs">n_samples = 50_000
+discard_initial = 2_000
+chain = MarkovChainMonteCarlo.sample(
+    mcmc,
+    n_samples;
+    stepsize = new_step,
+    discard_initial,
+)
+posterior = MarkovChainMonteCarlo.get_posterior(mcmc, chain)</code></pre><pre><code class="nohighlight hljs">ParameterDistribution with 1 entry
+  &#39;Vcmax25&#39;: Samples (1×50000) [1 constraint]
+</code></pre><p>Transform samples from unconstrained to constrained (physical) space</p><pre><code class="language-julia hljs">constrained_posterior = Emulators.transform_unconstrained_to_constrained(
+    prior,
+    MarkovChainMonteCarlo.get_distribution(posterior),
+)
+
+post_Vcmax25 = vec(constrained_posterior[&quot;Vcmax25&quot;])
+post_mean = mean(post_Vcmax25)
+post_std = std(post_Vcmax25)
+ci_lo, ci_hi = quantile(post_Vcmax25, [0.025, 0.975])
+
+@info &quot;Posterior Vcmax25: mean=$(round(post_mean; sigdigits=4))  std=$(round(post_std; sigdigits=3))&quot;
+@info &quot;95% CI: [$(round(ci_lo; sigdigits=4)), $(round(ci_hi; sigdigits=4))]&quot;
+@info &quot;EKI MAP: $(round(eki_map; sigdigits=4))  true: $true_Vcmax25&quot;</code></pre><pre><code class="nohighlight hljs">[ Info: Posterior Vcmax25: mean=0.001371  std=0.000247
+[ Info: 95% CI: [0.0008164, 0.001768]
+[ Info: EKI MAP: 0.001502  true: 0.0015
+</code></pre><h2 id="UQ-Results:-Posterior-vs-Prior-vs-True-Value"><a class="docs-heading-anchor" href="#UQ-Results:-Posterior-vs-Prior-vs-True-Value">UQ Results: Posterior vs Prior vs True Value</a><a id="UQ-Results:-Posterior-vs-Prior-vs-True-Value-1"></a><a class="docs-heading-anchor-permalink" href="#UQ-Results:-Posterior-vs-Prior-vs-True-Value" title="Permalink"></a></h2><p>The key result: the posterior is much narrower than the prior and centered near the true value, demonstrating successful uncertainty quantification. The EKI MAP gives a single point estimate; MCMC over the emulator gives the full posterior credible interval.</p><pre><code class="language-julia hljs">fig3 = CairoMakie.Figure(; size = (700, 450))
+ax3 = Axis(
+    fig3[1, 1];
+    title = &quot;Posterior vs Prior: Vcmax25 (perfect model)&quot;,
+    xlabel = &quot;Vcmax25 [mol m⁻² s⁻¹]&quot;,
+    ylabel = &quot;Density&quot;,
+)</code></pre><pre><code class="nohighlight hljs">Makie.Axis with 0 plots:
+</code></pre><p>Sample prior for comparison</p><pre><code class="language-julia hljs">rng_prior = Random.MersenneTwister(99)
+prior_ens = EKP.construct_initial_ensemble(rng_prior, prior, 5_000)
+prior_constrained = EKP.transform_unconstrained_to_constrained(prior, prior_ens)
+
+density!(ax3, vec(prior_constrained); label = &quot;Prior&quot;, color = (:grey, 0.4))
+density!(
+    ax3,
+    post_Vcmax25;
+    label = &quot;Posterior (CES-MCMC)&quot;,
+    color = (:steelblue, 0.6),
+)
+vlines!(
+    ax3,
+    [true_Vcmax25];
+    color = :red,
+    linewidth = 2.5,
+    label = &quot;True value&quot;,
+)
+vlines!(
+    ax3,
+    [eki_map];
+    color = :orange,
+    linewidth = 2.5,
+    linestyle = :dash,
+    label = &quot;EKI MAP&quot;,
+)
+axislegend(ax3; position = :rt, framevisible = false)
+CairoMakie.resize_to_layout!(fig3)
+CairoMakie.save(&quot;perfect_model_ces_posterior.png&quot;, fig3)</code></pre><p><img src="../perfect_model_ces_posterior.png" alt/></p><h2 id="Posterior-Predictive-Check"><a class="docs-heading-anchor" href="#Posterior-Predictive-Check">Posterior Predictive Check</a><a id="Posterior-Predictive-Check-1"></a><a class="docs-heading-anchor-permalink" href="#Posterior-Predictive-Check" title="Permalink"></a></h2><p>Evaluate the TRUE forward model G at a small number of posterior samples. This is the proper posterior predictive check: it uses the actual land model (not the emulator) to validate that the emulator-based posterior is meaningful. If the emulator were biased, the MCMC posterior could be biased too — but this check would reveal the discrepancy since G itself is unbiased.</p><pre><code class="language-julia hljs">n_pp = 3
+post_params_unc_dict = MarkovChainMonteCarlo.get_distribution(posterior)
+unc_samples = post_params_unc_dict[&quot;Vcmax25&quot;]  # (1 × n_samples)
+pp_idx = rand(rng, 1:size(unc_samples, 2), n_pp)
+pp_constrained =
+    EKP.transform_unconstrained_to_constrained(prior, unc_samples[:, pp_idx])
+
+fig4 = CairoMakie.Figure(; size = (900, 400))
+ax4 = Axis(
+    fig4[1, 1];
+    title = &quot;Posterior predictive check (true model G)&quot;,
+    xlabel = &quot;Hour of day&quot;,
+    ylabel = &quot;LHF [W m⁻²]&quot;,
+)
+lines!(ax4, 0:23, observations; color = :black, linewidth = 3, label = &quot;Truth&quot;)
+for j in 1:n_pp
+    G_j = G(pp_constrained[1, j])
+    lines!(ax4, 0:23, G_j; color = (:steelblue, 0.5), linewidth = 1.5)
+end
+axislegend(ax4; position = :rb, framevisible = false)
+CairoMakie.resize_to_layout!(fig4)
+CairoMakie.save(&quot;perfect_model_ces_predictive.png&quot;, fig4)</code></pre><p><img src="../perfect_model_ces_predictive.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../obs_site_level_calibration/">« Single site observations</a><a class="docs-footer-nextpage" href="../obs_site_level_ces/">Single site observations (CES/UQ) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 12 June 2026 00:52">Friday 12 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
