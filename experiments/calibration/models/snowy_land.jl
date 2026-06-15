@@ -23,7 +23,8 @@ function setup_model(
     Δt,
     domain,
     toml_dict,
-    ::Type{ClimaLand.LandModel},
+    ::Type{ClimaLand.LandModel};
+    use_rosetta = false,
 ) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -47,9 +48,33 @@ function setup_model(
     )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
 
+    # Build the soil model explicitly so we can optionally swap in the Rosetta
+    # (Montzka et al. 2017) van Genuchten retention parameters. When use_rosetta
+    # is false, this reproduces LandModel's default Gupta et al. (2020) soil.
+    retention_parameters =
+        use_rosetta ?
+        ClimaLand.Soil.rosetta_soil_vangenuchten_parameters(
+            domain.space.subsurface,
+            FT,
+        ) :
+        ClimaLand.Soil.soil_vangenuchten_parameters(
+            domain.space.subsurface,
+            FT,
+        )
+    soil = ClimaLand.Soil.EnergyHydrology{FT}(
+        domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        retention_parameters,
+    )
+
     # Build the canopy explicitly so SAI/RAI track spatially-varying max LAI
     # (MODIS 2000-2020), which sets the AR winter maintenance baseline, instead
     # of LandModel's default constant SAI/RAI. Other canopy defaults are unchanged.
+    # Feed the soil's ν/θ_r into the moisture-stress thresholds so they stay
+    # consistent with the (possibly Rosetta) retention parameters.
     maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         surface_domain,
@@ -63,7 +88,8 @@ function setup_model(
         prognostic_land_components,
         soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
             domain,
-            toml_dict,
+            toml_dict;
+            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
         ),
         biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
             surface_domain,
@@ -79,6 +105,7 @@ function setup_model(
         domain,
         Δt;
         prognostic_land_components,
+        soil,
         canopy,
     )
     return land
@@ -91,7 +118,8 @@ function ClimaCalibrate.forward_model(
     ::Type{ClimaLand.LandModel},
 )
     (; config) = model_interface
-    (; output_dir, sample_date_ranges, nelements, spinup, extend) = config
+    (; output_dir, sample_date_ranges, nelements, spinup, extend, use_rosetta) =
+        config
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -134,7 +162,8 @@ function ClimaCalibrate.forward_model(
         Δt,
         domain,
         toml_dict,
-        ClimaLand.LandModel,
+        ClimaLand.LandModel;
+        use_rosetta,
     )
 
     # Set up diagnostics. lhf/shf/lwu/swu are needed for the leaderboard.
