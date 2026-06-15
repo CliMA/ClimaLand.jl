@@ -35,10 +35,10 @@ function microbe_source(
     O2_avail::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; V_ref_sx, T_ref_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) =
+    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, earth_param_set) =
         params
     R = LP.gas_constant(earth_param_set)
-    Vmax = V_ref_sx * exp(-Ea_sx / R * (1 / T_soil - 1 / T_ref_sx)) # Maximum potential rate of respiration
+    Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * max(θ_l, FT(0))^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
     # Use pre-computed O2 availability (includes tortuosity effects)
@@ -167,6 +167,10 @@ function henry_constant(
     T_ref::FT,
 ) where {FT}
     return K_H_298 * exp(dln_K_H_dT * (FT(1) / T - FT(1) / T_ref))
+end
+
+function henry_constant(K_H_298::FT, dln_K_H_dT::FT, T::FT) where {FT}
+    return henry_constant(K_H_298, dln_K_H_dT, T, FT(298.15))
 end
 
 
@@ -302,6 +306,13 @@ function co2_diffusivity(
     ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
+    T_exp_diffusivity = try
+        params.T_exp_diffusivity
+    catch err
+        err isa FieldError || rethrow(err)
+        FT(1.75)
+    end
+
     return gas_diffusivity_in_soil(
         T_soil,
         θ_w,
@@ -310,7 +321,7 @@ function co2_diffusivity(
         b,
         ν,
         params.D_ref,
-        params.T_exp_diffusivity,
+        T_exp_diffusivity,
         params.earth_param_set,
     )
 end
@@ -341,6 +352,20 @@ function o2_diffusivity(
     ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
+    D_ref_o2 = try
+        params.D_ref_o2
+    catch err
+        err isa FieldError || rethrow(err)
+        params.D_ref
+    end
+
+    T_exp_diffusivity = try
+        params.T_exp_diffusivity
+    catch err
+        err isa FieldError || rethrow(err)
+        FT(1.75)
+    end
+
     return gas_diffusivity_in_soil(
         T_soil,
         θ_w,
@@ -348,8 +373,8 @@ function o2_diffusivity(
         θ_a100,
         b,
         ν,
-        params.D_ref_o2,
-        params.T_exp_diffusivity,
+        D_ref_o2,
+        T_exp_diffusivity,
         params.earth_param_set,
     )
 end

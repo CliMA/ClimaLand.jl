@@ -24,6 +24,8 @@ Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     μs::FT
     "Relative contribution or Rgrowth (-)"
     Rel::FT
+    "Q10 temperature sensitivity for maintenance respiration (-)"
+    Q10::FT
 end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
@@ -74,23 +76,33 @@ function update_autotrophic_respiration!(
     autotrophic_respiration::AutotrophicRespirationModel,
     canopy,
 )
+    hydraulics = canopy.hydraulics
     h_canopy = canopy.biomass.height
+    ψ = p.canopy.hydraulics.ψ
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
     SAI = area_index.stem
     RAI = area_index.root
+    earth_param_set = canopy.earth_param_set
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    (; G_Function, Ω) = canopy.radiative_transfer.parameters
+    cosθs = p.drivers.cosθs
     β = p.canopy.soil_moisture_stress.βm
-    Vcmax25_canopy = get_Vcmax25_canopy(p, canopy.photosynthesis)
-    Rd_canopy = get_Rd_canopy(p, canopy.photosynthesis)
-    An_canopy = get_An_canopy(p, canopy.photosynthesis)
+    Vcmax25_leaf = get_Vcmax25_leaf(p, canopy.photosynthesis)
+    Rd_leaf = get_Rd_leaf(p, canopy.photosynthesis)
+    An_leaf = get_An_leaf(p, canopy.photosynthesis)
     @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
         autotrophic_respiration,
-        Vcmax25_canopy,
+        Vcmax25_leaf,
         LAI,
         SAI,
         RAI,
-        An_canopy,
-        Rd_canopy,
+        extinction_coeff(G_Function, cosθs),
+        Ω,
+        An_leaf,
+        Rd_leaf,
+        p.drivers.T,
         β,
         h_canopy,
     )
@@ -102,8 +114,10 @@ end
                                   LAI,
                                   SAI,
                                   RAI,
-                                  An_canopy,
-                                  Rd_canopy,
+                                  K,
+                                  Ω,
+                                  An,
+                                  Rd,
                                   β,
                                   h,
                                  )
@@ -115,23 +129,36 @@ Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model des
 """
 function compute_autrophic_respiration(
     model::AutotrophicRespirationModel,
-    Vcmax25_canopy,
+    Vcmax25,
     LAI,
     SAI,
     RAI,
-    An_canopy,
-    Rd_canopy,
+    K,
+    Ω,
+    An,
+    Rd,
+    T_leaf,
     β,
     h,
 )
 
-    (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
-    Nl, Nr, Ns =
-        nitrogen_content(ne, Vcmax25_canopy, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance(Rd_canopy, β, Nl, Nr, Ns)
-    Rg = plant_respiration_growth(Rel, An_canopy, Rpm)
-    Ra = Rpm + Rg
-    return Ra # already canopy level
+    (; ne, ηsl, σl, μr, μs, Rel, Q10) = model.parameters
+    FT = typeof(LAI)
+    T_ref = FT(298.15)
+    fT = Q10^((T_leaf - T_ref) / FT(10))
+    Rd_eff = Rd * clamp(fT, FT(0.05), FT(50))
+
+    # Root and stem maintenance respiration: LAI-independent (trees keep roots and stems in winter)
+    Ra_root = Rd_eff * μr * RAI
+    Ra_stem = Rd_eff * μs * ηsl * h * SAI / σl
+
+    # Leaf maintenance and growth respiration: canopy-scaled (→ 0 as LAI → 0)
+    Rpm_leaf = Rd_eff * β
+    Rg = plant_respiration_growth(Rel, An, Rpm_leaf)
+    canopy_scale = (1 - exp(-K * LAI * Ω)) / (K * Ω)
+    Ra_canopy = max(FT(0), Rpm_leaf + Rg) * canopy_scale
+
+    return Ra_canopy + Ra_root + Ra_stem
 end
 
 Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
@@ -156,9 +183,15 @@ function AutotrophicRespirationParameters(
     μr = toml_dict["root_leaf_nitrogen_ratio"],
     Rel = toml_dict["relative_contribution_factor"],
     μs = toml_dict["stem_leaf_nitrogen_ratio"],
+    Q10 = try
+        toml_dict["autotrophic_respiration_Q10"]
+    catch err
+        err isa KeyError || rethrow(err)
+        CP.float_type(toml_dict)(2.0)
+    end,
 )
     FT = CP.float_type(toml_dict)
-    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs)
+    AutotrophicRespirationParameters{FT}(; ne, ηsl, σl, μr, Rel, μs, Q10)
 end
 
 
@@ -166,7 +199,7 @@ end
 """
     nitrogen_content(
                      ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-                     Vcmax25_canopy::FT, #
+                     Vcmax25::FT, #
                      LAI::FT, # Leaf area index
                      SAI::FT,
                      RAI::FT,
@@ -181,7 +214,7 @@ Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
 """
 function nitrogen_content(
     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
-    Vcmax25_canopy::FT, #
+    Vcmax25::FT, #
     LAI::FT, # Leaf area index
     SAI::FT,
     RAI::FT,
@@ -191,10 +224,10 @@ function nitrogen_content(
     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
 ) where {FT}
-    Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
+    Sc = ηsl * h * SAI
     Rc = σl * RAI
-    nm = Vcmax25_canopy / (ne * max(LAI, sqrt(eps(FT))))
-    Nl = nm * σl
+    nm = Vcmax25 / ne
+    Nl = nm * σl * LAI
     Nr = μr * nm * Rc
     Ns = μs * nm * Sc
     return Nl, Nr, Ns
