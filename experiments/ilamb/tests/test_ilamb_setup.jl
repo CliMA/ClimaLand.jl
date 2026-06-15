@@ -53,14 +53,16 @@ end
         buildkite_id = "1"
 
         ilamb_build_dir = joinpath(ilamb_root_dir, "_build")
-        num_models_to_keep = 2
+        num_manual_models_to_keep = 2
+        num_scheduled_models_to_keep = 1
         setup_run_for_ilamb(
             ilamb_diag_dir,
             ilamb_root_dir,
             ilamb_build_dir,
             buildkite_id,
             commit_id,
-            num_models_to_keep,
+            num_manual_models_to_keep,
+            num_scheduled_models_to_keep,
         )
 
         # Test existence of directories and symlinks
@@ -101,7 +103,8 @@ end
             ilamb_build_dir,
             buildkite_id,
             commit_id,
-            num_models_to_keep,
+            num_manual_models_to_keep,
+            num_scheduled_models_to_keep,
         )
 
         model_name2 = "$(buildkite_id)_$(Dates.Date(Dates.now()))_$commit_id"
@@ -146,7 +149,8 @@ end
             ilamb_build_dir,
             buildkite_id,
             commit_id,
-            num_models_to_keep,
+            num_manual_models_to_keep,
+            num_scheduled_models_to_keep,
         )
 
         model_name3 = "$(buildkite_id)_$(Dates.Date(Dates.now()))_$commit_id"
@@ -166,6 +170,59 @@ end
         @test isfile(joinpath(ilamb_build_dir, "benchmark_$model_name2.nc"))
         @test isfile(joinpath(ilamb_build_dir, "benchmark_$model_name3.nc"))
         @test isfile(joinpath(ilamb_build_dir, "benchmark_$model_name3.png"))
+
+        # Make another ILAMB diagnostics (simulating another run) but with
+        # latest for the commit ID
+        ilamb_diag_dir4, evspsbl_filepath4, gpp_filepath4 =
+            make_dummy_ilamb_diagnostics("ilamb_diagnostics3")
+        commit_id = "latest"
+        buildkite_id = "4"
+        setup_run_for_ilamb(
+            ilamb_diag_dir4,
+            ilamb_root_dir,
+            ilamb_build_dir,
+            buildkite_id,
+            commit_id,
+            num_manual_models_to_keep,
+            num_scheduled_models_to_keep,
+        )
+
+        model_name4 = "$(buildkite_id)_$(Dates.Date(Dates.now()))_$commit_id"
+        model_dir4 = joinpath(MODELS_dir, model_name4)
+        populate_build_dir(ilamb_build_dir, model_dir4)
+
+        # No directories should be deleted since the number of scheduled model
+        # runs to keep is 1
+        @test isdir(model_dir2)
+        @test isdir(model_dir3)
+        @test isdir(model_dir4)
+
+        # Make another ILAMB diagnostics (simulating another run) with latest
+        # for the commit ID
+        ilamb_diag_dir5, evspsbl_filepath5, gpp_filepath5 =
+            make_dummy_ilamb_diagnostics("ilamb_diagnostics4")
+        commit_id = "latest"
+        buildkite_id = "5"
+        setup_run_for_ilamb(
+            ilamb_diag_dir5,
+            ilamb_root_dir,
+            ilamb_build_dir,
+            buildkite_id,
+            commit_id,
+            num_manual_models_to_keep,
+            num_scheduled_models_to_keep,
+        )
+
+        model_name5 = "$(buildkite_id)_$(Dates.Date(Dates.now()))_$commit_id"
+        model_dir5 = joinpath(MODELS_dir, model_name5)
+        populate_build_dir(ilamb_build_dir, model_dir5)
+
+        # Directory produced from last simulated ILAMB run should be deleted
+        # since the number of scheduled model runs to keep is 1
+        @test isdir(model_dir2)
+        @test isdir(model_dir3)
+        @test !isdir(model_dir4)
+        @test isdir(model_dir5)
     end
 end
 
@@ -182,53 +239,61 @@ end
     @test !is_model_from_simulation(model_name5)
 end
 
-@testset "Delete old runs" begin
-    N = 5
-    for num_directories in [10, 5, 3]
+@testset "Delete old model runs" begin
+    delete_model_dirs_fns =
+        [delete_old_model_runs, delete_old_scheduled_model_runs]
+    commit_ids = ["1234567", "latest"]
+
+    for (delete_model_dirs_fn, commit_id) in
+        zip(delete_model_dirs_fns, commit_ids)
+
+        N = 5
+        for num_directories in [10, 5, 3]
+            temp_dir = mktempdir(cleanup = false)
+            @info "Deleting old runs with $num_directories directories" temp_dir
+            MODELS_dir = joinpath(temp_dir, "MODELS")
+            mkdir(MODELS_dir)
+
+            for i in 1:num_directories
+                model_name = "$(i)_2010-01-01_$commit_id"
+                mkdir(joinpath(MODELS_dir, model_name))
+            end
+
+            delete_model_dirs_fn(MODELS_dir, N)
+
+            available_dirs = readdir(MODELS_dir, join = true)
+            remaining_directories = min(num_directories, N)
+            @test length(available_dirs) == remaining_directories
+            @test Set(basename.(available_dirs)) == Set([
+                "$(i)_2010-01-01_$commit_id" for
+                i in last(1:num_directories, remaining_directories)
+            ])
+        end
+
+        # If there are extra directories
         temp_dir = mktempdir(cleanup = false)
-        @info "Deleting old runs with $num_directories directories" temp_dir
+        @info "Deleting old runs from 4 model directories and 2 directories that should not be removed" temp_dir
         MODELS_dir = joinpath(temp_dir, "MODELS")
         mkdir(MODELS_dir)
 
-        for i in 1:num_directories
-            # Needed for the modified time to not be exactly the same
-            model_name = "$(i)_2010-01-01_1234567"
+        for i in 1:8
+            model_name = "$(i)_2010-01-01_$commit_id"
             mkdir(joinpath(MODELS_dir, model_name))
         end
 
-        delete_old_runs(MODELS_dir, N)
+        mkdir(joinpath(MODELS_dir, "Hello"))
+        mkdir(joinpath(MODELS_dir, "World"))
+
+        delete_model_dirs_fn(MODELS_dir, N)
 
         available_dirs = readdir(MODELS_dir, join = true)
-        remaining_directories = min(num_directories, N)
-        @test length(available_dirs) == remaining_directories
-        @test Set(basename.(available_dirs)) == Set([
-            "$(i)_2010-01-01_1234567" for
-            i in last(1:num_directories, remaining_directories)
-        ])
+        @test length(available_dirs) == 7
+        @test Set(basename.(available_dirs)) == union(
+            Set(["$(i)_2010-01-01_$commit_id" for i in 4:8]),
+            Set(["Hello", "World"]),
+        )
+
     end
-
-    # If there are extra directories
-    temp_dir = mktempdir(cleanup = false)
-    @info "Deleting old runs from 4 model directories and 2 directories that should not be removed" temp_dir
-    MODELS_dir = joinpath(temp_dir, "MODELS")
-    mkdir(MODELS_dir)
-
-    for i in 1:4
-        model_name = "$(i)_2010-01-01_1234567"
-        mkdir(joinpath(MODELS_dir, model_name))
-    end
-
-    mkdir(joinpath(MODELS_dir, "Hello"))
-    mkdir(joinpath(MODELS_dir, "World"))
-
-    delete_old_runs(MODELS_dir, N)
-
-    available_dirs = readdir(MODELS_dir, join = true)
-    @test length(available_dirs) == 5
-    @test Set(basename.(available_dirs)) == union(
-        Set(["$(i)_2010-01-01_1234567" for i in 2:4]),
-        Set(["Hello", "World"]),
-    )
 end
 
 @testset "Clean build directory" begin
