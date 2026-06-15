@@ -355,7 +355,48 @@ function PrescribedBiomassModel{FT}(
     rooting_depth = clm_rooting_depth(domain.space.surface),
     height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
-    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
+    return PrescribedBiomassModel{
+        FT,
+        typeof(plant_area_index),
+        typeof(rooting_depth),
+        typeof(height),
+    }(
+        plant_area_index,
+        rooting_depth,
+        height,
+    )
+end
+
+"""
+    PrescribedBiomassModel{FT}(
+        domain,
+        LAI::AbstractTimeVaryingInput,
+        maxLAI,
+        toml_dict::CP.ParamDict;
+        SAI = toml_dict["SAI_coeff"] .* maxLAI,
+        RAI = toml_dict["RAI_coeff"] .* maxLAI,
+        rooting_depth = clm_rooting_depth(domain.space.surface),
+        height = toml_dict["canopy_height"],
+    ) where {FT <: AbstractFloat}
+
+Creates a PrescribedBiomassModel with time-constant stem and root area indices
+set as a linear multiple of the per-pixel maximum LAI: SAI = SAI_coeff * maxLAI,
+RAI = RAI_coeff * maxLAI. `maxLAI` may be a scalar or a ClimaCore Field (e.g.
+from `ClimaLand.Canopy.modis_max_lai(domain.space.surface)`); SAI/RAI inherit its
+type.
+"""
+function PrescribedBiomassModel{FT}(
+    domain,
+    LAI::AbstractTimeVaryingInput,
+    maxLAI,
+    toml_dict::CP.ParamDict;
+    SAI = toml_dict["SAI_coeff"] .* maxLAI,
+    RAI = toml_dict["RAI_coeff"] .* maxLAI,
+    rooting_depth = clm_rooting_depth(domain.space.surface),
+    height = toml_dict["canopy_height"],
+) where {FT <: AbstractFloat}
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     return PrescribedBiomassModel{
         FT,
         typeof(plant_area_index),

@@ -25,6 +25,7 @@ Always read the ClimaLand-specific structure guide before working in this reposi
 - For package tests, prefer `Pkg.test()` or running `julia --project=test test/runtests.jl` over manually including files.
 - Keep edits modular and within the appropriate submodel directory (e.g., `src/standalone` or `src/integrated`).
 - Match existing style: explicit names, narrow imports, and use multiple dispatch effectively.
+- Keep comments sparse. Do not explain in comments what a change fixes or narrate its history ("this fixes Y", "this newest code fixes the issue introduced by..."), and do not restate the docstring inline. Comment only non-obvious rationale (the *why*, not the *what*).
 - Follow the software design patterns in [docs/dev-guides/code-quality/software_design_patterns.md](docs/dev-guides/code-quality/software_design_patterns.md) for new code and refactor toward them when touching existing code.
 - Run `julia -e 'using JuliaFormatter; format(".")'` before committing code, adhering to the rules in `.JuliaFormatter.toml`.
 

@@ -573,7 +573,14 @@ end
     @test all(Array(parent(p.canopy.radiative_transfer.par.abs)) .== FT(0))
     @test all(Array(parent(p.canopy.radiative_transfer.nir.abs)) .== FT(0))
     @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
-    @test all(Array(parent(p.canopy.autotrophic_respiration.Ra)) .== FT(0))
+    # Leafless: leaf-level respiration and photosynthesis vanish, so Ra reduces
+    # to the persistent (nonzero) root/stem maintenance respiration baseline.
+    ar_params = canopy.autotrophic_respiration.parameters
+    SAI = canopy.biomass.plant_area_index.SAI
+    RAI = canopy.biomass.plant_area_index.RAI
+    f_T = ar_params.Q10^((FT(289) - ar_params.T_ref) / FT(10))
+    Ra_baseline = f_T * ar_params.Rd_ref * (RAI + ar_params.μs * SAI)
+    @test all(Array(parent(p.canopy.autotrophic_respiration.Ra)) .≈ Ra_baseline)
 
     exp_tend! = make_exp_tendency(canopy)
     exp_tend!(dY, Y, p, FT(0))

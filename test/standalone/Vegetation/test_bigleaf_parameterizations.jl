@@ -268,46 +268,36 @@ for FT in (Float32, Float64)
         )
 
         # Tests for Autotrophic Respiration parameterisation
-        h_canopy = FT(1.0) # h planck defined above
-        Nl, Nr, Ns = ClimaLand.Canopy.nitrogen_content(
-            ARparams.ne,
-            photosynthesisparams.Vcmax25 * LAI,
-            LAI,
-            SAI,
-            RAI,
-            ARparams.ηsl,
-            h_canopy,
-            ARparams.σl,
-            ARparams.μr,
-            ARparams.μs,
-        )
-        Rpm = ClimaLand.Canopy.plant_respiration_maintenance(
-            Rd * LAI,
-            β,
-            Nl,
-            Nr,
-            Ns,
-        )
-        Rg =
-            ClimaLand.Canopy.plant_respiration_growth.(
-                ARparams.Rel,
-                An * LAI,
-                Rpm,
+        ARmodel = AutotrophicRespirationModel{FT}(ARparams)
+        Rd_canopy = Rd * LAI
+        An_canopy = An * LAI
+        Ra =
+            ClimaLand.Canopy.compute_autrophic_respiration.(
+                ARmodel,
+                SAI,
+                RAI,
+                An_canopy,
+                Rd_canopy,
+                T,
             )
-
-        @test Nl == photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl
-        @test Nr ==
-              ARparams.μr * photosynthesisparams.Vcmax25 / ARparams.ne *
-              ARparams.σl *
-              RAI
-        @test Ns ≈
-              ARparams.μs * photosynthesisparams.Vcmax25 / ARparams.ne *
-              ARparams.ηsl *
-              h_canopy *
-              LAI *
-              ClimaLand.heaviside(SAI)# == gives a very small error
-        @test Rpm == Rd * LAI * (β + (Nr + Ns) / Nl)
-        @test all(@.(Rg ≈ ARparams.Rel * (An * LAI - Rpm)))
+        f_T = ARparams.Q10^((T - ARparams.T_ref) / FT(10))
+        Rpm =
+            f_T * (
+                Rd_canopy +
+                ARparams.Rd_ref * RAI +
+                ARparams.Rd_ref * ARparams.μs * SAI
+            )
+        Rg = @. ARparams.Rel * max(An_canopy - Rpm, FT(0))
+        @test all(@.(Ra ≈ Rpm + Rg))
+        @test all(
+            @.(
+                ClimaLand.Canopy.plant_respiration_growth(
+                    ARparams.Rel,
+                    An_canopy,
+                    Rpm,
+                ) ≈ Rg
+            )
+        )
 
     end
 end
