@@ -168,8 +168,6 @@ for FT in (Float32, Float64)
                 :Δz_eff,
             )
             @test propertynames(p.soil) == (
-                :total_water,
-                :total_energy,
                 :K,
                 :ψ,
                 :θ_l,

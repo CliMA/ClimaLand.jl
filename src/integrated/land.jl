@@ -1,3 +1,4 @@
+using ClimaUtilities.TimeManager: ITime
 export LandModel
 """
     struct LandModel{
@@ -18,6 +19,8 @@ export LandModel
         snow::SnM
         "The slab lake model to be used, or `nothing` if no lake model is used"
         lake::LM
+        "Whether to add prognostic and diagnostic vars for conservation"
+        conservation::Bool
     end
 
 A concrete type of land model used for simulating systems with
@@ -29,6 +32,10 @@ soil, canopy, snow, soilco2, and optionally a slab lake.
 - `canopy`: The canopy model
 - `snow`: The snow model
 - `lake`: The lake model (can be nothing)
+
+If you would like to add additional variables for tracking conservation, 
+set `conservation` to true.
+$(DocStringExtensions.FIELDS)
 """
 mutable struct LandModel{
     FT,
@@ -43,12 +50,15 @@ mutable struct LandModel{
     const canopy::VM
     const snow::SnM
     const lake::LM
+    "Whether to add prognostic and diagnostic vars for conservation"
+    const conservation::Bool
     function LandModel{FT}(
         canopy::VM,
         snow::SnM,
         soil::SM,
         soilco2::MM,
-        lake::LM,
+        lake::LM;
+        conservation = false,
     ) where {
         FT,
         MM <: Union{Soil.Biogeochemistry.SoilCO2Model{FT}, Nothing},
@@ -132,7 +142,14 @@ mutable struct LandModel{
 
         end
 
-        return new{FT, MM, SM, VM, SnM, LM}(soilco2, soil, canopy, snow, lake)
+        return new{FT, MM, SM, VM, SnM, LM}(
+            soilco2,
+            soil,
+            canopy,
+            snow,
+            lake,
+            conservation,
+        )
     end
 end
 
@@ -196,6 +213,7 @@ end
             toml_dict;
             prognostic_land_components,
         ) : nothing,
+         conservation = false
     ) where {FT}
 
 A convenience constructor for setting up the default LandModel,
@@ -219,6 +237,8 @@ A biomass model other than the default `PrescribedBiomassModel`, e.g. a
 `canopy` passed with it must use that same biomass model. With a `PrognosticCarbonModel`,
 the default soilco2 model receives the litter of the canopy carbon pools, which makes its
 soil organic carbon prognostic (`PrognosticSoilOrganicCarbon`).
+
+Also by default the additional prognostic variables for tracking conservation are not added.
 """
 function LandModel{FT}(
     forcing,
@@ -295,11 +315,12 @@ function LandModel{FT}(
         toml_dict;
         prognostic_land_components,
     ) : nothing,
+    conservation = false,
 ) where {FT}
     isnothing(biomass) ||
         canopy.biomass === biomass ||
         error("The `canopy` does not use the `biomass` passed with it")
-    return LandModel{FT}(canopy, snow, soil, soilco2, lake)
+    return LandModel{FT}(canopy, snow, soil, soilco2, lake; conservation)
 end
 
 
@@ -361,6 +382,7 @@ end
             toml_dict;
             prognostic_land_components,
         ) : nothing,
+    conservation = false
     ) where {FT}
 
 A convenience constructor for setting up the default LandModel using prognostic (modeled) LAI
@@ -374,6 +396,8 @@ the default soilco2 model receives the litter of the canopy carbon pools.
 
 See also the constructor `LandModel{FT}(forcing, LAI, toml_dict, domain, Δt; ...)` for
 the version that uses prescribed LAI from a `TimeVaryingInput`.
+
+Also by default the additional prognostic variables for tracking conservation are not added.
 """
 function LandModel{FT}(
     forcing,
@@ -444,11 +468,12 @@ function LandModel{FT}(
         toml_dict;
         prognostic_land_components,
     ) : nothing,
+    conservation = false,
 ) where {FT}
     isnothing(biomass) ||
         canopy.biomass === biomass ||
         error("The `canopy` does not use the `biomass` passed with it")
-    return LandModel{FT}(canopy, snow, soil, soilco2, lake)
+    return LandModel{FT}(canopy, snow, soil, soilco2, lake; conservation)
 end
 
 
@@ -460,8 +485,8 @@ Returns the prognostic components of the `LandModel`.
 function ClimaLand.land_components(land::LM) where {LM <: LandModel}
     possible_land_components = Tuple(sort([propertynames(land)...])) # in Julia1.10, Tuples are immutable so we cannot sort the tuple returned by propertynames directly
     return Tuple([
-        n for
-        n in possible_land_components if !(getproperty(land, n) isa Nothing)
+        n for n in possible_land_components if
+        (!(getproperty(land, n) isa Nothing) && n != :conservation)
     ])
 end
 
@@ -497,9 +522,16 @@ function lsm_aux_vars(m::LandModel)
     )
     base =
         has_root_dryness_norm(m.canopy) ? (base..., :root_dryness_norm) : base
-    return has_soil_litter_input(m.canopy.biomass) ?
-           (base..., :soil_litter_input) : base
+    base =
+        has_soil_litter_input(m.canopy.biomass) ?
+        (base..., :soil_litter_input) : base
+    if m.conservation
+        return (base..., :total_water, :total_energy, :lai_tendency)
+    else
+        return base
+    end
 end
+
 
 """
     lsm_aux_types(m::LandModel)
@@ -532,7 +564,12 @@ function lsm_aux_types(m::LandModel{FT}) where {FT}
         FT,
     )
     base = has_root_dryness_norm(m.canopy) ? (base..., FT) : base
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+    base = has_soil_litter_input(m.canopy.biomass) ? (base..., FT) : base
+    if m.conservation
+        return (base..., FT, FT, FT)
+    else
+        return base
+    end
 end
 
 """
@@ -566,8 +603,48 @@ function lsm_aux_domain_names(m::LandModel)
         :surface,
     )
     base = has_root_dryness_norm(m.canopy) ? (base..., :surface) : base
-    return has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) :
-           base
+    base =
+        has_soil_litter_input(m.canopy.biomass) ? (base..., :subsurface) : base
+    if m.conservation
+        return (base..., :surface, :surface, :surface)
+    else
+        return base
+    end
+end
+
+function initialize_prognostic(
+    model::LandModel{FT},
+    coords::NamedTuple,
+) where {FT}
+    components = land_components(model)
+    Y_state_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        getproperty(initialize_prognostic(submodel, coords), component)
+    end
+    if model.conservation
+        conservation_vars = (:∫F_vol_liq_water_dt, :∫F_vol_e_dt)
+        conservation_types = (FT, FT)
+        conservation_domain_names = (:surface, :surface)
+        conservation_state_list = initialize_vars(
+            conservation_vars,
+            conservation_types,
+            conservation_domain_names,
+            coords,
+            :conservation_check,
+        )
+        Y = ClimaCore.Fields.FieldVector(;
+            NamedTuple{(components..., conservation_vars...)}((
+                Y_state_list...,
+                conservation_state_list.conservation_check...,
+            ))...,
+        )
+    else
+        Y = ClimaCore.Fields.FieldVector(;
+            NamedTuple{(components...,)}((Y_state_list...,))...,
+        )
+    end
+
+    return Y
 end
 
 """
@@ -899,6 +976,163 @@ NVTX.@annotate function implicit_radiant_energy_fluxes!(
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
         ϵ_canopy * LW_u_ground
     @. LW_u = (1 - ϵ_canopy) * LW_u_ground + ϵ_canopy * _σ * T_canopy^4
+end
+
+function make_exp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
+    update_cache! = make_update_cache(land)
+    NVTX.@annotate function exp_tendency!(dY, Y, p, t)
+        update_cache!(p, Y, t)
+        for f! in compute_exp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        if land.conservation
+            FT = FTfromY(Y)
+            subsurface_runoff =
+                :R_ss ∈ propertynames(p.soil) ? p.soil.R_ss : FT(0)
+            lai_prev = p.canopy.biomass.lai_prev
+            lai_tendency = p.lai_tendency
+            # Estimate the time derivative dLAI/dt using Euler/backward difference
+            # Is there a better place to get dt?
+            @. lai_tendency =
+                (p.canopy.biomass.area_index.leaf-lai_prev)/land.snow.parameters.Δt
+            dz = land.canopy.biomass.height
+            lai_contribution = p.scratch3
+            @. lai_contribution = lai_tendency * Y.canopy.hydraulics.ϑ_l * dz
+            @. dY.∫F_vol_liq_water_dt = -(
+                p.drivers.P_snow +
+                p.drivers.P_liq +
+                p.soil.R_s +
+                p.snow.turbulent_fluxes.vapor_flux *
+                p.snow.snow_cover_fraction +
+                p.bare_soil_fraction * (
+                    p.soil.turbulent_fluxes.vapor_flux_liq +
+                    p.soil.turbulent_fluxes.vapor_flux_ice
+                ) +
+                p.canopy.turbulent_fluxes.vapor_flux -
+                p.soil.bottom_bc.water + subsurface_runoff
+            )
+            @. dY.∫F_vol_liq_water_dt += lai_contribution
+            atmos = land.snow.boundary_conditions.atmos
+            e_flux_falling_snow = energy_flux_falling_snow(
+                atmos,
+                p,
+                land.snow.parameters.earth_param_set,
+            )
+            e_flux_falling_rain = energy_flux_falling_rain(
+                atmos,
+                p,
+                land.snow.parameters.earth_param_set,
+            )
+            bc = land.soil.boundary_conditions.top
+            liquid_influx = Soil.compute_liquid_influx(
+                p,
+                land.soil,
+                Val(bc.prognostic_land_components),
+            )
+            runoff_energy_flux = @. lazy(
+                -1 *
+                (
+                    1 - Soil.compute_infiltration_fraction(
+                        p.soil.infiltration,
+                        liquid_influx,
+                    )
+                ) *
+                (
+                    e_flux_falling_rain * p.bare_soil_fraction +
+                    p.snow.energy_runoff * p.snow.snow_cover_fraction
+                ),
+            )
+            energy_subsurface_runoff =
+                :R_ess ∈ propertynames(p.soil) ? p.soil.R_ess : FT(0)
+            @. dY.∫F_vol_e_dt = -(
+                e_flux_falling_snow +
+                e_flux_falling_rain +
+                runoff_energy_flux +
+                (
+                    p.snow.turbulent_fluxes.lhf +
+                    p.snow.turbulent_fluxes.shf +
+                    p.snow.R_n
+                ) * p.snow.snow_cover_fraction +
+                p.bare_soil_fraction * (
+                    p.soil.turbulent_fluxes.lhf +
+                    p.soil.turbulent_fluxes.shf +
+                    p.soil.R_n
+                ) - p.canopy.radiative_transfer.SW_n -
+                p.soil.bottom_bc.heat + energy_subsurface_runoff
+            )
+            if !(land.lake isa Nothing)
+                @. dY.∫F_vol_e_dt +=
+                    -p.lake_fraction * (
+                        p.lake.turbulent_fluxes.shf +
+                        p.lake.turbulent_fluxes.lhf +
+                        p.lake.R_n +
+                        p.lake.runoff_energy_flux
+                    )
+                @. dY.∫F_vol_liq_water_dt +=
+                    -p.lake_fraction *
+                    (p.lake.turbulent_fluxes.vapor_flux + p.lake.runoff)
+            end
+        end
+
+    end
+    return exp_tendency!
+end
+
+function make_compute_imp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_imp_tendency_list =
+        map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
+    function imp_tendency!(dY, Y, p, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        if land.conservation
+            @. dY.∫F_vol_e_dt = -(
+                p.canopy.turbulent_fluxes.shf + p.canopy.turbulent_fluxes.lhf -
+                p.canopy.radiative_transfer.LW_n
+            )
+            Tc = ClimaLand.Canopy.canopy_temperature(
+                land.canopy.energy,
+                land.canopy,
+                Y,
+                p,
+            )
+            lai_contribution = p.scratch3
+            @. lai_contribution =
+                p.lai_tendency * land.canopy.energy.parameters.ac_canopy * Tc
+            @. dY.∫F_vol_e_dt += lai_contribution
+        end
+    end
+    return imp_tendency!
+end
+
+function make_compute_jacobian(land::LandModel{FT}) where {FT}
+    components = land_components(land)
+    compute_jacobian_function_list =
+        map(x -> make_compute_jacobian(getproperty(land, x)), components)
+    function compute_jacobian!(jacobian, Y, p, dtγ, t)
+        for f! in compute_jacobian_function_list
+            f!(jacobian, Y, p, dtγ, t)
+        end
+        if land.conservation
+            (; matrix) = jacobian
+
+            # The derivative of the residual with respect to the prognostic variable
+            area_index = p.canopy.biomass.area_index
+            ac_canopy = land.canopy.energy.parameters.ac_canopy
+            ∂lhf∂T = p.canopy.turbulent_fluxes.∂lhf∂T
+            ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
+            ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
+            ∂Xres∂T = matrix[@name(∫F_vol_e_dt), @name(canopy.energy.T)]
+            @. ∂Xres∂T =
+                float(dtγ) * DiagonalMatrixRow((∂LW_n∂T - ∂shf∂T - ∂lhf∂T))
+        end
+
+    end
+    return compute_jacobian!
 end
 
 ### Extensions of existing functions to account for prognostic soil/canopy
@@ -1275,6 +1509,27 @@ function make_update_aux(land::LandModel)
         # Update the canopy and soil co2
         update_canopy_aux!(p, Y, t)
         update_soilco2_aux!(p, Y, t)
+        if land.conservation
+            sfc_cache = p.scratch1
+            @. sfc_cache *= 0
+            ClimaLand.total_liq_water_vol_per_area!(
+                p.total_water,
+                land,
+                Y,
+                p,
+                t,
+                sfc_cache,
+            )
+            ClimaLand.total_energy_per_area!(
+                p.total_energy,
+                land,
+                Y,
+                p,
+                t,
+                sfc_cache,
+            )
+        end
+
     end
     return update_aux!
 end

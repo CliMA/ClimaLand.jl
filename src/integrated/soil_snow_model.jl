@@ -399,16 +399,10 @@ NVTX.@annotate function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    e_flux_falling_snow = Snow.energy_flux_falling_snow(
-        bc.atmos,
-        p,
-        model.parameters.earth_param_set,
-    )
-    e_flux_falling_rain = Snow.energy_flux_falling_rain(
-        bc.atmos,
-        p,
-        model.parameters.earth_param_set,
-    )
+    e_flux_falling_snow =
+        energy_flux_falling_snow(bc.atmos, p, model.parameters.earth_param_set)
+    e_flux_falling_rain =
+        energy_flux_falling_rain(bc.atmos, p, model.parameters.earth_param_set)
 
     # positive fluxes are TOWARDS atmos
     p.snow.total_energy_flux .=
@@ -598,8 +592,6 @@ NVTX.@annotate function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction * _ρ_l /
         _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
-    @. dY.soil.∫F_vol_liq_water_dt +=
-        -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction # The integral of the source is designed to be this
     return nothing
 end
 

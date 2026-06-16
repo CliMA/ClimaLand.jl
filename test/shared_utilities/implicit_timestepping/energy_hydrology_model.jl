@@ -98,7 +98,7 @@ for FT in (Float32, Float64)
         dψdϑ_ic = dψdϑ(hcm, FT(0.24), ν, θ_r, S_s)
         jac_ϑ_l = jacobian.matrix[
             MatrixFields.@name(soil.ϑ_l),
-            MatrixFields.@name(soil.ϑ_l)
+            MatrixFields.@name(soil.ϑ_l),
         ]
         # Check the main diagonal, entry corresponding to bottom of column
         @test Array(parent(jac_ϑ_l.entries.:2))[1] .≈
@@ -114,7 +114,7 @@ for FT in (Float32, Float64)
 
         jac_ρe = jacobian.matrix[
             MatrixFields.@name(soil.ρe_int),
-            MatrixFields.@name(soil.ρe_int)
+            MatrixFields.@name(soil.ρe_int),
         ]
         κ_ic = thermal_conductivity(
             soil.parameters.κ_dry,
@@ -152,7 +152,7 @@ for FT in (Float32, Float64)
         # Off diagonal blocks, ∂T_ρe_int/∂ϑ_l
         jac_ρeϑ = jacobian.matrix[
             MatrixFields.@name(soil.ρe_int),
-            MatrixFields.@name(soil.ϑ_l)
+            MatrixFields.@name(soil.ϑ_l),
         ]
 
         ρe_liq_ic = ClimaLand.Soil.volumetric_internal_energy_liq(

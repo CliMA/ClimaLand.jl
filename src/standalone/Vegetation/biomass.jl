@@ -289,10 +289,12 @@ function PrescribedBiomassModel{FT}(;
     PrescribedBiomassModel{FT, typeof.(args)...}(args...)
 end
 
-ClimaLand.auxiliary_vars(model::PrescribedBiomassModel) = (:area_index,)
+ClimaLand.auxiliary_vars(model::PrescribedBiomassModel) =
+    (:area_index, :lai_prev)
 ClimaLand.auxiliary_types(model::PrescribedBiomassModel{FT}) where {FT} =
-    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},)
-ClimaLand.auxiliary_domain_names(::PrescribedBiomassModel) = (:surface,)
+    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}, FT)
+ClimaLand.auxiliary_domain_names(::PrescribedBiomassModel) =
+    (:surface, :surface)
 
 function clip(x::FT, threshold::FT) where {FT}
     x > threshold ? x : FT(0)
@@ -336,6 +338,7 @@ function update_plant_area_indices!(
     canopy,
 ) where {FT}
     (; LAI, SAI, RAI) = component.plant_area_index
+    p.canopy.biomass.lai_prev .= p.canopy.biomass.area_index.leaf
     evaluate!(p.canopy.biomass.area_index.leaf, LAI, t)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
@@ -708,8 +711,17 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 `GSL`, `vpd_gs`, `f0`, `composition` and `LAI_max` are derived in `update_plant_area_indices!`
 from the trailing totals in `Y`.
 """
-ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :OptVars, :L_opt, :GSL, :vpd_gs, :f0, :composition, :LAI_max)
+ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (
+    :area_index,
+    :OptVars,
+    :L_opt,
+    :GSL,
+    :vpd_gs,
+    :f0,
+    :composition,
+    :LAI_max,
+    :lai_prev,
+)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
     NamedTuple{(:A0, :A0_c3, :A0_c4), NTuple{3, FT}},
@@ -719,8 +731,10 @@ ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     FT,
     NamedTuple{(:tree, :c3_grass, :c4_grass), NTuple{3, FT}},
     FT,
+    FT,
 )
 ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -767,6 +781,7 @@ function update_plant_area_indices!(
     canopy,
 ) where {FT}
     (; SAI, RAI, parameters) = component
+    p.canopy.biomass.lai_prev .= p.canopy.biomass.area_index.leaf
     @. p.canopy.biomass.f0 = f0_from_aridity(
         Y.canopy.biomass.PET_annual,
         Y.canopy.biomass.precip_annual,

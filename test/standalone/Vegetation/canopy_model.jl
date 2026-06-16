@@ -267,7 +267,8 @@ end
                             leaf = FT(0.0),
                             root = FT(0.0),
                             stem = FT(0.0),
-                        )
+                        ),
+                        lai_prev = FT(0.0),
                     )
                 )
             ),
