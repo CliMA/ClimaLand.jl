@@ -590,8 +590,6 @@ NVTX.@annotate function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction * _ρ_l /
         _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
-    @. dY.soil.∫F_vol_liq_water_dt +=
-        -p.soil.turbulent_fluxes.vapor_flux_ice * p.bare_soil_fraction # The integral of the source is designed to be this
     return nothing
 end
 
