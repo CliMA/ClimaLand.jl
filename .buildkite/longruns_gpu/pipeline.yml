@@ -115,7 +115,7 @@ steps:
     steps:
       - label: "Snowy Land, 19 years"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/spinupp_model.jl
         artifact_paths:
           - "snowy_land_pmodel_longrun_gpu/*png"
         agents:
