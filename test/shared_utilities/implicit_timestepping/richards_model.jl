@@ -69,20 +69,11 @@ for FT in (Float32, Float64)
 
             @test jacobian.solver isa MatrixFields.FieldMatrixSolver
             @test jacobian.solver.alg isa MatrixFields.BlockDiagonalSolve
-            @test jacobian.matrix.keys.values == (
-                (MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),
-                (
-                    MatrixFields.@name(soil.∫F_vol_liq_water_dt),
-                    MatrixFields.@name(soil.∫F_vol_liq_water_dt)
-                ),
-            )
-            @test jacobian.matrix[
-                MatrixFields.@name(soil.∫F_vol_liq_water_dt),
-                MatrixFields.@name(soil.∫F_vol_liq_water_dt)
-            ] == -I
+            @test jacobian.matrix.keys.values ==
+                  ((MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),)
             jac_ϑ_l = jacobian.matrix[
                 MatrixFields.@name(soil.ϑ_l),
-                MatrixFields.@name(soil.ϑ_l)
+                MatrixFields.@name(soil.ϑ_l),
             ]
             if typeof(domain) <: Column
                 # Check diagonals on either side of the main diagonal
@@ -198,7 +189,7 @@ for FT in (Float32, Float64)
             dψdϑ_ic = dψdϑ(hcm, FT(0.24), ν, θ_r, S_s)
             jac_ϑ_l = jacobian.matrix[
                 MatrixFields.@name(soil.ϑ_l),
-                MatrixFields.@name(soil.ϑ_l)
+                MatrixFields.@name(soil.ϑ_l),
             ]
             if typeof(domain) <: Column
                 @test Array(parent(jac_ϑ_l.entries.:2))[1] .≈

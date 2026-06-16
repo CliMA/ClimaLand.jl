@@ -31,6 +31,8 @@ ClimaLand.get_update_surface_humidity_function
 ClimaLand.get_∂T_sfc∂T_function
 ClimaLand.get_∂q_sfc∂T_function
 ClimaLand.default_cos_zenith_angle
+ClimaLand.energy_flux_falling_rain
+ClimaLand.energy_flux_falling_snow
 ClimaLand.prescribed_forcing_era5
 ClimaLand.prescribed_forcing_crujra
 ClimaLand.prescribed_perturbed_temperature_era5

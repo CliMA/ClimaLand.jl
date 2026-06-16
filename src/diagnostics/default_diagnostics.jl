@@ -246,14 +246,14 @@ and the docstring of `get_reduction` for the list of available reduction types.
 restarting a simulation, set `date_last` to the date of the restart.
 
 This method can be extended for any model that extends `get_possible_diagnostics` and `get_short_diagnostics`.
-Note that `EnergyHydrology` has a specialized method that handles conservation diagnostics.
+Note that `LandModel` has a specialized method that handles conservation diagnostics.
 """
 function default_diagnostics(
     model::Union{
         SlabLakeModel{FT},
         CanopyModel{FT},
         SoilCanopyModel{FT},
-        LandModel{FT},
+        EnergyHydrology{FT},
         BucketModel{FT},
     },
     start_date::DateTime,
@@ -298,20 +298,20 @@ end
 
 """
     default_diagnostics(
-        land_model::EnergyHydrology{FT},
+        land_model::LandModel{FT},
         start_date::DateTime,
         outdir;
         output_writer = default_output_writer(get_domain(model), start_date, outdir),
         output_vars = :short,
         reduction_period = :monthly,
         reduction_type = :average,
-        conservation = false,
-        conservation_period = Day(10),
+        conservation = land_model.conservation,
+        conservation_period = Month(1),
         dt = nothing,
         date_last = start_date,
     ) where {FT}
 
-Define a method specific to the EnergyHydrology model so that we can
+Define a method specific to the LandModel so that we can
 handle conservation diagnostics specially.
 
 The input `output_vars` can have 3 values:
@@ -335,7 +335,7 @@ but rather included by providing `conservation = true`.
 Please see the method `get_possible_diagnostics` for the list of available diagnostics.
 """
 function default_diagnostics(
-    land_model::EnergyHydrology{FT},
+    land_model::LandModel{FT},
     start_date::DateTime,
     outdir;
     output_writer = default_output_writer(
@@ -346,8 +346,8 @@ function default_diagnostics(
     output_vars = :short,
     reduction_period = :monthly,
     reduction_type = :average,
-    conservation = false,
-    conservation_period = Day(10),
+    conservation = land_model.conservation,
+    conservation_period = Month(1),
     dt = nothing,
     date_last = start_date,
 ) where {FT}
@@ -376,7 +376,7 @@ function default_diagnostics(
         pre_output_hook! = nothing,
     )
 
-    if conservation
+    if conservation && land_model.conservation
         additional_diags = ["epa", "epac", "wvpa", "wvpac"]
         define_diagnostics!(land_model, additional_diags)
         additional_outputs = vcat(

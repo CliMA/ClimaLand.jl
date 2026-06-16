@@ -49,6 +49,8 @@ const FT = Float64;
 # as an environment variable. In both cases, the value of `LONGER_RUN` does not
 # matter.
 const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
+# If you want to check conservation, set CONSERVATION to anything as an environmental variable.
+const CONSERVATION = haskey(ENV, "CONSERVATION") ? true : false
 # If you want to do run the simulation with uncalibrated parameters, type
 # `export UNCALIBRATED=""` in the terminal and run this script, or
 # pass `UNCALIBRATED=""` as an environment variable on buildkite.
@@ -78,6 +80,7 @@ function setup_model(
     domain,
     toml_dict;
     prognostic_lai = false,
+    conservation = false,
 ) where {FT}
     surface_space = domain.space.surface
     # Forcing data - high resolution
@@ -110,6 +113,7 @@ function setup_model(
             Δt;
             prognostic_land_components,
             biomass,
+            conservation,
         )
     else
         # Prescribed LAI (default): read LAI from MODIS data.
@@ -125,6 +129,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            conservation,
         )
     end
     return land
@@ -160,8 +165,16 @@ model = setup_model(
     domain,
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
+    conservation = CONSERVATION,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+diagnostics = ClimaLand.default_diagnostics(
+    model,
+    start_date,
+    outdir;
+    conservation_period = Day(10),
+)
+simulation =
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
@@ -183,6 +196,8 @@ if PROGNOSTIC_LAI
     end
 end
 ClimaLand.Simulations.solve!(simulation)
+CONSERATION ? LandSimVis.check_conservation(simulation; savedir = root_path) :
+nothing
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)

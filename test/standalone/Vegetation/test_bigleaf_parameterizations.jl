@@ -154,7 +154,7 @@ for FT in (Float32, Float64)
                 photosynthesisparams.θj * J^2 -
                 (photosynthesisparams.ϕ * APAR / 2 + Jmax) * J +
                 photosynthesisparams.ϕ * APAR / 2 * Jmax < eps(FT)
-            )
+            ),
         )
 
         Aj = ClimaLand.Canopy.light_assimilation_farquhar.(
@@ -249,7 +249,7 @@ for FT in (Float32, Float64)
                     stomatal_g_params.g0 +
                     stomatal_g_params.Drel * m_t * (An / ca)
                 )
-            )
+            ),
         )
 
         @test all(
@@ -260,7 +260,7 @@ for FT in (Float32, Float64)
                     R,
                     P,
                 ) ≈ stomatal_conductance * R * T / P
-            )
+            ),
         )
 
         # Tests for Autotrophic Respiration parameterisation
@@ -291,7 +291,7 @@ for FT in (Float32, Float64)
                     An_canopy,
                     Rpm,
                 ) ≈ Rg
-            )
+            ),
         )
 
     end
