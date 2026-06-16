@@ -1106,7 +1106,7 @@ end
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 @diagnostic_compute "snow_sfc_temp" LandModel p.snow.T_sfc
 @diagnostic_compute "snow_bot_temp" LandModel p.snow_T_bot
-@diagnostic_compute "snow_k" LandModel p.snow.κ
+@diagnostic_compute "snowk" LandModel p.snow.κ
 @diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 

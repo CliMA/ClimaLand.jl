@@ -1144,7 +1144,7 @@ function define_diagnostics!(land_model, possible_diags)
         standard_name = "snow_thermal_conductivity",
         units = "W m^-1 K^-1",
         comments = "The thermal conductivity of the snowpack",
-        compute! = (out, Y, p, t) -> compute_snow_k!(out, Y, p, t, land_model),
+        compute! = (out, Y, p, t) -> compute_snowk!(out, Y, p, t, land_model),
     )
     # Snow sfc temperature
     conditional_add_diagnostic_variable!(
