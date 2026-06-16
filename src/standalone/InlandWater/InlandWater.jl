@@ -461,9 +461,7 @@ function ClimaLand.make_compute_exp_tendency(
             p.lake.turbulent_fluxes.lhf +
             p.lake.turbulent_fluxes.shf +
             p.drivers.P_liq * _ρ_l * _cp_l * (p.drivers.T - _T_ref) +
-            p.drivers.P_snow *
-            _ρ_l *
-            (_cp_i * (p.drivers.T - _T_ref) - _LH_f0) +
+            -p.drivers.P_snow * _ρ_l * _LH_f0 +
             p.lake.runoff_energy_flux - p.lake.sediment_heat_flux
         )
     end

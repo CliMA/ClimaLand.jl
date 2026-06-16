@@ -152,10 +152,7 @@ NVTX.@annotate function ClimaLand.source!(
         p.scratch1,
         p.root_energy_extraction,
     )
-    @. dY.soil.∫F_e_dt += p.scratch1
-
     ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
-    @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
 end
 
 """
