@@ -318,9 +318,6 @@ function ClimaLand.make_compute_exp_tendency(
     NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
-        dY.soil.∫F_vol_liq_water_dt .= 0
-        dY.soil.∫F_e_dt .= 0
-
         # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
         dY.soil.ρe_int .= 0
@@ -367,10 +364,8 @@ function ClimaLand.make_compute_imp_tendency(
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
-        @. dY.soil.∫F_vol_liq_water_dt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
-        @. dY.soil.∫F_e_dt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
 
@@ -621,8 +616,7 @@ end
 A function which returns the names of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_vars(soil::EnergyHydrology) =
-    (:ϑ_l, :θ_i, :ρe_int, :∫F_vol_liq_water_dt, :∫F_e_dt)
+ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
 
 """
     prognostic_types(soil::EnergyHydrology{FT}) where {FT}
@@ -631,10 +625,10 @@ A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
 ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT)
 
 ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
-    (:subsurface, :subsurface, :subsurface, :surface, :surface)
+    (:subsurface, :subsurface, :subsurface)
 """
     auxiliary_vars(soil::EnergyHydrology)
 
@@ -642,8 +636,6 @@ A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
 ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
-    :total_water,
-    :total_energy,
     :K,
     :ψ,
     :θ_l,
@@ -672,8 +664,6 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     boundary_var_types(
@@ -689,8 +679,6 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
 )
 
 ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
-    :surface,
-    :surface,
     :subsurface,
     :subsurface,
     :subsurface,
@@ -806,9 +794,6 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             _grav,
             _LH_f0,
         )
-
-        total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
-        total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
     return update_aux!
 end
@@ -941,7 +926,6 @@ NVTX.@annotate function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * _ρ_l / _ρ_i *
         heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
-    @. dY.soil.∫F_vol_liq_water_dt += -p.soil.turbulent_fluxes.vapor_flux_ice # The integral of the source is designed to be this
 end
 
 ## The functions below are required to be defined
