@@ -215,10 +215,19 @@ end
 
 Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
-    F_g =  F_g =  - g_eff (T_snow_bottom - T_soil_sfc)
+    F_g = - g_eff (T_snow_bottom - T_soil_sfc)
 
 where:
     g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2).
+
+Here `T_snow_bottom` is the temperature at the base of the snowpack 
+ and `T_soil_sfc` is the temperature of the top soil layer. The flux
+is positive when energy flows from the soil up into the snowpack.
+
+There is a free parameter here, the ``width" of the layer of snow at the
+bottom of the snowpack, `Δz_snow`. We treat this layer as 10cm thick, except
+for when the snowpack is less than this thickness in height, in which case we use the thickness
+the snowpack directly.
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -270,25 +279,40 @@ end
         earth_param_set,
     ) where {FT}
 
-A parameterization for the temperature at the bottom of the snowpack, assuming a piecewise
-linear profile for temperature within the snowpack:
-T(x) = T_bot + (T(d)-T_bot)/(z-d)*x if 0 <= x <= z-d
-T(x) = T(d) + (T_sfc - T(d))/(d)*(x - (z-d)) if z-d <= x <= z
+A parameterization for the temperature at the bottom of the snowpack.
 
-with the following constraints:
-(1) ∑F(T_sfc) = -κ(T_sfc - T(d))/d OR T_sfc = T̄ # surface energy balance or assume surface temp equals the bulk
-(2) T̄ = 1/2[(T_sfc + T(d))*(d/z) + (T(d) + T_bot)*(z-d)/z] # Average of the profile is equal to the bulk temperature
-(3) -κ/(z-d)(T(d) - T_bot) = -g_eff (T_bot - T_soil) # bottom energy balance
+The arguments are the snow thermal conductivity `κ`, the effective snow-soil
+conductance `g_eff`, the top soil temperature `T_soil`, the bulk snow temperature `T̄`,
+the snow surface temperature `T_sfc`, the snow depth `z`, the snow density `ρ`, and the
+`earth_param_set`. The skin-layer depth `d = surface_temp_scaling_length(κ, ρ, z, …)` is
+the same length scale used to diagnose the surface temperature (if that parameterization
+is chosen).
 
-Then solve for T_bot to get the below formula.
+We assume a piecewise-linear temperature profile within the snowpack, with `x` measured
+upward from the base (`x = 0` at the bottom, `x = z` at the surface):
 
-Note that if d << z, we obtain a T_bot which satisfies
--κ/(z/2)(T̄ -T_bot) = -g_eff(T_bot -T_soil)
-which is reasonable.
+```
+T(x) = T_bot + (T(d) - T_bot) / (z - d) * x           for 0   <= x <= z-d
+T(x) = T(d)  + (T_sfc - T(d)) / d * (x - (z - d))      for z-d <= x <= z
+```
 
-If d -> z, we get
-T_bot = 2T̄ - T_sfc; T̄ = 1/2(T(d) + T_sfc), so that
-T(d) = T_bot, which is also reasonable.
+subject to the following constraints:
+
+```
+(1) ∑F(T_sfc) = -κ (T_sfc - T(d)) / d   OR   T_sfc = T̄    # surface energy balance, or T_sfc set to the bulk temp
+(2) T̄ = 1/2 [ (T_sfc + T(d)) (d/z) + (T(d) + T_bot) (z-d)/z ]   # profile average equals the bulk temperature
+(3) -κ/(z-d) (T(d) - T_bot) = -g_eff (T_bot - T_soil)          # flux continuity at the snow-soil interface
+```
+
+Constraint (1) determines `T_sfc` (an input here); solving (2) and (3) for `T_bot` gives
+the formula below. The result is capped at the freezing temperature.
+
+Limiting behavior:
+- if `d << z` (deep snow), `T_bot` satisfies `-κ/(z/2) (T̄ - T_bot) = -g_eff (T_bot - T_soil)`;
+- if `d -> z` (shallow snow), `T_bot = 2 T̄ - T_sfc`, and since `T̄ = 1/2 (T(d) + T_sfc)`
+  this gives `T(d) = T_bot`.
+
+Both limits are physically reasonable.
 """
 function snow_T_bottom(
     κ::FT,

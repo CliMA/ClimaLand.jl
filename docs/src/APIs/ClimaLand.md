@@ -64,6 +64,12 @@ ClimaLand.RunoffBC
 ClimaLand.RootExtraction
 ```
 
+## SoilSnowModel
+
+```@docs
+ClimaLand.snow_T_bottom
+```
+
 ## LandSoilBiogeochemistry
 
 ```@docs

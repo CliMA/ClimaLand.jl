@@ -467,7 +467,6 @@ function SnowParameters(
     surf_temp::STM = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
     z_0m = toml_dict["snow_momentum_roughness_length"],
     z_0b = toml_dict["snow_scalar_roughness_length"],
-    κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
     ϵ_snow = toml_dict["snow_emissivity"],
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],

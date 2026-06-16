@@ -2,6 +2,17 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-✨feature] Add selectable snow thermal conductivity parameterizations
+  (`JordanSnowConductivityModel`, default, after Jordan 1991; and
+  `SturmSnowConductivityModel`, after Sturm et al. 1997) and a piecewise-linear
+  snow-bottom-temperature parameterization (`snow_T_bottom`) used to compute the
+  snow-soil ground heat flux. Adds the `snowtb`, `snowtsfc`, `snowtbot`, `snowk`, and
+  `ghf` diagnostics. PR [#1766](https://github.com/CliMA/ClimaLand.jl/pull/1766)
+- ![][badge-💥breaking] The `SnowParameters` field `κ_ice` is replaced by `κ_snow`, an
+  `AbstractSnowConductivityModel` (default `JordanSnowConductivityModel`). PR [#1766](https://github.com/CliMA/ClimaLand.jl/pull/1766)
+- ![][badge-🔥behavioralΔ] The snow-soil ground heat flux is now driven by the
+  temperature at the bottom of the snowpack rather than the bulk snow temperature,
+  changing the snow/soil energy exchange. PR [#1766](https://github.com/CliMA/ClimaLand.jl/pull/1766)
 
 v1.9.0
 -----

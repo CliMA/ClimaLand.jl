@@ -362,6 +362,22 @@ end
             simulation.diagnostics[1].output_writer.dict["sco2_1000s_inst"].vals[1],
         ) .== FT(0.000412),
     )
+
+    snow_diag_vars = ["snowtbot", "ghf", "snowk", "snowtsfc", "snowtb"]
+    possible = ClimaLand.Diagnostics.get_possible_diagnostics(model)
+    for v in snow_diag_vars
+        @test v in possible
+    end
+    snow_diags = ClimaLand.Diagnostics.default_diagnostics(
+        model,
+        start_date;
+        output_writer = ClimaDiagnostics.Writers.DictWriter(),
+        output_vars = snow_diag_vars,
+        reduction_period,
+        reduction_type,
+        dt,
+    )
+    @test length(snow_diags) == length(snow_diag_vars)
 end
 
 @testset "CanopyModel invalid windspeed diagnostic (coupled)" begin
