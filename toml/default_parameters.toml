@@ -169,6 +169,61 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
+# Snow thermal conductivity parameters
+["jordan_linear_snow_thermal_conductivity"]
+value = 0.07
+type = "float"
+description = "Parameter fit to data by Jordan (1991); not meant to be re-calibrated; unitless"
+tag = "JordanSnowConductivityModel"
+
+["jordan_quadratic_snow_thermal_conductivity"]
+value = 0.93
+type = "float"
+description = "Parameter fit to data by Jordan (1991); not meant to be re-calibrated; unitless"
+tag = "JordanSnowConductivityModel"
+
+["sturm_threshold_snow_thermal_conductivity"]
+value = 0.17
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated; unitless"
+tag = "SturmSnowConductivityModel"
+
+["sturm_m1_snow_thermal_conductivity"]
+value = 0.20
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (W m⁻¹ K⁻¹)"
+tag = "SturmSnowConductivityModel"
+
+["sturm_m2_snow_thermal_conductivity"]
+value = -0.93
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (W m⁻¹ K⁻¹)"
+tag = "SturmSnowConductivityModel"
+
+["sturm_b1_snow_thermal_conductivity"]
+value = 0.023
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (W m⁻¹ K⁻¹)"
+tag = "SturmSnowConductivityModel"
+
+["sturm_b2_snow_thermal_conductivity"]
+value = 0.138
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (W m⁻¹ K⁻¹)"
+tag = "SturmSnowConductivityModel"
+
+["sturm_q2_snow_thermal_conductivity"]
+value = 2.72
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (W m⁻¹ K⁻¹)"
+tag = "SturmSnowConductivityModel"
+
+["sturm_maxrho_snow_thermal_conductivity"]
+value = 600
+type = "float"
+description = "Parameter fit to data by Sturm et al (1997); not meant to be re-calibrated (kg/m^3)"
+tag = "SturmSnowConductivityModel"
+
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]

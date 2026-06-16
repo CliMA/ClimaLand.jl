@@ -1125,6 +1125,60 @@ function define_diagnostics!(land_model, possible_diags)
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
 
+    # Snow bulk temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtb",
+        long_name = "Snow bulk temperature",
+        standard_name = "snow_bulk_temp",
+        units = "K",
+        comments = "The bulk (layer-averaged) temperature of the snowpack",
+        compute! = (out, Y, p, t) ->
+            compute_snow_bulk_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowk",
+        long_name = "Snow thermal conductivity",
+        standard_name = "snow_thermal_conductivity",
+        units = "W m^-1 K^-1",
+        comments = "The thermal conductivity of the snowpack",
+        compute! = (out, Y, p, t) -> compute_snowk!(out, Y, p, t, land_model),
+    )
+    # Snow sfc temperature
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtsfc",
+        long_name = "Snow sfc temperature",
+        standard_name = "snow_sfc_temp",
+        units = "K",
+        comments = "The snow surface temperature",
+        compute! = (out, Y, p, t) ->
+            compute_snow_sfc_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "snowtbot",
+        long_name = "Snow bot temperature",
+        standard_name = "snow_bot_temp",
+        units = "K",
+        comments = "The temperature at the bottom of the snowpack",
+        compute! = (out, Y, p, t) ->
+            compute_snow_bot_temp!(out, Y, p, t, land_model),
+    )
+
+    conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ghf",
+        long_name = "Ground heat flux",
+        standard_name = "ground_heat_flux",
+        units = "W m^-2",
+        comments = "The conductive heat flux between the snow and the soil; positive values transfer energy from the soil up into the snowpack",
+        compute! = (out, Y, p, t) -> compute_ghf!(out, Y, p, t, land_model),
+    )
+
     ### Slab Lake ###
     # Lake internal energy (prognostic)
     conditional_add_diagnostic_variable!(

@@ -100,8 +100,8 @@ for FT in (Float32, Float64)
         @test typeof(parameters.Ksat) == FT
         @test parameters.θ_r == θ_r
         @test typeof(parameters.θ_r) == FT
-        @test parameters.κ_ice == κ_ice
-        @test typeof(parameters.κ_ice) == FT
+        @test parameters.κ_snow.κ_ice == κ_ice
+        @test typeof(parameters.κ_snow) == Snow.JordanSnowConductivityModel{FT}
 
         roughness_model = SurfaceFluxes.ConstantRoughnessParams{FT}(z_0m, z_0b)
 
@@ -109,10 +109,25 @@ for FT in (Float32, Float64)
         @test specific_heat_capacity(FT(1.0), param_set) == _cp_l
         @test specific_heat_capacity(FT(0.0), param_set) == _cp_i
         ρ_snow = ρ_min
-        @test snow_thermal_conductivity(ρ_snow, parameters.κ_ice, param_set) ==
+        @test snow_thermal_conductivity(parameters.κ_snow, ρ_snow, param_set) ==
               κ_air +
               (FT(0.07) * (ρ_snow / _ρ_i) + FT(0.93) * (ρ_snow / _ρ_i)^2) *
               (κ_ice - κ_air)
+
+        # Sturm et al. (1997) snow thermal conductivity
+        sturm = Snow.SturmSnowConductivityModel(toml_dict)
+        @test typeof(sturm) == Snow.SturmSnowConductivityModel{FT}
+        # densities below the threshold, above the threshold, and above the
+        # maximum density (where the non-dimensional density is capped)
+        for ρ_test in FT.([100, 350, 800])
+            x = min(ρ_test / _ρ_i, sturm.max / _ρ_i)
+            expected =
+                x < sturm.threshold ? sturm.b1 + sturm.m1 * x :
+                sturm.b2 + sturm.m2 * x + sturm.q2 * x^2
+            @test snow_thermal_conductivity(sturm, ρ_test, param_set) ==
+                  expected
+        end
+
         @test all(
             maximum_liquid_mass_fraction.(ρ_min, T, θ_r, Ref(param_set)) .-
             [FT(0), θ_r * _ρ_l / ρ_snow, θ_r * _ρ_l / ρ_snow] .== 0,

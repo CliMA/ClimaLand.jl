@@ -470,6 +470,7 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "infil",
         "iwc",
         "precip",
+        "tair",
         "sdr",
     ]
 
@@ -538,7 +539,7 @@ function get_possible_diagnostics(model::CanopyModel)
     return diagnostics
 end
 function get_possible_diagnostics(model::SnowModel)
-    return ["swe", "snd", "snowc"]
+    return ["swe", "snd", "snowc", "snowtsfc", "snowtb"]
 end
 function get_possible_diagnostics(model::BucketModel)
     return [
@@ -613,8 +614,19 @@ function get_possible_diagnostics(model::LandModel)
         model.canopy.boundary_conditions.radiation,
     )
 
-    additional_diagnostics =
-        ["swa", "swu", "lwu", "tair", "precip", "nee", "cveg"]
+    additional_diagnostics = [
+        "swa",
+        "swu",
+        "lwu",
+        "tair",
+        "precip",
+        "nee",
+        "cveg",
+        "tr",
+        "snowtbot",
+        "snowk",
+        "ghf",
+    ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
 end
@@ -631,7 +643,7 @@ function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "so2"]
 end
 function get_short_diagnostics(model::CanopyModel)
-    diagnostics = ["gpp", "lai", "trans", "er"]
+    diagnostics = ["gpp", "lai", "trans", "er", "lwp"]
     add_diagnostics!(diagnostics, model, model.biomass)
     return diagnostics
 end
@@ -673,6 +685,7 @@ function get_short_diagnostics(model::LandModel)
         "iwc",
         "nee",
         "ra",
+        "tr",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

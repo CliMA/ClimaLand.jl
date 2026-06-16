@@ -70,6 +70,8 @@ get_z_coordinates(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
     m.soil.domain.fields.z
 get_z_coordinates(m::Union{SoilCO2Model, EnergyHydrology}) = m.domain.fields.z
 
+@diagnostic_compute "ghf" LandModel p.ground_heat_flux
+
 ### Conservation ##
 @diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
 @diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
@@ -414,7 +416,12 @@ end
     CanopyModel,
 } p.drivers.SW_d
 @diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.P_snow
-@diagnostic_compute "tair" Union{SoilCanopyModel, LandModel, CanopyModel} p.drivers.T
+@diagnostic_compute "tair" Union{
+    EnergyHydrology,
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.drivers.T
 @diagnostic_compute "specific_humidity" Union{
     SoilCanopyModel,
     LandModel,
@@ -1097,6 +1104,10 @@ end
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 @diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
+@diagnostic_compute "snow_sfc_temp" LandModel p.snow.T_sfc
+@diagnostic_compute "snow_bot_temp" LandModel p.snow_T_bot
+@diagnostic_compute "snowk" LandModel p.snow.κ
+@diagnostic_compute "snow_bulk_temp" LandModel p.snow.T
 @diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
 
 

@@ -45,6 +45,8 @@ export SnowParameters,
     ConstantAlbedoModel,
     ZenithAngleAlbedoModel,
     WuWuSnowCoverFractionModel,
+    SturmSnowConductivityModel,
+    JordanSnowConductivityModel,
     maximum_snow_cover_fraction!
 
 """
@@ -299,6 +301,75 @@ function EquilibriumGradientTemperatureModel{FT}(;
 end
 
 """
+    AbstractSnowConductivityModel{FT}
+
+Defines the model type for snow thermal conductivity parameterization
+for use within an `AbstractSnowModel` type.
+
+These parameterizations are stored in parameters.κ_snow, and
+are used to update the value of p.snow.κ_snow.
+"""
+abstract type AbstractSnowConductivityModel{FT <: AbstractFloat} end
+Base.broadcastable(ps::AbstractSnowConductivityModel) = tuple(ps)
+
+"""
+    JordanSnowConductivityModel{FT} <: AbstractSnowConductivityModel{FT}
+
+A parameterization for the snow thermal conductivity based on Jordan, Rachel E.
+ "A one-dimensional temperature model for a snow cover: Technical
+documentation for SNTHERM. 89." (1991).
+"""
+struct JordanSnowConductivityModel{FT} <: AbstractSnowConductivityModel{FT}
+    κ_ice::FT
+    linear_coeff::FT
+    quadratic_coeff::FT
+end
+
+function JordanSnowConductivityModel(toml_dict)
+    κ_ice = toml_dict["thermal_conductivity_of_water_ice"]
+    l_coeff = toml_dict["jordan_linear_snow_thermal_conductivity"]
+    q_coeff = toml_dict["jordan_quadratic_snow_thermal_conductivity"]
+    return JordanSnowConductivityModel(κ_ice, l_coeff, q_coeff)
+end
+
+"""
+    SturmSnowConductivityModel{FT} <: AbstractSnowConductivityModel{FT}
+
+A parameterization for the snow thermal conductivity based on Sturm, M.,
+Holmgren, J., König, M.,  and Morris, K.: The thermal conductivity of
+seasonal snow, J. Glaciol., 43, 26–41,
+https://doi.org/10.3189/S0022143000002781, 1997.
+"""
+struct SturmSnowConductivityModel{FT} <: AbstractSnowConductivityModel{FT}
+    threshold::FT
+    max::FT
+    m1::FT
+    b1::FT
+    m2::FT
+    b2::FT
+    q2::FT
+end
+
+function SturmSnowConductivityModel(toml_dict)
+    threshold = toml_dict["sturm_threshold_snow_thermal_conductivity"]
+    m1 = toml_dict["sturm_m1_snow_thermal_conductivity"]
+    m2 = toml_dict["sturm_m2_snow_thermal_conductivity"]
+    b1 = toml_dict["sturm_b1_snow_thermal_conductivity"]
+    b2 = toml_dict["sturm_b2_snow_thermal_conductivity"]
+    q2 = toml_dict["sturm_q2_snow_thermal_conductivity"]
+    max_density = toml_dict["sturm_maxrho_snow_thermal_conductivity"]
+    return SturmSnowConductivityModel(
+        threshold,
+        max_density,
+        m1,
+        b1,
+        m2,
+        b2,
+        q2,
+    )
+end
+
+"""
     SnowParameters{FT <: AbstractFloat, PSE}
 
 A struct for storing parameters of the `SnowModel`.
@@ -314,6 +385,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct SnowParameters{
     FT <: AbstractFloat,
+    KM <: AbstractSnowConductivityModel,
     DM <: AbstractDensityModel,
     AM <: AbstractAlbedoModel,
     SCFM <: AbstractSnowCoverFractionModel,
@@ -334,8 +406,8 @@ Base.@kwdef struct SnowParameters{
     θ_r::FT
     "Hydraulic conductivity of wet snow (m/s)"
     Ksat::FT
-    "Thermal conductivity of ice (W/m/K)"
-    κ_ice::FT
+    "Thermal conductivity of snow"
+    κ_snow::KM
     "Timestep of the model (s)"
     Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
@@ -361,15 +433,15 @@ end
             toml_dict,
             CP.float_type(toml_dict)(1.0),
         ),
+        κ_snow::KM = JordanSnowConductivityModel(toml_dict),
         surf_temp::STM = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
         z_0m = toml_dict["snow_momentum_roughness_length"],
         z_0b = toml_dict["snow_scalar_roughness_length"],
-        κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
         ϵ_snow = toml_dict["snow_emissivity"],
         θ_r = toml_dict["holding_capacity_of_water_in_snow"],
         Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
         ΔS = toml_dict["delta_S"],
-    ) where {DM, AM, SCFM}
+    ) where {KM, DM, AM, SCFM}
 
 TOML dictionary constructor for the `SnowParameters`` struct.
 ```julia
@@ -391,27 +463,27 @@ function SnowParameters(
         toml_dict,
         CP.float_type(toml_dict)(1.0),
     ),
+    κ_snow::KM = JordanSnowConductivityModel(toml_dict),
     surf_temp::STM = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
     z_0m = toml_dict["snow_momentum_roughness_length"],
     z_0b = toml_dict["snow_scalar_roughness_length"],
-    κ_ice = toml_dict["thermal_conductivity_of_water_ice"],
     ϵ_snow = toml_dict["snow_emissivity"],
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],
-) where {DM, AM, SCFM, STM}
+) where {DM, KM, AM, SCFM, STM}
     Δt = float(Δt)
     FT = CP.float_type(toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
-    return SnowParameters{FT, DM, AM, SCFM, STM, typeof(earth_param_set)}(;
+    return SnowParameters{FT, KM, DM, AM, SCFM, STM, typeof(earth_param_set)}(;
         Δt,
         earth_param_set,
         z_0m,
         z_0b,
-        κ_ice,
         ϵ_snow,
         θ_r,
         Ksat,
+        κ_snow,
         ΔS,
         density,
         α_snow,
@@ -429,20 +501,21 @@ function SnowParameters{FT}(
     ϵ_snow,
     θ_r,
     Ksat,
-    κ_ice,
+    κ_snow::KM,
     ΔS = FT(0.1),
     scf::SCFM,
     surf_temp::STM = BulkSurfaceTemperatureModel{FT}(),
     earth_param_set::PSE,
 ) where {
     FT <: AbstractFloat,
+    KM <: AbstractSnowConductivityModel,
     DM <: AbstractDensityModel,
     AM <: AbstractAlbedoModel,
     SCFM <: AbstractSnowCoverFractionModel,
     STM <: AbstractSnowSurfaceTemperatureModel,
     PSE,
 }
-    return SnowParameters{FT, DM, AM, SCFM, PSE}(
+    return SnowParameters{FT, KM, DM, AM, SCFM, PSE}(
         density,
         z_0m,
         z_0b,
@@ -450,7 +523,7 @@ function SnowParameters{FT}(
         ϵ_snow,
         θ_r,
         Ksat,
-        κ_ice,
+        κ_snow,
         float(Δt),
         ΔS,
         scf,
@@ -483,7 +556,7 @@ end
 
 """
     SnowModel(;
-        parameters::SnowParameters{FT, DM, PSE},
+        parameters::SnowParameters{FT},
         domain::ClimaLand.Domains.AbstractDomain,
         boundary_conditions::BC
     ) where {FT, DM, PSE, BC}
@@ -491,10 +564,10 @@ end
 Construct a `SnowModel` with `parameters`, `domain`, and `boundary_conditions`.
 """
 function SnowModel(;
-    parameters::SnowParameters{FT, DM, PSE},
+    parameters::SnowParameters{FT},
     domain::ClimaLand.Domains.AbstractDomain,
     boundary_conditions::BC,
-) where {FT, DM, PSE, BC}
+) where {FT, BC}
     args = (parameters, boundary_conditions, domain)
     SnowModel{FT, typeof.(args)...}(args...)
 end
@@ -511,6 +584,7 @@ end
         z_0b = toml_dict["snow_scalar_roughness_length"],
         ϵ_snow = toml_dict["snow_emissivity"],
         α_snow = ConstantAlbedoModel(toml_dict["snow_albedo"]),
+        κ_snow = JordanSnowConductivityModel(toml_dict),
         density = MinimumDensityModel(toml_dict["snow_density"]),
         scf = WuWuSnowCoverFractionModel(toml_dict, sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2),
         surf_temp = BulkSurfaceTemperatureModel{FT}(),
@@ -539,6 +613,7 @@ function SnowModel(
     ϵ_snow = toml_dict["snow_emissivity"],
     α_snow = ZenithAngleAlbedoModel(toml_dict),
     density = MinimumDensityModel(toml_dict["snow_density"]),
+    κ_snow = JordanSnowConductivityModel(toml_dict),
     scf = WuWuSnowCoverFractionModel(
         toml_dict,
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) /
@@ -561,6 +636,7 @@ function SnowModel(
         z_0b,
         θ_r,
         Ksat,
+        κ_snow,
         ΔS,
     )
     boundary_conditions = AtmosDrivenSnowBC(
@@ -810,8 +886,8 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
         ) # This could depend on ρ_snow
 
         @. p.snow.κ = snow_thermal_conductivity(
+            parameters.κ_snow,
             p.snow.ρ_snow,
-            parameters.κ_ice,
             parameters.earth_param_set,
         )
 
