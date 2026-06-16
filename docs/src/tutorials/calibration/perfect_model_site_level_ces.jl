@@ -70,28 +70,37 @@ using Random: Random
 using Dates
 
 # ## Configuration and Site Setup
+#
+# We fix the random seed for reproducibility, choose single-precision floats, and
+# load the default ClimaLand parameter set. The simulation targets the US-MOz
+# FLUXNET site; its location and flux-tower height are looked up from the bundled
+# site metadata. Trailing semicolons suppress the (verbose) output of these
+# assignments in the rendered tutorial.
 
-rng_seed = 1234
-rng = Random.MersenneTwister(rng_seed)
-const FT = Float32
+rng_seed = 1234;
+rng = Random.MersenneTwister(rng_seed);
+const FT = Float32;
 
-toml_dict = LP.create_toml_dict(FT)
-site_ID = "US-MOz"
-site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
+toml_dict = LP.create_toml_dict(FT);
+site_ID = "US-MOz";
+site_ID_val = FluxnetSimulations.replace_hyphen(site_ID);
 
 (; time_offset, lat, long) =
-    FluxnetSimulations.get_location(FT, Val(site_ID_val))
-(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val))
+    FluxnetSimulations.get_location(FT, Val(site_ID_val));
+(; atmos_h) = FluxnetSimulations.get_fluxtower_height(FT, Val(site_ID_val));
 
 (start_date, stop_date) =
-    FluxnetSimulations.get_data_dates(site_ID, time_offset)
-stop_date = DateTime(2010, 4, 1, 6, 30)
+    FluxnetSimulations.get_data_dates(site_ID, time_offset);
+stop_date = DateTime(2010, 4, 1, 6, 30);
 Δt = 450.0;
 
 # ## Domain and Forcing Setup
+#
+# The model runs on a single soil column 2 m deep with 10 vertical elements,
+# anchored at the site's longitude and latitude.
 
-zmin = FT(-2)
-zmax = FT(0)
+zmin = FT(-2);
+zmax = FT(0);
 domain = Column(; zlim = (zmin, zmax), nelements = 10, longlat = (long, lat));
 
 # ## Model Setup
@@ -226,22 +235,25 @@ end
 # (e.g. 1e-4) would be in a regime where LHF is dominated by soil evaporation
 # and is nearly insensitive to Vcmax25, making calibration ill-posed.
 
-true_Vcmax25 = 1.5e-3
-observations = G(true_Vcmax25)
-## Noise variance: used for both EKI and the GP emulator likelihood so both
-## steps see a consistent observation error model.
-## σ = √noise_var ≈ 5 W m⁻² (≈ 7% of the ~70 W m⁻² synthetic peak LHF),
-## large enough to see ensemble spread in plots while still allowing recovery.
-noise_var = 25.0
-noise_covariance = noise_var * EKP.I
+true_Vcmax25 = 1.5e-3;
+observations = G(true_Vcmax25);
 
-# Constrained Gaussian prior: Vcmax25 ∈ [0, 2e-3]
-prior = PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3)
+# The noise variance is used for both EKI and the GP emulator likelihood so that
+# both steps see a consistent observation error model. Here
+# `σ = √noise_var ≈ 5 W m⁻²` (about 7% of the ~70 W m⁻² synthetic peak LHF),
+# large enough to produce visible ensemble spread in the plots while still
+# allowing EKI to recover the true value.
+noise_var = 25.0;
+noise_covariance = noise_var * EKP.I;
 
-ensemble_size = 10
-N_iterations = 3
+# We place a constrained Gaussian prior on `Vcmax25` bounded to `[0, 2e-3]`, then
+# draw the initial ensemble and run three EKI iterations.
+prior = PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3);
 
-initial_ensemble = EKP.construct_initial_ensemble(rng, prior, ensemble_size)
+ensemble_size = 10;
+N_iterations = 3;
+
+initial_ensemble = EKP.construct_initial_ensemble(rng, prior, ensemble_size);
 
 ensemble_kalman_process = EKP.EnsembleKalmanProcess(
     initial_ensemble,
@@ -253,7 +265,7 @@ ensemble_kalman_process = EKP.EnsembleKalmanProcess(
         on_terminate = "continue",
     ),
     rng,
-)
+);
 
 Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
     for i in 1:N_iterations
@@ -264,10 +276,12 @@ Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
     end
 end
 
-eki_map = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)[1]
+eki_map = EKP.get_ϕ_mean_final(prior, ensemble_kalman_process)[1];
 @info "EKI MAP estimate: Vcmax25 = $eki_map  (true: $true_Vcmax25)"
 
-# Plot calibration diagnostics: parameter convergence and ensemble vs observations.
+# We now plot two calibration diagnostics: the parameter convergence and error
+# decay over iterations, and the forward-model ensemble compared against the
+# synthetic observations.
 dim_size = sum(length.(EKP.batch(prior)))
 fig = CairoMakie.Figure(; size = ((dim_size + 1) * 500, 500))
 for i in 1:dim_size
@@ -282,7 +296,7 @@ EKP.Visualize.plot_error_over_iters(
     fig[1, dim_size + 1],
     ensemble_kalman_process,
 )
-CairoMakie.save("perfect_model_ces_params_and_error.png", fig)
+CairoMakie.save("perfect_model_ces_params_and_error.png", fig);
 # ![](perfect_model_ces_params_and_error.png)
 
 fig2 = CairoMakie.Figure(; size = (900, 400))
@@ -314,7 +328,7 @@ axislegend(
     framevisible = false,
 )
 CairoMakie.resize_to_layout!(fig2)
-CairoMakie.save("perfect_model_ces_G_first_last.png", fig2)
+CairoMakie.save("perfect_model_ces_G_first_last.png", fig2);
 # ![](perfect_model_ces_G_first_last.png)
 
 # ## Step 2 — Emulate (Gaussian Process Surrogate)
@@ -324,24 +338,29 @@ CairoMakie.save("perfect_model_ces_G_first_last.png", fig2)
 # The surrogate maps from parameter space (1D) to observation space (24D,
 # diurnal LHF) and is orders of magnitude cheaper to evaluate than the land model.
 
-n_iter_used = EKP.get_N_iterations(ensemble_kalman_process)
+n_iter_used = EKP.get_N_iterations(ensemble_kalman_process);
 @info "Building GP emulator from $n_iter_used EKI iterations ($(n_iter_used * ensemble_size) training points)..."
 
-# Extract all (θ_unconstrained, G(θ)) pairs from the EKP object
+# First we extract all `(θ_unconstrained, G(θ))` pairs from the EKP object; these
+# are the training data for the emulator.
 input_output_pairs =
-    Utilities.get_training_points(ensemble_kalman_process, n_iter_used)
+    Utilities.get_training_points(ensemble_kalman_process, n_iter_used);
 
-# Build, configure, and optimize the GP emulator.
-# GPJL uses GaussianProcesses.jl (squared-exponential kernel by default).
-# The Decorrelator inside Emulator projects the 24D output onto its principal
-# components so each GP only needs to model a 1D output.
-# encoder_kwargs bundles the noise covariance and prior covariance from the
-# calibration step — the recommended way to configure the Emulator encoder.
-encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior)
-gppackage = GPJL()
-gauss_proc = GaussianProcess(gppackage; noise_learn = false)
-emulator = Emulator(gauss_proc, input_output_pairs; encoder_kwargs)
-optimize_hyperparameters!(emulator)
+# Next we build, configure, and optimize the GP emulator. `GPJL` uses
+# GaussianProcesses.jl (squared-exponential kernel by default). The decorrelator
+# inside `Emulator` projects the 24-dimensional output onto its principal
+# components so that each GP only needs to model a one-dimensional output.
+# `encoder_kwargs` bundles the noise covariance and prior covariance from the
+# calibration step — the recommended way to configure the `Emulator` encoder.
+# Hyperparameter optimization is wrapped in a quiet logger to keep the rendered
+# tutorial readable.
+encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior);
+gppackage = GPJL();
+gauss_proc = GaussianProcess(gppackage; noise_learn = false);
+emulator = Emulator(gauss_proc, input_output_pairs; encoder_kwargs);
+Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+    optimize_hyperparameters!(emulator)
+end
 @info "GP emulator trained."
 
 # ### Emulator Validation
@@ -350,11 +369,11 @@ optimize_hyperparameters!(emulator)
 # outputs on the EKI training data. Red curves are the actual G(θ) values;
 # blue curves are the emulator's predictions at the same inputs. Close overlap
 # confirms the surrogate is fit for purpose before sampling begins.
-train_in = EKP.DataContainers.get_inputs(input_output_pairs)
-train_out = EKP.DataContainers.get_outputs(input_output_pairs)
-emul_pred_train, _ = Emulators.predict(emulator, train_in)
-n_train = size(train_in, 2)
-val_idx = rand(rng, 1:n_train, min(10, n_train))
+train_in = EKP.DataContainers.get_inputs(input_output_pairs);
+train_out = EKP.DataContainers.get_outputs(input_output_pairs);
+emul_pred_train, _ = Emulators.predict(emulator, train_in);
+n_train = size(train_in, 2);
+val_idx = rand(rng, 1:n_train, min(10, n_train));
 
 fig_val = CairoMakie.Figure(; size = (900, 400))
 ax_val = Axis(
@@ -395,7 +414,7 @@ axislegend(
     framevisible = false,
 )
 CairoMakie.resize_to_layout!(fig_val)
-CairoMakie.save("perfect_model_ces_emulator_validation.png", fig_val)
+CairoMakie.save("perfect_model_ces_emulator_validation.png", fig_val);
 # ![](perfect_model_ces_emulator_validation.png)
 
 # ## Step 3 — Sample (MCMC Posterior)
@@ -404,8 +423,9 @@ CairoMakie.save("perfect_model_ces_emulator_validation.png", fig_val)
 # Each likelihood evaluation calls the GP instead of the land model —
 # enabling 50 000 samples in seconds rather than years.
 
-# Initialize MCMC at the EKI posterior mean (unconstrained space)
-init_params = EKP.get_u_mean_final(ensemble_kalman_process)
+# We initialize the MCMC chain at the EKI posterior mean (in unconstrained
+# space) and wrap it in an `MCMCWrapper` tied to the trained emulator.
+init_params = EKP.get_u_mean_final(ensemble_kalman_process);
 
 mcmc = MCMCWrapper(
     RWMHSampling(),
@@ -413,34 +433,38 @@ mcmc = MCMCWrapper(
     prior,
     emulator;
     init_params,
-)
+);
 
-# Tune step size to target ~0.2 acceptance rate
-new_step =
+# We first tune the step size to target a ~0.2 acceptance rate, then draw the
+# samples. Both calls emit progress bars, so we run them inside a quiet logger to
+# keep the rendered tutorial clean.
+n_samples = 50_000;
+discard_initial = 2_000;
+new_step = Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
     optimize_stepsize(mcmc; init_stepsize = 0.1, N = 2_000, discard_initial = 0)
+end;
 @info "MCMC step size: $new_step"
+chain = Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+    MarkovChainMonteCarlo.sample(
+        mcmc,
+        n_samples;
+        stepsize = new_step,
+        discard_initial,
+    )
+end;
+posterior = MarkovChainMonteCarlo.get_posterior(mcmc, chain);
 
-# Draw samples
-n_samples = 50_000
-discard_initial = 2_000
-chain = MarkovChainMonteCarlo.sample(
-    mcmc,
-    n_samples;
-    stepsize = new_step,
-    discard_initial,
-)
-posterior = MarkovChainMonteCarlo.get_posterior(mcmc, chain)
-
-# Transform samples from unconstrained to constrained (physical) space
+# Finally we transform the samples from unconstrained to constrained (physical)
+# space and summarize the posterior.
 constrained_posterior = Emulators.transform_unconstrained_to_constrained(
     prior,
     MarkovChainMonteCarlo.get_distribution(posterior),
-)
+);
 
-post_Vcmax25 = vec(constrained_posterior["Vcmax25"])
-post_mean = mean(post_Vcmax25)
-post_std = std(post_Vcmax25)
-ci_lo, ci_hi = quantile(post_Vcmax25, [0.025, 0.975])
+post_Vcmax25 = vec(constrained_posterior["Vcmax25"]);
+post_mean = mean(post_Vcmax25);
+post_std = std(post_Vcmax25);
+ci_lo, ci_hi = quantile(post_Vcmax25, [0.025, 0.975]);
 
 @info "Posterior Vcmax25: mean=$(round(post_mean; sigdigits=4))  std=$(round(post_std; sigdigits=3))"
 @info "95% CI: [$(round(ci_lo; sigdigits=4)), $(round(ci_hi; sigdigits=4))]"
@@ -461,7 +485,7 @@ ax3 = Axis(
     ylabel = "Density",
 )
 
-# Sample prior for comparison
+## Sample the prior for comparison.
 rng_prior = Random.MersenneTwister(99)
 prior_ens = EKP.construct_initial_ensemble(rng_prior, prior, 5_000)
 prior_constrained = EKP.transform_unconstrained_to_constrained(prior, prior_ens)
@@ -490,7 +514,7 @@ vlines!(
 )
 axislegend(ax3; position = :rt, framevisible = false)
 CairoMakie.resize_to_layout!(fig3)
-CairoMakie.save("perfect_model_ces_posterior.png", fig3)
+CairoMakie.save("perfect_model_ces_posterior.png", fig3);
 # ![](perfect_model_ces_posterior.png)
 
 # ## Posterior Predictive Check
@@ -522,5 +546,5 @@ for j in 1:n_pp
 end
 axislegend(ax4; position = :rb, framevisible = false)
 CairoMakie.resize_to_layout!(fig4)
-CairoMakie.save("perfect_model_ces_predictive.png", fig4)
+CairoMakie.save("perfect_model_ces_predictive.png", fig4);
 # ![](perfect_model_ces_predictive.png)
