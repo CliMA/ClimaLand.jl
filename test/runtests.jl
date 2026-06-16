@@ -177,6 +177,7 @@ end
 if TEST_GROUP in ("all", "simulations")
     @safetestset "Full land" begin
         include("integrated/full_land.jl")
+        include("integrated/conservation.jl")
     end
     @safetestset "Full land restart tests" begin
         include("integrated/restart.jl")
