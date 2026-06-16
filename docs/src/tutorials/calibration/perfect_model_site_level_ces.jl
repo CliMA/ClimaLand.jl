@@ -4,16 +4,16 @@
 # [CalibrateEmulateSample.jl](https://github.com/CliMA/CalibrateEmulateSample.jl)
 # (CES) workflow. After EKI calibration converges to a MAP estimate, we train a
 # Gaussian Process emulator on the ensemble trajectory, then run Markov Chain
-# Monte Carlo (MCMC) over the cheap surrogate to obtain the full posterior
+# Monte Carlo (MCMC) using the model emulator to obtain the full posterior
 # uncertainty distribution.
 #
 # The CES workflow is motivated by the fact that land model runs are expensive.
 # EKI calibration requires O(10 × iterations) model evaluations to find the MAP.
 # Full Bayesian UQ via direct MCMC would require O(100 000) evaluations — clearly
 # infeasible. CES solves this by:
-#   1. **Calibrate**: EKI explores parameter space efficiently (cheap).
-#   2. **Emulate**: Train a GP on the EKI trajectory (cheap once, reusable).
-#   3. **Sample**: MCMC over the GP — each evaluation costs microseconds.
+#   1. **Calibrate**: EKI explores parameter space efficiently and finds an optimal set of parameters.
+#   2. **Emulate**: Train a GP on the EKI trajectory in parameter space (one time expense; reusable).
+#   3. **Sample**: MCMC carried out using the GP in place of the model — each evaluation costs microseconds.
 #
 # In this tutorial we calibrate `Vcmax25` against synthetic LHF at US-MOz.
 #
@@ -74,8 +74,7 @@ using Dates
 # We fix the random seed for reproducibility, choose single-precision floats, and
 # load the default ClimaLand parameter set. The simulation targets the US-MOz
 # FLUXNET site; its location and flux-tower height are looked up from the bundled
-# site metadata. Trailing semicolons suppress the (verbose) output of these
-# assignments in the rendered tutorial.
+# site metadata.
 
 rng_seed = 1234;
 rng = Random.MersenneTwister(rng_seed);
@@ -97,7 +96,7 @@ stop_date = DateTime(2010, 4, 1, 6, 30);
 # ## Domain and Forcing Setup
 #
 # The model runs on a single soil column 2 m deep with 10 vertical elements,
-# anchored at the site's longitude and latitude.
+# located at the site's longitude and latitude.
 
 zmin = FT(-2);
 zmax = FT(0);
@@ -124,7 +123,7 @@ function model(Vcmax25)
     )
     Vcmax25 = FT(Vcmax25)
     ground = ClimaLand.PrognosticGroundConditions{FT}()
-    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :snow, :soil)
     canopy_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     canopy_forcing = (; forcing.atmos, forcing.radiation, ground)
     photosyn_defaults =
@@ -352,8 +351,6 @@ input_output_pairs =
 # components so that each GP only needs to model a one-dimensional output.
 # `encoder_kwargs` bundles the noise covariance and prior covariance from the
 # calibration step — the recommended way to configure the `Emulator` encoder.
-# Hyperparameter optimization is wrapped in a quiet logger to keep the rendered
-# tutorial readable.
 encoder_kwargs = Utilities.encoder_kwargs_from(ensemble_kalman_process, prior);
 gppackage = GPJL();
 gauss_proc = GaussianProcess(gppackage; noise_learn = false);
@@ -436,8 +433,6 @@ mcmc = MCMCWrapper(
 );
 
 # We first tune the step size to target a ~0.2 acceptance rate, then draw the
-# samples. Both calls emit progress bars, so we run them inside a quiet logger to
-# keep the rendered tutorial clean.
 n_samples = 50_000;
 discard_initial = 2_000;
 new_step = Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
@@ -472,7 +467,7 @@ ci_lo, ci_hi = quantile(post_Vcmax25, [0.025, 0.975]);
 
 # ## UQ Results: Posterior vs Prior vs True Value
 #
-# The key result: the posterior is much narrower than the prior and centered
+# Here we show the key results from this tutorial. First, we have obtained a probability distribution for the parameter we calibrated, which gives use a quantified uncertainty in its value. Second, the posterior is much narrower than the prior, indicating that the data provided useful constraints on this parameter. Additionally, the posterior is centered near the true value.
 # near the true value, demonstrating successful uncertainty quantification.
 # The EKI MAP gives a single point estimate; MCMC over the emulator gives
 # the full posterior credible interval.
