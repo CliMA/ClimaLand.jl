@@ -224,10 +224,10 @@ Here `T_snow_bottom` is the temperature at the base of the snowpack
  and `T_soil_sfc` is the temperature of the top soil layer. The flux
 is positive when energy flows from the soil up into the snowpack.
 
-There is a free parameter here, the ``width" of the layer of snow at the
-bottom of the snowpack, `Δz_snow`. We treat this layer as 10cm thick, except
-for when the snowpack is less than this thickness in height, in which case we use the thickness
-the snowpack directly.
+For simplicit, we assume that the thickness of the bottom layer of the
+snowpack is the same as the thickness of the soil top layer.
+When the snowpack is less than this 
+thickness in height, we use the thickness the snowpack directly.
 """
 NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     p,
@@ -237,21 +237,17 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     soil_domain,
     FT,
 )
-    # Thermal conductivities of soil and snow
     κ_snow = p.snow.κ
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
-
-    # Depths
-    Δz_snow = @. lazy(min(p.snow.z_snow, FT(0.1)))
     Δz_soil = soil_domain.fields.Δz_top
-
-    # Temperatures
+    Δz_snow = Δz_soil
     T̄ = p.snow.T
     T_sfc = p.snow.T_sfc
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     @. p.snow_T_bot = snow_T_bottom(
         κ_snow,
-        κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2), # g_eff
+        κ_soil * κ_snow /
+        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2), # g_eff
         T_soil,
         T̄,
         T_sfc,
@@ -262,7 +258,8 @@ NVTX.@annotate function update_soil_snow_ground_heat_flux!(
     # compute the flux
     # g_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)
     @. p.ground_heat_flux =
-        -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
+        -κ_soil * κ_snow /
+        (κ_snow * Δz_soil / 2 + κ_soil * min(p.snow.z_snow, Δz_snow) / 2) *
         (p.snow_T_bot - T_soil)
     return nothing
 end
