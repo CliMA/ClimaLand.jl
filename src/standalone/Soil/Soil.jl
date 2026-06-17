@@ -209,7 +209,7 @@ using .Biogeochemistry
                          runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff(toml_dict,
                                                                 f_max = topmodel_fmax(domain.space.surface, FT),
                                                             ),
-                         retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
+                         retention_parameters = rosetta_soil_vangenuchten_parameters(domain.space.subsurface, FT),
                          composition_parameters = soil_composition_parameters(domain.space.subsurface, FT),
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
                          z_0m = toml_dict["soil_momentum_roughness_length"],
@@ -270,7 +270,7 @@ function EnergyHydrology{FT}(
         toml_dict,
         f_max = topmodel_fmax(domain.space.surface, FT),
     ),
-    retention_parameters = soil_vangenuchten_parameters(
+    retention_parameters = rosetta_soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
     ),
@@ -324,7 +324,7 @@ end
                                                                             R_sb = FT(1.484e-4 / 1000),
                                                                             f_max = topmodel_fmax(domain.space.surface,FT),
                                                                             ),
-                         retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
+                         retention_parameters = rosetta_soil_vangenuchten_parameters(domain.space.subsurface, FT),
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
                          )
 
@@ -344,7 +344,7 @@ function RichardsModel{FT}(
         R_sb = FT(1.484e-4 / 1000),# extract from EPS
         f_max = topmodel_fmax(domain.space.surface, FT),
     ),
-    retention_parameters = soil_vangenuchten_parameters(
+    retention_parameters = rosetta_soil_vangenuchten_parameters(
         domain.space.subsurface,
         FT,
     ),
