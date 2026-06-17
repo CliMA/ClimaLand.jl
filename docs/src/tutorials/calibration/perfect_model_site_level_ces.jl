@@ -8,9 +8,9 @@
 # uncertainty distribution.
 #
 # The CES workflow is motivated by the fact that land model runs are expensive.
-# EKI calibration requires O(10 × iterations) model evaluations to find the MAP.
-# Full Bayesian UQ via direct MCMC would require O(100 000) evaluations — clearly
-# infeasible. CES solves this by:
+# EKI calibration finds the MAP with O(ensemble size × iterations) model evaluations.
+# Full Bayesian UQ via direct MCMC commonly requires in excess of O(10⁴) and up to
+# O(10⁷) evaluations depending on the Markov chain mixing properties. CES solves this by:
 #   1. **Calibrate**: EKI explores parameter space efficiently and finds an optimal set of parameters.
 #   2. **Emulate**: Train a GP on the EKI trajectory in parameter space (one time expense; reusable).
 #   3. **Sample**: MCMC carried out using the GP in place of the model — each evaluation costs microseconds.
@@ -227,14 +227,13 @@ end
 # Generate synthetic "truth" from the model at a known true parameter value,
 # then run EKI to recover it from noisy observations.
 #
-# The true value is set to 1.5e-3 mol m⁻² s⁻¹ — one standard deviation above
-# the prior mean of 1e-3. This puts the target firmly inside the identifiable
-# range: the forward map G (diurnal LHF) is sensitive to Vcmax25 here, so EKI
-# can distinguish the true parameter from the prior center. A value near zero
-# (e.g. 1e-4) would be in a regime where LHF is dominated by soil evaporation
-# and is nearly insensitive to Vcmax25, making calibration ill-posed.
+# The true value is set to 1.5e-4 mol m⁻² s⁻¹ (150 μmol m⁻² s⁻¹) — one standard
+# deviation above the prior mean of 1e-4. This is within the physically realistic
+# range of `Vcmax25` for C3 vegetation, and a regime in which the forward map G
+# (diurnal LHF) responds strongly to `Vcmax25`, so EKI can distinguish the true
+# parameter from the prior center.
 
-true_Vcmax25 = 1.5e-3;
+true_Vcmax25 = 1.5e-4;
 observations = G(true_Vcmax25);
 
 # The noise variance is used for both EKI and the GP emulator likelihood so that
@@ -245,9 +244,9 @@ observations = G(true_Vcmax25);
 noise_var = 25.0;
 noise_covariance = noise_var * EKP.I;
 
-# We place a constrained Gaussian prior on `Vcmax25` bounded to `[0, 2e-3]`, then
+# We place a constrained Gaussian prior on `Vcmax25` bounded to `[0, 2e-4]`, then
 # draw the initial ensemble and run three EKI iterations.
-prior = PD.constrained_gaussian("Vcmax25", 1e-3, 5e-4, 0, 2e-3);
+prior = PD.constrained_gaussian("Vcmax25", 1e-4, 5e-5, 0, 2e-4);
 
 ensemble_size = 10;
 N_iterations = 3;
@@ -467,8 +466,7 @@ ci_lo, ci_hi = quantile(post_Vcmax25, [0.025, 0.975]);
 
 # ## UQ Results: Posterior vs Prior vs True Value
 #
-# Here we show the key results from this tutorial. First, we have obtained a probability distribution for the parameter we calibrated, which gives use a quantified uncertainty in its value. Second, the posterior is much narrower than the prior, indicating that the data provided useful constraints on this parameter. Additionally, the posterior is centered near the true value.
-# near the true value, demonstrating successful uncertainty quantification.
+# Here we show the key results from this tutorial. First, we have obtained a probability distribution for the parameter we calibrated, which gives us a quantified uncertainty in its value. Second, the posterior is much narrower than the prior, indicating that the data provided useful constraints on this parameter. Additionally, the posterior is centered near the true value, demonstrating successful uncertainty quantification.
 # The EKI MAP gives a single point estimate; MCMC over the emulator gives
 # the full posterior credible interval.
 
