@@ -578,14 +578,12 @@ function get_component_diagnostics(
     @assert diagnostics_function in
             (get_possible_diagnostics, get_short_diagnostics) "Invalid diagnostics_function $(diagnostics_function)"
     # Add diagnostics for each component of the integrated model
-    append!(
-        diagnostics,
-        map(
-            component_name ->
-                diagnostics_function(getproperty(model, component_name)),
-            ClimaLand.land_components(model),
-        )...,
-    )
+    for component_name in ClimaLand.land_components(model)
+        append!(
+            diagnostics,
+            diagnostics_function(getproperty(model, component_name)),
+        )
+    end
     return diagnostics
 end
 function get_possible_diagnostics(model::SoilCanopyModel)
