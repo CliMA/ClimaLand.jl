@@ -1,5 +1,6 @@
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import Interpolations: Constant
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.FileReaders: NCFileReader, read
@@ -150,6 +151,36 @@ end
 
 
 """
+     modis_max_lai(surface_space,
+                   regridder_type = :InterpolationsRegridder,
+                   interpolation_method = Interpolations.Constant(),
+                   context = ClimaComms.context(surface_space))
+
+A helper function which constructs the SpaceVaryingInput object for the maximum
+Leaf Area Index using MODIS LAI data; requires the surface_space.
+
+The ClimaLand default is to use nearest neighbor interpolation, but
+linear interpolation is supported by passing
+`interpolation_method = Interpolations.Linear()`.
+"""
+function modis_max_lai(
+    surface_space,
+    regridder_type = :InterpolationsRegridder,
+    interpolation_method = Interpolations.Constant(),
+    context = ClimaComms.context(surface_space),
+)
+    modis_max_lai_ncdata_path =
+        ClimaLand.Artifacts.modis_max_lai_data_path(; context)
+    return SpaceVaryingInput(
+        modis_max_lai_ncdata_path,
+        ["lai"],
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; interpolation_method),
+    )
+end
+
+"""
     AbstractBiomassModel{FT} <: AbstractCanopyComponent{FT}
 
 An abstract type for modeling the biomass (above ground - LAI, SAI, canopy
@@ -159,44 +190,41 @@ abstract type AbstractBiomassModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLand.name(::AbstractBiomassModel) = :biomass
 
-abstract type AbstractAreaIndexModel{FT <: AbstractFloat} end
+abstract type AbstractAreaIndexModel end
 
 """
-   PrescribedAreaIndices{FT <:AbstractFloat, F <: AbstractTimeVaryingInput}
+   PrescribedAreaIndices{FS <: Union{AbstractFloat, ClimaCore.Fields.Field}, F <: AbstractTimeVaryingInput}
 
 A struct containing the area indices of the plants at a specific site;
-LAI varies in time, while SAI and RAI are fixed in space and time.
+LAI varies in time, while SAI and RAI are fixed in time and can either be a
+scalar (spatially uniform) or a ClimaCore Field (spatially varying).
 
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAreaIndices{
-    FT <: AbstractFloat,
+    FS <: Union{AbstractFloat, ClimaCore.Fields.Field},
     F <: AbstractTimeVaryingInput,
-} <: AbstractAreaIndexModel{FT}
+} <: AbstractAreaIndexModel
     "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
     LAI::F
-    "The constant stem area index (SAI; m2/m2)"
-    SAI::FT
-    "The constant root area index (RAI; m2/m2)"
-    RAI::FT
+    "The constant-in-time stem area index (SAI; m2/m2), scalar or Field"
+    SAI::FS
+    "The constant-in-time root area index (RAI; m2/m2), scalar or Field"
+    RAI::FS
 end
 
 """
-    PrescribedAreaIndices{FT}(
+    PrescribedAreaIndices(
         LAI::AbstractTimeVaryingInput,
-        SAI::FT,
-        RAI::FT,
-    ) where {FT <: AbstractFloat}
+        SAI,
+        RAI,
+    )
 
-An outer constructor for setting the PrescribedAreaIndices given
-LAI, SAI, and RAI.
+An outer constructor for setting the PrescribedAreaIndices given LAI, SAI, and
+RAI. SAI and RAI may be scalars or ClimaCore Fields.
 """
-function PrescribedAreaIndices{FT}(
-    LAI::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
-) where {FT <: AbstractFloat}
-    PrescribedAreaIndices{FT, typeof(LAI)}(LAI, SAI, RAI)
+function PrescribedAreaIndices(LAI::AbstractTimeVaryingInput, SAI, RAI)
+    PrescribedAreaIndices{typeof(SAI), typeof(LAI)}(LAI, SAI, RAI)
 end
 
 """
@@ -212,7 +240,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedBiomassModel{
     FT,
-    PSAI <: PrescribedAreaIndices{FT},
+    PSAI <: PrescribedAreaIndices,
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
 } <: AbstractBiomassModel{FT}
@@ -222,6 +250,13 @@ struct PrescribedBiomassModel{
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
     height::HTH
+    function PrescribedBiomassModel{FT, PSAI, RDTH, HTH}(
+        plant_area_index,
+        rooting_depth,
+        height,
+    ) where {FT, PSAI, RDTH, HTH}
+        new{FT, PSAI, RDTH, HTH}(plant_area_index, rooting_depth, height)
+    end
 end
 
 """
@@ -241,12 +276,12 @@ Height can be either:
 """
 function PrescribedBiomassModel{FT}(;
     LAI::AbstractTimeVaryingInput,
-    SAI::FT,
-    RAI::FT,
+    SAI,
+    RAI,
     rooting_depth,
     height,
 ) where {FT}
-    plant_area_index = PrescribedAreaIndices{FT}(LAI, SAI, RAI)
+    plant_area_index = PrescribedAreaIndices(LAI, SAI, RAI)
     args = (plant_area_index, rooting_depth, height)
     PrescribedBiomassModel{FT, typeof.(args)...}(args...)
 end
@@ -357,6 +392,7 @@ struct ZhouOptimalLAIModel{
     FT,
     OLPT <: OptimalLAIParameters{FT},
     GD,
+    FS <: Union{FT, ClimaCore.Fields.Field},
     RDTH <: Union{FT, ClimaCore.Fields.Field},
     HTH <: Union{FT, ClimaCore.Fields.Field},
 } <: AbstractBiomassModel{FT}
@@ -364,10 +400,10 @@ struct ZhouOptimalLAIModel{
     parameters::OLPT
     "Spatially varying initial conditions (GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0)"
     optimal_lai_inputs::GD
-    "Prescribed stem area index (m^2 m^-2)"
-    SAI::FT
-    "Prescribed root area index (m^2 m^-2)"
-    RAI::FT
+    "Prescribed stem area index (m^2 m^-2), scalar or Field"
+    SAI::FS
+    "Prescribed root area index (m^2 m^-2), scalar or Field"
+    RAI::FS
     "Rooting depth parameter (m)"
     rooting_depth::RDTH
     "Canopy height (m) - can be scalar (uniform) or spatially-varying Field"
@@ -380,8 +416,8 @@ Base.eltype(::ZhouOptimalLAIModel{FT}) where {FT} = FT
     ZhouOptimalLAIModel{FT}(
         parameters::OptimalLAIParameters{FT},
         optimal_lai_inputs;
-        SAI::FT,
-        RAI::FT,
+        SAI,
+        RAI,
         rooting_depth,
         height,
     ) where {FT <: AbstractFloat}
@@ -392,16 +428,16 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 - `parameters`: OptimalLAIParameters for the model
 - `optimal_lai_inputs`: NamedTuple with spatially varying GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0 fields,
   typically created using `optimal_lai_initial_conditions`.
-- `SAI`: Prescribed stem area index (m^2 m^-2)
-- `RAI`: Prescribed root area index (m^2 m^-2)
+- `SAI`: Prescribed stem area index (m^2 m^-2); scalar or spatially-varying Field
+- `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
 - `rooting_depth`: Rooting depth parameter (m)
 - `height`: Canopy height (m) - can be scalar or spatially-varying Field
 """
 function ZhouOptimalLAIModel{FT}(
     parameters::OptimalLAIParameters{FT},
     optimal_lai_inputs;
-    SAI::FT,
-    RAI::FT,
+    SAI,
+    RAI,
     rooting_depth,
     height,
 ) where {FT <: AbstractFloat}
@@ -409,6 +445,7 @@ function ZhouOptimalLAIModel{FT}(
         FT,
         typeof(parameters),
         typeof(optimal_lai_inputs),
+        typeof(SAI),
         typeof(rooting_depth),
         typeof(height),
     }(

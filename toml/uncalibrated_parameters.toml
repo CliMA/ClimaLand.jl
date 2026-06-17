@@ -80,6 +80,18 @@ type = "float"
 description = "The constant root area index (RAI; m2/m2)"
 tag = "PrescribedAreaIndices"
 
+["SAI_coeff"]
+value = 0.16
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff"]
+value = 1.0
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI."
+tag = "PrescribedAreaIndices"
+
 [canopy_height]
 value = 1.0
 type = "float"

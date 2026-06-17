@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.5675395275525799
+value = 0.59
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -78,6 +78,18 @@ tag = "PrescribedAreaIndices"
 value = 1.0
 type = "float"
 description = "The constant root area index (RAI; m2/m2)"
+tag = "PrescribedAreaIndices"
+
+["SAI_coeff"]
+value = 0.16
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the stem area index (SAI; m2/m2) when SAI is derived from max LAI."
+tag = "PrescribedAreaIndices"
+
+["RAI_coeff"]
+value = 1.0
+type = "float"
+description = "Linear factor multiplying the per-pixel maximum LAI to set the root area index (RAI; m2/m2) when RAI is derived from max LAI."
 tag = "PrescribedAreaIndices"
 
 [canopy_height]
@@ -278,19 +290,19 @@ tag = "ConstantResetAlbedo"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.4126532780348918
+value = 0.43
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 68.19135215644542
+value = 91.1
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 53.92806481016041
+value = 5.36
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -344,7 +356,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.9758442675597523
+value = 0.972
 type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -459,7 +471,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.85
+value = 0.919
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -594,25 +606,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.0175
+value = 0.349
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0175
+value = 0.0444
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.16
+value = 0.0573
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.07
+value = 0.0726
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
@@ -638,7 +650,7 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_reference_rate"]
-value = 7.885402642122577e-8
+value = 3.34e-8
 type = "float"
 description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
 tag = "SoilCO2Parameters"
@@ -650,19 +662,19 @@ description = "Reference temperature for the centered Arrhenius form of the DAMM
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
-value = 65432.29096630613
+value = 19800.0
 type = "float"
 description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["michaelis_constant"]
-value = 0.3668980114900562
+value = 0.0416
 type = "float"
 description = "Michaelis constant for substrate (kg C m⁻³)"
 tag = "SoilCO2Parameters"
 
 ["O2_michaelis_constant"]
-value = 0.00018610344999027417
+value = 0.00298
 type = "float"
 description = "Michaelis constant for O₂ (m³ m⁻³)"
 tag = "SoilCO2Parameters"
@@ -790,14 +802,26 @@ description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
 
 # Autotrophic respiration (JULES) parameters
-["root_leaf_nitrogen_ratio"]
-value = 2.3992909128669666
+["relative_contribution_factor"]
+value = 0.3
 type = "float"
-description = "Ratio of root nitrogen to top leaf nitrogen (unitless)."
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless). Held fixed (not calibrated)."
 tag = "AutotrophicRespirationParameters"
 
-["relative_contribution_factor"]
-value = 1.1321179749274621
+["autotrophic_respiration_Q10"]
+value = 1.0
 type = "float"
-description = "Factor of relative contribution for growth respiration, Rgrowth (unitless)."
+description = "Q10 temperature sensitivity of maintenance respiration (unitless): multiplies Rpm by Q10^((T_air - T_ref)/10). Fixed at 1.0 (not calibrated), keeping the maintenance baseline seasonally flat."
+tag = "AutotrophicRespirationParameters"
+
+["autotrophic_respiration_T_ref"]
+value = 298.15
+type = "float"
+description = "Reference temperature for the Q10 maintenance-respiration factor (K)."
+tag = "AutotrophicRespirationParameters"
+
+["autotrophic_respiration_Rd_ref"]
+value = 7.83e-7
+type = "float"
+description = "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) for the LAI-independent root and stem maintenance respiration."
 tag = "AutotrophicRespirationParameters"

@@ -16,7 +16,6 @@ ClimaLand.Canopy.AutotrophicRespirationParameters(toml_dict::CP.ParamDict; kwarg
 ## Methods
 
 ```@docs
-ClimaLand.Canopy.nitrogen_content
-ClimaLand.Canopy.plant_respiration_maintenance
+ClimaLand.Canopy.compute_autrophic_respiration
 ClimaLand.Canopy.plant_respiration_growth
 ```

@@ -5,6 +5,13 @@ git-tree-sha1 = "3835c13c2dbf2ee26b2c5ca8a709a2298a57bf5c"
     sha256 = "e026f72dc05ee946357d95e2acf71ad3a8d149b4511397a47e0047278757357e"
     url = "https://caltech.box.com/shared/static/2vz4nevjbo1t80nxc6m4ozyy5f5eusfo.gz"
 
+[modis_max_lai]
+git-tree-sha1 = "3977938f17914088ff69224a3c74e4526cc91bb1"
+
+    [[modis_max_lai.download]]
+    sha256 = "b128f8f5a6f7be5ef68ddfb6f03080dd2daf9f787ef2aaa265bca3c016f541d1"
+    url = "https://caltech.box.com/shared/static/iirh2rgwpgubelvt9gsunkd9artsjxt8.gz"
+
 [modis_lai_climatology]
 git-tree-sha1 = "cd070348ab70f5d1b165c814f70e3822c0173eed"
 
