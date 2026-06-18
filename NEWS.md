@@ -2,8 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- Add conservation tracker to full land, establish conservation at constant LAI, and remove tracker from standalone soil model PR [#1771](https://github.com/CliMA/ClimaLand.jl/pull/1771)
 - ![][badge-🔥behavioralΔ] use the Sturm et al snow thermal K parameterization, ROSETTA parameters,
-   and new spun up initial conditions. PR [#1772](https://github.com/CliMA/ClimaLand.jl/pull/1766)
+   and new spun up initial conditions. PR [#1772](https://github.com/CliMA/ClimaLand.jl/pull/1772)
 - ![][badge-✨feature] Add selectable snow thermal conductivity parameterizations
   (`JordanSnowConductivityModel`, default, after Jordan 1991; and
   `SturmSnowConductivityModel`, after Sturm et al. 1997) and a piecewise-linear
