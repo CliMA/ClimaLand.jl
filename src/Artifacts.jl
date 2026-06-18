@@ -6,12 +6,49 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 
 import LazyArtifacts
 
+
+"""
+     rosetta_spunup_ic_path(; context = nothing)
+
+Returns the path to the spun-up land initial conditions created with zero
+flux at the bottom of the soil domain, which extends 15 m in vertical
+extent; these boundary conditions allow for a water table to form.
+
+These initial conditions were generated	using the ROSETTA van
+Genuchten retention curve parameters, and are not consistent with the
+default	Gupta et al. parameters.
+
+This file contains the following variables:
+- soil ϑ_l
+- soil θ_i
+- soil ρe_int
+- leaf water potential
+- snow water equivalent
+
+Spun-up initial conditions similar to these can be created by
+running the spinup_model.jl file for 100 years,
+using the default global_box_domain, with a soil model with no flux
+at the bottom boundary,
+and then running the ClimaArtifacts script
+`rosetta_spunup_ic/create_artifacts.jl` with a command line argument
+pointing to the correct path, as documented in that file.
+"""
+function rosetta_spunup_ic_path(; context = nothing)
+    dir = @clima_artifact("rosetta_spunup_ic", context)
+    return joinpath(dir, "rosetta_spunup_ic_20years.nc")
+end
+
+
 """
      saturated_land_ic_path(; context = nothing)
 
 Returns the path to the spun-up land initial conditions created with zero
 flux at the bottom of the soil domain, which extends 15 m in vertical 
 extent; these boundary conditions allow for a water table to form.
+
+These initial conditions were generated using the Gupta et al. van
+Genuchten retention curve parameters, and are not consistent with the
+default ROSETTA parameters.
 
 This file contains the following variables:
 - soil ϑ_l
