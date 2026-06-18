@@ -59,8 +59,9 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
     model_type::MODEL
 
     "Whether the soil model should use the Rosetta (Montzka et al. 2017) van
-    Genuchten retention parameters instead of the default Gupta et al. (2020)
-    product. Only affects `ClimaLand.LandModel` runs."
+    Genuchten retention parameters (and the matching spun-up Rosetta initial
+    conditions) instead of the Gupta et al. (2020) product. Only affects
+    `ClimaLand.LandModel` runs."
     use_rosetta::Bool
 end
 
@@ -123,9 +124,11 @@ Keyword arguments
 - `model_type`: A type indicating which model to use. The only supported
   models are "ClimaLand.LandModel" and "ClimaLand.Bucket.BucketModel".
 
-- `use_rosetta`: If `true`, the `ClimaLand.LandModel` soil model uses the Rosetta
-  (Montzka et al. 2017) van Genuchten retention parameters instead of the default
-  Gupta et al. (2020) product. Defaults to `false`. Ignored for the bucket model.
+- `use_rosetta`: If `true` (the default), the `ClimaLand.LandModel` soil model
+  uses the Rosetta (Montzka et al. 2017) van Genuchten retention parameters and
+  the matching spun-up Rosetta initial conditions; if `false`, it uses the Gupta
+  et al. (2020) product with the Gupta-based saturated initial conditions.
+  Ignored for the bucket model.
 """
 function CalibrateConfig(;
     short_names,
@@ -143,7 +146,7 @@ function CalibrateConfig(;
         "land_observation_vector.jld2",
     ),
     model_type = ClimaLand.LandModel,
-    use_rosetta = false,
+    use_rosetta = true,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
 
