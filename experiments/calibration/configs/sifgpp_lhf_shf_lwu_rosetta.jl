@@ -15,7 +15,9 @@
 #   lhf/shf/lwu  ERA5 turbulent + upwelling longwave fluxes in W m^-2 (+ = upward)
 #
 # The model uses the Rosetta (Montzka et al. 2017) van Genuchten soil retention
-# parameters via `use_rosetta = true` (PR #1763, kd/add_rosetta_option).
+# parameters via `use_rosetta = true` (the default), which also selects the
+# matching spun-up Rosetta initial conditions (`rosetta_spunup_ic`, PR #1772) so
+# the soil state is consistent with the retention curve.
 
 """Per-variable observation variances; multiply the identity in `ScalarCovariance`.
 Units are (dataset units)^2: GPP in (g C m^-2 day^-1)^2, energy in (W m^-2)^2.

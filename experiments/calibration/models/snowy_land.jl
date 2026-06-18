@@ -24,7 +24,7 @@ function setup_model(
     domain,
     toml_dict,
     ::Type{ClimaLand.LandModel};
-    use_rosetta = false,
+    use_rosetta = true,
 ) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -48,9 +48,11 @@ function setup_model(
     )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
 
-    # Build the soil model explicitly so we can optionally swap in the Rosetta
-    # (Montzka et al. 2017) van Genuchten retention parameters. When use_rosetta
-    # is false, this reproduces LandModel's default Gupta et al. (2020) soil.
+    # Build the soil model explicitly so we can choose the van Genuchten
+    # retention parameters. use_rosetta = true (the default) uses the Rosetta
+    # (Montzka et al. 2017) product, matching LandModel's default soil; false
+    # uses the Gupta et al. (2020) product. The chosen parameters must be paired
+    # with the matching spun-up initial conditions in `forward_model`.
     retention_parameters =
         use_rosetta ?
         ClimaLand.Soil.rosetta_soil_vangenuchten_parameters(
@@ -191,12 +193,25 @@ function ClimaCalibrate.forward_model(
         reduction_type = :average,
     )
 
+    # Initial conditions must match the soil retention parameters: the spun-up
+    # Rosetta ICs go with the Rosetta soil, the Gupta-based saturated ICs with
+    # the Gupta soil. LandSimulation defaults to the Rosetta IC, but we set it
+    # explicitly so soil and IC stay paired regardless of use_rosetta.
+    ic_path =
+        use_rosetta ?
+        ClimaLand.Artifacts.rosetta_spunup_ic_path(; context) :
+        ClimaLand.Artifacts.saturated_land_ic_path(; context)
+
     simulation = LandSimulation(
         t0,
         tf,
         Δt,
         model;
         outdir,
+        set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
+            ic_path,
+            model,
+        ),
         user_callbacks = (ClimaLand.ReportCallback(div((tf - t0), 10), t0),),
         diagnostics = diagnostics,
     )
