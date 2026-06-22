@@ -150,7 +150,7 @@ updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updatefunc, Δt, t0)
 cb = ClimaTimeSteppers.CallbackSet(driver_cb, saving_cb)
 
-sol = ClimaTimeSteppers.solve(
+@time sol = ClimaTimeSteppers.solve(
     prob,
     ode_algo;
     dt = Δt,
