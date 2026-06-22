@@ -138,6 +138,7 @@ import ClimaLand.Parameters as LP
     tsfc_1 = copy(p.snow.T_sfc)
     tsfc_1 .=
         ClimaLand.Snow.solve_for_surface_temp_at_a_point.(
+            p.snow.T_sfc,
             p.snow.T,
             p.snow.z_snow,
             p.snow.κ,
