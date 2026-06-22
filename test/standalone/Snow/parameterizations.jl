@@ -45,8 +45,8 @@ for FT in (Float32, Float64)
         #no parameters in the BulkSurfaceTemperatureModel to check
 
         #Small number of parameters to check in the EquilibriumGradientTemperatureModel
-        set_tol = FT(0.1) #same as the default value for testing purposes
-        set_N_iters = 8 #same as the default value for testing purposes
+        set_tol = FT(1e-6) #same as the default value for testing purposes
+        set_N_iters = 3 #same as the default value for testing purposes
         surf_temp_eq_1 = Snow.EquilibriumGradientTemperatureModel{FT}()
         surf_temp_eq_2 = Snow.EquilibriumGradientTemperatureModel{FT}(
             tol = FT(1e-3),
@@ -212,7 +212,7 @@ for FT in (Float32, Float64)
             gustiness, #gustiness
             param_set,
         )
-        @test flux_test_no_snow == κ_surf_test * (T_sfc_test - T_bulk_test)
+        @test flux_test_no_snow[1] == κ_surf_test * (T_sfc_test - T_bulk_test)
 
     end
     @testset "Alternative parameterizations, FT = $FT" begin
