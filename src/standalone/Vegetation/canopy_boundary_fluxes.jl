@@ -277,6 +277,7 @@ function ClimaLand.get_update_surface_humidity_function(
     Cd = sfp.Cd
     LAI = p.canopy.biomass.area_index.leaf
     r_stomata_canopy = p.canopy.conductance.r_stomata_canopy
+    q_canopy = component_specific_humidity(model, Y, p)
     function update_q_vap_sfc_at_a_point(
         ζ,
         param_set,
@@ -290,6 +291,7 @@ function ClimaLand.get_update_surface_humidity_function(
         leaf_Cd,
         LAI,
         r_stomata_canopy,
+        q_canopy,
     )
         FT = eltype(param_set)
         g_leaf = leaf_Cd * u_star * LAI
@@ -306,7 +308,6 @@ function ClimaLand.get_update_surface_humidity_function(
         )
 
         q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        q_canopy = inputs.q_vap_sfc_guess
 
         # Solve for q_sfc analytically to satisfy balance of fluxes:
         # Flux_aero = ρ * g_h * (q_sfc - q_atm)
@@ -319,10 +320,10 @@ function ClimaLand.get_update_surface_humidity_function(
         return q_new
     end
     # Closure
-    update_q_vap_sfc_field(LAI_val, r_val, leaf_Cd) =
+    update_q_vap_sfc_field(Cd, LAI, r, qc) =
         (args...) ->
-            update_q_vap_sfc_at_a_point(args..., leaf_Cd, LAI_val, r_val)
-    return @. lazy(update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd))
+            update_q_vap_sfc_at_a_point(args..., Cd, LAI, r, qc)
+    return @. lazy(update_q_vap_sfc_field(Cd, LAI, r_stomata_canopy, q_canopy))
 end
 
 """
@@ -341,6 +342,7 @@ function ClimaLand.get_update_surface_temperature_function(
     AI = @. lazy(
         p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
     )
+    T_canopy = canopy_temperature(model.energy, model, Y, p)
     function update_T_sfc_at_a_point(
         ζ,
         param_set,
@@ -352,12 +354,12 @@ function ClimaLand.get_update_surface_temperature_function(
         z_0b,
         leaf_Cd,
         AI,
+        T_canopy,
     )
         FT = eltype(param_set)
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
-        T_canopy = inputs.T_sfc_guess
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,
@@ -377,9 +379,9 @@ function ClimaLand.get_update_surface_temperature_function(
         return T_sfc
     end
     # Closure
-    update_T_sfc_field(AI_val, leaf_Cd) =
-        (args...) -> update_T_sfc_at_a_point(args..., leaf_Cd, AI_val)
-    return @. lazy(update_T_sfc_field(AI, Cd))
+    update_T_sfc_field(Cd, AI, T_c) =
+        (args...) -> update_T_sfc_at_a_point(args..., Cd, AI, T_c)
+    return @. lazy(update_T_sfc_field(Cd, AI, T_canopy))
 end
 
 
