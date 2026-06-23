@@ -171,10 +171,10 @@ used_in = ["Land"]
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
             land_domain, 
             toml_dict_base;
-            soil_params = Soil.rosetta_soil_vangenuchten_parameters(
-            land_domain.space.subsurface,
-            FT,
-        ),
+            #soil_params = Soil.rosetta_soil_vangenuchten_parameters(
+            #land_domain.space.subsurface,
+            #FT,
+            #),
     )
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         canopy_domain, canopy_forcing, LAI, toml_dict_base;
@@ -190,10 +190,10 @@ used_in = ["Land"]
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
-        retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
-            land_domain.space.subsurface,
-            FT,
-        ),
+        #retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+        #    land_domain.space.subsurface,
+        #    FT,
+        #),
     )
 
     land = LandModel{FT}(forcing, LAI, toml_dict, land_domain, DT;
