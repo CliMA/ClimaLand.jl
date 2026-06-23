@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.59
+value = 0.584
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -290,19 +290,19 @@ tag = "ConstantResetAlbedo"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.43
+value = 0.412
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 91.1
+value = 51.0
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 5.36
+value = 12.4
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -356,7 +356,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.972
+value = 0.979
 type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -471,7 +471,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.919
+value = 0.867
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -606,25 +606,25 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.349
+value = 0.398
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0444
+value = 0.0478
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0573
+value = 0.00996
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.0726
+value = 0.0576
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
@@ -650,7 +650,7 @@ description = "Diffusivity of soil C substrate in liquid (unitless)"
 tag = "SoilCO2Parameters"
 
 ["soilCO2_reference_rate"]
-value = 3.34e-8
+value = 1.37e-8
 type = "float"
 description = "Maximum respiration rate at soilCO2_reference_temperature for DAMM model (kg C m⁻³ s⁻¹). Centered Arrhenius: Vmax = V_ref * exp(-Ea/R * (1/T - 1/T_ref))"
 tag = "SoilCO2Parameters"
@@ -662,19 +662,19 @@ description = "Reference temperature for the centered Arrhenius form of the DAMM
 tag = "SoilCO2Parameters"
 
 ["soilCO2_activation_energy"]
-value = 19800.0
+value = 23000.0
 type = "float"
 description = "Activation energy for DAMM model (J mol⁻¹)"
 tag = "SoilCO2Parameters"
 
 ["michaelis_constant"]
-value = 0.0416
+value = 0.0101
 type = "float"
 description = "Michaelis constant for substrate (kg C m⁻³)"
 tag = "SoilCO2Parameters"
 
 ["O2_michaelis_constant"]
-value = 0.00298
+value = 0.000126
 type = "float"
 description = "Michaelis constant for O₂ (m³ m⁻³)"
 tag = "SoilCO2Parameters"
