@@ -36,7 +36,7 @@ else
 end
 climaland_dir = pkgdir(ClimaLand)
 
-USE_NEURAL_MODELS = true
+USE_NEURAL_MODELS = false
 USE_BULK_SFC_TEMP = false
 
 FT = Float32
@@ -71,7 +71,7 @@ density =
     Snow.ConstantAlbedoModel(α)
 
 temp_tag = USE_BULK_SFC_TEMP ? "surftemp" : "gradtemp"
-neural_tag = USE_NEURAL_MODELS ? "default" : "neural"
+neural_tag = USE_NEURAL_MODELS ? "neural" : "default"
 
 savedir = generate_output_path(
     "experiments/standalone/Snow/$(device_suffix)/$(SITE_NAME)_$(neural_tag)_$(temp_tag)",
