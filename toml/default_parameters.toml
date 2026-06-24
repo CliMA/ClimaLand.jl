@@ -803,9 +803,9 @@ tag = "SlabLakeParameters"
 
 # Autotrophic respiration (JULES) parameters
 ["relative_contribution_factor"]
-value = 0.3
+value = 0.4
 type = "float"
-description = "Factor of relative contribution for growth respiration, Rgrowth (unitless). Held fixed (not calibrated)."
+description = "Factor of relative contribution for growth respiration, Rgrowth (unitless)."
 tag = "AutotrophicRespirationParameters"
 
 ["autotrophic_respiration_Q10"]
@@ -821,7 +821,7 @@ description = "Reference temperature for the Q10 maintenance-respiration factor 
 tag = "AutotrophicRespirationParameters"
 
 ["autotrophic_respiration_Rd_ref"]
-value = 7.83e-7
+value = 4.5e-7
 type = "float"
 description = "Reference leaf-level dark respiration rate (mol CO2 m-2 s-1) for the LAI-independent root and stem maintenance respiration."
 tag = "AutotrophicRespirationParameters"
