@@ -8,11 +8,11 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260611"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260612_1200"       # stable id so restart_from can reference it
+run_identifier = "20260623_1700"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -49,7 +49,7 @@ upper = "Inf"
 [[runs]]
 site  = "NEON-ster"
 years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -61,7 +61,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 site  = "NEON-ster"
 start = "2018-01-02"
 stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -71,7 +71,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 [[runs]]
 site  = "NEON-wood"
 years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -83,7 +83,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 site  = "NEON-wood"
 start = "2018-01-02"
 stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -93,7 +93,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 [[runs]]
 site  = "NEON-wref"
 years = [2023, 2024, 2025]
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -105,7 +105,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 site  = "NEON-wref"
 start = "2022-01-02"
 stop  = "2022-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -115,7 +115,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 [[runs]]
 site  = "NEON-yell"
 years = [2020, 2021, 2022, 2023, 2024, 2025]
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -127,7 +127,7 @@ settingsdesc = "NeonExp_main20260611_wLabile"
 site  = "NEON-yell"
 start = "2019-01-02"
 stop  = "2019-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile"
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
