@@ -256,9 +256,7 @@ The following default parameters (from the TOML file) are used:
 function PModel{FT}(
     domain,
     toml_dict::CP.ParamDict;
-    fractional_c3 = clm_photosynthesis_parameters(
-        domain.space.surface,
-    ).fractional_c3,
+    fractional_c3 = clm_photosynthesis_parameters(domain.space.surface).fractional_c3,
     binarize = false,
     cstar = toml_dict["pmodel_cstar"],
     β_c3 = toml_dict["pmodel_β_c3"],
