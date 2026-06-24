@@ -1090,8 +1090,8 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
         q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        qsat_sfc::FT = inputs.q_vap_sfc_guess
-        if inputs.T_sfc_guess < Tf_depressed # sublimation
+        qsat_sfc::FT = inputs.q_vap_sfc_guess[1]
+        if inputs.T_sfc_guess[1] < Tf_depressed # sublimation
             if q_air < qsat_sfc # water loss to atmosphere, adjust β
                 return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
             else

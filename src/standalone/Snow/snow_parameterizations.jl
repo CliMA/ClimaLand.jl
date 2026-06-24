@@ -150,6 +150,9 @@ This uses the atmospheric T, P, q from p.drivers.
 function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
     h_sfc = ClimaLand.surface_height(model, Y, p)
     h_air = model.boundary_conditions.atmos.h
+    surface_flux_params = LP.surface_fluxes_parameters(model.parameters.earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(model.parameters.earth_param_set)
+
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
@@ -157,7 +160,8 @@ function ClimaLand.component_specific_humidity(model::SnowModel, Y, p)
         p.drivers.P,
         p.drivers.q,
         h_air - h_sfc,
-        model.parameters.earth_param_set,
+        surface_flux_params,
+        thermo_params
     )
 
     return p.snow.q_sfc
@@ -181,7 +185,7 @@ function ClimaLand.surface_roughness_model(
 end
 
 """
-    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, earth_param_set) where {FT}
+    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, T_air::FT, P_air::FT, q_air::FT, Δz::FT, surface_flux_params, thermo_params) where {FT}
 
 Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
 of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
@@ -193,10 +197,9 @@ function snow_surface_specific_humidity(
     P_air::FT,
     q_air::FT,
     Δz::FT,
-    earth_param_set,
+    surface_flux_params,
+    thermo_params
 ) where {FT}
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ρ_sfc = ClimaLand.compute_ρ_sfc(
         surface_flux_params,
         T_air,
@@ -653,208 +656,26 @@ function compute_extra_prog_tendency!(
     return nothing
 end
 
-### Option 1 for flux balance
-function flux_balance(
-    T_sfc_guess::FT,
-    T_bulk,
-    z,
-    κ,
-    ρ_snow,
-    ϵ_snow,
-    SW_net,
-    LW_d,
-    q_l,
-    g_h,
-    T_atmos,
-    q_atmos,
-    ρ_sfc,
-    earth_param_set,
-) where {FT}
-    if T_sfc_guess <= eps(FT)
-        return κ * (T_sfc_guess - T_bulk)
-    end
-
-    _σ = LP.Stefan(earth_param_set)
-    LW_net = -ϵ_snow * (LW_d - _σ * T_sfc_guess^4) #match sign convention in ./shared_utilities/drivers.jl
-    d = surface_temp_scaling_length(κ, ρ_snow, z, earth_param_set)
-
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-
-    qsat_over_ice = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc_guess,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    qsat_over_liq = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc_guess,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
-    q_sfc = qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
-    ∂q∂T =
-        ClimaLand.partial_q_sat_partial_T(
-            qsat_over_ice,
-            T_sfc_guess,
-            Thermodynamics.Ice(),
-            earth_param_set,
-        ) * (1 - q_l) +
-        q_l * ClimaLand.partial_q_sat_partial_T(
-            qsat_over_liq,
-            T_sfc_guess,
-            Thermodynamics.Liquid(),
-            earth_param_set,
-        )
-    ∂LW_net∂T = 4 * ϵ_snow * _σ * T_sfc_guess^3
-    cp_d = Thermodynamics.Parameters.cp_d(thermo_params)
-    _LH_v0 = LP.LH_v0(earth_param_set)
-    latent_flux = -ρ_sfc * g_h * _LH_v0 * (q_atmos - q_sfc)
-    sensible_flux = -ρ_sfc * g_h * cp_d * (T_atmos - T_sfc_guess)
-    ∂L∂T = ρ_sfc * g_h * _LH_v0 * ∂q∂T
-    ∂H∂T = ρ_sfc * g_h * cp_d
-
-
-    #For numerical stability, the scaling length of conductive flux
-    #is multiplied on the LHS, instead of dividing the temperature difference:
-    #(This function output is not needed in flux units, at present)
-    return (
-        d * (SW_net + LW_net + latent_flux + sensible_flux) +
-        κ * (T_sfc_guess - T_bulk),
-        d * (∂LW_net∂T + ∂L∂T + ∂H∂T) + κ,
-    )
-end
-
-
 """
-Solves for T satisfying (approximately):
-(A) SW_n + LW_n(T) + H(T, gh(T)) + L(T, gh(T)) = -κ(T-T̄)/d
+    update_q_vap_sfc_scheme(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        T_sfc,
+        u_star,
+        z_0m,
+        z_0b,
+        q_l
+)
 
-by
-(1) Calling surface fluxes with our initial guess T_0, and extracting gh
-(2) Solve for the root of A'(T), which uses gh(T_0) instead of gh(T), using
-     3 Newton iterations.
-
-i.e., in reality we solve for the root of
-(A') SW_n + LW_n(T) + H(T, gh(T_0)) + L(T, gh(T_0)) = -κ(T-T̄)/d
-
+A helper function for the Surface Fluxes computation which, given a 
+required and fixed set of positional arguments (ζ, `param_set`, `thermo_params`
+inputs, scheme, `T_sfc`, `u_star`, `z_0m`, `z_0b`) and the snow
+liquid fraction `q_l`, computes the snow surface specific humidity.
 """
-function solve_for_surface_temp_at_a_point_gh_approx(
-    T_initial_guess::FT,
-    T_bulk::FT,
-    z_snow::FT,
-    κ_snow::FT,
-    ρ_snow::FT,
-    ϵ_snow::FT,
-    SW_net::FT,
-    LW_d::FT,
-    q_l::FT,
-    h_sfc::FT,
-    displ::FT,
-    P_atmos::FT,
-    T_atmos::FT,
-    q_atmos::FT,
-    u_atmos,
-    roughness_model,
-    atmos_h::FT,
-    gustiness,
-    earth_param_set,
-    surf_temp::EquilibriumGradientTemperatureModel,
-)::FT where {FT}
-
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set) # used to compute surface potential
-    config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
-    positional_default_args = (
-        scheme = SurfaceFluxes.PointValueScheme(),
-        solver_opts = nothing,
-        flux_specs = nothing,
-    )
-    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
-    if u_atmos isa FT
-        u = (u_atmos, FT(0))
-    else
-        u = u_atmos
-    end
-    ρ_atmos =
-        Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
-    Δz = atmos_h - h_sfc
-    ρ_sfc = ClimaLand.compute_ρ_sfc(
-        surface_flux_params,
-        T_atmos,
-        P_atmos,
-        q_atmos,
-        Δz,
-        T_initial_guess,
-    )
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-
-    qsat_over_ice = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_initial_guess,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    qsat_over_liq = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_initial_guess,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
-    q_sfc = qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
-    output = SurfaceFluxes.surface_fluxes(
-        surface_flux_params,
-        T_atmos,
-        q_atmos,
-        FT(0),#phase_partition_atmos.liq,
-        FT(0),#,phase_partition_atmos.ice,
-        ρ_atmos,
-        T_initial_guess,
-        q_sfc,
-        _grav * h_sfc,
-        atmos_h - h_sfc,
-        displ,
-        u,
-        (FT(0), FT(0)), # u_sfc
-        nothing, # roughness inputs
-        config,
-        positional_default_args...,
-    )
-
-    flux_balance_closure(T_sfc_guess::FT) = flux_balance(
-        T_sfc_guess,
-        T_bulk,
-        z_snow,
-        κ_snow,
-        ρ_snow,
-        ϵ_snow,
-        SW_net,
-        LW_d,
-        q_l,
-        output.g_h,
-        T_atmos,
-        q_atmos,
-        ρ_sfc,
-        earth_param_set,
-    )
-
-    method = NewtonsMethod{FT}(T_initial_guess)
-
-    sol = RootSolvers.find_zero(
-        T -> flux_balance_closure(T),
-        method,
-        CompactSolution(),
-        ResidualTolerance(surf_temp.tol),
-        surf_temp.N_iters,
-    )
-
-    return ifelse(sol.converged, sol.root, T_bulk)
-end
-
-### Option 2 for flux balance
-function update_q_vap_sfc(
+function update_q_vap_sfc_scheme(
     ζ,
     param_set,
     thermo_params,
@@ -865,35 +686,59 @@ function update_q_vap_sfc(
     z_0m,
     z_0b,
     q_l,
-    P_atmos,
 )
+    q_atmos = inputs.q_tot_int
     ρ_atmos = inputs.ρ_int
     Δz = inputs.Δz
-    ρ_sfc = ClimaLand.compute_ρ_sfc(
-        param_set,
-        inputs.T_int,
-        P_atmos,
-        inputs.q_tot_int,
-        Δz,
-        T_sfc,
+    T_atmos = inputs.T_int
+    P_atmos = Thermodynamics.air_pressure(thermo_params, T_atmos, ρ_atmos, q_atmos)
+
+     q_sfc = snow_surface_specific_humidity(
+         T_sfc,
+         q_l,
+         T_atmos,
+         P_atmos,
+         q_atmos,
+         Δz,
+         param_set,
+         thermo_params
     )
-    qsat_over_ice = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    qsat_over_liq = Thermodynamics.q_vap_saturation(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
-    q_sfc = qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
     return q_sfc
 end
 
-function update_T_sfc(
+"""
+    update_T_sfc_scheme(
+        ζ,
+        param_set,
+        thermo_params,
+        inputs,
+        scheme,
+        u_star,
+        z_0m,
+        z_0b,
+        q_l,
+        T_bulk, 
+        κ,
+        d,
+        σ,
+        ϵ,
+        SW_n,
+        LW_d,
+)
+
+A helper function for the Surface Fluxes computation which, given a 
+required and fixed set of positional arguments (ζ, `param_set`, `thermo_params`
+inputs, scheme, `u_star`, `z_0m`, `z_0b`) and the snow
+liquid fraction `q_l`, bulk temperature `T_bulk`, snow conductivity κ, effective
+depth of the top layer d, Stefan Boltzman constant σ, emissivity ϵ, net shortwave
+radiation `SW_n`, and long wave radiation downwards `LW_d`, computes an updated
+snow surface temperature.
+
+It makes this estimate by incrementing the initial guess for snow surface temperature
+`T_0` (stored in `inputs`) by the Newton update ΔT, where `ΔT = -f(T_0)/f'(T_0)` and
+f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0.
+"""
+function update_T_sfc_scheme(
     ζ,
     param_set,
     thermo_params,
@@ -911,7 +756,7 @@ function update_T_sfc(
     SW_n,
     LW_d,
 )
-    T_sfc = inputs.T_sfc_guess
+    T_sfc = inputs.T_sfc_guess[1]
     T_atmos = inputs.T_int
     ρ_atmos = inputs.ρ_int
     q_atmos = inputs.q_tot_int
@@ -990,9 +835,34 @@ function update_T_sfc(
     ΔT =
         -(d * (SW_n + LW_n + L + H) + κ * (T_sfc - T_bulk)) /
         (d * (∂LW_n∂T + ∂L∂T + ∂H∂T) + κ)
+    inputs.T_sfc_guess .= [T_sfc + ΔT]
     return T_sfc + ΔT
 end
+
 """
+    solve_for_surface_temp_at_a_point(
+        T_initial_guess::FT,
+        T_bulk::FT,
+        z_snow::FT,
+        κ_snow::FT,
+        ρ_snow::FT,
+        ϵ_snow::FT,
+        SW_net::FT,
+        LW_d::FT,
+        q_l::FT,
+        h_sfc::FT,
+        displ::FT,
+        P_atmos::FT,
+        T_atmos::FT,
+        q_atmos::FT,
+        u_atmos,
+        roughness_model,
+        atmos_h::FT,
+        gustiness,
+        earth_param_set,
+        surf_temp::EquilibriumGradientTemperatureModel,
+    )::FT where {FT}
+
 Solves for T satisfying:
 (A) f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0
 
@@ -1003,8 +873,7 @@ by
 (2) Solve for the root of f(T) using whatever iterative solver SF uses already, but
     evaluating T_new and q_new each iteration given the new gh
 
-This is more exact than the first approach, where we used gh(T_0), but note
-that T_new' ≠ ΔT(T_new) + T_new, we always use T_0 in the RHS.
+Note that T_new' ≠ ΔT(T_new) + T_new, we always use `T_0 = T_initial_guess` in the RHS.
 """
 function solve_for_surface_temp_at_a_point(
     T_initial_guess::FT,
@@ -1028,13 +897,6 @@ function solve_for_surface_temp_at_a_point(
     earth_param_set,
     surf_temp::EquilibriumGradientTemperatureModel,
 )::FT where {FT}
-
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    _grav = LP.grav(earth_param_set) # used to compute surface potential
-    _σ = LP.Stefan(earth_param_set) # used to compute surface potential
-    d = surface_temp_scaling_length(κ_snow, ρ_snow, z_snow, earth_param_set)
-
     config = SurfaceFluxes.SurfaceFluxConfig(roughness_model, gustiness)
     positional_default_args = (
         scheme = SurfaceFluxes.PointValueScheme(),
@@ -1047,12 +909,17 @@ function solve_for_surface_temp_at_a_point(
     else
         u = u_atmos
     end
+
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    _grav = LP.grav(earth_param_set)
+    _σ = LP.Stefan(earth_param_set)
+    d = surface_temp_scaling_length(κ_snow, ρ_snow, z_snow, earth_param_set)
     ρ_atmos =
         Thermodynamics.air_density(thermo_params, T_atmos, P_atmos, q_atmos)
-    update_q(args...) = update_q_vap_sfc(args..., q_l, P_atmos)
+    update_q(args...) = update_q_vap_sfc_scheme(args..., q_l)
     update_T(args...) =
-        update_T_sfc(args..., q_l, T_bulk, κ_snow, d, _σ, ϵ_snow, SW_net, LW_d)
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+        update_T_sfc_scheme(args..., q_l, T_bulk, κ_snow, d, _σ, ϵ_snow, SW_net, LW_d)
     q_sfc = snow_surface_specific_humidity(
         T_initial_guess,
         q_l,
@@ -1060,7 +927,8 @@ function solve_for_surface_temp_at_a_point(
         P_atmos,
         q_atmos,
         atmos_h - h_sfc,
-        earth_param_set,
+        surface_flux_params,
+        thermo_params
     )
 
     output = SurfaceFluxes.surface_fluxes(

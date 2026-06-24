@@ -6,7 +6,6 @@ using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
 using SurfaceFluxes
-using RootSolvers
 using NVTX
 using ClimaLand
 using ClimaLand:
@@ -285,22 +284,8 @@ snow over an effective distance scale. The gradient is determined by iteratively
 to satisfy Fourier's Law - that the sum of energy fluxes at the surface should equal the gradient of the temperature at the
 snow surface, i.e. Σ(F(T_sfc)) = -κ ∂T/∂x|ₓ₌ₛᵤᵣ, except for once the surface temperature reaches T_freeze, at which point
 leftover energy flux serves to warm up the bulk snow temperature.
-
-By choosing a small tolerance, we enforce N_iters iterations per each column in global simulations.
 """
-struct EquilibriumGradientTemperatureModel{FT} <:
-       AbstractSnowSurfaceTemperatureModel{FT}
-    "Allowable tolerance in the root-solve algorithm (K)"
-    tol::FT
-    "Max number of iterations to perform in the root-solve algorithm"
-    N_iters::Int
-end
-
-function EquilibriumGradientTemperatureModel{FT}(;
-    tol::FT = FT(1e-6),
-    N_iters::Int = 3,
-) where {FT}
-    return EquilibriumGradientTemperatureModel{FT}(tol, N_iters)
+struct EquilibriumGradientTemperatureModel{FT} <: AbstractSnowSurfaceTemperatureModel{FT}
 end
 
 """
