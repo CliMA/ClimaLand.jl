@@ -9,6 +9,8 @@ experiments/integrated/fluxnet/US-*/out/*
 *_longrun_*/
 *.nc
 *.png
+# Precomputed tutorial figure committed intentionally (expensive to build on the fly)
+!docs/src/tutorials/calibration/perfect_model_ces_predictive_offline.png
 *.mp4
 *.hdf5
 *.pdf

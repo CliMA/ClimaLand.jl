@@ -432,19 +432,27 @@ mcmc = MCMCWrapper(
 );
 
 # We first tune the step size to target a ~0.2 acceptance rate, then draw the
+# samples. `init_stepsize` is set near the expected value so the doubling search
+# converges in few steps. Both calls are wrapped to suppress their progress bars,
+# which otherwise clutter the rendered tutorial.
+init_stepsize = 1.0;
 n_samples = 50_000;
 discard_initial = 2_000;
-new_step = Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
-    optimize_stepsize(mcmc; init_stepsize = 0.1, N = 2_000, discard_initial = 0)
+new_step = redirect_stderr(devnull) do
+    Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+        optimize_stepsize(mcmc; init_stepsize, N = 2_000, discard_initial = 0)
+    end
 end;
-@info "MCMC step size: $new_step"
-chain = Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
-    MarkovChainMonteCarlo.sample(
-        mcmc,
-        n_samples;
-        stepsize = new_step,
-        discard_initial,
-    )
+@info "MCMC step size: init=$init_stepsize  learned=$new_step"
+chain = redirect_stderr(devnull) do
+    Logging.with_logger(SimpleLogger(devnull, Logging.Error)) do
+        MarkovChainMonteCarlo.sample(
+            mcmc,
+            n_samples;
+            stepsize = new_step,
+            discard_initial,
+        )
+    end
 end;
 posterior = MarkovChainMonteCarlo.get_posterior(mcmc, chain);
 
@@ -512,32 +520,41 @@ CairoMakie.save("perfect_model_ces_posterior.png", fig3);
 
 # ## Posterior Predictive Check
 #
-# Evaluate the TRUE forward model G at a small number of posterior samples.
-# This is the proper posterior predictive check: it uses the actual land model
-# (not the emulator) to validate that the emulator-based posterior is meaningful.
-# If the emulator were biased, the MCMC posterior could be biased too — but this
-# check would reveal the discrepancy since G itself is unbiased.
+# The Emulator Validation section above checked that the emulator reproduces the
+# true model output (in an L² sense) on the EKI training points. That is necessary
+# but not sufficient: a small output error can still bias the inferred posterior.
+# The posterior predictive check closes this gap by pushing posterior samples back
+# through the TRUE forward model `G` and asking whether the observations are
+# plausible under them.
+#
+# Each evaluation of `G` is a full land-model run, so we do not recompute this
+# during the docs build. The figure below was generated offline with 50 posterior
+# and 50 prior samples: it shows the posterior predictive spread (blue) collapsing
+# around the truth (black) relative to the much wider prior predictive (gray) —
+# the constraint that calibration buys us. To regenerate it (optionally with more
+# samples), run:
+#
+# ```julia
+# n_pp = 50
+# post_unc = MarkovChainMonteCarlo.get_distribution(posterior)["Vcmax25"]
+# pp_idx = rand(rng, 1:size(post_unc, 2), n_pp)
+# post_constrained =
+#     EKP.transform_unconstrained_to_constrained(prior, post_unc[:, pp_idx])
+# prior_unc = EKP.construct_initial_ensemble(rng, prior, n_pp)
+# prior_constrained =
+#     EKP.transform_unconstrained_to_constrained(prior, prior_unc)
+# fig = CairoMakie.Figure(; size = (900, 400))
+# ax = Axis(fig[1, 1]; xlabel = "Hour of day", ylabel = "LHF [W m⁻²]")
+# for j in 1:n_pp  # prior predictive
+#     lines!(ax, 0:23, G(prior_constrained[1, j]); color = (:gray, 0.2))
+# end
+# for j in 1:n_pp  # posterior predictive
+#     lines!(ax, 0:23, G(post_constrained[1, j]); color = (:steelblue, 0.35))
+# end
+# lines!(ax, 0:23, observations; color = :black, linewidth = 3)
+# ```
 
-n_pp = 3
-post_params_unc_dict = MarkovChainMonteCarlo.get_distribution(posterior)
-unc_samples = post_params_unc_dict["Vcmax25"]  # (1 × n_samples)
-pp_idx = rand(rng, 1:size(unc_samples, 2), n_pp)
-pp_constrained =
-    EKP.transform_unconstrained_to_constrained(prior, unc_samples[:, pp_idx])
-
-fig4 = CairoMakie.Figure(; size = (900, 400))
-ax4 = Axis(
-    fig4[1, 1];
-    title = "Posterior predictive check (true model G)",
-    xlabel = "Hour of day",
-    ylabel = "LHF [W m⁻²]",
-)
-lines!(ax4, 0:23, observations; color = :black, linewidth = 3, label = "Truth")
-for j in 1:n_pp
-    G_j = G(pp_constrained[1, j])
-    lines!(ax4, 0:23, G_j; color = (:steelblue, 0.5), linewidth = 1.5)
-end
-axislegend(ax4; position = :rb, framevisible = false)
-CairoMakie.resize_to_layout!(fig4)
-CairoMakie.save("perfect_model_ces_predictive.png", fig4);
-# ![](perfect_model_ces_predictive.png)
+pp_img = "perfect_model_ces_predictive_offline.png";
+pp_src = joinpath("..", "..", "tutorials", "calibration", pp_img);
+isfile(pp_src) && cp(pp_src, pp_img; force = true);
+# ![](perfect_model_ces_predictive_offline.png)
