@@ -25,6 +25,7 @@ function setup_model(
     toml_dict,
     ::Type{ClimaLand.LandModel};
     use_rosetta = true,
+    prognostic_lai = false,
 ) where {FT}
     surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
@@ -39,13 +40,6 @@ function setup_model(
         context,
     )
     forcing = (; atmos, radiation)
-
-    # Read in LAI from MODIS data
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        surface_space,
-        start_date,
-        stop_date,
-    )
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
 
     # Build the soil model explicitly so we can choose the van Genuchten
@@ -59,10 +53,7 @@ function setup_model(
             domain.space.subsurface,
             FT,
         ) :
-        ClimaLand.Soil.soil_vangenuchten_parameters(
-            domain.space.subsurface,
-            FT,
-        )
+        ClimaLand.Soil.soil_vangenuchten_parameters(domain.space.subsurface, FT)
     soil = ClimaLand.Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -72,44 +63,86 @@ function setup_model(
         retention_parameters,
     )
 
-    # Build the canopy explicitly so SAI/RAI track spatially-varying max LAI
-    # (MODIS 2000-2020), which sets the AR winter maintenance baseline, instead
-    # of LandModel's default constant SAI/RAI. Other canopy defaults are unchanged.
     # Feed the soil's ν/θ_r into the moisture-stress thresholds so they stay
     # consistent with the (possibly Rosetta) retention parameters.
-    maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        (;
-            atmos,
-            radiation,
-            ground = ClimaLand.PrognosticGroundConditions{FT}(),
-        ),
-        LAI,
-        toml_dict;
-        prognostic_land_components,
-        soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
-            domain,
-            toml_dict;
-            soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
-        ),
-        biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
-            surface_domain,
-            LAI,
-            maxLAI,
-            toml_dict,
-        ),
-    )
-    land = LandModel{FT}(
-        forcing,
-        LAI,
-        toml_dict,
+    soil_moisture_stress = ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
         domain,
-        Δt;
-        prognostic_land_components,
-        soil,
-        canopy,
+        toml_dict;
+        soil_params = (; ν = soil.parameters.ν, θ_r = soil.parameters.θ_r),
     )
+
+    if prognostic_lai
+        # Prognostic LAI: the canopy computes LAI with the optimal-LAI model
+        # (Zhou et al. 2025), driven by the P-model potential GPP (PModel is the
+        # CanopyModel default photosynthesis). The optimal-LAI callback that
+        # advances LAI at local noon is added automatically by LandSimulation
+        # via get_model_callbacks. This is what makes the optimal-LAI parameters
+        # (optimal_lai_z/sigma/alpha/f0/k) affect the simulated `lai`.
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            surface_domain,
+            (;
+                atmos,
+                radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            toml_dict;
+            prognostic_land_components,
+            soil_moisture_stress,
+            biomass = ClimaLand.Canopy.ZhouOptimalLAIModel{FT}(
+                surface_domain,
+                toml_dict,
+            ),
+        )
+        land = LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            soil,
+            canopy,
+        )
+    else
+        # Prescribed LAI (default): read LAI from MODIS data.
+        LAI = ClimaLand.Canopy.prescribed_lai_modis(
+            surface_space,
+            start_date,
+            stop_date,
+        )
+        # Build the canopy explicitly so SAI/RAI track spatially-varying max LAI
+        # (MODIS 2000-2020), which sets the AR winter maintenance baseline,
+        # instead of LandModel's default constant SAI/RAI. Other canopy defaults
+        # are unchanged.
+        maxLAI = ClimaLand.Canopy.modis_max_lai(surface_space)
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(
+            surface_domain,
+            (;
+                atmos,
+                radiation,
+                ground = ClimaLand.PrognosticGroundConditions{FT}(),
+            ),
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+            soil_moisture_stress,
+            biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(
+                surface_domain,
+                LAI,
+                maxLAI,
+                toml_dict,
+            ),
+        )
+        land = LandModel{FT}(
+            forcing,
+            LAI,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+            soil,
+            canopy,
+        )
+    end
     return land
 end
 
@@ -120,8 +153,15 @@ function ClimaCalibrate.forward_model(
     ::Type{ClimaLand.LandModel},
 )
     (; config) = model_interface
-    (; output_dir, sample_date_ranges, nelements, spinup, extend, use_rosetta) =
-        config
+    (;
+        output_dir,
+        sample_date_ranges,
+        nelements,
+        spinup,
+        extend,
+        use_rosetta,
+        prognostic_lai,
+    ) = config
     ensemble_member_path =
         ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
@@ -166,6 +206,7 @@ function ClimaCalibrate.forward_model(
         toml_dict,
         ClimaLand.LandModel;
         use_rosetta,
+        prognostic_lai,
     )
 
     # Set up diagnostics. lhf/shf/lwu/swu are needed for the leaderboard.
@@ -184,6 +225,11 @@ function ClimaCalibrate.forward_model(
             ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
         ],
     )
+    # With prognostic LAI, also write the optimal-LAI annual potential GPP
+    # (a0a_1M_average.nc, mol CO2 m^-2 yr^-1). This is the model-derived
+    # A0_annual used to refresh the `optimal_lai_inputs` artifact; it only exists
+    # for the ZhouOptimalLAIModel biomass. (a0d is the daily potential GPP.)
+    prognostic_lai && push!(short_names, "a0a")
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
         model,
         start_date,
@@ -198,8 +244,7 @@ function ClimaCalibrate.forward_model(
     # the Gupta soil. LandSimulation defaults to the Rosetta IC, but we set it
     # explicitly so soil and IC stay paired regardless of use_rosetta.
     ic_path =
-        use_rosetta ?
-        ClimaLand.Artifacts.rosetta_spunup_ic_path(; context) :
+        use_rosetta ? ClimaLand.Artifacts.rosetta_spunup_ic_path(; context) :
         ClimaLand.Artifacts.saturated_land_ic_path(; context)
 
     simulation = LandSimulation(

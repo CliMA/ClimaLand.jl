@@ -78,6 +78,8 @@ _preprocess_sim_var(var, ::Val{:lwu}) = var
 _preprocess_sim_var(var, ::Val{:lhf}) = var
 _preprocess_sim_var(var, ::Val{:shf}) = var
 _preprocess_sim_var(var, ::Val{:swu}) = var
+# LAI is already dimensionless (m^2 m^-2), matching the MODIS obs; no conversion.
+_preprocess_sim_var(var, ::Val{:lai}) = var
 _preprocess_sim_var(var, name::Val) =
     error("Preprocessing var with short name ($name) is not defined")
 
@@ -505,9 +507,9 @@ function get_inversion_obs_var_dict()
     _load(varname) = begin
         obs_var = ClimaAnalysis.OutputVar(inversion_path, varname)
         ClimaAnalysis.dim_units(obs_var, "lon") == "degree" &&
-            ClimaAnalysis.set_dim_units!(obs_var, "lon", "degrees_east")
+        ClimaAnalysis.set_dim_units!(obs_var, "lon", "degrees_east")
         ClimaAnalysis.dim_units(obs_var, "lat") == "degree" &&
-            ClimaAnalysis.set_dim_units!(obs_var, "lat", "degrees_north")
+        ClimaAnalysis.set_dim_units!(obs_var, "lat", "degrees_north")
         ClimaAnalysis.transform_dates!(obs_var, Dates.firstdayofmonth)
         return ClimaAnalysis.replace(obs_var, missing => NaN)
     end
@@ -629,15 +631,72 @@ function get_mask_dict(data_loader::InversionDataLoader)
 end
 
 """
+    get_modis_lai_obs_var(; years = 2000:2020)
+
+MODIS LAI observations (Yuan et al., monthly 1°×1°, per-year files) loaded as a
+single full-timeseries `OutputVar` spanning `years`, keyed `lai`. The framework
+sets the per-sample reference date and windows by season in
+`generate_observations.jl`.
+
+Native units are `m^2 m^-2`, matching the model `lai` diagnostic, so no unit
+conversion is applied (ClimaCalibrate's `UnitsChecker` does a raw string
+compare). Latitude is sorted ascending and longitude shifted to [-180, 180] (via
+`_preprocess_var`) to align with the model grid; the short_name is kept as `lai`.
+
+The native MODIS samples are ~30.4-day spaced (calendar-unaligned, with no
+December/February sample), so they are linearly interpolated in time onto
+calendar month-starts. This is required because the calibration framework labels
+each seasonal average by the *first date* in the season
+(`ClimaAnalysis.average_season_across_time`) and matches obs to sim by exact date
+(`indexin`); the model's monthly `lai` diagnostic is month-start-dated and has
+all 12 months, so the obs must be too. Only interior month-starts are kept (the
+first/last months would require extrapolation), which is why `years` should
+bracket the calibration window by at least one month on each side.
+
+This is the calibration target for the optimal-LAI parameters
+(`ZhouOptimalLAIModel`, Zhou et al. 2025), used only when the forward model is
+run with `prognostic_lai = true`.
+"""
+function get_modis_lai_obs_var(; years = 2000:2020)
+    paths = [
+        ClimaLand.Artifacts.modis_lai_single_year_path(; year) for year in years
+    ]
+    obs_var = ClimaAnalysis.OutputVar(paths, "lai")
+    obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+    # Resample onto calendar month-starts (interior only) by linear time
+    # interpolation, so seasonal averaging produces the same canonical
+    # month-start season dates as the model's monthly `lai` diagnostic.
+    start_date = Dates.DateTime(obs_var.attributes["start_date"])
+    data_dates = ClimaAnalysis.dates(obs_var)
+    month_starts = filter(
+        d -> first(data_dates) <= d <= last(data_dates),
+        Dates.firstdayofmonth(first(data_dates)):Dates.Month(1):last(
+            data_dates,
+        ),
+    )
+    target_seconds = [
+        Float64(Dates.value(Dates.Second(d - start_date))) for d in month_starts
+    ]
+    obs_var = ClimaAnalysis.resampled_as(obs_var; time = target_seconds)
+
+    obs_var = _preprocess_var(obs_var)
+    obs_var.attributes["short_name"] = "lai"
+    obs_var.attributes["units"] = "m^2 m^-2"
+    return obs_var
+end
+
+"""
     get_calibration_obs_var_dict(; short_names = nothing)
 
 Return a dictionary mapping short names to `OutputVar` containing preprocessed
 observational data for calibration. This combines ERA5 energy flux variables
-(`lhf`, `shf`, `lwu`, `swu`), ILAMB variables (`gpp`, `er`, `nee`), and the
+(`lhf`, `shf`, `lwu`, `swu`), ILAMB variables (`gpp`, `er`, `nee`), the
 inversion-derived carbon targets (`inv_nee`, `sif_gpp`, `res_er`, `inv_hr`)
-from the `inversion_nee` artifact.
+from the `inversion_nee` artifact, and the MODIS `lai` target.
 
-If `short_names` is provided, only the requested variables are returned.
+If `short_names` is provided, only the requested variables are returned (and
+the MODIS LAI file load is skipped unless `lai` is requested).
 """
 function get_calibration_obs_var_dict(; short_names = nothing)
     obs_var_dict = Dict{String, Any}()
@@ -658,6 +717,12 @@ function get_calibration_obs_var_dict(; short_names = nothing)
     # Inversion-derived carbon targets (CT2022 NEE + GOSIF GPP + residual ER +
     # Hashimoto Rh), keyed by inv_nee/sif_gpp/res_er/inv_hr.
     merge!(obs_var_dict, get_inversion_obs_var_dict())
+
+    # MODIS LAI target for optimal-LAI calibration. Loading the 21 per-year
+    # files is comparatively expensive, so only build it when requested.
+    if isnothing(short_names) || "lai" in short_names
+        obs_var_dict["lai"] = get_modis_lai_obs_var()
+    end
 
     if !isnothing(short_names)
         filter!(p -> p.first in short_names, obs_var_dict)

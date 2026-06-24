@@ -94,7 +94,10 @@ function process_member_data!(
     short_names,
 )
     @info "Short names: $short_names"
-    calibration_obs_vars = ext.get_calibration_obs_var_dict()
+    # Only build the requested observation variables (some, e.g. MODIS `lai`,
+    # are expensive to load); this validates that each requested short name has
+    # a corresponding observation.
+    calibration_obs_vars = ext.get_calibration_obs_var_dict(; short_names)
     for short_name in short_names
         short_name in keys(calibration_obs_vars) || error(
             "Variable $short_name does not appear in the observation dataset. Add the variable to get_calibration_obs_var_dict in data_sources.jl",
@@ -117,7 +120,8 @@ function process_member_data!(
         # preprocess_sim_var dispatches on the diagnostic name (e.g. :nee),
         # so unit conversion happens before we retag to the obs alias.
         var = preprocess_sim_var(var)
-        diag_name == short_name || (var.attributes["short_name"] = short_name)
+        diag_name == short_name ||
+            (var.attributes["short_name"] = short_name)
         var = ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         # To prevent double counting along the longitudes since -180 and 180
