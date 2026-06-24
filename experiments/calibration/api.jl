@@ -63,6 +63,12 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
     conditions) instead of the Gupta et al. (2020) product. Only affects
     `ClimaLand.LandModel` runs."
     use_rosetta::Bool
+
+    "Whether the canopy should compute LAI prognostically with the optimal-LAI
+    model (Zhou et al. 2025, `ZhouOptimalLAIModel`) instead of prescribing it
+    from MODIS. Set `true` to calibrate the optimal-LAI parameters against the
+    MODIS `lai` target. Only affects `ClimaLand.LandModel` runs."
+    prognostic_lai::Bool
 end
 
 """
@@ -129,6 +135,12 @@ Keyword arguments
   the matching spun-up Rosetta initial conditions; if `false`, it uses the Gupta
   et al. (2020) product with the Gupta-based saturated initial conditions.
   Ignored for the bucket model.
+
+- `prognostic_lai`: If `true`, the canopy computes LAI prognostically with the
+  optimal-LAI model (`ZhouOptimalLAIModel`, Zhou et al. 2025) instead of
+  prescribing it from MODIS. Use this when calibrating the optimal-LAI
+  parameters against the MODIS `lai` target. Defaults to `false` (prescribed
+  MODIS LAI). Ignored for the bucket model.
 """
 function CalibrateConfig(;
     short_names,
@@ -147,6 +159,7 @@ function CalibrateConfig(;
     ),
     model_type = ClimaLand.LandModel,
     use_rosetta = true,
+    prognostic_lai = false,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
 
@@ -200,6 +213,7 @@ function CalibrateConfig(;
         obs_vec_filepath,
         model_type,
         use_rosetta,
+        prognostic_lai,
     )
 
 end
