@@ -627,10 +627,12 @@ function update_optimal_EMA(
     Vcmax25_c3 = Vcmax_c3 / inst_temp_scaling_factor_Vcmax
     Vcmax25_c4 = Vcmax_c4 / inst_temp_scaling_factor_Vcmax
 
-    Jmax_c3 =
-        4 * ϕ0_c3 * APAR_canopy_moles / sqrt((mj_c3 / (βm * mprime_c3))^2 - 1)
-    Jmax_c4 =
-        4 * ϕ0_c4 * APAR_canopy_moles / sqrt((mj_c4 / (βm * mprime_c4))^2 - 1)
+    # guard the sqrt against a marginally-negative discriminant (rounds below
+    # zero when βm ≈ 1 and mj ≈ mprime); mirrors compute_full_pmodel_outputs.
+    arg_c3 = (mj_c3 / (βm * mprime_c3))^2 - 1
+    arg_c4 = (mj_c4 / (βm * mprime_c4))^2 - 1
+    Jmax_c3 = 4 * ϕ0_c3 * APAR_canopy_moles / (sqrt(max(arg_c3, 0)) + eps(FT))
+    Jmax_c4 = 4 * ϕ0_c4 * APAR_canopy_moles / (sqrt(max(arg_c4, 0)) + eps(FT))
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
