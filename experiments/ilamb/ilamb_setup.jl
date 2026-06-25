@@ -1,6 +1,10 @@
 import Dates
 
-const NUM_MODELS_TO_KEEP = 3
+# Total number of manual model runs to keep
+const NUM_MANUAL_MODEL_RUNS = 1
+
+# Total number of scheduled model runs to keep
+const NUM_SCHEDULED_MODEL_RUNS = 1
 
 """
     setup_run_for_ilamb(
@@ -9,7 +13,8 @@ const NUM_MODELS_TO_KEEP = 3
         ilamb_build_dir::String,
         buildkite_id::String,
         commit_id::String,
-        num_models_to_keep::Integer,
+        num_manual_model_run_to_keep::Integer,
+        num_scheduled_model_run_to_keep::Integer,
     )
 
 Set up the ILAMB diagnostics produced from the run for ILAMB.
@@ -19,8 +24,9 @@ does not exist, creating a model directory in the `MODELS` directory for this
 run, and creating symbolic links in the model directory pointing to NetCDF files
 in `ilamb_diagnostics_dir`.
 
-If there are more models present than `num_models_to_keep`, models are
-automatically removed starting with the oldest model.
+At most `num_manual_model_run_to_keep` model runs from non-scheduled builds are
+kept and at most `num_scheduled_model_run_to_keep` model runs from scheduled
+builds are kept.
 """
 function setup_run_for_ilamb(
     ilamb_diagnostics_dir::String,
@@ -28,7 +34,8 @@ function setup_run_for_ilamb(
     ilamb_build_dir::String,
     buildkite_id::String,
     commit_id::String,
-    num_models_to_keep::Integer,
+    num_manual_model_run_to_keep::Integer,
+    num_scheduled_model_run_to_keep::Integer,
 )
     ilamb_diagnostics_dir = abspath(ilamb_diagnostics_dir)
     ilamb_models_parent_dir = abspath(ilamb_models_parent_dir)
@@ -52,8 +59,10 @@ function setup_run_for_ilamb(
     create_symlinks(ilamb_diagnostics_dir, model_dir)
     validate_symlinks(MODELS_dir)
 
-    delete_old_runs(MODELS_dir, num_models_to_keep)
+    delete_old_model_runs(MODELS_dir, num_manual_model_run_to_keep)
+    delete_old_scheduled_model_runs(MODELS_dir, num_scheduled_model_run_to_keep)
     clean_build_dir(MODELS_dir, ilamb_build_dir)
+    return nothing
 end
 
 """
@@ -143,23 +152,74 @@ function validate_symlinks(MODELS_dir::String)
 end
 
 """
-    delete_old_runs(MODELS_dir::String, N::Integer)
+    delete_old_model_runs(MODELS_dir::String, N::Integer)
 
-Delete model directories in `MODELS_dir` until there are only `N` model
-directories remaining.
+Delete model directories produced from manual model runs in `MODELS_dir` until
+there are at most `N` model directories remaining.
 
 Only directories corresponding to ClimaLand simulation outputs (matching the
 pattern created by `create_model_name`) can be deleted. Directories are sorted
 by Buildkite ID, with lower IDs considered older and deleted first.
 """
-function delete_old_runs(MODELS_dir::String, N::Integer)
+function delete_old_model_runs(MODELS_dir::String, N::Integer)
+    _delete_model_runs(
+        MODELS_dir,
+        N,
+        is_model_from_simulation,
+        "manual model runs",
+    )
+    return nothing
+end
+
+"""
+    delete_old_scheduled_model_runs(MODELS_dir::String, N::Integer)
+
+Delete model directories produced from scheduled model runs in `MODELS_dir`
+until there are at most `N` model directories remaining.
+
+Only directories corresponding to ClimaLand simulation outputs (matching the
+pattern created by `create_model_name`) can be deleted. Directories are sorted
+by Buildkite ID, with lower IDs considered older and deleted first.
+"""
+function delete_old_scheduled_model_runs(MODELS_dir::String, N::Integer)
+    _delete_model_runs(
+        MODELS_dir,
+        N,
+        is_model_from_scheduled_simulation,
+        "scheduled model runs",
+    )
+    return nothing
+end
+
+"""
+    _delete_model_runs(
+        MODELS_dir::String,
+        N::Integer,
+        predicate,
+        dir_description,
+    )
+
+Helper function to delete directories in `MODELS_dir`, so there are at most `N`
+directories satisfying the `predicate`.
+
+The argument `dir_description` is used in the log record to indicates what kind
+of directories are being deleted.
+"""
+function _delete_model_runs(
+    MODELS_dir::String,
+    N::Integer,
+    predicate,
+    dir_description,
+)
+    # Only interested in directories identified by `predicate` that can be
+    # deleted
     dirs = filter(isdir, readdir(MODELS_dir, join = true))
+    filter!(dir -> basename(dir) |> predicate, dirs)
     length(dirs) <= N && return nothing
     num_to_delete = length(dirs) - N
-    filter!(dir -> basename(dir) |> is_model_from_simulation, dirs)
     sort!(dirs, by = dir -> extract_buildkite_id(basename(dir)))
     dirs_to_remove = first(dirs, num_to_delete)
-    @info "Removing directories: $dirs_to_remove"
+    @info "Removing directories produced from $dir_description: $dirs_to_remove"
     rm.(dirs_to_remove, recursive = true)
     return nothing
 end
@@ -204,13 +264,32 @@ end
 """
     is_model_from_simulation(model_name::String)
 
-Return true if `model_name` matches the pattern produced by `create_model_name`.
+Return `true` if `model_name` matches the pattern produced by
+`create_model_name` with the commit ID matching the regex `[0-9a-f]{7}`.
+
+Any non-scheduled builds should produce a model name such that
+`is_model_from_simulation` return `true`.
 """
 function is_model_from_simulation(model_name::String)
     # \d* - Match any number of digits (corresponds to buildkite ID)
     # \d{4}-\d{2}-\d{2} - Match the date format
     # [0-9a-f]{7} - Match the commit ID that is shortened to 7 characters
     return occursin(r"\d+_\d{4}-\d{2}-\d{2}_[0-9a-f]{7}", model_name)
+end
+
+"""
+    is_model_from_scheduled_simulation(model_name::String)
+
+Return `true` if `model_name` matches the pattern produced by
+`create_model_name`, but the commit ID is replaced by the word "latest".
+
+Any scheduled builds should produce a model name with "latest" for the last
+part of the name.
+"""
+function is_model_from_scheduled_simulation(model_name::String)
+    # \d* - Match any number of digits (corresponds to buildkite ID)
+    # \d{4}-\d{2}-\d{2} - Match the date format
+    return occursin(r"\d+_\d{4}-\d{2}-\d{2}_latest", model_name)
 end
 
 """
@@ -235,13 +314,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
     ilamb_build_dir = joinpath(ilamb_models_parent_dir, "_build")
     # This can also be any unique identifier
     buildkite_id = ARGS[3]
-    commit_id = ARGS[4]
+    # BUILDKITE_SOURCE can be "webhook", "api", "ui", "trigger_job", "schedule"
+    is_scheduled_run = get(ENV, "BUILDKITE_SOURCE", "") == "schedule"
+    # If the BUILDKITE_SOURCE is not "schedule", then we assume that it is a
+    # run that is created manually
+    commit_id = is_scheduled_run ? "latest" : ARGS[4]
     setup_run_for_ilamb(
         ilamb_diagnostics_dir,
         ilamb_models_parent_dir,
         ilamb_build_dir,
         buildkite_id,
         commit_id,
-        NUM_MODELS_TO_KEEP,
+        NUM_MANUAL_MODEL_RUNS,
+        NUM_SCHEDULED_MODEL_RUNS,
     )
 end

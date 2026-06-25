@@ -1,3 +1,10 @@
+[rosetta_spunup_ic]
+git-tree-sha1 = "1bdbdd07d37c3025d06464d1b2263b441364c4e3"
+
+    [[rosetta_spunup_ic.download]]
+    sha256 = "100a0aa8674f39ed554f6c06a664384c18d4f1799e6aa0f6a493f3018a581385"
+    url = "https://caltech.box.com/shared/static/k2tic8adbjvyvk5moeac86j4ihnor8qe.gz"
+
 [soil_params_rosetta]
 git-tree-sha1 = "3835c13c2dbf2ee26b2c5ca8a709a2298a57bf5c"
 

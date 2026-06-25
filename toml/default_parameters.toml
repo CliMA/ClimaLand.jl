@@ -747,9 +747,9 @@ tag = "SoilCO2Parameters"
 
 # Soil Parameters
 ["evaporation_exponent"]
-value = 1.0
+value = 2.0
 type = "float"
-description = "Exponent of dry soil layer factor in evaporation"
+description = "Exponent of dry soil layer factor in evaporation; for use with ROSETTA parameters, this needs to be 2.0 for stability at a timestep of 900s"
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
