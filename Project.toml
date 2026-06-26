@@ -45,7 +45,7 @@ LandSimulationVisualizationExt = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Pr
 SNOTELScraperExt = ["DataFrames", "Downloads", "Statistics"]
 
 [compat]
-Adapt = "4.7.0"
+Adapt = "4.6.1"
 CairoMakie = "0.13, 0.14, 0.15"
 ClimaAnalysis = "0.5.22"
 ClimaComms = "0.6.2"
