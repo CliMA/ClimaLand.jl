@@ -6,21 +6,21 @@ using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
-    AbstractSoilSource,
-    AbstractSoilModel,
-    RichardsModel,
-    EnergyHydrology,
-    volumetric_internal_energy_liq
+                        AbstractSoilSource,
+                        AbstractSoilModel,
+                        RichardsModel,
+                        EnergyHydrology,
+                        volumetric_internal_energy_liq
 import ClimaLand.Parameters as LP
 import ClimaParams as CP
 export TOPMODELRunoff,
-    NoRunoff,
-    SurfaceRunoff,
-    AbstractRunoffModel,
-    TOPMODELSubsurfaceRunoff,
-    RegressionRunoff,
-    subsurface_runoff_source,
-    update_infiltration_water_flux!
+       NoRunoff,
+       SurfaceRunoff,
+       AbstractRunoffModel,
+       TOPMODELSubsurfaceRunoff,
+       RegressionRunoff,
+       subsurface_runoff_source,
+       update_infiltration_water_flux!
 
 """
     AbstractRunoffModel
@@ -68,7 +68,7 @@ Updates the runoff variables in the cache `p.soil` in place
 in the case of NoRunoff: sets infiltration = precipitation.
 """
 function update_infiltration_water_flux!(p, runoff::NoRunoff, input, _...)
-    p.soil.infiltration .= input
+    return p.soil.infiltration .= input
 end
 
 runoff_vars(::NoRunoff) = (:infiltration,)
@@ -105,7 +105,8 @@ If the soil is not saturated, the maximum of the infiltration
 capacity or the input is used as infiltration. Recall that
 both are negative (towards the soil).
 """
-function surface_infiltration(f_ic::FT, input::FT, is_saturated::FT) where {FT}
+function surface_infiltration(f_ic::FT, input::FT,
+                              is_saturated::FT) where {FT}
     return (1 - is_saturated) * max(f_ic, input)
 end
 
@@ -127,31 +128,30 @@ p.soil.R_s
 p.soil.is_saturated
 p.soil.infiltration
 """
-function update_infiltration_water_flux!(
-    p,
-    runoff::SurfaceRunoff,
-    input,
-    Y,
-    t,
-    model::AbstractSoilModel,
-)
+function update_infiltration_water_flux!(p,
+                                         runoff::SurfaceRunoff,
+                                         input,
+                                         Y,
+                                         t,
+                                         model::AbstractSoilModel)
 
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
     ϑ_l = Y.soil.ϑ_l
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
-    is_saturated_sfc =
-        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
+    is_saturated_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
 
     @. p.soil.infiltration = surface_infiltration(ic, input, is_saturated_sfc)
     @. p.soil.R_s = abs(input .- p.soil.infiltration)
 end
 
-runoff_vars(::SurfaceRunoff) =
-    (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
-runoff_var_domain_names(::SurfaceRunoff) =
-    (:subsurface, :surface, :surface, :subsurface)
+function runoff_vars(::SurfaceRunoff)
+    return (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
+end
+function runoff_var_domain_names(::SurfaceRunoff)
+    return (:subsurface, :surface, :surface, :subsurface)
+end
 runoff_var_types(::SurfaceRunoff, FT) = (FT, FT, FT, FT)
 
 # TOPMODE
@@ -179,8 +179,9 @@ struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
     f_over::FT
     "Explicit vs implicit stepping"
     explicit::Bool
-    TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over) where {FT} =
-        new{FT}(R_sb, f_over, false)
+    function TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over) where {FT}
+        return new{FT}(R_sb, f_over, false)
+    end
 end
 
 """
@@ -206,17 +207,15 @@ struct TOPMODELRunoff{FT <: AbstractFloat, F <: ClimaCore.Fields.Field} <:
     subsurface_source::TOPMODELSubsurfaceRunoff{FT}
 end
 
-function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT, F}
+function TOPMODELRunoff{FT}(; f_over::FT, f_max::F, R_sb::FT) where {FT,F}
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
     return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
 end
 
-function TOPMODELRunoff(
-    toml_dict::CP.ParamDict;
-    f_max::F,
-    f_over = toml_dict["f_over"],
-    R_sb = toml_dict["R_sb"],
-) where {F}
+function TOPMODELRunoff(toml_dict::CP.ParamDict;
+                        f_max::F,
+                        f_over=toml_dict["f_over"],
+                        R_sb=toml_dict["R_sb"],) where {F}
     FT = CP.float_type(toml_dict)
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
     return TOPMODELRunoff{FT, F}(f_over, f_max, subsurface_source)
@@ -232,14 +231,12 @@ p.soil.R_ss
 p.soil.h∇
 p.soil.infiltration
 """
-function update_infiltration_water_flux!(
-    p,
-    runoff::TOPMODELRunoff,
-    input,
-    Y,
-    t,
-    model::AbstractSoilModel,
-)
+function update_infiltration_water_flux!(p,
+                                         runoff::TOPMODELRunoff,
+                                         input,
+                                         Y,
+                                         t,
+                                         model::AbstractSoilModel)
     ϑ_l = Y.soil.ϑ_l
     ν = model.parameters.ν
     θ_r = model.parameters.θ_r
@@ -247,47 +244,44 @@ function update_infiltration_water_flux!(
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     # Surface runoff first
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) * (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i - θ_r, ν - θ_r) *
+                             (ϑ_l + θ_i - θ_r) / (ν - θ_r) # weighted by how much above saturation, include ice!
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth
-    @. p.soil.infiltration = topmodel_surface_infiltration(
-        runoff.f_max,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-        ic,
-        input,
-    )
+    @. p.soil.infiltration = topmodel_surface_infiltration(runoff.f_max,
+                                                           runoff.f_over,
+                                                           model.domain.fields.depth -
+                                                           p.soil.h∇,
+                                                           ic,
+                                                           input)
     @. p.soil.R_s = abs(input - p.soil.infiltration)
     # eek! now do it again but use only liquid water for subsurface runoff
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r) # weighted by how much above saturation
+    @. p.soil.is_saturated = is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) /
+                             (ν - θ_r) # weighted by how much above saturation
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated) # can be bigger than the depth, only includes liquid water
-    @. p.soil.R_ss = topmodel_ss_flux(
-        runoff.subsurface_source.R_sb,
-        runoff.f_over,
-        model.domain.fields.depth - p.soil.h∇,
-    )
-    update_subsurface_energy_runoff!(p, model)
+    @. p.soil.R_ss = topmodel_ss_flux(runoff.subsurface_source.R_sb,
+                                      runoff.f_over,
+                                      model.domain.fields.depth - p.soil.h∇)
+    return update_subsurface_energy_runoff!(p, model)
 end
 
-function update_subsurface_energy_runoff!(
-    p,
-    model::EnergyHydrology{FT},
-) where {FT}
-    @. p.soil.subsfc_scratch =
-        p.soil.is_saturated * volumetric_internal_energy_liq(
-            p.soil.T,
-            model.parameters.earth_param_set,
-        )
+function update_subsurface_energy_runoff!(p,
+                                          model::EnergyHydrology{FT}) where {FT}
+    @. p.soil.subsfc_scratch = p.soil.is_saturated *
+                               volumetric_internal_energy_liq(p.soil.T,
+                                                              model.parameters.earth_param_set)
     column_integral_definite!(p.soil.R_ess, p.soil.subsfc_scratch) # this actual just computes the average volumetric energy of the liquid in the saturated layers multiplied by the water table height
     @. p.soil.R_ess *= p.soil.R_ss / max(p.soil.h∇, eps(FT)) #this divides by the water table height (to get average energy) and multiplies by volumetric liquid water runoff.
 end
 update_subsurface_energy_runoff!(p, model::RichardsModel) = nothing
 
-runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :subsfc_scratch)
-runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :surface, :subsurface)
+function runoff_vars(::TOPMODELRunoff)
+    return (:infiltration, :is_saturated, :R_s, :R_ss, :R_ess, :h∇,
+            :subsfc_scratch)
+end
+function runoff_var_domain_names(::TOPMODELRunoff)
+    return (:surface, :subsurface, :surface, :surface, :surface, :surface,
+            :subsurface)
+end
 runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT)
 
 """
@@ -298,8 +292,8 @@ in Y.soil.θ_i, if present, as it is for EnergyHydrologyModels, or
 else returns a scalar zero of type FT if it is not present,
 as it is not for RichardsModel.
 """
-model_agnostic_volumetric_ice_content(Y, FT) =
-    :θ_i ∈ propertynames(Y.soil) ? Y.soil.θ_i : zero(FT)
+model_agnostic_volumetric_ice_content(Y, FT) = :θ_i ∈ propertynames(Y.soil) ?
+                                               Y.soil.θ_i : zero(FT)
 
 """
     ClimaLand.source!(
@@ -319,13 +313,11 @@ thickness (defined to be where twc>ν), where twc is the total water content,
  and R_ss is the runoff as a
 flux(m/s).
 """
-function ClimaLand.source!(
-    dY::ClimaCore.Fields.FieldVector,
-    src::TOPMODELSubsurfaceRunoff{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    model::RichardsModel{FT},
-) where {FT}
+function ClimaLand.source!(dY::ClimaCore.Fields.FieldVector,
+                           src::TOPMODELSubsurfaceRunoff{FT},
+                           Y::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
+                           model::RichardsModel{FT}) where {FT}
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
@@ -344,13 +336,11 @@ end
 Adjusts dY.soil.ϑ_l and dY.soil.ρe_int in place
  to account for the loss of water and energy due to subsurface runoff.
 """
-function ClimaLand.source!(
-    dY::ClimaCore.Fields.FieldVector,
-    src::TOPMODELSubsurfaceRunoff{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    model::EnergyHydrology{FT},
-) where {FT}
+function ClimaLand.source!(dY::ClimaCore.Fields.FieldVector,
+                           src::TOPMODELSubsurfaceRunoff{FT},
+                           Y::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
+                           model::EnergyHydrology{FT}) where {FT}
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
@@ -403,13 +393,14 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
     surface_space = model.domain.space.surface
 
-    @. p.soil.subsfc_scratch =
-        -K_sat *
-        ClimaLand.Soil.impedance_factor(
-            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
-            Ω,
-        ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
+    @. p.soil.subsfc_scratch = -K_sat *
+                               ClimaLand.Soil.impedance_factor(Y.soil.θ_i /
+                                                               (p.soil.θ_l +
+                                                                Y.soil.θ_i -
+                                                                θ_r),
+                                                               Ω) *
+                               ClimaLand.Soil.viscosity_factor(p.soil.T, γ,
+                                                               γT_ref)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
@@ -444,10 +435,10 @@ end
     regression_f_sat(β_shift::NTuple{2,FT}, β_shape::NTuple{5,FT}, cutoff::FT, S_l::F)
  
 Pointwise function that computes the saturated fraction by first calculating
-the shift and shape parameters of a tanh CDF fit and then evaluating (1-) the CDF
-at a threshold (e.g. 0.9) to estimate the saturated fraction.
+the shift and shape parameters of a tanh CDF fit and then evaluating one less the CDF
+at a given cutoff (e.g. 0.9) to estimate the saturated fraction.
 
-First version of this uses only mean soil moisture as a predictor.
+First version of this uses only effective mean saturation as a predictor.
 
 Arguments: 
     β_shift: Tuple of 2 floats intercept and slope for linear fit of shift
@@ -456,18 +447,23 @@ Arguments:
     S_l: Field of mean saturation for grid cells
 Returns f_sat ∈ [0, 1].
 
-Notes:
-- not pointwise because it will be dot fused in the infiltration update anyway
 """
-function regression_f_sat(
-    β_shift::NTuple{2, FT},
-    β_shape::NTuple{5, FT},
-    cutoff::FT,
-    S_l
-) where {FT}
-    shift = β_shift[1] + β_shift[2] * S_l
+function regression_f_sat(β_shift::NTuple{2, FT},
+                          β_shape::NTuple{5, FT},
+                          cutoff::FT,
+                          S_l) where {FT}
+    shift = clamp(β_shift[1] + β_shift[2] * S_l, FT(0), FT(1))
 
-    shape = β_shape[1] + β_shape[2] * S_l + β_shape[3] * S_l^2 + β_shape[4] * S_l^3 + β_shape[5] * S_l^4
+    shape = β_shape[1] +
+            β_shape[2] * S_l +
+            β_shape[3] * S_l^2 +
+            β_shape[4] * S_l^3 +
+            β_shape[5] * S_l^4 >= FT(0) ?
+            β_shape[1] +
+            β_shape[2] * S_l +
+            β_shape[3] * S_l^2 +
+            β_shape[4] * S_l^3 +
+            β_shape[5] * S_l^4 : FT(0)
 
     η = 0.5 * (1 - tanh(shape * (cutoff - shift))) # 1 - CDF
 
@@ -479,7 +475,7 @@ end
     RegressionRunoff{FT, F} <: AbstractRunoffModel
  
 A surface runoff parameterization where the saturated fraction is predicted
-using a hyperbolic tangent parameterization of the CDF for soil saturation,
+using a hyperbolic tangent parameterization of the CDF for effective saturation,
 and the shift and slope of the tanh function is determined using regression.
 
 Notes:
@@ -488,12 +484,9 @@ Notes:
 
 $(DocStringExtensions.FIELDS)
 """
-struct RegressionRunoff{
-    FT <: AbstractFloat,
-    # F <: Union{FT, ClimaCore.Fields.Field},
-} <: AbstractRunoffModel
+struct RegressionRunoff{FT <: AbstractFloat} <: AbstractRunoffModel
     "Linear regression coefficients for shift (2 elements)"
-    β_shift::NTuple{2,FT}
+    β_shift::NTuple{2, FT}
     "Quartic regression coefficients for shape (5 elements)"
     β_shape::NTuple{5, FT}
     "Fractional soil saturation to use as a cutoff for saturated"
@@ -512,16 +505,18 @@ Also takes R_sb and f_over to use for the subsurface runoff from TOPMODEL.
 Coefficient ordering is from lowest to highest order (wwill need to choose ordering once we add other regressors)
 """
 function RegressionRunoff{FT}(;
-    β_shift::Union{Vector{FT}, NTuple{2, FT}},
-    β_shape::Union{Vector{FT}, NTuple{5, FT}},
-    cutoff::FT,
-    R_sb::FT,
-    f_over::FT
-) where {FT}
+                              β_shift::Union{Vector{FT}, NTuple{2, FT}},
+                              β_shape::Union{Vector{FT}, NTuple{5, FT}},
+                              cutoff::FT,
+                              R_sb::FT,
+                              f_over::FT,) where {FT}
     β_shift_tuple = β_shift isa NTuple ? β_shift : NTuple{2, FT}(β_shift) # syntax: a < b ? "less than" : "greater than" -> turns vectors into tuples
     β_shape_tuple = β_shape isa NTuple ? β_shape : NTuple{5, FT}(β_shape)
     subsurface_source = TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over)
-    return RegressionRunoff{FT}(β_shift_tuple, β_shape_tuple, cutoff, subsurface_source)
+    return RegressionRunoff{FT}(β_shift_tuple,
+                                β_shape_tuple,
+                                cutoff,
+                                subsurface_source)
 end
 
 
@@ -539,73 +534,55 @@ Variables updated:
 - p.soil.infiltration
 - p.soil.R_s
 """
-function update_infiltration_water_flux!(
-    p,
-    runoff::RegressionRunoff,
-    input,
-    Y,
-    t,
-    model::AbstractSoilModel,
-)
+function update_infiltration_water_flux!(p,
+                                         runoff::RegressionRunoff,
+                                         input,
+                                         Y,
+                                         t,
+                                         model::AbstractSoilModel)
     ϑ_l = Y.soil.ϑ_l
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
- 
-    (; ν, K_sat, θ_r) = model.parameters
- 
-    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, ν)
- 
-    # Effective saturation at the surface
-    # @. p.soil.subsfc_scratch = get_effective_saturation(ν, p.soil.θ_l, θ_r) # <- go back to this if I use effective saturation when training
-    # @. p.soil.subsfc_scratch = p.soil.θ_l / ν # quick check to see what happens if I use absolute saturation since that's what I used for training
-    # println("ϑ_l,ν", ϑ_l,ν)
-    nz = ClimaCore.Spaces.nlevels(ClimaCore.Fields.axes(ϑ_l)) # Attempt to bypass using the subsfc_scratch, which is sued elsewhere, causing ϑ_l_sfc to be set to 0.0
-    ϑ_l_sfc = ClimaCore.Fields.level(ϑ_l, nz)
-    raw_ϑ_l_top = ClimaCore.Fields.level(ϑ_l, nz)
-    raw_ν_top = model.parameters.ν #ClimaCore.Fields.level(model.parameters.ν, nz)
-    
-    # Calculate S_l_sfc directly as a dedicated, protected local variable
-    S_l_sfc = @. ϑ_l_sfc / ν 
- 
-    # Get f_sat
-    # [check] tried escaping the dot fuse with $(tuples), but didn't seem to work -- got dimension mismatch
-    # This doesn't throw an error, but is the logic correct?
-    p.soil.f_sat .= regression_f_sat.(
-            (runoff.β_shift,), (runoff.β_shape,), runoff.cutoff, S_l_sfc,
-        )
- 
-    # Infiltration capacity
-    ic = soil_infiltration_capacity(model, Y, p) # this uses the subsurface scratch -- possibly the source of zeroing out S_l_sfc if I use sbsfc_scratch
 
-    # Partition into infiltration and surface runoff
+    (; ν, K_sat, θ_r) = model.parameters
+
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, ν)
+
+    nz = ClimaCore.Spaces.nlevels(ClimaCore.Fields.axes(ϑ_l))
+    θ_r_sfc = ClimaCore.Fields.level(θ_r, nz)
+    ϑ_l_sfc = ClimaCore.Fields.level(ϑ_l, nz)
+    ν_sfc = ClimaCore.Fields.level(model.parameters.ν, nz)
+
+    # S_l_sfc = @. (ϑ_l_sfc - θ_r_sfc) / (ν_sfc - θ_r_sfc)
+
+    # Get f_sat 
+    β_shift_ref = Ref(runoff.β_shift)
+    β_shape_ref = Ref(runoff.β_shape)
+
+    @. p.soil.f_sat = regression_f_sat(β_shift_ref,
+                                    β_shape_ref,
+                                    runoff.cutoff,
+                                    (ϑ_l_sfc - θ_r_sfc) / (ν_sfc - θ_r_sfc))
+
+    # Infiltration capacity
+    ic = soil_infiltration_capacity(model, Y, p)
+
     @. p.soil.infiltration = (FT(1) - p.soil.f_sat) * max(ic, input)
     @. p.soil.R_s = abs(input - p.soil.infiltration)
 
-    # Add components for TOPMODEL subsurface runoff
-    # [check] should I have the same section repeated with and without ice, like the TOPMODEL section?
-    @. p.soil.is_saturated =
-        is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) / (ν - θ_r)
+    @. p.soil.is_saturated = is_saturated(ϑ_l - θ_r, ν - θ_r) * (ϑ_l - θ_r) /
+                             (ν - θ_r)
 
     # Calculate water table height based on saturated columns
     column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
 
     # Calculate subsurface water flux
-    @. p.soil.R_ss = topmodel_ss_flux(
-        runoff.subsurface_source.R_sb,
-        runoff.subsurface_source.f_over,
-        model.domain.fields.depth - p.soil.h∇
-    )
+    @. p.soil.R_ss = topmodel_ss_flux(runoff.subsurface_source.R_sb,
+                                      runoff.subsurface_source.f_over,
+                                      model.domain.fields.depth - p.soil.h∇)
     # Track energy loss if modeling thermal dynamics
-    update_subsurface_energy_runoff!(p, model)
+    return update_subsurface_energy_runoff!(p, model)
 
-    if t.counter < 5  # Debugging
-        println("Raw Top Water Content: ", parent(raw_ϑ_l_top))
-        println("Raw Porosity Parameter: ", raw_ν_top)
-        println("Mean S_l_sfc: ", sum(S_l_sfc)/length(S_l_sfc)) # divided by 10
-        println("f_sat: ", p.soil.f_sat)
-        raw_array = parent(S_l_sfc)
-        println("True Local Saturation at Node: ", raw_array[1]) # actual saturation
-    end
 end
 
 
@@ -616,8 +593,10 @@ A helper function which returns the surface runoff variable
 based on the type of runoff model being used.
 """
 get_surface_runoff(runoff_model::AbstractRunoffModel, Y, p) = nothing
-get_surface_runoff(runoff_model::Union{SurfaceRunoff, TOPMODELRunoff,RegressionRunoff}, Y, p) =
-    p.soil.R_s
+get_surface_runoff(runoff_model::SurfaceRunoff, Y, p) = p.soil.R_s
+get_surface_runoff(runoff_model::TOPMODELRunoff, Y, p) = p.soil.R_s
+get_surface_runoff(runoff_model::RegressionRunoff, Y, p) = p.soil.R_s
+
 
 """
     get_subsurface_runoff(runoff_model, Y, p)
@@ -649,10 +628,8 @@ based on the type of runoff model being used.
 """
 get_soil_fsat(runoff_model::AbstractRunoffModel, Y, p, depth) = nothing
 function get_soil_fsat(runoff_model::TOPMODELRunoff, Y, p, depth)
-    @. lazy(
-        runoff_model.f_max *
-        exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)),
-    )
+    @. lazy(runoff_model.f_max *
+            exp(-runoff_model.f_over / 2 * (depth - p.soil.h∇)))
 end
 
 """
@@ -668,10 +645,27 @@ end
 get_soil_fsat(runoff_model::RegressionRunoff, Y, p, depth) = p.soil.f_sat
 
 # Cache variable info -- same as elsewhere but with arg changes
-runoff_vars(::RegressionRunoff) = # colons make these variables Symbols
-    (:f_sat, :is_saturated, :R_s, :R_ss, :R_ess, :h∇, :infiltration, :subsfc_scratch)
-runoff_var_domain_names(::RegressionRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :surface, :surface, :subsurface)
+function runoff_vars(::RegressionRunoff) # colons make these variables Symbols
+    return (:f_sat,
+            :is_saturated,
+            :R_s,
+            :R_ss,
+            :R_ess,
+            :h∇,
+            :infiltration,
+            :subsfc_scratch)
+end
+function runoff_var_domain_names(::RegressionRunoff)
+    return (:surface,
+            :subsurface,
+            :surface,
+            :surface,
+            :surface,
+            :surface,
+            :surface,
+            :subsurface)
+end
 runoff_var_types(::RegressionRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT, FT)
+
 
 end
