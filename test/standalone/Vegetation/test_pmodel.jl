@@ -411,7 +411,7 @@ function setup_and_initialize_model(
     parent(p.canopy.photosynthesis.InstVars.An) .= NaN
     parent(p.canopy.photosynthesis.InstVars.GPP) .= NaN
     parent(p.canopy.photosynthesis.InstVars.Rd) .= NaN
-    parent(p.canopy.photosynthesis.InstVars.ci) .= NaN
+    parent(p.canopy.photosynthesis.InstVars.gs_co2) .= NaN
 
     set_ic! = ClimaLand.Simulations.make_set_initial_state_from_file(
         ClimaLand.Artifacts.saturated_land_ic_path(;
@@ -474,15 +474,15 @@ end
     # These quantities are weighted averages of c3
     GPP1 = p_ones.canopy.photosynthesis.InstVars.GPP
     Rd1 = p_ones.canopy.photosynthesis.InstVars.Rd
-    ci1 = p_ones.canopy.photosynthesis.InstVars.ci
+    gs1 = p_ones.canopy.photosynthesis.InstVars.gs_co2
 
     GPP2 = p_ones2.canopy.photosynthesis.InstVars.GPP
     Rd2 = p_ones2.canopy.photosynthesis.InstVars.Rd
-    ci2 = p_ones2.canopy.photosynthesis.InstVars.ci
+    gs2 = p_ones2.canopy.photosynthesis.InstVars.gs_co2
 
     @test isequal(parent(GPP1), parent(GPP2))
     @test isequal(parent(Rd1), parent(Rd2))
-    @test isequal(parent(ci1), parent(ci2))
+    @test isequal(parent(gs1), parent(gs2))
 
     # Compare against c3 = 0, c3 = 1, and 0 <= c3 <= 1
     zero_field = zeros(domain.space.surface)
@@ -517,25 +517,25 @@ end
 
     GPP0 = p_zeros.canopy.photosynthesis.InstVars.GPP
     Rd0 = p_zeros.canopy.photosynthesis.InstVars.Rd
-    ci0 = p_zeros.canopy.photosynthesis.InstVars.ci
+    gs0 = p_zeros.canopy.photosynthesis.InstVars.gs_co2
 
     GPP_half = p_half.canopy.photosynthesis.InstVars.GPP
     Rd_half = p_half.canopy.photosynthesis.InstVars.Rd
-    ci_half = p_half.canopy.photosynthesis.InstVars.ci
+    gs_half = p_half.canopy.photosynthesis.InstVars.gs_co2
 
     GPP_weighted = similar(GPP0)
     Rd_weighted = similar(Rd0)
-    ci_weighted = similar(ci0)
+    gs_weighted = similar(gs0)
 
     parent(GPP_weighted) .= NaN
     parent(Rd_weighted) .= NaN
-    parent(ci_weighted) .= NaN
+    parent(gs_weighted) .= NaN
 
     @. GPP_weighted = FT(0.5) * (GPP0 + GPP1)
     @. Rd_weighted = FT(0.5) * (Rd0 + Rd1)
-    @. ci_weighted = FT(0.5) * (ci0 + ci1)
+    @. gs_weighted = FT(0.5) * (gs0 + gs1)
 
     @test isequal(parent(GPP_weighted), parent(GPP_half))
     @test isequal(parent(Rd_weighted), parent(Rd_half))
-    @test isequal(parent(ci_weighted), parent(ci_half))
+    @test isequal(parent(gs_weighted), parent(gs_half))
 end
