@@ -131,11 +131,11 @@ function make_update_implicit_boundary_fluxes(
         zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
         @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
             p.canopy.turbulent_fluxes.shf,
-            p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+            p.canopy.biomass.area_index.leaf,
         )
         @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
             p.canopy.turbulent_fluxes.∂shf∂T,
-            p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+            p.canopy.biomass.area_index.leaf,
         )
         # Update the canopy radiation
         canopy_radiant_energy_fluxes!(
@@ -177,7 +177,7 @@ function make_compute_imp_tendency(
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+            ) / (ac_canopy * max(area_index.leaf, eps(FT)))
     end
     return compute_imp_tendency!
 end
@@ -246,7 +246,7 @@ function ClimaLand.make_compute_jacobian(
         @. ∂Tres∂T =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
-                (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
+                (ac_canopy * max(area_index.leaf, eps(FT))),
             ) - (I,)
     end
     return compute_jacobian!
@@ -279,9 +279,7 @@ function ClimaLand.total_energy_per_area!(
 )
     area_index = p.canopy.biomass.area_index
     @. surface_field .=
-        model.parameters.ac_canopy *
-        (area_index.stem + area_index.leaf) *
-        Y.canopy.energy.T
+        model.parameters.ac_canopy * area_index.leaf * Y.canopy.energy.T
     return nothing
 end
 

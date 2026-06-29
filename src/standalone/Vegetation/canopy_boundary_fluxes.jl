@@ -163,11 +163,11 @@ NVTX.@annotate function canopy_boundary_fluxes!(
     zero_on_lai(X::FT, lai::FT) where {FT} = lai < FT(0.05) ? FT(0) : X
     @. p.canopy.turbulent_fluxes.shf = zero_on_lai(
         p.canopy.turbulent_fluxes.shf,
-        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+        p.canopy.biomass.area_index.leaf,
     )
     @. p.canopy.turbulent_fluxes.∂shf∂T = zero_on_lai(
         p.canopy.turbulent_fluxes.∂shf∂T,
-        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
+        p.canopy.biomass.area_index.leaf,
     )
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
@@ -338,9 +338,7 @@ function ClimaLand.get_update_surface_temperature_function(
 )
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = @. lazy(
-        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
-    )
+    AI = p.canopy.biomass.area_index.leaf
     function update_T_sfc_at_a_point(
         ζ,
         param_set,
@@ -435,9 +433,7 @@ the canopy temperature.
 function ClimaLand.get_∂T_sfc∂T_function(model::CanopyModel, Y, p)
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     Cd = sfp.Cd
-    AI = @. lazy(
-        p.canopy.biomass.area_index.leaf + p.canopy.biomass.area_index.stem,
-    )
+    AI = p.canopy.biomass.area_index.leaf
     function update_∂T_sfc∂T_at_a_point(
         u_star,
         g_h,

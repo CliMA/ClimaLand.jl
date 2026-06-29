@@ -814,13 +814,12 @@ function update_radiative_transfer!(
     nir_d = p.canopy.radiative_transfer.nir_d
     area_index = p.canopy.biomass.area_index
     LAI = area_index.leaf
-    SAI = area_index.stem
     bc = canopy.boundary_conditions
 
     # update radiative transfer
     (; G_Function, Ω, λ_γ_PAR, K_lw) = radiative_transfer.parameters
     @. p.canopy.radiative_transfer.ϵ =
-        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-K_lw * (LAI + SAI))) #from CLM 5.0, Tech note 4.20
+        radiative_transfer.parameters.ϵ_canopy * (1 - exp(-K_lw * LAI)) #from CLM 5.0, Tech note 4.20
     compute_PAR!(par_d, radiative_transfer, bc.radiation, p, t)
     compute_NIR!(nir_d, radiative_transfer, bc.radiation, p, t)
 
