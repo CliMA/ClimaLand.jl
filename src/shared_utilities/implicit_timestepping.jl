@@ -47,40 +47,38 @@ function set_dfluxBCdY!(
 """
     initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
 
-Constructs a `MatrixFields.FieldMatrixWithSolver` Jacobian matrix
-populated with ClimaLand-specific values based on the state vector `Y`.
+Constructs a `MatrixFields.FieldMatrixWithSolver` residual Jacobian matrix
+populated with ClimaLand-specific values based on the state vector `Y`;
+`Δt ∂Ẏ_i/∂Y_j - δ_{i,j}.
 
-For variables that will be stepped implicitly, the Jacobian matrix
-is a tridiagonal matrix. For variables that will be stepped explicitly,
-the Jacobian matrix is a negative identity matrix.
+For variables `Y_i` that have zero values of
+`∂Ẏ_i∂Y_i`, the corresponding block in the residual matrix
+is a negative identity. We refer to these variables ``identity block"
+variables. Note that their contribution to the residual matrix is
+*not* zero.
 
-To run a model with one or more prognostic variables stepped implicitly,
-the Jacobian matrix must be constructed and passed to the solver.
-All implicitly-stepped variables of the model should be added to the
-`implicit_names` tuple, and any explicitly-stepped variables should be added
-to the `explicit_names` tuple.
+Variables `Y_i` that have a nonzero `∂Ẏ_i∂Y_i` will have a term plus
+the negative of identity matrix. We refer to these variables as
+``non identity block" variables.
+
+Offdiagonal blocks are assumed to be zero by ClimaTimeSteppers, and are only added
+as needed.
 """
 function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     FT = eltype(Y)
     # Only add jacobian blocks for fields that are in Y for this model
     is_in_Y(var) = MatrixFields.has_field(Y, var)
 
-    # Define the implicit and explicit variables of any model we use
-    # By implicit vars, we mean variables that contribute nonzero elements to *tendency
-    # jacobian* ∂X_t_i/∂X_j,
-    # and by explicit we mean the corresponding *tendency jacobian* entries would be zero.
-    # The full jacobian used by the model is Δt ∂X_t_i/∂X_j - δ_{i,j}, so
-    # explicit variables have a full jacobian equal to minus the identity matrix.
-    implicit_vars = (
+    nonid_block_vars = (
         @name(soil.ϑ_l),
         @name(soil.ρe_int),
-        @name(canopy.energy.T),
+        @name(canopy.energy.U),
         @name(soilco2.CO2),
         @name(soilco2.O2),
     )
-    explicit_vars = (
-        @name(soil.∫F_vol_liq_water_dt),
-        @name(soil.∫F_e_dt),
+    id_block_vars = (# can replace scalar_field_names(Y), setdiff(names, non_identity_blocks_in_field_name_set)
+        @name(∫F_vol_e_dt),
+        @name(∫F_vol_liq_water_dt),
         @name(soilco2.SOC),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),
@@ -98,11 +96,12 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     )
 
     # Filter out the variables that are not in this model's state, `Y`
-    available_implicit_vars =
-        MatrixFields.unrolled_filter(is_in_Y, implicit_vars)
-    available_explicit_vars =
-        MatrixFields.unrolled_filter(is_in_Y, explicit_vars)
+    available_nonid_vars =
+        MatrixFields.unrolled_filter(is_in_Y, nonid_block_vars)
+    available_id_vars = MatrixFields.unrolled_filter(is_in_Y, id_block_vars)
 
+    # Helper functions for getting the non-identity blocks
+    # intialized correctly
     get_jac_type(
         space::Union{
             Spaces.FiniteDifferenceSpace,
@@ -117,46 +116,62 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
 
     get_j_field(space, FT) = zeros(get_jac_type(space, FT), space)
 
-    implicit_blocks = MatrixFields.unrolled_map(
+    # Diagonal blocks
+    # Non identity
+    nonid_blocks = MatrixFields.unrolled_map(
         var ->
             (var, var) =>
                 get_j_field(axes(MatrixFields.get_field(Y, var)), FT),
-        available_implicit_vars,
+        available_nonid_vars,
     )
 
-    # We include some terms ∂T_x/∂y where x ≠ y
-    # These are the off-diagonal terms in the Jacobian matrix
-    # Here, we take the convention that each pair has order (T_x, y) to produce ∂T_x/∂y as above
-    off_diagonal_pairs = ((@name(soil.ρe_int), @name(soil.ϑ_l)),)
+    # Identity
+    # Note: We have to use FT(-1) * I instead of -I because inv(-1) == -1.0,
+    # which means that multiplying inv(-1) by a Float32 will yield a Float64.
+    id_blocks = MatrixFields.unrolled_map(
+        var -> (var, var) => FT(-1) * I,
+        available_id_vars,
+    )
+
+    # Offdiagonal blocks
+    # Here, we follow the convention that each pair has order `Ẏ_i, Y_j` to produce `∂Ẏ_i∂Y_j`
+    off_diagonal_pairs = (
+        (@name(soil.ρe_int), @name(soil.ϑ_l)),
+        (@name(∫F_vol_e_dt), @name(canopy.energy.U)),
+    )
     available_off_diagonal_pairs = MatrixFields.unrolled_filter(
         pair -> all(is_in_Y.(pair)),
         off_diagonal_pairs,
     )
-    implicit_off_diagonals = MatrixFields.unrolled_map(
+    offdiagonal_blocks = MatrixFields.unrolled_map(
         pair ->
             (pair[1], pair[2]) =>
                 get_j_field(axes(MatrixFields.get_field(Y, pair[1])), FT),
         available_off_diagonal_pairs,
     )
-    # For explicitly-stepped variables, use the negative identity matrix
-    # Note: We have to use FT(-1) * I instead of -I because inv(-1) == -1.0,
-    # which means that multiplying inv(-1) by a Float32 will yield a Float64.
-    explicit_blocks = MatrixFields.unrolled_map(
-        var -> (var, var) => FT(-1) * I,
-        available_explicit_vars,
-    )
-
     matrix = MatrixFields.FieldMatrix(
-        implicit_blocks...,
-        implicit_off_diagonals...,
-        explicit_blocks...,
+        nonid_blocks...,
+        offdiagonal_blocks...,
+        id_blocks...,
     )
 
     # Choose algorithm based on whether off-diagonal blocks are present
     if is_in_Y(@name(soil.ρe_int)) && is_in_Y(@name(soil.ϑ_l))
-        # Set up lower triangular solver for block Jacobian with off-diagonal blocks
-        # Specify which variable to compute ∂T_x/∂x for first
-        alg = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
+        if is_in_Y(@name(canopy.energy.U)) && is_in_Y(@name(∫F_vol_e_dt))
+            # Set up lower triangular solver for block Jacobian with off-diagonal blocks
+            # Specify which variable to compute ∂T_x/∂x for first
+            alg₁ = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
+            alg = MatrixFields.BlockLowerTriangularSolve(
+                (
+                    @name(soil.ϑ_l),
+                    @name(soil.ρe_int),
+                    @name(canopy.energy.U)
+                )...;
+                alg₁,
+            )
+        else
+            alg = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
+        end
     else
         # Set up block diagonal solver for block Jacobian with no off-diagonal blocks
         alg = MatrixFields.BlockDiagonalSolve()

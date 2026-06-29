@@ -139,7 +139,7 @@ function LandSimVis.check_conservation(
     ## Energy
     energy_per_area = get(simdir; short_name = "epa")
     energy_per_area_change = get(simdir; short_name = "epac")
-    N = length(ClimaAnalysis.times(energy_per_area))
+    N = length(ClimaAnalysis.times(energy_per_area)) - 1
     times = ClimaAnalysis.times(energy_per_area)
     energy_0 = ClimaAnalysis.apply_oceanmask(
         ClimaAnalysis.slice(energy_per_area; time = times[1]),
@@ -168,23 +168,30 @@ function LandSimVis.check_conservation(
         ) / 2
     energy_error = zeros(N)
     water_volume_error = zeros(N)
-    for (i, t) in enumerate(times)
+    for i in 1:1:N
         # error = nanmean[(X(t) - X(0) - Expected Change in X)]
-        energy_error[i] = ClimaAnalysis.weighted_average_lonlat(
-            ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(energy_per_area, time = t),
-            ) - energy_0 - ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(energy_per_area_change, time = t),
-            ),
-        ).data[1]
+        t = times[i]
+        tp1 = times[i + 1]
+        energy_error[i] =
+            ClimaAnalysis.weighted_average_lonlat(
+                ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(energy_per_area, time = t),
+                ) - energy_0 - ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(energy_per_area_change, time = tp1),
+                ),
+            ).data[1] ./ mean_energy
 
-        water_volume_error[i] = ClimaAnalysis.weighted_average_lonlat(
-            ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(water_volume_per_area, time = t),
-            ) - water_volume_0 - ClimaAnalysis.apply_oceanmask(
-                ClimaAnalysis.slice(water_volume_per_area_change, time = t),
-            ),
-        ).data[1]
+        water_volume_error[i] =
+            ClimaAnalysis.weighted_average_lonlat(
+                ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(water_volume_per_area, time = t),
+                ) - water_volume_0 - ClimaAnalysis.apply_oceanmask(
+                    ClimaAnalysis.slice(
+                        water_volume_per_area_change,
+                        time = tp1,
+                    ),
+                ),
+            ).data[1] ./ mean_water_volume
 
     end
     titles =
@@ -199,10 +206,10 @@ function LandSimVis.check_conservation(
         ax = Axis(
             fig_cycle[1, 1],
             xlabel = "Years",
-            ylabel = "Global Mean Conservation Error [$(units[i])]",
+            ylabel = "Global Mean Fractional Conservation Error",
             title = "$(titles[i]), typical value = $(typical_value[i]) $(units[i])",
         )
-        CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
+        CairoMakie.lines!(ax, times[1:N] ./ 24 ./ 3600 ./ 365, errors[i])
         CairoMakie.save(
             joinpath(savedir, "$(quantity_names[i])_$(plot_stem_name).png"),
             fig_cycle,
@@ -233,20 +240,8 @@ function make_ocean_masked_annual_timeseries(
     simdir = ClimaAnalysis.SimDir(diagdir)
     for short_name in short_names
         var = get(simdir; short_name)
-
-        # Can only plot monthly data
-        # This assumes EveryCalendarDtSchedule is used with a period of 1 month
-        occursin("1 Month", ClimaAnalysis.long_name(var)) || continue
-
         kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         var_sliced = ClimaAnalysis.slice(var; kwarg_z...)
-
-        # Get the first and last years of the simulation for windowing
-        first_date = first(ClimaAnalysis.dates(var_sliced))
-        last_date = last(ClimaAnalysis.dates(var_sliced))
-        first_year = year(first_date)
-        last_year = year(last_date)
-
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
         # i represent a year, from 1 to last year
         # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
@@ -256,27 +251,15 @@ function make_ocean_masked_annual_timeseries(
                     ClimaAnalysis.window(
                         var_sliced,
                         "time",
-                        left = Dates.DateTime(year, 1),
-                        right = Dates.DateTime(year, 12),
+                        left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
+                        right = i * 366 * 86400, # 1 year right of year i, in seconds
                     ),
                 ),
-            ).data for year in range(first_year, last_year)
+            ).data for i in range(
+                1,
+                round(last(ClimaAnalysis.times(var_sliced) / (365 * 86400))), # n years
+            )
         ]
-
-        # Add NaNs for months that are not simulated
-        first_year_months =
-            ClimaAnalysis.window(
-                var_sliced,
-                "time",
-                left = Dates.DateTime(first_year, 1),
-                right = Dates.DateTime(first_year, 12),
-            ) |>
-            ClimaAnalysis.dates .|>
-            Dates.monthname
-        indices = indexin(Dates.monthname.(1:12), first_year_months)
-        var_global_average[1] =
-            [isnothing(i) ? NaN : var_global_average[1][i] for i in indices]
-
         fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
             fig_seasonal_cycle[1, 1],
@@ -459,6 +442,7 @@ end
     savedir,
     diagnostics,
     start_date;
+    layer = nothing, 
     plot_stem_name = "timeseries",
     comparison_data=nothing,
     spinup_date=start_date,

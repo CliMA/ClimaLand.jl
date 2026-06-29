@@ -328,7 +328,6 @@ function ClimaLand.source!(
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
 end
 
 """
@@ -353,9 +352,6 @@ function ClimaLand.source!(
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.ρe_int -= (p.soil.R_ess / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
-    @. dY.soil.∫F_e_dt -= p.soil.R_ess # the integral is designed to be this flux
 end
 
 """

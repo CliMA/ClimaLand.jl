@@ -94,9 +94,6 @@ end
 @safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
 end
-@safetestset "Soil integrated water and energy content" begin
-    include("standalone/Soil/conservation.jl")
-end
 
 @safetestset "Soil spatial parameters and parameter constructors" begin
     include("standalone/Soil/parameters.jl")
@@ -158,6 +155,7 @@ end
 end
 @safetestset "Full land" begin
     include("integrated/full_land.jl")
+    include("integrated/conservation.jl")
 end
 
 # FluxnetSimulations extension tests

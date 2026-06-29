@@ -18,11 +18,11 @@ ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 
 
 ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
-    (:fa_energy_roots, :∂LW_n∂T)
+    (:fa_energy_roots, :∂LW_n∂T, :T)
 ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
-    (FT, FT)
+    (FT, FT, FT)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface)
+    (:surface, :surface, :surface)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}
@@ -101,17 +101,29 @@ function BigLeafEnergyModel{FT}(
     )
 end
 
-ClimaLand.prognostic_vars(model::BigLeafEnergyModel) = (:T,)
+ClimaLand.prognostic_vars(model::BigLeafEnergyModel) = (:U,)
 ClimaLand.prognostic_types(model::BigLeafEnergyModel{FT}) where {FT} = (FT,)
 ClimaLand.prognostic_domain_names(model::BigLeafEnergyModel) = (:surface,)
-
 """
     canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p)
 
 Returns the canopy temperature under the `BigLeafEnergyModel` model,
-where the canopy temperature is modeled prognostically.
+where the canopy energy is modeled prognostically.
 """
-canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = Y.canopy.energy.T
+canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = p.canopy.energy.T
+
+function make_update_implicit_aux(
+    model::BigLeafEnergyModel{FT},
+    canopy) where {FT}
+    function update_implicit_aux!(p, Y, t)
+        area_index = p.canopy.biomass.area_index
+        ac_canopy = model.parameters.ac_canopy
+        @. p.canopy.energy.T = Y.canopy.energy.U / (ac_canopy * (area_index.leaf + area_index.stem + FT(0.05)))
+        @show p.canopy.energy.T
+                                                    
+    end
+    return update_implicit_aux!
+end
 
 function make_update_implicit_boundary_fluxes(
     model::BigLeafEnergyModel{FT},
@@ -156,28 +168,23 @@ function make_compute_imp_tendency(
     canopy,
 ) where {FT}
     function compute_imp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.biomass.area_index
-        ac_canopy = model.parameters.ac_canopy
+  
         # Energy Equation:
-        # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
-        # or( ac_canopy AI)∂T∂t = -∑F
+        # ∂(ρc_canopy h_canopy AI T)∂t = -∑F
+        # or ∂(ac_canopy AI T)∂t = -∑F
         # where ∑F = F_sfc - F_bot, and both F_sfc and F_bot are per
         # unit area ground [W/m^2].
         # Because they are per unit area ground, we need the factor of
         # area index on the LHF, as ac_canopy [J/m^2/K]
         # is per unit area plant.
 
-        # d(energy.T) = - net_energy_flux / specific_heat_capacity
-        # To prevent dividing by zero, change AI" to
-        # "max(AI, eps(FT))"
-
-        @. dY.canopy.energy.T =
+        @. dY.canopy.energy.U =
             -(
                 -p.canopy.radiative_transfer.LW_n -
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+            )
     end
     return compute_imp_tendency!
 end
@@ -233,7 +240,7 @@ function ClimaLand.make_compute_jacobian(
         (; matrix) = jacobian
 
         # The derivative of the residual with respect to the prognostic variable
-        ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
+        ∂Ures∂U = matrix[@name(canopy.energy.U), @name(canopy.energy.U)]
         ∂lhf∂T = p.canopy.turbulent_fluxes.∂lhf∂T
         ∂shf∂T = p.canopy.turbulent_fluxes.∂shf∂T
         ∂LW_n∂T = p.canopy.energy.∂LW_n∂T
@@ -242,8 +249,9 @@ function ClimaLand.make_compute_jacobian(
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.earth_param_set
         _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
-        @. ∂Tres∂T =
+        T = canopy_temperature(model, canopy, Y, p)
+        @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * T^3 # ≈ ϵ_ground = 1
+        @. ∂Ures∂U =
             float(dtγ) * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂T - ∂shf∂T - ∂lhf∂T) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
@@ -278,10 +286,7 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     area_index = p.canopy.biomass.area_index
-    @. surface_field .=
-        model.parameters.ac_canopy *
-        (area_index.stem + area_index.leaf) *
-        Y.canopy.energy.T
+    @. surface_field .= Y.canopy.energy.U
     return nothing
 end
 

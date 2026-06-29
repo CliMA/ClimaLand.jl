@@ -457,7 +457,12 @@ function make_set_initial_state_from_file(
             end
         end
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
+            ClimaLand.Canopy.update_biomass!(p,
+                                             Y,
+                                             t0,
+                                             land.canopy.biomass,
+                                             land.canopy)
+            Y.canopy.energy.U .= land.canopy.energy.ac_canopy * (p.canopy.biomass.area_index.stem + p.canopy.biomass.area_index.leaf) * p.drivers.T
         end
 
         # Lake IC
@@ -567,7 +572,12 @@ function make_set_initial_state_from_file(
             end
         end
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
+            ClimaLand.Canopy.update_biomass!(p,
+                                             Y,
+                                             t0,
+                                             land.canopy.biomass,
+                                             land.canopy)
+            Y.canopy.energy.U .= land.canopy.energy.ac_canopy * (p.canopy.biomass.area_index.stem + p.canopy.biomass.area_index.leaf) * p.drivers.T
         end
     end
     return set_ic!
@@ -679,13 +689,18 @@ function make_set_subseasonal_initial_conditions(
             regridder_kwargs = (; extrapolation_bc, interpolation_method),
         )
         # Set canopy temperature to skin temperature
-        Y.canopy.energy.T .= SpaceVaryingInput(
+        ClimaLand.Canopy.update_biomass!(p,
+                                         Y,
+                                         t,
+                                         land.canopy.biomass,
+                                         land.canopy)
+        Y.canopy.energy.U .= SpaceVaryingInput(
             ic_path,
             "skt",
             surface_space;
             regridder_type,
             regridder_kwargs = (; extrapolation_bc, interpolation_method),
-        )
+        )  .* land.canopy.energy.ac_canopy .* (p.canopy.biomass.area_index.stem .+ p.canopy.biomass.area_index.leaf)
 
         set_snow_initial_conditions!(
             Y,
@@ -932,7 +947,12 @@ function make_set_initial_state_from_atmos_and_parameters(
         Y.snow.S_l .= FT(0)
         Y.snow.U .= FT(0)
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
-            Y.canopy.energy.T .= p.drivers.T
+            ClimaLand.Canopy.update_biomass!(p,
+                                             Y,
+                                             t0,
+                                             land.canopy.biomass,
+                                             land.canopy)
+            Y.canopy.energy.U .= land.canopy.energy.ac_canopy * (p.canopy.biomass.area_index.stem + p.canopy.biomass.area_index.leaf) * p.drivers.T
         end
 
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν

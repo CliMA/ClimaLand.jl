@@ -163,7 +163,7 @@ end
 """
     set_fluxnet_ic!(Y, data, columns, Δ_date, model::ClimaLand.Canopy.CanopyModel)
 
-Sets Y.canopy.energy.T to the air temperature at the observation date closest to the start
+Sets Y.canopy.energy.U to the energy at the air temperature at the observation date closest to the start
 date of the model; sets the potential in the stem and leaf to -0.1 and -0.2 MPa, respectively,
 and the computes the resulting water content Y.canopy.hydraulics.ϑ_l using the retention curve
 of the plant.
@@ -185,8 +185,8 @@ function set_fluxnet_ic!(
         val,
     )
 
-    Y.canopy.energy.T .= T_air_0
-    FT = eltype(Y.canopy.energy.T)
+    Y.canopy.energy.U .= model.energy.parameters.ac_canopy * T_air_0
+    FT = eltype(Y.canopy.energy.U)
     ψ_leaf_0 = FT(-2e5 / 9800)
     hydraulics = model.hydraulics
     S_l_ini =
