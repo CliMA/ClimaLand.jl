@@ -27,7 +27,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
       - name: Cache Julia depot
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Cache Julia's depot
           path: |
@@ -45,7 +45,7 @@ jobs:
             ubuntu-latest-julia-
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
-          skip: Dates, LazyArtifacts, LinearAlgebra, Test, Statistics, Printf, InteractiveUtils
+          skip: Adapt, CalibrateEmulateSample, Dates, LazyArtifacts, LinearAlgebra, Test, Statistics, Printf, InteractiveUtils
           julia_version: ${{ matrix.version }}
           mode: 'forcedeps'
       - uses: julia-actions/julia-buildpkg@v1

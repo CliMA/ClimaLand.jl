@@ -15,6 +15,7 @@ main
 - ![][badge-🔥behavioralΔ] The snow-soil ground heat flux is now driven by the
   temperature at the bottom of the snowpack rather than the bulk snow temperature,
   changing the snow/soil energy exchange. PR [#1766](https://github.com/CliMA/ClimaLand.jl/pull/1766)
+- Add Calibrate-Emulate-Sample (CES) UQ pipeline: `experiments/calibration/emulate.jl` and `sample.jl` extend the existing ClimaCalibrate workflow with GP emulation and RWMH-MCMC posterior sampling; add two site-level CES tutorials (perfect-model and observation-based) demonstrating full uncertainty quantification for Vcmax25 and g1 at US-MOz PR[#1764](https://github.com/CliMA/ClimaLand.jl/pull/1764)
 
 v1.9.0
 -----
