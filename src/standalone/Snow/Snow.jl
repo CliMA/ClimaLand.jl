@@ -6,7 +6,6 @@ using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
 using SurfaceFluxes
-using RootSolvers
 using NVTX
 using ClimaLand
 using ClimaLand:
@@ -22,6 +21,7 @@ import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
     make_update_boundary_fluxes,
+    make_set_initial_cache,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -285,19 +285,7 @@ to satisfy Fourier's Law - that the sum of energy fluxes at the surface should e
 snow surface, i.e. Σ(F(T_sfc)) = -κ ∂T/∂x|ₓ₌ₛᵤᵣ, except for once the surface temperature reaches T_freeze, at which point
 leftover energy flux serves to warm up the bulk snow temperature.
 """
-struct EquilibriumGradientTemperatureModel{FT} <:
-       AbstractSnowSurfaceTemperatureModel{FT}
-    "Allowable tolerance in the root-solve algorithm (K)"
-    tol::FT
-    "Max number of iterations to perform in the root-solve algorithm"
-    N_iters::Int
-end
-
-function EquilibriumGradientTemperatureModel{FT}(;
-    tol::FT = FT(0.1),
-    N_iters::Int = 8,
-) where {FT}
-    return EquilibriumGradientTemperatureModel{FT}(tol, N_iters)
+struct EquilibriumGradientTemperatureModel{FT} <: AbstractSnowSurfaceTemperatureModel{FT}
 end
 
 """
@@ -434,7 +422,7 @@ end
             CP.float_type(toml_dict)(1.0),
         ),
         κ_snow::KM = SturmSnowConductivityModel(toml_dict),
-        surf_temp::STM = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
+        surf_temp::STM = EquilibriumGradientTemperatureModel{CP.float_type(toml_dict)}(),
         z_0m = toml_dict["snow_momentum_roughness_length"],
         z_0b = toml_dict["snow_scalar_roughness_length"],
         ϵ_snow = toml_dict["snow_emissivity"],
@@ -464,7 +452,9 @@ function SnowParameters(
         CP.float_type(toml_dict)(1.0),
     ),
     κ_snow::KM = SturmSnowConductivityModel(toml_dict),
-    surf_temp::STM = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
+    surf_temp::STM = EquilibriumGradientTemperatureModel{
+        CP.float_type(toml_dict),
+    }(),
     z_0m = toml_dict["snow_momentum_roughness_length"],
     z_0b = toml_dict["snow_scalar_roughness_length"],
     ϵ_snow = toml_dict["snow_emissivity"],
@@ -504,7 +494,7 @@ function SnowParameters{FT}(
     κ_snow::KM,
     ΔS = FT(0.1),
     scf::SCFM,
-    surf_temp::STM = BulkSurfaceTemperatureModel{FT}(),
+    surf_temp::STM = EquilibriumGradientTemperatureModel{FT}(),
     earth_param_set::PSE,
 ) where {
     FT <: AbstractFloat,
@@ -587,7 +577,7 @@ end
         κ_snow = SturmSnowConductivityModel(toml_dict),
         density = MinimumDensityModel(toml_dict["snow_density"]),
         scf = WuWuSnowCoverFractionModel(toml_dict, sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2),
-        surf_temp = BulkSurfaceTemperatureModel{FT}(),
+        surf_temp = EquilibriumGradientTemperatureModel{FT}(),
         θ_r = toml_dict["holding_capacity_of_water_in_snow"],
         Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
         ΔS = toml_dict["delta_S"],
@@ -619,7 +609,7 @@ function SnowModel(
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) /
         2,
     ),
-    surf_temp = BulkSurfaceTemperatureModel{CP.float_type(toml_dict)}(),
+    surf_temp = EquilibriumGradientTemperatureModel{CP.float_type(toml_dict)}(),
     θ_r = toml_dict["holding_capacity_of_water_in_snow"],
     Ksat = toml_dict["wet_snow_hydraulic_conductivity"],
     ΔS = toml_dict["delta_S"],
@@ -860,6 +850,19 @@ surf_temp_auxiliary_domain_names(m::EquilibriumGradientTemperatureModel) =
     (:surface,)
 
 ClimaLand.name(::SnowModel) = :snow
+
+function ClimaLand.make_set_initial_cache(model::SnowModel)
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
+        p.snow.T_sfc .= p.drivers.T # set initial guess for root find. This is only used by Equilibrium Gradient
+        # but it is so cheap and done only once that we do it all the time.
+        update_cache!(p, Y0, t0)
+    end
+    return set_initial_cache!
+end
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     NVTX.@annotate function update_aux!(p, Y, t)

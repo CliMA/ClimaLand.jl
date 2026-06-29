@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.4"
 manifest_format = "2.0"
 project_hash = "06c84aad6d69863e00aaa7f73d4dfba0d9c6b3be"
 
@@ -3295,9 +3295,11 @@ version = "7.8.3+2"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "5ff62d4697789b88aef8e52f05a43d77d6fe439a"
+git-tree-sha1 = "e9fa3052875527bf161aa22cd1bfa7b8cd53d7ff"
+repo-rev = "as/tsfc-solves"
+repo-url = "https://github.com/CliMA/SurfaceFluxes.jl.git"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "1.0.1"
+version = "1.1.0"
 weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]

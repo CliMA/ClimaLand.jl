@@ -32,6 +32,9 @@ import ClimaCalibrate
 import JLD2
 import EnsembleKalmanProcesses as EKP
 import TOML
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
 
 include(joinpath(pkgdir(ClimaLand), "experiments", "calibration", "api.jl"))
 

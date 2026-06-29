@@ -19,5 +19,7 @@ export HDF5_USE_FILE_LOCKING=FALSE
 OUTPUT_DIR="$1"
 
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+#julia --project=.buildkite -e 'using Pkg; Pkg.update(;verbose=true)'
+#julia --project=.buildkite -e 'using Pkg; Pkg.add(Pkg.PackageSpec(;name=\"SurfaceFluxes\", rev=\"as/tsfc-solves\"))'
 julia --project=.buildkite/ experiments/calibration/generate_observations.jl $OUTPUT_DIR
 julia --project=.buildkite/ experiments/calibration/run_calibration.jl $OUTPUT_DIR

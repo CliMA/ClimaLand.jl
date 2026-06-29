@@ -138,6 +138,7 @@ import ClimaLand.Parameters as LP
     tsfc_1 = copy(p.snow.T_sfc)
     tsfc_1 .=
         ClimaLand.Snow.solve_for_surface_temp_at_a_point.(
+            p.snow.T_sfc,
             p.snow.T,
             p.snow.z_snow,
             p.snow.κ,
@@ -156,33 +157,8 @@ import ClimaLand.Parameters as LP
             model.boundary_conditions.atmos.h,
             gustiness,
             model.parameters.earth_param_set,
-            Ref(model.parameters.surf_temp),
+            model.parameters.surf_temp,
         )
-
-    #resulting flux balance from tsfc_1 should be near-zero
-    result_bal =
-        Snow.flux_balance.(
-            tsfc_1,
-            p.snow.T,
-            p.snow.z_snow,
-            p.snow.κ,
-            p.snow.ρ_snow,
-            model.parameters.ϵ_snow,
-            SW_net,
-            p.drivers.LW_d,
-            p.snow.q_l,
-            h_sfc,
-            displ,
-            p.drivers.P,
-            p.drivers.T,
-            p.drivers.q,
-            p.drivers.u,
-            roughness_model,
-            model.boundary_conditions.atmos.h,
-            gustiness,
-            model.parameters.earth_param_set,
-        )
-    @test all(parent(result_bal) .< model.parameters.surf_temp.tol)
 
     leftover_flux =
         Snow.surface_residual_flux.(
