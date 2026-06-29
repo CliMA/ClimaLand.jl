@@ -72,7 +72,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     nonid_block_vars = (
         @name(soil.ϑ_l),
         @name(soil.ρe_int),
-        @name(canopy.energy.T),
+        @name(canopy.energy.U),
         @name(soilco2.CO2),
         @name(soilco2.O2),
     )
@@ -137,7 +137,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
     # Here, we follow the convention that each pair has order `Ẏ_i, Y_j` to produce `∂Ẏ_i∂Y_j`
     off_diagonal_pairs = (
         (@name(soil.ρe_int), @name(soil.ϑ_l)),
-        (@name(∫F_vol_e_dt), @name(canopy.energy.T)),
+        (@name(∫F_vol_e_dt), @name(canopy.energy.U)),
     )
     available_off_diagonal_pairs = MatrixFields.unrolled_filter(
         pair -> all(is_in_Y.(pair)),
@@ -157,7 +157,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
 
     # Choose algorithm based on whether off-diagonal blocks are present
     if is_in_Y(@name(soil.ρe_int)) && is_in_Y(@name(soil.ϑ_l))
-        if is_in_Y(@name(canopy.energy.T)) && is_in_Y(@name(∫F_vol_e_dt))
+        if is_in_Y(@name(canopy.energy.U)) && is_in_Y(@name(∫F_vol_e_dt))
             # Set up lower triangular solver for block Jacobian with off-diagonal blocks
             # Specify which variable to compute ∂T_x/∂x for first
             alg₁ = MatrixFields.BlockLowerTriangularSolve(@name(soil.ϑ_l))
@@ -165,7 +165,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
                 (
                     @name(soil.ϑ_l),
                     @name(soil.ρe_int),
-                    @name(canopy.energy.T)
+                    @name(canopy.energy.U)
                 )...;
                 alg₁,
             )

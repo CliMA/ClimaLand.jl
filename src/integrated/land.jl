@@ -1053,9 +1053,9 @@ function make_compute_jacobian(land::LandModel{FT}) where {FT}
             _σ = LP.Stefan(earth_param_set)
             T_c = canopy_temperature(land.canopy.energy, land.canopy, Y, p)
             @. ∂LW_n∂T = -2 * 4 * _σ * ϵ_c * T_c^3 # ≈ ϵ_ground = 1
-            ∂Xres∂T = matrix[@name(∫F_vol_e_dt), @name(canopy.energy.T)]
-            @. ∂Xres∂T =
-                float(dtγ) * DiagonalMatrixRow((∂LW_n∂T - ∂shf∂T - ∂lhf∂T))
+            ∂Xres∂U = matrix[@name(∫F_vol_e_dt), @name(canopy.energy.U)]
+            @. ∂Xres∂U =
+                float(dtγ) * DiagonalMatrixRow((∂LW_n∂T - ∂shf∂T - ∂lhf∂T)/ac_canopy / max((area_index.stem + area_index.leaf, eps(FT))))
         end
 
     end
