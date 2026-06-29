@@ -70,7 +70,7 @@ end
         model;
         outdir = ".",
         set_ic! = make_set_initial_state_from_file(
-            ClimaLand.Artifacts.rosetta_spunup_ic_path(;
+            ClimaLand.Artifacts.saturated_land_ic_path(;
                 context = ClimaComms.context(model),
             ),
             model,
@@ -86,7 +86,7 @@ end
         ),
         user_callbacks = (
             ClimaLand.NaNCheckCallback(
-                isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1),
+                isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Year(1),
                 t0;
                 dt = Δt,
                 mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
@@ -119,7 +119,7 @@ function LandSimulation(
     model;
     outdir = ".",
     set_ic! = make_set_initial_state_from_file(
-        ClimaLand.Artifacts.rosetta_spunup_ic_path(;
+        ClimaLand.Artifacts.saturated_land_ic_path(;
             context = ClimaComms.context(model),
         ),
         model,
@@ -135,7 +135,7 @@ function LandSimulation(
     ),
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
-            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Month(1),
+            isnothing(t0.epoch) ? div((tf - t0), 10) : Dates.Year(1),
             t0;
             dt = Δt,
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),

@@ -325,8 +325,9 @@ hydraulic conductivity curves. Earth System Science Data, 9(2),
 529-543, https://doi.org/10.5194/essd-9-529-2017..
 """
 function rosetta_soil_params_artifact_path(; context = nothing)
-    dir = @clima_artifact("soil_params_rosetta", context)
-    return joinpath(dir, "soil_params_rosetta.nc")
+    return "/home/kdeck/ClimaLand.jl/soil_params_rosetta.nc"
+#    dir = @clima_artifact("soil_params_rosetta", context)
+#    return joinpath(dir, "soil_params_rosetta.nc")
 end
 
 """
