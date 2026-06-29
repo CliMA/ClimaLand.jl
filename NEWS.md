@@ -2,6 +2,7 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Remove SAI from energy fluxes, tendency PR [#1782](https://github.com/CliMA/ClimaLand.jl/pull/1782)
 - ![][badge-🔥behavioralΔ] Set the `optimal_lai_z`/`optimal_lai_sigma`/`optimal_lai_alpha`
   defaults to values calibrated against MODIS LAI (Yuan et al. 2017): 21.4 / 0.939 / 0.0701.
   Only affects runs using prognostic LAI (`ZhouOptimalLAIModel`); the prescribed-LAI default

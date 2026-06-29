@@ -119,7 +119,7 @@ for FT in (Float32, Float64)
             ClimaLand.total_energy_per_area!(total_energy, canopy, Y, p, t0)
             @test all(
                 parent(total_energy) .≈
-                (LAI_value + SAI) * canopy.energy.parameters.ac_canopy * Temp0,
+                LAI_value * canopy.energy.parameters.ac_canopy * Temp0,
             )
 
             total_water = ClimaCore.Fields.zeros(domain.space.surface)
