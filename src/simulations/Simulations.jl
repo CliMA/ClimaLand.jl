@@ -70,7 +70,7 @@ end
         model;
         outdir = ".",
         set_ic! = make_set_initial_state_from_file(
-            ClimaLand.Artifacts.saturated_land_ic_path(;
+            ClimaLand.Artifacts.rosetta_spunup_ic_path(;
                 context = ClimaComms.context(model),
             ),
             model,
@@ -119,7 +119,7 @@ function LandSimulation(
     model;
     outdir = ".",
     set_ic! = make_set_initial_state_from_file(
-        ClimaLand.Artifacts.saturated_land_ic_path(;
+        ClimaLand.Artifacts.rosetta_spunup_ic_path(;
             context = ClimaComms.context(model),
         ),
         model,
