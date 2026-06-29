@@ -71,6 +71,10 @@ get_z_coordinates(m::Union{SoilCanopyModel, LandModel, SoilSnowModel}) =
 get_z_coordinates(m::Union{SoilCO2Model, EnergyHydrology}) = m.domain.fields.z
 
 @diagnostic_compute "ghf" LandModel p.ground_heat_flux
+# soilrn/soillhf/soilshf already have LandModel compute methods (below); we only
+# need to expose them in get_possible_diagnostics(LandModel). evspsblsoi = soillhf/Lv,
+# hfg = −soilrn − soillhf − soilshf (the soilrn diagnostic is the negative of soil
+# net radiation; computed in the experiment's NetCDF writer).
 
 ### Conservation ##
 @diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
