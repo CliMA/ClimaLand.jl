@@ -54,6 +54,11 @@ const SCATTER_COLS = [
     # soil temperature (K)
     "forward_obs_tsoil_mean", "forward_obs_tsoil_min", "forward_obs_tsoil_max",
     "forward_model_tsoil_mean", "forward_model_tsoil_min", "forward_model_tsoil_max",
+    # full-period (incl. spinup) summaries
+    "forward_soil_porosity_layer",                      # m³/m³, calibration layer
+    "forward_obs_tair_mean", "forward_model_tair_mean", # K (TA_F+273.15 / tair)
+    "forward_obs_precip_sum_mm",                        # mm (sum of P_F)
+    "forward_obs_vpd_mean_hPa",                         # hPa (VPD_F)
 ]
 
 prior_col(param, field) = "prior_$(param)_$(field)"

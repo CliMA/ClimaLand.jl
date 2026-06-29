@@ -719,6 +719,39 @@ used_in = ["Land"]
     # These summarize the obs and model ranges for soil CO₂, SWC, and temperature.
     _dstat(df, f) = nrow(df) == 0 ? NaN : f(Float64.(df.daily_mean))
 
+    # ── Full-period summary stats (INCLUDING spinup) ─────────────────────────
+    # These intentionally use the full run window, not the post-spinup series
+    # above. Obs come from the model-FORCING columns (TA_F air temp °C, VPD_F in
+    # hPa, P_F accumulated precip mm); model air T is the `tair` driver (K).
+
+    # Soil porosity ν at the calibration layer (static scalar, m³/m³).
+    soil_porosity_layer = Float64(parent(land.soil.parameters.ν)[target_layer])
+
+    # Model air temperature mean over the FULL period (K). Pulled directly from
+    # the diagnostic writer to bypass get_diag_series' spinup filter; the
+    # simulation spans start_date..stop_date, so this is already the full window.
+    (_tair_times, _tair_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+        simulation.diagnostics[1].output_writer, "tair_30m_average"; layer = 1)
+    model_tair_mean = isempty(_tair_data) ? NaN : mean(Float64.(_tair_data))
+
+    # Obs bounded to THIS run's full period (obs_df is the whole multi-year CSV).
+    obs_full = filter(r -> Date(start_date) <= r.date <= Date(stop_date), obs_df)
+    function _col_vals(df, col)
+        col in names(df) || return Float64[]
+        out = Float64[]
+        for v in df[!, col]
+            (ismissing(v) || isnan(Float64(v))) && continue
+            push!(out, Float64(v))
+        end
+        return out
+    end
+    _ta = _col_vals(obs_full, "TA_F")        # °C
+    _vpd = _col_vals(obs_full, "VPD_F")      # hPa
+    _precip = _col_vals(obs_full, "P_F")     # mm per timestep (accumulated)
+    obs_tair_mean = isempty(_ta) ? NaN : mean(_ta) + 273.15   # → K to match model
+    obs_vpd_mean = isempty(_vpd) ? NaN : mean(_vpd)
+    obs_precip_sum = isempty(_precip) ? NaN : sum(_precip)
+
     # Stats handed back to the pipeline for the master CSV.
     scatter_stats = (;
         rmse_sco2 = _rmse(obs_mod_co2_x, obs_mod_co2_y),
@@ -748,6 +781,12 @@ used_in = ["Land"]
         model_tsoil_mean = _dstat(tsoil_daily, mean),
         model_tsoil_min = _dstat(tsoil_daily, minimum),
         model_tsoil_max = _dstat(tsoil_daily, maximum),
+        # full-period (incl. spinup) summaries
+        soil_porosity_layer = soil_porosity_layer,   # m³/m³, calibration layer
+        obs_tair_mean = obs_tair_mean,               # K (TA_F + 273.15)
+        model_tair_mean = model_tair_mean,           # K (tair driver)
+        obs_precip_sum_mm = obs_precip_sum,          # mm, summed P_F over period
+        obs_vpd_mean_hPa = obs_vpd_mean,             # hPa (VPD_F)
     )
 
     println("Forward run figures saved to $output_dir")
