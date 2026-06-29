@@ -48,7 +48,7 @@ upper = "Inf"
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
 site  = "NEON-dcfs"
-years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -56,20 +56,10 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   lower = -2.0
   upper = 10.0
 
-[[runs]]
-site  = "NEON-dcfs"
-start = "2018-01-02"
-stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
 
 [[runs]]
 site  = "NEON-grsm"
-years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -77,20 +67,10 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   lower = -2.0
   upper = 10.0
 
-[[runs]]
-site  = "NEON-grsm"
-start = "2018-01-02"
-stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
 
 [[runs]]
 site  = "NEON-harv"
-years = [2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -98,31 +78,10 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   lower = -2.0
   upper = 10.0
 
-[[runs]]
-site  = "NEON-harv"
-start = "2020-01-02"
-stop  = "2020-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
 
 [[runs]]
 site  = "NEON-jorn"
-start = "2018-01-02"
-stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
-
-[[runs]]
-site  = "NEON-jorn"
-years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -132,7 +91,7 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
 
 [[runs]]
 site  = "NEON-konz"
-years = [2021, 2022, 2023]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0

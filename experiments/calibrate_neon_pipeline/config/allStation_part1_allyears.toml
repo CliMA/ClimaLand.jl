@@ -48,18 +48,7 @@ upper = "Inf"
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
 site  = "NEON-abby"
-years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
-
-[[runs]]
-site  = "NEON-abby"
-start = "2018-01-02"
-stop  = "2018-12-31"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -70,29 +59,17 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
 
 [[runs]]
 site  = "NEON-blan"
-years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
   lower = -2.0
   upper = 10.0
-
-[[runs]]
-site  = "NEON-blan"
-start = "2018-01-02"
-stop  = "2018-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
-
 
 [[runs]]
 site  = "NEON-clbj"
-years = [2021, 2022, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -102,7 +79,7 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
 
 [[runs]]
 site  = "NEON-cper"
-years = [2018, 2019, 2020, 2021, 2023, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
@@ -110,15 +87,4 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   lower = -2.0
   upper = 10.0
 
-
-[[runs]]
-site  = "NEON-cper"
-start = "2017-01-02"
-stop  = "2017-12-31"
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
 

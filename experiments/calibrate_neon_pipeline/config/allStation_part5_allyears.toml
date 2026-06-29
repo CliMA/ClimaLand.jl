@@ -79,6 +79,15 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   lower = -2.0
   upper = 10.0
 
+[[runs]]
+site  = "NEON-rmnp"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
 
 
 
