@@ -756,7 +756,7 @@ function update_T_sfc_scheme(
     SW_n,
     LW_d,
 )
-    T_sfc = inputs.T_sfc_guess[1]
+    T_sfc = inputs.T_sfc_guess
     T_atmos = inputs.T_int
     ρ_atmos = inputs.ρ_int
     q_atmos = inputs.q_tot_int
@@ -835,7 +835,6 @@ function update_T_sfc_scheme(
     ΔT =
         -(d * (SW_n + LW_n + L + H) + κ * (T_sfc - T_bulk)) /
         (d * (∂LW_n∂T + ∂L∂T + ∂H∂T) + κ)
-    inputs.T_sfc_guess .= [T_sfc + ΔT]
     return T_sfc + ΔT
 end
 

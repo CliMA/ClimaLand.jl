@@ -3295,8 +3295,8 @@ version = "7.8.3+2"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "d91f18ecc23e2c0d4d497eaf226ca3d0fcb318ab"
-repo-rev = "kd/update_T_sfc_guess"
+git-tree-sha1 = "25343a85f77f9ebae0615fbff342a13fda76f77f"
+repo-rev = "as/tsfc-solves"
 repo-url = "https://github.com/CliMA/SurfaceFluxes.jl.git"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 version = "1.0.0"
