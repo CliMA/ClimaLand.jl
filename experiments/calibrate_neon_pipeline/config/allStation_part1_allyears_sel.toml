@@ -12,7 +12,7 @@ settingsdesc = "NeonExp_main20260611"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260611_1700"       # stable id so restart_from can reference it
+run_identifier = "20260629_0000"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -47,9 +47,9 @@ upper = "Inf"
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-abby"
-years = [2021]
-settingsdesc = "NeonExp_main20260611_wLabile"
+site  = "NEON-ster"
+years = [2020]
+settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
