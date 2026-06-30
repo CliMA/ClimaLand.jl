@@ -10,12 +10,7 @@ The ClimaLand code can be found [here](https://github.com/CliMA/ClimaLand.jl/blo
 The canopy temperature is modeled prognostically. Its time tendency is given by
 
 ```math
-\frac{dT_c}{dt} =
-\frac{
-    LW_n + SW_n - (\mathrm{SHF} + \mathrm{LHF}) + F_\mathrm{roots}
-}{
-    a_c \cdot \max(A_\mathrm{leaf} + A_\mathrm{stem}, \epsilon)
-},
+a_c A_\mathrm{leaf} \frac{dT_c}{dt} = LW_n + SW_n - (\mathrm{SHF} + \mathrm{LHF}) + F_\mathrm{roots},
 ```
 
 where
@@ -34,9 +29,7 @@ where
 
  $a_{c}$ is the canopy heat capacity per unit area (J m$^{-2}$ K$^{-1}$),
 
- $A_{\mathrm{leaf}}$ and $A_{\mathrm{stem}}$ are the leaf and stem area indices (–),
-
- and $\epsilon$ is the machine epsilon for numerical stability.
+ $A_{\mathrm{leaf}}$ is the leaf area index (–).
 
 ---
 
