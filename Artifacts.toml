@@ -248,10 +248,10 @@ git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
     url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"
 
 [optimal_lai_inputs]
-git-tree-sha1 = "cba8e02b52d8ebbde04a3fbb3269d775a6a08cc3"
+git-tree-sha1 = "2ce5e5e05e4f17c86b07eadff1f9dd551e779524"
 
     [[optimal_lai_inputs.download]]
-    sha256 = "d23d59d049eaa49a53d6e4b53c310caa9409783d471de83c0ee97375c00228d4"
+    sha256 = "dfaa2e9c649e609f274a5db15a4504067df5c6cfea00d6676d468177d2432654"
     url = "https://caltech.box.com/shared/static/y8igrojuyvbww0gn5zi8und9wgsqhtv5.gz"
 
 [neural_snow]
