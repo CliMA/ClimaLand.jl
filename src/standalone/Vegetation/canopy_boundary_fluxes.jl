@@ -306,7 +306,7 @@ function ClimaLand.get_update_surface_humidity_function(
         )
 
         q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        q_canopy = inputs.q_vap_sfc_guess[1]
+        q_canopy = inputs.q_vap_sfc_guess
 
         # Solve for q_sfc analytically to satisfy balance of fluxes:
         # Flux_aero = ρ * g_h * (q_sfc - q_atm)
@@ -357,7 +357,7 @@ function ClimaLand.get_update_surface_temperature_function(
         Φ_sfc = SurfaceFluxes.surface_geopotential(inputs)
         Φ_int = SurfaceFluxes.interior_geopotential(param_set, inputs)
         T_int = inputs.T_int
-        T_canopy = inputs.T_sfc_guess[1]
+        T_canopy = inputs.T_sfc_guess
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
             ζ,

@@ -88,7 +88,7 @@ function ClimaLand.get_update_surface_humidity_function(
         β_val,
     )
         q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        q = β_val * inputs.q_vap_sfc_guess[1] + (1 - β_val) * q_vap_int # q_vap_sfc_guess is already the saturated value
+        q = β_val * inputs.q_vap_sfc_guess + (1 - β_val) * q_vap_int # q_vap_sfc_guess is already the saturated value
         return q
     end
     # Closure
