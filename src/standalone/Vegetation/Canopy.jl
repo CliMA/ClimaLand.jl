@@ -434,7 +434,7 @@ energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
-- `height`: Canopy height (m), default spatially varying from CLM data
+- `height`: Canopy height (m), default the constant `canopy_height` from `toml_dict`
 
 # Example
 ```julia
@@ -453,7 +453,12 @@ function ZhouOptimalLAIModel{FT}(
     SAI::FT = toml_dict["SAI"],
     RAI::FT = toml_dict["RAI"],
     rooting_depth = clm_rooting_depth(domain.space.surface),
-    height = clm_canopy_height(domain.space.surface),
+    # Use the constant `canopy_height` (as the prescribed-biomass models do)
+    # rather than the CLM canopy-height field: the latter is ~0 at barren/alpine
+    # cells, which makes the leaf-water storage `LAI * height` in the ϑ_l tendency
+    # vanish, so once the prognostic LAI greens up the transpiration/root fluxes
+    # drive ϑ_l (and the coupled canopy/soil state) to NaN.
+    height = toml_dict["canopy_height"],
 ) where {FT <: AbstractFloat}
     parameters = OptimalLAIParameters{FT}(toml_dict)
     return ZhouOptimalLAIModel{FT}(
