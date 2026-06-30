@@ -10,8 +10,8 @@
 # MODIS LAI observation (`get_modis_lai_obs_var` in data_sources.jl), as seasonal
 # averages.
 #
-# Ensemble size = 4 params * 2 + 1 = 9 (TransformUnscented); set the number of
-# tasks in run_calibration.sh / the batch script to 9.
+# Ensemble size = 3 params * 2 + 1 = 7 (TransformUnscented); set the number of
+# tasks in run_calibration.sh / the batch script to 7.
 
 """Per-variable observation variance; multiplies the identity in `ScalarCovariance`.
 Units are (m^2 m^-2)^2.
@@ -27,13 +27,16 @@ const NOISE_SCALARS = Dict("lai" => 0.5)
 """
     get_calibration_prior()
 
-Prior over the 4 optimal-LAI parameters that shape the simulated LAI seasonal
-cycle and magnitude. Means are the TOML defaults; `optimal_lai_k` (light
+Prior over the 3 optimal-LAI parameters that shape the simulated LAI seasonal
+cycle and magnitude. Means are the TOML defaults. `optimal_lai_k` (light
 extinction, 0.5) is left fixed because it is strongly correlated with
 `optimal_lai_z` (both enter the energy-limited fAPAR = 1 - z/(k*A0)) and would
-otherwise make the inversion degenerate.
+otherwise make the inversion degenerate. `optimal_lai_f0` is excluded because
+the prognostic LAI reads f0 from the spatially-varying `optimal_lai_inputs`
+artifact (`p.canopy.biomass.f0`), so the TOML `optimal_lai_f0` parameter is
+inert and calibrating it does nothing.
 
-TransformUnscented ensemble = 4*2+1 = 9.
+TransformUnscented ensemble = 3*2+1 = 7.
 
   - optimal_lai_z     leaf construction/maintenance cost (mol m^-2 yr^-1). Sets
                       the energy-limited LAI_max via 1 - z/(k*A0): larger z ->
@@ -43,17 +46,13 @@ TransformUnscented ensemble = 4*2+1 = 9.
                       tracks the growing season.
   - optimal_lai_alpha EMA smoothing factor (dimensionless). Sets the
                       green-up/senescence lag (alpha ~ 0.067 ≈ 15-day memory).
-  - optimal_lai_f0    fraction of precipitation available for transpiration
-                      (dimensionless). Sets the water-limited LAI_max in
-                      moisture-limited regions.
 """
 function get_calibration_prior()
     priors = [
         EKP.constrained_gaussian("optimal_lai_z", 12.227, 4.0, 1.0, 40.0),
         EKP.constrained_gaussian("optimal_lai_sigma", 1.1, 0.3, 0.1, 3.0),
-        # alpha and f0 are bounded fractions; σ kept clear of the bounds.
+        # alpha is a bounded fraction; σ kept clear of the bounds.
         EKP.constrained_gaussian("optimal_lai_alpha", 0.067, 0.03, 0.01, 0.3),
-        EKP.constrained_gaussian("optimal_lai_f0", 0.65, 0.2, 0.05, 1.0),
     ]
     return EKP.combine_distributions(priors)
 end
