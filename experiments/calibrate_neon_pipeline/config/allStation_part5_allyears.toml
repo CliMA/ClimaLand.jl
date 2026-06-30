@@ -12,7 +12,7 @@ settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260627_1300"       # stable id so restart_from can reference it
+run_identifier = "20260629_1800"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
