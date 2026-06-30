@@ -34,9 +34,8 @@ and then running the ClimaArtifacts script
 pointing to the correct path, as documented in that file.
 """
 function rosetta_spunup_ic_path(; context = nothing)
-    return "/home/kdeck/ClimaLand.jl/rosetta_spunup_ic.nc"
-#dir = @clima_artifact("rosetta_spunup_ic", context)
-#    return joinpath(dir, "rosetta_spunup_ic_20years.nc")
+    dir = @clima_artifact("rosetta_spunup_ic", context)
+    return joinpath(dir, "rosetta_spunup_ic.nc")
 end
 
 
@@ -326,9 +325,8 @@ hydraulic conductivity curves. Earth System Science Data, 9(2),
 529-543, https://doi.org/10.5194/essd-9-529-2017..
 """
 function rosetta_soil_params_artifact_path(; context = nothing)
-    return "/home/kdeck/ClimaLand.jl/soil_params_rosetta.nc"
-#    dir = @clima_artifact("soil_params_rosetta", context)
-#    return joinpath(dir, "soil_params_rosetta.nc")
+    dir = @clima_artifact("soil_params_rosetta", context)
+    return joinpath(dir, "soil_params_rosetta.nc")
 end
 
 """
