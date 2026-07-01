@@ -209,8 +209,10 @@ Provide a robust initial guess for the Lambert W0 function for use in iterative 
         return log(x) - log(max(log(x), T(1e-6)))
     elseif x < T(-0.32)
         # Near the branch point -1/e, use series expansion
-        # This handles the singular behavior at x = -1/e where W(x) = -1
-        p = sqrt(T(2) * (T(ℯ) * x + one(T)))
+        # This handles the singular behavior at x = -1/e where W(x) = -1.
+        # max(..., 0) guards the sqrt: at x ≈ -1/e the argument is ≈ 0 and can
+        # round below zero (T(ℯ) here differs from the -inv(e) used to admit x).
+        p = sqrt(max(T(2) * (T(ℯ) * x + one(T)), zero(T)))
         return -one(T) + p - p^2 / T(3) + p^3 * T(11) / T(72)
     else
         return max(x, T(-0.3))

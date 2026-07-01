@@ -57,6 +57,18 @@ struct CalibrateConfig{SPINUP <: Dates.Period, EXTEND <: Dates.Period, MODEL}
 
     """Type of model to use"""
     model_type::MODEL
+
+    "Whether the soil model should use the Rosetta (Montzka et al. 2017) van
+    Genuchten retention parameters (and the matching spun-up Rosetta initial
+    conditions) instead of the Gupta et al. (2020) product. Only affects
+    `ClimaLand.LandModel` runs."
+    use_rosetta::Bool
+
+    "Whether the canopy should compute LAI prognostically with the optimal-LAI
+    model (Zhou et al. 2025, `ZhouOptimalLAIModel`) instead of prescribing it
+    from MODIS. Set `true` to calibrate the optimal-LAI parameters against the
+    MODIS `lai` target. Only affects `ClimaLand.LandModel` runs."
+    prognostic_lai::Bool
 end
 
 """
@@ -117,6 +129,18 @@ Keyword arguments
 
 - `model_type`: A type indicating which model to use. The only supported
   models are "ClimaLand.LandModel" and "ClimaLand.Bucket.BucketModel".
+
+- `use_rosetta`: If `true` (the default), the `ClimaLand.LandModel` soil model
+  uses the Rosetta (Montzka et al. 2017) van Genuchten retention parameters and
+  the matching spun-up Rosetta initial conditions; if `false`, it uses the Gupta
+  et al. (2020) product with the Gupta-based saturated initial conditions.
+  Ignored for the bucket model.
+
+- `prognostic_lai`: If `true`, the canopy computes LAI prognostically with the
+  optimal-LAI model (`ZhouOptimalLAIModel`, Zhou et al. 2025) instead of
+  prescribing it from MODIS. Use this when calibrating the optimal-LAI
+  parameters against the MODIS `lai` target. Defaults to `false` (prescribed
+  MODIS LAI). Ignored for the bucket model.
 """
 function CalibrateConfig(;
     short_names,
@@ -134,6 +158,8 @@ function CalibrateConfig(;
         "land_observation_vector.jld2",
     ),
     model_type = ClimaLand.LandModel,
+    use_rosetta = true,
+    prognostic_lai = false,
 )
     isempty(short_names) && error("Cannot run calibration with no short names")
 
@@ -186,6 +212,8 @@ function CalibrateConfig(;
         rng_seed,
         obs_vec_filepath,
         model_type,
+        use_rosetta,
+        prognostic_lai,
     )
 
 end
