@@ -203,27 +203,19 @@ function compute_stomatal_conductance!(
     conductance_model::PModelConductance,
 )
     (; Drel) = conductance_model.parameters
-    c_co2_air = p.drivers.c_co2
-    P_air = p.drivers.P
-    ci = p.canopy.photosynthesis.InstVars.ci             # internal CO2 partial pressure, Pa
-    An_leaf = get_An_leaf(p, canopy.photosynthesis)
+    gs_co2 = p.canopy.photosynthesis.InstVars.gs_co2
+    # Divide by LAI to get leaf level, approximately, and multiple by Drel to get for water instead of co2
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = gs_h2o_pmodel(
-            clamp(ci / (c_co2_air * P_air), 0, 1),
-            c_co2_air,
-            An_leaf,
-            Drel,
-        )
+        @. out =
+            Drel * gs_co2 /
+            max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(gs_co2))))
         return out
     else
-        @. out = gs_h2o_pmodel(
-            clamp(ci / (c_co2_air * P_air), 0, 1),
-            c_co2_air,
-            An_leaf,
-            Drel,
-        )
+        @. out =
+            Drel * gs_co2 /
+            max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(gs_co2))))
     end
 end
 
