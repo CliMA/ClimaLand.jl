@@ -161,9 +161,8 @@ function LandSimulation(
     Y, p, cds = initialize(model)
     set_ic!(Y, p, t0, model)
 
-    # Initialize the cache for offline simulations (no drivers or non-coupled atmosphere)
-    if isempty(ClimaLand.get_drivers(model)) ||
-       !(ClimaLand.get_drivers(model)[1] isa ClimaLand.CoupledAtmosphere)
+    # Initialize the cache for non-coupled atmosphere
+    if !(ClimaLand.get_drivers(model)[1] isa ClimaLand.CoupledAtmosphere)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t0)
     end

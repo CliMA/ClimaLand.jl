@@ -4,6 +4,7 @@ import Interpolations
 using ClimaCore
 
 export make_set_initial_state_from_file,
+    make_set_initial_state_from_checkpoint,
     make_set_subseasonal_initial_conditions,
     make_set_initial_state_from_atmos_and_parameters
 
@@ -11,6 +12,12 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 interpolation_method = Interpolations.Constant()
+
+function make_set_initial_state_from_checkpoint(restart_file, model)
+    set_ic!(Y, p, t, model) = set_initial_condition_from_checkpoint!(Y, restart_file; model)
+    return set_ic!
+end
+
 """
     set_soil_initial_conditions!(Y, subsurface_space, soil_ic_path, soil; enforce_constraints = false, T_bounds = nothing)
 

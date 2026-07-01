@@ -89,7 +89,7 @@ function _context_from_Y(Y)
 end
 
 """
-    ClimaLand.save_checkpoint(Y, t, output_dir; model = nothing, context = ClimaComms.context(Y))
+    ClimaLand.save_checkpoint(Y,p,t, output_dir; model = nothing, context = ClimaComms.context(Y))
 
 Save a simulation checkpoint to an HDF5 file.
 
