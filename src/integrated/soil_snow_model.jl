@@ -209,7 +209,18 @@ function make_update_boundary_fluxes(
     end
     return update_boundary_fluxes!
 end
-
+function make_set_initial_cache(model::SoilSnowModel)
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
+        p.snow.T_sfc .= p.drivers.T # set initial guess for root find. This is only used by Equilibrium Gradient
+        # but it is so cheap and done only once that we do it all the time.
+        update_cache!(p, Y0, t0)
+    end
+    return set_initial_cache!
+end
 """
     update_soil_snow_ground_heat_flux!(p, Y, soil_params, snow_params, soil_domain, FT)
 

@@ -806,7 +806,7 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             _grav,
             _LH_f0,
         )
-
+        
         total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
         total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
@@ -1079,6 +1079,7 @@ function ClimaLand.get_update_surface_humidity_function(
         g_liq::FT,
         β_ice::FT,
         Tf_depressed::FT,
+        qsat_sfc::FT,
     )::FT where {FT}
         g_h = SurfaceFluxes.heat_conductance(
             param_set,
@@ -1090,7 +1091,6 @@ function ClimaLand.get_update_surface_humidity_function(
             scheme,
         )
         q_air::FT = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        qsat_sfc::FT = inputs.q_vap_sfc_guess
         if inputs.T_sfc_guess < Tf_depressed # sublimation
             if q_air < qsat_sfc # water loss to atmosphere, adjust β
                 return β_ice * qsat_sfc + (1 - β_ice) * q_air # q_vap_sfc_guess is already the saturated value
@@ -1107,6 +1107,7 @@ function ClimaLand.get_update_surface_humidity_function(
     earth_param_set = get_earth_param_set(model)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     T_sfc = component_temperature(model, Y, p)
+    qsat_sfc = component_specific_humidity(model, Y, p)
     Tf_depressed_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.Tf_depressed)
     (; ν, θ_r, d_ds, evap_p, evap_α, hydrology_cm, earth_param_set) =
@@ -1131,14 +1132,15 @@ function ClimaLand.get_update_surface_humidity_function(
     g_soil_sfc .=
         soil_conductance.(S_l_sfc, S_c_sfc, d_ds, evap_p, evap_α, _D_vapor)
     # the above is jumping through hoops so that we dont hit the parameter memory limit on P100...
-    update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed) =
+    update_q_vap_sfc_field(g_liq, β_ice, Tf_depressed, qsat_sfc) =
         (args...) ->
-            update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, Tf_depressed)
+            update_q_vap_sfc_at_a_point(args..., g_liq, β_ice, Tf_depressed, qsat_sfc)
     return @. lazy(
         update_q_vap_sfc_field(
             g_soil_sfc,
             (θ_i_sfc / ν_sfc)^4,
             Tf_depressed_sfc,
+            qsat_sfc,
         ),
     ) # β_ice = (θ_i_sfc / ν_sfc)^4
 end

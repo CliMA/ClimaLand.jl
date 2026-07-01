@@ -1066,7 +1066,7 @@ from the ratio of the upwelling and downwelling shortwave radiation.
 ClimaLand.surface_albedo(::LandModel, Y, p) = p.α_sfc
 
 """
-    make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
+    make_set_initial_cache(model::LandModel)
 
 Creates the function with arguments (p,Y0,t0) that updates the cache
 `p` with initial values corresponding to Y0 and t0.
@@ -1077,7 +1077,7 @@ type ∈ Union{LandModel, SoilCanopyModel}. This is a close copy of
 the method for the CanopyModel, except unpacking `model.canopy` rather
 than using `model` directly.
 """
-function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
+function make_set_initial_cache(model::LandModel)
     drivers = get_drivers(model)
     update_drivers! = make_update_drivers(drivers)
     update_cache! = make_update_cache(model)
@@ -1085,6 +1085,8 @@ function make_set_initial_cache(model::Union{LandModel, SoilCanopyModel})
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
         set_lake_fraction!(p, model)
+        p.snow.T_sfc .= p.drivers.T # set initial guess for root find. This is only used by Equilibrium Gradient
+        # but it is so cheap and done only once that we do it all the time.
         update_cache!(p, Y0, t0)
         Canopy.set_historical_cache!(p, Y0, canopy.photosynthesis, canopy)
         Canopy.set_historical_cache!(p, Y0, canopy.biomass, canopy)
