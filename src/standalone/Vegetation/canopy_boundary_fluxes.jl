@@ -320,10 +320,10 @@ function ClimaLand.get_update_surface_humidity_function(
         return q_new
     end
     # Closure
-    update_q_vap_sfc_field(LAI_val, r_val, leaf_Cd,qc) =
+    update_q_vap_sfc_field(Cd, LAI, r, qc) =
         (args...) ->
-            update_q_vap_sfc_at_a_point(args..., leaf_Cd, LAI_val, r_val, qc)
-    return @. lazy(update_q_vap_sfc_field(LAI, r_stomata_canopy, Cd, q_canopy))
+            update_q_vap_sfc_at_a_point(args..., Cd, LAI, r, qc)
+    return @. lazy(update_q_vap_sfc_field(Cd, LAI, r_stomata_canopy, q_canopy))
 end
 
 """
@@ -379,9 +379,9 @@ function ClimaLand.get_update_surface_temperature_function(
         return T_sfc
     end
     # Closure
-    update_T_sfc_field(AI_val, leaf_Cd, T_c) =
-        (args...) -> update_T_sfc_at_a_point(args..., leaf_Cd, AI_val, T_c)
-    return @. lazy(update_T_sfc_field(AI, Cd, T_canopy))
+    update_T_sfc_field(Cd, AI, T_c) =
+        (args...) -> update_T_sfc_at_a_point(args..., Cd, AI, T_c)
+    return @. lazy(update_T_sfc_field(Cd, AI, T_canopy))
 end
 
 

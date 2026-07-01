@@ -257,7 +257,7 @@ for FT in (Float32, Float64)
         d = Snow.surface_temp_scaling_length(κ_surf_test, ρ_surf_test, FT(1), param_set)
         sfc_flux = (SW_net + LW_n + turb_fluxes[1] + turb_fluxes[2])
         residual = (sfc_flux + κ_surf_test * (T_sfc - T_bulk_test)/d)
-        @test abs(residual)/abs(sfc_flux) < 0.1
+        @test abs(residual)/abs(sfc_flux) < 0.01
     end
     
     @testset "Alternative parameterizations, FT = $FT" begin
