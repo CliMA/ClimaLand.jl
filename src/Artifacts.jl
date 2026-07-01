@@ -35,7 +35,7 @@ pointing to the correct path, as documented in that file.
 """
 function rosetta_spunup_ic_path(; context = nothing)
     dir = @clima_artifact("rosetta_spunup_ic", context)
-    return joinpath(dir, "rosetta_spunup_ic_20years.nc")
+    return joinpath(dir, "rosetta_spunup_ic.nc")
 end
 
 
