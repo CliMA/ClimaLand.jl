@@ -94,8 +94,8 @@ function ClimaLand.get_update_surface_humidity_function(
     end
     # Closure
     qsat = component_specific_humidity(model, Y, p)
-    update_q_vap_sfc_field(β_val, qsat) =
-        (args...) -> update_q_vap_sfc_at_a_point(args..., β_val, qsat)
+    update_q_vap_sfc_field(β, qsat) =
+        (args...) -> update_q_vap_sfc_at_a_point(args..., β, qsat)
     return @. lazy(update_q_vap_sfc_field(β, qsat))
 end
 

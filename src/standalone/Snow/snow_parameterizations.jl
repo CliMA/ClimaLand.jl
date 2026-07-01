@@ -189,6 +189,8 @@ end
 
 Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
 of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
+
+Be aware that if this function changes you must also change the internals of `update_T_sfc_scheme`.
 """
 function snow_surface_specific_humidity(
     T_sfc::FT,
@@ -674,6 +676,9 @@ A helper function for the Surface Fluxes computation which, given a
 required and fixed set of positional arguments (ζ, `param_set`, `thermo_params`
 inputs, scheme, `T_sfc`, `u_star`, `z_0m`, `z_0b`) and the snow
 liquid fraction `q_l`, computes the snow surface specific humidity.
+
+This function is required because with the EquilibriumGradient parameterization
+for surface temperature, we must recompute q.
 """
 function update_q_vap_sfc_scheme(
     ζ,
@@ -737,6 +742,10 @@ snow surface temperature.
 It makes this estimate by incrementing the initial guess for snow surface temperature
 `T_0` (stored in `inputs`) by the Newton update ΔT, where `ΔT = -f(T_0)/f'(T_0)` and
 f(T) = SW_n + LW_n(T) + H(T) + L(T) +κ(T-T̄)/d = 0.
+
+Be aware that if the snow surface specific humidity parameterization changes, 
+we must also change the internals of this function.
+
 """
 function update_T_sfc_scheme(
     ζ,
@@ -867,12 +876,15 @@ Solves for T satisfying:
 
 by
 (1) first defining the update_T(T; ...) and update_q(T; ...) functions, which create
-        T_new = ΔT(T_0) + T_0; ΔT = -f(T_0)/f'(T_0)
-        q_new = q_sat(T_new; liq)* q_l + (1-q_l) q_sat(T_new; ice) # I think
-(2) Solve for the root of f(T) using whatever iterative solver SF uses already, but
-    evaluating T_new and q_new each iteration given the new gh
+        T_{i+1} = ΔT(T_i) + T_i; ΔT = -f(T_i)/f'(T_i)
+        q_{i+1} = q_sat(T_{i+1}; liq)* q_l + (1-q_l) q_sat(T_{i+1}; ice)
+(2) Solving for the root of f(T) by evaluating these update functions each iteration of
+    the surface fluxes solve.
 
-Note that T_new' ≠ ΔT(T_new) + T_new, we always use `T_0 = T_initial_guess` in the RHS.
+Please note that we cannot use `ClimaLand.turbulent_fluxes!` and that functionality directly,
+because the actual surface temperature may be different from the value found in the root solve.
+If the value found in the root solve is above the freezing temp, we convert the excess fluxes into
+melting, and recompute the surface fluxes using the freezing temperature of water.
 """
 function solve_for_surface_temp_at_a_point(
     T_initial_guess::FT,

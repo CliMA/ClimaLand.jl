@@ -579,8 +579,7 @@ Creates the function with arguments (p,Y0,t0) that updates the cache
 `p` with initial values corresponding to Y0 and t0.
 
 We require a different method from the default for a model
-with a canopy, so this method is for any model with
-type ∈ Union{LandModel, SoilCanopyModel}. This is a close copy of
+with a canopy but no snow. This is a close copy of
 the method for the CanopyModel, except unpacking `model.canopy` rather
 than using `model` directly.
 """
