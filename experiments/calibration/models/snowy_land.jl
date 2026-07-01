@@ -117,7 +117,7 @@ function ClimaCalibrate.forward_model(
     short_names = unique!(
         [
             short_names
-            ["lhf", "shf", "lwu", "swu", "gpp", "et", "hr", "ra", "er", "nee"]
+            ["lhf", "shf", "lwu", "swu"]
         ],
     )
     diagnostics = ClimaLand.Diagnostics.default_diagnostics(
