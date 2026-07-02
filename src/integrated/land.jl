@@ -147,6 +147,7 @@ function Base.show(io::IO, ::MIME"text/plain", land::LandModel)
         show(io, land)
     else
         println(io, "LandModel{", typeof(land).parameters[1], "}")
+        println(io, "  domain: ", sprint(show, land.soil.domain))
         components =
             filter(f -> !isnothing(getfield(land, f)), fieldnames(typeof(land)))
         for (i, f) in enumerate(components)

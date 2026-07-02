@@ -56,11 +56,19 @@ as a `make_compute_imp_tendency` default.
 """
 abstract type AbstractExpModel{FT} <: AbstractModel{FT} end
 
+# prognostic_vars can be a flat tuple of symbols (e.g. soil) or a NamedTuple
+# grouping symbols by sub-component with many empty entries (e.g. canopy);
+# flatten to just the active variable names either way.
+_flatten_symbols(x::Symbol) = (x,)
+_flatten_symbols(x::Union{Tuple, NamedTuple}) =
+    isempty(x) ? () : Tuple(Iterators.flatten(map(_flatten_symbols, values(x))))
+
 # Generic fallback for any concrete model: models typically hold domains,
 # parameters, and boundary conditions (which can themselves hold prescribed
 # drivers), so a default field dump can be arbitrarily large. Concrete models
-# that want to show more than the type name (e.g. composed models like
-# LandModel) should add their own more specific method.
+# that want to show more than the type name and domain/prognostic variables
+# (e.g. composed models like LandModel) should add their own more specific
+# method.
 function Base.show(io::IO, ::MIME"text/plain", model::AbstractModel)
     if get(io, :compact, false)
         show(io, model)
@@ -72,6 +80,13 @@ function Base.show(io::IO, ::MIME"text/plain", model::AbstractModel)
             typeof(model).parameters[1],
             "}",
         )
+        if hasfield(typeof(model), :domain)
+            println(io, "  domain: ", sprint(show, model.domain))
+        end
+        pv = _flatten_symbols(prognostic_vars(model))
+        if !isempty(pv)
+            println(io, "  prognostic variables: ", pv)
+        end
     end
 end
 
