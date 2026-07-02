@@ -6,7 +6,7 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaLand: Artifacts
 
-zeros_to_val(x; v) = x == 0 ? eltype(x)(v) : x
+zeros_to_val(x, v) = x == 0 ? eltype(x)(v) : x
 
 """
     clm_canopy_radiation_parameters(
@@ -86,7 +86,7 @@ function clm_canopy_radiation_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    χl .= zeros_to_val.(χl; v = 0.25)
+    χl .= zeros_to_val.(χl, 0.25)
     G_Function = ClimaLand.Canopy.CLMGFunction.(χl)
     α_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -95,7 +95,7 @@ function clm_canopy_radiation_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    α_PAR_leaf .= zeros_to_val.(α_PAR_leaf; v = 0.1)
+    α_PAR_leaf .= zeros_to_val.(α_PAR_leaf, 0.1)
 
     τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -104,7 +104,7 @@ function clm_canopy_radiation_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    τ_PAR_leaf .= zeros_to_val.(τ_PAR_leaf; v = 0.05)
+    τ_PAR_leaf .= zeros_to_val.(τ_PAR_leaf, 0.05)
     α_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholnir",
@@ -112,7 +112,7 @@ function clm_canopy_radiation_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    α_NIR_leaf .= zeros_to_val.(α_NIR_leaf; v = 0.45)
+    α_NIR_leaf .= zeros_to_val.(α_NIR_leaf, 0.45)
     τ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "taulnir",
@@ -120,7 +120,7 @@ function clm_canopy_radiation_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
-    τ_NIR_leaf .= zeros_to_val.(τ_NIR_leaf; v = 0.25)
+    τ_NIR_leaf .= zeros_to_val.(τ_NIR_leaf, 0.25)
     return (;
         Ω = Ω,
         G_Function = G_Function,
@@ -195,7 +195,7 @@ function clm_photosynthesis_parameters(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
-    Vcmax25 .= zeros_to_val.(Vcmax25; v = 43 / 1_000_000) # 43 is the median in the nonzero values
+    Vcmax25 .= zeros_to_val.(Vcmax25, 43 / 1_000_000) # 43 is the median in the nonzero values
     # photosynthesis mechanism is read as a proportion of c3 plants (0 to 1)
     # 1.0 indicates all c3 and 0.0 indicates all c4
     fractional_c3 = SpaceVaryingInput(
@@ -325,7 +325,7 @@ function clm_medlyn_g1(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
         file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
-    g1 .= zeros_to_val.(g1; v = 4.45 * 10^(3 / 2)) # 4.45 is BDT g1
+    g1 .= zeros_to_val.(g1, 4.45 * 10^(3 / 2)) # 4.45 is BDT g1
 
     return g1
 end
