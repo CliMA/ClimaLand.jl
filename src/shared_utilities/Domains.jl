@@ -36,6 +36,32 @@ ClimaComms.context(domain::AbstractDomain) =
 ClimaComms.device(domain::AbstractDomain) =
     ClimaComms.device(first(domain.space))
 
+# The `space` and (when present) `fields` fields hold the ClimaCore spaces and
+# coordinate fields, whose default show output is enormous; every other field
+# is a small scalar/tuple that fully describes the domain's configuration.
+_domain_show_fieldnames(domain::AbstractDomain) =
+    filter(f -> f ∉ (:space, :fields), fieldnames(typeof(domain)))
+
+function Base.show(io::IO, ::MIME"text/plain", domain::AbstractDomain)
+    if get(io, :compact, false)
+        show(io, domain)
+    else
+        println(io, nameof(typeof(domain)), "{", eltype(domain), "}")
+        for f in _domain_show_fieldnames(domain)
+            println(io, "  ", f, ": ", getfield(domain, f))
+        end
+    end
+end
+
+function Base.show(io::IO, domain::AbstractDomain)
+    print(io, nameof(typeof(domain)), "{", eltype(domain), "}(")
+    fs = _domain_show_fieldnames(domain)
+    print(io, join(("$f=$(getfield(domain, f))" for f in fs), ", "))
+    print(io, ")")
+end
+
+Base.summary(io::IO, domain::AbstractDomain) = show(io, domain)
+
 """
     coordinates(domain::AbstractDomain)
 
