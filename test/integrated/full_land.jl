@@ -81,6 +81,70 @@ for FT in (Float32, Float64)
         @test isnothing(model.lake)
     end
 
+    @testset "LandModel and component model show and summary, FT=$FT" begin
+        toml_dict = LP.create_toml_dict(FT)
+        domain = Domains.global_domain(FT)
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT; toml_dict)
+        forcing = (; atmos, radiation)
+        prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
+        soil = Soil.EnergyHydrology{FT}(
+            domain,
+            forcing,
+            toml_dict;
+            prognostic_land_components,
+            additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        )
+        co2_prognostic_soil =
+            Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+        soilco2_drivers =
+            Soil.Biogeochemistry.SoilDrivers(co2_prognostic_soil, atmos)
+        soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(
+            domain,
+            soilco2_drivers,
+            toml_dict,
+        )
+        surface_domain = Domains.obtain_surface_domain(domain)
+        LAI = TimeVaryingInput((t) -> FT(1.0))
+        ground = ClimaLand.PrognosticGroundConditions{FT}()
+        canopy_forcing = (; atmos, radiation, ground)
+        canopy = Canopy.CanopyModel{FT}(
+            surface_domain,
+            canopy_forcing,
+            LAI,
+            toml_dict;
+            prognostic_land_components,
+        )
+        snow = SnowModel(
+            FT,
+            surface_domain,
+            forcing,
+            toml_dict,
+            FT(180);
+            prognostic_land_components,
+        )
+        model = LandModel{FT}(canopy, snow, soil, soilco2, nothing)
+
+        # `soil` also exercises the generic AbstractModel fallback show
+        for x in (model, soil)
+            typename = string(nameof(typeof(x)))
+
+            out = sprint(show, MIME("text/plain"), x)
+            @test occursin(typename, out)
+            @test count(==('\n'), out) <= 10
+
+            out2 = sprint(show, x)
+            @test occursin(typename, out2)
+            @test !occursin('\n', out2)
+            out3 =
+                sprint(show, MIME("text/plain"), x; context = :compact => true)
+            @test out2 == out3
+
+            out_summary = sprint(summary, x)
+            @test occursin(typename, out_summary)
+            @test !occursin('\n', out_summary)
+        end
+    end
+
     @testset "LandModel with no soilco2 model constructor, FT=$FT" begin
         toml_dict = LP.create_toml_dict(FT)
         domain = Domains.global_domain(FT)

@@ -101,6 +101,42 @@ end
     @test p.drivers.P_liq == sfc_instance .* 0 .- FT(1)
 end
 
+@testset "PrescribedAtmosphere and PrescribedRadiativeFluxes show and summary" begin
+    toml_dict = LP.create_toml_dict(FT)
+    f = TimeVaryingInput((t) -> 10.0)
+    start_date = DateTime(2005, 1, 1)
+    for x in (
+        ClimaLand.PrescribedAtmosphere(
+            f,
+            f,
+            f,
+            f,
+            f,
+            f,
+            start_date,
+            FT(1),
+            toml_dict,
+        ),
+        ClimaLand.PrescribedRadiativeFluxes(FT, f, f, start_date),
+    )
+        typename = string(nameof(typeof(x)))
+
+        out = sprint(show, MIME("text/plain"), x)
+        @test occursin(typename, out)
+        @test count(==('\n'), out) <= 10
+
+        out2 = sprint(show, x)
+        @test occursin(typename, out2)
+        @test !occursin('\n', out2)
+        out3 = sprint(show, MIME("text/plain"), x; context = :compact => true)
+        @test out2 == out3
+
+        out_summary = sprint(summary, x)
+        @test occursin(typename, out_summary)
+        @test !occursin('\n', out_summary)
+    end
+end
+
 @testset "CoupledAtmosphere and CoupledRadiativeFluxes initialization" begin
     domain = ClimaLand.Domains.global_domain(FT)
     coords = ClimaLand.Domains.coordinates(domain)
