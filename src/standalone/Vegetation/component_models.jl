@@ -20,6 +20,28 @@ the canopy component parameterizations.
 """
 abstract type AbstractCanopyComponent{FT <: AbstractFloat} end
 
+# Generic fallback: most canopy components are a thin wrapper around a
+# `parameters` struct, so without a custom show the default struct printing
+# spells out every type parameter of that struct in the header, which can be
+# thousands of characters if the parameters struct itself is verbose. Not
+# every component has a `parameters` field (e.g. NoMoistureStressModel), so
+# that line is only printed when present.
+function Base.show(io::IO, ::MIME"text/plain", m::AbstractCanopyComponent)
+    if get(io, :compact, false)
+        show(io, m)
+    else
+        println(io, nameof(typeof(m)), "{", typeof(m).parameters[1], "}")
+        if hasfield(typeof(m), :parameters)
+            println(io, "  parameters: ", sprint(show, m.parameters))
+        end
+    end
+end
+
+Base.show(io::IO, m::AbstractCanopyComponent) =
+    print(io, nameof(typeof(m)), "{", typeof(m).parameters[1], "}")
+
+Base.summary(io::IO, m::AbstractCanopyComponent) = show(io, m)
+
 """
     ClimaLand.auxiliary_types(::AbstractCanopyComponent)
 

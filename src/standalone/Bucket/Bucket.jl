@@ -64,6 +64,31 @@ abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 
 abstract type AbstractBucketAlbedoModel{FT <: AbstractFloat} end
 
+# Generic fallback: albedo models can hold a raw ClimaCore Field or
+# TimeVaryingInput directly as a field (not through a domain), whose default
+# show would dump the full underlying data/type signature.
+function Base.show(io::IO, ::MIME"text/plain", m::AbstractBucketAlbedoModel)
+    if get(io, :compact, false)
+        show(io, m)
+    else
+        println(io, nameof(typeof(m)), "{", typeof(m).parameters[1], "}")
+        for f in fieldnames(typeof(m))
+            println(
+                io,
+                "  ",
+                f,
+                ": ",
+                ClimaLand._scalar_or_field_str(getfield(m, f)),
+            )
+        end
+    end
+end
+
+Base.show(io::IO, m::AbstractBucketAlbedoModel) =
+    print(io, nameof(typeof(m)), "{", typeof(m).parameters[1], "}")
+
+Base.summary(io::IO, m::AbstractBucketAlbedoModel) = show(io, m)
+
 """
     PrescribedBaregroundAlbedo{FT, F <: ClimaCore.Fields.Field} <: AbstractBucketAlbedoModel
 
@@ -262,6 +287,32 @@ Base.@kwdef struct BucketModelParameters{
     "Earth Parameter set; physical constants, etc"
     earth_param_set::PSE
 end
+
+# BucketModelParameters has 10 scalar fields plus a nested albedo model and
+# the LandParameters earth_param_set; only the headline bucket parameters are
+# shown individually.
+function Base.show(io::IO, ::MIME"text/plain", ps::BucketModelParameters)
+    if get(io, :compact, false)
+        show(io, ps)
+    else
+        println(io, "BucketModelParameters{", typeof(ps).parameters[1], "}")
+        println(
+            io,
+            "  bucket capacity (W_f): ",
+            ps.W_f,
+            " m, snow melt timescale (τc): ",
+            ps.τc,
+            " s",
+        )
+        println(io, "  albedo: ", sprint(show, ps.albedo))
+        println(io, "  earth_param_set: ", sprint(show, ps.earth_param_set))
+    end
+end
+
+Base.show(io::IO, ps::BucketModelParameters) =
+    print(io, "BucketModelParameters{", typeof(ps).parameters[1], "}")
+
+Base.summary(io::IO, ps::BucketModelParameters) = show(io, ps)
 
 ##For interfacing with ClimaParams
 """

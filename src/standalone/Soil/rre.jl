@@ -20,6 +20,40 @@ struct RichardsParameters{
     θ_r::F
 end
 
+# ν, K_sat, S_s, θ_r may each be a full ClimaCore Field rather than a scalar,
+# so print a value for scalars and just the type name otherwise.
+function Base.show(io::IO, ::MIME"text/plain", ps::RichardsParameters)
+    if get(io, :compact, false)
+        show(io, ps)
+    else
+        println(io, "RichardsParameters{", eltype(ps.ν), "}")
+        println(
+            io,
+            "  porosity (ν): ",
+            ClimaLand._scalar_or_field_str(ps.ν),
+            ", K_sat: ",
+            ClimaLand._scalar_or_field_str(ps.K_sat),
+        )
+        println(
+            io,
+            "  S_s: ",
+            ClimaLand._scalar_or_field_str(ps.S_s),
+            ", θ_r: ",
+            ClimaLand._scalar_or_field_str(ps.θ_r),
+        )
+        println(
+            io,
+            "  hydrology closure: ",
+            ClimaLand._kind_str(ps.hydrology_cm),
+        )
+    end
+end
+
+Base.show(io::IO, ps::RichardsParameters) =
+    print(io, "RichardsParameters{", eltype(ps.ν), "}")
+
+Base.summary(io::IO, ps::RichardsParameters) = show(io, ps)
+
 """
     RichardsParameters(;
         hydrology_cm::C,

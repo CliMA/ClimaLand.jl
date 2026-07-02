@@ -63,6 +63,21 @@ _flatten_symbols(x::Symbol) = (x,)
 _flatten_symbols(x::Union{Tuple, NamedTuple}) =
     isempty(x) ? () : Tuple(Iterators.flatten(map(_flatten_symbols, values(x))))
 
+# Many parameters (porosity, hydraulic conductivity, leaf reflectance, ...)
+# may be either a scalar or a non-scalar value (a ClimaCore Field varying in
+# space, or a TimeVaryingInput varying in time); non-scalar values have their
+# own default show that's far too long to embed inline in a parameter
+# struct's show method, so print a value for scalars and just the type name
+# otherwise.
+_scalar_or_field_str(x::AbstractFloat) = string(x)
+_scalar_or_field_str(x) = string(nameof(typeof(x)))
+
+# A closure/parameterization choice (e.g. a soil hydrology closure) may be
+# stored as a scalar struct, or as a Field of that struct when it varies in
+# space; either way, name the closure itself rather than saying "Field".
+_kind_str(x) = string(nameof(typeof(x)))
+_kind_str(x::ClimaCore.Fields.Field) = string(nameof(eltype(x)))
+
 # Generic fallback for any concrete model: models typically hold domains,
 # parameters, and boundary conditions (which can themselves hold prescribed
 # drivers), so a default field dump can be arbitrarily large. Concrete models

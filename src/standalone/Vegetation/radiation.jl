@@ -129,6 +129,48 @@ end
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
+# TwoStreamParameters has 10 fields, several of which may each be a full
+# ClimaCore Field rather than a scalar, plus a leaf angle distribution model;
+# only the headline optical parameters are shown individually.
+function Base.show(io::IO, ::MIME"text/plain", ps::TwoStreamParameters)
+    if get(io, :compact, false)
+        show(io, ps)
+    else
+        println(io, "TwoStreamParameters{", eltype(ps), "}")
+        println(
+            io,
+            "  PAR: α_leaf=",
+            ClimaLand._scalar_or_field_str(ps.α_PAR_leaf),
+            ", τ_leaf=",
+            ClimaLand._scalar_or_field_str(ps.τ_PAR_leaf),
+        )
+        println(
+            io,
+            "  NIR: α_leaf=",
+            ClimaLand._scalar_or_field_str(ps.α_NIR_leaf),
+            ", τ_leaf=",
+            ClimaLand._scalar_or_field_str(ps.τ_NIR_leaf),
+        )
+        println(
+            io,
+            "  clumping index (Ω): ",
+            ClimaLand._scalar_or_field_str(ps.Ω),
+            ", canopy layers: ",
+            ps.n_layers,
+        )
+        println(
+            io,
+            "  leaf angle distribution: ",
+            ClimaLand._kind_str(ps.G_Function),
+        )
+    end
+end
+
+Base.show(io::IO, ps::TwoStreamParameters) =
+    print(io, "TwoStreamParameters{", eltype(ps), "}")
+
+Base.summary(io::IO, ps::TwoStreamParameters) = show(io, ps)
+
 struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}} <:
        AbstractRadiationModel{FT}
     parameters::TSP
