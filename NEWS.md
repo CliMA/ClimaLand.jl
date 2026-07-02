@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.10.0
+-----
 - ![][badge-🔥behavioralΔ] use the Sturm et al snow thermal K parameterization, ROSETTA parameters,
    and new spun up initial conditions. PR [#1772](https://github.com/CliMA/ClimaLand.jl/pull/1766)
 - ![][badge-✨feature] Add selectable snow thermal conductivity parameterizations
