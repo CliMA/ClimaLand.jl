@@ -157,8 +157,10 @@ end
 
 # The precipitation/temperature/wind/humidity/pressure/co2 fields hold
 # TimeVaryingInputs backed by NetCDF readers, whose default show output can
-# run into the millions of characters; only the scalar/metadata fields are
-# cheap and informative to print.
+# run into the millions of characters; print only the kind of driver
+# (e.g. data-backed vs. analytic) instead of the driver's own contents.
+_driver_kind(x) = nameof(typeof(x))
+
 function Base.show(io::IO, ::MIME"text/plain", atmos::PrescribedAtmosphere)
     if get(io, :compact, false)
         show(io, atmos)
@@ -171,8 +173,27 @@ function Base.show(io::IO, ::MIME"text/plain", atmos::PrescribedAtmosphere)
             "}",
         )
         println(io, "  start_date: ", atmos.start_date)
-        println(io, "  h: ", atmos.h, " m")
-        println(io, "  gustiness: ", atmos.gustiness, " m/s")
+        println(
+            io,
+            "  reference height: ",
+            atmos.h,
+            " m, gustiness: ",
+            atmos.gustiness,
+            " m/s",
+        )
+        driver_fields = (:liquid_precip, :snow_precip, :T, :u, :q, :P)
+        kinds = unique(_driver_kind(getfield(atmos, f)) for f in driver_fields)
+        if length(kinds) == 1
+            println(
+                io,
+                "  drivers: ",
+                kinds[1],
+                " (liquid/snow precip, T, u, q, P)",
+            )
+        else
+            println(io, "  drivers: ", join(kinds, ", "))
+        end
+        println(io, "  CO2: ", _driver_kind(atmos.c_co2))
     end
 end
 
@@ -735,6 +756,13 @@ function Base.show(
             "}",
         )
         println(io, "  start_date: ", radiation.start_date)
+        sw_kind = _driver_kind(radiation.SW_d)
+        lw_kind = _driver_kind(radiation.LW_d)
+        if sw_kind == lw_kind
+            println(io, "  drivers (SW_d, LW_d): ", sw_kind)
+        else
+            println(io, "  drivers: SW_d=", sw_kind, ", LW_d=", lw_kind)
+        end
         println(
             io,
             "  cosθs: ",
@@ -745,7 +773,7 @@ function Base.show(
             io,
             "  frac_diff: ",
             isnothing(radiation.frac_diff) ? "computed empirically" :
-            "prescribed",
+            string("prescribed (", _driver_kind(radiation.frac_diff), ")"),
         )
     end
 end
