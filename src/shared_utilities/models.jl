@@ -56,6 +56,30 @@ as a `make_compute_imp_tendency` default.
 """
 abstract type AbstractExpModel{FT} <: AbstractModel{FT} end
 
+# Generic fallback for any concrete model: models typically hold domains,
+# parameters, and boundary conditions (which can themselves hold prescribed
+# drivers), so a default field dump can be arbitrarily large. Concrete models
+# that want to show more than the type name (e.g. composed models like
+# LandModel) should add their own more specific method.
+function Base.show(io::IO, ::MIME"text/plain", model::AbstractModel)
+    if get(io, :compact, false)
+        show(io, model)
+    else
+        println(
+            io,
+            nameof(typeof(model)),
+            "{",
+            typeof(model).parameters[1],
+            "}",
+        )
+    end
+end
+
+Base.show(io::IO, model::AbstractModel) =
+    print(io, nameof(typeof(model)), "{", typeof(model).parameters[1], "}")
+
+Base.summary(io::IO, model::AbstractModel) = show(io, model)
+
 """
     name(model::AbstractModel)
 
