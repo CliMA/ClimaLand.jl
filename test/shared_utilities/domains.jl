@@ -649,3 +649,29 @@ end
     @test d.xlim == FT.((-90.5, 89.5))
     @test d.ylim == FT.((-180.5, 179.5))
 end
+
+@testset "AbstractDomain show and summary" begin
+    FT = Float32
+    domains = (
+        Point(; z_sfc = FT(0.0)),
+        SphericalShell(; radius = FT(100), depth = FT(30), nelements = (6, 20)),
+        global_box_domain(FT),
+    )
+    for d in domains
+        typename = string(nameof(typeof(d)))
+
+        out = sprint(show, MIME("text/plain"), d)
+        @test occursin(typename, out)
+        @test count(==('\n'), out) <= 10
+
+        out2 = sprint(show, d)
+        @test occursin(typename, out2)
+        @test !occursin('\n', out2)
+        out3 = sprint(show, MIME("text/plain"), d; context = :compact => true)
+        @test out2 == out3
+
+        out_summary = sprint(summary, d)
+        @test occursin(typename, out_summary)
+        @test !occursin('\n', out_summary)
+    end
+end
