@@ -139,6 +139,28 @@ struct LandModel{
     end
 end
 
+# Overrides the generic AbstractModel show: a LandModel's components hold
+# references to the same atmos/radiation drivers (via boundary conditions),
+# so listing just the component names is far more useful than a field dump.
+function Base.show(io::IO, ::MIME"text/plain", land::LandModel)
+    if get(io, :compact, false)
+        show(io, land)
+    else
+        println(io, "LandModel{", typeof(land).parameters[1], "}")
+        components =
+            filter(f -> !isnothing(getfield(land, f)), fieldnames(typeof(land)))
+        for (i, f) in enumerate(components)
+            branch = i == length(components) ? "└──" : "├──"
+            println(io, branch, " ", f, ": ", nameof(typeof(getfield(land, f))))
+        end
+    end
+end
+
+Base.show(io::IO, land::LandModel) =
+    print(io, "LandModel{", typeof(land).parameters[1], "}")
+
+Base.summary(io::IO, land::LandModel) = show(io, land)
+
 """
     LandModel{FT}(
         forcing,
