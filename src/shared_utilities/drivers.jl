@@ -155,6 +155,41 @@ struct PrescribedAtmosphere{
     end
 end
 
+# The precipitation/temperature/wind/humidity/pressure/co2 fields hold
+# TimeVaryingInputs backed by NetCDF readers, whose default show output can
+# run into the millions of characters; only the scalar/metadata fields are
+# cheap and informative to print.
+function Base.show(io::IO, ::MIME"text/plain", atmos::PrescribedAtmosphere)
+    if get(io, :compact, false)
+        show(io, atmos)
+    else
+        println(
+            io,
+            nameof(typeof(atmos)),
+            "{",
+            typeof(atmos).parameters[1],
+            "}",
+        )
+        println(io, "  start_date: ", atmos.start_date)
+        println(io, "  h: ", atmos.h, " m")
+        println(io, "  gustiness: ", atmos.gustiness, " m/s")
+    end
+end
+
+function Base.show(io::IO, atmos::PrescribedAtmosphere)
+    print(
+        io,
+        nameof(typeof(atmos)),
+        "{",
+        typeof(atmos).parameters[1],
+        "}(start_date=",
+        atmos.start_date,
+        ")",
+    )
+end
+
+Base.summary(io::IO, atmos::PrescribedAtmosphere) = show(io, atmos)
+
 """
     PrescribedPrecipitation{FT, LP} <: AbstractAtmosphericDrivers{FT}
 Container for holding prescribed precipitation driver
@@ -680,6 +715,54 @@ struct PrescribedRadiativeFluxes{
         return new{FT, typeof.(args)...}(args...)
     end
 end
+
+# SW_d, frac_diff, and LW_d are TimeVaryingInputs backed by NetCDF readers,
+# whose default show output can run into the millions of characters; only the
+# scalar/metadata fields are cheap and informative to print.
+function Base.show(
+    io::IO,
+    ::MIME"text/plain",
+    radiation::PrescribedRadiativeFluxes,
+)
+    if get(io, :compact, false)
+        show(io, radiation)
+    else
+        println(
+            io,
+            nameof(typeof(radiation)),
+            "{",
+            typeof(radiation).parameters[1],
+            "}",
+        )
+        println(io, "  start_date: ", radiation.start_date)
+        println(
+            io,
+            "  cosθs: ",
+            isnothing(radiation.cosθs) ? "computed from date and location" :
+            "prescribed",
+        )
+        println(
+            io,
+            "  frac_diff: ",
+            isnothing(radiation.frac_diff) ? "computed empirically" :
+            "prescribed",
+        )
+    end
+end
+
+function Base.show(io::IO, radiation::PrescribedRadiativeFluxes)
+    print(
+        io,
+        nameof(typeof(radiation)),
+        "{",
+        typeof(radiation).parameters[1],
+        "}(start_date=",
+        radiation.start_date,
+        ")",
+    )
+end
+
+Base.summary(io::IO, radiation::PrescribedRadiativeFluxes) = show(io, radiation)
 
 """
     net_radiation!(dest::ClimaCore.Fields.Field,
