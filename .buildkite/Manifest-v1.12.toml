@@ -297,9 +297,9 @@ version = "0.1.6"
 
 [[deps.BlockArrays]]
 deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra"]
-git-tree-sha1 = "8aa3a63ca1da72b5282db3017e14b33faed9ce97"
+git-tree-sha1 = "7d4d56506a732fae62294b220f178f6e7cd393e1"
 uuid = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
-version = "1.9.4"
+version = "1.9.5"
 weakdeps = ["Adapt", "BandedMatrices"]
 
     [deps.BlockArrays.extensions]
@@ -2892,7 +2892,7 @@ version = "0.5.1+0"
 deps = ["ForwardDiff", "Printf"]
 git-tree-sha1 = "cb118a120361be967f172791efb2ee4badacd7c8"
 uuid = "7181ea78-2dcb-4de3-ab41-2b8ab5a31e74"
-version = "1.0.2"
+version = "1.0.3"
 
 [[deps.Roots]]
 deps = ["Accessors", "CommonSolve", "Printf"]
