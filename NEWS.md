@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+v1.10.1
+-----
+- Fix GPU crash in CLM canopy radiation parameter regridding
 
 v1.10.0
 -----
