@@ -163,6 +163,10 @@ function run_calibration(run; obs_filepath, output_dir)
         end
     end
 
+    # Everything from here on uses the workers; wrap in try/finally so a failure
+    # (worker code load, calibrate, results I/O) can't orphan them — `rmprocs`
+    # must run on every exit path, not just the happy one.
+    try
     # ── Set config globals + load model code on workers ──────────────────────
     # The model interface + shim are ALREADY loaded on the main process at
     # top-level include (so observation_map, which runs on main, is in an old
@@ -243,10 +247,13 @@ function run_calibration(run; obs_filepath, output_dir)
 
     eki_path = _find_eki_path(output_dir)
 
-    # Free workers between runs so a batch loop doesn't accumulate procs.
-    rmprocs(workers())
-
     return (; output_dir, eki_path, final_params, param_names)
+    finally
+        # Free workers between runs so a batch loop doesn't accumulate procs.
+        # Runs on every exit path (success or thrown error) so a failed run
+        # can't leave orphaned julia worker processes behind.
+        rmprocs(workers())
+    end
 end
 
 "Locate the eki_file.jld2 from the last completed iteration."
