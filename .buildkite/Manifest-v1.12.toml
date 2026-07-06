@@ -2071,10 +2071,10 @@ version = "1.17.10"
     oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [[deps.MLUtils]]
-deps = ["ChainRulesCore", "Compat", "DataAPI", "DelimitedFiles", "MLCore", "NNlib", "Random", "ShowCases", "SimpleTraits", "Statistics", "StatsBase", "Tables"]
-git-tree-sha1 = "28477911479c417b9191bfb16cafb42de11cc29c"
+deps = ["ChainRulesCore", "Compat", "DataAPI", "DelimitedFiles", "Distributed", "MLCore", "NNlib", "Random", "ShowCases", "SimpleTraits", "Statistics", "StatsBase", "Tables"]
+git-tree-sha1 = "b5cad9bb4e180f899cbe8a086af17382aa9cc61f"
 uuid = "f1d291b0-491e-4a28-83b9-f70985020b54"
-version = "0.4.9"
+version = "0.4.10"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPIABI_jll", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "PkgVersion", "PrecompileTools", "Serialization", "Sockets"]
