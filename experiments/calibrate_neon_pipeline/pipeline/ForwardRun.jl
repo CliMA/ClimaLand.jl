@@ -41,6 +41,7 @@ using Statistics
 using CairoMakie
 using CSV
 using DataFrames
+#import JLD2
 
 # Site metadata helper (_get_neon_site_metadata). Included at TOP LEVEL — not
 # inside forward_run — so it compiles once, not on every call. (It is also loaded
@@ -376,6 +377,28 @@ used_in = ["Land"]
     obs_daily = filter(row -> !isnan(row.daily_mean), obs_daily)
     sort!(obs_daily, :date)
 
+    # ── Cap mask: align the obs used for METRICS with the calibration ─────────
+    # observations.jld2 stores obs_dates = the soil-CO₂ days that survived the
+    # spring-peak mask (Observation_flag.jl). The forward RMSE / correlation /
+    # obs-CO₂ means must be computed on the SAME set, otherwise capped spring
+    # peaks (which the calibration never saw) inflate the error and bias the
+    # means. `obs_daily_cal` is obs_daily restricted to the kept dates; the full
+    # `obs_daily` is kept for the time-series figures (so the dropped days stay
+    # visible). `capped_co2_dates` are the in-window obs-days that were dropped,
+    # used to shade the figures. When the unmasked Observations.jl is used,
+    # kept == all obs days, so obs_daily_cal == obs_daily and nothing is shaded.
+    obs_jld = joinpath(Config.base_dir_for(run), "observations.jld2")
+    if isfile(obs_jld)
+        kept_dates = Set(Date.(JLD2.load(obs_jld, "obs_dates")))
+        obs_daily_cal = filter(row -> row.date in kept_dates, obs_daily)
+        capped_co2_dates = sort!([r.date for r in eachrow(obs_daily)
+                                  if r.date <= Date(stop_date) && !(r.date in kept_dates)])
+    else
+        @warn "No observations.jld2 at $obs_jld; forward metrics use the FULL (unmasked) obs"
+        obs_daily_cal = obs_daily
+        capped_co2_dates = Date[]
+    end
+
     # Observed SWC daily means at the calibration depth (same depth code + ≥24
     # valid half-hours/day filter as the CO₂ obs above), for the scatter figure.
     swc_obs_cols = [c for c in
@@ -407,6 +430,21 @@ used_in = ["Land"]
     obs_tsoil_daily.daily_mean .+= 273.15
     sort!(obs_tsoil_daily, :date)
 
+    # Mark the capped spring-peak days (dropped from the calibration / metrics)
+    # with red dots on the obs CO₂ curve. Implemented as scatter! rather than a
+    # vspan!/vlines! band because those primitives don't accept Date/DateTime
+    # x-coordinates in this Makie version (only scatter!/lines! do). `obs_ref` is
+    # the daily obs frame (date => daily_mean) the dots sit on. No-op when empty.
+    function _mark_capped!(ax, dates, obs_ref)
+        isempty(dates) && return
+        capset = Set(dates)
+        sub = filter(r -> r.date in capset, obs_ref)
+        nrow(sub) == 0 && return
+        scatter!(ax, sub.date, Float64.(sub.daily_mean);
+            color = (:blue, 0.8), markersize = 10, marker = :xcross,
+            label = "capped (excluded from RMSE)")
+    end
+
     # ── Main figure: model vs obs + Tsoil ──────────────────────────────
     fig = Figure(size = (1200, 1000))
     ax1 = Axis(fig[1, 1]; ylabel = "Soil CO₂ (ppm)",
@@ -415,6 +453,7 @@ used_in = ["Land"]
         label = "Forward model")
     lines!(ax1, obs_daily.date, Float64.(obs_daily.daily_mean); color = :black,
         linewidth = 1.5, label = "NEON obs")
+    _mark_capped!(ax1, capped_co2_dates, obs_daily)   # red ×: days excluded from RMSE
     axislegend(ax1; position = :rt, framevisible = false)
     ax2 = Axis(fig[2, 1]; ylabel = "SWC", xlabel = "Date")
     lines!(ax2, swc_daily.date, swc_daily.daily_mean; color = :blue, linewidth = 1.5, label = "SWC (model)")
@@ -464,6 +503,9 @@ used_in = ["Land"]
     end
     lines!(ax_co2, sco2_daily.date, sco2_daily.daily_mean; color = :firebrick,
         linewidth = 1.8, label = "Optimized model")
+    # Mark the capped spring-peak days. The CSV/sensor lines still span the full
+    # year (drivers untouched); the red × just flags which days the mask excluded.
+    _mark_capped!(ax_co2, capped_co2_dates, obs_daily)
     axislegend(ax_co2; position = :rt, framevisible = false)
     for (i, col) in enumerate(swc_plot_cols)
         String(col) in obs_colnames || continue
@@ -648,11 +690,12 @@ used_in = ["Land"]
         isempty(x) || scatter!(ax, x, y; color = (:steelblue, 0.6), markersize = 6)
     end
 
-    # obs vs model, paired on common dates
-    obs_mod_co2_x, obs_mod_co2_y = _pair_on_date(obs_daily, sco2_daily)
+    # obs vs model, paired on common dates. CO₂ uses obs_daily_cal (capped
+    # spring-peak days removed) so the RMSE/corr match the calibration target.
+    obs_mod_co2_x, obs_mod_co2_y = _pair_on_date(obs_daily_cal, sco2_daily)
     obs_mod_swc_x, obs_mod_swc_y = _pair_on_date(obs_swc_daily, swc_daily)
     # obs CO₂ vs obs SWC, and model CO₂ vs model SWC
-    obs_co2_swc_x, obs_co2_swc_y = _pair_on_date(obs_daily, obs_swc_daily)
+    obs_co2_swc_x, obs_co2_swc_y = _pair_on_date(obs_daily_cal, obs_swc_daily)
     mod_co2_swc_x, mod_co2_swc_y = _pair_on_date(sco2_daily, swc_daily)
 
     fig_scat = Figure(size = (1100, 950))
@@ -684,10 +727,10 @@ used_in = ["Land"]
         corr_obs_model_swc = _corr(obs_mod_swc_x, obs_mod_swc_y),
         corr_obs_sco2_swc = _corr(obs_co2_swc_x, obs_co2_swc_y),
         corr_model_sco2_swc = _corr(mod_co2_swc_x, mod_co2_swc_y),
-        # soil CO₂ (ppm)
-        obs_sco2_mean = _dstat(obs_daily, mean),
-        obs_sco2_min = _dstat(obs_daily, minimum),
-        obs_sco2_max = _dstat(obs_daily, maximum),
+        # soil CO₂ (ppm) — obs stats on the masked (calibration) set
+        obs_sco2_mean = _dstat(obs_daily_cal, mean),
+        obs_sco2_min = _dstat(obs_daily_cal, minimum),
+        obs_sco2_max = _dstat(obs_daily_cal, maximum),
         model_sco2_mean = _dstat(sco2_daily, mean),
         model_sco2_min = _dstat(sco2_daily, minimum),
         model_sco2_max = _dstat(sco2_daily, maximum),

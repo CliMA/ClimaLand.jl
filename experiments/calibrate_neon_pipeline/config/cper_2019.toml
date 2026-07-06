@@ -8,11 +8,11 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260603"
+settingsdesc = "test"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "cper_main"       # stable id so restart_from can reference it
+run_identifier = "test20260626"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -49,7 +49,7 @@ upper = "Inf"
 site  = "NEON-cper"
 start = "2019-01-01"
 stop  = "2019-12-31"
-settingsdesc = "NeonExp_cper2022_wLabile"
+settingsdesc = "test"
   [runs.priors.labile_depth_scale]
   mean  = 2.0
   std   = 1.0
