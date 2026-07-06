@@ -8,11 +8,11 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260603"
+settingsdesc = "NeonExp_main20260611"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260609_1700"       # stable id so restart_from can reference it
+run_identifier = "20260612_1200"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -47,10 +47,43 @@ upper = "Inf"
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
+site  = "NEON-moab"
+years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+
+[[runs]]
+site  = "NEON-moab"
+start = "2018-01-02"
+stop  = "2018-12-31"
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+  
+[[runs]]
 site  = "NEON-oaes"
 years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
-theta_r = 0.05
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.05"
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+
+[[runs]]
+site  = "NEON-oaes"
+start = "2018-01-02"
+stop  = "2018-12-31"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -60,8 +93,7 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.05"
 [[runs]]
 site  = "NEON-onaq"
 years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
-theta_r = 0.03
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.03"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -71,8 +103,7 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.03"
 [[runs]]
 site  = "NEON-sjer"
 years = [2020, 2021, 2022, 2023, 2024, 2025]
-theta_r = 0.01
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.01"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -84,8 +115,7 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.01"
 site  = "NEON-sjer"
 start = "2019-01-02"
 stop  = "2019-12-31"
-theta_r = 0.01
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.01"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0

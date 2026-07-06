@@ -168,8 +168,14 @@ used_in = ["Land"]
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)
     conductance = PModelConductance{FT}(toml_dict_base)
     soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(land_domain, toml_dict_base)
-
+        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
+            land_domain, 
+            toml_dict_base;
+            soil_params = Soil.rosetta_soil_vangenuchten_parameters(
+            land_domain.space.subsurface,
+            FT,
+        ),
+    )
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         canopy_domain, canopy_forcing, LAI, toml_dict_base;
         prognostic_land_components, photosynthesis, conductance, soil_moisture_stress)
@@ -178,8 +184,20 @@ used_in = ["Land"]
     snow = Snow.SnowModel(FT, canopy_domain, forcing, toml_dict_base, DT;
         prognostic_land_components, α_snow)
 
+    soil = Soil.EnergyHydrology{FT}(
+        land_domain,
+        forcing,
+        toml_dict;
+        prognostic_land_components,
+        additional_sources = (ClimaLand.RootExtraction{FT}(),),
+        retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+            land_domain.space.subsurface,
+            FT,
+        ),
+    )
+
     land = LandModel{FT}(forcing, LAI, toml_dict, land_domain, DT;
-        prognostic_land_components, snow, canopy)
+        prognostic_land_components, snow, canopy, soil)
 
     porosity_scale = FT(1)
     land.soil.parameters.ν .*= porosity_scale
@@ -286,7 +304,7 @@ used_in = ["Land"]
 
     # ── Diagnostics ──────────────────────────────────────────────────────────
     output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "tsoil", "si", "sco2", "soc", "hr", "so2", "sco2_ppm", "scd", "scms", "tair", "airp", "seffo2", "so2prog"]
+    output_vars = ["swc", "tsoil", "si", "sco2", "soc", "hr", "so2", "sco2_ppm", "scd", "scms", "tair", "airp"]
     diags = ClimaLand.default_diagnostics(land, start_date;
         output_writer = output_writer, output_vars, reduction_period = :halfhourly)
 
@@ -489,7 +507,7 @@ used_in = ["Land"]
     axp2 = Axis(fig_prof[2, 1]; ylabel = "Soil O₂")
     axp3 = Axis(fig_prof[3, 1]; ylabel = "Soil CO₂ Microbial Source")
     axp4 = Axis(fig_prof[4, 1]; xlabel = "Date", ylabel = "Soil Water Content")
-    # ── O₂ diagnostic figure (axp5 + axp6 + axp7 + axp8 + axp10), separated from fig_prof ──
+    # ── O₂ diagnostic figure (axp5 + axp6 + axp7), separated from fig_prof ──
     fig_o2diag = Figure(size = (1200, 1500))
     # Gas-phase O₂ mass concentration, kg O₂ m⁻³, matching the top-BC variable
     #   O2_f_atm · P_sfc · M_O2 / (R · T_sfc).  Per-layer model value is the
@@ -501,13 +519,7 @@ used_in = ["Land"]
     #   O2_f = `so2`. This is the consumption term only (excludes diffusion).
     axp6 = Axis(fig_o2diag[2, 1]; ylabel = "Microbial O₂ tendency (kg m⁻³ s⁻¹)")
     # O₂ volumetric fraction in soil air (the `so2` diagnostic, m³ m⁻³).
-    axp7 = Axis(fig_o2diag[3, 1]; ylabel = "Soil O₂ fraction (m³ m⁻³)")
-    # Effective porosity for O₂ transport, θ_eff_o2 = θ_a + β·θ_l (the `seffo2` diagnostic).
-    axp8 = Axis(fig_o2diag[4, 1]; ylabel = "θ_eff_o2 (m³ m⁻³)")
-    # Raw prognostic O₂ mass per soil volume (the `so2prog` diagnostic, Y.soilco2.O2,
-    # no θ_eff division).
-    axp10 = Axis(fig_o2diag[5, 1]; xlabel = "Date",
-        ylabel = "Prognostic O₂ mass (kg m⁻³)")
+    axp7 = Axis(fig_o2diag[3, 1]; xlabel = "Date", ylabel = "Soil O₂ fraction (m³ m⁻³)")
     local last_swc_layer = DataFrame()
     airp_l = get_diag_layer(simulation, "airp_30m_average", 1)  # surface P (z-invariant)
     tair_l = get_diag_layer(simulation, "tair_30m_average", 1)  # surface air T = T_sfc
@@ -536,12 +548,6 @@ used_in = ["Land"]
         lines!(axp6, do2.date, o2_tend; linewidth = 1.5, color = colors[layer], label = "layer$layer")
         # panel 3: O₂ volumetric fraction (so2) per layer
         lines!(axp7, so2_l.date, so2_l.daily_mean; linewidth = 1.5, color = colors[layer], label = "layer$layer")
-        # panel 4: effective porosity for O₂ transport (seffo2) per layer
-        seffo2_l = get_diag_layer(simulation, "seffo2_30m_average", layer)
-        lines!(axp8, seffo2_l.date, seffo2_l.daily_mean; linewidth = 1.5, color = colors[layer], label = "layer$layer")
-        # panel 5: raw prognostic O₂ mass (so2prog = Y.soilco2.O2) per layer
-        so2prog_l = get_diag_layer(simulation, "so2prog_30m_average", layer)
-        lines!(axp10, so2prog_l.date, so2prog_l.daily_mean; linewidth = 1.5, color = colors[layer], label = "layer$layer")
     end
     # Atmospheric reference: O2_f_atm · P_sfc · M_O2 / (R · T_sfc).
     atm = innerjoin(airp_l, tair_l, on = :date, makeunique = true)
@@ -555,8 +561,7 @@ used_in = ["Land"]
         xlims!(axp1, xl...); xlims!(axp2, xl...); xlims!(axp3, xl...)
         xlims!(axp4, xl...)
         xlims!(axp5, xl...); xlims!(axp6, xl...)
-        xlims!(axp7, xl...); xlims!(axp8, xl...)
-        xlims!(axp10, xl...)
+        xlims!(axp7, xl...)
     end
     CairoMakie.save(joinpath(output_dir, "profiles_O2_co2_cms_$(site_id).png"), fig_prof)
     CairoMakie.save(joinpath(output_dir, "o2_diagnostics_$(site_id).png"), fig_o2diag)

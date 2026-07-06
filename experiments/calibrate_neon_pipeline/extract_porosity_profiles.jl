@@ -7,9 +7,15 @@ runs use, for every site referenced in the config/ directory.
 It reproduces, verbatim, the code path the runs take:
   - site lat/long via the same `_get_neon_site_metadata` helper (ForwardRun.jl)
   - the same `Column` domain (zlim, nelements, dz_tuple, longlat)  (ForwardRun.jl:133-140)
-  - ClimaLand's own `Soil.soil_vangenuchten_parameters(subsurface, FT)`, which
-    reads + regrids the Gupta et al. (2020) maps (the default
-    `retention_parameters` inside `Soil.EnergyHydrology` / `LandModel`).
+  - the same retention-parameter source as the run (see USE_ROSETTA below).
+
+Two retention-parameter sources are supported, selectable via the USE_ROSETTA
+switch (or the EXTRACT_USE_ROSETTA env var):
+  - USE_ROSETTA = false : `Soil.soil_vangenuchten_parameters(subsurface, FT)`
+        reads + regrids the Gupta et al. (2020) maps. (legacy default)
+  - USE_ROSETTA = true  : `Soil.rosetta_soil_vangenuchten_parameters(subsurface, FT)`
+        the Rosetta-based parameters, matching the current ForwardRun.jl:193 run
+        path. Output filenames get a "_Rosetta" suffix.
 
 So the values printed/saved here are the same ones `land.soil.parameters` holds
 in a run (porosity before the `porosity_scale = 1` no-op multiply). No approximation.
@@ -37,6 +43,17 @@ using DelimitedFiles
 using Printf
 
 const FT = Float64
+
+# ── Retention-parameter source ────────────────────────────────────────────────
+# true  -> Rosetta (matches current ForwardRun.jl:193), outputs get "_Rosetta".
+# false -> Gupta et al. (2020) (legacy default), outputs have no suffix.
+# Override at runtime with:  EXTRACT_USE_ROSETTA=true julia ... extract_porosity_profiles.jl
+const USE_ROSETTA = lowercase(get(ENV, "EXTRACT_USE_ROSETTA", "true")) in ("true", "1", "yes")
+
+retention_params(subsurface) =
+    USE_ROSETTA ?
+    Soil.rosetta_soil_vangenuchten_parameters(subsurface, FT) :
+    Soil.soil_vangenuchten_parameters(subsurface, FT)
 
 # Site metadata helper (lat/long/atmos_h from CSV) — the same file ForwardRun uses.
 include(joinpath(pkgdir(ClimaLand), "experiments/calibrate_neon/site_metadata.jl"))
@@ -74,8 +91,8 @@ function retention_profiles(site_id)
     long = FT(md.long)
     domain = run_column(long, lat)
 
-    # Identical to the run's default retention_parameters source.
-    rp = Soil.soil_vangenuchten_parameters(domain.space.subsurface, FT)
+    # Identical to the run's retention_parameters source (Gupta or Rosetta).
+    rp = retention_params(domain.space.subsurface)
 
     z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
     z_vals = parent(z)[:, 1]
@@ -100,13 +117,17 @@ site_ids = sites_from_configs(config_dir)
 println("Sites found in configs ($(length(site_ids))): ", join(site_ids, ", "))
 println()
 
-# param key => (output filename, header column name)
+# param key => (output filename, header column name).
+# Filenames get a "_Rosetta" suffix when USE_ROSETTA is set, so the two sources
+# never overwrite each other.
+suffix = USE_ROSETTA ? "_Rosetta" : ""
 outputs = [
-    ("nu", "porosity_profiles.csv", "nu"),
-    ("theta_r", "theta_r_profiles.csv", "theta_r"),
-    ("vg_alpha", "vg_alpha_profiles.csv", "vg_alpha_1_per_m"),
-    ("vg_n", "vg_n_profiles.csv", "vg_n"),
+    ("nu", "porosity_profiles$(suffix).csv", "nu"),
+    ("theta_r", "theta_r_profiles$(suffix).csv", "theta_r"),
+    ("vg_alpha", "vg_alpha_profiles$(suffix).csv", "vg_alpha_1_per_m"),
+    ("vg_n", "vg_n_profiles$(suffix).csv", "vg_n"),
 ]
+println("Retention source: ", USE_ROSETTA ? "Rosetta" : "Gupta et al. (2020)")
 
 # Initialize each output with a header row.
 rows = Dict(key => Vector{Any}[Any["site_id", "lat", "long", "layer", "z_m", col]]

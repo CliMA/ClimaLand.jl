@@ -8,11 +8,11 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260603"
+settingsdesc = "NeonExp_main20260611"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260609_1700"       # stable id so restart_from can reference it
+run_identifier = "20260612_1200"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -48,9 +48,61 @@ upper = "Inf"
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
 site  = "NEON-dcfs"
-years = [2018, 2019 , 2020, 2021, 2022, 2023, 2024, 2025]
-theta_r = 0.06
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.06"
+years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-dcfs"
+start = "2018-01-02"
+stop  = "2018-12-31"
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-grsm"
+years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-grsm"
+start = "2018-01-02"
+stop  = "2018-12-31"
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-harv"
+years = [2021, 2022, 2023, 2024, 2025]
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-harv"
+start = "2020-01-02"
+stop  = "2020-12-31"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -61,8 +113,17 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.06"
 site  = "NEON-jorn"
 start = "2018-01-02"
 stop  = "2018-12-31"
-theta_r = 0.02
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.02"
+settingsdesc = "NeonExp_main20260611_wLabile"
+  [runs.priors.labile_depth_scale]
+  mean  = 0.0
+  std   = 1.0
+  lower = -2.0
+  upper = 10.0
+
+[[runs]]
+site  = "NEON-jorn"
+years = [2019 , 2020, 2021, 2022, 2023, 2024, 2025]
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -72,8 +133,7 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.02"
 [[runs]]
 site  = "NEON-konz"
 years = [2021, 2022, 2023]
-theta_r = 0.08
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.08"
+settingsdesc = "NeonExp_main20260611_wLabile"
   [runs.priors.labile_depth_scale]
   mean  = 0.0
   std   = 1.0
@@ -81,26 +141,3 @@ settingsdesc = "NeonExp_main20260603_wLabile_theta0.08"
   upper = 10.0
 
 
-[[runs]]
-site  = "NEON-moab"
-years = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-theta_r = 0.025
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.025"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
-
-
-[[runs]]
-site  = "NEON-moab"
-start = "2018-01-02"
-stop  = "2018-12-31"
-theta_r = 0.025
-settingsdesc = "NeonExp_main20260603_wLabile_theta0.025"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
