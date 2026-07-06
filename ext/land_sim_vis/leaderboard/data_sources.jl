@@ -459,6 +459,7 @@ function get_compare_vars_biases_plot_extrema(; annual = false)
         "shf" => (-50.0, 50.0) .* factor,
         "lhf" => (-40.0, 40.0) .* factor,
         "swu" => (-50.0, 50.0) .* factor,
+        "lai" => (-3.0, 3.0) .* factor,
     )
     return compare_vars_biases_plot_extrema
 end
@@ -543,22 +544,23 @@ end
 
 # Map the calibration aliases (artifact-derived short names) to the model
 # diagnostic short names used by the simulation output and the leaderboard.
-const _INVERSION_ALIAS_TO_MODEL_NAME = Dict(
-    "inv_nee" => "nee",
-    "sif_gpp" => "gpp",
-    "res_er" => "er",
-    "inv_hr" => "hr",
-)
+# `inv_hr` (Hashimoto Rh) is intentionally excluded: the leaderboard shows the
+# MODIS `lai` target in its place (see InversionDataLoader).
+const _INVERSION_ALIAS_TO_MODEL_NAME =
+    Dict("inv_nee" => "nee", "sif_gpp" => "gpp", "res_er" => "er")
 
 """
     InversionDataLoader
 
 Loads the inversion-derived carbon observations (CT2022 NEE, GOSIF GPP, residual
-ER, Hashimoto Rh from the `inversion_nee` artifact) for the leaderboard. The
-inversion analogue of `ILAMBDataLoader`: same seasonal machinery, but against the
-inversion product instead of FLUXCOM. Keyed by the *model* short names
-`nee`/`gpp`/`er`/`hr` (not the `inv_*` aliases) so they intersect with the
-simulation diagnostics.
+ER from the `inversion_nee` artifact) plus the MODIS `lai` target for the
+leaderboard. The inversion analogue of `ILAMBDataLoader`: same seasonal
+machinery, but against the inversion product instead of FLUXCOM. Keyed by the
+*model* short names `nee`/`gpp`/`er`/`lai` (not the `inv_*` aliases) so they
+intersect with the simulation diagnostics.
+
+`lai` (MODIS, Yuan et al. 2017) replaces the earlier Hashimoto `hr` panel so the
+carbon leaderboard reports the four calibrated targets NEE/GPP/ER/LAI together.
 """
 struct InversionDataLoader <: AbstractDataLoader
     """Preprocessed inversion `OutputVar`s, keyed by model short name."""
@@ -571,12 +573,12 @@ end
 """
     InversionDataLoader()
 
-Construct a data loader for the inversion-derived carbon targets. The variables
-are already preprocessed (monthly total → daily rate, latitude sorted ascending,
-longitude shifted to [-180, 180], units set to `g m-2 day-1`) by
-`get_inversion_obs_var_dict`; here they are re-keyed and re-tagged from
-`inv_nee`/`sif_gpp`/`res_er`/`inv_hr` to `nee`/`gpp`/`er`/`hr` so they match the
-simulation diagnostics.
+Construct a data loader for the inversion-derived carbon targets plus MODIS LAI.
+The carbon variables are already preprocessed (monthly total → daily rate,
+latitude sorted ascending, longitude shifted to [-180, 180], units set to
+`g m-2 day-1`) by `get_inversion_obs_var_dict`; here they are re-keyed and
+re-tagged from `inv_nee`/`sif_gpp`/`res_er` to `nee`/`gpp`/`er`. The `lai` target
+(m^2 m^-2) is loaded from `get_modis_lai_obs_var`.
 """
 function InversionDataLoader()
     inversion_dict = get_inversion_obs_var_dict()
@@ -586,14 +588,17 @@ function InversionDataLoader()
         obs_var.attributes["short_name"] = model_name
         obs_var_dict[model_name] = obs_var
     end
+    lai_obs = get_modis_lai_obs_var()
+    lai_obs.attributes["short_name"] = "lai"
+    obs_var_dict["lai"] = lai_obs
     return InversionDataLoader(obs_var_dict, Set(keys(obs_var_dict)))
 end
 
 """
     get(loader::InversionDataLoader, short_name::String)
 
-Get the preprocessed inversion `OutputVar` with the model short name
-`short_name` (one of `nee`, `gpp`, `er`, `hr`).
+Get the preprocessed `OutputVar` with the model short name `short_name` (one of
+`nee`, `gpp`, `er`, `lai`).
 """
 function Base.get(loader::InversionDataLoader, short_name::String)
     short_name in loader.available_vars ||
@@ -604,9 +609,12 @@ end
 """
     get_mask_dict(data_loader::InversionDataLoader)
 
-Return a dictionary mapping model short names to a masking function that masks
-out grid points where the inversion observation is missing (NaN), mirroring the
-ILAMB carbon-variable masks (used to normalize global bias and RMSE).
+Return a dictionary mapping model short names to a masking function used to
+normalize the global bias and RMSE. The inversion carbon variables
+(`nee`/`gpp`/`er`) are masked where the observation is missing (NaN), mirroring
+the ILAMB carbon-variable masks. `lai` uses `ClimaAnalysis.apply_oceanmask`
+instead: MODIS LAI is finite (≈0), not NaN, over ocean, so the `isnan` mask
+would mask nothing.
 """
 function get_mask_dict(data_loader::InversionDataLoader)
     mask_dict = Dict{String, Any}()
@@ -623,7 +631,9 @@ function get_mask_dict(data_loader::InversionDataLoader)
         end
 
     for short_name in available_vars(data_loader)
-        mask_dict[short_name] = make_mask_fn
+        mask_dict[short_name] =
+            short_name == "lai" ?
+            ((sim_var, obs_var) -> ClimaAnalysis.apply_oceanmask) : make_mask_fn
     end
 
     @assert keys(mask_dict) == available_vars(data_loader)
