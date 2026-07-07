@@ -12,7 +12,7 @@ settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Rosetta"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260706_1200"       # stable id so restart_from can reference it
+run_identifier = "20260706_1500"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -75,4 +75,14 @@ years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 site  = "NEON-konz"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
+[[runs]]
+site  = "NEON-rmnp"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
+[[runs]]
+site  = "NEON-ornl"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+[[runs]]
+site  = "NEON-tall"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
