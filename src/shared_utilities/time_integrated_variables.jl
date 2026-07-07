@@ -1,6 +1,8 @@
 export TimeIntegratedVariable,
     RunningMean, RunningIntegral, RunningSum, time_integrated_tendency!
 
+import ClimaCore.RecursiveApply: ⊟, rdiv
+
 """
     AbstractTimeReduction
 
@@ -102,10 +104,13 @@ time_integrated_prognostic_domain_names(specs) =
 
 # Convert the instantaneous value already stored in `dst` into the tendency for
 # the chosen reduction, in place. `dst` enters holding `f`; on exit it holds dX/dt.
+# Written with ClimaCore.RecursiveApply operators (`⊟`, `rdiv`) so a variable may
+# be scalar-valued or have a structured element type (e.g. a NamedTuple-valued
+# field): for scalar `FT` these are bit-identical to `(dst - X)/τ` and `dst - X/τ`.
 @inline apply_time_reduction!(dst, X, τ, ::RunningMean) =
-    (@. dst = (dst - X) / τ)
+    (@. dst = rdiv(dst ⊟ X, τ))
 @inline apply_time_reduction!(dst, X, τ, ::RunningIntegral) =
-    (@. dst = dst - X / τ)
+    (@. dst = dst ⊟ rdiv(X, τ))
 @inline apply_time_reduction!(dst, X, τ, ::RunningSum) = dst
 
 """

@@ -54,6 +54,17 @@ function euler!(m, Y, p, var, Δt, N; t0 = 0.0)
     return series
 end
 
+# A model whose single time-integrated variable is NamedTuple-valued, like the
+# P-model acclimation capacities `AccVars`.
+struct NTModel{FT, D} <: AbstractExpModel{FT}
+    domain::D
+end
+ClimaLand.name(::NTModel) = :nt
+ClimaLand.prognostic_vars(::NTModel) = (:X,)
+ClimaLand.prognostic_types(::NTModel{FT}) where {FT} =
+    (NamedTuple{(:a, :b), Tuple{FT, FT}},)
+ClimaLand.prognostic_domain_names(::NTModel) = (:surface,)
+
 @testset "Declaration path (Y, not p)" begin
     FT = Float64
     specs = (
@@ -274,4 +285,34 @@ end
     mean_tiv = sum(tiv_lastyear) / length(tiv_lastyear)
     @test mean_tiv ≈ cur_series[end] rtol = 0.25
     @test 50 < mean_tiv < 300   # order-of-magnitude sanity (mol C m^-2 yr^-1)
+end
+
+@testset "RunningMean on a NamedTuple-valued field (P-model AccVars analog)" begin
+    FT = Float64
+    col = Column(; zlim = (FT(-1), FT(0)), nelements = 2)
+    m = NTModel{FT, typeof(col)}(col)
+    Y, p, _ = initialize(m)
+    Y.nt.X.a .= FT(1.0)
+    Y.nt.X.b .= FT(2.0)
+    fa, fb, τ = FT(5.0), FT(8.0), FT(100.0)
+    spec = TimeIntegratedVariable(;
+        name = :X,
+        reduction = RunningMean(),
+        timescale = τ,
+        compute_instantaneous! = (dst, Y, p, t) ->
+            (dst.a .= fa; dst.b .= fb; nothing),
+    )
+    dY = similar(Y)
+    Δt = FT(1.0)
+    N = 300
+    for _ in 1:N
+        time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec,))
+        Y.nt.X.a .= Y.nt.X.a .+ Δt .* dY.nt.X.a
+        Y.nt.X.b .= Y.nt.X.b .+ Δt .* dY.nt.X.b
+    end
+    a = Array(parent(Y.nt.X.a))[1]
+    b = Array(parent(Y.nt.X.b))[1]
+    # each component is an independent scalar EMA toward its target
+    @test a ≈ fa + (FT(1.0) - fa) * exp(-N * Δt / τ) rtol = 2e-2
+    @test b ≈ fb + (FT(2.0) - fb) * exp(-N * Δt / τ) rtol = 2e-2
 end

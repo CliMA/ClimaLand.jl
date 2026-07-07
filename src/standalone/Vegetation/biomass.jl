@@ -672,9 +672,12 @@ function set_historical_cache!(
 
     # Initialize A0 variables (supports both scalar and Field inputs via .=)
     # A0_annual is prognostic: seed the state in Y0, and mirror it into the cache.
-    Y0.canopy.biomass.A0_annual .= A0_annual
+    # Replace non-finite climatology values (e.g. ocean/fill in the input file) with
+    # 0 so the prognostic state stays finite; such cells are inert in the physics.
+    A0_annual_finite = @. ifelse(isfinite(A0_annual), A0_annual, FT(0))
+    Y0.canopy.biomass.A0_annual .= A0_annual_finite
     p.canopy.biomass.A0_daily .= A0_daily
-    p.canopy.biomass.A0_annual .= A0_annual
+    p.canopy.biomass.A0_annual .= A0_annual_finite
     p.canopy.biomass.A0_daily_acc .= FT(0)
 
     # Store GSL in the cache (spatially varying field)

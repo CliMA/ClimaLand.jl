@@ -282,18 +282,35 @@ and dark respiration at the canopy level (`Rd`), and
 - `AccVars`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
     `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4` containing the
     acclimated values of ξ, Vcmax25 (c3 and c4 variant), and Jmax25 (c3
-    and c4 variant), respectively. These are updated using an exponential moving
-    average (EMA) at local noon.
+    and c4 variant). This is a cache mirror of the prognostic `AccVars`, which is
+    a `RunningMean` time-integrated variable in `Y` (see `prognostic_vars`).
+- `AccVars_inst`: the same NamedTuple, holding the instantaneous optimal
+    capacities sampled at local noon — the target the acclimation relaxes toward.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars)
+# Element type of the acclimated / instantaneous optimal-capacity variables.
+_pmodel_accvars_type(::Type{FT}) where {FT} = NamedTuple{
+    (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
+    NTuple{6, FT},
+}
+
+ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars, :AccVars_inst)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
-    NamedTuple{
-        (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
-        Tuple{FT, FT, FT, FT, FT, FT},
-    },
+    _pmodel_accvars_type(FT),
+    _pmodel_accvars_type(FT),
 )
-ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface)
+ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
+
+# `AccVars` (the acclimated optimal capacities) is a time-integrated variable: a
+# `RunningMean` (exponential acclimation) held in the prognostic state `Y` and
+# advanced smoothly by the time-stepper. `p.canopy.photosynthesis.AccVars` mirrors
+# the state for the photosynthesis calculation, and `AccVars_inst` holds the
+# instantaneous optimal capacities sampled at local noon (the target the
+# `RunningMean` relaxes toward).
+ClimaLand.prognostic_vars(::PModel) = (:AccVars,)
+ClimaLand.prognostic_types(::PModel{FT}) where {FT} =
+    (_pmodel_accvars_type(FT),)
+ClimaLand.prognostic_domain_names(::PModel) = (:surface,)
 
 
 """
@@ -516,7 +533,7 @@ end
             :Vcmax25_c3,
             :Vcmax25_c4,
             :Jmax25_c3,
-            :Jmax25_c4,,
+            :Jmax25_c4,
         ),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
@@ -743,9 +760,9 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
 
-    # Initialize AccVars with dummy values which will be overwritten
+    # Initialize AccVars_inst with dummy values (overwritten by the α = 0 sample)
     fill!(
-        p.canopy.photosynthesis.AccVars,
+        p.canopy.photosynthesis.AccVars_inst,
         (;
             ξ_c3 = FT(0),
             ξ_c4 = FT(0),
@@ -756,28 +773,14 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
 
-    parameters_init = PModelParameters(
-        cstar = parameters.cstar,
-        β_c3 = parameters.β_c3,
-        β_c4 = parameters.β_c4,
-        temperature_dep_yield = parameters.temperature_dep_yield,
-        ϕ0_c4 = parameters.ϕ0_c4,
-        ϕ0_c3 = parameters.ϕ0_c3,
-        ϕa0_c3 = parameters.ϕa0_c3,
-        ϕa1_c3 = parameters.ϕa1_c3,
-        ϕa2_c3 = parameters.ϕa2_c3,
-        ϕa0_c4 = parameters.ϕa0_c4,
-        ϕa1_c4 = parameters.ϕa1_c4,
-        ϕa2_c4 = parameters.ϕa2_c4,
-        α = FT(0),  # this allows us to use the initial values directly
-    )
-
+    parameters_init = _pmodel_instantaneous_parameters(parameters)
     local_noon_mask = FT(1)  # Force update for initialization
 
-    @. p.canopy.photosynthesis.AccVars = update_pmodel_state(
+    # instantaneous optimal capacities at t0
+    @. p.canopy.photosynthesis.AccVars_inst = update_pmodel_state(
         parameters_init,
         constants,
-        p.canopy.photosynthesis.AccVars,
+        p.canopy.photosynthesis.AccVars_inst,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -786,6 +789,71 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         APAR_canopy_moles,
         local_noon_mask,
     )
+    # seed the prognostic AccVars (and its cache mirror) at the initial optimum
+    Y0.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
+    p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
+end
+
+# P-model parameters with acclimation disabled (α = 0); `update_pmodel_state` then
+# returns the instantaneous optimal capacities, used to sample `AccVars_inst`.
+function _pmodel_instantaneous_parameters(
+    parameters::PModelParameters{FT},
+) where {FT}
+    return PModelParameters(
+        cstar = parameters.cstar,
+        β_c3 = parameters.β_c3,
+        β_c4 = parameters.β_c4,
+        temperature_dep_yield = parameters.temperature_dep_yield,
+        ϕ0_c3 = parameters.ϕ0_c3,
+        ϕ0_c4 = parameters.ϕ0_c4,
+        ϕa0_c3 = parameters.ϕa0_c3,
+        ϕa1_c3 = parameters.ϕa1_c3,
+        ϕa2_c3 = parameters.ϕa2_c3,
+        ϕa0_c4 = parameters.ϕa0_c4,
+        ϕa1_c4 = parameters.ϕa1_c4,
+        ϕa2_c4 = parameters.ϕa2_c4,
+        α = FT(0),
+    )
+end
+
+"""
+    ClimaLand.make_compute_exp_tendency(component::PModel, canopy)
+
+Advances the acclimated optimal capacities `AccVars` as a `RunningMean`
+time-integrated variable, relaxing toward the local-noon instantaneous optimal
+capacities `AccVars_inst`:
+
+    dAccVars/dt = (AccVars_inst - AccVars) / τ,     τ = 1 day / α,
+
+with `α` the acclimation parameter of the previous daily EMA. Integrated
+continuously toward the noon-sampled `AccVars_inst`, the change over a day
+reproduces the previous once-per-day blend `AccVars ← α AccVars + (1-α) AccVars_inst`,
+but smoothly rather than in a daily step. Setting `α = 0` (τ = 1 day) means no
+memory; `α → 1` (τ → ∞) freezes `AccVars`.
+"""
+function ClimaLand.make_compute_exp_tendency(
+    component::PModel{FT},
+    canopy,
+) where {FT}
+    τ = FT(86400) / component.parameters.α  # seconds
+    accvars_tiv = ClimaLand.TimeIntegratedVariable(;
+        name = :AccVars,
+        reduction = ClimaLand.RunningMean(),
+        timescale = τ,
+        compute_instantaneous! = (dst, Y, p, t) ->
+            (dst .= p.canopy.photosynthesis.AccVars_inst; nothing),
+    )
+    function compute_exp_tendency!(dY, Y, p, t)
+        ClimaLand.time_integrated_tendency!(
+            dY.canopy.photosynthesis,
+            Y.canopy.photosynthesis,
+            Y,
+            p,
+            t,
+            (accvars_tiv,),
+        )
+    end
+    return compute_exp_tendency!
 end
 
 """
@@ -798,13 +866,16 @@ end
         local_noon,
     )
 
-Updates the optimal parameters according to conditions at local noon.
+Samples the instantaneous optimal capacities into `AccVars_inst` at local noon
+(held between noons). The acclimation toward these values is done smoothly by the
+P-model `compute_exp_tendency!` (a `RunningMean` on the prognostic `AccVars`).
 """
 function call_update_pmodel_state(p, Y, t; canopy, dt, local_noon)
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
 
-    # update the acclimated Vcmax25, Jmax25, ξ using EMA
-    parameters = canopy.photosynthesis.parameters
+    # sample the instantaneous optimal Vcmax25, Jmax25, ξ at local noon (α = 0)
+    parameters =
+        _pmodel_instantaneous_parameters(canopy.photosynthesis.parameters)
     constants = canopy.photosynthesis.constants
     earth_param_set = canopy.earth_param_set
 
@@ -832,10 +903,10 @@ function call_update_pmodel_state(p, Y, t; canopy, dt, local_noon)
         ),
     )
 
-    @. p.canopy.photosynthesis.AccVars = update_pmodel_state(
+    @. p.canopy.photosynthesis.AccVars_inst = update_pmodel_state(
         parameters,
         constants,
-        p.canopy.photosynthesis.AccVars,
+        p.canopy.photosynthesis.AccVars_inst,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -933,6 +1004,10 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     parameters = model.parameters
     constants = model.constants
     FT = eltype(parameters)
+
+    # Mirror the prognostic acclimated optimal capacities into the cache, so the
+    # photosynthesis calculation (and diagnostics) read the current state.
+    @. p.canopy.photosynthesis.AccVars = Y.canopy.photosynthesis.AccVars
 
     # Unpack preallocated variables to short names
     InstVars = p.canopy.photosynthesis.InstVars

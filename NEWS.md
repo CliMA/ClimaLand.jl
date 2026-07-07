@@ -33,6 +33,19 @@ v1.10.2
   (plus on demand via the `long run opt lai` label). PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
 - ![][badge-✨feature] Add an `INVERSION` leaderboard (model vs inversion-derived NEE/GPP/ER,
   plus MODIS LAI on prognostic-LAI runs only) to the snowy-land long run. PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
+- ![][badge-✨feature] Add a `TimeIntegratedVariable` shared utility for prognostic
+  time-integrated variables — a running mean, integral, or sum of an instantaneous
+  quantity over a configurable memory timescale, stored in the state `Y` and advanced
+  smoothly by the time-stepper (no update callback, checkpoint/restart-safe). Handles
+  scalar- and NamedTuple-valued fields. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] The optimal-LAI annual potential GPP `A0_annual` is now a
+  prognostic `RunningIntegral` (≈1 yr memory) advanced every timestep, replacing the
+  cache accumulator that was finalized in a hard 365-day-count step; this removes the
+  once-a-year discontinuity in `LAI_max` and modeled LAI. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] The P-model acclimated optimal capacities `AccVars` are now a
+  prognostic `RunningMean` in `Y`, relaxing continuously toward the local-noon
+  instantaneous optimum (`AccVars_inst`) instead of a once-per-day EMA blend; the
+  daily-aggregate acclimation is preserved but evolves smoothly within the day. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
 
 v1.10.1
 -----
