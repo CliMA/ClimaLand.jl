@@ -23,6 +23,9 @@ end
 @safetestset "Variable types tests" begin
     include("shared_utilities/variable_types.jl")
 end
+@safetestset "Time integrated variables tests" begin
+    include("shared_utilities/time_integrated_variables.jl")
+end
 @safetestset "Driver tests" begin
     include("shared_utilities/drivers.jl")
     include("shared_utilities/coupled_fluxes.jl")
