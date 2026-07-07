@@ -106,7 +106,7 @@ Return the path to the directory that contains the forty years of ERA5 forcing
 data.
 """
 function era5_land_forcing_data_forty_years_folder_path(; context = nothing)
-    return "/glade/campaign/univ/ucit0011/ClimaArtifacts2/artifacts/forty_yrs_era5_land_forcing_data/forty_yrs_era5_land_forcing_data_artifact"
+    return @clima_artifact("forty_yrs_era5_land_forcing_data", context)
 end
 
 """
