@@ -653,6 +653,34 @@ function compute_extra_prog_tendency!(
     return nothing
 end
 
+function compute_extra_prog_tendency!(
+    parameterization::ExponentialAlbedoModel,
+    model::SnowModel,
+    dY,
+    Y,
+    p,
+    t,
+)
+    α = Y.snow.A
+    (; α_min, α_max, τ_min, τ_max, P_crit) = parameterization
+    @. dY.snow.A = -(α - α_min)/τ_min * (1 - heaviside(p.drivers.P - P_crit)) - (α - α_max)/τ_max * heaviside(p.drivers.P - P_crit)
+    return nothing
+end
+function ClimaLand.Snow.update_snow_albedo!(
+    α,
+    m::ExponentialAlbedoModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    @. α = Y.snow.A
+end
+ClimaLand.Snow.extra_prog_vars(::ExponentialAlbedoModel) = (:A,)
+
+ClimaLand.Snow.extra_prog_types(::ExponentialAlbedoModel{FT}) where {FT} = (FT,)
+
+ClimaLand.Snow.extra_prog_domain_names(::ExponentialAlbedoModel) = (:surface,)
 """
     flux_balance(
         T_sfc_guess::FT,

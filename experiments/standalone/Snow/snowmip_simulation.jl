@@ -36,7 +36,7 @@ else
 end
 climaland_dir = pkgdir(ClimaLand)
 
-USE_NEURAL_MODELS = true
+USE_NEURAL_MODELS = false
 USE_BULK_SFC_TEMP = false
 
 FT = Float32
@@ -68,7 +68,7 @@ density =
 α_snow =
     USE_NEURAL_MODELS ?
     NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = Δt) :
-    Snow.ConstantAlbedoModel(α)
+    Snow.ExponentialAlbedoModel(toml_dict)
 
 temp_tag = USE_BULK_SFC_TEMP ? "surftemp" : "gradtemp"
 neural_tag = USE_NEURAL_MODELS ? "default" : "neural"
@@ -94,6 +94,7 @@ Y, p, coords = ClimaLand.initialize(model)
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
+Y.snow.A .= FT(0.7)
 if USE_NEURAL_MODELS
     Y.snow.Z .= FT(depths[1]) #first depth value
     Y.snow.A .= FT(first(collect(skipmissing(albedo)))) #first albedo value

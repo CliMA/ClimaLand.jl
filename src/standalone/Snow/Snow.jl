@@ -43,6 +43,7 @@ export SnowParameters,
     AtmosDrivenSnowBC,
     snow_boundary_fluxes!,
     ConstantAlbedoModel,
+    ExponentialAlbedoModel,
     ZenithAngleAlbedoModel,
     WuWuSnowCoverFractionModel,
     SturmSnowConductivityModel,
@@ -161,6 +162,32 @@ function ZenithAngleAlbedoModel(
     x0 = toml_dict["x0"],
 )
     return ZenithAngleAlbedoModel(α_0, Δα, k, β = β, x0 = x0)
+end
+
+struct ExponentialAlbedoModel{FT} <: AbstractAlbedoModel{FT}
+    ""
+    α_min::FT
+    ""
+    α_max::FT
+    "τ_min"
+    τ_min::FT
+    ""
+    τ_max::FT
+    ""
+    P_crit::FT
+end
+
+function ExponentialAlbedoModel(
+    toml_dict::CP.ParamDict;
+    α_min = toml_dict["alpha_min_s"],
+    α_max = toml_dict["alpha_max_s"],
+    tau_min = toml_dict["tau_min_s"],
+    tau_max = toml_dict["tau_max_s"],
+    P_crit = toml_dict["P_crit_s"],
+)
+    @assert 0 < α_min < 1
+    @assert 0 < α_max < 1
+    return ExponentialAlbedoModel(α_min, α_max, tau_min, tau_max, P_crit)
 end
 
 """

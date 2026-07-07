@@ -181,6 +181,36 @@ value = 0.1
 type = "float"
 description = "Parameter to prevent dividing by zero when computing snow temperature (m)"
 
+["alpha_min_s"]
+value = 0.4
+type = "float"
+description = "Free parameter controlling the minimum snow albedo"
+tag = "ExponentialAlbedoModel"
+
+["alpha_max_s"]
+value = 0.9
+type = "float"
+description = "Free parameter controlling the maximum snow albedo"
+tag = "ExponentialAlbedoModel"
+
+["tau_min_s"]
+value = 2592000
+type = "float"
+description = "Free parameter controlling the minimum snow albedo"
+tag = "ExponentialAlbedoModel"
+
+["tau_max_s"]
+value = 86400
+type = "float"
+description = "Free parameter controlling the maximum snow albedo"
+tag = "ExponentialAlbedoModel"
+
+["P_crit_s"]
+value = 3e-7
+type = "float"
+description = "Free parameter controlling the snow albedo"
+tag = "ExponentialAlbedoModel"
+
 # Snow thermal conductivity parameters
 ["jordan_linear_snow_thermal_conductivity"]
 value = 0.07
