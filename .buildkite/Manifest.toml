@@ -2,7 +2,7 @@
 
 julia_version = "1.10.11"
 manifest_format = "2.0"
-project_hash = "1c9da8099ab7488e61a156ce1750736601715aa2"
+project_hash = "e5d4fb3f0ecac3ebca085b29e4b65ceca20595b7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "d9aaef7c63466eee4de23b4d9dad03629df54bea"
@@ -559,24 +559,14 @@ uuid = "5c42b081-d73a-476f-9059-fd94b934656c"
 version = "1.1.1"
 
 [[deps.ClimaTimeSteppers]]
-deps = ["ClimaComms", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "StaticArrays"]
-git-tree-sha1 = "c08a61bfec5ac0660e333ad8234f2bbf37a9a9f8"
+deps = ["ClimaComms", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "NullBroadcasts", "StaticArrays"]
+git-tree-sha1 = "dd199d43264dbbc2e9721998d56a7ae52fd2de4e"
 uuid = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
-version = "0.9.0"
+version = "0.10.3"
+weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables"]
 
     [deps.ClimaTimeSteppers.extensions]
-    ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "StatsBase", "PrettyTables"]
-    ClimaTimeSteppersDiffEqExt = ["DiffEqBase", "SciMLBase"]
-    ClimaTimeSteppersSciMLExt = "SciMLBase"
-
-    [deps.ClimaTimeSteppers.weakdeps]
-    BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-    DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
-    OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-    PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-    SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+    ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "PrettyTables"]
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
@@ -2439,6 +2429,11 @@ version = "1.1.1"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
+
+[[deps.NullBroadcasts]]
+git-tree-sha1 = "343c7bb67d0a29ea5d7d2b3e945afe81e2862337"
+uuid = "0d71be07-595a-4f89-9529-4065a4ab43a6"
+version = "0.1.0"
 
 [[deps.Nullables]]
 git-tree-sha1 = "8f87854cc8f3685a60689d8edecaa29d2251979b"
