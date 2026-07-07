@@ -29,9 +29,9 @@ function get_calibration_prior()
         EKP.constrained_gaussian("alpha_0", 0.59, 0.15, 0.05, 1.0),
         EKP.constrained_gaussian("delta_alpha", 0.4, 0.15, 0.05, 1.0),
         EKP.constrained_gaussian("k", 1.96, 0.15, 0.05, 10.0),
-        EKP.constrained_gaussian("beta", 0.97, 0.15, 0.05, 1.0),
+        EKP.constrained_gaussian("beta", 0.9, 0.05, 0.05, 1.0),
         EKP.constrained_gaussian("leaf_Cd", 0.07, 0.03, 0.001, 0.5),
-        EKP.constrained_gaussian("K_lw", 0.92, 0.2, 0.0, 2.0),
+        EKP.constrained_gaussian("canopy_K_lw", 0.92, 0.2, 0.0, 2.0),
     ]
     return EKP.combine_distributions(priors)
 end
