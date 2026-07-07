@@ -452,11 +452,12 @@ end
 """
     call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
 
-Updates LAI and accumulates potential GPP (A0) at each timestep.
+Updates LAI and the daily potential GPP (A0) accumulator.
 
 Every timestep: accumulates instantaneous potential GPP into the daily accumulator.
-At local noon: finalizes daily A0, adds it to annual accumulator, updates LAI.
-Every 365 days: finalizes annual A0 from the accumulator.
+At local noon: finalizes daily A0 and updates LAI. The annual potential GPP
+`A0_annual` (used for LAI_max) is a prognostic RunningIntegral advanced smoothly in
+the biomass `compute_exp_tendency!` and read here directly from `Y`.
 
 Uses air temperature (not canopy temperature) for A0 computation, since canopy
 temperature includes energy balance feedbacks that should not affect potential GPP.
@@ -532,21 +533,11 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
     # Get parameters from the biomass model
     parameters = canopy.biomass.parameters
 
-    # At local noon: finalize daily A0, update annual accumulator, update LAI
-    # Snapshot the daily accumulator before any resets
+    # At local noon: finalize daily A0 and update LAI.
+    # Snapshot the daily accumulator before the reset.
+    # A0_annual is a prognostic RunningIntegral (advanced in the biomass tendency),
+    # so it is read directly from Y instead of being finalized here.
     A0_daily_final = @. p.canopy.biomass.A0_daily_acc
-
-    # Use days_since_reset to track accumulation period (365-day rolling window).
-    # This ensures the first annual update happens exactly 365 days after
-    # simulation start, and subsequent updates every 365 days thereafter.
-    days_since_reset = p.canopy.biomass.days_since_reset
-
-    # At noon: finalize annual A0 when we have accumulated 365 days
-    A0_annual_final = @. ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        p.canopy.biomass.A0_annual_acc,
-        p.canopy.biomass.A0_annual,
-    )
 
     # Compute chi for water limitation term (using growing season mean VPD)
     chi = @. lazy(
@@ -569,7 +560,7 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
             A0_daily_final,
             p.canopy.biomass.area_index.leaf,
             parameters.k,
-            A0_annual_final,
+            Y.canopy.biomass.A0_annual,
             parameters.z,
             p.canopy.biomass.GSL,
             parameters.sigma,
@@ -583,41 +574,11 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
         p.canopy.biomass.area_index.leaf,
     )
 
-    # Update A0_annual when 365 days have accumulated
-    @. p.canopy.biomass.A0_annual = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        A0_annual_final,
-        p.canopy.biomass.A0_annual,
-    )
-
-    # Update A0_daily at noon (stores the daily sum for diagnostics)
+    # Update A0_daily at noon (stores the daily sum for diagnostics and L_steady)
     @. p.canopy.biomass.A0_daily = ifelse(
         local_noon_mask == FT(1),
         A0_daily_final,
         p.canopy.biomass.A0_daily,
-    )
-
-    # At noon: add daily sum to annual accumulator, then reset daily accumulator
-    # When 365 days reached: start fresh with today's value
-    @. p.canopy.biomass.A0_annual_acc = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        A0_daily_final,  # Reset and start with today's value
-        ifelse(
-            local_noon_mask == FT(1),
-            p.canopy.biomass.A0_annual_acc + A0_daily_final,
-            p.canopy.biomass.A0_annual_acc,
-        ),
-    )
-
-    # Update days_since_reset counter at noon
-    @. p.canopy.biomass.days_since_reset = ifelse(
-        local_noon_mask == FT(1) && days_since_reset >= FT(365),
-        FT(1),  # Reset to 1 (today's value already added)
-        ifelse(
-            local_noon_mask == FT(1),
-            days_since_reset + FT(1),
-            days_since_reset,
-        ),
     )
 
     # Reset daily accumulator at noon

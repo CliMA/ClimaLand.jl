@@ -466,9 +466,8 @@ end
 Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `area_index`: NamedTuple{(:root, :stem, :leaf)} containing area indices (m^2 m^-2)
 - `A0_daily`: daily potential GPP from previous day (mol CO2 m^-2 day^-1), with moisture stress factor beta
-- `A0_annual`: annual potential GPP from previous year (mol CO2 m^-2 yr^-1), with actual moisture stress factor beta
+- `A0_annual`: cache mirror of the prognostic annual potential GPP (mol CO2 m^-2 yr^-1)
 - `A0_daily_acc`: accumulator for current day's potential GPP (mol CO2 m^-2 day^-1)
-- `A0_annual_acc`: accumulator for current year's potential GPP (mol CO2 m^-2 yr^-1), sum of daily values at noon
 - `GSL`: growing season length (days), spatially varying
 - `precip_annual`: mean annual precipitation (mol H2O m^-2 yr^-1), for water limitation in LAI_max
 - `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
@@ -479,8 +478,6 @@ ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (
     :A0_daily,
     :A0_annual,
     :A0_daily_acc,
-    :A0_annual_acc,
-    :days_since_reset,
     :GSL,
     :precip_annual,
     :vpd_gs,
@@ -488,8 +485,6 @@ ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (
 )
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    FT,
-    FT,
     FT,
     FT,
     FT,
@@ -507,9 +502,16 @@ ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
     :surface,
     :surface,
     :surface,
-    :surface,
-    :surface,
 )
+
+# `A0_annual` (annual potential GPP, mol CO2 m^-2 yr^-1) is a time-integrated
+# variable: a `RunningIntegral` with ~1 yr memory, held in the prognostic state
+# `Y` so it is advanced smoothly by the time-stepper every stage rather than
+# jumping once per year. The auxiliary `:A0_annual` above mirrors the prognostic
+# value each cache update, for diagnostics and the local-noon LAI update.
+ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) = (:A0_annual,)
+ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} = (FT,)
+ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) = (:surface,)
 
 """
     update_biomass!(
@@ -535,11 +537,90 @@ function update_biomass!(
     (; SAI, RAI) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
+    # Mirror the prognostic annual potential GPP into the cache, for diagnostics
+    # and the local-noon LAI update.
+    @. p.canopy.biomass.A0_annual = Y.canopy.biomass.A0_annual
     # LAI is updated via the callback, not here
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
     mask_biomass!(p, Val(canopy.boundary_conditions.prognostic_land_components))
+end
+
+"""
+    ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
+
+Advances the prognostic annual potential GPP `A0_annual` as a `RunningIntegral`
+time-integrated variable with ~1 yr memory:
+
+    dA0_annual/dt = A0_inst - A0_annual / τ,     τ = 1 yr,
+
+where `A0_inst` is the instantaneous potential GPP (mol CO2 m^-2 s^-1). At steady
+state `A0_annual = τ · mean(A0_inst)` — the annual potential GPP that drives
+`LAI_max` — but here it evolves smoothly every timestep instead of stepping once
+per simulated year.
+"""
+function ClimaLand.make_compute_exp_tendency(
+    component::ZhouOptimalLAIModel{FT},
+    canopy,
+) where {FT}
+    τ = FT(365 * 86400)  # ~1 yr, matching the previous 365-day annual window
+    A0_annual_tiv = ClimaLand.TimeIntegratedVariable(;
+        name = :A0_annual,
+        reduction = ClimaLand.RunningIntegral(),
+        timescale = τ,
+        compute_instantaneous! = (dst, Y, p, t) -> begin
+            pmodel_parameters = canopy.photosynthesis.parameters
+            pmodel_constants = canopy.photosynthesis.constants
+            fractional_c3 = canopy.photosynthesis.fractional_c3
+            earth_param_set = canopy.earth_param_set
+            VPD = @. lazy(
+                max(
+                    Thermodynamics.vapor_pressure_deficit(
+                        LP.thermodynamic_parameters(earth_param_set),
+                        p.drivers.T,
+                        p.drivers.P,
+                        p.drivers.q,
+                    ),
+                    sqrt(eps(FT)),
+                ),
+            )
+            PPFD = @. lazy(
+                compute_PPFD(
+                    p.canopy.radiative_transfer.par_d,
+                    canopy.radiative_transfer.parameters.λ_γ_PAR,
+                    pmodel_constants.lightspeed,
+                    pmodel_constants.planck_h,
+                    pmodel_constants.N_a,
+                ),
+            )
+            # instantaneous potential GPP, mol CO2 m^-2 s^-1
+            @. dst =
+                compute_A0_daily(
+                    fractional_c3,
+                    pmodel_parameters,
+                    pmodel_constants,
+                    p.drivers.T,
+                    p.drivers.P,
+                    VPD,
+                    p.drivers.c_co2,
+                    PPFD,
+                    p.canopy.soil_moisture_stress.βm,
+                ) / pmodel_constants.Mc
+            return nothing
+        end,
+    )
+    function compute_exp_tendency!(dY, Y, p, t)
+        ClimaLand.time_integrated_tendency!(
+            dY.canopy.biomass,
+            Y.canopy.biomass,
+            Y,
+            p,
+            t,
+            (A0_annual_tiv,),
+        )
+    end
+    return compute_exp_tendency!
 end
 
 """
@@ -590,11 +671,11 @@ function set_historical_cache!(
     L .= lai_init
 
     # Initialize A0 variables (supports both scalar and Field inputs via .=)
+    # A0_annual is prognostic: seed the state in Y0, and mirror it into the cache.
+    Y0.canopy.biomass.A0_annual .= A0_annual
     p.canopy.biomass.A0_daily .= A0_daily
     p.canopy.biomass.A0_annual .= A0_annual
     p.canopy.biomass.A0_daily_acc .= FT(0)
-    p.canopy.biomass.A0_annual_acc .= FT(0)
-    p.canopy.biomass.days_since_reset .= FT(0)
 
     # Store GSL in the cache (spatially varying field)
     p.canopy.biomass.GSL .= GSL
