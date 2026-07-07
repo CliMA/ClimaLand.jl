@@ -8,11 +8,11 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
+settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Rosetta"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260629_1800"       # stable id so restart_from can reference it
+run_identifier = "20260706_1200"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -44,46 +44,27 @@ std   = 0.02
 lower = 0.0
 upper = "Inf"
 
+[priors.labile_depth_scale]
+mean  = 0.0
+std   = 1.0
+lower = -2.0
+upper = 10.0
+
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 
-#[[runs]]
-#site  = "NEON-scbi"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-#settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-#  [runs.priors.labile_depth_scale]
-#  mean  = 0.0
-#  std   = 1.0
-#  lower = -2.0
-#  upper = 10.0
+[[runs]]
+site  = "NEON-scbi"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
-#[[runs]]
-#site  = "NEON-serc"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-#settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-#  [runs.priors.labile_depth_scale]
-#  mean  = 0.0
-#  std   = 1.0
-#  lower = -2.0
-#  upper = 10.0
+[[runs]]
+site  = "NEON-serc"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
-#[[runs]]
-#site  = "NEON-soap"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-#settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-#  [runs.priors.labile_depth_scale]
-#  mean  = 0.0
-#  std   = 1.0
-#  lower = -2.0
-#  upper = 10.0
+[[runs]]
+site  = "NEON-soap"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
 site  = "NEON-tall"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-years = [2020, 2021, 2022, 2023, 2024]
-settingsdesc = "NeonExp_main20260611_wLabile_flagSpring"
-  [runs.priors.labile_depth_scale]
-  mean  = 0.0
-  std   = 1.0
-  lower = -2.0
-  upper = 10.0
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]

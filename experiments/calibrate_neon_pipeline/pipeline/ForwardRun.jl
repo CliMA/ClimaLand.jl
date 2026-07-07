@@ -166,16 +166,22 @@ used_in = ["Land"]
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
+    # Build the Rosetta van Genuchten retention parameters ONCE and share the
+    # same object between the soil model (ν) and the canopy soil moisture stress
+    # model (θ_high). LandModel's check_land_equality asserts θ_high == ν with
+    # exact ==, so they must be the identical field, not two separate regrids.
+    retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+        land_domain.space.subsurface,
+        FT,
+    )
+
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)
     conductance = PModelConductance{FT}(toml_dict_base)
     soil_moisture_stress =
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
-            land_domain, 
+            land_domain,
             toml_dict_base;
-            #soil_params = Soil.rosetta_soil_vangenuchten_parameters(
-            #land_domain.space.subsurface,
-            #FT,
-            #),
+            soil_params = retention_parameters,
     )
     canopy = ClimaLand.Canopy.CanopyModel{FT}(
         canopy_domain, canopy_forcing, LAI, toml_dict_base;
@@ -191,10 +197,7 @@ used_in = ["Land"]
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
-        #retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
-        #    land_domain.space.subsurface,
-        #    FT,
-        #),
+        retention_parameters = retention_parameters,
     )
 
     land = LandModel{FT}(forcing, LAI, toml_dict, land_domain, DT;

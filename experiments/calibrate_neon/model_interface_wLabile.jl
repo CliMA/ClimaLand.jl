@@ -154,6 +154,11 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
+    retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+        land_domain.space.subsurface,
+        FT,
+    )
+
     # Canopy with PModel (uses base TOML, not calibrated TOML)
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)
     conductance = PModelConductance{FT}(toml_dict_base)
@@ -161,10 +166,7 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(
             land_domain, 
             toml_dict_base;
-            #soil_params = Soil.rosetta_soil_vangenuchten_parameters(
-            #land_domain.space.subsurface,
-            #FT,
-            #),
+            soil_params = retention_parameters
     )
     biomass = ClimaLand.Canopy.PrescribedBiomassModel{FT}(land_domain, LAI, toml_dict_base)
 
@@ -202,10 +204,7 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         toml_dict;
         prognostic_land_components,
         additional_sources = (ClimaLand.RootExtraction{FT}(),),
-        #retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
-        #    land_domain.space.subsurface,
-        #    FT,
-        #),
+        retention_parameters = retention_parameters
     )
 
 
