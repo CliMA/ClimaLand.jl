@@ -420,40 +420,6 @@ Base.@kwdef struct SnowParameters{
     earth_param_set::PSE
 end
 
-# SnowParameters has 13 fields, 5 of which are themselves parameterization
-# structs (density, albedo, thermal conductivity, cover fraction, surface
-# temperature) plus the LandParameters earth_param_set; only the timestep and
-# the *kind* of each sub-parameterization are shown.
-function Base.show(io::IO, ::MIME"text/plain", ps::SnowParameters)
-    if get(io, :compact, false)
-        show(io, ps)
-    else
-        println(io, "SnowParameters{", typeof(ps).parameters[1], "}")
-        println(io, "  timestep (Δt): ", ps.Δt, " s")
-        println(
-            io,
-            "  density: ",
-            nameof(typeof(ps.density)),
-            ", albedo: ",
-            nameof(typeof(ps.α_snow)),
-        )
-        println(
-            io,
-            "  thermal conductivity: ",
-            nameof(typeof(ps.κ_snow)),
-            ", cover fraction: ",
-            nameof(typeof(ps.scf)),
-        )
-        println(io, "  surface temperature: ", nameof(typeof(ps.surf_temp)))
-        println(io, "  earth_param_set: ", sprint(show, ps.earth_param_set))
-    end
-end
-
-Base.show(io::IO, ps::SnowParameters) =
-    print(io, "SnowParameters{", typeof(ps).parameters[1], "}")
-
-Base.summary(io::IO, ps::SnowParameters) = show(io, ps)
-
 ## For interfacing with ClimaParams
 """
     function SnowParameters(
