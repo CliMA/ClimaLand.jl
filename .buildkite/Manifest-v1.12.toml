@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
 project_hash = "06c84aad6d69863e00aaa7f73d4dfba0d9c6b3be"
 
@@ -511,7 +511,7 @@ weakdeps = ["CUDA", "MPI"]
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BandedMatrices", "BlockArrays", "ClimaComms", "ClimaInterpolations", "CubedSphere", "DataStructures", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "KrylovKit", "LLVM", "LazyBroadcast", "LinearAlgebra", "MultiBroadcastFusion", "NVTX", "PkgVersion", "Random", "RecursiveArrayTools", "RootSolvers", "SparseArrays", "StaticArrays", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "8696532f6f09e79316ddba410d64ae90b3795b35"
+path = "/home/kphan/Desktop/work_tree/mainRepos/ClimaCore.jl/multiple-columns"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
 version = "0.14.54"
 weakdeps = ["CUDA", "GPUCompiler", "Krylov"]
@@ -583,11 +583,12 @@ version = "0.9.0"
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "b2e2a4acb5ff07f9fc226f8eaa89bbe724fa74bc"
+path = "/home/kphan/Desktop/work_tree/mainRepos/ClimaUtilities.jl/multi-col-intp"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.29"
 
     [deps.ClimaUtilities.extensions]
+    ClimaUtilitiesClimaCoreClimaInterpolationsExt = ["ClimaCore", "ClimaInterpolations"]
     ClimaUtilitiesClimaCoreExt = "ClimaCore"
     ClimaUtilitiesClimaCoreInterpolationsExt = ["ClimaCore", "Interpolations"]
     ClimaUtilitiesClimaCoreNCDatasetsExt = ["ClimaCore", "NCDatasets"]
@@ -599,6 +600,7 @@ version = "0.1.29"
     CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
     ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
     ClimaCoreTempestRemap = "d934ef94-cdd4-4710-83d6-720549644b70"
+    ClimaInterpolations = "dd0f122e-fa3b-47f3-bcf0-93bbc60d885e"
     Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
     NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 
