@@ -39,24 +39,6 @@ as the surface runoff implementation.
 """
 abstract type AbstractRunoffModel end
 
-# Generic fallback: e.g. TOPMODELRunoff holds a raw ClimaCore Field (f_max)
-# directly as a field, whose default show would dump the full underlying data.
-function Base.show(io::IO, ::MIME"text/plain", m::AbstractRunoffModel)
-    if get(io, :compact, false)
-        show(io, m)
-    else
-        println(io, nameof(typeof(m)))
-        for f in fieldnames(typeof(m))
-            v = getfield(m, f)
-            println(io, "  ", f, ": ", ClimaLand._scalar_or_field_str(v))
-        end
-    end
-end
-
-Base.show(io::IO, m::AbstractRunoffModel) = print(io, nameof(typeof(m)))
-
-Base.summary(io::IO, m::AbstractRunoffModel) = show(io, m)
-
 """
     subsurface_runoff_source(runoff::AbstractRunoffModel)
 
@@ -199,23 +181,6 @@ struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
     TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over) where {FT} =
         new{FT}(R_sb, f_over, false)
 end
-
-Base.show(io::IO, ::MIME"text/plain", s::TOPMODELSubsurfaceRunoff) = show(io, s)
-
-Base.show(io::IO, s::TOPMODELSubsurfaceRunoff) = print(
-    io,
-    "TOPMODELSubsurfaceRunoff{",
-    typeof(s).parameters[1],
-    "}(R_sb=",
-    s.R_sb,
-    ", f_over=",
-    s.f_over,
-    ", explicit=",
-    s.explicit,
-    ")",
-)
-
-Base.summary(io::IO, s::TOPMODELSubsurfaceRunoff) = show(io, s)
 
 """
     TOPMODELRunoff{FT <: AbstractFloat, F <: ClimaCore.Fields.Field} <: AbstractRunoffModel

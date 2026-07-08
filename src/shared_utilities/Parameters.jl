@@ -35,33 +35,6 @@ end
 Base.eltype(::LandParameters{FT}) where {FT} = FT
 Base.broadcastable(ps::LandParameters) = tuple(ps)
 
-# LandParameters bundles ~18 physical constants with 3 parameter sets from
-# other packages (Thermodynamics, SurfaceFluxes, Insolation), each of which
-# has many fields of its own; the default show dumps all of it.
-function Base.show(io::IO, ::MIME"text/plain", ps::LandParameters)
-    if get(io, :compact, false)
-        show(io, ps)
-    else
-        n_scalar = fieldcount(typeof(ps)) - 3
-        println(
-            io,
-            "LandParameters{",
-            eltype(ps),
-            "} (",
-            n_scalar,
-            " physical constants)",
-        )
-        println(io, "  thermo_params: ", nameof(typeof(ps.thermo_params)))
-        println(io, "  surf_flux_params: ", nameof(typeof(ps.surf_flux_params)))
-        println(io, "  insol_params: ", nameof(typeof(ps.insol_params)))
-    end
-end
-
-Base.show(io::IO, ps::LandParameters) =
-    print(io, "LandParameters{", eltype(ps), "}")
-
-Base.summary(io::IO, ps::LandParameters) = show(io, ps)
-
 # wrapper methods:
 P_ref(ps::ALP) = ps.MSLP
 K_therm(ps::ALP) = ps.K_therm

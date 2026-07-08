@@ -24,33 +24,6 @@ convenient conditions.
 """
 abstract type AbstractBC end
 
-# Generic fallback for any boundary condition: without this, printing a BC
-# falls back to Julia's default struct show, which prints the type header
-# with every type parameter spelled out in full -- if a field holds one of
-# our other types (e.g. atmos/radiation on AtmosDrivenFluxBC), that header
-# alone can run into the thousands of characters even though the field
-# *values* would otherwise print concisely. Prescribed functions can't be
-# introspected usefully, so they're described rather than shown.
-function Base.show(io::IO, ::MIME"text/plain", bc::AbstractBC)
-    if get(io, :compact, false)
-        show(io, bc)
-    else
-        println(io, nameof(typeof(bc)))
-        for f in fieldnames(typeof(bc))
-            v = getfield(bc, f)
-            if v isa Function
-                println(io, "  ", f, ": <prescribed function>")
-            else
-                println(io, "  ", f, ": ", sprint(show, v))
-            end
-        end
-    end
-end
-
-Base.show(io::IO, bc::AbstractBC) = print(io, nameof(typeof(bc)))
-
-Base.summary(io::IO, bc::AbstractBC) = show(io, bc)
-
 """
     AbstractBoundary
 

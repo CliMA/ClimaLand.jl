@@ -79,44 +79,6 @@ end
 
 Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
-# EnergyHydrologyParameters has 23 fields, several of which (κ_dry, ν, K_sat,
-# ...) may each be a full ClimaCore Field rather than a scalar, and it also
-# embeds a nested hydrology closure and the LandParameters earth_param_set;
-# only the headline hydraulic parameters are shown individually.
-function Base.show(io::IO, ::MIME"text/plain", ps::EnergyHydrologyParameters)
-    if get(io, :compact, false)
-        show(io, ps)
-    else
-        println(io, "EnergyHydrologyParameters{", eltype(ps.ν), "}")
-        println(
-            io,
-            "  porosity (ν): ",
-            ClimaLand._scalar_or_field_str(ps.ν),
-            ", K_sat: ",
-            ClimaLand._scalar_or_field_str(ps.K_sat),
-        )
-        println(
-            io,
-            "  S_s: ",
-            ClimaLand._scalar_or_field_str(ps.S_s),
-            ", θ_r: ",
-            ClimaLand._scalar_or_field_str(ps.θ_r),
-        )
-        println(
-            io,
-            "  hydrology closure: ",
-            ClimaLand._kind_str(ps.hydrology_cm),
-        )
-        println(io, "  albedo: ", nameof(typeof(ps.albedo)))
-        println(io, "  earth_param_set: ", sprint(show, ps.earth_param_set))
-    end
-end
-
-Base.show(io::IO, ps::EnergyHydrologyParameters) =
-    print(io, "EnergyHydrologyParameters{", eltype(ps.ν), "}")
-
-Base.summary(io::IO, ps::EnergyHydrologyParameters) = show(io, ps)
-
 
 """
     EnergyHydrologyParameters(

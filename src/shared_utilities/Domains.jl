@@ -36,38 +36,6 @@ ClimaComms.context(domain::AbstractDomain) =
 ClimaComms.device(domain::AbstractDomain) =
     ClimaComms.device(first(domain.space))
 
-_domain_device_str(domain::AbstractDomain) =
-    nameof(typeof(ClimaComms.device(domain)))
-
-# The `space` and (when present) `fields` fields hold the ClimaCore spaces and
-# coordinate fields, whose default show output is enormous; every other field
-# is a small scalar/tuple that fully describes the domain's configuration.
-# This generic fallback is a safety net for any future AbstractDomain subtype
-# that doesn't get its own more informative method below.
-_domain_show_fieldnames(domain::AbstractDomain) =
-    filter(f -> f ∉ (:space, :fields), fieldnames(typeof(domain)))
-
-function Base.show(io::IO, ::MIME"text/plain", domain::AbstractDomain)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, nameof(typeof(domain)), "{", eltype(domain), "}")
-        for f in _domain_show_fieldnames(domain)
-            println(io, "  ", f, ": ", getfield(domain, f))
-        end
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-function Base.show(io::IO, domain::AbstractDomain)
-    print(io, nameof(typeof(domain)), "{", eltype(domain), "}(")
-    fs = _domain_show_fieldnames(domain)
-    print(io, join(("$f=$(getfield(domain, f))" for f in fs), ", "))
-    print(io, ")")
-end
-
-Base.summary(io::IO, domain::AbstractDomain) = show(io, domain)
-
 """
     coordinates(domain::AbstractDomain)
 
@@ -102,21 +70,6 @@ struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
     space::NT
 end
-
-function Base.show(io::IO, ::MIME"text/plain", domain::Point)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "Point{", eltype(domain), "}")
-        println(io, "  z_sfc: ", domain.z_sfc, " m")
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::Point) =
-    print(io, "Point{", eltype(domain), "}(z_sfc=", domain.z_sfc, " m)")
-
-Base.summary(io::IO, domain::Point) = show(io, domain)
 
 """
     Point(; z_sfc::FT,
@@ -195,51 +148,6 @@ struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     "Fields and field data associated with the coordinates of the domain that are useful to store"
     fields::NT2
 end
-
-function Base.show(io::IO, ::MIME"text/plain", domain::Column)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "Column{", eltype(domain), "}")
-        println(
-            io,
-            "  z ∈ [",
-            domain.zlim[1],
-            ", ",
-            domain.zlim[2],
-            "] m, ",
-            domain.nelements[1],
-            " elements",
-        )
-        println(io, "  boundary names: ", domain.boundary_names)
-        if !isnothing(domain.dz_tuple)
-            println(
-                io,
-                "  mesh stretching: (dz_bottom=",
-                domain.dz_tuple[1],
-                ", dz_top=",
-                domain.dz_tuple[2],
-                ") m",
-            )
-        end
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::Column) = print(
-    io,
-    "Column{",
-    eltype(domain),
-    "}(z ∈ [",
-    domain.zlim[1],
-    ", ",
-    domain.zlim[2],
-    "], ",
-    domain.nelements[1],
-    " elements)",
-)
-
-Base.summary(io::IO, domain::Column) = show(io, domain)
 
 """
     Column(;
@@ -376,52 +284,6 @@ struct Plane{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface(Plane) space"
     space::NT
 end
-
-function Base.show(io::IO, ::MIME"text/plain", domain::Plane)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "Plane{", eltype(domain), "}")
-        println(
-            io,
-            "  x ∈ [",
-            domain.xlim[1],
-            ", ",
-            domain.xlim[2],
-            "], y ∈ [",
-            domain.ylim[1],
-            ", ",
-            domain.ylim[2],
-            "]",
-        )
-        println(
-            io,
-            "  nelements: ",
-            domain.nelements,
-            ", npolynomial: ",
-            domain.npolynomial,
-            ", periodic: ",
-            domain.periodic,
-        )
-        if !isnothing(domain.longlat)
-            println(io, "  longlat center: ", domain.longlat)
-        end
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::Plane) = print(
-    io,
-    "Plane{",
-    eltype(domain),
-    "}(",
-    domain.nelements[1],
-    "×",
-    domain.nelements[2],
-    " elements)",
-)
-
-Base.summary(io::IO, domain::Plane) = show(io, domain)
 
 """
     Plane(;
@@ -579,68 +441,6 @@ struct HybridBox{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     fields::NT2
 end
 
-function Base.show(io::IO, ::MIME"text/plain", domain::HybridBox)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "HybridBox{", eltype(domain), "}")
-        println(
-            io,
-            "  x ∈ [",
-            domain.xlim[1],
-            ", ",
-            domain.xlim[2],
-            "], y ∈ [",
-            domain.ylim[1],
-            ", ",
-            domain.ylim[2],
-            "], z ∈ [",
-            domain.zlim[1],
-            ", ",
-            domain.zlim[2],
-            "]",
-        )
-        println(
-            io,
-            "  nelements: ",
-            domain.nelements,
-            ", npolynomial: ",
-            domain.npolynomial,
-            ", periodic: ",
-            domain.periodic,
-        )
-        if !isnothing(domain.longlat)
-            println(io, "  longlat center: ", domain.longlat)
-        end
-        if !isnothing(domain.dz_tuple)
-            println(
-                io,
-                "  mesh stretching: (dz_bottom=",
-                domain.dz_tuple[1],
-                ", dz_top=",
-                domain.dz_tuple[2],
-                ")",
-            )
-        end
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::HybridBox) = print(
-    io,
-    "HybridBox{",
-    eltype(domain),
-    "}(",
-    domain.nelements[1],
-    "×",
-    domain.nelements[2],
-    "×",
-    domain.nelements[3],
-    " elements)",
-)
-
-Base.summary(io::IO, domain::HybridBox) = show(io, domain)
-
 """
     HybridBox(;
     xlim::Tuple{FT, FT},
@@ -796,57 +596,6 @@ struct SphericalShell{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
     fields::NT2
 end
 
-function Base.show(io::IO, ::MIME"text/plain", domain::SphericalShell)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "SphericalShell{", eltype(domain), "}")
-        println(
-            io,
-            "  radius: ",
-            domain.radius,
-            " m, depth: ",
-            domain.depth,
-            " m",
-        )
-        println(
-            io,
-            "  nelements: ",
-            domain.nelements,
-            " (horizontal, vertical), npolynomial: ",
-            domain.npolynomial,
-        )
-        if !isnothing(domain.dz_tuple)
-            println(
-                io,
-                "  mesh stretching: (dz_bottom=",
-                domain.dz_tuple[1],
-                ", dz_top=",
-                domain.dz_tuple[2],
-                ") m",
-            )
-        end
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::SphericalShell) = print(
-    io,
-    "SphericalShell{",
-    eltype(domain),
-    "}(radius=",
-    domain.radius,
-    " m, depth=",
-    domain.depth,
-    " m, ",
-    domain.nelements[1],
-    "×",
-    domain.nelements[2],
-    " elements)",
-)
-
-Base.summary(io::IO, domain::SphericalShell) = show(io, domain)
-
 """
     SphericalShell(;
         radius::FT,
@@ -961,36 +710,6 @@ struct SphericalSurface{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface (SphericalSurface) space"
     space::NT
 end
-
-function Base.show(io::IO, ::MIME"text/plain", domain::SphericalSurface)
-    if get(io, :compact, false)
-        show(io, domain)
-    else
-        println(io, "SphericalSurface{", eltype(domain), "}")
-        println(io, "  radius: ", domain.radius, " m")
-        println(
-            io,
-            "  nelements: ",
-            domain.nelements,
-            ", npolynomial: ",
-            domain.npolynomial,
-        )
-        println(io, "  device: ", _domain_device_str(domain))
-    end
-end
-
-Base.show(io::IO, domain::SphericalSurface) = print(
-    io,
-    "SphericalSurface{",
-    eltype(domain),
-    "}(radius=",
-    domain.radius,
-    " m, ",
-    domain.nelements,
-    " elements)",
-)
-
-Base.summary(io::IO, domain::SphericalSurface) = show(io, domain)
 
 """
     SphericalSurface(;
