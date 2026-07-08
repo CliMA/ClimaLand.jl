@@ -47,8 +47,7 @@ const CLIMALAND_DIR = pkgdir(ClimaLand)
 #   callmip_phase1         → per-site *_Flux.nc (callmip-org/Phase1; "1a" = DK-Sor test)
 const MET_NC_PATH   = ClimaLand.Artifacts.callmip_phase1_forcing_path("DK-Sor")
 const FLUX_NC_PATH  = ClimaLand.Artifacts.callmip_phase1_flux_path("DK-Sor"; phase = "1a")
-const OUTDIR        = joinpath(CLIMALAND_DIR,
-    "experiments/callmip_dksor/output_prior_check")
+const OUTDIR        = CLIMALAND_DIR
 
 # Years to check. Override with CALLMIP_CHECK_YEARS="1997,1998,..." to test the
 # full span (e.g. the prior-crash years 2003 & 2011 that calibration flagged).
@@ -417,8 +416,6 @@ end
 # ── Run simulations ────────────────────────────────────────────────────────────
 # Only when run directly (not when `include`d by compute_prior_post_stats.jl,
 # which reuses run_prior_year / load_obs_year / rmse_r2).
-if abspath(PROGRAM_FILE) == @__FILE__
-mkpath(OUTDIR)
 
 results_mod = Dict{Int, NamedTuple}()
 results_obs = Dict{Int, NamedTuple}()
@@ -518,5 +515,3 @@ Label(fig[0, :],
 
 save(joinpath(OUTDIR, "prior_vs_obs.png"), fig; px_per_unit = 2)
 @info "Plot saved → $(joinpath(OUTDIR, "prior_vs_obs.png"))"
-
-end  # if abspath(PROGRAM_FILE) == @__FILE__
