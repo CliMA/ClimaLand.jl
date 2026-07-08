@@ -41,7 +41,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 CalibrateEmulateSample = "1"
-ClimaTimeSteppers = "0.8.11, 0.9"
+ClimaTimeSteppers = ">= 0.8.11"
 DataFrames = "1.6"
 Flux = "0.15, 0.16"
 InteractiveUtils = "1"

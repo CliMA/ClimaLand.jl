@@ -1,15 +1,15 @@
 [rosetta_spunup_ic]
-git-tree-sha1 = "1bdbdd07d37c3025d06464d1b2263b441364c4e3"
+git-tree-sha1 = "2ac7808da475dda482d5631003b2e0684a4ec15e"
 
     [[rosetta_spunup_ic.download]]
-    sha256 = "100a0aa8674f39ed554f6c06a664384c18d4f1799e6aa0f6a493f3018a581385"
+    sha256 = "ff385da929f7b99b56a0a271b7ad40c7a5253e7bda935033b19eeb8672ef619f"
     url = "https://caltech.box.com/shared/static/k2tic8adbjvyvk5moeac86j4ihnor8qe.gz"
 
 [soil_params_rosetta]
-git-tree-sha1 = "3835c13c2dbf2ee26b2c5ca8a709a2298a57bf5c"
+git-tree-sha1 = "11ff294c5e3047cc42e35fd181842c74f8a47db9"
 
     [[soil_params_rosetta.download]]
-    sha256 = "e026f72dc05ee946357d95e2acf71ad3a8d149b4511397a47e0047278757357e"
+    sha256 = "004ba7f59fa67e00cbd594b7c33c80087c6e546eef3426aed1af05cfaf910000"
     url = "https://caltech.box.com/shared/static/2vz4nevjbo1t80nxc6m4ozyy5f5eusfo.gz"
 
 [modis_max_lai]
@@ -248,10 +248,10 @@ git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
     url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"
 
 [optimal_lai_inputs]
-git-tree-sha1 = "cba8e02b52d8ebbde04a3fbb3269d775a6a08cc3"
+git-tree-sha1 = "2ce5e5e05e4f17c86b07eadff1f9dd551e779524"
 
     [[optimal_lai_inputs.download]]
-    sha256 = "d23d59d049eaa49a53d6e4b53c310caa9409783d471de83c0ee97375c00228d4"
+    sha256 = "dfaa2e9c649e609f274a5db15a4504067df5c6cfea00d6676d468177d2432654"
     url = "https://caltech.box.com/shared/static/y8igrojuyvbww0gn5zi8und9wgsqhtv5.gz"
 
 [neural_snow]
