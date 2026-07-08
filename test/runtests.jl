@@ -139,6 +139,9 @@ end
 @safetestset "P model tests" begin
     include("standalone/Vegetation/test_pmodel.jl")
 end
+@safetestset "Optimal LAI tests" begin
+    include("standalone/Vegetation/test_optimal_lai.jl")
+end
 @safetestset "PFT tests" begin
     include("standalone/Vegetation/test_pfts.jl")
 end

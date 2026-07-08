@@ -322,7 +322,9 @@ using ClimaCore
                 ("US-MOz (Ozark)", FT(-92.2000), FT(38.7441)),   # Missouri, USA - Deciduous forest
                 ("US-Ha1 (Harvard)", FT(-72.1715), FT(42.5378)), # Massachusetts, USA - Mixed forest
                 ("Amazon", FT(-60.0), FT(-3.0)),                 # Amazon rainforest
-                ("Sahel", FT(0.0), FT(15.0)),                    # Semi-arid Africa
+                # Semi-arid Africa. Longitude is kept off 0.0: `Point(longlat)` with
+                # long == 0 (or lat == 0) currently builds a degenerate domain.
+                ("Sahel", FT(2.5), FT(15.0)),
             ]
 
             for (site_name, long, lat) in test_sites
@@ -344,36 +346,37 @@ using ClimaCore
                 f0_val = Array(parent(optimal_lai_inputs.f0))[1]
 
                 @testset "$site_name" begin
-                    # GSL should be positive and reasonable (0-365 days)
-                    @test GSL_val >= FT(0) "GSL should be non-negative at $site_name"
-                    @test GSL_val <= FT(365) "GSL should be <= 365 days at $site_name"
-                    @test GSL_val > FT(0) "GSL should be positive (non-zero) at $site_name, got $GSL_val"
+                    # GSL should be positive and reasonable. A year-round growing
+                    # season gives the maximum, 12 * 365.25/12 = 365.25 days.
+                    @test GSL_val >= FT(0)
+                    @test GSL_val <= FT(366)
+                    @test GSL_val > FT(0)
 
                     # A0_annual should be positive (mol CO2 m^-2 yr^-1)
                     # Typical values range from ~50 (arid) to ~500 (tropical rainforest)
-                    @test A0_annual_val >= FT(0) "A0_annual should be non-negative at $site_name"
-                    @test A0_annual_val > FT(0) "A0_annual should be positive at $site_name, got $A0_annual_val"
-                    @test A0_annual_val < FT(1000) "A0_annual should be < 1000 at $site_name"
+                    @test A0_annual_val >= FT(0)
+                    @test A0_annual_val > FT(0)
+                    @test A0_annual_val < FT(1000)
 
                     # precip_annual should be positive (mol H2O m^-2 yr^-1)
                     # Ranges from ~5000 (desert, ~100 mm) to ~170000+ (tropical, ~3000 mm)
-                    @test precip_annual_val >= FT(0) "precip_annual should be non-negative at $site_name"
-                    @test precip_annual_val > FT(0) "precip_annual should be positive at $site_name, got $precip_annual_val"
+                    @test precip_annual_val >= FT(0)
+                    @test precip_annual_val > FT(0)
 
                     # vpd_gs should be positive (Pa)
                     # Typical growing season VPD: 500-2500 Pa
-                    @test vpd_gs_val >= FT(0) "vpd_gs should be non-negative at $site_name"
-                    @test vpd_gs_val > FT(0) "vpd_gs should be positive at $site_name, got $vpd_gs_val"
+                    @test vpd_gs_val >= FT(0)
+                    @test vpd_gs_val > FT(0)
 
                     # lai_init should be non-negative (m^2 m^-2)
                     # Ranges from 0 (bare) to ~8 (dense forest)
-                    @test lai_init_val >= FT(0) "lai_init should be non-negative at $site_name"
-                    @test lai_init_val < FT(15) "lai_init should be < 15 at $site_name"
+                    @test lai_init_val >= FT(0)
+                    @test lai_init_val < FT(15)
 
                     # f0 should be in range [0, 1]
-                    @test f0_val >= FT(0) "f0 should be >= 0 at $site_name"
-                    @test f0_val <= FT(1) "f0 should be <= 1 at $site_name"
-                    @test f0_val > FT(0) "f0 should be positive at $site_name, got $f0_val"
+                    @test f0_val >= FT(0)
+                    @test f0_val <= FT(1)
+                    @test f0_val > FT(0)
                 end
             end
         end
