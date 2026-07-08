@@ -39,8 +39,12 @@ steps:
 
   - wait
 
+  # The standard (prescribed-LAI) long runs. Run on the weekly scheduled build,
+  # on manual builds, and when the "Run long runs" label is present — but skip
+  # when a PR is labeled ONLY "long run opt lai" (that label runs just the
+  # prognostic-LAI group below), so each label triggers exactly one mode.
   - group: "Global Land Models"
-    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null
+    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null && (build.source == "schedule" || !(build.pull_request.labels includes "long run opt lai") || build.pull_request.labels includes "Run long runs")
     steps:
 
       - label: ":snow_capped_mountain: Snowy Land + P Model"
@@ -81,6 +85,28 @@ steps:
           slurm_time: 00:30:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
+
+  # Prognostic (modeled) LAI run of snowy_land_pmodel (ZhouOptimalLAIModel),
+  # selected via the `PROGNOSTIC_LAI` env var. Runs on the weekly scheduled
+  # build so the standard weekly long runs cover BOTH prescribed and prognostic
+  # LAI, and on demand when a PR carries the "long run opt lai" label.
+  - group: "Optimal LAI Global Land Model"
+    if: build.env("LONGER_RUN") == null && build.env("PERTURBED_RUN") == null && (build.source == "schedule" || build.pull_request.labels includes "long run opt lai")
+    steps:
+
+      - label: ":seedling: Snowy Land + P Model (Optimal LAI)"
+        key: "snowy_land_pmodel_opt_lai_run"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land_pmodel.jl
+        artifact_paths:
+          - "snowy_land_pmodel_opt_lai_longrun_gpu/*png"
+          - "snowy_land_pmodel_opt_lai_longrun_gpu/*pdf"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 3:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          PROGNOSTIC_LAI: ""
 
   - group: "Perturbed Low-res Global Land Models"
     if: build.env("PERTURBED_RUN") != null

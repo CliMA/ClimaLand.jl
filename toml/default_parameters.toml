@@ -107,21 +107,21 @@ description = "Light extinction coefficient (dimensionless)"
 tag = "OptimalLAIModel"
 
 ["optimal_lai_z"]
-value = 12.227
+value = 21.4
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
-value = 1.1
+value = 0.939
 type = "float"
-description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
+description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025). Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
-value = 0.067
+value = 0.0701
 type = "float"
-description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory"
+description = "Smoothing factor for exponential moving average (dimensionless, 0-1), ~15 days of memory. Calibrated against MODIS LAI (Yuan et al. 2017)."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_f0"]

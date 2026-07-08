@@ -28,40 +28,53 @@ function _percentile_contour_kwargs(
 end
 
 """
-    _monthly_climatology_global_mean(var, mask_fn = ClimaAnalysis.apply_oceanmask)
+    _monthly_climatology_global_means(sim, obs,
+                                      mask_fn = ClimaAnalysis.apply_oceanmask)
 
-Return a 12-element vector of global, lonlat-weighted monthly climatology
-means for `var`. Index `i` corresponds to month `i` (1=Jan ... 12=Dec).
-Months that have no valid samples are filled with `NaN`.
+Return a pair `(sim_monthly, obs_monthly)` of 12-element vectors of global,
+lonlat-weighted monthly climatology means. Index `i` corresponds to month `i`
+(1=Jan ... 12=Dec). Months that have no valid samples are filled with `NaN`.
 
-`mask_fn` is the same per-variable mask used by `global_bias` /  `global_rmse`
-elsewhere in this module (e.g. `apply_oceanmask` for ERA5 vars, the FLUXCOM
-NaN mask for ILAMB vars). Applying it to sim and obs identically guarantees
-that both lines are averaged over the same set of valid pixels, so the gap
-between the lines matches the global bias shown in the ANN column.
+`mask_fn` is the same per-variable mask used by `global_bias`/`global_rmse`
+elsewhere. After applying it, at each time step both sim and obs are restricted
+to the grid cells where *both* have valid (non-`NaN`) data, so the two lines are
+averaged over the same domain even where obs has data gaps that sim does not —
+otherwise the SIM/OBS gap would not match the global bias in the ANN column.
 """
-function _monthly_climatology_global_mean(
-    var,
+function _monthly_climatology_global_means(
+    sim,
+    obs,
     mask_fn = ClimaAnalysis.apply_oceanmask,
 )
-    times = ClimaAnalysis.times(var)
-    isempty(times) && return fill(NaN, 12)
-    start_date = Dates.DateTime(var.attributes["start_date"])
+    times = ClimaAnalysis.times(sim)
+    isempty(times) && return (fill(NaN, 12), fill(NaN, 12))
+    start_date = Dates.DateTime(sim.attributes["start_date"])
     months =
         [Dates.month(start_date + Dates.Second(round(Int, t))) for t in times]
-    global_means = [
-        ClimaAnalysis.weighted_average_lonlat(
-            mask_fn(ClimaAnalysis.slice(var, time = t)),
-        ).data[] for t in times
-    ]
-    out = fill(NaN, 12)
+    sim_global = Float64[]
+    obs_global = Float64[]
+    for t in times
+        sim_t = mask_fn(ClimaAnalysis.slice(sim, time = t))
+        obs_t = mask_fn(ClimaAnalysis.slice(obs, time = t))
+        # Keep only cells where both fields have valid data, so the two
+        # weighted global means are taken over the same domain.
+        nan_either = isnan.(sim_t.data) .| isnan.(obs_t.data)
+        sim_t.data[nan_either] .= NaN
+        obs_t.data[nan_either] .= NaN
+        push!(sim_global, ClimaAnalysis.weighted_average_lonlat(sim_t).data[])
+        push!(obs_global, ClimaAnalysis.weighted_average_lonlat(obs_t).data[])
+    end
+    out_sim = fill(NaN, 12)
+    out_obs = fill(NaN, 12)
     for m in 1:12
         idxs = findall(==(m), months)
         isempty(idxs) && continue
-        vals = filter(isfinite, global_means[idxs])
-        isempty(vals) || (out[m] = sum(vals) / length(vals))
+        sim_vals = filter(isfinite, sim_global[idxs])
+        obs_vals = filter(isfinite, obs_global[idxs])
+        isempty(sim_vals) || (out_sim[m] = sum(sim_vals) / length(sim_vals))
+        isempty(obs_vals) || (out_obs[m] = sum(obs_vals) / length(obs_vals))
     end
-    return out
+    return (out_sim, out_obs)
 end
 
 """
@@ -90,6 +103,61 @@ function _nee_diverging_contour_kwargs(var, q; nlevels = 21)
 end
 
 """
+    _prepare_for_bias(base_mask, sim, obs)
+
+Return `(sim, obs, mask_fn)` so that `ClimaAnalysis.bias` / `global_bias` /
+`global_rmse` / `plot_bias_on_globe!` integrate over the intersection of finite
+cells, matching `_monthly_climatology_global_means`.
+
+Works around a normalization issue in `ClimaAnalysis.bias` when `obs` has
+spatial gaps (e.g. GOSIF-GPP/residual-ER over deserts/ice): its normalization
+`ones_var` doesn't inherit obs's NaN footprint (denominator over all land,
+numerator over land∩finite(obs) — attenuates or flips the bias). `mask_fn`
+combines `base_mask` with the union of the sim/obs NaN footprints so `ones_var`
+and `sim − obs` share one domain.
+
+Gaps are left as `NaN` (not zero-filled) so a NaN-aware `resampled_as`
+(ClimaAnalysis.jl#198) works with them unchanged. Until then `resampled_as`
+erodes cells adjacent to a gap into NaN, leaving a slightly smaller dataset
+there, which is preferable to biasing those edges low with zero-fill.
+"""
+function _prepare_for_bias(base_mask, sim, obs)
+    sim_masked = base_mask(sim)
+    obs_masked = base_mask(obs)
+    extra_nan = isnan.(sim_masked.data) .| isnan.(obs_masked.data)
+    mask_fn = function (var)
+        v = base_mask(var)
+        any(extra_nan) || return v
+        new_data = copy(v.data)
+        new_data[extra_nan] .= NaN
+        return ClimaAnalysis.OutputVar(
+            v.attributes,
+            v.dims,
+            v.dim_attributes,
+            new_data,
+        )
+    end
+    return sim, obs, mask_fn
+end
+
+"""
+    _get_data_loader(data_source)
+
+Return the observational data loader for `data_source` (case-insensitive), one
+of `"ERA5"`, `"FlagshipCarbonMetrics"`, or `"ILAMB"`. Errors on anything else.
+"""
+function _get_data_loader(data_source)
+    source = uppercase(data_source)
+    source == "ERA5" && return ERA5DataLoader()
+    source == "FLAGSHIPCARBONMETRICS" &&
+        return FlagshipCarbonMetricsDataLoader()
+    source == "ILAMB" && return ILAMBDataLoader()
+    return error(
+        "Unknown data_source \"$data_source\"; expected \"ERA5\", \"FlagshipCarbonMetrics\", or \"ILAMB\".",
+    )
+end
+
+"""
     compute_monthly_leaderboard(leaderboard_base_path,
                                 diagnostics_folder_path,
                                 data_source)
@@ -114,8 +182,7 @@ function compute_monthly_leaderboard(
     data_source,
 )
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
-    data_loader =
-        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
+    data_loader = _get_data_loader(data_source)
     mask_dict = get_mask_dict(data_loader)
 
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
@@ -230,12 +297,17 @@ function compute_monthly_leaderboard(
         times = reshape(times, (2, 6))
         for ((indices, t), (month, year)) in zip(pairs(times), months_and_years)
             layout = fig[Tuple(indices)...] = CairoMakie.GridLayout()
-            ClimaAnalysis.Visualize.plot_bias_on_globe!(
-                layout,
+            sim_c, obs_c, mask_c = _prepare_for_bias(
+                mask,
                 ClimaAnalysis.slice(sim_var, time = t),
                 ClimaAnalysis.slice(obs_var, time = t),
+            )
+            ClimaAnalysis.Visualize.plot_bias_on_globe!(
+                layout,
+                sim_c,
+                obs_c,
                 cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                mask = mask,
+                mask = mask_c,
             )
             CairoMakie.Label(
                 layout[0, 1],
@@ -262,25 +334,34 @@ function compute_monthly_leaderboard(
         mask = mask_dict[short_name](sim_var, obs_var)
 
         sim_vec = [
-            ClimaAnalysis.weighted_average_lonlat(
-                ClimaAnalysis.apply_oceanmask(
+            begin
+                sim_c, _, mask_c = _prepare_for_bias(
+                    mask,
                     ClimaAnalysis.slice(sim_var, time = t),
-                ),
-            ).data[] for t in times
+                    ClimaAnalysis.slice(obs_var, time = t),
+                )
+                ClimaAnalysis.weighted_average_lonlat(mask_c(sim_c)).data[]
+            end for t in times
         ]
         rmse_vec = [
-            ClimaAnalysis.global_rmse(
-                ClimaAnalysis.slice(sim_var, time = t),
-                ClimaAnalysis.slice(obs_var, time = t),
-                mask = mask,
-            ) for t in times
+            begin
+                sim_c, obs_c, mask_c = _prepare_for_bias(
+                    mask,
+                    ClimaAnalysis.slice(sim_var, time = t),
+                    ClimaAnalysis.slice(obs_var, time = t),
+                )
+                ClimaAnalysis.global_rmse(sim_c, obs_c, mask = mask_c)
+            end for t in times
         ]
         bias_vec = [
-            ClimaAnalysis.global_bias(
-                ClimaAnalysis.slice(sim_var, time = t),
-                ClimaAnalysis.slice(obs_var, time = t),
-                mask = mask,
-            ) for t in times
+            begin
+                sim_c, obs_c, mask_c = _prepare_for_bias(
+                    mask,
+                    ClimaAnalysis.slice(sim_var, time = t),
+                    ClimaAnalysis.slice(obs_var, time = t),
+                )
+                ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
+            end for t in times
         ]
 
         ax_sim = CairoMakie.Axis(
@@ -395,8 +476,7 @@ function compute_seasonal_leaderboard(
 )
     # Get everything we need from data_sources.jl
     sim_dir = ClimaAnalysis.SimDir(diagnostics_folder_path)
-    data_loader =
-        uppercase(data_source) == "ERA5" ? ERA5DataLoader() : ILAMBDataLoader()
+    data_loader = _get_data_loader(data_source)
     short_names = intersect(
         ClimaAnalysis.available_vars(sim_dir),
         available_vars(data_loader),
@@ -526,12 +606,14 @@ function compute_seasonal_leaderboard(
             isempty(sim_var) && break
             layout = fig_bias[row_idx, col_idx] = CairoMakie.GridLayout()
             sim_var.attributes["short_name"] = "mean $(ClimaAnalysis.short_name(sim_var))"
+            sim_c, obs_c, mask_c =
+                _prepare_for_bias(mask_fn_dict[short_name], sim_var, obs_var)
             ClimaAnalysis.Visualize.plot_bias_on_globe!(
                 layout,
-                sim_var,
-                obs_var,
+                sim_c,
+                obs_c,
                 cmap_extrema = compare_vars_biases_plot_extrema[short_name],
-                mask = mask_fn_dict[short_name],
+                mask = mask_c,
             )
         end
     end
@@ -673,10 +755,11 @@ function compute_seasonal_leaderboard(
                 sim_var_full, obs_var_full = sim_obs_full_dict[short_name]
                 isempty(sim_var_full) && break
                 mask_fn = mask_fn_dict[short_name]
-                sim_monthly =
-                    _monthly_climatology_global_mean(sim_var_full, mask_fn)
-                obs_monthly =
-                    _monthly_climatology_global_mean(obs_var_full, mask_fn)
+                sim_monthly, obs_monthly = _monthly_climatology_global_means(
+                    sim_var_full,
+                    obs_var_full,
+                    mask_fn,
+                )
                 units_str = ClimaAnalysis.units(sim_var_full)
                 ax = CairoMakie.Axis(
                     fig_sim_ann[row_idx, col_idx],
@@ -730,12 +813,17 @@ function compute_seasonal_leaderboard(
                     sim_obs_season_comparison_dict[short_name][group]
                 isempty(sim_var) && break
                 layout = fig_sim_ann[row_idx, col_idx] = CairoMakie.GridLayout()
-                ClimaAnalysis.Visualize.plot_bias_on_globe!(
-                    layout,
+                sim_c, obs_c, mask_c = _prepare_for_bias(
+                    mask_fn_dict[short_name],
                     sim_var,
                     obs_var,
+                )
+                ClimaAnalysis.Visualize.plot_bias_on_globe!(
+                    layout,
+                    sim_c,
+                    obs_c,
                     cmap_extrema = annual_compare_vars_biases_plot_extrema[short_name],
-                    mask = mask_fn_dict[short_name],
+                    mask = mask_c,
                 )
             end
         end
@@ -766,17 +854,24 @@ function compute_seasonal_leaderboard(
         # Get season and compute global bias and global rmse
         seasons = [sim_var.attributes["season"] for sim_var in sim_vars]
         sim_vec = [
-            ClimaAnalysis.weighted_average_lonlat(
-                ClimaAnalysis.apply_oceanmask(sim_var),
-            ).data[] for sim_var in sim_vars
+            begin
+                sim_c, _, mask_c = _prepare_for_bias(mask, sim_var, obs_var)
+                ClimaAnalysis.weighted_average_lonlat(mask_c(sim_c)).data[]
+            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
         rmse_vec = [
-            ClimaAnalysis.global_rmse(sim_var, obs_var, mask = mask) for
-            (sim_var, obs_var) in zip(sim_vars, obs_vars)
+            begin
+                sim_c, obs_c, mask_c =
+                    _prepare_for_bias(mask, sim_var, obs_var)
+                ClimaAnalysis.global_rmse(sim_c, obs_c, mask = mask_c)
+            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
         bias_vec = [
-            ClimaAnalysis.global_bias(sim_var, obs_var, mask = mask) for
-            (sim_var, obs_var) in zip(sim_vars, obs_vars)
+            begin
+                sim_c, obs_c, mask_c =
+                    _prepare_for_bias(mask, sim_var, obs_var)
+                ClimaAnalysis.global_bias(sim_c, obs_c, mask = mask_c)
+            end for (sim_var, obs_var) in zip(sim_vars, obs_vars)
         ]
 
         # Partition by seasons
