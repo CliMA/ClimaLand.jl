@@ -22,7 +22,8 @@ using Dates
 import TOML
 
 export PARAM_ORDER, LABILE_PARAM, PipelineConfig, RunConfig, Prior, load_config,
-       output_dir_for, priors_to_toml_dict, calibrated_param_names, obs_depth_code
+       output_dir_for, priors_to_toml_dict, calibrated_param_names, obs_depth_code,
+       cal_depth_codes_of, parse_cal_depth_codes
 
 # ── Canonical parameter ordering ─────────────────────────────────────────────
 # The first four are DAMM soilCO2 params (ClimaParams TOML keys). The fifth,
@@ -46,6 +47,11 @@ global CONFIG_PATH = ""
 # Valid calibration depths (m) and their NEON observation depth codes.
 const VALID_CAL_DEPTHS = Dict(0.02 => "501", 0.06 => "502")
 
+# NEON soil-CO₂ measurement depth codes (shallow → deep). The AllDepth pipeline
+# calibrates on an explicit ordered subset of these; the order defines the
+# stacking order of the observation vector and G matrix everywhere downstream.
+const VALID_DEPTH_CODES = ["501", "502", "503"]
+
 # ── Prior spec ───────────────────────────────────────────────────────────────
 """A single constrained-gaussian prior: mean, std, and bounds. `Inf`/`-Inf`
 allowed for bounds (stored as `Float64`, written to TOML as the strings
@@ -65,6 +71,10 @@ struct RunConfig
     spinup_days::Int
     n_iterations::Int
     cal_depth::Float64
+    # AllDepth: explicit ordered depth-code list to calibrate on jointly (e.g.
+    # ["501","502","503"]). `cal_depth` is retained for output-dir naming and any
+    # single-depth diagnostics; the actual obs/model depths come from this list.
+    cal_depth_codes::Vector{String}
     settingsdesc::String
     dt::Float64
     output_root::String
@@ -174,6 +184,30 @@ function obs_depth_code(cal_depth::Real)
           "$(sort(collect(keys(VALID_CAL_DEPTHS)))) (mapped to NEON obs depth 501/502)")
 end
 
+"""
+    parse_cal_depth_codes(x) -> Vector{String}
+
+Normalize a `cal_depth_codes` config value into an ordered, validated list of NEON
+depth codes. Accepts a TOML array (`["501","502"]` or `[501, 502]`) or a
+comma-separated string (`"501,502,503"`). Preserves order, rejects duplicates and
+unknown codes, and requires at least one code.
+"""
+function parse_cal_depth_codes(x)
+    raw = x isa AbstractString ? split(x, ",") : x
+    codes = String[strip(string(c)) for c in raw]
+    isempty(codes) && error("cal_depth_codes must list at least one depth code")
+    for c in codes
+        c in VALID_DEPTH_CODES ||
+            error("Unknown depth code \"$c\"; must be one of $(VALID_DEPTH_CODES)")
+    end
+    length(unique(codes)) == length(codes) ||
+        error("cal_depth_codes has duplicate codes: $(codes)")
+    return codes
+end
+
+"The ordered depth-code list a run calibrates on (obs/model stacking order)."
+cal_depth_codes_of(run::RunConfig) = run.cal_depth_codes
+
 # ── Output path (single source of truth) ─────────────────────────────────────
 """
     output_dir_for(run::RunConfig)
@@ -184,13 +218,16 @@ The leaf run directory. Matches the historical layout, with the run folder named
     <root>/<site>/<site>_<start>_<stop>/SpinUP-<spinup>d/CalDepth-<depthM>/<n_iter>-It/<settingsdesc>/output_<id>
 """
 function output_dir_for(run::RunConfig)
-    depth_m = replace(string(run.cal_depth), "." => "_") * "M"
+    # AllDepth: name the CalDepth folder by the stacked depth-code list so
+    # multi-depth outputs never collide with the old single-depth layout
+    # (e.g. "CalDepth-501-502-503").
+    depth_tag = "CalDepth-" * join(run.cal_depth_codes, "-")
     return joinpath(
         run.output_root,
         run.site,
         "$(run.site)_$(run.start_date)_$(run.stop_date)",
         "SpinUP-$(run.spinup_days)d",
-        "CalDepth-$(depth_m)",
+        depth_tag,
         "$(run.n_iterations)-It",
         run.settingsdesc,
         "output_$(run.run_identifier)",
@@ -268,6 +305,12 @@ function load_config(path::AbstractString; run_identifier = nothing)
         n_iter = Int(get(entry, "n_iterations", settings["n_iterations"]))
         cal_depth = Float64(get(entry, "cal_depth", settings["cal_depth"]))
         obs_depth_code(cal_depth)  # validate early
+        # AllDepth: explicit ordered depth-code list (entry overrides settings;
+        # defaults to all three). Validated here.
+        cal_depth_codes = parse_cal_depth_codes(
+            get(entry, "cal_depth_codes",
+                get(settings, "cal_depth_codes", VALID_DEPTH_CODES)),
+        )
         settingsdesc = String(get(entry, "settingsdesc", settings["settingsdesc"]))
         dt = Float64(get(entry, "dt", get(settings, "dt", 900.0)))
         restart_from = haskey(entry, "restart_from") ?
@@ -284,8 +327,8 @@ function load_config(path::AbstractString; run_identifier = nothing)
         for (start_date, stop_date) in _date_ranges(entry)
             push!(runs, RunConfig(
                 site, start_date, stop_date, spinup, n_iter, cal_depth,
-                settingsdesc, dt, output_root, id, restart_from, priors,
-                theta_r,
+                cal_depth_codes, settingsdesc, dt, output_root, id, restart_from,
+                priors, theta_r,
             ))
         end
     end
@@ -314,6 +357,7 @@ function run_from_env()
     spinup = parse(Int, get(ENV, "NEON_SPINUP_DAYS", "20"))
     n_iter = parse(Int, get(ENV, "NEON_N_ITERATIONS", "10"))
     cal_depth = parse(Float64, get(ENV, "CALL_DEPTH", "0.02"))
+    cal_depth_codes = parse_cal_depth_codes(get(ENV, "CALL_DEPTHS", "501,502,503"))
     settingsdesc = get(ENV, "NEON_SETTINGSDESC", "standalone")
     dt = parse(Float64, get(ENV, "CALL_DT", "900.0"))
     output_root = get(
@@ -330,7 +374,8 @@ function run_from_env()
 
     return RunConfig(
         site, start_date, stop_date, spinup, n_iter, cal_depth,
-        settingsdesc, dt, output_root, id, nothing, priors, nothing,
+        cal_depth_codes, settingsdesc, dt, output_root, id, nothing, priors,
+        nothing,
     )
 end
 

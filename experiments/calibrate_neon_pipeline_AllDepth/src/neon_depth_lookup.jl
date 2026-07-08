@@ -50,10 +50,13 @@ function neon_depths_for_site(SITE_ID; codes = ["501", "502", "503"])
     i_site = findfirst(==("site"), header)
     i_code = findfirst(==("depth_code"), header)
     i_zobs = findfirst(==("z_obs_m"), header)
-    i_layer = findfirst(==("model_layer"), header)
-    (i_site === nothing || i_code === nothing || i_zobs === nothing ||
-     i_layer === nothing) &&
-        error("Unexpected columns in $NEON_DEPTH_LOOKUP_CSV: $(header)")
+    # Only site/depth_code/z_obs_m are REQUIRED. The model layer is derived at
+    # runtime by argmin against the live grid (see forward_model), so the CSV's
+    # `model_layer` column is optional/diagnostic and is not depended on here.
+    (i_site === nothing || i_code === nothing || i_zobs === nothing) &&
+        error("Missing required column(s) site/depth_code/z_obs_m in " *
+              "$NEON_DEPTH_LOOKUP_CSV: $(header)")
+    i_layer = findfirst(==("model_layer"), header)   # may be `nothing`
 
     key = _neon_site_key(SITE_ID)
 
@@ -69,7 +72,8 @@ function neon_depths_for_site(SITE_ID; codes = ["501", "502", "503"])
         )
 
         z_obs_m = Float64(data[row_idx, i_zobs])
-        model_layer = Int(data[row_idx, i_layer])
+        # diagnostic only; `missing` when the column is absent
+        model_layer = i_layer === nothing ? missing : Int(data[row_idx, i_layer])
         push!(out, (; code = code, z_obs_m = z_obs_m, model_layer = model_layer))
     end
     return out

@@ -8,11 +8,12 @@
 spinup_days  = 20
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Rosetta"
+cal_depth_codes  = ["501", "502", "503"]
+settingsdesc = "Test_3depth"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
-results_csv  = "calibration_results.csv"
-run_identifier = "20260706_1500"       # stable id so restart_from can reference it
+results_csv  = "calibration_results_test.csv"
+run_identifier = "20260706_test3depth"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -52,34 +53,8 @@ upper = 10.0
 
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
-#[[runs]]
-#site  = "NEON-moab"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-  
-#[[runs]]
-#site  = "NEON-oaes"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-years = [2022, 2023, 2024]
-
-#[[runs]]
-#site  = "NEON-onaq"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-#[[runs]]
-#site  = "NEON-sjer"
-#years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-kona"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-leno"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-mlbs"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
+site  = "NEON-cper"
+years = [2019]
 

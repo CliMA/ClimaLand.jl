@@ -40,6 +40,18 @@ import ClimaLand.FluxnetSimulations as FluxnetSimulations
 using CSV
 using DataFrames
 
+# Per-site depth → model-layer lookup (neon_depths_for_site) and its dependency
+# _neon_site_key (site_metadata.jl). Included at TOP LEVEL and guarded so a second
+# include (Calibration.jl also loads site_metadata.jl) is harmless. Both live in
+# this pipeline's self-contained src/ folder.
+const _SRC_DIR = normpath(joinpath(@__DIR__, "..", "src"))
+if !isdefined(@__MODULE__, :_neon_site_key)
+    include(joinpath(_SRC_DIR, "site_metadata.jl"))
+end
+if !isdefined(@__MODULE__, :neon_depths_for_site)
+    include(joinpath(_SRC_DIR, "neon_depth_lookup.jl"))
+end
+
 # ── Cap-mask thresholds (mirror plot_neon_springpeak_allyears_uniondepth_batch.py;
 #    these would eventually live in Config.jl, see Config.CapMaskConfig sketch). ──
 const CAP_COLD_SOIL_K   = 275.15   # soil-T below this ⇒ frozen/thawing cap & baseline pool
@@ -116,64 +128,41 @@ function capped_dates(obs_df, datetimes; depth::AbstractString)
     return Set(daily.date[capped])
 end
 
-"""
-    generate_observations(run; base_dir) -> obs_filepath
-
-Build <base_dir>/observations.jld2 for `run`, with the soil-CO₂ spring-peak cap
-mask applied. Identical to Observations.jl except capped days (union over depths,
-all years, 25%-quantile cold-soil baseline) are dropped from y_obs/obs_dates/noise.
-"""
-function generate_observations(run; base_dir)
-    FT = Float64
-    site_id = run.site
-    spinup_days = run.spinup_days
-    cal_depth_str = string(run.cal_depth)
-
-    obs_depth = Config.obs_depth_code(run.cal_depth)  # validates depth
-
-    start_date = DateTime(run.start_date)
-    stop_date = DateTime(run.stop_date)
-    spinup_date = start_date + Day(spinup_days)
-
-    println("Site: $site_id")
-    println("Data period: $start_date to $stop_date  (spinup until $spinup_date)")
-
-    csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_id)
-    println("Loading NEON data from $csv_path")
-    obs_df = CSV.read(csv_path, DataFrame)
-
-    co2_cols = [
-        Symbol("soilCO2concentrationMean_$(lpad(p, 3, '0'))_$obs_depth")
-        for p in 1:5
-    ]
-
-    function rowmean_skipinvalid(row, cols)
-        vals = Float64[]
-        for c in cols
-            v = row[c]
-            (!ismissing(v) && !isnan(Float64(v))) && push!(vals, Float64(v))
-        end
-        return isempty(vals) ? NaN : mean(vals)
+# Row-wise mean / variance across plot columns (skip missing/NaN). Module-level
+# so both the per-depth daily builder and the cap mask can reuse them.
+function _rowmean_skipinvalid(row, cols)
+    vals = Float64[]
+    for c in cols
+        v = row[c]
+        (!ismissing(v) && !isnan(Float64(v))) && push!(vals, Float64(v))
     end
-    function rowvar_skipinvalid(row, cols)
-        vals = Float64[]
-        for c in cols
-            v = row[c]
-            (!ismissing(v) && !isnan(Float64(v))) && push!(vals, Float64(v))
-        end
-        return length(vals) >= 2 ? var(vals) : NaN
+    return isempty(vals) ? NaN : mean(vals)
+end
+function _rowvar_skipinvalid(row, cols)
+    vals = Float64[]
+    for c in cols
+        v = row[c]
+        (!ismissing(v) && !isnan(Float64(v))) && push!(vals, Float64(v))
     end
+    return length(vals) >= 2 ? var(vals) : NaN
+end
 
-    obs_df[!, :sco2_mean] =
-        [rowmean_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
-    obs_df[!, :sco2_var] =
-        [rowvar_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
-    obs_df[!, :datetime] =
-        DateTime.(string.(Int.(obs_df.timestamp_fmt)), dateformat"yyyymmddHHMM")
-    obs_df[!, :date] = Date.(obs_df.datetime)
+"""
+    daily_sco2_for_depth(obs_df; depth, spinup_date, stop_date, capped) -> DataFrame
 
-    daily_df = combine(
-        groupby(obs_df, :date),
+Plot-mean → daily(≥24 valid half-hours) soil-CO₂ mean + inter-sensor variance for
+one `depth` code, trimmed to (spinup, stop], NaN-day-free, and with the shared
+`capped` spring-peak dates dropped. Columns: :date, :daily_mean, :daily_var.
+Assumes obs_df already carries :date (added once by generate_observations).
+"""
+function daily_sco2_for_depth(obs_df; depth, spinup_date, stop_date, capped)
+    co2_cols = [Symbol("soilCO2concentrationMean_$(lpad(p, 3, '0'))_$depth") for p in 1:5]
+    mean_col = [_rowmean_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
+    var_col = [_rowvar_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
+    df = DataFrame(date = obs_df.date, sco2_mean = mean_col, sco2_var = var_col)
+
+    daily = combine(
+        groupby(df, :date),
         :sco2_mean => (x -> begin
             valid = filter(!isnan, x)
             length(valid) >= 24 ? mean(valid) : NaN
@@ -183,35 +172,98 @@ function generate_observations(run; base_dir)
             isempty(valid) ? NaN : mean(valid)
         end) => :daily_var,
     )
+    daily = filter(row -> row.date >= Date(spinup_date), daily)
+    daily = filter(row -> row.date <= Date(stop_date), daily)
+    daily = filter(row -> !isnan(row.daily_mean), daily)
+    daily = filter(row -> !(row.date in capped), daily)
+    sort!(daily, :date)
+    return daily
+end
 
-    daily_df = filter(row -> row.date >= Date(spinup_date), daily_df)
-    daily_df = filter(row -> row.date <= Date(stop_date), daily_df)
-    daily_df = filter(row -> !isnan(row.daily_mean), daily_df)
+"""
+    generate_observations(run; base_dir) -> obs_filepath
 
-    # ── soil-CO₂ spring-peak cap mask (this is the ONLY change vs Observations.jl) ──
-    # Compute the depth-consistent capped-date set: union over 501/502/503, baseline
-    # over all years. Only soil-CO₂ obs are dropped; every other CSV field is untouched.
+Build <base_dir>/observations.jld2 for `run`, stacking the daily soil-CO₂
+observation over ALL of `run.cal_depth_codes` (per-depth concatenation), with the
+soil-CO₂ spring-peak cap mask applied.
+
+Layout (option (a), per-depth concatenation, order = run.cal_depth_codes):
+    y_obs     = [y_<code1>; y_<code2>; ...]   (each depth keeps its own valid days)
+    noise_cov = Diagonal([noise_<code1>; noise_<code2>; ...])   (block-diagonal)
+The per-depth date lists + model layers are saved so observation_map (in the model
+interface) rebuilds the same stacking order. Depths→layers come from the shared
+lookup (src/neon_depth_lookup.jl → neon_depth_layer_mapping.csv).
+
+The cap mask is unchanged: capped dates (union over 501/502/503, all years,
+25%-quantile cold-soil baseline) are dropped at every depth.
+"""
+function generate_observations(run; base_dir)
+    FT = Float64
+    site_id = run.site
+    spinup_days = run.spinup_days
+    codes = run.cal_depth_codes
+
+    # per-site depth → model-layer lookup (same order/codes used by the model side)
+    depth_lookup = neon_depths_for_site(site_id; codes = codes)
+
+    start_date = DateTime(run.start_date)
+    stop_date = DateTime(run.stop_date)
+    spinup_date = start_date + Day(spinup_days)
+
+    println("Site: $site_id")
+    println("Data period: $start_date to $stop_date  (spinup until $spinup_date)")
+    println("Depth codes: ", join(codes, ", "),
+        "  (measurement depths z_obs: ",
+        join([string(d.z_obs_m) for d in depth_lookup], ", "), " m)")
+
+    csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_id)
+    println("Loading NEON data from $csv_path")
+    obs_df = CSV.read(csv_path, DataFrame)
+
+    obs_df[!, :datetime] =
+        DateTime.(string.(Int.(obs_df.timestamp_fmt)), dateformat"yyyymmddHHMM")
+    obs_df[!, :date] = Date.(obs_df.datetime)
+
+    # ── soil-CO₂ spring-peak cap mask (unchanged): depth-consistent capped-date set,
+    #    union over 501/502/503, baseline over all years. Applied at EVERY depth. ──
     capped = reduce(
         union,
         (capped_dates(obs_df, obs_df.datetime; depth = d) for d in CAP_ALL_DEPTHS);
         init = Set{Date}(),
     )
-    n_before = nrow(daily_df)
-    daily_df = filter(row -> !(row.date in capped), daily_df)
-    n_dropped = n_before - nrow(daily_df)
-    println("Cap mask: $(length(capped)) capped days (union over depths $(CAP_ALL_DEPTHS), all years); " *
-            "dropped $n_dropped of $n_before obs-days at cal depth $obs_depth")
+    println("Cap mask: $(length(capped)) capped days (union over depths $(CAP_ALL_DEPTHS), all years)")
 
-    sort!(daily_df, :date)
+    # ── Build the stacked (per-depth concatenated) observation ───────────────
+    y_blocks = Vector{Float64}[]
+    noise_blocks = Vector{Float64}[]
+    obs_dates_per_code = Dict{String, Vector{Date}}()
+    n_obs_per_code = Int[]
 
-    y_obs = Float64.(daily_df.daily_mean)
-    obs_dates = daily_df.date
+    for d in depth_lookup
+        code = d.code
+        daily = daily_sco2_for_depth(
+            obs_df; depth = code, spinup_date = spinup_date,
+            stop_date = stop_date, capped = capped,
+        )
+        n = nrow(daily)
+        n == 0 && error("No valid observation days for site $site_id depth code $code")
+
+        mean_sensor_var = mean(filter(!isnan, daily.daily_var))
+        push!(y_blocks, Float64.(daily.daily_mean))
+        push!(noise_blocks, fill(mean_sensor_var, n))
+        obs_dates_per_code[code] = daily.date
+        push!(n_obs_per_code, n)
+        println("  code $code (z=$(d.z_obs_m) m): ",
+            "$n days, noise=$(round(mean_sensor_var, sigdigits = 3)) ppm²")
+    end
+
+    y_obs = reduce(vcat, y_blocks)
+    noise_diag = reduce(vcat, noise_blocks)
     n_obs = length(y_obs)
-    println("Valid observation days: $n_obs (after $spinup_days-day spinup, after cap mask)")
-
-    mean_sensor_var = mean(filter(!isnan, daily_df.daily_var))
-    noise_diag = fill(mean_sensor_var, n_obs)
-    println("Noise variance (inter-sensor): $(round(mean_sensor_var, sigdigits=3)) ppm²")
+    # flat date list in stacking order (back-compat + convenience)
+    obs_dates = reduce(vcat, [obs_dates_per_code[d.code] for d in depth_lookup])
+    println("Stacked observation vector length: $n_obs ",
+        "(per-depth: ", join(n_obs_per_code, "+"), ")")
 
     observation = EKP.Observation(Dict(
         "samples" => y_obs,
@@ -224,9 +276,16 @@ function generate_observations(run; base_dir)
     JLD2.jldsave(
         obs_filepath;
         observation = observation,
-        obs_dates = obs_dates,
         y_obs = y_obs,
         noise_cov = Diagonal(noise_diag),
+        obs_dates = obs_dates,
+        # multi-depth metadata — obs/model stacking order + per-depth measurement
+        # depths. The MODEL LAYER is derived at runtime by argmin against the live
+        # grid (forward_model), so it is intentionally NOT stored here.
+        depth_codes = [d.code for d in depth_lookup],
+        z_obs_m = [d.z_obs_m for d in depth_lookup],
+        obs_dates_per_code = obs_dates_per_code,
+        n_obs_per_code = n_obs_per_code,
         site_id = site_id,
         spinup_days = spinup_days,
     )
