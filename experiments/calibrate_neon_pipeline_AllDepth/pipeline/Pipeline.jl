@@ -68,8 +68,8 @@ function seed_from_restart(run, csv_path, output_root)
     println("Restart: seeded prior means from $(run.restart_from)  ($prev_dir)")
     return Config.RunConfig(
         run.site, run.start_date, run.stop_date, run.spinup_days,
-        run.n_iterations, run.cal_depth, run.settingsdesc, run.dt,
-        run.output_root, run.run_identifier, run.restart_from, new_priors,
+        run.n_iterations, run.cal_depth, run.cal_depth_codes, run.settingsdesc,
+        run.dt, run.output_root, run.run_identifier, run.restart_from, new_priors,
         run.theta_r)
 end
 
@@ -90,9 +90,9 @@ function dedup_run_identifier(run)
     while true
         new_run = Config.RunConfig(
             run.site, run.start_date, run.stop_date, run.spinup_days,
-            run.n_iterations, run.cal_depth, run.settingsdesc, run.dt,
-            run.output_root, "$(base_id)_$(n)", run.restart_from, run.priors,
-            run.theta_r)
+            run.n_iterations, run.cal_depth, run.cal_depth_codes, run.settingsdesc,
+            run.dt, run.output_root, "$(base_id)_$(n)", run.restart_from,
+            run.priors, run.theta_r)
         ispath(Config.output_dir_for(new_run)) || break
         n += 1
     end

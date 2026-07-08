@@ -117,12 +117,20 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
     canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
     surface_space = land_domain.space.surface
 
-    # Determine target layer for soil CO₂ extraction (~2 cm depth)
+    # Determine the target model layer for soil CO₂ extraction — one per calibrated
+    # depth. The obs JLD2 supplies the per-depth CODES and MEASUREMENT DEPTHS
+    # (z_obs_m); the model LAYER is derived here, at runtime, by argmin against the
+    # live grid — exactly as the old single-depth path did, just looped. This keeps
+    # layer selection tied to the actual domain (independent of the lookup CSV).
+    # OBS_FILEPATH is a global set on every process.
     z_field = ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z
     z_vals = parent(z_field)[:, 1]
 
-    target_depth = FT(-1 * parse(Float64, Caldepthnum))
-    target_layer = argmin(abs.(z_vals .- target_depth))
+    _obs_meta = JLD2.load(OBS_FILEPATH)
+    depth_codes = String.(_obs_meta["depth_codes"])
+    z_obs_per_code = FT.(_obs_meta["z_obs_m"])                 # ordered like depth_codes
+    target_layers = [argmin(abs.(z_vals .- z)) for z in z_obs_per_code]
+    @info "Member $member: depths $(depth_codes) (z_obs=$(z_obs_per_code) m) → layers $(target_layers)"
 
     # Base TOML for non-calibrated parameters (canopy, snow, etc.)
     toml_dict_base = LP.create_toml_dict(FT)
@@ -359,7 +367,9 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         # 501 ≈ 6 cm, 502 ≈ 16 cm, 503 ≈ 26 cm, 504 ≈ 46 cm, 505 ≈ 66 cm,
         # 506 ≈ 86 cm, 507 ≈ 106 cm, 508 ≈ 166 cm
         neon_depths = FT[-0.06, -0.16, -0.26, -0.46, -0.66, -0.86, -1.06, -1.66]
-        depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
+        # NOTE: renamed from `depth_codes` to avoid shadowing forward_model's
+        # `depth_codes` (the calibrated CO₂ codes) captured by this closure.
+        swc_depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
         n_plots = 5
 
         csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(SITE_ID)
@@ -367,7 +377,7 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
         swc_colnames = names(swc_data)
 
         swc_per_depth = FT[]
-        for code in depth_codes
+        for code in swc_depth_codes
             vals = Float64[]
             for plot_id in 1:n_plots
                 colname = "VSWCMean_$(lpad(plot_id, 3, '0'))_$code"
@@ -451,40 +461,51 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
     )
     solve!(simulation)
 
-    # Extract daily mean sco2_ppm at target layer and save to JLD2
+    # Extract daily mean sco2_ppm at EACH target layer and save to JLD2
     member_path =
         ClimaCalibrate.path_to_ensemble_member(OUTPUT_DIR, iteration, member)
-    save_daily_sco2(simulation, member_path, target_layer)
+    save_daily_sco2(simulation, member_path, depth_codes, target_layers)
     return nothing
 end
 
 """
-    save_daily_sco2(simulation, member_path, target_layer)
+    save_daily_sco2(simulation, member_path, depth_codes, target_layers)
 
-Extract halfhourly sco2_ppm at the target layer, compute daily means,
-and save to JLD2.
+Extract halfhourly sco2_ppm at each `target_layers[i]`, compute daily means, and
+save one series per depth code to JLD2. The saved `sco2_ppm_by_code` is a
+`Dict(code => daily_mean_vector)` and `dates_by_code` a `Dict(code => dates)`,
+both keyed by `depth_codes` — observation_map aligns these to the per-depth obs
+dates. Order-matched: `depth_codes[i]` ↔ `target_layers[i]`.
 """
-function save_daily_sco2(simulation, member_path, target_layer)
-    (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
-        simulation.diagnostics[1].output_writer,
-        "sco2_ppm_30m_average";
-        layer = target_layer,
-    )
+function save_daily_sco2(simulation, member_path, depth_codes, target_layers)
+    sco2_by_code = Dict{String, Vector{Float64}}()
+    dates_by_code = Dict{String, Vector{Date}}()
 
-    model_dates_dt = times isa Vector{DateTime} ? times : date.(times)
-    model_df = DataFrame(datetime = model_dates_dt, sco2_ppm = Float64.(data))
-    model_df[!, :date] = Date.(model_df.datetime)
+    for (code, layer) in zip(depth_codes, target_layers)
+        (times, data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            simulation.diagnostics[1].output_writer,
+            "sco2_ppm_30m_average";
+            layer = layer,
+        )
+        model_dates_dt = times isa Vector{DateTime} ? times : date.(times)
+        model_df = DataFrame(datetime = model_dates_dt, sco2_ppm = Float64.(data))
+        model_df[!, :date] = Date.(model_df.datetime)
 
-    model_daily = combine(
-        groupby(model_df, :date),
-        :sco2_ppm => mean => :daily_mean,
-    )
-    sort!(model_daily, :date)
+        model_daily = combine(
+            groupby(model_df, :date),
+            :sco2_ppm => mean => :daily_mean,
+        )
+        sort!(model_daily, :date)
+
+        sco2_by_code[code] = model_daily.daily_mean
+        dates_by_code[code] = model_daily.date
+    end
 
     JLD2.jldsave(
         joinpath(member_path, "daily_diagnostics.jld2");
-        dates = model_daily.date,
-        sco2_ppm = model_daily.daily_mean,
+        depth_codes = depth_codes,
+        sco2_ppm_by_code = sco2_by_code,
+        dates_by_code = dates_by_code,
     )
 end
 
@@ -493,20 +514,23 @@ end
 """
     ClimaCalibrate.observation_map(::NeonLabileModelInterface, iteration)
 
-Return G ensemble matrix matching the filtered observation dates.
-
-The observation vector is daily mean soil CO₂ concentration (ppm) at ~2 cm depth.
+Return the G ensemble matrix matching the STACKED (per-depth concatenated)
+observation vector. For each ensemble member, the model daily-mean soil CO₂ (ppm)
+is aligned to each depth's own observation dates and the per-depth blocks are
+concatenated in the SAME order the observation vector was built
+(`obs_data["depth_codes"]`), so G row `k` corresponds to y_obs row `k`.
 """
 function ClimaCalibrate.observation_map(::NeonLabileModelInterface, iteration)
     ekp = JLD2.load_object(ClimaCalibrate.ekp_path(OUTPUT_DIR, iteration))
     ensemble_size = EKP.get_N_ens(ekp)
 
-    # Load valid observation dates
+    # Stacking order + per-depth obs dates (written by Observation_flag.jl)
     obs_data = JLD2.load(OBS_FILEPATH)
-    obs_dates = obs_data["obs_dates"]
-    n_obs = length(obs_dates)
+    depth_codes = String.(obs_data["depth_codes"])
+    obs_dates_per_code = obs_data["obs_dates_per_code"]
+    n_obs = sum(length(obs_dates_per_code[c]) for c in depth_codes)
 
-    @info "Observation map: $n_obs valid days, G length $n_obs"
+    @info "Observation map: stacked G length $n_obs over depths $(depth_codes)"
 
     G_ens = zeros(n_obs, ensemble_size)
 
@@ -520,16 +544,18 @@ function ClimaCalibrate.observation_map(::NeonLabileModelInterface, iteration)
 
         try
             member_data = JLD2.load(diag_path)
-            model_dates = member_data["dates"]
-            sco2_model = member_data["sco2_ppm"]
+            sco2_by_code = member_data["sco2_ppm_by_code"]
+            dates_by_code = member_data["dates_by_code"]
 
-            # Build date lookup
-            model_dict = Dict(zip(model_dates, sco2_model))
-
-            # Extract model values at observation dates
-            sco2_out = [get(model_dict, d, NaN) for d in obs_dates]
-
-            G_ens[:, m] = sco2_out
+            # Concatenate per-depth blocks in the stacking order; within each depth
+            # align model days to that depth's obs dates (missing day → NaN).
+            blocks = Vector{Float64}[]
+            for code in depth_codes
+                model_dict = Dict(zip(dates_by_code[code], sco2_by_code[code]))
+                push!(blocks,
+                    [get(model_dict, d, NaN) for d in obs_dates_per_code[code]])
+            end
+            G_ens[:, m] = reduce(vcat, blocks)
         catch e
             @error "Error processing member $m" exception = e
             G_ens[:, m] .= NaN

@@ -73,10 +73,11 @@ function forward_run(run; output_dir, params)
     site_id = run.site
     spinup_days = run.spinup_days
     DT = run.dt
-    cal_depth_str = string(run.cal_depth)
     climaland_dir = pkgdir(ClimaLand)
 
-    obs_depth = Config.obs_depth_code(run.cal_depth)  # validates + maps depth
+    # AllDepth: the calibrated depth codes (obs/model stacking order). Per-depth
+    # figures loop over these; the CSV stats pool across them (see end of fn).
+    depth_codes = run.cal_depth_codes
 
     start_date = DateTime(run.start_date)
     stop_date = DateTime(run.stop_date)
@@ -144,9 +145,29 @@ used_in = ["Land"]
 
     z_field = ClimaCore.Fields.coordinate_field(land_domain.space.subsurface).z
     z_vals = parent(z_field)[:, 1]
-    target_depth = FT(-1 * parse(Float64, cal_depth_str))
-    target_layer = argmin(abs.(z_vals .- target_depth))
-    println("Target layer: $target_layer (z = $(z_vals[target_layer]) m)")
+
+    # Per-depth target layers, derived by argmin against the live grid from each
+    # code's measurement depth (z_obs_m) in observations.jld2 — same source and
+    # rule as the model interface, so figures/metrics match the calibration.
+    obs_jld = joinpath(Config.base_dir_for(run), "observations.jld2")
+    z_obs_by_code = Dict{String, Float64}()
+    if isfile(obs_jld)
+        _meta = JLD2.load(obs_jld)
+        _mcodes = String.(_meta["depth_codes"])
+        _mz = Float64.(_meta["z_obs_m"])
+        for (c, z) in zip(_mcodes, _mz)
+            z_obs_by_code[c] = z
+        end
+    else
+        @warn "No observations.jld2 at $obs_jld; falling back to run.cal_depth for all codes"
+        for c in depth_codes
+            z_obs_by_code[c] = -Float64(run.cal_depth)
+        end
+    end
+    target_layer_of = Dict(c => argmin(abs.(z_vals .- z_obs_by_code[c])) for c in depth_codes)
+    for c in depth_codes
+        println("Depth $c: z_obs=$(z_obs_by_code[c]) m → layer $(target_layer_of[c]) (z=$(z_vals[target_layer_of[c]]) m)")
+    end
 
     toml_dict_base = LP.create_toml_dict(FT)
     toml_dict = LP.create_toml_dict(FT; override_files = [prior_toml])
@@ -258,14 +279,17 @@ used_in = ["Land"]
         Y.soilco2.SOC .= soc_field
 
         neon_depths = FT[-0.06, -0.16, -0.26, -0.46, -0.66, -0.86, -1.06, -1.66]
-        depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
+        # NOTE: renamed from `depth_codes` to avoid shadowing forward_run's
+        # `depth_codes` (the calibrated CO₂ codes) captured by this closure —
+        # otherwise this 8-element list rebinds it and the per-depth loop breaks.
+        swc_depth_codes = ["501", "502", "503", "504", "505", "506", "507", "508"]
         n_plots = 5
         csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_id)
         swc_data = CSV.read(csv_path, DataFrame)
         swc_colnames = names(swc_data)
 
         swc_per_depth = FT[]
-        for code in depth_codes
+        for code in swc_depth_codes
             vals = Float64[]
             for plot_id in 1:n_plots
                 colname = "VSWCMean_$(lpad(plot_id, 3, '0'))_$code"
@@ -337,10 +361,6 @@ used_in = ["Land"]
         return daily
     end
 
-    sco2_daily = get_diag_layer(simulation, "sco2_ppm_30m_average", target_layer)
-    swc_daily = get_diag_layer(simulation, "swc_30m_average", target_layer)
-    tsoil_daily = get_diag_layer(simulation, "tsoil_30m_average", target_layer)
-
     # SOC profile (time-invariant; first timestep)
     soc_vals = Float64[]
     for layer in 1:nelements
@@ -357,9 +377,11 @@ used_in = ["Land"]
     CairoMakie.save(joinpath(output_dir, "soc_profile_$(site_id).png"), fig_soc)
 
     # ── NEON observations ────────────────────────────────────────────────────
+    # obs_df + its datetime/date columns + rowmean_skipinvalid are loop-invariant
+    # (shared across depths). Everything that depends on the depth code is built
+    # inside the per-depth loop below.
     csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_id)
     obs_df = CSV.read(csv_path, DataFrame)
-    co2_cols = [Symbol("soilCO2concentrationMean_$(lpad(p,3,'0'))_$obs_depth") for p in 1:5]
     function rowmean_skipinvalid(row, cols)
         vals = Float64[]
         for c in cols
@@ -368,10 +390,29 @@ used_in = ["Land"]
         end
         return isempty(vals) ? NaN : mean(vals)
     end
-    obs_df[!, :sco2_mean] = [rowmean_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
     obs_df[!, :datetime] =
         DateTime.(string.(Int.(obs_df.timestamp_fmt)), dateformat"yyyymmddHHMM")
     obs_df[!, :date] = Date.(obs_df.datetime)
+
+    # ── Per-depth loop ───────────────────────────────────────────────────────
+    # One iteration per calibrated depth code. Builds that depth's obs+model daily
+    # series, writes the 3 per-depth figures (forward_mean, optimized_vs_sensors,
+    # co2_budget), and collects per-depth stats. The all-layer profile/O₂ figures
+    # (which don't depend on the code) are written once, guarded to the 1st pass.
+    # After the loop, per-depth stats are POOLED into the CSV `scatter_stats`.
+    per_depth_stats = NamedTuple[]     # one entry per code (for pooling)
+    per_depth_porosity = Float64[]     # ν at each depth's target layer
+    for code in depth_codes
+        obs_depth = code
+        target_layer = target_layer_of[code]
+        println("── depth $code → layer $target_layer (z=$(z_vals[target_layer]) m) ──")
+
+        sco2_daily = get_diag_layer(simulation, "sco2_ppm_30m_average", target_layer)
+        swc_daily = get_diag_layer(simulation, "swc_30m_average", target_layer)
+        tsoil_daily = get_diag_layer(simulation, "tsoil_30m_average", target_layer)
+
+        co2_cols = [Symbol("soilCO2concentrationMean_$(lpad(p,3,'0'))_$obs_depth") for p in 1:5]
+        obs_df[!, :sco2_mean] = [rowmean_skipinvalid(row, co2_cols) for row in eachrow(obs_df)]
     obs_daily = combine(groupby(obs_df, :date),
         :sco2_mean => (x -> begin
             valid = filter(!isnan, x); length(valid) >= 24 ? mean(valid) : NaN
@@ -468,7 +509,7 @@ used_in = ["Land"]
         xl = extrema(swc_daily.date)
         xlims!(ax1, xl...); xlims!(ax2, xl...); xlims!(ax3, xl...)
     end
-    main_path = joinpath(output_dir, "forward_mean_$(site_id).png")
+    main_path = joinpath(output_dir, "forward_mean_$(site_id)_$(code).png")
     CairoMakie.save(main_path, fig)
     println("Saved: $main_path")
 
@@ -533,8 +574,10 @@ used_in = ["Land"]
         xl = extrema(swc_daily.date)
         xlims!(ax_co2, xl...); xlims!(ax_swc, xl...); xlims!(ax_t, xl...)
     end
-    CairoMakie.save(joinpath(output_dir, "optimized_vs_sensors_$(site_id).png"), fig_opt)
+    CairoMakie.save(joinpath(output_dir, "optimized_vs_sensors_$(site_id)_$(code).png"), fig_opt)
 
+    # ── All-layer profile / O₂ figures: depth-code-independent, write ONCE ────
+    if code == depth_codes[1]
     # SoilCO2 O₂ constants for converting fractions ↔ gas-phase mass conc.
     soilco2_params = land.soilco2.parameters
     M_O2 = FT(soilco2_params.M_O2)
@@ -610,6 +653,7 @@ used_in = ["Land"]
     end
     CairoMakie.save(joinpath(output_dir, "profiles_O2_co2_cms_$(site_id).png"), fig_prof)
     CairoMakie.save(joinpath(output_dir, "o2_diagnostics_$(site_id).png"), fig_o2diag)
+    end  # if code == depth_codes[1]  (all-layer profile/O₂ figures, once)
 
     # ── CO₂ budget at target layer: production / emission / transport ────────
     # 1. Microbial CO₂ production in target layer (kg C m⁻³ s⁻¹), half-hourly.
@@ -666,9 +710,19 @@ used_in = ["Land"]
         t_xlim = extrema(scms_hh.datetime)
         xlims!(ax_prod, t_xlim...); xlims!(ax_emis, t_xlim...); xlims!(ax_trans, t_xlim...)
     end
-    CairoMakie.save(joinpath(output_dir, "co2_budget_$(site_id).png"), fig_budget)
+    CairoMakie.save(joinpath(output_dir, "co2_budget_$(site_id)_$(code).png"), fig_budget)
 
-    # ── Scatter figure: obs/model CO₂ vs SWC relationships ────────────────────
+    # ── Collect this depth's series/porosity for pooled CSV stats (after loop) ──
+    push!(per_depth_stats, (;
+        code = code,
+        sco2_daily = sco2_daily, swc_daily = swc_daily, tsoil_daily = tsoil_daily,
+        obs_daily_cal = obs_daily_cal, obs_swc_daily = obs_swc_daily,
+        obs_tsoil_daily = obs_tsoil_daily,
+    ))
+    push!(per_depth_porosity, Float64(parent(land.soil.parameters.ν)[target_layer]))
+    end  # for code in depth_codes
+
+    # ── Scatter figure: obs/model CO₂ vs SWC relationships (DISABLED for AllDepth) ──
     # Each panel pairs two daily-mean series on common dates. Title carries the
     # Pearson correlation r and the RMSE of the (x, y) pair.
     #   model CO₂  = sco2_daily,  model SWC = swc_daily,
@@ -693,30 +747,31 @@ used_in = ["Land"]
         isempty(x) || scatter!(ax, x, y; color = (:steelblue, 0.6), markersize = 6)
     end
 
-    # obs vs model, paired on common dates. CO₂ uses obs_daily_cal (capped
-    # spring-peak days removed) so the RMSE/corr match the calibration target.
-    obs_mod_co2_x, obs_mod_co2_y = _pair_on_date(obs_daily_cal, sco2_daily)
-    obs_mod_swc_x, obs_mod_swc_y = _pair_on_date(obs_swc_daily, swc_daily)
-    # obs CO₂ vs obs SWC, and model CO₂ vs model SWC
-    obs_co2_swc_x, obs_co2_swc_y = _pair_on_date(obs_daily_cal, obs_swc_daily)
-    mod_co2_swc_x, mod_co2_swc_y = _pair_on_date(sco2_daily, swc_daily)
+    # Scatter figure disabled for the AllDepth pipeline (per-depth series no longer
+    # live at this scope; re-enable per depth inside the loop if needed).
+    if false
+        obs_mod_co2_x, obs_mod_co2_y = _pair_on_date(obs_daily_cal, sco2_daily)
+        obs_mod_swc_x, obs_mod_swc_y = _pair_on_date(obs_swc_daily, swc_daily)
+        obs_co2_swc_x, obs_co2_swc_y = _pair_on_date(obs_daily_cal, obs_swc_daily)
+        mod_co2_swc_x, mod_co2_swc_y = _pair_on_date(sco2_daily, swc_daily)
 
-    fig_scat = Figure(size = (1100, 950))
-    Label(fig_scat[0, 1:2], "$site_id — CO₂ / SWC scatter relationships (depth $obs_depth)";
-        fontsize = 18, font = :bold)
-    sax1 = Axis(fig_scat[1, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Model soil CO₂ (ppm)")
-    _scatter_panel!(sax1, obs_mod_co2_x, obs_mod_co2_y;
-        with_rmse = true, base_title = "Obs vs model soil CO₂")
-    sax2 = Axis(fig_scat[1, 2]; xlabel = "Obs SWC (m³/m³)", ylabel = "Model SWC (m³/m³)")
-    _scatter_panel!(sax2, obs_mod_swc_x, obs_mod_swc_y;
-        with_rmse = true, base_title = "Obs vs model soil water content")
-    sax3 = Axis(fig_scat[2, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Obs SWC (m³/m³)")
-    _scatter_panel!(sax3, obs_co2_swc_x, obs_co2_swc_y;
-        with_rmse = false, base_title = "Obs soil CO₂ vs obs SWC")
-    sax4 = Axis(fig_scat[2, 2]; xlabel = "Model soil CO₂ (ppm)", ylabel = "Model SWC (m³/m³)")
-    _scatter_panel!(sax4, mod_co2_swc_x, mod_co2_swc_y;
-        with_rmse = false, base_title = "Model soil CO₂ vs model SWC")
-    CairoMakie.save(joinpath(output_dir, "scatter_co2_swc_$(site_id).png"), fig_scat)
+        fig_scat = Figure(size = (1100, 950))
+        Label(fig_scat[0, 1:2], "$site_id — CO₂ / SWC scatter relationships";
+            fontsize = 18, font = :bold)
+        sax1 = Axis(fig_scat[1, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Model soil CO₂ (ppm)")
+        _scatter_panel!(sax1, obs_mod_co2_x, obs_mod_co2_y;
+            with_rmse = true, base_title = "Obs vs model soil CO₂")
+        sax2 = Axis(fig_scat[1, 2]; xlabel = "Obs SWC (m³/m³)", ylabel = "Model SWC (m³/m³)")
+        _scatter_panel!(sax2, obs_mod_swc_x, obs_mod_swc_y;
+            with_rmse = true, base_title = "Obs vs model soil water content")
+        sax3 = Axis(fig_scat[2, 1]; xlabel = "Obs soil CO₂ (ppm)", ylabel = "Obs SWC (m³/m³)")
+        _scatter_panel!(sax3, obs_co2_swc_x, obs_co2_swc_y;
+            with_rmse = false, base_title = "Obs soil CO₂ vs obs SWC")
+        sax4 = Axis(fig_scat[2, 2]; xlabel = "Model soil CO₂ (ppm)", ylabel = "Model SWC (m³/m³)")
+        _scatter_panel!(sax4, mod_co2_swc_x, mod_co2_swc_y;
+            with_rmse = false, base_title = "Model soil CO₂ vs model SWC")
+        CairoMakie.save(joinpath(output_dir, "scatter_co2_swc_$(site_id).png"), fig_scat)
+    end
 
     # mean / min / max over each daily-mean series (NaN when the series is empty).
     # These summarize the obs and model ranges for soil CO₂, SWC, and temperature.
@@ -727,8 +782,8 @@ used_in = ["Land"]
     # above. Obs come from the model-FORCING columns (TA_F air temp °C, VPD_F in
     # hPa, P_F accumulated precip mm); model air T is the `tair` driver (K).
 
-    # Soil porosity ν at the calibration layer (static scalar, m³/m³).
-    soil_porosity_layer = Float64(parent(land.soil.parameters.ν)[target_layer])
+    # Soil porosity ν — MEAN over the calibrated depths' layers (m³/m³).
+    soil_porosity_layer = isempty(per_depth_porosity) ? NaN : mean(per_depth_porosity)
 
     # Model air temperature mean over the FULL period (K). Pulled directly from
     # the diagnostic writer to bypass get_diag_series' spinup filter; the
@@ -755,37 +810,64 @@ used_in = ["Land"]
     obs_vpd_mean = isempty(_vpd) ? NaN : mean(_vpd)
     obs_precip_sum = isempty(_precip) ? NaN : sum(_precip)
 
-    # Stats handed back to the pipeline for the master CSV.
+    # ── Pool the per-depth series into the master-CSV stats (all depths together) ──
+    # RMSE/correlations: concatenate every depth's paired (obs, model) points and
+    # compute ONE number over the pool — matches the depth-pooled EKI/Diagnostics
+    # RMSE. Range stats (mean/min/max): concatenate each series' daily means over
+    # all depths, then reduce. Porosity: mean over depths (computed above).
+    _cat(f) = isempty(per_depth_stats) ? Float64[] :
+              reduce(vcat, [Float64.(getfield(s, f).daily_mean) for s in per_depth_stats])
+    _stat(v, f) = isempty(v) ? NaN : f(v)
+    # paired points pooled over depths (obs_daily_cal ↔ model, obs_swc ↔ model swc)
+    _pool_pairs(dfx_field, dfy_field) = isempty(per_depth_stats) ? (Float64[], Float64[]) :
+        begin
+            xs = Float64[]; ys = Float64[]
+            for s in per_depth_stats
+                px, py = _pair_on_date(getfield(s, dfx_field), getfield(s, dfy_field))
+                append!(xs, px); append!(ys, py)
+            end
+            (xs, ys)
+        end
+    pooled_obs_mod_co2_x, pooled_obs_mod_co2_y = _pool_pairs(:obs_daily_cal, :sco2_daily)
+    pooled_obs_mod_swc_x, pooled_obs_mod_swc_y = _pool_pairs(:obs_swc_daily, :swc_daily)
+    pooled_obs_co2_swc_x, pooled_obs_co2_swc_y = _pool_pairs(:obs_daily_cal, :obs_swc_daily)
+    pooled_mod_co2_swc_x, pooled_mod_co2_swc_y = _pool_pairs(:sco2_daily, :swc_daily)
+
+    sco2_obs_all = _cat(:obs_daily_cal); sco2_mod_all = _cat(:sco2_daily)
+    swc_obs_all = _cat(:obs_swc_daily); swc_mod_all = _cat(:swc_daily)
+    tsoil_obs_all = _cat(:obs_tsoil_daily); tsoil_mod_all = _cat(:tsoil_daily)
+
+    # Stats handed back to the pipeline for the master CSV (POOLED over depths).
     scatter_stats = (;
-        rmse_sco2 = _rmse(obs_mod_co2_x, obs_mod_co2_y),
-        rmse_swc = _rmse(obs_mod_swc_x, obs_mod_swc_y),
-        corr_obs_model_sco2 = _corr(obs_mod_co2_x, obs_mod_co2_y),
-        corr_obs_model_swc = _corr(obs_mod_swc_x, obs_mod_swc_y),
-        corr_obs_sco2_swc = _corr(obs_co2_swc_x, obs_co2_swc_y),
-        corr_model_sco2_swc = _corr(mod_co2_swc_x, mod_co2_swc_y),
-        # soil CO₂ (ppm) — obs stats on the masked (calibration) set
-        obs_sco2_mean = _dstat(obs_daily_cal, mean),
-        obs_sco2_min = _dstat(obs_daily_cal, minimum),
-        obs_sco2_max = _dstat(obs_daily_cal, maximum),
-        model_sco2_mean = _dstat(sco2_daily, mean),
-        model_sco2_min = _dstat(sco2_daily, minimum),
-        model_sco2_max = _dstat(sco2_daily, maximum),
+        rmse_sco2 = _rmse(pooled_obs_mod_co2_x, pooled_obs_mod_co2_y),
+        rmse_swc = _rmse(pooled_obs_mod_swc_x, pooled_obs_mod_swc_y),
+        corr_obs_model_sco2 = _corr(pooled_obs_mod_co2_x, pooled_obs_mod_co2_y),
+        corr_obs_model_swc = _corr(pooled_obs_mod_swc_x, pooled_obs_mod_swc_y),
+        corr_obs_sco2_swc = _corr(pooled_obs_co2_swc_x, pooled_obs_co2_swc_y),
+        corr_model_sco2_swc = _corr(pooled_mod_co2_swc_x, pooled_mod_co2_swc_y),
+        # soil CO₂ (ppm) — obs stats on the masked (calibration) set, pooled depths
+        obs_sco2_mean = _stat(sco2_obs_all, mean),
+        obs_sco2_min = _stat(sco2_obs_all, minimum),
+        obs_sco2_max = _stat(sco2_obs_all, maximum),
+        model_sco2_mean = _stat(sco2_mod_all, mean),
+        model_sco2_min = _stat(sco2_mod_all, minimum),
+        model_sco2_max = _stat(sco2_mod_all, maximum),
         # soil water content (m³/m³)
-        obs_swc_mean = _dstat(obs_swc_daily, mean),
-        obs_swc_min = _dstat(obs_swc_daily, minimum),
-        obs_swc_max = _dstat(obs_swc_daily, maximum),
-        model_swc_mean = _dstat(swc_daily, mean),
-        model_swc_min = _dstat(swc_daily, minimum),
-        model_swc_max = _dstat(swc_daily, maximum),
+        obs_swc_mean = _stat(swc_obs_all, mean),
+        obs_swc_min = _stat(swc_obs_all, minimum),
+        obs_swc_max = _stat(swc_obs_all, maximum),
+        model_swc_mean = _stat(swc_mod_all, mean),
+        model_swc_min = _stat(swc_mod_all, minimum),
+        model_swc_max = _stat(swc_mod_all, maximum),
         # soil temperature (K)
-        obs_tsoil_mean = _dstat(obs_tsoil_daily, mean),
-        obs_tsoil_min = _dstat(obs_tsoil_daily, minimum),
-        obs_tsoil_max = _dstat(obs_tsoil_daily, maximum),
-        model_tsoil_mean = _dstat(tsoil_daily, mean),
-        model_tsoil_min = _dstat(tsoil_daily, minimum),
-        model_tsoil_max = _dstat(tsoil_daily, maximum),
+        obs_tsoil_mean = _stat(tsoil_obs_all, mean),
+        obs_tsoil_min = _stat(tsoil_obs_all, minimum),
+        obs_tsoil_max = _stat(tsoil_obs_all, maximum),
+        model_tsoil_mean = _stat(tsoil_mod_all, mean),
+        model_tsoil_min = _stat(tsoil_mod_all, minimum),
+        model_tsoil_max = _stat(tsoil_mod_all, maximum),
         # full-period (incl. spinup) summaries
-        soil_porosity_layer = soil_porosity_layer,   # m³/m³, calibration layer
+        soil_porosity_layer = soil_porosity_layer,   # m³/m³, MEAN over cal depths
         obs_tair_mean = obs_tair_mean,               # K (TA_F + 273.15)
         model_tair_mean = model_tair_mean,           # K (tair driver)
         obs_precip_sum_mm = obs_precip_sum,          # mm, summed P_F over period

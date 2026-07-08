@@ -67,7 +67,6 @@ end
 """
 function plot_eki_diagnostics(run; output_dir, eki_path, obs_filepath)
     site_id = run.site
-    cal_depth_str = string(run.cal_depth)
     outdir = joinpath(output_dir, "figures_eki_diagnostics")
     mkpath(outdir)
 
@@ -81,6 +80,17 @@ function plot_eki_diagnostics(run; output_dir, eki_path, obs_filepath)
     obs_dates = obs_data["obs_dates"]
     @assert length(obs_dates) == n_obs "Date count mismatch: $(length(obs_dates)) vs $n_obs"
 
+    # AllDepth: the stacked obs vector concatenates per-depth blocks in this order.
+    # Used to slice y_obs / G into per-depth segments for the timeseries and
+    # seasonality plots (aggregate plots — RMSE, 1-to-1 — use the full vector).
+    depth_codes = String.(obs_data["depth_codes"])
+    n_obs_per_code = Int.(obs_data["n_obs_per_code"])
+    obs_dates_per_code = obs_data["obs_dates_per_code"]
+    # (start, stop) row index of each depth's block in the stacked vector.
+    _ends = cumsum(n_obs_per_code)
+    _starts = _ends .- n_obs_per_code .+ 1
+    block_range = Dict(depth_codes[i] => (_starts[i]:_ends[i]) for i in eachindex(depth_codes))
+
     G_prior = G_all[1]
     G_post = G_all[end]
     prior_mean = vec(mean(G_prior, dims = 2))
@@ -92,47 +102,63 @@ function plot_eki_diagnostics(run; output_dir, eki_path, obs_filepath)
     final_rmse = mean(_ensemble_rmse(G_post, y_obs))
     rmse_str = round(final_rmse, digits = 2)
 
-    # ── PLOT 1 — timeseries prior/post/obs ───────────────────────────────────
-    fig1 = Figure(size = (1200, 500))
-    ax1 = Axis(fig1[1, 1]; xlabel = "Day index", ylabel = "Soil CO₂ (ppm)",
-        title = "$site_id: Daily Soil CO₂ at ~$cal_depth_str — Prior vs Posterior vs Obs")
-    lines!(ax1, 1:n_obs, y_obs; color = :black, linewidth = 2.5, label = "NEON Observations")
-    lines!(ax1, 1:n_obs, prior_mean; color = :royalblue, linewidth = 2, label = "Prior (iter 0)")
-    lines!(ax1, 1:n_obs, post_mean; color = :firebrick, linewidth = 2,
-        label = "Posterior (iter $iter_label_post)")
-    Legend(fig1[1, 2], ax1; framevisible = false)
+    # ── PLOT 1 — timeseries prior/post/obs, one panel PER DEPTH ──────────────
+    # Each depth's block is plotted against its own dates (blocks have different
+    # lengths), stacked as rows so the depths are not concatenated on one axis.
+    nd = length(depth_codes)
+    fig1 = Figure(size = (1200, 300 * nd))
+    for (row, code) in enumerate(depth_codes)
+        rng = block_range[code]
+        dts = obs_dates_per_code[code]
+        ax = Axis(fig1[row, 1]; xlabel = "Date", ylabel = "Soil CO₂ (ppm)",
+            title = "$site_id depth $code — Prior vs Posterior vs Obs")
+        lines!(ax, dts, y_obs[rng]; color = :black, linewidth = 2.5, label = "NEON Observations")
+        lines!(ax, dts, prior_mean[rng]; color = :royalblue, linewidth = 2, label = "Prior (iter 0)")
+        lines!(ax, dts, post_mean[rng]; color = :firebrick, linewidth = 2,
+            label = "Posterior (iter $iter_label_post)")
+        row == 1 && Legend(fig1[1, 2], ax; framevisible = false)
+    end
     save(joinpath(outdir, "plot_timeseries.png"), fig1; px_per_unit = 2)
 
-    # ── PLOT 1a — posterior only ─────────────────────────────────────────────
-    fig1a = Figure(size = (1200, 500))
-    ax1a = Axis(fig1a[1, 1]; xlabel = "Day index", ylabel = "Soil CO₂ (ppm)",
-        title = "$site_id: Daily Soil CO₂ — Posterior vs Obs (RMSE = $rmse_str ppm)")
-    lines!(ax1a, 1:n_obs, y_obs; color = :black, linewidth = 2.5, label = "NEON Observations")
-    lines!(ax1a, 1:n_obs, post_mean; color = :firebrick, linewidth = 2,
-        label = "Posterior (iter $iter_label_post)")
-    Legend(fig1a[1, 2], ax1a; framevisible = false)
+    # ── PLOT 1a — posterior only, one panel PER DEPTH ────────────────────────
+    fig1a = Figure(size = (1200, 300 * nd))
+    for (row, code) in enumerate(depth_codes)
+        rng = block_range[code]
+        dts = obs_dates_per_code[code]
+        ax = Axis(fig1a[row, 1]; xlabel = "Date", ylabel = "Soil CO₂ (ppm)",
+            title = "$site_id depth $code — Posterior vs Obs (RMSE = $rmse_str ppm, all depths)")
+        lines!(ax, dts, y_obs[rng]; color = :black, linewidth = 2.5, label = "NEON Observations")
+        lines!(ax, dts, post_mean[rng]; color = :firebrick, linewidth = 2,
+            label = "Posterior (iter $iter_label_post)")
+        row == 1 && Legend(fig1a[1, 2], ax; framevisible = false)
+    end
     save(joinpath(outdir, "plot_timeseries_post.png"), fig1a; px_per_unit = 2)
 
-    # ── PLOT 1b — monthly seasonality ────────────────────────────────────────
-    fig1b = Figure(size = (800, 500))
-    ax1b = Axis(fig1b[1, 1]; xlabel = "Month", ylabel = "Soil CO₂ (ppm)",
-        title = "$site_id: Monthly Mean Soil CO₂ Seasonality",
-        xticks = (1:12, months_label))
-    obs_m, obs_s = _monthly_mean(obs_dates, y_obs)
-    prior_m, prior_s = _monthly_mean(obs_dates, prior_mean)
-    post_m, post_s = _monthly_mean(obs_dates, post_mean)
+    # ── PLOT 1b — monthly seasonality, one panel PER DEPTH ───────────────────
+    # Monthly means must not mix depths, so bin each depth's block on its own dates.
     xs = 1:12
-    band!(ax1b, xs, obs_m .- obs_s, obs_m .+ obs_s; color = (:black, 0.12))
-    band!(ax1b, xs, prior_m .- prior_s, prior_m .+ prior_s; color = (:royalblue, 0.15))
-    band!(ax1b, xs, post_m .- post_s, post_m .+ post_s; color = (:firebrick, 0.15))
-    lines!(ax1b, xs, obs_m; color = :black, linewidth = 2.5, label = "Observations")
-    lines!(ax1b, xs, prior_m; color = :royalblue, linewidth = 2, label = "Prior (iter 0)")
-    lines!(ax1b, xs, post_m; color = :firebrick, linewidth = 2,
-        label = "Posterior (iter $iter_label_post)")
-    scatter!(ax1b, xs, obs_m; color = :black, markersize = 8)
-    scatter!(ax1b, xs, prior_m; color = :royalblue, markersize = 6)
-    scatter!(ax1b, xs, post_m; color = :firebrick, markersize = 6)
-    Legend(fig1b[1, 2], ax1b; framevisible = false)
+    fig1b = Figure(size = (800, 300 * nd))
+    for (row, code) in enumerate(depth_codes)
+        rng = block_range[code]
+        dts = obs_dates_per_code[code]
+        ax1b = Axis(fig1b[row, 1]; xlabel = "Month", ylabel = "Soil CO₂ (ppm)",
+            title = "$site_id depth $code: Monthly Mean Soil CO₂ Seasonality",
+            xticks = (1:12, months_label))
+        obs_m, obs_s = _monthly_mean(dts, y_obs[rng])
+        prior_m, prior_s = _monthly_mean(dts, prior_mean[rng])
+        post_m, post_s = _monthly_mean(dts, post_mean[rng])
+        band!(ax1b, xs, obs_m .- obs_s, obs_m .+ obs_s; color = (:black, 0.12))
+        band!(ax1b, xs, prior_m .- prior_s, prior_m .+ prior_s; color = (:royalblue, 0.15))
+        band!(ax1b, xs, post_m .- post_s, post_m .+ post_s; color = (:firebrick, 0.15))
+        lines!(ax1b, xs, obs_m; color = :black, linewidth = 2.5, label = "Observations")
+        lines!(ax1b, xs, prior_m; color = :royalblue, linewidth = 2, label = "Prior (iter 0)")
+        lines!(ax1b, xs, post_m; color = :firebrick, linewidth = 2,
+            label = "Posterior (iter $iter_label_post)")
+        scatter!(ax1b, xs, obs_m; color = :black, markersize = 8)
+        scatter!(ax1b, xs, prior_m; color = :royalblue, markersize = 6)
+        scatter!(ax1b, xs, post_m; color = :firebrick, markersize = 6)
+        row == 1 && Legend(fig1b[1, 2], ax1b; framevisible = false)
+    end
     save(joinpath(outdir, "plot_seasonality.png"), fig1b; px_per_unit = 2)
 
     # ── PLOT 2 — RMSE per iteration ──────────────────────────────────────────

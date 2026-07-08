@@ -120,7 +120,7 @@ println()
 # param key => (output filename, header column name).
 # Filenames get a "_Rosetta" suffix when USE_ROSETTA is set, so the two sources
 # never overwrite each other.
-suffix = USE_ROSETTA ? "_Rosetta" : ""
+suffix = USE_ROSETTA ? "_Rosetta" : "Gupta"
 outputs = [
     ("nu", "porosity_profiles$(suffix).csv", "nu"),
     ("theta_r", "theta_r_profiles$(suffix).csv", "theta_r"),
