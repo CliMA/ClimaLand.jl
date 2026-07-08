@@ -445,7 +445,7 @@ function add_diagnostics!(
     model::CanopyModel,
     subcomponent::ZhouOptimalLAIModel,
 )
-    append!(diagnostics, ["a0d", "a0a"])
+    append!(diagnostics, ["a0d", "a0a", "pra"])
     return nothing
 end
 

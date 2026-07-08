@@ -346,6 +346,17 @@ function define_diagnostics!(land_model, possible_diags)
             compute_a0_annual!(out, Y, p, t, land_model),
     )
 
+    # Annual precipitation (from optimal LAI model)
+    add_diagnostic_variable!(
+        short_name = "pra",
+        long_name = "Annual Precipitation",
+        standard_name = "annual_precipitation",
+        units = "mol H2O m^-2 yr^-1",
+        comments = "Running annual precipitation total (~1 yr memory), used by the optimal LAI model water limitation.",
+        compute! = (out, Y, p, t) ->
+            compute_precip_annual!(out, Y, p, t, land_model),
+    )
+
     # Moisture stress factor
     conditional_add_diagnostic_variable!(
         possible_diags;

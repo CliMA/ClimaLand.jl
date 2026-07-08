@@ -469,7 +469,7 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `A0_annual`: cache mirror of the prognostic annual potential GPP (mol CO2 m^-2 yr^-1)
 - `A0_daily_acc`: accumulator for current day's potential GPP (mol CO2 m^-2 day^-1)
 - `GSL`: growing season length (days), spatially varying
-- `precip_annual`: mean annual precipitation (mol H2O m^-2 yr^-1), for water limitation in LAI_max
+- `precip_annual`: cache mirror of the prognostic annual precipitation (mol H2O m^-2 yr^-1), for water limitation in LAI_max
 - `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
 - `f0`: spatially varying fraction of precipitation for transpiration (dimensionless), from Zhou et al.
 """
@@ -504,14 +504,15 @@ ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
     :surface,
 )
 
-# `A0_annual` (annual potential GPP, mol CO2 m^-2 yr^-1) is a time-integrated
-# variable: a `RunningIntegral` with ~1 yr memory, held in the prognostic state
-# `Y` so it is advanced smoothly by the time-stepper every stage rather than
-# jumping once per year. The auxiliary `:A0_annual` above mirrors the prognostic
-# value each cache update, for diagnostics and the local-noon LAI update.
-ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) = (:A0_annual,)
-ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} = (FT,)
-ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) = (:surface,)
+# `A0_annual` (annual potential GPP, mol CO2 m^-2 yr^-1) and `precip_annual`
+# (annual precipitation, mol H2O m^-2 yr^-1) are time-integrated variables:
+# `RunningIntegral`s with ~1 yr memory, held in the prognostic state `Y` so they
+# are advanced smoothly by the time-stepper every stage rather than jumping once
+# per year. The auxiliary `:A0_annual` / `:precip_annual` above mirror the
+# prognostic values each cache update, for diagnostics and the local-noon LAI update.
+ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) = (:A0_annual, :precip_annual)
+ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} = (FT, FT)
+ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface)
 
 """
     update_biomass!(
@@ -537,9 +538,10 @@ function update_biomass!(
     (; SAI, RAI) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
-    # Mirror the prognostic annual potential GPP into the cache, for diagnostics
-    # and the local-noon LAI update.
+    # Mirror the prognostic annual potential GPP and precipitation into the cache,
+    # for diagnostics and the local-noon LAI update.
     @. p.canopy.biomass.A0_annual = Y.canopy.biomass.A0_annual
+    @. p.canopy.biomass.precip_annual = Y.canopy.biomass.precip_annual
     # LAI is updated via the callback, not here
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
@@ -550,15 +552,18 @@ end
 """
     ClimaLand.make_compute_exp_tendency(component::ZhouOptimalLAIModel, canopy)
 
-Advances the prognostic annual potential GPP `A0_annual` as a `RunningIntegral`
-time-integrated variable with ~1 yr memory:
+Advances the prognostic annual potential GPP `A0_annual` and annual precipitation
+`precip_annual` as `RunningIntegral` time-integrated variables with ~1 yr memory:
 
-    dA0_annual/dt = A0_inst - A0_annual / τ,     τ = 1 yr,
+    dA0_annual/dt   = A0_inst   - A0_annual   / τ,     τ = 1 yr,
+    dprecip_annual/dt = P_inst  - precip_annual / τ,
 
-where `A0_inst` is the instantaneous potential GPP (mol CO2 m^-2 s^-1). At steady
-state `A0_annual = τ · mean(A0_inst)` — the annual potential GPP that drives
-`LAI_max` — but here it evolves smoothly every timestep instead of stepping once
-per simulated year.
+where `A0_inst` is the instantaneous potential GPP (mol CO2 m^-2 s^-1) and `P_inst`
+the instantaneous precipitation (mol H2O m^-2 s^-1). At steady state each is
+`τ · mean(f)` — the annual potential GPP and annual precipitation that drive
+`LAI_max` — but they evolve smoothly every timestep instead of stepping once per
+simulated year. `precip_annual` was previously a static climatology; it now tracks
+the simulated precipitation forcing.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
@@ -610,6 +615,19 @@ function ClimaLand.make_compute_exp_tendency(
             return nothing
         end,
     )
+    # mol H2O m^-3, converts precip volume flux (m/s) to molar flux (mol m^-2 s^-1)
+    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
+    precip_annual_tiv = ClimaLand.TimeIntegratedVariable(;
+        name = :precip_annual,
+        reduction = ClimaLand.RunningIntegral(),
+        timescale = τ,
+        compute_instantaneous! = (dst, Y, p, t) -> begin
+            # instantaneous precipitation, mol H2O m^-2 s^-1. P_liq and P_snow are
+            # negative-downward volume fluxes (m/s), so negate for a positive total.
+            @. dst = -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq
+            return nothing
+        end,
+    )
     function compute_exp_tendency!(dY, Y, p, t)
         ClimaLand.time_integrated_tendency!(
             dY.canopy.biomass,
@@ -617,7 +635,7 @@ function ClimaLand.make_compute_exp_tendency(
             Y,
             p,
             t,
-            (A0_annual_tiv,),
+            (A0_annual_tiv, precip_annual_tiv),
         )
     end
     return compute_exp_tendency!
@@ -683,8 +701,13 @@ function set_historical_cache!(
     # Store GSL in the cache (spatially varying field)
     p.canopy.biomass.GSL .= GSL
 
-    # Store precip_annual (already in mol H2O m^-2 yr^-1 from optimal_lai_inputs.nc)
-    p.canopy.biomass.precip_annual .= precip_annual
+    # precip_annual is prognostic: seed the state in Y0 from the climatology
+    # (masking non-finite ocean/fill values to 0, as for A0_annual), and mirror it
+    # into the cache. It then tracks the simulated precipitation via the tendency.
+    precip_annual_finite =
+        @. ifelse(isfinite(precip_annual), precip_annual, FT(0))
+    Y0.canopy.biomass.precip_annual .= precip_annual_finite
+    p.canopy.biomass.precip_annual .= precip_annual_finite
 
     # Store vpd_gs (already in Pa)
     p.canopy.biomass.vpd_gs .= vpd_gs

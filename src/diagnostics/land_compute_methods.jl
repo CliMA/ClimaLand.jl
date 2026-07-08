@@ -290,6 +290,12 @@ end
 
 @diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_annual
 
+@diagnostic_compute "precip_annual" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.precip_annual
+
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{
     SoilCanopyModel,
