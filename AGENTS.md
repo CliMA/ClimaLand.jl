@@ -28,6 +28,7 @@ Always read the ClimaLand-specific structure guide before working in this reposi
 - Keep comments sparse and succinct. Write every comment for a first-time reader of the *final* code, not as a diff narration: do not explain what a change fixes or its history ("this fixes Y", "this newest code fixes the issue introduced by..."), and do not restate the docstring inline. Prefer one short line over a multi-line block; comment only non-obvious rationale (the *why*, not the *what*).
 - Follow the software design patterns in [docs/dev-guides/code-quality/software_design_patterns.md](docs/dev-guides/code-quality/software_design_patterns.md) for new code and refactor toward them when touching existing code.
 - Run `julia -e 'using JuliaFormatter; format(".")'` before committing code, adhering to the rules in `.JuliaFormatter.toml`.
+- When you `export` a new symbol from `ClimaLand`, add it to a `@docs` block on the matching `docs/src/APIs/*.md` page. The docs build sets `checkdocs = :exports`, so an exported name with a docstring that is not included in the manual fails the docs CI job.
 
 ## Self-correction
 

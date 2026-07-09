@@ -13,6 +13,17 @@ ClimaLand.prognostic_domain_names
 ClimaLand.initialize_prognostic
 ```
 
+## Time Integrated Variables
+
+```@docs
+ClimaLand.TimeIntegratedVariable
+ClimaLand.AbstractTimeReduction
+ClimaLand.RunningMean
+ClimaLand.RunningIntegral
+ClimaLand.RunningSum
+ClimaLand.time_integrated_tendency!
+```
+
 ## Sources
 
 ```@docs
