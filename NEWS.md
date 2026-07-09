@@ -2,6 +2,16 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Set the `optimal_lai_z`/`optimal_lai_sigma`/`optimal_lai_alpha`
+  defaults to values calibrated against MODIS LAI (Yuan et al. 2017): 21.4 / 0.939 / 0.0701.
+  Only affects runs using prognostic LAI (`ZhouOptimalLAIModel`); the prescribed-LAI default
+  is unchanged. PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
+- ![][badge-✨feature] Add a `PROGNOSTIC_LAI` switch to `experiments/long_runs/snowy_land_pmodel.jl`
+  to run with prognostic optimal LAI instead of prescribed MODIS LAI, and run it weekly on CI
+  (plus on demand via the `long run opt lai` label). PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
+- ![][badge-✨feature] Add an `INVERSION` leaderboard (model vs inversion-derived NEE/GPP/ER,
+  plus MODIS LAI on prognostic-LAI runs only) to the snowy-land long run. PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
+
 v1.10.1
 -----
 - Fix GPU crash in CLM canopy radiation parameter regridding

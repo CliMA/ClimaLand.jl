@@ -53,11 +53,18 @@ const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 # `export UNCALIBRATED=""` in the terminal and run this script, or
 # pass `UNCALIBRATED=""` as an environment variable on buildkite.
 const UNCALIBRATED = haskey(ENV, "UNCALIBRATED") ? true : false
+# If you want to run with prognostic (modeled) LAI from the optimal-LAI model
+# (Zhou et al. 2025, `ZhouOptimalLAIModel`) instead of prescribed MODIS LAI,
+# type `export PROGNOSTIC_LAI=""` in the terminal and run this script, or pass
+# `PROGNOSTIC_LAI=""` as an environment variable on Buildkite. The default
+# (unset) prescribes MODIS LAI.
+const PROGNOSTIC_LAI = haskey(ENV, "PROGNOSTIC_LAI") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_longrun_$(device_suffix)"
+lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
+root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -68,9 +75,9 @@ function setup_model(
     stop_date,
     Δt,
     domain,
-    toml_dict,
+    toml_dict;
+    prognostic_lai = false,
 ) where {FT}
-    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_space = domain.space.surface
     # Forcing data - high resolution
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
@@ -84,23 +91,33 @@ function setup_model(
     )
     forcing = (; atmos, radiation)
 
-    # Read in LAI from MODIS data
-    LAI = ClimaLand.Canopy.prescribed_lai_modis(
-        surface_space,
-        start_date,
-        stop_date,
-    )
-
-    # Construct the land model with all default components
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
-    land = LandModel{FT}(
-        forcing,
-        LAI,
-        toml_dict,
-        domain,
-        Δt;
-        prognostic_land_components,
-    )
+    if prognostic_lai
+        # The LandModel constructor uses the prognostic LAI model if no
+        # prescribed LAI is passed.
+        land = LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+        )
+    else
+        # Prescribed LAI (default): read LAI from MODIS data.
+        LAI = ClimaLand.Canopy.prescribed_lai_modis(
+            surface_space,
+            start_date,
+            stop_date,
+        )
+        land = LandModel{FT}(
+            forcing,
+            LAI,
+            toml_dict,
+            domain,
+            Δt;
+            prognostic_land_components,
+        )
+    end
     return land
 end
 
@@ -122,9 +139,18 @@ else
     toml_dict = LP.create_toml_dict(FT)
 end
 
-model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict)
+model = setup_model(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    toml_dict;
+    prognostic_lai = PROGNOSTIC_LAI,
+)
 simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
+@info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
 @info "Timestep: $Δt s"
 @info "Start Date: $start_date"
@@ -134,7 +160,11 @@ ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
-LandSimVis.make_leaderboard_plots(simulation; savedir = root_path)
+LandSimVis.make_leaderboard_plots(
+    simulation;
+    savedir = root_path,
+    leaderboard_data_sources = ["ERA5", "ILAMB", "FlagshipCarbonMetrics"],
+)
 
 if LONGER_RUN
     include("../ilamb/ilamb_conversion.jl")
