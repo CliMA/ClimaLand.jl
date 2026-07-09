@@ -21,11 +21,12 @@ using ClimaCore
             @test params.sigma isa FT
             @test params.alpha isa FT
 
-            # Check expected values from default_parameters.toml
+            # Check expected values from default_parameters.toml (calibrated
+            # against MODIS LAI in #1794)
             @test params.k ≈ FT(0.5)
-            @test params.z ≈ FT(12.227)
-            @test params.sigma ≈ FT(1.1)
-            @test params.alpha ≈ FT(0.067)  # ~15 days of memory
+            @test params.z ≈ FT(21.4)
+            @test params.sigma ≈ FT(0.939)
+            @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
 
             @test eltype(params) == FT
         end
