@@ -675,6 +675,8 @@ function get_short_diagnostics(model::LandModel)
         "swa",
         "lwu",
         "swu",
+        "swd",
+        "et",
         "shf",
         "tair",
         "precip",
