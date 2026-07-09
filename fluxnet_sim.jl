@@ -14,7 +14,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: Column, ColumnEnsemble
 using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
@@ -82,7 +82,8 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
                         rad_overrides = (;),
                         T_init_override = nothing, met_path_override = nothing,
                         spinup_days::Int = 0, stop_year::Int = year,
-                        init_state = nothing, return_state::Bool = false)
+                        init_state = nothing, return_state::Bool = false,
+                        multi_col::Bool = false)
     met_path = isnothing(met_path_override) ? MET_NC_PATH : met_path_override
     # spinup_days>0 starts the run earlier (e.g. a 60-day spin-up).
     # stop_year>year runs CONTINUOUSLY through (stop_year, 12, 31) in a single
@@ -124,11 +125,22 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
         haskey(domain_override, :nelements)&& (nelements = domain_override.nelements)
         haskey(domain_override, :dz_tuple) && (dz_tuple = FT.(domain_override.dz_tuple))
     end
-    land_domain = Column(;
-        zlim      = (FT(zmin), FT(zmax)),
-        nelements, dz_tuple,
-        longlat   = (long, lat),
-    )
+    # multi_col=true runs on a MultiColumnFiniteDifferenceSpace (a single-point
+    # ensemble here); it returns a Column-typed domain so everything downstream is
+    # unchanged. See ColumnEnsemble in src/shared_utilities/Domains.jl.
+    land_domain = if multi_col
+        ColumnEnsemble(;
+            zlim      = (FT(zmin), FT(zmax)),
+            nelements, dz_tuple,
+            longlat   = (long, lat),
+        )
+    else
+        Column(;
+            zlim      = (FT(zmin), FT(zmax)),
+            nelements, dz_tuple,
+            longlat   = (long, lat),
+        )
+    end
     canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
     forcing = FluxnetSimulations.prescribed_forcing_netcdf(
@@ -417,101 +429,101 @@ end
 # Only when run directly (not when `include`d by compute_prior_post_stats.jl,
 # which reuses run_prior_year / load_obs_year / rmse_r2).
 
-results_mod = Dict{Int, NamedTuple}()
-results_obs = Dict{Int, NamedTuple}()
+# results_mod = Dict{Int, NamedTuple}()
+# results_obs = Dict{Int, NamedTuple}()
 
-ok_years = Int[]
-for yr in CHECK_YEARS
-    @info "Running year $yr with default parameters..."
-    try
-        nee_m, lhf_m, shf_m = run_prior_year(yr)
-        # Sanity: physical fluxes, no NaN/blowup.
-        finite = all(isfinite, nee_m) && all(isfinite, lhf_m) && all(isfinite, shf_m)
-        @info @sprintf("  %s year %d  NEE[%.2f,%.2f] LHF[%.1f,%.1f] SHF[%.1f,%.1f]",
-            finite ? "OK  " : "BAD ", yr,
-            minimum(nee_m), maximum(nee_m),
-            minimum(lhf_m), maximum(lhf_m),
-            minimum(shf_m), maximum(shf_m))
-        if finite
-            results_mod[yr] = (; nee = nee_m, lhf = lhf_m, shf = shf_m)
-            nee_o, lhf_o, shf_o = load_obs_year(yr)
-            results_obs[yr] = (; nee = nee_o, lhf = lhf_o, shf = shf_o)
-            push!(ok_years, yr)
-        end
-    catch e
-        @warn "  FAIL year $yr: $(typeof(e)): $(sprint(showerror, e))"
-    end
-end
+# ok_years = Int[]
+# for yr in CHECK_YEARS
+#     @info "Running year $yr with default parameters..."
+#     try
+#         nee_m, lhf_m, shf_m = run_prior_year(yr; multi_col = false)
+#         # Sanity: physical fluxes, no NaN/blowup.
+#         finite = all(isfinite, nee_m) && all(isfinite, lhf_m) && all(isfinite, shf_m)
+#         @info @sprintf("  %s year %d  NEE[%.2f,%.2f] LHF[%.1f,%.1f] SHF[%.1f,%.1f]",
+#             finite ? "OK  " : "BAD ", yr,
+#             minimum(nee_m), maximum(nee_m),
+#             minimum(lhf_m), maximum(lhf_m),
+#             minimum(shf_m), maximum(shf_m))
+#         if finite
+#             results_mod[yr] = (; nee = nee_m, lhf = lhf_m, shf = shf_m)
+#             nee_o, lhf_o, shf_o = load_obs_year(yr)
+#             results_obs[yr] = (; nee = nee_o, lhf = lhf_o, shf = shf_o)
+#             push!(ok_years, yr)
+#         end
+#     catch e
+#         @warn "  FAIL year $yr: $(typeof(e)): $(sprint(showerror, e))"
+#     end
+# end
 
-@info "PRIOR FORWARD-MODEL CHECK: $(length(ok_years))/$(length(CHECK_YEARS)) years OK: $ok_years"
-failed = setdiff(CHECK_YEARS, ok_years)
-isempty(failed) || @warn "FAILED years: $failed"
+# @info "PRIOR FORWARD-MODEL CHECK: $(length(ok_years))/$(length(CHECK_YEARS)) years OK: $ok_years"
+# failed = setdiff(CHECK_YEARS, ok_years)
+# isempty(failed) || @warn "FAILED years: $failed"
 
-# Only plot if every requested year ran (keeps the multi-year metrics honest).
-if length(ok_years) != length(CHECK_YEARS)
-    @info "Skipping plot (not all years succeeded); foundational check is the result."
-    exit(0)
-end
+# # Only plot if every requested year ran (keeps the multi-year metrics honest).
+# if length(ok_years) != length(CHECK_YEARS)
+#     @info "Skipping plot (not all years succeeded); foundational check is the result."
+#     exit(0)
+# end
 
-# ── Aggregate metrics across all 3 years ─────────────────────────────────────
-function aggregate_metric(var_key)
-    mod_all = vcat([results_mod[yr][var_key] for yr in CHECK_YEARS]...)
-    obs_all = vcat([results_obs[yr][var_key] for yr in CHECK_YEARS]...)
-    return rmse_r2(mod_all, obs_all)
-end
+# # ── Aggregate metrics across all 3 years ─────────────────────────────────────
+# function aggregate_metric(var_key)
+#     mod_all = vcat([results_mod[yr][var_key] for yr in CHECK_YEARS]...)
+#     obs_all = vcat([results_obs[yr][var_key] for yr in CHECK_YEARS]...)
+#     return rmse_r2(mod_all, obs_all)
+# end
 
-nee_rmse, nee_r2 = aggregate_metric(:nee)
-lhf_rmse, lhf_r2 = aggregate_metric(:lhf)
-shf_rmse, shf_r2 = aggregate_metric(:shf)
+# nee_rmse, nee_r2 = aggregate_metric(:nee)
+# lhf_rmse, lhf_r2 = aggregate_metric(:lhf)
+# shf_rmse, shf_r2 = aggregate_metric(:shf)
 
-@info "Prior performance (2005/2008/2010 combined):"
-@info "  NEE: RMSE=$(round(nee_rmse; digits=2)) gC/m²/d, R²=$(round(nee_r2; digits=3))"
-@info "  LHF: RMSE=$(round(lhf_rmse; digits=2)) W/m², R²=$(round(lhf_r2; digits=3))"
-@info "  SHF: RMSE=$(round(shf_rmse; digits=2)) W/m², R²=$(round(shf_r2; digits=3))"
+# @info "Prior performance (2005/2008/2010 combined):"
+# @info "  NEE: RMSE=$(round(nee_rmse; digits=2)) gC/m²/d, R²=$(round(nee_r2; digits=3))"
+# @info "  LHF: RMSE=$(round(lhf_rmse; digits=2)) W/m², R²=$(round(lhf_r2; digits=3))"
+# @info "  SHF: RMSE=$(round(shf_rmse; digits=2)) W/m², R²=$(round(shf_r2; digits=3))"
 
-# ── Plot ───────────────────────────────────────────────────────────────────────
-months = 1:12
-var_labels = ["NEE (gC m⁻² d⁻¹)", "LHF (W m⁻²)", "SHF (W m⁻²)"]
-var_keys   = [:nee, :lhf, :shf]
-metrics    = [(nee_rmse, nee_r2), (lhf_rmse, lhf_r2), (shf_rmse, shf_r2)]
+# # ── Plot ───────────────────────────────────────────────────────────────────────
+# months = 1:12
+# var_labels = ["NEE (gC m⁻² d⁻¹)", "LHF (W m⁻²)", "SHF (W m⁻²)"]
+# var_keys   = [:nee, :lhf, :shf]
+# metrics    = [(nee_rmse, nee_r2), (lhf_rmse, lhf_r2), (shf_rmse, shf_r2)]
 
-fig = Figure(size = (1000, 800))
+# fig = Figure(size = (1000, 800))
 
-for (row, (vk, ylabel, (rmse, r2))) in enumerate(zip(var_keys, var_labels, metrics))
-    for (col, yr) in enumerate(CHECK_YEARS)
-        ax = Axis(fig[row, col];
-            xlabel = col == 2 ? "Month" : "",
-            ylabel = col == 1 ? ylabel : "",
-            title  = row == 1 ? string(yr) : "",
-            xticks = (1:12, string.(1:12)),
-        )
+# for (row, (vk, ylabel, (rmse, r2))) in enumerate(zip(var_keys, var_labels, metrics))
+#     for (col, yr) in enumerate(CHECK_YEARS)
+#         ax = Axis(fig[row, col];
+#             xlabel = col == 2 ? "Month" : "",
+#             ylabel = col == 1 ? ylabel : "",
+#             title  = row == 1 ? string(yr) : "",
+#             xticks = (1:12, string.(1:12)),
+#         )
 
-        obs_v = results_obs[yr][vk]
-        mod_v = results_mod[yr][vk]
+#         obs_v = results_obs[yr][vk]
+#         mod_v = results_mod[yr][vk]
 
-        # Obs: black dots for valid months
-        valid_months = findall(isfinite, obs_v)
-        scatter!(ax, valid_months, obs_v[valid_months];
-            color = :black, markersize = 8, label = "FLUXNET")
+#         # Obs: black dots for valid months
+#         valid_months = findall(isfinite, obs_v)
+#         scatter!(ax, valid_months, obs_v[valid_months];
+#             color = :black, markersize = 8, label = "FLUXNET")
 
-        # Model: colored line
-        lines!(ax, months, mod_v; color = Makie.wong_colors()[row], linewidth = 2,
-            label = "ClimaLand prior")
+#         # Model: colored line
+#         lines!(ax, months, mod_v; color = Makie.wong_colors()[row], linewidth = 2,
+#             label = "ClimaLand prior")
 
-        if col == 1 && row == 1
-            axislegend(ax; position = :rt, labelsize = 10)
-        end
-    end
-end
+#         if col == 1 && row == 1
+#             axislegend(ax; position = :rt, labelsize = 10)
+#         end
+#     end
+# end
 
-# Overall title with metrics
-Label(fig[0, :],
-    "DK-Sor prior (default params) vs FLUXNET — 2005/2008/2010\n" *
-    "NEE: RMSE=$(round(nee_rmse; digits=2)) gC/m²/d, R²=$(round(nee_r2; digits=3))  |  " *
-    "LHF: RMSE=$(round(lhf_rmse; digits=2)) W/m², R²=$(round(lhf_r2; digits=3))  |  " *
-    "SHF: RMSE=$(round(shf_rmse; digits=2)) W/m², R²=$(round(shf_r2; digits=3))",
-    fontsize = 13, font = :bold,
-)
+# # Overall title with metrics
+# Label(fig[0, :],
+#     "DK-Sor prior (default params) vs FLUXNET — 2005/2008/2010\n" *
+#     "NEE: RMSE=$(round(nee_rmse; digits=2)) gC/m²/d, R²=$(round(nee_r2; digits=3))  |  " *
+#     "LHF: RMSE=$(round(lhf_rmse; digits=2)) W/m², R²=$(round(lhf_r2; digits=3))  |  " *
+#     "SHF: RMSE=$(round(shf_rmse; digits=2)) W/m², R²=$(round(shf_r2; digits=3))",
+#     fontsize = 13, font = :bold,
+# )
 
-save(joinpath(OUTDIR, "prior_vs_obs.png"), fig; px_per_unit = 2)
-@info "Plot saved → $(joinpath(OUTDIR, "prior_vs_obs.png"))"
+# save(joinpath(OUTDIR, "prior_vs_obs.png"), fig; px_per_unit = 2)
+# @info "Plot saved → $(joinpath(OUTDIR, "prior_vs_obs.png"))"
