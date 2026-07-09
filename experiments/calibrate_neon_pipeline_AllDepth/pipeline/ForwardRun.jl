@@ -837,9 +837,32 @@ used_in = ["Land"]
     swc_obs_all = _cat(:obs_swc_daily); swc_mod_all = _cat(:swc_daily)
     tsoil_obs_all = _cat(:obs_tsoil_daily); tsoil_mod_all = _cat(:tsoil_daily)
 
+    # Per-depth CO₂ RMSE (obs_daily_cal ↔ model), keyed by code. NaN for any code
+    # not calibrated in this run (so its fixed CSV column reads `missing`).
+    rmse_sco2_by_code = Dict{String, Float64}()
+    for s in per_depth_stats
+        x, y = _pair_on_date(s.obs_daily_cal, s.sco2_daily)
+        rmse_sco2_by_code[s.code] = _rmse(x, y)
+    end
+    _rmse_code(c) = get(rmse_sco2_by_code, c, NaN)
+
+    # Per-depth range stats: reduce one series (by field) for one depth code.
+    # Returns NaN (→ missing in CSV) when the code isn't in this run or its series
+    # is empty. Keyed by code so each depth's value is independent of ordering.
+    _by_code = Dict(s.code => s for s in per_depth_stats)
+    function _dstat_code(series_field, reducer, c)
+        haskey(_by_code, c) || return NaN
+        df = getfield(_by_code[c], series_field)
+        nrow(df) == 0 ? NaN : reducer(Float64.(df.daily_mean))
+    end
+
     # Stats handed back to the pipeline for the master CSV (POOLED over depths).
     scatter_stats = (;
         rmse_sco2 = _rmse(pooled_obs_mod_co2_x, pooled_obs_mod_co2_y),
+        # per-depth CO₂ RMSE (NaN → missing for codes not in this run)
+        rmse_sco2_501 = _rmse_code("501"),
+        rmse_sco2_502 = _rmse_code("502"),
+        rmse_sco2_503 = _rmse_code("503"),
         rmse_swc = _rmse(pooled_obs_mod_swc_x, pooled_obs_mod_swc_y),
         corr_obs_model_sco2 = _corr(pooled_obs_mod_co2_x, pooled_obs_mod_co2_y),
         corr_obs_model_swc = _corr(pooled_obs_mod_swc_x, pooled_obs_mod_swc_y),
@@ -866,6 +889,67 @@ used_in = ["Land"]
         model_tsoil_mean = _stat(tsoil_mod_all, mean),
         model_tsoil_min = _stat(tsoil_mod_all, minimum),
         model_tsoil_max = _stat(tsoil_mod_all, maximum),
+        # ── PER-DEPTH range stats (501/502/503); NaN→missing for absent codes ──
+        # obs soil CO₂ (ppm) — calibration-masked series
+        obs_sco2_mean_501 = _dstat_code(:obs_daily_cal, mean, "501"),
+        obs_sco2_min_501  = _dstat_code(:obs_daily_cal, minimum, "501"),
+        obs_sco2_max_501  = _dstat_code(:obs_daily_cal, maximum, "501"),
+        obs_sco2_mean_502 = _dstat_code(:obs_daily_cal, mean, "502"),
+        obs_sco2_min_502  = _dstat_code(:obs_daily_cal, minimum, "502"),
+        obs_sco2_max_502  = _dstat_code(:obs_daily_cal, maximum, "502"),
+        obs_sco2_mean_503 = _dstat_code(:obs_daily_cal, mean, "503"),
+        obs_sco2_min_503  = _dstat_code(:obs_daily_cal, minimum, "503"),
+        obs_sco2_max_503  = _dstat_code(:obs_daily_cal, maximum, "503"),
+        # model soil CO₂ (ppm)
+        model_sco2_mean_501 = _dstat_code(:sco2_daily, mean, "501"),
+        model_sco2_min_501  = _dstat_code(:sco2_daily, minimum, "501"),
+        model_sco2_max_501  = _dstat_code(:sco2_daily, maximum, "501"),
+        model_sco2_mean_502 = _dstat_code(:sco2_daily, mean, "502"),
+        model_sco2_min_502  = _dstat_code(:sco2_daily, minimum, "502"),
+        model_sco2_max_502  = _dstat_code(:sco2_daily, maximum, "502"),
+        model_sco2_mean_503 = _dstat_code(:sco2_daily, mean, "503"),
+        model_sco2_min_503  = _dstat_code(:sco2_daily, minimum, "503"),
+        model_sco2_max_503  = _dstat_code(:sco2_daily, maximum, "503"),
+        # obs soil water content (m³/m³) — calibration-masked series
+        obs_swc_mean_501 = _dstat_code(:obs_swc_daily, mean, "501"),
+        obs_swc_min_501  = _dstat_code(:obs_swc_daily, minimum, "501"),
+        obs_swc_max_501  = _dstat_code(:obs_swc_daily, maximum, "501"),
+        obs_swc_mean_502 = _dstat_code(:obs_swc_daily, mean, "502"),
+        obs_swc_min_502  = _dstat_code(:obs_swc_daily, minimum, "502"),
+        obs_swc_max_502  = _dstat_code(:obs_swc_daily, maximum, "502"),
+        obs_swc_mean_503 = _dstat_code(:obs_swc_daily, mean, "503"),
+        obs_swc_min_503  = _dstat_code(:obs_swc_daily, minimum, "503"),
+        obs_swc_max_503  = _dstat_code(:obs_swc_daily, maximum, "503"),
+        # model soil water content (m³/m³)
+        model_swc_mean_501 = _dstat_code(:swc_daily, mean, "501"),
+        model_swc_min_501  = _dstat_code(:swc_daily, minimum, "501"),
+        model_swc_max_501  = _dstat_code(:swc_daily, maximum, "501"),
+        model_swc_mean_502 = _dstat_code(:swc_daily, mean, "502"),
+        model_swc_min_502  = _dstat_code(:swc_daily, minimum, "502"),
+        model_swc_max_502  = _dstat_code(:swc_daily, maximum, "502"),
+        model_swc_mean_503 = _dstat_code(:swc_daily, mean, "503"),
+        model_swc_min_503  = _dstat_code(:swc_daily, minimum, "503"),
+        model_swc_max_503  = _dstat_code(:swc_daily, maximum, "503"),
+        # obs soil temperature (K)
+        obs_tsoil_mean_501 = _dstat_code(:obs_tsoil_daily, mean, "501"),
+        obs_tsoil_min_501  = _dstat_code(:obs_tsoil_daily, minimum, "501"),
+        obs_tsoil_max_501  = _dstat_code(:obs_tsoil_daily, maximum, "501"),
+        obs_tsoil_mean_502 = _dstat_code(:obs_tsoil_daily, mean, "502"),
+        obs_tsoil_min_502  = _dstat_code(:obs_tsoil_daily, minimum, "502"),
+        obs_tsoil_max_502  = _dstat_code(:obs_tsoil_daily, maximum, "502"),
+        obs_tsoil_mean_503 = _dstat_code(:obs_tsoil_daily, mean, "503"),
+        obs_tsoil_min_503  = _dstat_code(:obs_tsoil_daily, minimum, "503"),
+        obs_tsoil_max_503  = _dstat_code(:obs_tsoil_daily, maximum, "503"),
+        # model soil temperature (K)
+        model_tsoil_mean_501 = _dstat_code(:tsoil_daily, mean, "501"),
+        model_tsoil_min_501  = _dstat_code(:tsoil_daily, minimum, "501"),
+        model_tsoil_max_501  = _dstat_code(:tsoil_daily, maximum, "501"),
+        model_tsoil_mean_502 = _dstat_code(:tsoil_daily, mean, "502"),
+        model_tsoil_min_502  = _dstat_code(:tsoil_daily, minimum, "502"),
+        model_tsoil_max_502  = _dstat_code(:tsoil_daily, maximum, "502"),
+        model_tsoil_mean_503 = _dstat_code(:tsoil_daily, mean, "503"),
+        model_tsoil_min_503  = _dstat_code(:tsoil_daily, minimum, "503"),
+        model_tsoil_max_503  = _dstat_code(:tsoil_daily, maximum, "503"),
         # full-period (incl. spinup) summaries
         soil_porosity_layer = soil_porosity_layer,   # m³/m³, MEAN over cal depths
         obs_tair_mean = obs_tair_mean,               # K (TA_F + 273.15)

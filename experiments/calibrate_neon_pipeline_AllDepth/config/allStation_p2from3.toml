@@ -53,17 +53,39 @@ upper = 10.0
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-ster"
+site  = "NEON-dcfs"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+
+[[runs]]
+site  = "NEON-grsm"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+
+[[runs]]
+site  = "NEON-harv"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+
+[[runs]]
+site  = "NEON-jorn"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-wood"
+site  = "NEON-konz"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-wref"
+site  = "NEON-rmnp"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
+[[runs]]
+site  = "NEON-ornl"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+[[runs]]
+site  = "NEON-tall"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
 site  = "NEON-yell"
@@ -73,13 +95,4 @@ years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 [[runs]]
 site  = "NEON-scbi"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-serc"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-soap"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
 

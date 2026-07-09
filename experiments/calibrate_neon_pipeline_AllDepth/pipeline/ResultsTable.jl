@@ -40,8 +40,12 @@ const PRIOR_FIELDS = ["mean", "std", "lower", "upper"]
 # `forward_<field>` where <field> is the matching `scatter_stats` NamedTuple
 # field (see _fill_scatter_stats!), so the column↔field mapping is mechanical.
 const SCATTER_COLS = [
-    # RMSE + correlations (obs vs model CO₂/SWC)
-    "forward_rmse_sco2", "forward_rmse_swc",
+    # RMSE + correlations (obs vs model CO₂/SWC). rmse_sco2 is pooled over all
+    # calibrated depths; the _501/_502/_503 columns are per-depth (missing when
+    # that depth is not in the run).
+    "forward_rmse_sco2",
+    "forward_rmse_sco2_501", "forward_rmse_sco2_502", "forward_rmse_sco2_503",
+    "forward_rmse_swc",
     "forward_corr_obs_model_sco2", "forward_corr_obs_model_swc",
     "forward_corr_obs_sco2_swc", "forward_corr_model_sco2_swc",
     # mean / min / max of daily-mean series, obs and model:
@@ -54,6 +58,31 @@ const SCATTER_COLS = [
     # soil temperature (K)
     "forward_obs_tsoil_mean", "forward_obs_tsoil_min", "forward_obs_tsoil_max",
     "forward_model_tsoil_mean", "forward_model_tsoil_min", "forward_model_tsoil_max",
+    # ── PER-DEPTH range stats (501/502/503); missing for codes not in the run ──
+    # obs soil CO₂ (ppm)
+    "forward_obs_sco2_mean_501", "forward_obs_sco2_min_501", "forward_obs_sco2_max_501",
+    "forward_obs_sco2_mean_502", "forward_obs_sco2_min_502", "forward_obs_sco2_max_502",
+    "forward_obs_sco2_mean_503", "forward_obs_sco2_min_503", "forward_obs_sco2_max_503",
+    # model soil CO₂ (ppm)
+    "forward_model_sco2_mean_501", "forward_model_sco2_min_501", "forward_model_sco2_max_501",
+    "forward_model_sco2_mean_502", "forward_model_sco2_min_502", "forward_model_sco2_max_502",
+    "forward_model_sco2_mean_503", "forward_model_sco2_min_503", "forward_model_sco2_max_503",
+    # obs soil water content (m³/m³)
+    "forward_obs_swc_mean_501", "forward_obs_swc_min_501", "forward_obs_swc_max_501",
+    "forward_obs_swc_mean_502", "forward_obs_swc_min_502", "forward_obs_swc_max_502",
+    "forward_obs_swc_mean_503", "forward_obs_swc_min_503", "forward_obs_swc_max_503",
+    # model soil water content (m³/m³)
+    "forward_model_swc_mean_501", "forward_model_swc_min_501", "forward_model_swc_max_501",
+    "forward_model_swc_mean_502", "forward_model_swc_min_502", "forward_model_swc_max_502",
+    "forward_model_swc_mean_503", "forward_model_swc_min_503", "forward_model_swc_max_503",
+    # obs soil temperature (K)
+    "forward_obs_tsoil_mean_501", "forward_obs_tsoil_min_501", "forward_obs_tsoil_max_501",
+    "forward_obs_tsoil_mean_502", "forward_obs_tsoil_min_502", "forward_obs_tsoil_max_502",
+    "forward_obs_tsoil_mean_503", "forward_obs_tsoil_min_503", "forward_obs_tsoil_max_503",
+    # model soil temperature (K)
+    "forward_model_tsoil_mean_501", "forward_model_tsoil_min_501", "forward_model_tsoil_max_501",
+    "forward_model_tsoil_mean_502", "forward_model_tsoil_min_502", "forward_model_tsoil_max_502",
+    "forward_model_tsoil_mean_503", "forward_model_tsoil_min_503", "forward_model_tsoil_max_503",
     # full-period (incl. spinup) summaries
     "forward_soil_porosity_layer",                      # m³/m³, calibration layer
     "forward_obs_tair_mean", "forward_model_tair_mean", # K (TA_F+273.15 / tair)

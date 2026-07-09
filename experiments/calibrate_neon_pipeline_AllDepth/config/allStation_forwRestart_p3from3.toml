@@ -12,12 +12,12 @@ settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Rosetta_3depths"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260708_1100"       # stable id so restart_from can reference it
+run_identifier = "20260709_0930"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
-calibrate             = true
-plot_eki_diagnostics  = true
+calibrate             = false
+plot_eki_diagnostics  = false
 run_prior_mean        = true
 
 [priors.soilCO2_reference_rate]
@@ -53,33 +53,46 @@ upper = 10.0
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-ster"
+site  = "NEON-moab"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
+  
+[[runs]]
+site  = "NEON-oaes"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
 
 [[runs]]
-site  = "NEON-wood"
+site  = "NEON-onaq"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
 
 [[runs]]
-site  = "NEON-wref"
+site  = "NEON-sjer"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
+restart_from = "20260708_1100"
 
 [[runs]]
-site  = "NEON-yell"
+site  = "NEON-kona"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
+restart_from = "20260708_1100"
 
 [[runs]]
-site  = "NEON-scbi"
+site  = "NEON-leno"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
+
+[[runs]]
+site  = "NEON-mlbs"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
 
 [[runs]]
 site  = "NEON-serc"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+restart_from = "20260708_1100"
 
 [[runs]]
 site  = "NEON-soap"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-
+restart_from = "20260708_1100"
