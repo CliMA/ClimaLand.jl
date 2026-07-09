@@ -85,16 +85,18 @@ function ClimaLand.get_update_surface_humidity_function(
         u_star,
         z_0m,
         z_0b,
-        β_val,
+        β,
+        qsat
     )
         q_vap_int = inputs.q_tot_int - inputs.q_liq_int - inputs.q_ice_int
-        q = β_val * inputs.q_vap_sfc_guess + (1 - β_val) * q_vap_int # q_vap_sfc_guess is already the saturated value
+        q = β * qsat + (1 - β) * q_vap_int
         return q
     end
     # Closure
-    update_q_vap_sfc_field(β_val) =
-        (args...) -> update_q_vap_sfc_at_a_point(args..., β_val)
-    return @. lazy(update_q_vap_sfc_field(β))
+    qsat = component_specific_humidity(model, Y, p)
+    update_q_vap_sfc_field(β, qsat) =
+        (args...) -> update_q_vap_sfc_at_a_point(args..., β, qsat)
+    return @. lazy(update_q_vap_sfc_field(β, qsat))
 end
 
 """

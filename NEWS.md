@@ -19,6 +19,7 @@ v1.10.1
 
 v1.10.0
 -----
+- ![][badge-🔥behavioralΔ] Remove SAI from energy fluxes, tendency PR [#1782](https://github.com/CliMA/ClimaLand.jl/pull/1782)
 - ![][badge-🔥behavioralΔ] use the Sturm et al snow thermal K parameterization, ROSETTA parameters,
    and new spun up initial conditions. PR [#1772](https://github.com/CliMA/ClimaLand.jl/pull/1766)
 - ![][badge-✨feature] Add selectable snow thermal conductivity parameterizations

@@ -42,6 +42,10 @@ using Dates
 using CairoMakie, GeoMakie, ClimaAnalysis
 import ClimaLand.LandSimVis as LandSimVis
 
+using Flux, StaticArrays, JLD2, Adapt, InteractiveUtils
+NeuralSnow =
+    Base.get_extension(ClimaLand, :ConstrainedNeuralModelExt).NeuralSnow;
+
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -92,6 +96,20 @@ function setup_model(
     forcing = (; atmos, radiation)
 
     prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+        α_snow =  NeuralSnow.NeuralAlbedoModel(toml_dict, domain.space.surface, Δt = float(Δt))
+    density = NeuralSnow.NeuralDepthModel(toml_dict, Δt = float(Δt))
+    scf = Snow.WuWuSnowCoverFractionModel(toml_dict, FT(1.0))
+    snow = ClimaLand.Snow.SnowModel(
+        FT,
+        ClimaLand.Domains.obtain_surface_domain(domain),
+        forcing,
+        toml_dict,
+        float(Δt);
+        prognostic_land_components,
+        α_snow,
+	density,
+	scf
+    )
     if prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.
@@ -101,6 +119,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            snow,
         )
     else
         # Prescribed LAI (default): read LAI from MODIS data.
@@ -116,6 +135,7 @@ function setup_model(
             domain,
             Δt;
             prognostic_land_components,
+            snow,
         )
     end
     return land

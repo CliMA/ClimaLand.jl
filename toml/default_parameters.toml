@@ -1,6 +1,6 @@
 # Moisture stress models
 [moisture_stress_c]
-value = 0.59
+value = 0.666
 type = "float"
 description = "unitless"
 tag = "SoilMoistureStress"
@@ -147,25 +147,25 @@ tag = "PlantHydraulicsParameters"
 # ZenithAngleAlbedoModel parameters
 
 ["alpha_0"]
-value = 0.59
+value = 0.63
 type = "float"
 description = "Free parameter controlling the minimum snow albedo"
 tag = "ZenithAngleAlbedoModel"
 
 ["delta_alpha"]
-value = 0.40
+value = 0.34
 type = "float"
 description = "Free parameter controlling the snow albedo when θs = 90∘"
 tag = "ZenithAngleAlbedoModel"
 
 ["k"]
-value = 1.96
+value = 1.83
 type = "float"
 description = "Rate at which albedo drops to its minimum value with zenith angle"
 tag = "ZenithAngleAlbedoModel"
 
 ["beta"]
-value = 0.97
+value = 0.986
 type = "float"
 description = "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
 tag = "ZenithAngleAlbedoModel"
@@ -239,25 +239,25 @@ tag = "SturmSnowConductivityModel"
 # WuWuSnowCoverFractionModel parameters
 
 ["gamma"]
-value = 0.08
+value = 0.01
 type = "float"
 description = "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_0"]
-value = 1.77
+value = 1.14
 type = "float"
 description = "he value of β_scf at 1.5∘ horizontal resolution (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["beta_min"]
-value = 1.0
+value = 0.1
 type = "float"
 description = "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
 tag = "WuWuSnowCoverFractionModel"
 
 ["z0"]
-value = 0.106
+value = 0.084
 type = "float"
 description = "The value used to normalize snow depth when computing snow cover fraction (m)"
 tag = "WuWuSnowCoverFractionModel"
@@ -290,19 +290,19 @@ tag = "ConstantResetAlbedo"
 
 # P model parameters
 ["pmodel_cstar"]
-value = 0.43
+value = 0.40
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 91.1
+value = 30.3
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 5.36
+value = 8.6
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -356,7 +356,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.972
+value = 0.963
 type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -471,7 +471,7 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.919
+value = 0.58
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
@@ -624,7 +624,7 @@ description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.0726
+value = 0.042
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
