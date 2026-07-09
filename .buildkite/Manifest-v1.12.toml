@@ -423,9 +423,9 @@ version = "1.1.1"
 
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "80b2770813b42f80235ea57f4333de8ff3e1c342"
+git-tree-sha1 = "47142129b1777e21da58cff265050b10d8560588"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.15.12"
+version = "0.15.13"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -844,9 +844,9 @@ version = "1.16.0"
 
 [[deps.DifferentiationInterface]]
 deps = ["ADTypes", "LinearAlgebra"]
-git-tree-sha1 = "2147a95a217cc8a78ec96ee03581adf129468e49"
+git-tree-sha1 = "2348cf722e74ef177e165986c765b61217f7433a"
 uuid = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-version = "0.7.18"
+version = "0.7.19"
 
     [deps.DifferentiationInterface.extensions]
     DifferentiationInterfaceChainRulesCoreExt = "ChainRulesCore"
@@ -996,9 +996,9 @@ version = "2.2.9"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "c307cd83373868391f3ac30b41530bc5d5d05d08"
+git-tree-sha1 = "e6c4a6407a949e79a9d3f249bf49e6987c80e01f"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.8.1+0"
+version = "2.8.2+0"
 
 [[deps.ExprTools]]
 git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
@@ -1567,9 +1567,9 @@ weakdeps = ["Unitful"]
 
 [[deps.IntervalArithmetic]]
 deps = ["CRlibm", "CoreMath", "MacroTools", "OpenBLASConsistentFPCSR_jll", "Printf", "Random", "RoundingEmulator"]
-git-tree-sha1 = "921d7e91687e15a2c7c269c226960491fc041832"
+git-tree-sha1 = "c3ee408ae340565f41699e3a3fa1053698c7626e"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
-version = "1.0.9"
+version = "1.0.10"
 
     [deps.IntervalArithmetic.extensions]
     IntervalArithmeticArblibExt = "Arblib"
@@ -1640,9 +1640,9 @@ version = "1.0.0"
 
 [[deps.JLD2]]
 deps = ["ChunkCodecLibZlib", "ChunkCodecLibZstd", "FileIO", "MacroTools", "Mmap", "OrderedCollections", "PrecompileTools", "ScopedValues"]
-git-tree-sha1 = "941f87a0ae1b14d1ac2fa57245425b23a9d7a516"
+git-tree-sha1 = "9ebadf3f8f0de07031359917549bbdadc23f5dc3"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.6.4"
+version = "0.6.5"
 weakdeps = ["UnPack"]
 
     [deps.JLD2.extensions]
@@ -1894,9 +1894,9 @@ version = "2.42.0+0"
 
 [[deps.Libtiff_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "XZ_jll", "Zlib_jll", "Zstd_jll"]
-git-tree-sha1 = "f04133fe05eff1667d2054c53d59f9122383fe05"
+git-tree-sha1 = "aebd334d06cee9f24cea70bd19a39749daf73881"
 uuid = "89763e89-9b03-5906-acba-b20f662cd828"
-version = "4.7.2+0"
+version = "4.7.3+0"
 
 [[deps.Libuuid_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -2152,9 +2152,9 @@ version = "0.5.16"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "ComputePipeline", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "InverseFunctions", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "PNGFiles", "Packing", "Pkg", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
-git-tree-sha1 = "efe001e1ee81b8eee0fe7da5a4328fcbbfd6b3aa"
+git-tree-sha1 = "f2c8715d05bf10f9d4dc354e69dee30b6be53239"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.24.12"
+version = "0.24.13"
 
     [deps.Makie.extensions]
     MakieDynamicQuantitiesExt = "DynamicQuantities"
@@ -2206,9 +2206,9 @@ version = "0.11.28"
 
 [[deps.ManifoldsBase]]
 deps = ["LinearAlgebra", "Markdown", "Preferences", "Printf", "Random"]
-git-tree-sha1 = "d8cb323b395ec430a0314ba2562f81289590ac7a"
+git-tree-sha1 = "751a06f12d5c20cff34bb981ea2fd9a42defe8d0"
 uuid = "3362f125-f0bb-47a3-aa74-596ffd7ef2fb"
-version = "2.4.0"
+version = "2.5.0"
 
     [deps.ManifoldsBase.extensions]
     ManifoldsBaseMakieExt = "Makie"
@@ -2366,14 +2366,15 @@ version = "4.5.1"
 
 [[deps.NNlib]]
 deps = ["Adapt", "Atomix", "ChainRulesCore", "GPUArraysCore", "KernelAbstractions", "LinearAlgebra", "Random", "ScopedValues", "Statistics"]
-git-tree-sha1 = "2acc74264095c06beb62c6f69691a3277b5ac3d0"
+git-tree-sha1 = "446a44652d12ea0a70cbb6f7a9a00ca314ad784a"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
-version = "0.9.37"
+version = "0.9.38"
 
     [deps.NNlib.extensions]
     NNlibAMDGPUExt = "AMDGPU"
     NNlibCUDACUDNNExt = ["CUDA", "cuDNN"]
     NNlibCUDAExt = "CUDA"
+    NNlibEnzymeCoreCUDNNExt = ["EnzymeCore", "CUDA", "cuDNN"]
     NNlibEnzymeCoreExt = "EnzymeCore"
     NNlibFFTWExt = "FFTW"
     NNlibForwardDiffExt = "ForwardDiff"
@@ -2509,15 +2510,15 @@ version = "0.2.11"
 
 [[deps.OpenBLAS32_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "libblastrampoline_jll"]
-git-tree-sha1 = "565175ce692c065e50ad32efbb61ba69b1586593"
+git-tree-sha1 = "8b492aefdd20fb9dc1ebc377ff7e5fa1591c9acc"
 uuid = "656ef2d0-ae68-5445-9ca0-591084a874a2"
-version = "0.3.33+1"
+version = "0.3.33+2"
 
 [[deps.OpenBLASConsistentFPCSR_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "3287ec88df50429a934ebc6cf14606215e27b987"
+git-tree-sha1 = "dafdaa3ff15f20ff703d909d3a6f574a5b0586f3"
 uuid = "6cdc7f73-28fd-5e50-80fb-958a8875b1af"
-version = "0.3.33+0"
+version = "0.3.33+1"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
