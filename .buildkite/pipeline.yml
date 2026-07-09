@@ -45,6 +45,10 @@ steps:
 
   - group: "Experiments"
     steps:
+      - label: "ERA5 column"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/era5_single_site.jl"
+        artifact_paths: "snowy_land_pmodel_single_site/*png"
+
       - label: "Snow/Soil Ozark"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_soilsnow.jl"
         artifact_paths: "experiments/integrated/fluxnet/ozark_soilsnow/*.png"
