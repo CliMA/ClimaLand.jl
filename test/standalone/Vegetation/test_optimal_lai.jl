@@ -67,14 +67,18 @@ using ClimaCore
             @test :precip_annual in aux_vars  # cache mirror of the prognostic value
             @test :vpd_gs in aux_vars
             @test :f0 in aux_vars
+            @test :L_steady in aux_vars  # noon-sampled target for the prognostic LAI
 
-            # A0_annual and precip_annual are now time-integrated prognostic
-            # variables (RunningIntegrals in Y); the yearly-reset accumulators are gone.
+            # A0_annual, precip_annual, and LAI are now time-integrated prognostic
+            # variables in Y (RunningIntegrals / RunningMean); the yearly-reset
+            # accumulators are gone and LAI is no longer a pure cache variable.
             @test :A0_annual_acc ∉ aux_vars
             @test :days_since_reset ∉ aux_vars
-            @test Canopy.prognostic_vars(model) == (:A0_annual, :precip_annual)
-            @test Canopy.prognostic_types(model) == (FT, FT)
-            @test Canopy.prognostic_domain_names(model) == (:surface, :surface)
+            @test Canopy.prognostic_vars(model) ==
+                  (:A0_annual, :precip_annual, :LAI)
+            @test Canopy.prognostic_types(model) == (FT, FT, FT)
+            @test Canopy.prognostic_domain_names(model) ==
+                  (:surface, :surface, :surface)
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin

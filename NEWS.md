@@ -41,6 +41,12 @@ v1.10.2
   instead of stepping once per year/day; this removes the annual discontinuity in `LAI_max`,
   and `precip_annual` now tracks the simulated precipitation rather than a fixed climatology.
   Adds the `pra` diagnostic. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] Make the optimal-LAI `LAI` a prognostic `RunningMean` in `Y`
+  (the Zhou et al. Eq. 16 acclimation lag): the local-noon callback now only samples the
+  steady-state target `L_steady`, and the time-stepper relaxes `LAI` toward it. This removes
+  the last callback-stepped state in the optimal-LAI path, so modeled LAI evolves smoothly
+  and survives checkpoint/restart instead of being re-seeded from `lai_init`.
+  PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
 
 v1.10.1
 -----

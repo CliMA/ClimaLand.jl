@@ -472,6 +472,7 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `precip_annual`: cache mirror of the prognostic annual precipitation (mol H2O m^-2 yr^-1), for water limitation in LAI_max
 - `vpd_gs`: mean VPD during growing season (Pa), for water limitation WUE factor in LAI_max
 - `f0`: spatially varying fraction of precipitation for transpiration (dimensionless), from Zhou et al.
+- `L_steady`: steady-state LAI target (m^2 m^-2), sampled at local noon; the prognostic `LAI` relaxes toward it
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (
     :area_index,
@@ -482,9 +483,11 @@ ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) = (
     :precip_annual,
     :vpd_gs,
     :f0,
+    :L_steady,
 )
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} = (
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+    FT,
     FT,
     FT,
     FT,
@@ -502,6 +505,7 @@ ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
 )
 
 # `A0_annual` (annual potential GPP, mol CO2 m^-2 yr^-1) and `precip_annual`
@@ -510,9 +514,14 @@ ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) = (
 # are advanced smoothly by the time-stepper every stage rather than jumping once
 # per year. The auxiliary `:A0_annual` / `:precip_annual` above mirror the
 # prognostic values each cache update, for diagnostics and the local-noon LAI update.
-ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) = (:A0_annual, :precip_annual)
-ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} = (FT, FT)
-ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) = (:surface, :surface)
+# `LAI` is a `RunningMean` (the Eq. 16 acclimation lag), held in `Y` so it is
+# advanced smoothly by the time-stepper and survives checkpoint/restart rather than
+# being re-seeded from `lai_init`; the auxiliary `area_index.leaf` mirrors it.
+ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) =
+    (:A0_annual, :precip_annual, :LAI)
+ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) =
+    (:surface, :surface, :surface)
 
 """
     update_biomass!(
@@ -542,7 +551,9 @@ function update_biomass!(
     # for diagnostics and the local-noon LAI update.
     @. p.canopy.biomass.A0_annual = Y.canopy.biomass.A0_annual
     @. p.canopy.biomass.precip_annual = Y.canopy.biomass.precip_annual
-    # LAI is updated via the callback, not here
+    # Mirror the prognostic LAI (a RunningMean advanced by the tendency toward the
+    # noon-sampled `L_steady`) into the cache area index read by the rest of the canopy.
+    @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
     # Apply clipping to LAI (same as PrescribedBiomassModel)
     p.canopy.biomass.area_index.leaf .=
         clip.(p.canopy.biomass.area_index.leaf, FT(0.05))
@@ -628,6 +639,20 @@ function ClimaLand.make_compute_exp_tendency(
             return nothing
         end,
     )
+    # `LAI` is the Zhou et al. (2025) Eq. 16 acclimation lag as a `RunningMean`
+    # relaxing toward the local-noon steady-state target `L_steady`:
+    #     dLAI/dt = (L_steady - LAI) / τ_LAI,     τ_LAI = 1 day / α.
+    # `α` is the smoothing factor of the previous once-per-day EMA
+    # `LAI ← α L_steady + (1-α) LAI`; integrated continuously toward the noon-held
+    # `L_steady`, the change over a day reproduces that blend but evolves smoothly.
+    τ_LAI = FT(86400) / component.parameters.alpha
+    LAI_tiv = ClimaLand.TimeIntegratedVariable(;
+        name = :LAI,
+        reduction = ClimaLand.RunningMean(),
+        timescale = τ_LAI,
+        compute_instantaneous! = (dst, Y, p, t) ->
+            (dst .= p.canopy.biomass.L_steady; nothing),
+    )
     function compute_exp_tendency!(dY, Y, p, t)
         ClimaLand.time_integrated_tendency!(
             dY.canopy.biomass,
@@ -635,7 +660,7 @@ function ClimaLand.make_compute_exp_tendency(
             Y,
             p,
             t,
-            (A0_annual_tiv, precip_annual_tiv),
+            (A0_annual_tiv, precip_annual_tiv, LAI_tiv),
         )
     end
     return compute_exp_tendency!
@@ -682,11 +707,14 @@ function set_historical_cache!(
     lai_init = optimal_lai_inputs.lai_init  # MODIS first timestep
     f0 = optimal_lai_inputs.f0  # spatially varying f0 from Zhou et al.
 
-    L = p.canopy.biomass.area_index.leaf
-
-    # Initialize LAI from MODIS satellite observations
-    # This provides realistic spatially-varying initial conditions that reduce spin-up time
-    L .= lai_init
+    # Initialize LAI from MODIS satellite observations. LAI is prognostic (a
+    # RunningMean in Y): seed the state, mirror it into the cache area index, and
+    # seed the `L_steady` target equal to it so the tendency is zero until the first
+    # local noon computes a real target. Mask non-finite (ocean/fill) values to 0.
+    lai_init_finite = @. ifelse(isfinite(lai_init), lai_init, FT(0))
+    Y0.canopy.biomass.LAI .= lai_init_finite
+    p.canopy.biomass.area_index.leaf .= lai_init_finite
+    p.canopy.biomass.L_steady .= lai_init_finite
 
     # Initialize A0 variables (supports both scalar and Field inputs via .=)
     # A0_annual is prognostic: seed the state in Y0, and mirror it into the cache.

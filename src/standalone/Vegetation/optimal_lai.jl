@@ -448,16 +448,45 @@ function update_optimal_LAI(
     return L
 end
 
+"""
+    compute_L_steady_target(A0_daily, k, A0_annual, z, GSL, sigma, precip_annual, f0, ca_pa, chi, vpd_gs)
+
+Compute the steady-state LAI target `L_steady` (Zhou et al. 2025 Eqs. 11-15) from
+the daily and annual potential GPP and the water-limitation inputs, without the
+Eq. 16 acclimation lag. The prognostic `LAI` relaxes toward this target in the
+biomass tendency, so the acclimation `alpha` is applied there rather than here.
+"""
+function compute_L_steady_target(
+    A0_daily::FT,
+    k::FT,
+    A0_annual::FT,
+    z::FT,
+    GSL::FT,
+    sigma::FT,
+    precip_annual::FT,
+    f0::FT,
+    ca_pa::FT,
+    chi::FT,
+    vpd_gs::FT,
+) where {FT}
+    LAI_max =
+        compute_L_max(A0_annual, k, z, precip_annual, f0, ca_pa, chi, vpd_gs)
+    m = compute_m(GSL, LAI_max, A0_annual, sigma, k)
+    return compute_steady_state_LAI(A0_daily, m, k, LAI_max)
+end
+
 
 """
     call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
 
-Updates LAI and the daily potential GPP (A0) accumulator.
+Samples the steady-state LAI target and accumulates daily potential GPP (A0).
 
 Every timestep: accumulates instantaneous potential GPP into the daily accumulator.
-At local noon: finalizes daily A0 and updates LAI. The annual potential GPP
-`A0_annual` (used for LAI_max) is a prognostic RunningIntegral advanced smoothly in
-the biomass `compute_exp_tendency!` and read here directly from `Y`.
+At local noon: finalizes daily A0 and refreshes the steady-state LAI target
+`L_steady`. LAI itself is prognostic (a `RunningMean` in `Y`) and relaxes toward
+`L_steady` in the biomass `compute_exp_tendency!`, so this callback no longer steps
+LAI directly. The annual potential GPP `A0_annual` (used for LAI_max) is a
+prognostic RunningIntegral advanced smoothly in the tendency and read here from `Y`.
 
 Uses air temperature (not canopy temperature) for A0 computation, since canopy
 temperature includes energy balance feedbacks that should not affect potential GPP.
@@ -552,26 +581,25 @@ function call_update_optimal_LAI(p, Y, t, current_date; canopy, dt, local_noon)
         ),
     )
 
-    # Update LAI at noon using the finalized values
-    @. p.canopy.biomass.area_index.leaf = ifelse(
+    # Sample the steady-state LAI target at local noon. LAI itself is prognostic
+    # (a RunningMean in Y) and relaxes toward this target in the biomass tendency,
+    # so the callback only refreshes the target; between noons it is held constant.
+    @. p.canopy.biomass.L_steady = ifelse(
         local_noon_mask == FT(1),
-        update_optimal_LAI(
-            FT(1),  # At noon, we always update
+        compute_L_steady_target(
             A0_daily_final,
-            p.canopy.biomass.area_index.leaf,
             parameters.k,
             Y.canopy.biomass.A0_annual,
             parameters.z,
             p.canopy.biomass.GSL,
             parameters.sigma,
-            parameters.alpha,
             p.canopy.biomass.precip_annual,
             p.canopy.biomass.f0,
             ca * P_air,  # ca_pa: CO2 partial pressure (Pa)
             chi,
             p.canopy.biomass.vpd_gs,
         ),
-        p.canopy.biomass.area_index.leaf,
+        p.canopy.biomass.L_steady,
     )
 
     # Update A0_daily at noon (stores the daily sum for diagnostics and L_steady)
