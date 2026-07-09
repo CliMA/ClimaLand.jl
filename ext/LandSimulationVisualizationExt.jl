@@ -13,11 +13,11 @@ using ClimaLand
 using Statistics
 using Printf
 
-include("land_sim_vis/plotting_utils.jl")
+
 include("land_sim_vis/leaderboard/data_sources.jl")
+include("land_sim_vis/plotting_utils.jl")
 include("land_sim_vis/leaderboard/leaderboard.jl")
 include("land_sim_vis/leaderboard/rmse_boxplots.jl")
-
 """
     make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"])
 
@@ -93,6 +93,29 @@ function LandSimVis.make_leaderboard_plots(
         )
     end
     compute_rmse_boxplots(leaderboard_base_path, diagnostics_folder_path)
+end
+
+function LandSimVis.make_leaderboard_plots(
+    model::ClimaLand.LandModel,
+    domain::ClimaLand.Domains.Column,
+    diagnostics,
+    start_date,
+    stop_date;
+    savedir = ".",
+    plot_stem_name = "ERA5",
+    
+)
+    surface_coords = ClimaLand.Domains.coordinates(ClimaLand.Domains.obtain_surface_domain(domain)).surface
+    longlat = (parent(surface_coords.long)[1], parent(surface_coords.lat)[1])
+    compare_monthly_fluxes_with_era5(
+        savedir,
+        diagnostics,
+        start_date,
+        stop_date,
+        longlat;
+        plot_stem_name,
+    ) 
+
 end
 
 function LandSimVis.make_leaderboard_plots(

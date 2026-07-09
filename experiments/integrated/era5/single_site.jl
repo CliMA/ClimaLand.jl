@@ -54,7 +54,6 @@ function setup_model(
         FT;
         max_wind_speed = 25.0,
         context,
-        use_lowres_forcing = true,
     )
     forcing = (; atmos, radiation)
 
@@ -64,51 +63,19 @@ function setup_model(
         start_date,
         stop_date,
     )
-
-    ground = ClimaLand.PrognosticGroundConditions{FT}()
-    canopy_forcing = (; atmos, radiation, ground)
-    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
-
-    # Use the soil moisture stress function based on soil moisture only
-    soil_moisture_stress =
-        ClimaLand.Canopy.PiecewiseMoistureStressModel{FT}(domain, toml_dict)
-    canopy = ClimaLand.Canopy.CanopyModel{FT}(
-        surface_domain,
-        canopy_forcing,
-        LAI,
-        toml_dict;
-        prognostic_land_components,
-        soil_moisture_stress,
-    )
-
-    # Snow model setup
-    snow = Snow.SnowModel(
-        FT,
-        surface_domain,
-        forcing,
-        toml_dict,
-        Δt;
-        prognostic_land_components,
-    )
-
-    # Construct the land model with all default components except for snow
-    land = LandModel{FT}(
-        forcing,
-        LAI,
-        toml_dict,
-        domain,
-        Δt;
-        prognostic_land_components,
-        snow,
-        canopy,
-    )
+       land = LandModel{FT}(
+            forcing,
+            toml_dict,
+            domain,
+            Δt;
+        )
     return land
 end
 
-start_date = DateTime("2000-09-01")
-stop_date = DateTime("2001-09-01")
-Δt = 450.0
-longlat = FT.((5.0, 25.0))
+start_date = DateTime("2008-03-01")
+stop_date = DateTime("2008-03-01")
+Δt = 900.0
+longlat = FT.((146.0, -38.0))
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
@@ -118,10 +85,10 @@ toml_dict = LP.create_toml_dict(FT)
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
 diagnostics = ClimaLand.default_diagnostics(
     model,
-    start_date,
-    outdir;
-    reduction_period = :daily,
-    output_vars = ["tsoil", "swc", "hr", "sco2", "so2", "scd", "sod", "scms"],
+    start_date;
+    output_writer = ClimaDiagnostics.Writers.DictWriter(),
+    reduction_period = :halfhourly,
+    output_vars = ["shf", "lhf", "msf", "gpp", "gs_co2", "chi", "ci", "xi", "ct", "clhf", "cshf", "apar"],
 );
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics);

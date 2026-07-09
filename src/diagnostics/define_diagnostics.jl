@@ -235,6 +235,72 @@ function define_diagnostics!(land_model, possible_diags)
             compute_stomatal_conductance!(out, Y, p, t, land_model),
     )
 
+        conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "gs_co2",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_gs_co2!(out, Y, p, t, land_model),
+    )
+
+        conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "ci",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_ci_pp!(out, Y, p, t, land_model),
+        )
+
+        conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "chi",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_pp_ratio!(out, Y, p, t, land_model),
+        )
+            conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "xi",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_xi!(out, Y, p, t, land_model),
+    )
+
+
+        conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "gl",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_leaf_conductance!(out, Y, p, t, land_model),
+        )
+
+        conditional_add_diagnostic_variable!(
+        possible_diags;
+        short_name = "gh",
+        long_name = "Leaf stomatal Conductance",
+        standard_name = "stomatal_conductance",
+        units = "mol H2O m^-2 s^-1",
+        comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
+        compute! = (out, Y, p, t) ->
+            compute_air_conductance!(out, Y, p, t, land_model),
+    )
+
     # Canopy transpiration
     conditional_add_diagnostic_variable!(
         possible_diags;

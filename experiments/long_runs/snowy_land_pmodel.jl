@@ -91,7 +91,7 @@ function setup_model(
     )
     forcing = (; atmos, radiation)
 
-    prognostic_land_components = (:canopy, :lake, :snow, :soil, :soilco2)
+    prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
     if prognostic_lai
         # The LandModel constructor uses the prognostic LAI model if no
         # prescribed LAI is passed.

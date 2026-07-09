@@ -544,3 +544,71 @@ function LandSimVis.make_timeseries(
     end
     return nothing
 end
+
+
+function compare_monthly_fluxes_with_era5(
+    savedir,
+    diagnostics,
+    start_date,
+    stop_date,
+    longlat;
+    plot_stem_name = "ERA5",
+    spinup_date = start_date,
+)
+    short_names = ["lwu", "swu", "shf", "lhf"] # short_name
+
+    data_loader = ERA5DataLoader()
+    for i in 1:length(short_names)
+        dn = [d.output_short_name for d in diagnostics if d.variable.short_name == short_names[i]][1]
+        unit = [d.variable.units for d in diagnostics if d.variable.short_name == short_names[i]][1]
+        sn = short_names[i]
+        global_obs_data = get(data_loader, sn)
+        ClimaAnalysis.set_reference_date!(
+            global_obs_data,
+            start_date
+        )
+        global_obs_data = ClimaAnalysis.window(
+            global_obs_data,
+            "time",
+            left = spinup_date,
+            right = stop_date,
+        )
+        obs_data = ClimaAnalysis.slice(global_obs_data, lat = longlat[2], lon = longlat[1])
+        obs_times = obs_data.dims["time"]
+        obs_values = obs_data.data 
+        model_time, model_output = ClimaLand.Diagnostics.diagnostic_as_vectors(
+            diagnostics[1].output_writer,
+            dn;
+        )
+        model_dates = time_to_date.(model_time, start_date)
+        obs_dates = time_to_date.(obs_times, start_date)
+        model_spinup_idx = findfirst(spinup_date .<= model_dates)
+        obs_spinup_idx = findfirst(spinup_date .<= obs_dates)
+       
+        fig = CairoMakie.Figure(size = (800, 400))
+        ax = CairoMakie.Axis(
+            fig[1, 1],
+            xlabel = "Date (UTC)",
+            ylabel = "$sn [$(unit)]",
+        )
+        CairoMakie.lines!(
+            ax,
+            model_dates[model_spinup_idx:end],
+            model_output[model_spinup_idx:end],
+            label = "Model",
+            color = "blue",
+        )
+        xlims = extrema(model_dates[model_spinup_idx:end])
+        xlims!(ax, xlims...)
+        CairoMakie.lines!(
+            ax,
+            obs_dates[obs_spinup_idx:end],
+            obs_values[obs_spinup_idx:end],
+            label = "Data",
+            color = "yellow",
+        )
+        axislegend(ax, position = :lt)
+        CairoMakie.save(joinpath(savedir, "$(sn)_$(plot_stem_name).png"), fig)
+    end
+    return nothing
+end

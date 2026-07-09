@@ -66,26 +66,6 @@ steps:
         command:
           - rsync -avz "/scratch/clima/slurm-buildkite/climaland-long-runs/$BUILDKITE_BUILD_NUMBER/climaland-long-runs/snowy_land_pmodel_longrun_gpu/global_diagnostics/output_active/" azure-arenchon:/home/arenchon/GitHub/ClimaViz.jl/data/climaland-longrun/
 
-      - label: "Soil"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 3:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Global bucket simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/bucket.jl
-        artifact_paths: "bucket_longrun_gpu/*png"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
   # Prognostic (modeled) LAI run of snowy_land_pmodel (ZhouOptimalLAIModel),
   # selected via the `PROGNOSTIC_LAI` env var. Runs on the weekly scheduled
   # build so the standard weekly long runs cover BOTH prescribed and prognostic

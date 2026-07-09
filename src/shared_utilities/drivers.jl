@@ -458,14 +458,14 @@ The `return_extra_fluxes` argument indicates whether to return momentum fluxes (
 and the bouyancy flux.
 """
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, _, _, _) =
+    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, _, _, _, gh, ustar) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T)
+    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, gh, ustar)
 end
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux) =
+    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux, gh, ustar) =
         compute_turbulent_fluxes_at_a_point(args...)
-    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux)
+    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux, gh, ustar)
 end
 
 """
@@ -622,6 +622,8 @@ function compute_turbulent_fluxes_at_a_point(
         output.ρτxz,
         output.ρτyz,
         buoyancy_flux,
+        output.g_h,
+        output.ustar,
     )
 end
 

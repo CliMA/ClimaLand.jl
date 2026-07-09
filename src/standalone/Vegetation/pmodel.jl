@@ -277,7 +277,7 @@ and dark respiration at the canopy level (`Rd`), and
 """
 ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
-    NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
+    NamedTuple{(:Rd, :GPP, :An, :gs_co2, :ci, :χ, :ξ), Tuple{FT, FT, FT, FT, FT, FT, FT}},
     NamedTuple{
         (
             :ξ_opt_c3,
@@ -1095,7 +1095,7 @@ function compute_blended_pmodel_photosynthesis(
     gs_co2_c4 =
         gs_co2_pmodel(χ_c4, c_co2_air, gross_photosynthesis(Ac_c4, Aj_c4))
     gs_co2 = blend(gs_co2_c3, gs_co2_c4, fractional_c3) # Assumes C3 and C4 plants act in parallel
-    return (; Rd, GPP, An, gs_co2)
+    return (; Rd, GPP, An, gs_co2, ci = ci_c3, χ = χ_c3, ξ = ξ_opt_c3)
 end
 
 get_Vcmax25_canopy(p, m::PModel) = @. lazy(

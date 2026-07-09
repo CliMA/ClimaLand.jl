@@ -163,8 +163,8 @@ boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
 boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
 boundary_var_types(::SnowModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T),
-        Tuple{FT, FT, FT, FT, FT},
+        (:lhf, :shf, :vapor_flux, :∂lhf∂T, :∂shf∂T, :gh, :ustar),
+        Tuple{FT, FT, FT, FT, FT, FT, FT},
     },
 )
 
@@ -203,7 +203,9 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
             :buoyancy_flux,
+            :gh,
+            :ustar
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )

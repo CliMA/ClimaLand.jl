@@ -405,7 +405,7 @@ function add_diagnostics!(
     model::EnergyHydrology,
     subcomponent::ClimaLand.AtmosDrivenFluxBC,
 )
-    append!(diagnostics, ["salb"])
+    append!(diagnostics, ["salb", "soilshf", "soillhf"])
     return nothing
 end
 function add_diagnostics!(
@@ -498,6 +498,12 @@ function get_possible_diagnostics(model::CanopyModel)
         "sif",
         "ra",
         "gs",
+        "gs_co2",
+        "ci",
+        "chi",
+        "xi",
+        "gh",
+        "gl",
         "trans",
         "clhf",
         "cshf",
@@ -614,6 +620,7 @@ function get_possible_diagnostics(model::LandModel)
 
     additional_diagnostics = [
         "swa",
+        "lwd",
         "swu",
         "lwu",
         "tair",
@@ -624,6 +631,7 @@ function get_possible_diagnostics(model::LandModel)
         "snowtbot",
         "snowk",
         "ghf",
+        "et"
     ]
 
     return unique!(append!(component_diagnostics, additional_diagnostics))
@@ -672,9 +680,10 @@ function get_short_diagnostics(model::LandModel)
     component_diagnostics =
         get_component_diagnostics(model, get_short_diagnostics)
     additional_diagnostics = [
-        "swa",
         "lwu",
+        "lwd",
         "swu",
+        "swd",
         "shf",
         "tair",
         "precip",
@@ -684,6 +693,14 @@ function get_short_diagnostics(model::LandModel)
         "nee",
         "ra",
         "tr",
+        "et",
+        "gs",
+        "gs_co2",
+        "gh",
+        "gl",
+        "ci",
+        "xi",
+        "chi"
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this
