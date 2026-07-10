@@ -191,7 +191,7 @@ used_in = ["Land"]
     # same object between the soil model (ν) and the canopy soil moisture stress
     # model (θ_high). LandModel's check_land_equality asserts θ_high == ν with
     # exact ==, so they must be the identical field, not two separate regrids.
-    retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+    retention_parameters = Soil.soil_vangenuchten_parameters(#rosetta_soil_vangenuchten_parameters(
         land_domain.space.subsurface,
         FT,
     )

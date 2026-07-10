@@ -162,7 +162,7 @@ function ClimaCalibrate.forward_model(::NeonLabileModelInterface, iteration, mem
     ground = ClimaLand.PrognosticGroundConditions{FT}()
     canopy_forcing = (; atmos, radiation, ground)
 
-    retention_parameters = Soil.rosetta_soil_vangenuchten_parameters(
+    retention_parameters = Soil.soil_vangenuchten_parameters(#rosetta_soil_vangenuchten_parameters(
         land_domain.space.subsurface,
         FT,
     )
