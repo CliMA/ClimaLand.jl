@@ -777,23 +777,28 @@ used_in = ["Land"]
     # These summarize the obs and model ranges for soil CO₂, SWC, and temperature.
     _dstat(df, f) = nrow(df) == 0 ? NaN : f(Float64.(df.daily_mean))
 
-    # ── Full-period summary stats (INCLUDING spinup) ─────────────────────────
-    # These intentionally use the full run window, not the post-spinup series
-    # above. Obs come from the model-FORCING columns (TA_F air temp °C, VPD_F in
-    # hPa, P_F accumulated precip mm); model air T is the `tair` driver (K).
+    # ── Post-spinup summary stats (EXCLUDING spinup) ─────────────────────────
+    # These use the scored window only: dates >= spinup_date (so the pre-roll /
+    # burn-in period is excluded, matching the calibration/RMSE window). Obs come
+    # from the model-FORCING columns (TA_F air temp °C, VPD_F in hPa, P_F
+    # accumulated precip mm); model air T is the `tair` driver (K).
 
     # Soil porosity ν — MEAN over the calibrated depths' layers (m³/m³).
     soil_porosity_layer = isempty(per_depth_porosity) ? NaN : mean(per_depth_porosity)
 
-    # Model air temperature mean over the FULL period (K). Pulled directly from
-    # the diagnostic writer to bypass get_diag_series' spinup filter; the
-    # simulation spans start_date..stop_date, so this is already the full window.
+    # Model air temperature mean over the SCORED period (K). Pulled from the
+    # diagnostic writer, then filtered to dates >= spinup_date to drop spinup
+    # (the writer itself has no spinup filter, so we apply it here).
     (_tair_times, _tair_data) = ClimaLand.Diagnostics.diagnostic_as_vectors(
         simulation.diagnostics[1].output_writer, "tair_30m_average"; layer = 1)
-    model_tair_mean = isempty(_tair_data) ? NaN : mean(Float64.(_tair_data))
+    _tair_dates = _tair_times isa Vector{DateTime} ? _tair_times : date.(_tair_times)
+    _tair_keep = [Date(d) >= Date(spinup_date) for d in _tair_dates]
+    model_tair_mean = any(_tair_keep) ? mean(Float64.(_tair_data)[_tair_keep]) : NaN
 
-    # Obs bounded to THIS run's full period (obs_df is the whole multi-year CSV).
-    obs_full = filter(r -> Date(start_date) <= r.date <= Date(stop_date), obs_df)
+    # Obs bounded to the SCORED window (spinup_date .. stop_date); obs_df is the
+    # whole multi-year CSV. Using spinup_date (not start_date) excludes the
+    # pre-roll year so these summaries match the calibrated period.
+    obs_full = filter(r -> Date(spinup_date) <= r.date <= Date(stop_date), obs_df)
     function _col_vals(df, col)
         col in names(df) || return Float64[]
         out = Float64[]

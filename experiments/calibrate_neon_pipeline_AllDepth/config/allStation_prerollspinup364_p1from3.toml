@@ -5,14 +5,15 @@
 #   - restarting a run from a previous run's posterior.
 
 [settings]
-spinup_days  = 20
+spinup_days  = 364
+preroll_days = 364
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths"
+settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260710_1600"       # stable id so restart_from can reference it
+run_identifier = "20260711_1400"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -53,46 +54,48 @@ upper = 10.0
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-dcfs"
+site  = "NEON-abby"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 
 [[runs]]
-site  = "NEON-grsm"
+site  = "NEON-blan"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+[[runs]]
+site  = "NEON-clbj"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+[[runs]]
+site  = "NEON-cper"
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
+[[runs]]
+site  = "NEON-deju"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 
 [[runs]]
-site  = "NEON-harv"
+site  = "NEON-dela"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 
 [[runs]]
-site  = "NEON-jorn"
+site  = "NEON-stei"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-konz"
+site  = "NEON-ster"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-rmnp"
+site  = "NEON-wood"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 [[runs]]
-site  = "NEON-ornl"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-tall"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
-
-[[runs]]
-site  = "NEON-yell"
+site  = "NEON-wref"
 years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
 
 
-[[runs]]
-site  = "NEON-scbi"
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024]
+
 

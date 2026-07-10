@@ -66,6 +66,12 @@ end
 # ── Run config ───────────────────────────────────────────────────────────────
 struct RunConfig
     site::String
+    # NOTE: `start_date` is the SIMULATION start, already shifted back by
+    # `preroll_days` (see load_config). The calibration/observation window is not
+    # a separate field — spinup_days is interpreted relative to this shifted
+    # start exactly as before, so to score only the target year you set
+    # spinup_days == preroll_days. No data-availability clamp: if the shifted
+    # start predates the site's forcing, the run is expected to fail loudly.
     start_date::Date
     stop_date::Date
     spinup_days::Int
@@ -278,6 +284,12 @@ function load_config(path::AbstractString; run_identifier = nothing)
 
     settings = get(raw, "settings", Dict{String, Any}())
     output_root = settings["output_root"]
+    # Global pre-roll (days): shift every run's SIMULATION start_date back by this
+    # much, so the model spins up over real prior forcing (e.g. preroll_days=364 →
+    # a 2018 calibration simulates from 2017-01-02). Set spinup_days to match if you
+    # want that pre-roll excluded from scoring. Settable only in [settings]. No
+    # data-availability clamp: a shifted start before the site's forcing fails loudly.
+    preroll_days = Int(get(settings, "preroll_days", 0))
     results_csv = get(settings, "results_csv", "calibration_results.csv")
     results_csv = isabspath(results_csv) ? results_csv :
                   joinpath(output_root, results_csv)
@@ -325,6 +337,10 @@ function load_config(path::AbstractString; run_identifier = nothing)
         theta_r = haskey(entry, "theta_r") ? Float64(entry["theta_r"]) : nothing
 
         for (start_date, stop_date) in _date_ranges(entry)
+            # Pre-roll: move the SIMULATION start back so the model burns in over
+            # real prior-year forcing. stop_date and spinup_days are untouched, so
+            # setting spinup_days == preroll_days scores only the original window.
+            start_date = start_date - Day(preroll_days)
             push!(runs, RunConfig(
                 site, start_date, stop_date, spinup, n_iter, cal_depth,
                 cal_depth_codes, settingsdesc, dt, output_root, id, restart_from,

@@ -63,7 +63,8 @@ See [`config/default.toml`](config/default.toml) (template) and
 [`config/cper_allyears.toml`](config/cper_allyears.toml) (full-featured example).
 
 - `[settings]` — spinup, iterations, `cal_depth` (0.02 or 0.06 m), `settingsdesc`,
-  `dt`, `output_root`, `results_csv`, optional `run_identifier`.
+  `dt`, `output_root`, `results_csv`, optional `run_identifier`, optional
+  `preroll_days` (see below).
 - `[steps]` — toggle each step on/off.
 - `[priors.<name>]` — `mean, std, lower, upper` for each calibrated parameter.
   **The parameters present = the parameters calibrated.** Bounds may be the
@@ -71,6 +72,45 @@ See [`config/default.toml`](config/default.toml) (template) and
 - `[[runs]]` — one calibration each. Use `start`/`stop`, or `years = [...]` sugar
   (expands to full-year ranges). Per-run `[runs.priors.<name>]` overrides only
   the fields you set. Optional `restart_from` and `settingsdesc` per run.
+
+### Pre-roll: spinning up over the prior year
+
+`preroll_days` (in `[settings]` only; **default 0**) shifts every run's
+**simulation `start_date` back** by that many days, so the model burns in over
+real prior-period forcing instead of cold-starting on the calibration window.
+`stop_date` and `spinup_days` are **not** changed — `preroll_days` does nothing
+but move the start earlier.
+
+Because `spinup_days` is still interpreted relative to the (now-earlier)
+`start_date` exactly as before ("drop everything before `start_date +
+spinup_days`"), you exclude the pre-roll from calibration/scoring by setting
+`spinup_days` to match. For a 2018 calibration with a full prior year of burn-in:
+
+```toml
+[settings]
+preroll_days = 364   # simulate from 2017-01-02
+spinup_days  = 364   # …but score only from 2018-01-01 onward
+```
+
+This runs the model over `2017-01-02 … 2018-12-31` and calibrates/scores on
+`2018-01-01 … 2018-12-31`. `preroll_days` and `spinup_days` are **independent** —
+if you set them to different values they will desync (that's allowed; it's on
+you). Leaving `preroll_days` unset (0) reproduces the previous behaviour exactly.
+
+Notes:
+- **No data-availability clamp.** If the shifted start predates a site's forcing
+  (e.g. sites whose NEON record begins mid-2018), the run **fails loudly** — use
+  `preroll_days` only for site/years where the prior period actually has data.
+- **Output paths and the CSV `start` column show the shifted date** (e.g.
+  `…/NEON-x_2017-01-02_2018-12-31/SpinUP-364d/…`), so preroll'd runs do not share
+  a directory with non-preroll runs of the same calibration year.
+- **Restart matching** keys on `site` + `settingsdesc` + `start` + `stop` +
+  `run_identifier` (not `spinup_days`). Since `start` is the shifted date, a
+  `restart_from` only resolves against another run recorded with the *same*
+  shifted start — keep `preroll_days` consistent across a restart chain.
+- The forward-run summary stats (`forward_obs_tair_mean`, `forward_model_tair_mean`,
+  `forward_obs_precip_sum_mm`, `forward_obs_vpd_mean_hPa`) are computed over the
+  **scored** window (`>= start_date + spinup_days`), so they exclude the pre-roll.
 
 ### Calibrating the labile parameter (or not)
 
@@ -106,6 +146,8 @@ for `output_<id>`.
         prior_mean_optimized/         # forward-run figures
         model_scripts/                # snapshot of the model code used
 ```
+
+`<start>` is the simulation start — the shifted date when `preroll_days > 0`.
 
 The master CSV (`<output_root>/<results_csv>`) has one row per run with metadata,
 `run_identifier`, `restart_from`, all prior columns (4 fields × 5 params), and the
