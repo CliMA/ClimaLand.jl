@@ -1,0 +1,57 @@
+# NEON-cper — MINIBATCH calibration: ONE calibration over all the site's years
+# jointly (one posterior), instead of the AllDepth pipeline's one-run-per-year.
+#
+# Each entry in `years` (plus any explicit start/stop) becomes one calibration
+# WINDOW. EKP draws `minibatch_size` windows per iteration via a minibatcher
+# (see pipeline/Observation_flag.jl + Calibration.jl). Estimator is kept as
+# Unscented(α_reg = 1.0); spinup is 20 days before each window (adaptable).
+
+[settings]
+spinup_days    = 20                     # spinup BEFORE each window, then trimmed
+n_iterations   = 10
+cal_depth      = 0.02                    # naming/single-depth diagnostics only
+cal_depth_codes = ["501", "502", "503"]  # obs/model stacking order (all 3 depths)
+minibatch_size = 1                       # windows drawn per EKP iteration
+max_n_samples  = 0                       # 0 => keep all windows (no cap)
+rng_seed       = 1234                    # seeds the minibatcher + EKP RNG
+settingsdesc   = "NeonMinibatch20260709"
+dt             = 900.0
+output_root    = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration_minibatch"
+results_csv    = "calibration_results_minibatch.csv"
+run_identifier = "20260709_minibatch"
+
+[steps]
+generate_observations = true
+calibrate             = true
+plot_eki_diagnostics  = true
+run_prior_mean        = true
+
+[priors.soilCO2_reference_rate]
+mean  = 1.0e-7
+std   = 5.0e-8
+lower = 1.0e-12
+upper = 1.0e-6
+
+[priors.soilCO2_activation_energy]
+mean  = 110550.0
+std   = 40000.0
+lower = 10.0
+upper = 200000.0
+
+[priors.michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+[priors.O2_michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+# ── ONE run = ONE site over ALL its windows jointly. Every year below is a
+#    window; the extra start/stop adds 2017 as another window. ──
+[[runs]]
+site  = "NEON-cper"
+years = [2017, 2018, 2019, 2020, 2021, 2023, 2025]
