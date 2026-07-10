@@ -1,0 +1,62 @@
+# SMOKE TEST — minimal minibatch run to exercise the mechanics end-to-end as
+# cheaply as possible. NOT a scientific run.
+#   - only 2 windows (max_n_samples = 2) so the minibatcher has to cycle,
+#   - minibatch_size = 1 (one window per EKP iteration),
+#   - n_iterations = 2 (enough to see the minibatch advance from window 1 → 2),
+#   - all three depth codes (so the window × depth stacking is exercised).
+# Estimator kept as Unscented(α_reg = 1.0); spinup 20 d before each window.
+#
+# Run (needs the ClimaLand .buildkite project):
+#   julia --project=.buildkite \
+#     experiments/calibrate_neon_pipeline_minibatch/run_pipeline.jl \
+#     experiments/calibrate_neon_pipeline_minibatch/config/cper_minibatch_smoketest.toml
+
+[settings]
+spinup_days     = 20
+n_iterations    = 2
+cal_depth       = 0.02
+cal_depth_codes = ["501", "502", "503"]
+minibatch_size  = 1
+max_n_samples   = 2                      # keep only the first 2 windows
+rng_seed        = 1234
+settingsdesc    = "SMOKETEST"
+dt              = 900.0
+output_root     = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration_minibatch_smoketest"
+results_csv     = "smoketest_results_test.csv"
+run_identifier  = "smoketest"
+
+[steps]
+generate_observations = true
+calibrate             = true
+plot_eki_diagnostics  = true
+run_prior_mean        = false            # skip the extra full-span forward run
+
+[priors.soilCO2_reference_rate]
+mean  = 1.0e-7
+std   = 5.0e-8
+lower = 1.0e-12
+upper = 1.0e-6
+
+[priors.soilCO2_activation_energy]
+mean  = 110550.0
+std   = 40000.0
+lower = 10.0
+upper = 200000.0
+
+[priors.michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+[priors.O2_michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+# ONE site, 2 windows (2018 + 2019). max_n_samples caps to the first 2 anyway,
+# but listing exactly 2 keeps it explicit.
+[[runs]]
+site  = "NEON-cper"
+years = [2018, 2019]
