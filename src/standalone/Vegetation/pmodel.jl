@@ -1459,7 +1459,7 @@ function intercellular_co2_pmodel(
     VPD::FT,
 ) where {FT}
     # VPD has been regularized already (VPD >= eps)
-    return (ξ * ca_pp + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
+    return min((ξ * ca_pp + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD)), FT(0.85)*ca_pp)
 end
 
 """
