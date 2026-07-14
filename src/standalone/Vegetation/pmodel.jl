@@ -1665,7 +1665,7 @@ function compute_chi(
     # Compute ci and chi
     VPD_safe = max(VPD, eps(FT))
     ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD_safe)
-    ci_c4 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD_safe)
+    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD_safe)
     return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
 end
 

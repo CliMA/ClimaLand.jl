@@ -2,6 +2,9 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🐛bugfix] Fix a C4 typo in `compute_chi`: the C4 intercellular CO2 used the C3
+  dryness sensitivity `ξ_c3` instead of `ξ_c4`, biasing the blended χ (and hence the
+  optimal-LAI water-limitation term) at C4 and mixed C3/C4 cells. PR [#1805](https://github.com/CliMA/ClimaLand.jl/pull/1805)
 
 v1.10.2
 -----
