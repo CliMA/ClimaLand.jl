@@ -618,19 +618,19 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.349
+value = 0.01
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.0444
+value = 0.01
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_d_coeff"]
-value = 0.0573
+value = 0.67
 type = "float"
 description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
