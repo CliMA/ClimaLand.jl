@@ -308,7 +308,7 @@ description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, 
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 91.1
+value = 146
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
@@ -618,13 +618,13 @@ description = "Minimum roughness"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0m_coeff"]
-value = 0.01
+value = 0.055
 type = "float"
 description = "Scalar multipling canopy height to get z_0m"
 tag = "MoninObukhovCanopyFluxes"
 
 ["canopy_z_0b_coeff"]
-value = 0.01
+value = 0.055
 type = "float"
 description = "Scalar multipling canopy height to get z_0b"
 tag = "MoninObukhovCanopyFluxes"

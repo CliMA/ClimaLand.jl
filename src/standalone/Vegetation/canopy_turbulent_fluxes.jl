@@ -1,4 +1,4 @@
-export MoninObukhovCanopyFluxes
+export MoninObukhovCanopyFluxes, LAIBasedRoughness
 abstract type AbstractCanopyFluxParameterization{FT <: AbstractFloat} end
 
 """
@@ -54,4 +54,25 @@ function MoninObukhovCanopyFluxes(toml_dict, height)
     FT = typeof(Cd)
     F = typeof(height)
     return MoninObukhovCanopyFluxes{FT, F}(z_0min, z_0m, z_0b, displ, Cd)
+end
+
+struct LAIBasedRoughness{FT} <:
+       AbstractCanopyFluxParameterization{FT}
+    "Minimum roughness length (m)"
+    z_0min::FT
+    "Canopy roughness coefficient"
+    z_0_coeff::FT
+    "Canopy displacement height coefficient"
+    displ_coeff::FT
+    "Leaf level drag coefficient (unitless)"
+    Cd::FT
+end
+
+function LAIBasedRoughness(toml_dict)
+    z_0min = toml_dict["canopy_z_0min"]
+    z_0_coeff = toml_dict["canopy_z_0m_coeff"]
+    displ_coeff = toml_dict["canopy_d_coeff"]
+    Cd = toml_dict["leaf_Cd"]
+    FT = typeof(Cd)
+    return LAIBasedRoughness{FT}(z_0min, z_0_coeff, displ_coeff, Cd)
 end

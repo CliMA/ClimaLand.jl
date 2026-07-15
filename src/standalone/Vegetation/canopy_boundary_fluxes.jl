@@ -242,7 +242,7 @@ function ClimaLand.surface_displacement_height(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
-    return sfp.displ
+    return @.lazy(sfp.displ_coeff * min(p.canopy.biomass.area_index.leaf, 2))
 end
 
 """
@@ -257,8 +257,9 @@ function ClimaLand.surface_roughness_model(
     p,
 ) where {FT}
     sfp = model.boundary_conditions.turbulent_flux_parameterization
+    LAI = p.canopy.biomass.area_index.leaf
     return @. lazy(
-        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0m, sfp.z_0b),
+        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0_coeff * min(LAI, 2)+sfp.z_0min, sfp.z_0_coeff*min(LAI,2)+ sfp.z_0min),
     )
 end
 
