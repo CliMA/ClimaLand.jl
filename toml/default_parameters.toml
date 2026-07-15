@@ -557,7 +557,7 @@ description = "Parameter used to compute the rate coefficient for heat loss in d
 tag = "SIFParameters"
 
 ["kd_p2"]
-value = 0.0273
+value = 0.0773
 type = "float"
 description = "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
 tag = "SIFParameters"
