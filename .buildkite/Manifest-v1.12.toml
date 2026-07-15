@@ -3290,7 +3290,9 @@ version = "7.8.3+2"
 
 [[deps.SurfaceFluxes]]
 deps = ["RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "5ff62d4697789b88aef8e52f05a43d77d6fe439a"
+git-tree-sha1 = "9f8f122f3855e3e538f5790e154f93616d41389c"
+repo-rev = "ts/robust-stable"
+repo-url = "https://github.com/CliMA/SurfaceFluxes.jl.git"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 version = "1.0.1"
 weakdeps = ["ClimaParams"]

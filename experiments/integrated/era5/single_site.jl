@@ -30,7 +30,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_eq_site2"
+root_path = "snowy_land_pmodel_eq_site3"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -75,7 +75,7 @@ end
 start_date = DateTime("2008-03-01")
 stop_date = DateTime("2008-04-01")
 Δt = 900.0
-longlat = FT.((-77.0, 0.1))#FT.((146.0, -38.0))
+longlat = FT.((-77.0, 0.1))#FT.((146.0, -38.0))#FT.((-77.0, 0.1))#
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
