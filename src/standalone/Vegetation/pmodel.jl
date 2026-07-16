@@ -3,7 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     set_historical_cache!,
-    update_optimal_EMA,
+    update_pmodel_state,
     make_PModel_callback,
     compute_A0_daily
 
@@ -41,7 +41,7 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     ϕa2_c4::FT
     """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless).
         Setting this to 0 represents no incorporation of past values. Since we update the EMA equation
-        once per day, α = 1 - 1 day/τ where τ is the acclimation timescale in days."""
+        once per day, α = 1 day/τ where τ is the acclimation timescale in days."""
     α::FT
 end
 
@@ -269,23 +269,23 @@ Defines the auxiliary vars of the Pmode: canopy level net photosynthesis,
  canopy-level gross photosynthesis (`GPP`),
 and dark respiration at the canopy level (`Rd`), and
 
-- `OptVars`: a NamedTuple with keys `:ξ_opt_c3`, `:ξ_opt_c4`, `:Vcmax25_opt_c3`,
-    `:Vcmax25_opt_c4`, `Jmax25_opt_c3`, and `:Jmax25_opt_c4` containing the
+- `AccVars`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
+    `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4` containing the
     acclimated optimal values of ξ, Vcmax25 (c3 and c4 variant), and Jmax25 (c3
     and c4 variant), respectively. These are updated using an exponential moving
     average (EMA) at local noon.
 """
-ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :OptVars)
+ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
-    NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
+    NamedTuple{(:ci, :Rd, :GPP, :An), Tuple{FT, FT, FT, FT}},
     NamedTuple{
         (
-            :ξ_opt_c3,
-            :ξ_opt_c4,
-            :Vcmax25_opt_c3,
-            :Vcmax25_opt_c4,
-            :Jmax25_opt_c3,
-            :Jmax25_opt_c4,
+            :ξ_c3,
+            :ξ_c4,
+            :Vcmax25_c3,
+            :Vcmax25_c4,
+            :Jmax25_c3,
+            :Jmax25_c4,
         ),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
@@ -393,17 +393,17 @@ function compute_full_pmodel_outputs(
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
     mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
     mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci_c3, ci_c4, VPD, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
-    Vcmax_c3 = βm * ϕ0_c3 * APAR * mprime_c3 / mc_c3
-    Vcmax_c4 = βm * ϕ0_c4 * APAR * mprime_c4 / mc_c4
+    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR * mprime_c3 / mc_c3
+    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR * mprime_c4 / mc_c4
     inst_temp_scaling_vcmax25 = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -414,14 +414,14 @@ function compute_full_pmodel_outputs(
         bS_Vcmax,
         R,
     )
-    Vcmax25_c3 = Vcmax_c3 / inst_temp_scaling_vcmax25
-    Vcmax25_c4 = Vcmax_c4 / inst_temp_scaling_vcmax25
+    Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_vcmax25
+    Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_vcmax25
 
     # check for negative arg before taking sqrt
     arg_c3 = (mj_c3 / (βm * mprime_c3))^2 - 1
     arg_c4 = (mj_c4 / (βm * mprime_c4))^2 - 1
-    Jmax_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg_c3, 0)) + eps(FT))
-    Jmax_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg_c4, 0)) + eps(FT))
+    Jmax_opt_c3 = 4 * ϕ0_c3 * APAR / (sqrt(max(arg_c3, 0)) + eps(FT))
+    Jmax_opt_c4 = 4 * ϕ0_c4 * APAR / (sqrt(max(arg_c4, 0)) + eps(FT))
     inst_temp_scaling_Jmax = inst_temp_scaling(
         T_canopy,
         T_canopy,
@@ -432,13 +432,13 @@ function compute_full_pmodel_outputs(
         bS_Jmax,
         R,
     )
-    Jmax25_c3 = Jmax_c3 / inst_temp_scaling_Jmax
-    Jmax25_c4 = Jmax_c4 / inst_temp_scaling_Jmax
-    J_c3 = electron_transport_pmodel(ϕ0_c3, APAR, Jmax_c3)
-    J_c4 = electron_transport_pmodel(ϕ0_c4, APAR, Jmax_c4)
+    Jmax25_opt_c3 = Jmax_opt_c3 / inst_temp_scaling_Jmax
+    Jmax25_opt_c4 = Jmax_opt_c4 / inst_temp_scaling_Jmax
+    J_c3 = electron_transport_pmodel(ϕ0_c3, APAR, Jmax_opt_c3)
+    J_c4 = electron_transport_pmodel(ϕ0_c4, APAR, Jmax_opt_c4)
 
-    Ac_c3 = Vcmax_c3 * mc_c3
-    Ac_c4 = Vcmax_c4 * mc_c4
+    Ac_c3 = Vcmax_opt_c3 * mc_c3
+    Ac_c4 = Vcmax_opt_c4 * mc_c4
     Aj_c3 = J_c3 * mj_c3 / FT(4)
     Aj_c4 = J_c4 * mj_c4 / FT(4)
 
@@ -462,7 +462,7 @@ function compute_full_pmodel_outputs(
             inst_temp_scaling_rd(T_canopy, To, aRd, bRd) /
             inst_temp_scaling_vcmax25
         ) *
-        blend(Vcmax_c3, Vcmax_c4, fractional_c3)
+        blend(Vcmax_opt_c3, Vcmax_opt_c4, fractional_c3)
 
     return (;
         gpp = blend(GPP_c3, GPP_c4, fractional_c3),
@@ -471,33 +471,33 @@ function compute_full_pmodel_outputs(
         ca = ca_pp,
         ns_star = ηstar,
         chi = blend(χ_c3, χ_c4, fractional_c3),
-        xi = blend(ξ_c3, ξ_c4, fractional_c3),
+        xi = blend(ξ_opt_c3, ξ_opt_c4, fractional_c3),
         mj = blend(mj_c3, mj_c4, fractional_c3),
         mc = blend(mc_c3, mc_c4, fractional_c3),
         ci = blend(ci_c3, ci_c4, fractional_c3),
         iwue = blend(iWUE_c3, iWUE_c4, fractional_c3),
         gs = blend(gs_c3, gs_c4, fractional_c3),
-        vcmax = blend(Vcmax_c3, Vcmax_c4, fractional_c3),
-        vcmax25 = blend(Vcmax25_c3, Vcmax25_c4, fractional_c3),
-        jmax = blend(Jmax_c3, Jmax_c4, fractional_c3),
-        jmax25 = blend(Jmax25_c3, Jmax25_c4, fractional_c3),
+        vcmax = blend(Vcmax_opt_c3, Vcmax_opt_c4, fractional_c3),
+        vcmax25 = blend(Vcmax25_opt_c3, Vcmax25_opt_c4, fractional_c3),
+        jmax = blend(Jmax_opt_c3, Jmax_opt_c4, fractional_c3),
+        jmax25 = blend(Jmax25_opt_c3, Jmax25_opt_c4, fractional_c3),
         rd = rd,
     )
 end
 
 
 """
-    update_optimal_EMA(
+    update_pmodel_state(
         parameters::PModelParameters{FT},
         constants::PModelConstants{FT},
-        OptVars::NamedTuple{
+        AccVars::NamedTuple{
         (
-            :ξ_opt_c3,
-            :ξ_opt_c4,
-            :Vcmax25_opt_c3,
-            :Vcmax25_opt_c4,
-            :Jmax25_opt_c3,
-            :Jmax25_opt_c4,
+            :ξ_c3,
+            :ξ_c4,
+            :Vcmax25_c3,
+            :Vcmax25_c4,
+            :Jmax25_c3,
+            :Jmax25_c4,
         ),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
@@ -518,7 +518,7 @@ Args:
 - `fractional_c3`: Photosynthesis mechanism (1 for C3, 0 for C4)
 - `parameters`: PModelParameters object containing the model parameters.
 - `constants`: PModelConstants object containing the model constants.
-- `OptVars`: NamedTuple containing the current optimal values of ξ, Vcmax25, and Jmax25.
+- `AccVars`: NamedTuple containing the current optimal values of ξ, Vcmax25, and Jmax25.
 - `T_canopy`: Canopy temperature (K).
 - `P_air`: Ambient air pressure (Pa).
 - `VPD`: Vapor pressure deficit (Pa).
@@ -535,17 +535,17 @@ Mengoli, G., Agustí-Panareda, A., Boussetta, S., Harrison, S. P., Trotta, C., &
 Ecosystem photosynthesis in land-surface models: A first-principles approach incorporating acclimation.
 Journal of Advances in Modeling Earth Systems, 14, e2021MS002767. https://doi.org/10.1029/2021MS002767
 """
-function update_optimal_EMA(
+function update_pmodel_state(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
-    OptVars::NamedTuple{
+    AccVars::NamedTuple{
         (
-            :ξ_opt_c3,
-            :ξ_opt_c4,
-            :Vcmax25_opt_c3,
-            :Vcmax25_opt_c4,
-            :Jmax25_opt_c3,
-            :Jmax25_opt_c4,
+            :ξ_c3,
+            :ξ_c4,
+            :Vcmax25_c3,
+            :Vcmax25_c4,
+            :Jmax25_c3,
+            :Jmax25_c4,
         ),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
@@ -557,7 +557,7 @@ function update_optimal_EMA(
     APAR_canopy_moles::FT,
     local_noon_mask::FT,
 ) where {FT}
-    isone(local_noon_mask) || return OptVars
+    isone(local_noon_mask) || return AccVars
 
     # Unpack parameters
     (; cstar, β_c3, β_c4, α) = parameters
@@ -599,10 +599,10 @@ function update_optimal_EMA(
     # convert ca from mol/mol to Pa
     ca_pp = ca * P_air
 
-    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
 
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
@@ -611,8 +611,8 @@ function update_optimal_EMA(
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
-    Vcmax_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mprime_c3 / mc_c3
-    Vcmax_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mprime_c4 / mc_c4
+    Vcmax_opt_c3 = βm * ϕ0_c3 * APAR_canopy_moles * mprime_c3 / mc_c3
+    Vcmax_opt_c4 = βm * ϕ0_c4 * APAR_canopy_moles * mprime_c4 / mc_c4
 
     inst_temp_scaling_factor_Vcmax = inst_temp_scaling(
         T_canopy,
@@ -624,12 +624,12 @@ function update_optimal_EMA(
         bS_Vcmax,
         R,
     )
-    Vcmax25_c3 = Vcmax_c3 / inst_temp_scaling_factor_Vcmax
-    Vcmax25_c4 = Vcmax_c4 / inst_temp_scaling_factor_Vcmax
+    Vcmax25_opt_c3 = Vcmax_opt_c3 / inst_temp_scaling_factor_Vcmax
+    Vcmax25_opt_c4 = Vcmax_opt_c4 / inst_temp_scaling_factor_Vcmax
 
-    Jmax_c3 =
+    Jmax_opt_c3 =
         4 * ϕ0_c3 * APAR_canopy_moles / sqrt((mj_c3 / (βm * mprime_c3))^2 - 1)
-    Jmax_c4 =
+    Jmax_opt_c4 =
         4 * ϕ0_c4 * APAR_canopy_moles / sqrt((mj_c4 / (βm * mprime_c4))^2 - 1)
     inst_temp_scaling_factor_Jmax = inst_temp_scaling(
         T_canopy,
@@ -641,15 +641,15 @@ function update_optimal_EMA(
         bS_Jmax,
         R,
     )
-    Jmax25_c3 = Jmax_c3 / inst_temp_scaling_factor_Jmax
-    Jmax25_c4 = Jmax_c4 / inst_temp_scaling_factor_Jmax
+    Jmax25_opt_c3 = Jmax_opt_c3 / inst_temp_scaling_factor_Jmax
+    Jmax25_opt_c4 = Jmax_opt_c4 / inst_temp_scaling_factor_Jmax
     return (;
-        ξ_opt_c3 = α * OptVars.ξ_opt_c3 + (1 - α) * ξ_c3,
-        ξ_opt_c4 = α * OptVars.ξ_opt_c4 + (1 - α) * ξ_c4,
-        Vcmax25_opt_c3 = α * OptVars.Vcmax25_opt_c3 + (1 - α) * Vcmax25_c3,
-        Vcmax25_opt_c4 = α * OptVars.Vcmax25_opt_c4 + (1 - α) * Vcmax25_c4,
-        Jmax25_opt_c3 = α * OptVars.Jmax25_opt_c3 + (1 - α) * Jmax25_c3,
-        Jmax25_opt_c4 = α * OptVars.Jmax25_opt_c4 + (1 - α) * Jmax25_c4,
+        ξ_c3 = (1 - α) * AccVars.ξ_c3 + (α) * ξ_opt_c3,
+        ξ_c4 = (1 - α) * AccVars.ξ_c4 + (α) * ξ_opt_c4,
+        Vcmax25_c3 = (1 - α) * AccVars.Vcmax25_c3 + (α) * Vcmax25_opt_c3,
+        Vcmax25_c4 = (1 - α) * AccVars.Vcmax25_c4 + (α) * Vcmax25_opt_c4,
+        Jmax25_c3 = (1 - α) * AccVars.Jmax25_c3 + (α) * Jmax25_opt_c3,
+        Jmax25_c4 = (1 - α) * AccVars.Jmax25_c4 + (α) * Jmax25_opt_c4,
     )
 end
 
@@ -677,7 +677,7 @@ end
 
 The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
 Before the simulation, we need to have some physically meaningful initial values for these variables,
-which live in p.canopy.photosynthesis.OptVars.
+which live in p.canopy.photosynthesis.AccVars.
 
 This method assumes that the acclimation is to the initial conditions of the simulation. Note that
 if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are
@@ -719,16 +719,16 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         ),
     )
 
-    # Initialize OptVars with dummy values which will be overwritten
+    # Initialize AccVars with dummy values which will be overwritten
     fill!(
-        p.canopy.photosynthesis.OptVars,
+        p.canopy.photosynthesis.AccVars,
         (;
-            ξ_opt_c3 = FT(0),
-            ξ_opt_c4 = FT(0),
-            Vcmax25_opt_c3 = FT(0),
-            Vcmax25_opt_c4 = FT(0),
-            Jmax25_opt_c3 = FT(0),
-            Jmax25_opt_c4 = FT(0),
+            ξ_c3 = FT(0),
+            ξ_c4 = FT(0),
+            Vcmax25_c3 = FT(0),
+            Vcmax25_c4 = FT(0),
+            Jmax25_c3 = FT(0),
+            Jmax25_c4 = FT(0),
         ),
     )
 
@@ -750,10 +750,10 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     local_noon_mask = FT(1)  # Force update for initialization
 
-    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
+    @. p.canopy.photosynthesis.AccVars = update_pmodel_state(
         parameters_init,
         constants,
-        p.canopy.photosynthesis.OptVars,
+        p.canopy.photosynthesis.AccVars,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -765,7 +765,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 end
 
 """
-    call_update_optimal_EMA(
+    call_update_pmodel_state(
         p,
         Y,
         t;
@@ -776,7 +776,7 @@ end
 
 Updates the optimal parameters according to conditions at local noon.
 """
-function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
+function call_update_pmodel_state(p, Y, t; canopy, dt, local_noon)
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, local_noon))
 
     # update the acclimated Vcmax25, Jmax25, ξ using EMA
@@ -811,10 +811,10 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, local_noon)
         ),
     )
 
-    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
+    @. p.canopy.photosynthesis.AccVars = update_pmodel_state(
         parameters,
         constants,
-        p.canopy.photosynthesis.OptVars,
+        p.canopy.photosynthesis.AccVars,
         T_canopy,
         p.drivers.P,
         VPD,
@@ -884,7 +884,7 @@ function make_PModel_callback(
     start_t = seconds_after_midnight(date(t0))
     local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360) # allocates, but only on init
     affect! =
-        (integrator) -> call_update_optimal_EMA(
+        (integrator) -> call_update_pmodel_state(
             integrator.p,
             integrator.u,
             (float(integrator.t) + start_t) % (seconds_in_a_day), # current time in seconds UTC;
@@ -915,7 +915,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     # Unpack preallocated variables to short names
     InstVars = p.canopy.photosynthesis.InstVars
-    OptVars = p.canopy.photosynthesis.OptVars
+    AccVars = p.canopy.photosynthesis.AccVars
 
     # drivers
     P_air = p.drivers.P
@@ -928,7 +928,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     fAPAR = p.canopy.radiative_transfer.par.abs
     PAR = p.canopy.radiative_transfer.par_d
     @. InstVars = compute_blended_pmodel_photosynthesis(
-        OptVars,
+        AccVars,
         model.fractional_c3,
         P_air,
         T_air,
@@ -947,7 +947,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 end
 
 function compute_blended_pmodel_photosynthesis(
-    OptVars,
+    AccVars,
     fractional_c3,
     P_air,
     T_air,
@@ -963,13 +963,13 @@ function compute_blended_pmodel_photosynthesis(
     FT,
 )
     (;
-        Vcmax25_opt_c3,
-        Vcmax25_opt_c4,
-        Jmax25_opt_c3,
-        Jmax25_opt_c4,
-        ξ_opt_c3,
-        ξ_opt_c4,
-    ) = OptVars
+        Vcmax25_c3,
+        Vcmax25_c4,
+        Jmax25_c3,
+        Jmax25_c4,
+        ξ_c3,
+        ξ_c4,
+    ) = AccVars
     ca_pp = c_co2_air * P_air # partial pressure of co2
     VPD = max(
         Thermodynamics.vapor_pressure_deficit(
@@ -996,8 +996,8 @@ function compute_blended_pmodel_photosynthesis(
         constants.ΔHΓstar,
         constants.Γstar25,
     )
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
+    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
     Kmm = compute_Kmm(
         T_canopy,
         P_air,
@@ -1020,18 +1020,18 @@ function compute_blended_pmodel_photosynthesis(
         constants.bS_Jmax,
         constants.R,
     )
-    Jmax_c3 = Jmax25_opt_c3 * inst_temp_scaling_Jmax_factor
-    Jmax_c4 = Jmax25_opt_c4 * inst_temp_scaling_Jmax_factor
+    Jmax_opt_c3 = Jmax25_c3 * inst_temp_scaling_Jmax_factor
+    Jmax_opt_c4 = Jmax25_c4 * inst_temp_scaling_Jmax_factor
 
     J_c3 = electron_transport_pmodel(
         c3_intrinsic_quantum_yield(T_canopy, parameters),
         APAR_canopy_moles,
-        Jmax_c3,
+        Jmax_opt_c3,
     )
     J_c4 = electron_transport_pmodel(
         c4_intrinsic_quantum_yield(T_canopy, parameters),
         APAR_canopy_moles,
-        Jmax_c4,
+        Jmax_opt_c4,
     )
 
     inst_temp_scaling_Vcmax_factor = inst_temp_scaling(
@@ -1044,11 +1044,11 @@ function compute_blended_pmodel_photosynthesis(
         constants.bS_Vcmax,
         constants.R,
     )
-    Vcmax_c3 = Vcmax25_opt_c3 * inst_temp_scaling_Vcmax_factor
-    Vcmax_c4 = Vcmax25_opt_c4 * inst_temp_scaling_Vcmax_factor
+    Vcmax_opt_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
+    Vcmax_opt_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
 
-    Ac_c3 = Vcmax_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm)
-    Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm)
+    Ac_c3 = Vcmax_opt_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm)
+    Ac_c4 = Vcmax_opt_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm)
 
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
@@ -1061,7 +1061,7 @@ function compute_blended_pmodel_photosynthesis(
     # This function below would become c3_dark_respiration_pmodel
     Rd = blend(
         constants.fC3 *
-        Vcmax25_opt_c3 *
+        Vcmax25_c3 *
         inst_temp_scaling_rd(
             T_canopy,
             constants.To,
@@ -1069,7 +1069,7 @@ function compute_blended_pmodel_photosynthesis(
             constants.bRd,
         ),
         constants.fC3 *
-        Vcmax25_opt_c4 *
+        Vcmax25_c4 *
         inst_temp_scaling_rd(
             T_canopy,
             constants.To,
@@ -1087,29 +1087,22 @@ function compute_blended_pmodel_photosynthesis(
         fractional_c3,
     )
     An = net_photosynthesis(GPP, Rd)
-    # gs blend
-    χ_c3 = clamp(ci_c3 / ca_pp, FT(0), FT(1))
-    χ_c4 = clamp(ci_c4 / ca_pp, FT(0), FT(1))
-    gs_co2_c3 =
-        gs_co2_pmodel(χ_c3, c_co2_air, gross_photosynthesis(Ac_c3, Aj_c3))
-    gs_co2_c4 =
-        gs_co2_pmodel(χ_c4, c_co2_air, gross_photosynthesis(Ac_c4, Aj_c4))
-    gs_co2 = blend(gs_co2_c3, gs_co2_c4, fractional_c3) # Assumes C3 and C4 plants act in parallel
-    return (; Rd, GPP, An, gs_co2)
+    ci = blend(ci_c3, ci_c4, fractional_c3)
+    return (; ci, Rd, GPP, An)
 end
 
 get_Vcmax25_canopy(p, m::PModel) = @. lazy(
     blend(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c3,
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c4,
+        p.canopy.photosynthesis.AccVars.Vcmax25_c3,
+        p.canopy.photosynthesis.AccVars.Vcmax25_c4,
         m.fractional_c3,
     ),
 )
 
 get_Vcmax25_leaf(p, m::PModel) = @. lazy(
     blend(
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c3,
-        p.canopy.photosynthesis.OptVars.Vcmax25_opt_c4,
+        p.canopy.photosynthesis.AccVars.Vcmax25_c3,
+        p.canopy.photosynthesis.AccVars.Vcmax25_c4,
         m.fractional_c3,
     ) /
     max(p.canopy.biomass.area_index.leaf, sqrt(eps(eltype(m.constants)))),
@@ -1128,13 +1121,13 @@ get_An_leaf(p, m::PModel) = @. lazy(
 get_GPP(p, m::PModel) = p.canopy.photosynthesis.InstVars.GPP
 
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
-    Jmax_c3, Jmax_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
+    Jmax_opt_c3, Jmax_opt_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
     J_c3, J_c4 = compute_J_canopy(Y, p, canopy, m) # lazy
     FT = eltype(m.constants)
     return @. lazy(
         blend(
-            J_c3 / max(Jmax_c3, sqrt(eps(FT))),
-            J_c4 / max(Jmax_c4, sqrt(eps(FT))),
+            J_c3 / max(Jmax_opt_c3, sqrt(eps(FT))),
+            J_c4 / max(Jmax_opt_c4, sqrt(eps(FT))),
             m.fractional_c3,
         ),
     )
@@ -1157,11 +1150,11 @@ function compute_Jmax_canopy(Y, p, canopy, m::PModel) # used internally to pmode
     )
     return @. (
         lazy(
-            p.canopy.photosynthesis.OptVars.Jmax25_opt_c3 *
+            p.canopy.photosynthesis.AccVars.Jmax25_c3 *
             inst_temp_scaling_factor,
         ),
         lazy(
-            p.canopy.photosynthesis.OptVars.Jmax25_opt_c4 *
+            p.canopy.photosynthesis.AccVars.Jmax25_c4 *
             inst_temp_scaling_factor,
         ),
     )
@@ -1595,10 +1588,10 @@ function compute_A0_daily(
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute optimal ξ and intercellular CO2
-    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
 
     # Compute mj and m' (with Jmax limitation)
     mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
@@ -1659,13 +1652,13 @@ function compute_chi(
     Kmm = compute_Kmm(T, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute xi (sensitivity to dryness)
-    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
 
     # Compute ci and chi
     VPD_safe = max(VPD, eps(FT))
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD_safe)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD_safe)
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
     return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
 end
 
