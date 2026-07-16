@@ -105,9 +105,9 @@ Base.@kwdef struct PModelConstants{FT}
     N_a::FT
     """Density of water (kg m^-3)"""
     ρ_water::FT
-    ""
+    "Minimum ratio of √VPD/ξ"
     vpd_ratio_min::FT
-    ""
+    "Maximum ratio of Γ*/ca"
     Γ_ratio_max::FT
 end
 
