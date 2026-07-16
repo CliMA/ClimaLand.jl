@@ -831,9 +831,8 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    turbulent_flux_parameterization = MoninObukhovCanopyFluxes(
+    turbulent_flux_parameterization = LAIBasedRoughness(
         toml_dict,
-        biomass.height,
     ),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
