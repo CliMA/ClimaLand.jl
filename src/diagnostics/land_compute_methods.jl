@@ -285,16 +285,30 @@ end
     CanopyModel,
 } p.canopy.biomass.area_index.leaf
 
-# Canopy - Optimal LAI model diagnostics
-@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_daily
+# Canopy - Optimal LAI model diagnostics: prognostic time-integrated variables in Y.
+@diagnostic_compute "a0_daily" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_daily
 
-@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.biomass.A0_annual
+@diagnostic_compute "a0_annual" Union{SoilCanopyModel, LandModel, CanopyModel} Y.canopy.biomass.A0_annual
 
-@diagnostic_compute "precip_annual" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.biomass.precip_annual
+# precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
+# limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
+@with_error function compute_precip_annual!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel, CanopyModel},
+)
+    ρ_m_liq = LP.ρ_m_liq(get_canopy(land_model).earth_param_set)  # mol m^-3
+    if isnothing(out)
+        out = zeros(axes(Y.canopy.biomass.precip_annual))
+        fill!(field_values(out), NaN)
+        @. out = Y.canopy.biomass.precip_annual / ρ_m_liq
+        return out
+    else
+        @. out = Y.canopy.biomass.precip_annual / ρ_m_liq
+    end
+end
 
 # Canopy - Soil moisture stress
 @diagnostic_compute "moisture_stress_factor" Union{

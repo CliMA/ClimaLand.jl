@@ -7,8 +7,8 @@ import ClimaLand:
     AbstractExpModel,
     TimeIntegratedVariable,
     RunningMean,
-    RunningIntegral,
     RunningSum,
+    TimeIntegral,
     time_integrated_tendency!
 using ClimaLand.Domains: Column
 
@@ -55,22 +55,26 @@ function euler!(m, Y, p, var, Δt, N; t0 = 0.0)
 end
 
 # A model whose single time-integrated variable is NamedTuple-valued, like the
-# P-model acclimation capacities `AccVars`.
-struct NTModel{FT, D} <: AbstractExpModel{FT}
+# P-model acclimation capacities `AccVars`. Its prognostic type comes from the
+# spec's `element_type`, exercising the structured-field declaration path.
+struct NTModel{FT, D, S} <: AbstractExpModel{FT}
     domain::D
+    specs::S
 end
 ClimaLand.name(::NTModel) = :nt
-ClimaLand.prognostic_vars(::NTModel) = (:X,)
-ClimaLand.prognostic_types(::NTModel{FT}) where {FT} =
-    (NamedTuple{(:a, :b), Tuple{FT, FT}},)
-ClimaLand.prognostic_domain_names(::NTModel) = (:surface,)
+ClimaLand.prognostic_vars(m::NTModel) =
+    ClimaLand.time_integrated_prognostic_vars(m.specs)
+ClimaLand.prognostic_types(m::NTModel) =
+    ClimaLand.time_integrated_prognostic_types(m.specs)
+ClimaLand.prognostic_domain_names(m::NTModel) =
+    ClimaLand.time_integrated_prognostic_domain_names(m.specs)
 
 @testset "Declaration path (Y, not p)" begin
     FT = Float64
     specs = (
         TimeIntegratedVariable(;
             name = :precip_annual,
-            reduction = RunningIntegral(),
+            reduction = RunningSum(),
             timescale = FT(365 * 86400),
             compute_instantaneous! = (dst, Y, p, t) ->
                 (@. dst = p.drivers.P_liq),
@@ -127,13 +131,13 @@ end
     @test X_num ≈ X_exact rtol = 2e-2
 end
 
-@testset "RunningIntegral: analytic, steady state, = τ·mean" begin
+@testset "RunningSum: analytic, steady state, = τ·mean" begin
     FT = Float64
     τ = FT(100.0)
     f = FT(2.0)
     spec = TimeIntegratedVariable(;
         name = :X,
-        reduction = RunningIntegral(),
+        reduction = RunningSum(),
         timescale = τ,
         compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
     )
@@ -153,7 +157,7 @@ end
     euler!(m, Y, p, :X, Δt, 2000)
     @test scalar(Y.tiv.X) ≈ τ * f rtol = 1e-3
 
-    # RunningIntegral is exactly τ × RunningMean (same forcing, both start at 0)
+    # RunningSum is exactly τ × RunningMean (same forcing, both start at 0)
     mean_spec = TimeIntegratedVariable(;
         name = :X,
         reduction = RunningMean(),
@@ -175,13 +179,13 @@ end
     @test int_series[end] ≈ τ * mean_series[end] rtol = 1e-12
 end
 
-@testset "RunningSum: pure accumulator" begin
+@testset "TimeIntegral: pure accumulator" begin
     FT = Float64
     f = FT(2.0)
     X0 = FT(1.0)
     spec = TimeIntegratedVariable(;
         name = :X,
-        reduction = RunningSum(),
+        reduction = TimeIntegral(),
         timescale = FT(1.0),  # ignored
         compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
     )
@@ -238,10 +242,10 @@ end
     # synthetic daily-mean potential GPP: seasonal, non-negative, mild trend
     inst(t) = f0 * (1 + trend * (t / year)) * max(FT(0), sin(FT(2π) * t / year))
 
-    # --- new scheme: RunningIntegral in Y, τ = 1 yr ---
+    # --- new scheme: RunningSum in Y, τ = 1 yr ---
     spec = TimeIntegratedVariable(;
         name = :A0_annual,
-        reduction = RunningIntegral(),
+        reduction = RunningSum(),
         timescale = year,
         compute_instantaneous! = (dst, Y, p, t) -> (@. dst = inst(t)),
     )
@@ -290,18 +294,22 @@ end
 @testset "RunningMean on a NamedTuple-valued field (P-model AccVars analog)" begin
     FT = Float64
     col = Column(; zlim = (FT(-1), FT(0)), nelements = 2)
-    m = NTModel{FT, typeof(col)}(col)
-    Y, p, _ = initialize(m)
-    Y.nt.X.a .= FT(1.0)
-    Y.nt.X.b .= FT(2.0)
     fa, fb, τ = FT(5.0), FT(8.0), FT(100.0)
+    accvars_type = NamedTuple{(:a, :b), Tuple{FT, FT}}
     spec = TimeIntegratedVariable(;
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
+        element_type = accvars_type,
         compute_instantaneous! = (dst, Y, p, t) ->
             (dst.a .= fa; dst.b .= fb; nothing),
     )
+    m = NTModel{FT, typeof(col), typeof((spec,))}(col, (spec,))
+    # the structured element type is carried through the declaration helper
+    @test ClimaLand.prognostic_types(m) == (accvars_type,)
+    Y, p, _ = initialize(m)
+    Y.nt.X.a .= FT(1.0)
+    Y.nt.X.b .= FT(2.0)
     dY = similar(Y)
     Δt = FT(1.0)
     N = 300

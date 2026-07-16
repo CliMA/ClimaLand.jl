@@ -232,7 +232,7 @@ end
     end
 end
 
-@testset "Test P-model callback initialization" begin
+@testset "Test P-model registers no callbacks" begin
     FT = Float32
 
     lat = FT(38.7441)
@@ -258,13 +258,13 @@ end
         photosynthesis = PModel{FT}(canopy_domain, toml_dict),
         conductance = PModelConductance{FT}(toml_dict),
     )
-    pmodel_callback = make_PModel_callback(FT, t0, dt, canopy)
-    @test typeof(get_model_callbacks(canopy; t0, Δt = dt)[1]) ==
-          typeof(pmodel_callback)
+    # The P-model acclimation is a continuous prognostic RunningMean, so the model
+    # registers no local-noon callback.
+    @test isempty(get_model_callbacks(canopy; t0, Δt = dt))
 end
 
 
-@testset "Test update_pmodel_state optimality computation" begin
+@testset "Test compute_optimal_capacities optimality computation" begin
     rtol = 1e-5
     atol = 1e-6
 
@@ -305,41 +305,31 @@ end
             APAR,
         )
 
-        @testset "Test update_pmodel_state optimality computation for $FT" begin
-            dummy_AccVars = (;
-                ξ_c3 = FT(0),
-                ξ_c4 = FT(0),
-                Vcmax25_c3 = FT(0),
-                Vcmax25_c4 = FT(0),
-                Jmax25_c3 = FT(0),
-                Jmax25_c4 = FT(0),
-            )
-            outputs_from_EMA = update_pmodel_state(
+        @testset "Test compute_optimal_capacities for $FT" begin
+            accvars = compute_optimal_capacities(
                 parameters,
                 constants,
-                dummy_AccVars,
                 T_canopy,
                 P_air,
                 VPD,
                 ca,
                 βm,
                 APAR,
-                FT(1.0), # force update
             )
             @test isapprox(
-                outputs_from_EMA.ξ_c3,
+                accvars.ξ_c3,
                 outputs_full.xi,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Vcmax25_c3,
+                accvars.Vcmax25_c3,
                 outputs_full.vcmax25,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Jmax25_c3,
+                accvars.Jmax25_c3,
                 outputs_full.jmax25,
                 rtol = rtol,
                 atol = atol,

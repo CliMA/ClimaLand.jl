@@ -34,19 +34,22 @@ v1.10.2
 - ![][badge-✨feature] Add an `INVERSION` leaderboard (model vs inversion-derived NEE/GPP/ER,
   plus MODIS LAI on prognostic-LAI runs only) to the snowy-land long run. PR [#1794](https://github.com/CliMA/ClimaLand.jl/pull/1794)
 - ![][badge-✨feature] Add a `TimeIntegratedVariable` utility for prognostic time-integrated
-  variables — a running mean/integral/sum stored in `Y` and advanced by the time-stepper
-  (no callback, checkpoint-safe). PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
-- ![][badge-🔥behavioralΔ] Migrate the optimal-LAI `A0_annual` and `precip_annual`, and the
-  P-model acclimated `AccVars`, to prognostic time-integrated variables that evolve smoothly
-  instead of stepping once per year/day; this removes the annual discontinuity in `LAI_max`,
-  and `precip_annual` now tracks the simulated precipitation rather than a fixed climatology.
-  Adds the `pra` diagnostic. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
-- ![][badge-🔥behavioralΔ] Make the optimal-LAI `LAI` a prognostic `RunningMean` in `Y`
-  (the Zhou et al. Eq. 16 acclimation lag): the local-noon callback now only samples the
-  steady-state target `L_steady`, and the time-stepper relaxes `LAI` toward it. This removes
-  the last callback-stepped state in the optimal-LAI path, so modeled LAI evolves smoothly
-  and survives checkpoint/restart instead of being re-seeded from `lai_init`.
+  variables — a running mean/sum or plain time-integral stored in `Y` and advanced by the
+  time-stepper (no callback, checkpoint/restart-safe).
   PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
+- ![][badge-🔥behavioralΔ] Make the optimal-LAI and P-model acclimation states continuous
+  prognostic time-integrated variables in `Y`, removing the local-noon callbacks. The
+  optimal-LAI `A0_daily` is a 1-day running-sum total; `A0_annual` and `precip_annual` are
+  smoothed 1-year totals (running means of the annualized rate, with a calibratable
+  `optimal_lai_tau_long_term` memory that filters the seasonal cycle without changing the
+  one-year magnitude); `LAI` is a running mean relaxing toward the instantaneous optimal
+  target; and the P-model acclimated `AccVars` is a running mean of the instantaneous
+  optimum. These evolve smoothly every timestep instead of stepping once per day/year,
+  removing the annual discontinuity in `LAI_max`; `precip_annual` tracks the simulated
+  precipitation rather than a fixed climatology; and because all of this state lives in `Y`
+  with the cache reconstructed from it, runs are exactly reproducible across
+  checkpoint/restart. Adds the `pra` diagnostic and the `optimal_lai_tau_long_term`
+  parameter. PR [#1797](https://github.com/CliMA/ClimaLand.jl/pull/1797)
 
 v1.10.1
 -----

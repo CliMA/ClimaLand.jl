@@ -483,6 +483,14 @@ function optimal_lai_initial_conditions(
         regridder_kwargs = (; extrapolation_bc, interpolation_method),
     )
 
+    # Fill non-finite (ocean/fill) values with 0 once here, at read time, so the
+    # fields used to seed the prognostic state are finite. These cells are masked
+    # out of the simulation.
+    FT = eltype(A0_annual)
+    for field in (A0_annual, precip_annual, lai_init)
+        @. field = ifelse(isfinite(field), field, FT(0))
+    end
+
     return (;
         GSL = GSL,
         A0_annual = A0_annual,

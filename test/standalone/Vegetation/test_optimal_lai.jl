@@ -20,6 +20,7 @@ using ClimaCore
             @test params.z isa FT
             @test params.sigma isa FT
             @test params.alpha isa FT
+            @test params.tau_long_term isa FT
 
             # Check expected values from default_parameters.toml (calibrated
             # against MODIS LAI in #1794)
@@ -27,6 +28,7 @@ using ClimaCore
             @test params.z ≈ FT(21.4)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
+            @test params.tau_long_term ≈ FT(3.1536e7)  # 1 year
 
             @test eltype(params) == FT
         end
@@ -60,25 +62,24 @@ using ClimaCore
             # Test auxiliary variables
             aux_vars = Canopy.auxiliary_vars(model)
             @test :area_index in aux_vars
-            @test :A0_daily in aux_vars
-            @test :A0_annual in aux_vars  # cache mirror of the prognostic value
-            @test :A0_daily_acc in aux_vars
+            @test :A0_inst in aux_vars
             @test :GSL in aux_vars
-            @test :precip_annual in aux_vars  # cache mirror of the prognostic value
             @test :vpd_gs in aux_vars
             @test :f0 in aux_vars
-            @test :L_steady in aux_vars  # noon-sampled target for the prognostic LAI
+            # the daily/annual accumulators and the noon-sampled target are not cache
+            # variables; A0_daily, A0_annual, and precip_annual are prognostic in Y
+            @test :A0_daily_acc ∉ aux_vars
+            @test :L_steady ∉ aux_vars
+            @test :A0_annual ∉ aux_vars
+            @test :precip_annual ∉ aux_vars
 
-            # A0_annual, precip_annual, and LAI are now time-integrated prognostic
-            # variables in Y (RunningIntegrals / RunningMean); the yearly-reset
-            # accumulators are gone and LAI is no longer a pure cache variable.
-            @test :A0_annual_acc ∉ aux_vars
-            @test :days_since_reset ∉ aux_vars
+            # A0_daily, A0_annual, precip_annual, and LAI are time-integrated
+            # prognostic variables in Y (running sums and a running mean).
             @test Canopy.prognostic_vars(model) ==
-                  (:A0_annual, :precip_annual, :LAI)
-            @test Canopy.prognostic_types(model) == (FT, FT, FT)
+                  (:A0_daily, :A0_annual, :precip_annual, :LAI)
+            @test Canopy.prognostic_types(model) == (FT, FT, FT, FT)
             @test Canopy.prognostic_domain_names(model) ==
-                  (:surface, :surface, :surface)
+                  (:surface, :surface, :surface, :surface)
         end
 
         @testset "compute_L_max function (energy-limited only) for FT = $FT" begin
@@ -196,29 +197,6 @@ using ClimaCore
             @test L_high > L_low
         end
 
-        @testset "compute_LAI function for FT = $FT" begin
-            LAI_prev = FT(2.0)
-            L_steady = FT(3.0)
-            alpha = FT(0.067)
-
-            # Test with local noon mask = 1 (update)
-            LAI_new = Canopy.compute_LAI(LAI_prev, L_steady, alpha, FT(1.0))
-            expected = alpha * L_steady + (1 - alpha) * LAI_prev
-            @test LAI_new ≈ expected
-            @test LAI_new > LAI_prev  # Should move toward higher steady state
-            @test LAI_new < L_steady  # But not reach it in one step
-
-            # Test with local noon mask = 0 (no update)
-            LAI_no_update =
-                Canopy.compute_LAI(LAI_prev, L_steady, alpha, FT(0.0))
-            @test LAI_no_update == LAI_prev
-
-            # Test that LAI is non-negative
-            LAI_negative_test =
-                Canopy.compute_LAI(-FT(1.0), FT(0.0), alpha, FT(1.0))
-            @test LAI_negative_test >= FT(0.0)
-        end
-
         @testset "compute_PPFD function for FT = $FT" begin
             # Test PPFD computation from PAR
             par_d = FT(500.0)  # W m^-2 (typical midday)
@@ -233,89 +211,6 @@ using ClimaCore
             @test PPFD isa FT
             @test PPFD > FT(0.0)
             @test isfinite(PPFD)
-        end
-
-        @testset "get_local_noon_mask function for FT = $FT" begin
-            dt = FT(3600.0)  # 1 hour timestep
-            local_noon = FT(43200.0)  # 12:00 noon in seconds
-
-            # Test at local noon
-            mask_noon = Canopy.get_local_noon_mask(43200.0, dt, local_noon)
-            @test mask_noon == FT(1.0)
-
-            # Test within window
-            mask_before =
-                Canopy.get_local_noon_mask(43200.0 - dt / 4, dt, local_noon)
-            @test mask_before == FT(1.0)
-
-            mask_after =
-                Canopy.get_local_noon_mask(43200.0 + dt / 4, dt, local_noon)
-            @test mask_after == FT(1.0)
-
-            # Test outside window
-            mask_morning = Canopy.get_local_noon_mask(21600.0, dt, local_noon)  # 6 AM
-            @test mask_morning == FT(0.0)
-
-            mask_evening = Canopy.get_local_noon_mask(64800.0, dt, local_noon)  # 6 PM
-            @test mask_evening == FT(0.0)
-        end
-
-        @testset "update_optimal_LAI function for FT = $FT" begin
-            # Test the full LAI update function
-            A0_daily = FT(0.5)       # mol m^-2 day^-1
-            L = FT(2.0)              # current LAI
-            k = FT(0.5)
-            A0_annual = FT(100.0)    # mol m^-2 yr^-1
-            z = FT(12.227)
-            GSL = FT(180.0)          # days
-            sigma = FT(0.771)
-            alpha = FT(0.067)
-            precip_annual = FT(100000.0)  # mol H2O m^-2 yr^-1 (high, energy-limited)
-            f0 = FT(0.65)
-            ca_pa = FT(40.0)         # Pa
-            chi = FT(0.77)
-            vpd_gs = FT(1000.0)      # Pa
-
-            # Test update at noon
-            L_new = Canopy.update_optimal_LAI(
-                FT(1.0),  # local noon mask
-                A0_daily,
-                L,
-                k,
-                A0_annual,
-                z,
-                GSL,
-                sigma,
-                alpha,
-                precip_annual,
-                f0,
-                ca_pa,
-                chi,
-                vpd_gs,
-            )
-
-            @test L_new isa FT
-            @test L_new >= FT(0.0)
-            @test isfinite(L_new)
-
-            # Test no update when not at noon
-            L_no_update = Canopy.update_optimal_LAI(
-                FT(0.0),  # not local noon
-                A0_daily,
-                L,
-                k,
-                A0_annual,
-                z,
-                GSL,
-                sigma,
-                alpha,
-                precip_annual,
-                f0,
-                ca_pa,
-                chi,
-                vpd_gs,
-            )
-            @test L_no_update == L
         end
 
         @testset "optimal_lai_initial_conditions for single-point domains for FT = $FT" begin
