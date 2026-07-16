@@ -1508,7 +1508,8 @@ function intercellular_co2_pmodel(
     vpd_ratio_min::FT,
     Γ_ratio_max::FT,
 ) where {FT}
-    x = max(sqrt(VPD) / ξ, vpd_ratio_min)
+    # Guard ξ = 0 (e.g. before the optimal ξ is initialized); the ξ→0 limit is ci = Γstar
+    x = max(sqrt(VPD) / max(ξ, eps(FT)), vpd_ratio_min)
     y = min(Γstar / ca_pp, Γ_ratio_max)
     return ca_pp * (1 + y * x) / (1 + x)
 end
