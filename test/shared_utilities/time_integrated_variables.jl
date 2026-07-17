@@ -324,3 +324,72 @@ end
     @test a ≈ fa + (FT(1.0) - fa) * exp(-N * Δt / τ) rtol = 2e-2
     @test b ≈ fb + (FT(2.0) - fb) * exp(-N * Δt / τ) rtol = 2e-2
 end
+
+@testset "Weighted RunningMean tendency (P-model noon-window path)" begin
+    FT = Float64
+    col = Column(; zlim = (FT(-1), FT(0)), nelements = 2)
+    fa, fb, τ = FT(6.0), FT(9.0), FT(100.0)
+    nt_type = NamedTuple{(:a, :b), Tuple{FT, FT}}
+    inst! = (dst, Y, p, t) -> (dst.a .= fa; dst.b .= fb; nothing)
+    ntmodel(specs) = NTModel{FT, typeof(col), typeof(specs)}(col, specs)
+
+    # (A) a constant weight `c` scales the reduction rate by exactly `c` on both
+    # NamedTuple components — exercises `⊠` on a structured (NamedTuple-valued) field.
+    c = FT(0.25)
+    spec_c = TimeIntegratedVariable(;
+        name = :X,
+        reduction = RunningMean(),
+        timescale = τ,
+        element_type = nt_type,
+        compute_instantaneous! = inst!,
+        weight! = (Y, p, t) -> fill!(similar(Y.nt.X.a), c),
+    )
+    Y, p, _ = initialize(ntmodel((spec_c,)))
+    Y.nt.X.a .= FT(1.0)
+    Y.nt.X.b .= FT(2.0)
+    dY = similar(Y)
+    time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec_c,))
+    @test Array(parent(dY.nt.X.a))[1] ≈ c * (fa - FT(1.0)) / τ
+    @test Array(parent(dY.nt.X.b))[1] ≈ c * (fb - FT(2.0)) / τ
+
+    # (B) a zero weight freezes the variable (no acclimation at night).
+    spec_0 = TimeIntegratedVariable(;
+        name = :X,
+        reduction = RunningMean(),
+        timescale = τ,
+        element_type = nt_type,
+        compute_instantaneous! = inst!,
+        weight! = (Y, p, t) -> fill!(similar(Y.nt.X.a), FT(0)),
+    )
+    time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec_0,))
+    @test Array(parent(dY.nt.X.a))[1] == FT(0)
+    @test Array(parent(dY.nt.X.b))[1] == FT(0)
+
+    # (C) a unit-mean weight leaves the acclimation timescale unchanged: with constant
+    # target, dg/dt = -w(t) g/τ integrates to g(0) exp(-∫w/τ), and ∫w over whole periods
+    # of w(t) = 1 + cos(2π t/P) is exactly the elapsed time, so X reproduces the plain
+    # EMA. Confirms the daily-mean-1 normalization the noon window relies on.
+    P = τ / FT(20)
+    spec_w = TimeIntegratedVariable(;
+        name = :X,
+        reduction = RunningMean(),
+        timescale = τ,
+        element_type = nt_type,
+        compute_instantaneous! = inst!,
+        weight! = (Y, p, t) ->
+            fill!(similar(Y.nt.X.a), FT(1) + cos(FT(2π) * t / P)),
+    )
+    Yw, pw, _ = initialize(ntmodel((spec_w,)))
+    Yw.nt.X.a .= FT(1.0)
+    dYw = similar(Yw)
+    Δt = P / FT(2000)
+    N = 2000 * 10   # 10 whole periods
+    t = FT(0)
+    for _ in 1:N
+        time_integrated_tendency!(dYw.nt, Yw.nt, Yw, pw, t, (spec_w,))
+        Yw.nt.X.a .= Yw.nt.X.a .+ Δt .* dYw.nt.X.a
+        t += Δt
+    end
+    @test Array(parent(Yw.nt.X.a))[1] ≈ fa + (FT(1.0) - fa) * exp(-N * Δt / τ) rtol =
+        1e-2
+end

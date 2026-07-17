@@ -1,7 +1,7 @@
 export TimeIntegratedVariable,
     RunningMean, RunningSum, TimeIntegral, time_integrated_tendency!
 
-import ClimaCore.RecursiveApply: ⊟, rdiv
+import ClimaCore.RecursiveApply: ⊟, ⊠, rdiv
 
 """
     AbstractTimeReduction
@@ -80,6 +80,7 @@ struct TimeIntegratedVariable{
     FT <: AbstractFloat,
     R <: AbstractTimeReduction,
     F,
+    W,
 }
     "Name of the prognostic variable (the symbol used in `Y.<component>.<name>`)."
     name::Symbol
@@ -89,6 +90,8 @@ struct TimeIntegratedVariable{
     timescale::FT
     "In-place instantaneous quantity: `compute_instantaneous!(dst, Y, p, t)` writes `f` into `dst`. `nothing` for a metadata-only spec (declaration without a tendency)."
     compute_instantaneous!::F
+    "Optional tendency weight `weight!(Y, p, t)` returning a scalar field that multiplies the reduction rate (e.g. a solar-noon window whose daily mean is 1, so it reshapes the sub-daily forcing without changing `τ`). `nothing` applies no weighting."
+    weight!::W
     "Domain the variable lives on (`:surface` or `:subsurface`)."
     domain_name::Symbol
     "Element type of the stored field (defaults to `typeof(timescale)`; set explicitly for structured, e.g. `NamedTuple`-valued, variables)."
@@ -100,6 +103,7 @@ function TimeIntegratedVariable(;
     reduction::AbstractTimeReduction,
     timescale::FT,
     compute_instantaneous! = nothing,
+    weight! = nothing,
     domain_name::Symbol = :surface,
     element_type::DataType = typeof(timescale),
 ) where {FT <: AbstractFloat}
@@ -107,11 +111,13 @@ function TimeIntegratedVariable(;
         FT,
         typeof(reduction),
         typeof(compute_instantaneous!),
+        typeof(weight!),
     }(
         name,
         reduction,
         timescale,
         compute_instantaneous!,
+        weight!,
         domain_name,
         element_type,
     )
@@ -145,6 +151,17 @@ time_integrated_prognostic_domain_names(specs) =
     (@. dst = dst ⊟ rdiv(X, τ))
 @inline apply_time_reduction!(dst, X, τ, ::TimeIntegral) = dst
 
+# Multiply the just-computed tendency `dst` by an optional weight `w` (a scalar
+# field returned by the spec's `weight!`). Dispatch on `nothing` keeps the common
+# unweighted path branch-free. Written with `⊠` so `dst` may be scalar- or
+# structured-valued (e.g. a NamedTuple-valued field).
+@inline _apply_tendency_weight!(dst, ::Nothing, Y, p, t) = nothing
+@inline function _apply_tendency_weight!(dst, weight!, Y, p, t)
+    w = weight!(Y, p, t)
+    @. dst = dst ⊠ w
+    return nothing
+end
+
 """
     time_integrated_tendency!(dY_component, Y_component, Y, p, t, specs)
 
@@ -156,7 +173,8 @@ that `f` may depend on drivers or other state.
 
 For each variable the instantaneous value `f` is written into the destination
 tendency field (reused as scratch), then converted in place to the
-reduction-specific rate, so no additional field is allocated.
+reduction-specific rate, so no additional field is allocated. A spec with a
+`weight!` then rescales that rate by its (daily-mean-1) weight field.
 """
 function time_integrated_tendency!(dY_c, Y_c, Y, p, t, specs)
     foreach(specs) do s
@@ -164,6 +182,7 @@ function time_integrated_tendency!(dY_c, Y_c, Y, p, t, specs)
         X = getproperty(Y_c, s.name)
         s.compute_instantaneous!(dst, Y, p, t)
         apply_time_reduction!(dst, X, s.timescale, s.reduction)
+        _apply_tendency_weight!(dst, s.weight!, Y, p, t)
     end
     return nothing
 end

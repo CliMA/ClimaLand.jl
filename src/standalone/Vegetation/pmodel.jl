@@ -284,7 +284,8 @@ and dark respiration at the canopy level (`Rd`), and
     and c4 variant). This is a cache mirror of the prognostic `AccVars`, which is
     a `RunningMean` time-integrated variable in `Y` (see `prognostic_vars`).
 - `AccVars_inst`: the same NamedTuple, holding the instantaneous optimal
-    capacities (recomputed every step) — the target the acclimation relaxes toward.
+    capacities (recomputed every step) — the target the acclimation relaxes toward,
+    weighted onto local solar noon (see `make_compute_exp_tendency`).
 """
 # Element type of the acclimated / instantaneous optimal-capacity variables.
 _pmodel_accvars_type(::Type{FT}) where {FT} = NamedTuple{
@@ -304,7 +305,9 @@ ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
 # a `RunningMean` time-integrated variable held in `Y` and advanced smoothly by the
 # time-stepper. `p.canopy.photosynthesis.AccVars` mirrors it for the photosynthesis
 # calculation; `AccVars_inst` is the instantaneous optimum (recomputed every step)
-# that the `RunningMean` relaxes toward. `prognostic_vars` is declared explicitly (it
+# that the `RunningMean` relaxes toward, weighted onto local solar noon so the
+# acclimation samples midday conditions (see `make_compute_exp_tendency`).
+# `prognostic_vars` is declared explicitly (it
 # is called every implicit-tendency evaluation, so must stay cheap); the tendency
 # builds its spec from `_pmodel_tivs`.
 _pmodel_tivs(component::PModel{FT}) where {FT} = (
@@ -740,24 +743,83 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
 end
 
+# Normalization for the solar-noon acclimation window `exp(κ (cosθ - 1))`: its daily
+# mean, ⟨exp(κ (cosθ - 1))⟩_θ = exp(-κ) I₀(κ). Dividing the window by this makes its
+# daily mean exactly 1, so the noon weighting reshapes the sub-daily forcing without
+# changing the acclimation timescale τ. Evaluated once at setup by quadrature over the
+# day, which avoids a SpecialFunctions dependency for I₀.
+function _noon_window_norm(κ::FT) where {FT}
+    n = 2048
+    acc = zero(FT)
+    for i in 0:(n - 1)
+        acc += exp(κ * (cos(FT(2π) * i / n) - 1))
+    end
+    return acc / n
+end
+
+# Current time as seconds since UTC midnight, used to place the solar-noon window.
+# Mirrors the ITime/epoch handling in `drivers.jl`: `date(t)` is used when `t` carries
+# an epoch (the usual case), otherwise `start_date` provides the calendar reference.
+function _seconds_of_day_utc(t, start_date, ::Type{FT}) where {FT}
+    current = if t isa ITime
+        isnothing(t.epoch) ? start_date + t.counter * t.period : date(t)
+    else
+        start_date + Second(round(Int, float(t)))
+    end
+    return FT(
+        Hour(current).value * 3600 +
+        Minute(current).value * 60 +
+        Second(current).value,
+    )
+end
+
 """
     ClimaLand.make_compute_exp_tendency(component::PModel, canopy)
 
 Advances the acclimated optimal capacities `AccVars` as a `RunningMean`
 time-integrated variable, relaxing toward the instantaneous optimal capacities
-`AccVars_inst` (recomputed every step from the current environment):
+`AccVars_inst` (recomputed every step from the current environment) but with the
+relaxation rate weighted by a smooth window centered on local solar noon:
 
-    dAccVars/dt = (AccVars_inst - AccVars) / τ,     τ = 1 day / α,
+    dAccVars/dt = w(t) (AccVars_inst - AccVars) / τ,     τ = 1 day / α,
 
-with `α` the acclimation parameter: `α = 0` (τ = 1 day) gives fast acclimation and
-`α → 1` (τ → ∞) freezes `AccVars`. Because `AccVars` lives in `Y`, the acclimation
-is advanced smoothly by the time-stepper and is checkpoint/restart-safe.
+    w(t) = exp(κ (cos θ - 1)) / ⟨exp(κ (cos θ - 1))⟩,    θ = 2π (t_UTC - noon) / day.
+
+`w` is the von Mises "midday window": it peaks at solar noon (computed per column
+from longitude, neglecting the equation of time) and is ≈ 0 at night, so the
+acclimation samples midday conditions as the P-model of Mengoli et al. (2022) and
+`main` intended. Since `AccVars_inst ∝ APAR` vanishes at night, an unweighted
+relaxation would instead average the optimum over the whole diurnal cycle and bias
+`AccVars` low in a daylength-dependent way. `w` is normalized to unit daily mean, so
+weighting reshapes the sub-daily forcing without changing the acclimation timescale
+`τ`: `α = 1` (τ = 1 day) gives fast acclimation and `α → 0` (τ → ∞) freezes `AccVars`.
+Because `AccVars` lives in `Y`, the acclimation is advanced smoothly by the
+time-stepper and is checkpoint/restart-safe.
 """
 function ClimaLand.make_compute_exp_tendency(
     component::PModel{FT},
     canopy,
 ) where {FT}
     base = only(_pmodel_tivs(component))
+    seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
+    # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
+    # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
+    longitude = get_long(canopy.domain.space.surface)
+    local_noon = @. seconds_in_a_day * (FT(1 / 2) - longitude / 360)
+    # Gaussian-equivalent half-width of the midday window (s). At 1 h the acclimation
+    # target tracks the exact solar-noon optimum to ~0.95 (vs the daylength-diluted
+    # ~0.2-0.4 of an unweighted diurnal mean), while the ~16 min error from neglecting
+    # the equation of time shifts it by <0.3%. κ matches exp(-κ θ²/2) near noon to a
+    # Gaussian of this width.
+    noon_window_seconds = FT(3600)
+    κ = (seconds_in_a_day / FT(2π))^2 / noon_window_seconds^2
+    inv_norm = 1 / _noon_window_norm(κ)
+    start_date = try
+        canopy.boundary_conditions.atmos.start_date
+    catch
+        nothing
+    end
+    ω = FT(2π) / seconds_in_a_day
     accvars_tiv = ClimaLand.TimeIntegratedVariable(;
         name = base.name,
         reduction = base.reduction,
@@ -766,6 +828,10 @@ function ClimaLand.make_compute_exp_tendency(
         element_type = base.element_type,
         compute_instantaneous! = (dst, Y, p, t) ->
             (dst .= p.canopy.photosynthesis.AccVars_inst; nothing),
+        weight! = (Y, p, t) -> begin
+            tod = _seconds_of_day_utc(t, start_date, FT)
+            @. lazy(exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
+        end,
     )
     function compute_exp_tendency!(dY, Y, p, t)
         ClimaLand.time_integrated_tendency!(

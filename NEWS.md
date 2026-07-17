@@ -2,6 +2,12 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+- ![][badge-🔥behavioralΔ] Weight the P-model acclimation onto local solar noon: the
+  `OptVars` running mean relaxes toward the instantaneous optimum at a rate weighted by a
+  smooth midday window (unit daily mean, so the ~15-day timescale is unchanged). It now
+  tracks the solar-noon optimum as Mengoli et al. (2022) intends, rather than the plain
+  diurnal average, which was biased low and daylength-dependent because the optimum
+  vanishes at night.
 
 v1.10.3
 -----
