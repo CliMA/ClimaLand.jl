@@ -394,6 +394,42 @@ used_in = ["Land"]
         DateTime.(string.(Int.(obs_df.timestamp_fmt)), dateformat"yyyymmddHHMM")
     obs_df[!, :date] = Date.(obs_df.datetime)
 
+    # ── Inter-sensor spread of the obs CO₂ (std + range across the 5 plots) ──────
+    # For one depth code: build a per-sensor DAILY value (mean of that sensor's
+    # half-hours, requiring ≥24 valid half-hours/day — same threshold as the obs
+    # daily mean). Then, per day, take the std (sample) and range (max−min) ACROSS
+    # the available sensors (≥2 required; skip the day otherwise). Finally average
+    # each over the post-spinup days (date ≥ spinup_date). Returns (mean_std,
+    # mean_range); NaN when no day qualifies (→ missing in the CSV).
+    function intersensor_spread(depth_code)
+        plot_cols = [Symbol("soilCO2concentrationMean_$(lpad(p,3,'0'))_$depth_code") for p in 1:5]
+        plot_cols = [c for c in plot_cols if String(c) in names(obs_df)]
+        length(plot_cols) < 2 && return (NaN, NaN)
+
+        # per (date, sensor) daily mean, keeping only sensor-days with ≥24 valid hh
+        daily_stds = Float64[]
+        daily_ranges = Float64[]
+        for sub in groupby(obs_df, :date)
+            d = sub.date[1]
+            d >= Date(spinup_date) || continue
+            sensor_vals = Float64[]
+            for c in plot_cols
+                vals = Float64[]
+                for v in sub[!, c]
+                    (ismissing(v) || isnan(Float64(v))) && continue
+                    push!(vals, Float64(v))
+                end
+                length(vals) >= 24 && push!(sensor_vals, mean(vals))
+            end
+            if length(sensor_vals) >= 2
+                push!(daily_stds, std(sensor_vals; corrected = false))  # population std (÷N)
+                push!(daily_ranges, maximum(sensor_vals) - minimum(sensor_vals))
+            end
+        end
+        return (isempty(daily_stds) ? NaN : mean(daily_stds),
+                isempty(daily_ranges) ? NaN : mean(daily_ranges))
+    end
+
     # ── Per-depth loop ───────────────────────────────────────────────────────
     # One iteration per calibrated depth code. Builds that depth's obs+model daily
     # series, writes the 3 per-depth figures (forward_mean, optimized_vs_sensors,
@@ -712,12 +748,18 @@ used_in = ["Land"]
     end
     CairoMakie.save(joinpath(output_dir, "co2_budget_$(site_id)_$(code).png"), fig_budget)
 
+    # Inter-sensor spread of obs CO₂ for this depth (mean over post-spinup days of
+    # the per-day std / range across the 5 sensor plots).
+    intersensor_std, intersensor_range = intersensor_spread(obs_depth)
+
     # ── Collect this depth's series/porosity for pooled CSV stats (after loop) ──
     push!(per_depth_stats, (;
         code = code,
         sco2_daily = sco2_daily, swc_daily = swc_daily, tsoil_daily = tsoil_daily,
         obs_daily_cal = obs_daily_cal, obs_swc_daily = obs_swc_daily,
         obs_tsoil_daily = obs_tsoil_daily,
+        obs_sco2_intersensor_std = intersensor_std,
+        obs_sco2_intersensor_range = intersensor_range,
     ))
     push!(per_depth_porosity, Float64(parent(land.soil.parameters.ν)[target_layer]))
     end  # for code in depth_codes
@@ -860,6 +902,9 @@ used_in = ["Land"]
         df = getfield(_by_code[c], series_field)
         nrow(df) == 0 ? NaN : reducer(Float64.(df.daily_mean))
     end
+    # Scalar (already-reduced) per-depth field lookup — for the inter-sensor
+    # spread values computed in the loop. NaN (→ missing) when the code is absent.
+    _scalar_code(field, c) = haskey(_by_code, c) ? getfield(_by_code[c], field) : NaN
 
     # Stats handed back to the pipeline for the master CSV (POOLED over depths).
     scatter_stats = (;
@@ -955,6 +1000,15 @@ used_in = ["Land"]
         model_tsoil_mean_503 = _dstat_code(:tsoil_daily, mean, "503"),
         model_tsoil_min_503  = _dstat_code(:tsoil_daily, minimum, "503"),
         model_tsoil_max_503  = _dstat_code(:tsoil_daily, maximum, "503"),
+        # ── obs CO₂ INTER-SENSOR spread (ppm): mean over post-spinup days of the
+        #    per-day std / range across the 5 sensor plots (≥24 hh/sensor/day,
+        #    ≥2 sensors/day). NaN → missing for codes not in this run. ──
+        obs_sco2_intersensor_std_501   = _scalar_code(:obs_sco2_intersensor_std, "501"),
+        obs_sco2_intersensor_range_501 = _scalar_code(:obs_sco2_intersensor_range, "501"),
+        obs_sco2_intersensor_std_502   = _scalar_code(:obs_sco2_intersensor_std, "502"),
+        obs_sco2_intersensor_range_502 = _scalar_code(:obs_sco2_intersensor_range, "502"),
+        obs_sco2_intersensor_std_503   = _scalar_code(:obs_sco2_intersensor_std, "503"),
+        obs_sco2_intersensor_range_503 = _scalar_code(:obs_sco2_intersensor_range, "503"),
         # full-period (incl. spinup) summaries
         soil_porosity_layer = soil_porosity_layer,   # m³/m³, MEAN over cal depths
         obs_tair_mean = obs_tair_mean,               # K (TA_F + 273.15)

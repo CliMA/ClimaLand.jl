@@ -83,6 +83,11 @@ const SCATTER_COLS = [
     "forward_model_tsoil_mean_501", "forward_model_tsoil_min_501", "forward_model_tsoil_max_501",
     "forward_model_tsoil_mean_502", "forward_model_tsoil_min_502", "forward_model_tsoil_max_502",
     "forward_model_tsoil_mean_503", "forward_model_tsoil_min_503", "forward_model_tsoil_max_503",
+    # obs CO₂ inter-sensor spread (ppm): mean over post-spinup days of the per-day
+    # std / range across the 5 sensor plots (missing for codes not in the run).
+    "forward_obs_sco2_intersensor_std_501", "forward_obs_sco2_intersensor_range_501",
+    "forward_obs_sco2_intersensor_std_502", "forward_obs_sco2_intersensor_range_502",
+    "forward_obs_sco2_intersensor_std_503", "forward_obs_sco2_intersensor_range_503",
     # full-period (incl. spinup) summaries
     "forward_soil_porosity_layer",                      # m³/m³, calibration layer
     "forward_obs_tair_mean", "forward_model_tair_mean", # K (TA_F+273.15 / tair)
