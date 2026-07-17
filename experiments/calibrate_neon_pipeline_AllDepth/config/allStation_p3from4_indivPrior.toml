@@ -1,0 +1,131 @@
+# Example: calibrate NEON-cper for several years in one go, demonstrating
+#   - the `years = [...]` sugar (all years for one station, looped),
+#   - a per-run prior override,
+#   - calibrating the optional labile_depth_scale on some runs,
+#   - restarting a run from a previous run's posterior.
+
+[settings]
+spinup_days  = 364
+preroll_days = 364
+n_iterations = 10
+cal_depth    = 0.02
+settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup"
+dt           = 900.0
+output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
+results_csv  = "calibration_results.csv"
+run_identifier = "20260715_1700"       # stable id so restart_from can reference it
+
+[steps]
+generate_observations = true
+calibrate             = true
+plot_eki_diagnostics  = true
+run_prior_mean        = true
+
+[priors.soilCO2_reference_rate]
+mean  = 1.0e-7
+std   = 5.0e-8
+lower = 1.0e-12
+upper = 1.0e-6
+
+[priors.soilCO2_activation_energy]
+mean  = 110550.0
+std   = 40000.0
+lower = 10.0
+upper = 200000.0
+
+[priors.michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+[priors.O2_michaelis_constant]
+mean  = 0.04
+std   = 0.02
+lower = 0.0
+upper = "Inf"
+
+[priors.labile_depth_scale]
+mean  = 0.0
+std   = 1.0
+lower = -2.0
+upper = 10.0
+
+
+# ── A run that ALSO calibrates labile_depth_scale (5 params) ──
+[[runs]]
+site  = "NEON-moab"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 6.0e-7, std = 1.0e-7, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 50000.0, std = 20000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.1, std = 0.05, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 6, std = 4, lower = -2.0, upper = 16.0 }
+  
+[[runs]]
+site  = "NEON-oaes"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 3.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 60000.0, std = 20000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.2, std = 0.1, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 8, std = 4, lower = -2.0, upper = 16.0 }
+
+[[runs]]
+site  = "NEON-onaq"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 1.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 50000.0, std = 20000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.1, std = 0.05, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 4, std = 2, lower = -2.0, upper = 10.0 }
+
+[[runs]]
+site  = "NEON-sjer"
+start = 2020-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 2.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 50000.0, std = 20000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.4, std = 0.2, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 2, std = 1, lower = -2.0, upper = 10.0 }
+
+[[runs]]
+site  = "NEON-kona"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 4.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 80000.0, std = 40000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.1, std = 0.05, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 6, std = 2, lower = -2.0, upper = 10.0 }
+
+[[runs]]
+site  = "NEON-leno"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 4.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 80000.0, std = 20000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.2, std = 0.1, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 6, std = 2, lower = -2.0, upper = 10.0 }
+
+[[runs]]
+site  = "NEON-mlbs"
+start = 2018-01-01
+stop  = 2024-12-31
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 1.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 140000.0, std = 40000.0, lower = 10.0, upper = 200000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.2, std = 0.1, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 6, std = 2, lower = -2.0, upper = 10.0 }

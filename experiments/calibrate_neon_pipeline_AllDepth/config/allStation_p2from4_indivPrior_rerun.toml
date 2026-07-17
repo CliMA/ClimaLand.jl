@@ -13,7 +13,7 @@ settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260714_1700"       # stable id so restart_from can reference it
+run_identifier = "20260715_1700"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -54,37 +54,12 @@ upper = 10.0
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-moab"
+site  = "NEON-harv"
 start = 2018-01-01
 stop  = 2024-12-31
-  
-[[runs]]
-site  = "NEON-oaes"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-onaq"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-sjer"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-kona"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-leno"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-mlbs"
-start = 2018-01-01
-stop  = 2024-12-31
-
+  [runs.priors]
+  soilCO2_reference_rate    = { mean = 2.0e-7, std = 5.0e-8, lower = 1.0e-12, upper = 1.0e-6 }
+  soilCO2_activation_energy = { mean = 150000.0, std = 50000.0, lower = 10.0, upper = 300000.0 }
+  michaelis_constant        = { mean = 0.15, std = 0.08, lower = 0.0, upper = "Inf" }
+  O2_michaelis_constant     = { mean = 0.2, std = 0.1, lower = 0.0, upper = "Inf" }
+  labile_depth_scale        = { mean = 8, std = 2, lower = -2.0, upper = 16.0 }
