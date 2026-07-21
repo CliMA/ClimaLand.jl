@@ -105,9 +105,9 @@ Base.@kwdef struct PModelConstants{FT}
     N_a::FT
     """Density of water (kg m^-3)"""
     ρ_water::FT
-    ""
+    "Minimum ratio of √VPD/ξ"
     vpd_ratio_min::FT
-    ""
+    "Maximum ratio of Γ*/ca"
     Γ_ratio_max::FT
 end
 
@@ -1508,7 +1508,7 @@ function intercellular_co2_pmodel(
     vpd_ratio_min::FT,
     Γ_ratio_max::FT,
 ) where {FT}
-    x = max(sqrt(VPD) / ξ, vpd_ratio_min)
+    x = max(sqrt(VPD) / max(ξ, eps(FT)), vpd_ratio_min)
     y = min(Γstar / ca_pp, Γ_ratio_max)
     return ca_pp * (1 + y * x) / (1 + x)
 end

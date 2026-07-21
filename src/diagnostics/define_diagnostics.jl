@@ -203,7 +203,7 @@ function define_diagnostics!(land_model, possible_diags)
         short_name = "sif",
         long_name = "Solar Induced Fluorescence",
         standard_name = "solar_induced_fluorescence",
-        units = "W m^-2",
+        units = "W m^-2 sr^-1 μm^-1",
         comments = "The fluorescence of leaves induced by solar radiation at 755nm. This quantity is correlated with photosynthesis activity.",
         compute! = (out, Y, p, t) ->
             compute_solar_induced_fluorescence!(out, Y, p, t, land_model),
