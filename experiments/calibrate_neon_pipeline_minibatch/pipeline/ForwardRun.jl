@@ -62,6 +62,26 @@ const _FORWARD_DEFAULTS = Dict{String, Float64}(
 
 _param(params, name) = Float64(get(params, name, _FORWARD_DEFAULTS[name]))
 
+# Read one NEON per-depth retention parameter into a subsurface field.
+# Linear-interpolate within the measured range; hold the deepest measured
+# value (flat) below it — matching Rosetta's Interpolations.Flat().
+function read_neon_profile(csv_path, colname, space, FT)
+    df = CSV.read(csv_path, DataFrame)
+    valid = .!ismissing.(df[!, colname])
+    z_raw = Float64.(df.depth[valid])
+    v_raw = Float64.(df[valid, colname])
+    si = sortperm(z_raw)                 # ascending z: most-negative → 0
+    z = z_raw[si]
+    v = v_raw[si]
+    z_bot = z[1]                         # deepest (most negative) measurement
+    v_bot = v[1]
+    zvals = ClimaCore.Fields.coordinate_field(space).z
+    return map(zvals) do zc
+        val = zc > z_bot ? linear_interpolation(z, v, zc) : v_bot
+        FT(val)
+    end
+end
+
 """
     forward_run(run; output_dir, params) -> (; figures_dir)
 
@@ -196,6 +216,35 @@ used_in = ["Land"]
         FT,
     )
 
+    # ── Override Rosetta retention params with NEON per-site profiles ──────────
+    # Mutate the fields of the SAME object in place so the shared reference used
+    # by the soil model, the canopy soil-moisture-stress model, and LandModel's
+    # check_land_equality (θ_high == ν, exact ==) all stay consistent. Do NOT
+    # build a second object here.
+    neon_dir = "/kiwi-data/Data/groupMembers/evametz/Neon/Neon_data"
+    sp = land_domain.space.subsurface
+
+    α_field = read_neon_profile(
+        joinpath(neon_dir, "NEON_all_sites_alpha_1_m_2cm_mean.csv"),
+        "$(site_id)_alpha_[1/m]", sp, FT)
+    n_field = read_neon_profile(
+        joinpath(neon_dir, "NEON_all_sites_n_-_2cm_mean.csv"),
+        "$(site_id)_n_[-]", sp, FT)
+
+    # hydrology_cm is a field of vanGenuchten structs → rebuild from α, n
+    retention_parameters.hydrology_cm .=
+        ((α, n) -> ClimaLand.Soil.vanGenuchten{FT}(; α, n)).(α_field, n_field)
+
+    retention_parameters.K_sat .= read_neon_profile(
+        joinpath(neon_dir, "NEON_all_sites_Ksat_m_s_2cm_mean.csv"),
+        "$(site_id)_Ksat_[m/s]", sp, FT)
+    retention_parameters.ν .= read_neon_profile(
+        joinpath(neon_dir, "NEON_all_sites_nu_m3_m3_2cm_mean.csv"),
+        "$(site_id)_nu_[m3/m3]", sp, FT)
+    retention_parameters.θ_r .= read_neon_profile(
+        joinpath(neon_dir, "NEON_all_sites_theta_r_m3_m3_2cm_mean.csv"),
+        "$(site_id)_theta_r_[m3/m3]", sp, FT)
+
     photosynthesis = PModel{FT}(land_domain, toml_dict_base)
     conductance = PModelConductance{FT}(toml_dict_base)
     soil_moisture_stress =
@@ -227,12 +276,8 @@ used_in = ["Land"]
     porosity_scale = FT(1)
     land.soil.parameters.ν .*= porosity_scale
 
-    # Optional per-run θ_r override (uniform over depth). Applied before solve!
-    # so both the set_ic! clamp (θ_r + 1e-4 floor) and the model dynamics use it.
-    if run.theta_r !== nothing
-        land.soil.parameters.θ_r .= FT(run.theta_r)
-        println("Overriding θ_r with config value: $(run.theta_r)")
-    end
+    # θ_r comes from the NEON CSV (read into retention_parameters above); no
+    # per-run uniform override.
 
     # ── Initial conditions (SOC × labile factor + NEON SWC profile) ──────────
     base_set_ic! = FluxnetSimulations.make_set_fluxnet_initial_conditions(
