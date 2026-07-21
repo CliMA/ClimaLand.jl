@@ -9,11 +9,11 @@ spinup_days  = 364
 preroll_days = 364
 n_iterations = 10
 cal_depth    = 0.02
-settingsdesc = "NeonExp_main20260706_wLabile_flagSpring_Gupta_3depths_364dSpinup"
+settingsdesc = "NeonExp_main20260706_wLab_flagS_Gup_3d_364d_ObsMedian"
 dt           = 900.0
 output_root  = "/kiwi-data/Data/groupMembers/evametz/ClimaLand_Output/Neon_calibration"
 results_csv  = "calibration_results.csv"
-run_identifier = "20260714_1700"       # stable id so restart_from can reference it
+run_identifier = "20260717_1700"       # stable id so restart_from can reference it
 
 [steps]
 generate_observations = true
@@ -55,12 +55,12 @@ upper = 10.0
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
 site  = "NEON-dcfs"
-start = 2018-01-01
+start = 2019-01-01
 stop  = 2024-12-31
 
 [[runs]]
 site  = "NEON-grsm"
-start = 2018-01-01
+start = 2019-01-01
 stop  = 2024-12-31
 
 [[runs]]

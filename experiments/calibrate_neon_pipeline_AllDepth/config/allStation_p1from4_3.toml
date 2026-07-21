@@ -54,36 +54,6 @@ upper = 10.0
 
 # ── A run that ALSO calibrates labile_depth_scale (5 params) ──
 [[runs]]
-site  = "NEON-ster"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-wood"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-wref"
-start = 2020-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-yell"
-start = 2020-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-scbi"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-serc"
-start = 2018-01-01
-stop  = 2024-12-31
-
-[[runs]]
-site  = "NEON-soap"
+site  = "NEON-stei"
 start = 2019-01-01
 stop  = 2024-12-31
