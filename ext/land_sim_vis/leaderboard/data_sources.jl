@@ -651,18 +651,65 @@ function get_mask_dict(data_loader::FlagshipCarbonMetricsDataLoader)
 end
 
 """
+    _fully_observed_month_starts(dates)
+
+Return the starts of the calendar months that `dates` spans in full.
+"""
+function _fully_observed_month_starts(dates)
+    first_date, last_date = first(dates), last(dates)
+    candidate_starts =
+        Dates.firstdayofmonth(first_date):Dates.Month(1):last_date
+    return filter(
+        month_start ->
+            first_date <= month_start &&
+                month_start + Dates.Month(1) <= last_date,
+        candidate_starts,
+    )
+end
+
+"""
+    _mid_month(month_start)
+
+Return the midpoint of the calendar month beginning at `month_start`.
+"""
+function _mid_month(month_start)
+    @assert month_start == Dates.firstdayofmonth(month_start)
+    month_length = (month_start + Dates.Month(1)) - month_start
+    return month_start + month_length ÷ 2
+end
+
+"""
     get_modis_lai_obs_var(; years = 2000:2020)
 
-MODIS LAI (Yuan et al., monthly 1°×1°, per-year files) as a single `OutputVar`
-spanning `years`, keyed `lai`, units `m^2 m^-2` (native, matching the model
-`lai` diagnostic). Latitude is sorted ascending and longitude shifted to
-[-180, 180] via `_preprocess_var`.
+MODIS LAI (Yuan et al., 1°×1°, per-year files) as a single `OutputVar` spanning
+`years`, keyed `lai`, units `m^2 m^-2`. Latitude is sorted ascending and
+longitude shifted to [-180, 180].
 
-The native samples are ~30.4-day spaced and calendar-unaligned, so they are
-linearly interpolated in time onto calendar month-starts to match the
-month-start-dated model `lai` diagnostic. Only interior month-starts are kept
-(endpoints would need extrapolation), so `years` should bracket the window of
-interest by at least one month on each side.
+The samples are postprocessed to match the convention the leaderboard and
+calibration use: a monthly mean dated on the first day of each month. The native
+samples do not follow it — within each year they run on a 30-day cadence from
+January 1 that drifts against the calendar and resets every January, so a month
+may hold two samples or none. In 2008 they fall on
+
+    01-01, 01-31, 03-01, 03-31, 04-30, 05-30, 06-29, 07-29, 08-28, 09-27, 10-27, 11-26
+
+with February and December empty and January and March doubled, so relabeling
+them to month starts directly would collide the doubled months and leave the
+empty ones unfilled. Three steps produce one first-of-month sample per month,
+traced on 2008:
+
+  - `_fully_observed_month_starts` keeps the months lying fully within the
+    record, so the next step never extrapolates (only the record's first and
+    last partial months are dropped).
+  - `resampled_as` linearly interpolates onto each month's `_mid_month`
+    (01-16, 02-15, 03-16, …), giving every month one value regardless of the
+    native gaps and doublings. For this near-piecewise-linear product the
+    midpoint equals the monthly mean to < 0.002 m^2 m^-2.
+  - `transform_dates(_, firstdayofmonth)` moves each midpoint to its month start
+    (01-01, 02-01, 03-01, …).
+
+`years` should bracket the window of interest by a month on each side, since the
+first step drops the record's partial end months.
 """
 function get_modis_lai_obs_var(; years = 2000:2020)
     paths = [
@@ -671,21 +718,19 @@ function get_modis_lai_obs_var(; years = 2000:2020)
     obs_var = ClimaAnalysis.OutputVar(paths, "lai")
     obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
 
-    # Resample onto calendar month-starts (interior only) by linear time
-    # interpolation, so seasonal averaging produces the same canonical
-    # month-start season dates as the model's monthly `lai` diagnostic.
+    # resampled_as takes its time coordinate as seconds since the reference date,
+    # not DateTime, so the midpoints are converted here.
     start_date = Dates.DateTime(obs_var.attributes["start_date"])
-    data_dates = ClimaAnalysis.dates(obs_var)
-    month_starts = filter(
-        d -> first(data_dates) <= d <= last(data_dates),
-        Dates.firstdayofmonth(first(data_dates)):Dates.Month(1):last(
-            data_dates,
-        ),
+    seconds_since_start(date) =
+        Float64(Dates.value(Dates.Second(date - start_date)))
+
+    month_starts = _fully_observed_month_starts(ClimaAnalysis.dates(obs_var))
+    obs_var = ClimaAnalysis.resampled_as(
+        obs_var;
+        time = seconds_since_start.(_mid_month.(month_starts)),
     )
-    target_seconds = [
-        Float64(Dates.value(Dates.Second(d - start_date))) for d in month_starts
-    ]
-    obs_var = ClimaAnalysis.resampled_as(obs_var; time = target_seconds)
+
+    obs_var = ClimaAnalysis.transform_dates(obs_var, Dates.firstdayofmonth)
 
     obs_var = _preprocess_var(obs_var)
     obs_var.attributes["short_name"] = "lai"
