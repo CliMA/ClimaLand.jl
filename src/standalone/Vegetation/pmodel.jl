@@ -395,10 +395,10 @@ function compute_full_pmodel_outputs(
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
-    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
-    mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci_c3, ci_c4, VPD, Kmm)
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD, vpd_ratio_min, Γ_ratio_max)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD, vpd_ratio_min, Γ_ratio_max,)
+    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
+    mc_c3, mc_c4 = compute_mc(Γstar, ci_c3, ci_c4, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -601,8 +601,8 @@ function update_pmodel_state(
 
     ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD, vpd_ratio_min,Γ_ratio_max,)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD, vpd_ratio_min, Γ_ratio_max,)
 
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
@@ -996,8 +996,8 @@ function compute_blended_pmodel_photosynthesis(
         constants.ΔHΓstar,
         constants.Γstar25,
     )
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
+    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD, constants.vpd_ratio_min, constants.Γ_ratio_max)
+    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD, constants.vpd_ratio_min, constants.Γ_ratio_max,)
     Kmm = compute_Kmm(
         T_canopy,
         P_air,
@@ -1047,8 +1047,8 @@ function compute_blended_pmodel_photosynthesis(
     Vcmax_opt_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
     Vcmax_opt_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
 
-    Ac_c3 = Vcmax_opt_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm)
-    Ac_c4 = Vcmax_opt_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm)
+    Ac_c3 = Vcmax_opt_c3 * c3_compute_mc(Γstar, ci_c3, Kmm)
+    Ac_c4 = Vcmax_opt_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
 
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
@@ -1590,8 +1590,8 @@ function compute_A0_daily(
     # Compute optimal ξ and intercellular CO2
     ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD, vpd_ratio_min, Γ_ratio_max)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD, vpd_ratio_min, Γ_ratio_max)
 
     # Compute mj and m' (with Jmax limitation)
     mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
@@ -1657,8 +1657,8 @@ function compute_chi(
 
     # Compute ci and chi
     VPD_safe = max(VPD, eps(FT))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
+    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe, vpd_ratio_min, Γ_ratio_max,)
+    ci_c4 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe, vpd_ratio_min, Γ_ratio_max,)
     return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
 end
 
