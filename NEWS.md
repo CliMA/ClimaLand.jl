@@ -2,6 +2,15 @@ ClimaLand.jl Release Notes
 ========================
 main
 ----
+
+v1.10.3
+-----
+- ![][badge-🐛bugfix] Fix the P-model intercellular CO2 (`ci`): guard the water-stress factor
+  `ξ` so `ci` no longer returns a `NaN` when `ξ = 0` (recovering the `ci = Γ*` limit), which
+  previously propagated through GPP, `An`, stomatal conductance, and the canopy turbulent
+  fluxes. PR [#1811](https://github.com/CliMA/ClimaLand.jl/pull/1811)
+- ![][badge-🔥behavioralΔ] Update the SIF `kd_p2` parameter (0.0273 → 0.0773, Tol et al. 2014)
+  and correct the `sif` diagnostic units to `W m^-2 sr^-1 μm^-1`. PR [#1812](https://github.com/CliMA/ClimaLand.jl/pull/1812)
 - ![][badge-🐛bugfix] Fix a C4 typo in `compute_chi`: the C4 intercellular CO2 used the C3
   dryness sensitivity `ξ_c3` instead of `ξ_c4`, biasing the blended χ (and hence the
   optimal-LAI water-limitation term) at C4 and mixed C3/C4 cells. PR [#1805](https://github.com/CliMA/ClimaLand.jl/pull/1805)
