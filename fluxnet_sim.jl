@@ -83,7 +83,11 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
                         T_init_override = nothing, met_path_override = nothing,
                         spinup_days::Int = 0, stop_year::Int = year,
                         init_state = nothing, return_state::Bool = false,
-                        multi_col::Bool = false)
+                        multi_col::Bool = false,
+                        multi_col_sites::Vector{String} =
+                            [replace(String(SITE_ID_VAL), "_" => "-")],
+                        multi_col_time_offsets = nothing,
+                        multi_col_atmos_h = nothing)
     met_path = isnothing(met_path_override) ? MET_NC_PATH : met_path_override
     # spinup_days>0 starts the run earlier (e.g. a 60-day spin-up).
     # stop_year>year runs CONTINUOUSLY through (stop_year, 12, 31) in a single
@@ -125,14 +129,89 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
         haskey(domain_override, :nelements)&& (nelements = domain_override.nelements)
         haskey(domain_override, :dz_tuple) && (dz_tuple = FT.(domain_override.dz_tuple))
     end
-    # multi_col=true runs on a MultiColumnFiniteDifferenceSpace (a single-point
-    # ensemble here); it returns a Column-typed domain so everything downstream is
-    # unchanged. See ColumnEnsemble in src/shared_utilities/Domains.jl.
+
+    # Multi-column run: gather per-site forcing paths, coordinates, and UTC offsets.
+    # Any `callmip_phase1_forcing` site works; coordinates come from `get_location`
+    # when a site file exists, else from the met file's `latitude`/`longitude`. The
+    # shared vertical mesh and parameters are the reference site's (SITE_ID_VAL).
+    if multi_col
+        multi_col_met_paths =
+            [ClimaLand.Artifacts.callmip_phase1_forcing_path(s) for s in multi_col_sites]
+        _has_loc(sym) =
+            hasmethod(FluxnetSimulations.get_location, Tuple{typeof(FT), Val{sym}})
+        locs = map(enumerate(multi_col_sites)) do (i, s)
+            sym = Symbol(replace(s, "-" => "_"))
+            if _has_loc(sym)
+                loc = FluxnetSimulations.get_location(FT, Val(sym))
+                (; long = FT(loc.long), lat = FT(loc.lat), offset = loc.time_offset)
+            else
+                lo, la = NCDataset(multi_col_met_paths[i], "r") do ds
+                    (Float64(ds["longitude"][1, 1]), Float64(ds["latitude"][1, 1]))
+                end
+                (; long = FT(lo), lat = FT(la), offset = nothing)
+            end
+        end
+        multi_col_longlats = [(l.long, l.lat) for l in locs]
+        multi_col_offsets = if !isnothing(multi_col_time_offsets)
+            collect(multi_col_time_offsets)
+        else
+            map(zip(multi_col_sites, locs)) do (s, l)
+                isnothing(l.offset) &&
+                    error("No get_location for multi_col site $s; pass \
+                           multi_col_time_offsets to specify its UTC offset.")
+                l.offset
+            end
+        end
+        # Per-column atmospheric reference height (tower measurement height): each
+        # site's get_fluxtower_height when defined, else a required override vector.
+        _has_height(sym) = hasmethod(
+            FluxnetSimulations.get_fluxtower_height,
+            Tuple{typeof(FT), Val{sym}},
+        )
+        multi_col_heights = if !isnothing(multi_col_atmos_h)
+            collect(multi_col_atmos_h)
+        else
+            map(multi_col_sites) do s
+                sym = Symbol(replace(s, "-" => "_"))
+                _has_height(sym) || error(
+                    "No get_fluxtower_height for multi_col site $s; pass \
+                     multi_col_atmos_h to specify its atmos_h.",
+                )
+                FT(FluxnetSimulations.get_fluxtower_height(FT, Val(sym)).atmos_h)
+            end
+        end
+        # Per-column site geometry (SAI, rooting_depth, canopy height): each site's
+        # get_parameters when defined, else the reference site's value. These are
+        # site-intrinsic physical attributes, not shared calibratable parameters.
+        multi_col_geom = map(multi_col_sites) do s
+            sym = Symbol(replace(s, "-" => "_"))
+            if hasmethod(
+                FluxnetSimulations.get_parameters,
+                Tuple{typeof(FT), Val{sym}},
+            )
+                p = FluxnetSimulations.get_parameters(FT, Val(sym))
+                (;
+                    SAI = FT(p.SAI),
+                    rooting_depth = FT(p.rooting_depth),
+                    h_canopy = FT(p.h_canopy),
+                )
+            else
+                (;
+                    SAI = FT(_SITE_PARAMS.SAI),
+                    rooting_depth = FT(_SITE_PARAMS.rooting_depth),
+                    h_canopy = FT(_SITE_PARAMS.h_canopy),
+                )
+            end
+        end
+    end
+    # multi_col=true runs on a MultiColumnFiniteDifferenceSpace (one column per site);
+    # it returns a Column-typed domain so everything downstream is unchanged. See
+    # ColumnEnsemble in src/shared_utilities/Domains.jl.
     land_domain = if multi_col
         ColumnEnsemble(;
             zlim      = (FT(zmin), FT(zmax)),
             nelements, dz_tuple,
-            longlat   = (long, lat),
+            longlat   = multi_col_longlats,
         )
     else
         Column(;
@@ -143,20 +222,52 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
     end
     canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 
-    forcing = FluxnetSimulations.prescribed_forcing_netcdf(
-        met_path, lat, long, time_offset, atmos_h,
-        start_date, local_toml, FT,
-    )
+    # multi_col=true remaps each site's forcing onto its column of the N-point surface
+    # via a MultiColumnDataHandler, with per-column UTC offsets and a per-column
+    # atmos_h (a surface Field of tower heights scattered in multi_col_sites order).
+    forcing = if multi_col
+        atmos_h_field = ClimaCore.Fields.array2field(
+            FT.(multi_col_heights),
+            land_domain.space.surface,
+        )
+        FluxnetSimulations.prescribed_forcing_netcdf_multicol(
+            multi_col_met_paths, land_domain.space.surface, atmos_h_field,
+            start_date, local_toml, FT;
+            hour_offset_from_UTC = multi_col_offsets,
+        )
+    else
+        FluxnetSimulations.prescribed_forcing_netcdf(
+            met_path, lat, long, time_offset, atmos_h,
+            start_date, local_toml, FT,
+        )
+    end
 
-    LAI, maxLAI = NCDataset(met_path, "r") do ds
-        time_vals = ds["time"][:]
-        lai_data  = Float64.(coalesce.(ds["LAI_alternative"][1, 1, :], NaN))
-        lai_secs  = Float64[
-            Second(t - Hour(time_offset) - start_date).value
-            for t in time_vals
-        ]
-        valid = .!isnan.(lai_data)
-        TimeVaryingInput(lai_secs[valid], lai_data[valid]), maximum(lai_data[valid])
+    # LAI: single-col reads one met file into a scalar-in-space TimeVaryingInput;
+    # multi_col builds a per-column (space+time) LAI from each site's LAI_alternative
+    # via the same MultiColumnDataHandler machinery as the forcing, plus a per-site
+    # `maxLAI` vector (same max-of-valid reduction) used for the per-column RAI below.
+    if multi_col
+        LAI = FluxnetSimulations.prescribed_LAI_netcdf_multicol(
+            multi_col_met_paths, land_domain.space.surface, start_date, FT;
+            hour_offset_from_UTC = multi_col_offsets,
+        )
+        maxLAI = map(multi_col_met_paths) do p
+            NCDataset(p, "r") do ds
+                lai_data = Float64.(coalesce.(ds["LAI_alternative"][1, 1, :], NaN))
+                maximum(lai_data[.!isnan.(lai_data)])
+            end
+        end
+    else
+        LAI, maxLAI = NCDataset(met_path, "r") do ds
+            time_vals = ds["time"][:]
+            lai_data  = Float64.(coalesce.(ds["LAI_alternative"][1, 1, :], NaN))
+            lai_secs  = Float64[
+                Second(t - Hour(time_offset) - start_date).value
+                for t in time_vals
+            ]
+            valid = .!isnan.(lai_data)
+            TimeVaryingInput(lai_secs[valid], lai_data[valid]), maximum(lai_data[valid])
+        end
     end
 
     (; soil_ν, θ_r, soil_K_sat, soil_vg_n, soil_vg_α,
@@ -181,7 +292,32 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
     haskey(rad_overrides, :α_PAR_leaf) && (α_PAR_leaf = FT(rad_overrides.α_PAR_leaf))
     haskey(rad_overrides, :ϵ_canopy)   && (ϵ_canopy   = FT(rad_overrides.ϵ_canopy))
 
-    RAI = maxLAI * f_root_to_shoot
+    # RAI = maxLAI * f_root_to_shoot. Single-col: scalars. Multi-col: scatter each
+    # per-column quantity into a surface Field. RAI/SAI share one concrete Field type
+    # (PrescribedAreaIndices{FS} requires it). Canopy height and rooting depth are
+    # site geometry and vary per column too (biomass height/rooting_depth accept a
+    # Field); making height a Field also gives per-column canopy roughness.
+    if multi_col
+        _sfc = land_domain.space.surface
+        RAI = ClimaCore.Fields.array2field(FT.(maxLAI) .* FT(f_root_to_shoot), _sfc)
+        SAI_bio = ClimaCore.Fields.array2field(
+            FT[g.SAI for g in multi_col_geom],
+            _sfc,
+        )
+        rooting_depth_bio = ClimaCore.Fields.array2field(
+            FT[g.rooting_depth for g in multi_col_geom],
+            _sfc,
+        )
+        h_canopy_bio = ClimaCore.Fields.array2field(
+            FT[g.h_canopy for g in multi_col_geom],
+            _sfc,
+        )
+    else
+        RAI = maxLAI * f_root_to_shoot
+        SAI_bio = SAI
+        rooting_depth_bio = rooting_depth
+        h_canopy_bio = h_canopy
+    end
 
     prognostic_land_components =
         with_co2 ? (:canopy, :snow, :soil, :soilco2) : (:canopy, :snow, :soil)
@@ -230,7 +366,8 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
     )
 
     biomass = Canopy.PrescribedBiomassModel{FT}(;
-        LAI, SAI, RAI, rooting_depth, height = h_canopy,
+        LAI, SAI = SAI_bio, RAI,
+        rooting_depth = rooting_depth_bio, height = h_canopy_bio,
     )
     canopy = Canopy.CanopyModel{FT}(
         canopy_domain,
@@ -269,6 +406,36 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
         end
     end
 
+    # Per-column initial temperature for multi_col: each column starts at its own
+    # site's Tair at the start of `year` (same read as T_init_K), scattered into a
+    # surface Field (canopy energy) and a subsurface Field (soil internal energy).
+    # Single-col keeps the scalar T_init_K path unchanged.
+    T_init_sfc = nothing
+    T_init_sub = nothing
+    if multi_col
+        Tinit_vec = if !isnothing(T_init_override)
+            fill(FT(T_init_override), length(multi_col_met_paths))
+        else
+            map(multi_col_met_paths) do p
+                NCDataset(p, "r") do ds
+                    t_dates = DateTime.(ds["time"][:])
+                    idx_yr  = findfirst(t -> Dates.year(t) == year, t_dates)
+                    FT(
+                        isnothing(idx_yr) ? 283.15 :
+                        Float64(coalesce(ds["Tair"][1, 1, idx_yr], 283.15)),
+                    )
+                end
+            end
+        end
+        _sfc = land_domain.space.surface
+        _sub = land_domain.space.subsurface
+        _Nv = nelements   # cell-center vertical levels of the shared mesh
+        _N = length(Tinit_vec)
+        T_init_sfc = ClimaCore.Fields.array2field(collect(Tinit_vec), _sfc)
+        T_init_sub = ClimaCore.Fields.array2field(
+            repeat(reshape(collect(Tinit_vec), 1, _N), _Nv, 1), _sub)
+    end
+
     function set_ic!(Y, p, t, model)
         FT_l = eltype(Y.soil.ρe_int)
         if isnothing(init_state)
@@ -281,10 +448,10 @@ function run_prior_year(year; param_overrides::Dict = Dict{String,Float64}(),
                 Y.soil.ϑ_l, Y.soil.θ_i,
                 soil.parameters.ρc_ds, soil.parameters.earth_param_set)
             Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
-                Y.soil.θ_i, ρc_s, FT_l(T_init_K),
+                Y.soil.θ_i, ρc_s, multi_col ? T_init_sub : FT_l(T_init_K),
                 soil.parameters.earth_param_set)
             Y.snow.S .= FT_l(0); Y.snow.S_l .= FT_l(0); Y.snow.U .= FT_l(0)
-            Y.canopy.energy.T .= FT_l(T_init_K)
+            Y.canopy.energy.T .= multi_col ? T_init_sfc : FT_l(T_init_K)
             Y.canopy.hydraulics.ϑ_l .= model.canopy.hydraulics.parameters.ν
         else
             # Restart the WATER + ENERGY (temperature) prognostic states from a

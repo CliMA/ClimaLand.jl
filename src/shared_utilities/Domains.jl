@@ -251,17 +251,19 @@ end
     ColumnEnsemble(;
         zlim::Tuple{FT, FT},
         nelements::Int,
-        longlat::Tuple{FT, FT},
+        longlat,
         dz_tuple::Tuple{FT, FT},
         device = ClimaComms.device(),
     ) where {FT}
 
 Construct a soil-column domain backed by a ClimaCore
-`MultiColumnFiniteDifferenceSpace` (an ensemble of independent vertical columns
-at arbitrary (long, lat) locations; here a single point at `longlat`).
+`MultiColumnFiniteDifferenceSpace` (an ensemble of N independent vertical columns
+at arbitrary (long, lat) locations). `longlat` is either a single `(long, lat)`
+tuple (one column) or a vector of `(long, lat)` tuples (N columns). All columns
+share one vertical mesh, so they must share `zlim`, `nelements`, and `dz_tuple`.
 
 Returns a [`Column`](@ref) whose stored spaces are the multi-column
-subsurface/face spaces and the `PointCloudLevelSpace` surface, so every
+subsurface/face spaces and the `PointCloudSpace` surface, so every
 `Column`-based model constructor applies unchanged. The vertical mesh matches
 [`Column`](@ref): `GeneralizedExponentialStretching` with target spacings
 `dz_tuple = (dz_bottom, dz_top)`.
@@ -269,7 +271,7 @@ subsurface/face spaces and the `PointCloudLevelSpace` surface, so every
 function ColumnEnsemble(;
     zlim::Tuple{FT, FT},
     nelements::Int,
-    longlat::Tuple{FT, FT},
+    longlat,
     dz_tuple::Tuple{FT, FT},
     device = ClimaComms.device(),
 ) where {FT}
@@ -277,7 +279,13 @@ function ColumnEnsemble(;
     @assert zlim[2] <= 0
     boundary_names = (:bottom, :top)
 
-    long, lat = longlat
+    # `longlat` is either one (long, lat) tuple (single column) or a vector of
+    # them (N columns). All columns share the vertical mesh built below.
+    longlats = longlat isa AbstractVector ? longlat : [longlat]
+    points = [
+        ClimaCore.Geometry.LatLongPoint{FT}(FT(lat), FT(long)) for
+        (long, lat) in longlats
+    ]
     z_min, z_max = zlim
 
     vertdomain = ClimaCore.Domains.IntervalDomain(
@@ -297,13 +305,11 @@ function ColumnEnsemble(;
 
     subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
         FT;
-        # TODO: currently a single point; extend `points` for genuine N>1 sites.
-        points = [ClimaCore.Geometry.LatLongPoint{FT}(lat, long)],
+        points,
         z_elem = nelements,
         z_min,
         z_max,
         device,
-        context = ClimaComms.SingletonCommsContext(device),
         z_mesh,
         staggering = ClimaCore.Grids.CellCenter(),
     )
@@ -924,7 +930,7 @@ end
     obtain_surface_space(cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace)
 
 Returns the top level (surface) face space of the multi-column center space `cs`,
-a `PointCloudLevelSpace`.
+a `PointCloudSpace`.
 """
 function obtain_surface_space(
     cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace,
@@ -1058,7 +1064,7 @@ function get_lat(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
-        ClimaCore.Spaces.PointCloudLevelSpace,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :lat)
@@ -1089,7 +1095,7 @@ function get_long(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
-        ClimaCore.Spaces.PointCloudLevelSpace,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)

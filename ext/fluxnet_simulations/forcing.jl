@@ -745,3 +745,213 @@ function FluxnetSimulations.prescribed_forcing_netcdf(
         return (; atmos, radiation)
     end
 end
+
+# ── Shared multi-column TimeVaryingInput machinery ─────────────────────────────
+# `_make_multicol_tvi` returns a `tvi(varnames; compose, preprocess)` closure used by both
+# `prescribed_forcing_netcdf_multicol` and `prescribed_LAI_netcdf_multicol`.
+#
+# The files store FLUXNET local standard time; each column's dates are converted to UTC by
+# the `DataSource` `time_transform` (a per-column local→UTC shift), so the offset is
+# baked into the source and follows its file through the DataHandler's column matching.
+function _make_multicol_tvi(
+    met_nc_paths,
+    surface_space,
+    start_date;
+    hour_offset_from_UTC = 0,
+    time_interpolation_method = LinearInterpolation(),
+)
+    ncols = length(met_nc_paths)
+    offs =
+        hour_offset_from_UTC isa AbstractVector ? hour_offset_from_UTC :
+        fill(hour_offset_from_UTC, ncols)
+    length(offs) == ncols ||
+        error("hour_offset_from_UTC must be a scalar or a length-$ncols vector")
+    # Per-column local-standard-time → UTC shift, applied by the reader as it reads each
+    # column's dates. Comprehension binds a fresh `o` per column, so each closure captures
+    # its own offset.
+    shifts = [date -> date - Dates.Hour(o) for o in offs]
+
+    function tvi(varnames; compose = identity, preprocess = identity)
+        varnames isa AbstractString && (varnames = [varnames])
+        # One `DataSource` per (variable, column): the outer vector selects the variable
+        # (its order sets `compose`'s argument order), the inner vector holds that variable's
+        # columns in `met_nc_paths` order. `MultiColumnDataHandler` matches each column to
+        # `surface_space` by location.
+        dataset_sources = [
+            [
+                DataSource(
+                    met_nc_paths[col],
+                    varname;
+                    time_transform = shifts[col],
+                ) for col in 1:ncols
+            ] for varname in varnames
+        ]
+        dh = DataHandling.MultiColumnDataHandler(
+            dataset_sources,
+            surface_space;
+            start_date,
+            compose_function = compose,
+            file_reader_kwargs = (; preprocess_func = preprocess),
+        )
+        return TimeVaryingInput(dh; method = time_interpolation_method)
+    end
+    return tvi
+end
+
+"""
+    prescribed_forcing_netcdf_multicol(met_nc_paths,
+                                       surface_space,
+                                       atmos_h,
+                                       start_date,
+                                       toml_dict::CP.ParamDict,
+                                       FT;
+                                       split_precip = true,
+                                       gustiness = 1,
+                                       time_interpolation_method = LinearInterpolation())
+
+Multi-column analogue of [`prescribed_forcing_netcdf`](@ref): build the
+`PrescribedAtmosphere` and `PrescribedRadiativeFluxes` for an N-column simulation
+where each column reads its own per-site NetCDF met file.
+
+`met_nc_paths` is a vector of N NetCDF paths (one column per file). `surface_space`
+is the N-point `PointCloudSpace` surface of a
+[`ColumnEnsemble`](@ref)/`MultiColumnFiniteDifferenceSpace` domain. Each forcing
+variable is remapped onto `surface_space` with a
+`ClimaUtilities.DataHandling.MultiColumnDataHandler`, which matches files to
+columns by each file's scalar `longitude`/`latitude` variables (so `met_nc_paths`
+need not be in column order) and, for surface data (no `z` dimension), copies the
+per-column value into the field. The per-column solar zenith angle is computed
+from the surface coordinate field (`get_long`/`get_lat`).
+
+`MultiColumnDataHandler` matches columns to files within a small coordinate
+tolerance, so each site's `get_location` coordinates must agree with its file's
+`longitude`/`latitude` to a few decimals.
+
+The NetCDF `time` is stored in FLUXNET local standard time and converted to UTC
+per column by `hour_offset_from_UTC` (a scalar applied to every column, or a
+length-N vector giving each column's offset in `met_nc_paths` order). The shift is
+applied by each column's `DataSource` `time_transform`, so it follows the file
+through `MultiColumnDataHandler`'s location-based column matching.
+"""
+function FluxnetSimulations.prescribed_forcing_netcdf_multicol(
+    met_nc_paths,
+    surface_space,
+    atmos_h,
+    start_date,
+    toml_dict::CP.ParamDict,
+    FT;
+    hour_offset_from_UTC = 0,
+    split_precip = true,
+    gustiness = 1,
+    time_interpolation_method = LinearInterpolation(),
+)
+    earth_param_set = LP.LandParameters(toml_dict)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    # One space+time TimeVaryingInput per (possibly composed) variable, remapped onto the
+    # N-point surface via a MultiColumnDataHandler whose dates are converted to UTC. The
+    # builder is shared with `prescribed_LAI_netcdf_multicol`; see `_make_multicol_tvi`.
+    tvi = _make_multicol_tvi(
+        met_nc_paths,
+        surface_space,
+        start_date;
+        hour_offset_from_UTC,
+        time_interpolation_method,
+    )
+
+    atmos_T = tvi("Tair")
+    atmos_u = tvi("Wind")
+    atmos_q = tvi("Qair")
+    atmos_P = tvi("Psurf")
+    SW_d = tvi("SWdown")
+    LW_d = tvi("LWdown")
+    c_co2 = tvi("CO2air"; preprocess = x -> x * 1e-6)   # ppm -> mol/mol
+
+    if split_precip
+        # Precip is kg/m^2/s; /1000 -> m/s volume flux, negated (downward into land).
+        # snow_precip_fraction takes T in °C and VPD in hPa; explicit `.`-broadcast
+        # (not `@.`) because it has a `thermo_params` keyword argument.
+        atmos_P_liq = tvi(
+            ["Precip", "Tair", "VPD"];
+            compose = (P, T, VPD) ->
+                -(P ./ 1000) .*
+                (1 .- snow_precip_fraction.(T .- 273.15, VPD; thermo_params)),
+        )
+        atmos_P_snow = tvi(
+            ["Precip", "Tair", "VPD"];
+            compose = (P, T, VPD) ->
+                -(P ./ 1000) .*
+                snow_precip_fraction.(T .- 273.15, VPD; thermo_params),
+        )
+    else
+        atmos_P_liq = tvi("Precip"; preprocess = x -> -x / 1000)
+        atmos_P_snow = tvi("Precip"; preprocess = x -> zero(x))
+    end
+
+    atmos = ClimaLand.PrescribedAtmosphere(
+        atmos_P_liq,
+        atmos_P_snow,
+        atmos_T,
+        atmos_u,
+        atmos_q,
+        atmos_P,
+        start_date,
+        atmos_h,
+        toml_dict;
+        c_co2,
+        gustiness = FT(gustiness),
+    )
+
+    # Per-column zenith: field-valued lat/long from the surface space.
+    cos_zenith_angle =
+        (t, s) -> default_cos_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            longitude = ClimaLand.Domains.get_long(surface_space),
+            latitude = ClimaLand.Domains.get_lat(surface_space),
+        )
+    radiation = ClimaLand.PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        cosθs = cos_zenith_angle,
+        toml_dict = toml_dict,
+    )
+    return (; atmos, radiation)
+end
+
+"""
+    prescribed_LAI_netcdf_multicol(met_nc_paths,
+                                   surface_space,
+                                   start_date,
+                                   FT;
+                                   hour_offset_from_UTC = 0,
+                                   time_interpolation_method = LinearInterpolation())
+
+Multi-column analogue of the single-column LAI read: build a per-column surface
+`TimeVaryingInput` of leaf area index from the `LAI_alternative` variable of each site's
+NetCDF met file in `met_nc_paths`, remapped onto the N-point `surface_space` via a
+`ClimaUtilities.DataHandling.MultiColumnDataHandler` (the same machinery used by
+[`prescribed_forcing_netcdf_multicol`](@ref)). Each column's dates are converted from
+FLUXNET local standard time to UTC using `hour_offset_from_UTC` (a scalar or length-N
+vector), matching the single-column read's `-Hour(time_offset)` shift.
+"""
+function FluxnetSimulations.prescribed_LAI_netcdf_multicol(
+    met_nc_paths,
+    surface_space,
+    start_date,
+    FT;
+    hour_offset_from_UTC = 0,
+    time_interpolation_method = LinearInterpolation(),
+)
+    tvi = _make_multicol_tvi(
+        met_nc_paths,
+        surface_space,
+        start_date;
+        hour_offset_from_UTC,
+        time_interpolation_method,
+    )
+    return tvi("LAI_alternative")
+end

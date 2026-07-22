@@ -115,7 +115,7 @@ function initialize_jacobian(Y::ClimaCore.Fields.FieldVector)
         space::Union{
             Spaces.PointSpace,
             Spaces.SpectralElementSpace2D,
-            Spaces.PointCloudLevelSpace,
+            Spaces.PointCloudSpace,
         },
         FT,
     ) = MatrixFields.DiagonalMatrixRow{FT}

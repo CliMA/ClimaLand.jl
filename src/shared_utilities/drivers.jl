@@ -83,7 +83,7 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 
 
 """
-    PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosphere{FT, HT <: Union{FT, Fields.Field}, ...} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
@@ -98,6 +98,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct PrescribedAtmosphere{
     FT,
+    HT <: Union{FT, Fields.Field},
     LP <: AbstractTimeVaryingInput,
     SP <: AbstractTimeVaryingInput,
     TA <: AbstractTimeVaryingInput,
@@ -124,8 +125,8 @@ struct PrescribedAtmosphere{
     c_co2::CA
     "Start date - the datetime corresponding to t=0 for the simulation"
     start_date::DT
-    "Reference height (m), relative to surface elevation"
-    h::FT
+    "Reference height (m), relative to surface elevation; a scalar, or a surface Field for per-column heights"
+    h::HT
     "Minimum wind speed (gustiness; m/s)"
     gustiness::FT
     "Thermodynamic parameters"
@@ -138,18 +139,19 @@ struct PrescribedAtmosphere{
         q,
         P,
         start_date,
-        h::FT,
+        h,
         toml_dict::CP.ParamDict;
-        gustiness = FT(1),
+        gustiness = 1,
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
-    ) where {FT}
+    )
+        FT = h isa Fields.Field ? eltype(h) : typeof(h)
         earth_param_set = LP.LandParameters(toml_dict)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
-        return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
+        return new{FT, typeof(h), typeof.(args)..., typeof(thermo_params)}(
             args...,
             h,
-            gustiness,
+            FT(gustiness),
             thermo_params,
         )
     end

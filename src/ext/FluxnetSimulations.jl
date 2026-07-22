@@ -4,6 +4,10 @@ function prescribed_forcing_fluxnet end
 
 function prescribed_forcing_netcdf end
 
+function prescribed_forcing_netcdf_multicol end
+
+function prescribed_LAI_netcdf_multicol end
+
 function prescribed_LAI_fluxnet end
 
 function make_set_fluxnet_initial_conditions end

@@ -9,7 +9,7 @@ Pilegaard, K., et al.: An 8-year (2000–2007) record of net ecosystem exchange 
 with an annual mean of −65 g C m−2 yr−1 at Sorø beech forest, Denmark,
 Biogeosciences, 8, 1405–1418, 2011.
 
-Latitude: 55.49°N, Longitude: 11.64°E, UTC offset: +1 (CET, no DST in FLUXNET convention)
+Latitude: 55.48587°N, Longitude: 11.64464°E, UTC offset: +1 (CET, no DST in FLUXNET convention)
 =#
 
 """
@@ -46,8 +46,8 @@ function FluxnetSimulations.get_location(
     FT,
     ::Val{:DK_Sor};
     time_offset = 1,
-    lat = FT(55.49),
-    long = FT(11.64),
+    lat = FT(55.48587),
+    long = FT(11.64464),
 )
     return (; time_offset, lat, long)
 end

@@ -2,6 +2,8 @@ module FluxnetSimulationsExt
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.DataHandling
+import ClimaUtilities.FileReaders: DataSource
 import ClimaUtilities.TimeManager: ITime, date
 using Thermodynamics
 using Dates
