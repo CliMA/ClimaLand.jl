@@ -63,12 +63,7 @@ function setup_model(
         start_date,
         stop_date,
     )
-       land = LandModel{FT}(
-            forcing,
-            toml_dict,
-            domain,
-            Δt;
-        )
+    land = LandModel{FT}(forcing, toml_dict, domain, Δt;)
     return land
 end
 
@@ -90,10 +85,23 @@ diagnostics = ClimaLand.default_diagnostics(
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
     reduction_period = :monthly,
     reduction_type = :average,
-   # reduction_period =:every_dt,
-   #     dt = Δt ,
-   #     reduction_type = :instantaneous,
-    output_vars = ["shf", "lhf", "msf", "gpp", "gs_co2", "chi", "ci", "xi", "ct", "clhf", "cshf", "gs", "gl", "gh", "tair", "swn", "lwn", "ws", "swu", "lwu"],
+    # reduction_period =:every_dt,
+    #     dt = Δt ,
+    #     reduction_type = :instantaneous,
+    output_vars = [
+        "shf",
+        "lhf",
+        "clhf",
+        "swu",
+        "lwu",
+        "sr",
+        "ssr",
+        "precip",
+        "et",
+        "lai",
+    ],
+    #output_vars = ["shf", "lhf", "msf", "gs_co2", "clhf", "cshf", "gs", "gl", "gh", "swu", "lwu", "sr", "ssr", "precip", "et", "lai"],
+
 );
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics);
@@ -106,10 +114,16 @@ simulation =
 CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation);
 
-LandSimVis.make_timeseries(simulation; savedir = root_path)
+LandSimVis.make_timeseries(
+    simulation;
+    savedir = root_path,
+    short_names = ["lai"],
+)
 LandSimVis.make_leaderboard_plots(
     model,
     domain,
     diagnostics,
     start_date,
-    stop_date;savedir = root_path)
+    stop_date;
+    savedir = root_path,
+)

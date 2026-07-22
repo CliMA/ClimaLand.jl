@@ -287,7 +287,10 @@ and dark respiration at the canopy level (`Rd`), and
 """
 ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :OptVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
-    NamedTuple{(:Rd, :GPP, :An, :gs_co2, :ci, :χ, :ξ), Tuple{FT, FT, FT, FT, FT, FT, FT}},
+    NamedTuple{
+        (:Rd, :GPP, :An, :gs_co2, :ci, :χ, :ξ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT},
+    },
     NamedTuple{
         (
             :ξ_opt_c3,

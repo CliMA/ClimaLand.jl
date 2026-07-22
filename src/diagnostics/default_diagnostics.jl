@@ -686,6 +686,7 @@ function get_short_diagnostics(model::LandModel)
         "swu",
         "swd",
         "shf",
+        "clhf",
         "tair",
         "precip",
         "lhf",
@@ -701,7 +702,8 @@ function get_short_diagnostics(model::LandModel)
         "gl",
         "ci",
         "xi",
-        "chi"
+        "chi",
+        "et",
     ]
 
     # Add conditional diagnostics based on soil runoff type, since this

@@ -204,7 +204,7 @@ boundary_var_types(
             :ρτyz,
             :buoyancy_flux,
             :gh,
-            :ustar
+            :ustar,
         ),
         Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },

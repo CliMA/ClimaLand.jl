@@ -831,9 +831,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = PrescribedBiomassModel{FT}(domain, LAI, toml_dict),
-    turbulent_flux_parameterization = LAIBasedRoughness(
-        toml_dict,
-    ),
+    turbulent_flux_parameterization = LAIBasedRoughness(toml_dict),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing
@@ -929,9 +927,7 @@ function CanopyModel{FT}(
     hydraulics = PlantHydraulicsModel{FT}(domain, toml_dict),
     energy = BigLeafEnergyModel{FT}(toml_dict),
     biomass = ZhouOptimalLAIModel{FT}(domain, toml_dict),
-    turbulent_flux_parameterization = LAIBasedRoughness(
-        toml_dict,
-    ),
+    turbulent_flux_parameterization = LAIBasedRoughness(toml_dict),
     sif = Lee2015SIFModel{FT}(toml_dict),
 ) where {FT}
     (; atmos, radiation, ground) = forcing

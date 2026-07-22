@@ -259,7 +259,10 @@ function ClimaLand.surface_roughness_model(
     sfp = model.boundary_conditions.turbulent_flux_parameterization
     LAI = p.canopy.biomass.area_index.leaf
     return @. lazy(
-        SurfaceFluxes.ConstantRoughnessParams{FT}(sfp.z_0_coeff * min(LAI, 2)+sfp.z_0min, sfp.z_0_coeff*min(LAI,2)+ sfp.z_0min),
+        SurfaceFluxes.ConstantRoughnessParams{FT}(
+            sfp.z_0_coeff * min(LAI, 2) + sfp.z_0min,
+            sfp.z_0_coeff * min(LAI, 2) + sfp.z_0min,
+        ),
     )
 end
 
@@ -507,7 +510,7 @@ boundary_var_types(
             :ρτyz,
             :buoyancy_flux,
             :gh,
-            :ustar
+            :ustar,
         ),
         Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },

@@ -206,10 +206,10 @@ function compute_stomatal_conductance!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = 1/(p.canopy.conductance.r_stomata_canopy + eps(FT))
+        @. out = 1 / (p.canopy.conductance.r_stomata_canopy + eps(FT))
         return out
     else
-        @. out = 1/(p.canopy.conductance.r_stomata_canopy + eps(FT))
+        @. out = 1 / (p.canopy.conductance.r_stomata_canopy + eps(FT))
     end
 end
 
@@ -225,10 +225,16 @@ function compute_leaf_conductance!(
     if isnothing(out)
         out = zeros(canopy.domain.space.surface) # Allocates
         fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
-        @. out = p.canopy.turbulent_fluxes.ustar * p.canopy.biomass.area_index.leaf * leaf_Cd
+        @. out =
+            p.canopy.turbulent_fluxes.ustar *
+            p.canopy.biomass.area_index.leaf *
+            leaf_Cd
         return out
     else
-        @. out = p.canopy.turbulent_fluxes.ustar * p.canopy.biomass.area_index.leaf * leaf_Cd
+        @. out =
+            p.canopy.turbulent_fluxes.ustar *
+            p.canopy.biomass.area_index.leaf *
+            leaf_Cd
     end
 end
 
@@ -238,29 +244,13 @@ end
     CanopyModel,
 } p.canopy.turbulent_fluxes.gh
 
-@diagnostic_compute "ci_pp" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.InstVars.ci
+@diagnostic_compute "ci_pp" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.InstVars.ci
 
-@diagnostic_compute "gs_co2" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.InstVars.gs_co2
+@diagnostic_compute "gs_co2" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.InstVars.gs_co2
 
-@diagnostic_compute "xi" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.InstVars.ξ
+@diagnostic_compute "xi" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.InstVars.ξ
 
-@diagnostic_compute "pp_ratio" Union{
-    SoilCanopyModel,
-    LandModel,
-    CanopyModel,
-} p.canopy.photosynthesis.InstVars.χ
+@diagnostic_compute "pp_ratio" Union{SoilCanopyModel, LandModel, CanopyModel} p.canopy.photosynthesis.InstVars.χ
 
 function compute_canopy_transpiration!(
     out,

@@ -56,8 +56,7 @@ function MoninObukhovCanopyFluxes(toml_dict, height)
     return MoninObukhovCanopyFluxes{FT, F}(z_0min, z_0m, z_0b, displ, Cd)
 end
 
-struct LAIBasedRoughness{FT} <:
-       AbstractCanopyFluxParameterization{FT}
+struct LAIBasedRoughness{FT} <: AbstractCanopyFluxParameterization{FT}
     "Minimum roughness length (m)"
     z_0min::FT
     "Canopy roughness coefficient"

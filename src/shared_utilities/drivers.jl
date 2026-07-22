@@ -463,9 +463,30 @@ function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
     return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, gh, ustar)
 end
 function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
-    (lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux, gh, ustar) =
-        compute_turbulent_fluxes_at_a_point(args...)
-    return (; lhf, shf, vapor_flux, ∂lhf∂T, ∂shf∂T, ρτxz, ρτyz, buoyancy_flux, gh, ustar)
+    (
+        lhf,
+        shf,
+        vapor_flux,
+        ∂lhf∂T,
+        ∂shf∂T,
+        ρτxz,
+        ρτyz,
+        buoyancy_flux,
+        gh,
+        ustar,
+    ) = compute_turbulent_fluxes_at_a_point(args...)
+    return (;
+        lhf,
+        shf,
+        vapor_flux,
+        ∂lhf∂T,
+        ∂shf∂T,
+        ρτxz,
+        ρτyz,
+        buoyancy_flux,
+        gh,
+        ustar,
+    )
 end
 
 """

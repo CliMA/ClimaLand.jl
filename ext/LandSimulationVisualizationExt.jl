@@ -80,19 +80,24 @@ function LandSimVis.make_leaderboard_plots(
     short_names = [d.variable.short_name for d in diagnostics]
     diagnostics_folder_path = diagdir
     leaderboard_base_path = savedir
-    for data_source in leaderboard_data_sources
-        compute_monthly_leaderboard(
-            leaderboard_base_path,
-            diagnostics_folder_path,
-            data_source,
-        )
-        compute_seasonal_leaderboard(
-            leaderboard_base_path,
-            diagnostics_folder_path,
-            data_source,
-        )
-    end
+    # for data_source in leaderboard_data_sources
+    #     compute_monthly_leaderboard(
+    #         leaderboard_base_path,
+    #         diagnostics_folder_path,
+    #         data_source,
+    #     )
+    #     compute_seasonal_leaderboard(
+    #         leaderboard_base_path,
+    #         diagnostics_folder_path,
+    #         data_source,
+    #     )
+    # end
     compute_rmse_boxplots(leaderboard_base_path, diagnostics_folder_path)
+    create_partitioning_plots(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        short_names,
+    )
 end
 
 function LandSimVis.make_leaderboard_plots(
@@ -103,9 +108,11 @@ function LandSimVis.make_leaderboard_plots(
     stop_date;
     savedir = ".",
     plot_stem_name = "ERA5",
-    
 )
-    surface_coords = ClimaLand.Domains.coordinates(ClimaLand.Domains.obtain_surface_domain(domain)).surface
+    surface_coords =
+        ClimaLand.Domains.coordinates(
+            ClimaLand.Domains.obtain_surface_domain(domain),
+        ).surface
     longlat = (parent(surface_coords.long)[1], parent(surface_coords.lat)[1])
     compare_monthly_fluxes_with_era5(
         savedir,
@@ -114,7 +121,8 @@ function LandSimVis.make_leaderboard_plots(
         stop_date,
         longlat;
         plot_stem_name,
-    ) 
+    )
+    create_partitioning_plots(savedir, diagnostics)
 
 end
 
