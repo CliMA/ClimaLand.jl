@@ -30,7 +30,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_pmodel_eq_site3"
+root_path = "snowy_land_pmodel_eq_site3_Cd_small_beta_146_ec_small_dsl_large"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -73,7 +73,7 @@ function setup_model(
 end
 
 start_date = DateTime("2008-03-01")
-stop_date = DateTime("2008-04-01")
+stop_date = DateTime("2010-03-01")
 Δt = 900.0
 longlat = FT.((-77.0, 0.1))#FT.((146.0, -38.0))#FT.((-77.0, 0.1))#
 zlim = FT.((-15, 0))
@@ -83,16 +83,17 @@ domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple);
 toml_dict = LP.create_toml_dict(FT)
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
+@show model.soil.parameters
 diagnostics = ClimaLand.default_diagnostics(
     model,
     start_date;
     output_writer = ClimaDiagnostics.Writers.DictWriter(),
-  #  reduction_period = :daily,
-   # reduction_type = :average,
-    reduction_period =:every_dt,
-        dt = Δt ,
-        reduction_type = :instantaneous,
-    output_vars = ["shf", "lhf", "msf", "gpp", "gs_co2", "chi", "ci", "xi", "ct", "clhf", "cshf", "gs", "gl", "gh", "tair", "swn", "lwn", "ws"],
+    reduction_period = :monthly,
+    reduction_type = :average,
+   # reduction_period =:every_dt,
+   #     dt = Δt ,
+   #     reduction_type = :instantaneous,
+    output_vars = ["shf", "lhf", "msf", "gpp", "gs_co2", "chi", "ci", "xi", "ct", "clhf", "cshf", "gs", "gl", "gh", "tair", "swn", "lwn", "ws", "swu", "lwu"],
 );
 simulation =
     LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics);
@@ -106,3 +107,9 @@ CP.log_parameter_information(toml_dict, joinpath(root_path, "parameters.toml"))
 ClimaLand.Simulations.solve!(simulation);
 
 LandSimVis.make_timeseries(simulation; savedir = root_path)
+LandSimVis.make_leaderboard_plots(
+    model,
+    domain,
+    diagnostics,
+    start_date,
+    stop_date;savedir = root_path)

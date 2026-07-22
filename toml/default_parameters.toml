@@ -302,19 +302,19 @@ description = "Maximum value for the ratio of Gamma star over the partial pressu
 tag = "PModelParameters"
 
 ["pmodel_cstar"]
-value = 0.43
+value = 0.4
 type = "float"
 description = "4 * dA/dJmax, assumed to be a constant marginal cost (Wang 2017, Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c3"]
-value = 146
+value = 146.3
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C3 plants (Stocker 2020)"
 tag = "PModelParameters"
 
 ["pmodel_β_c4"]
-value = 5.36
+value = 8.6
 type = "float"
 description = "Unit cost ratio of Vcmax to transpiration for C4 plants"
 tag = "PModelParameters"
@@ -368,7 +368,7 @@ description = "Second order term in quadratic intrinsic quantum yield (Cai and P
 tag = "PModelParameters"
 
 ["pmodel_α"]
-value = 0.999
+value = 0.963
 type = "float"
 description = "1 - 1/T where T is the timescale of Vcmax, Jmax acclimation. Here T = 15 days. (Mengoli 2022)"
 tag = "PModelParameters"
@@ -483,13 +483,13 @@ description = "Constant factor appearing the dark respiration term for C3 plants
 tag = "PModelConstants"
 
 [canopy_K_lw]
-value = 0.919
+value = 0.58
 type = "float"
 description = "The long wave extinction coeff"
 tag = "AbstractRadiationModel"
 
 [canopy_emissivity]
-value = 0.98
+value = 0.95
 type = "float"
 description = "Emissivity of the canopy (unitless)."
 tag = "AbstractRadiationModel"
@@ -636,7 +636,7 @@ description = "Scalar multipling canopy height to get displacement height"
 tag = "MoninObukhovCanopyFluxes"
 
 ["leaf_Cd"]
-value = 0.0726
+value = 0.0526
 type = "float"
 description = ""
 tag = "MoninObukhovCanopyFluxes"
@@ -758,6 +758,12 @@ description = "Temperature exponent for the free-air gas diffusivity correction 
 tag = "SoilCO2Parameters"
 
 # Soil Parameters
+[maximum_dry_soil_layer_depth]
+value = 0.05
+type = "float"
+description = "Maximum depth of the dry soil layer that can develop under evaporation (m). Source: Shokri and Or (2011), DOI: 10.1029/2010WR010284"
+
+
 ["evaporation_exponent"]
 value = 2.0
 type = "float"
@@ -765,7 +771,7 @@ description = "Exponent of dry soil layer factor in evaporation; for use with RO
 tag = "EnergyHydrologyParameters"
 
 ["evaporation_scalar"]
-value = 1.0
+value = 1.8
 type = "float"
 description = "Scalar multiplying soil critical moisture for evaporation"
 tag = "EnergyHydrologyParameters"

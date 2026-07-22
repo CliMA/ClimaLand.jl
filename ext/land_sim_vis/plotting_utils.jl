@@ -581,6 +581,7 @@ function compare_monthly_fluxes_with_era5(
             dn;
         )
         model_dates = time_to_date.(model_time, start_date)
+        model_dates = model_dates .- Month(1)
         obs_dates = time_to_date.(obs_times, start_date)
         model_spinup_idx = findfirst(spinup_date .<= model_dates)
         obs_spinup_idx = findfirst(spinup_date .<= obs_dates)
