@@ -33,7 +33,7 @@ function get_calibration_prior()
         EKP.constrained_gaussian("pmodel_cstar", 0.41, 0.05, 0.2, 0.7),
         EKP.constrained_gaussian("pmodel_β_c3", 146.0, 40.0, 50.0, 300.0),
         EKP.constrained_gaussian("pmodel_β_c4", 16.222, 5.0, 5.0, 40.0),
-        EKP.constrained_gaussian("pmodel_α", 0.933, 0.02, 0.85, 0.999),
+        EKP.constrained_gaussian("pmodel_α", 0.067, 0.02, 0.001, 0.15),
         EKP.constrained_gaussian("moisture_stress_c", 0.27, 0.15, 0.05, 1.0),
     ]
     return EKP.combine_distributions(priors)
