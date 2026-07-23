@@ -1029,7 +1029,7 @@ function compute_blended_pmodel_photosynthesis(
         constants.Γstar25,
     )
     ci_c3 = intercellular_co2_pmodel(
-        ξ_c3,
+        ξ_opt_c3,
         ca_pp,
         Γstar,
         VPD,
@@ -1037,7 +1037,7 @@ function compute_blended_pmodel_photosynthesis(
         constants.Γ_ratio_max,
     )
     ci_c4 = intercellular_co2_pmodel(
-        ξ_c4,
+        ξ_opt_c4,
         ca_pp,
         Γstar,
         VPD,
