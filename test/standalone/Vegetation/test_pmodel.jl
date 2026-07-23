@@ -306,18 +306,18 @@ end
         )
 
         @testset "Test update_pmodel_state optimality computation for $FT" begin
-            dummy_OptVars = (;
-                ξ_opt_c3 = FT(0),
-                ξ_opt_c4 = FT(0),
-                Vcmax25_opt_c3 = FT(0),
-                Vcmax25_opt_c4 = FT(0),
-                Jmax25_opt_c3 = FT(0),
-                Jmax25_opt_c4 = FT(0),
+            dummy_AccVars = (;
+                ξ_c3 = FT(0),
+                ξ_c4 = FT(0),
+                Vcmax25_c3 = FT(0),
+                Vcmax25_c4 = FT(0),
+                Jmax25_c3 = FT(0),
+                Jmax25_c4 = FT(0),
             )
             outputs_from_EMA = update_pmodel_state(
                 parameters,
                 constants,
-                dummy_OptVars,
+                dummy_AccVars,
                 T_canopy,
                 P_air,
                 VPD,
@@ -327,19 +327,19 @@ end
                 FT(1.0), # force update
             )
             @test isapprox(
-                outputs_from_EMA.ξ_opt_c3,
+                outputs_from_EMA.ξ_c3,
                 outputs_full.xi,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Vcmax25_opt_c3,
+                outputs_from_EMA.Vcmax25_c3,
                 outputs_full.vcmax25,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Jmax25_opt_c3,
+                outputs_from_EMA.Jmax25_c3,
                 outputs_full.jmax25,
                 rtol = rtol,
                 atol = atol,
