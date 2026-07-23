@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "778755396a5dc13bf344f39e316296749c5382f8"
+project_hash = "9cf5640601b45f215d4ae5434e3c82f230a5744e"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "ec6be48a85c93d995563b84bff8a86bc98df45ce"
@@ -482,9 +482,9 @@ version = "0.6.11"
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BandedMatrices", "BlockArrays", "ClimaComms", "ClimaInterpolations", "CubedSphere", "DataStructures", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "KrylovKit", "LLVM", "LazyBroadcast", "LinearAlgebra", "MultiBroadcastFusion", "NVTX", "PkgVersion", "Random", "RecursiveArrayTools", "RootSolvers", "SparseArrays", "StaticArrays", "Statistics", "UnrolledUtilities"]
-git-tree-sha1 = "71a93d55eb298aa2d2da437ed7f2dbaff3274f8a"
+git-tree-sha1 = "330022a7c64cc3e7fd994a7f53a2f219cd0c2ba0"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
-version = "0.15.0"
+version = "0.15.1"
 
     [deps.ClimaCore.extensions]
     ClimaCoreCUDAExt = "CUDA"

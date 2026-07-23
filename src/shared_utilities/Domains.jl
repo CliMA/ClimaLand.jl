@@ -246,6 +246,92 @@ function Column(;
     )
 end
 
+"""
+    ColumnEnsemble(;
+        zlim::Tuple{FT, FT},
+        nelements::Int,
+        longlat::Union{Tuple{FT, FT}, AbstractVector{Tuple{FT, FT}}},
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+        device = ClimaComms.device(),
+    ) where {FT}
+
+Outer constructor for the 1D `ColumnEnsemble` domain.
+
+See [`Column`](@ref) for usage of this function and a description of possible
+keyword arguments.
+
+This function differs from [`Column`](@ref) as a `ColumnEnsemble` is backed by a
+`MultiColumnFiniteDifferenceSpace` which is an ensemble of N independent
+vertical columns at arbitrary (long, lat) locations.
+"""
+function ColumnEnsemble(;
+    zlim::Tuple{FT, FT},
+    nelements::Int,
+    longlat::Union{Tuple{FT, FT}, AbstractVector{Tuple{FT, FT}}},
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+    device = ClimaComms.device(),
+) where {FT}
+    @assert zlim[1] < zlim[2]
+    boundary_names = (:bottom, :top)
+
+    # `longlat` is either one (long, lat) tuple (single column) or a vector of
+    # them (N columns). All columns share the vertical mesh built below.
+    longlats = longlat isa AbstractVector ? longlat : [longlat]
+    points = [
+        ClimaCore.Geometry.LatLongPoint{FT}(lat, long) for
+        (long, lat) in longlats
+    ]
+    z_min, z_max = zlim
+
+    vertdomain = ClimaCore.Domains.IntervalDomain(
+        ClimaCore.Geometry.ZPoint{FT}(z_min),
+        ClimaCore.Geometry.ZPoint{FT}(z_max);
+        boundary_names = boundary_names,
+    )
+    if isnothing(dz_tuple)
+        z_mesh = ClimaCore.Meshes.IntervalMesh(vertdomain; nelems = nelements)
+    else
+        @assert zlim[2] <= 0
+        z_mesh = ClimaCore.Meshes.IntervalMesh(
+            vertdomain,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements,
+            reverse_mode = true,
+        )
+    end
+
+    subsurface_space = ClimaCore.CommonSpaces.PointColumnEnsembleSpace(
+        FT;
+        points,
+        z_elem = nelements,
+        z_min,
+        z_max,
+        device,
+        z_mesh,
+        staggering = ClimaCore.Grids.CellCenter(),
+    )
+
+    surface_space = obtain_surface_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
+    fields = get_additional_coordinate_field_data(subsurface_space)
+    return Column{FT, typeof(space), typeof(fields)}(
+        zlim,
+        (nelements,),
+        dz_tuple,
+        boundary_names,
+        space,
+        fields,
+    )
+end
+
 
 """
     Plane{FT} <: AbstractDomain{FT}
@@ -841,6 +927,22 @@ function obtain_surface_space(cs::ClimaCore.Spaces.FiniteDifferenceSpace)
 end
 
 """
+    obtain_surface_space(cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace)
+
+Returns the top level (surface) face space of the multi-column center space `cs`,
+a `PointCloudSpace`.
+"""
+function obtain_surface_space(
+    cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace,
+)
+    fs = ClimaCore.Spaces.face_space(cs)
+    return ClimaCore.Spaces.level(
+        fs,
+        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
+    )
+end
+
+"""
     top_center_to_surface(center_field::ClimaCore.Fields.Field)
 
 Creates and returns a ClimaCore.Fields.Field defined on the space
@@ -962,6 +1064,7 @@ function get_lat(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :lat)
@@ -975,6 +1078,7 @@ get_lat(
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 ) = error("`get_lat` is not implemented for subsurface spaces")
 
@@ -992,6 +1096,7 @@ function get_long(
     surface_space::Union{
         ClimaCore.Spaces.PointSpace,
         ClimaCore.Spaces.SpectralElementSpace2D,
+        ClimaCore.Spaces.PointCloudSpace,
     },
 )
     if hasproperty(ClimaCore.Fields.coordinate_field(surface_space), :long)
@@ -1005,6 +1110,7 @@ get_long(
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 ) = error("`get_long` is not implemented for subsurface spaces")
 
@@ -1082,6 +1188,7 @@ function depth(
     space::Union{
         ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.CenterFiniteDifferenceSpace,
+        ClimaCore.Spaces.MultiColumnFiniteDifferenceSpace,
     },
 )
     zmin, zmax = extrema(
