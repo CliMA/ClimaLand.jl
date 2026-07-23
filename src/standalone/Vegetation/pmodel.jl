@@ -105,6 +105,10 @@ Base.@kwdef struct PModelConstants{FT}
     N_a::FT
     """Density of water (kg m^-3)"""
     ρ_water::FT
+    "Minimum ratio of √VPD/ξ"
+    vpd_ratio_min::FT
+    "Maximum ratio of Γ*/ca"
+    Γ_ratio_max::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -134,6 +138,8 @@ Base.broadcastable(x::PModelConstants) = tuple(x)
                     aRd = toml_dict["pmodel_aRd"],
                     bRd = toml_dict["pmodel_bRd"],
                     fC3 = toml_dict["pmodel_fC3"],
+                    vpd_ratio_min = toml_dict["pmodel_vpd_ratio"],
+                    Γ_ratio_max = toml_dict["pmodel_gamma_ratio"]
                 )
 
 Creates a `PModelConstants` object with default values for the P-model constants.
@@ -159,6 +165,8 @@ function PModelConstants(
     aRd = toml_dict["pmodel_aRd"],
     bRd = toml_dict["pmodel_bRd"],
     fC3 = toml_dict["pmodel_fC3"],
+    vpd_ratio_min = toml_dict["pmodel_vpd_ratio"],
+    Γ_ratio_max = toml_dict["pmodel_gamma_ratio"],
 )
     # Note: physical constants are not exposed to the user
     FT = CP.float_type(toml_dict)
@@ -189,6 +197,8 @@ function PModelConstants(
         toml_dict["light_speed"],
         toml_dict["avogadro_constant"],
         toml_dict["density_liquid_water"],
+        vpd_ratio_min,
+        Γ_ratio_max,
     )
 end
 
@@ -383,6 +393,8 @@ function compute_full_pmodel_outputs(
         lightspeed,
         N_a,
         ρ_water,
+        vpd_ratio_min,
+        Γ_ratio_max,
     ) = constants
 
     # Convert ca from mol/mol to a partial pressure (Pa)
@@ -393,12 +405,26 @@ function compute_full_pmodel_outputs(
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, To, ρ_water)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
-    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
-    mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci_c3, ci_c4, VPD, Kmm)
+    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(
+        ξ_c3,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    ci_c4 = intercellular_co2_pmodel(
+        ξ_c4,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
+    mc_c3, mc_c4 = compute_mc(Γstar, ci_c3, ci_c4, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -590,6 +616,8 @@ function update_pmodel_state(
         lightspeed,
         N_a,
         ρ_water,
+        vpd_ratio_min,
+        Γ_ratio_max,
     ) = constants
     # Compute intermediate values
     Γstar = co2_compensation_pmodel(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
@@ -599,15 +627,29 @@ function update_pmodel_state(
     # convert ca from mol/mol to Pa
     ca_pp = ca * P_air
 
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(
+        ξ_c3,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    ci_c4 = intercellular_co2_pmodel(
+        ξ_c4,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
 
     ϕ0_c3, ϕ0_c4 = intrinsic_quantum_yield(T_canopy, parameters)
 
-    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
-    mc_c3, mc_c4 = compute_mc(Γstar, ca_pp, ci_c3, ci_c4, VPD, Kmm)
+    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
+    mc_c3, mc_c4 = compute_mc(Γstar, ci_c3, ci_c4, Kmm)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -696,16 +738,12 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     earth_param_set = canopy.earth_param_set
     βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
-    # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                LP.thermodynamic_parameters(canopy.earth_param_set),
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            sqrt(eps(FT)),
+        Thermodynamics.vapor_pressure_deficit(
+            LP.thermodynamic_parameters(canopy.earth_param_set),
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
         ),
     )
     APAR_canopy_moles = @. lazy(
@@ -790,14 +828,11 @@ function call_update_pmodel_state(p, Y, t; canopy, dt, local_noon)
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     # The Pmodel divides by sqrt(VPD); clip here to prevent numerical issues
     VPD = @. lazy(
-        max(
-            Thermodynamics.vapor_pressure_deficit(
-                LP.thermodynamic_parameters(earth_param_set),
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-            ),
-            sqrt(eps(FT)),
+        Thermodynamics.vapor_pressure_deficit(
+            LP.thermodynamic_parameters(earth_param_set),
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
         ),
     )
     APAR_canopy_moles = @. lazy(
@@ -971,14 +1006,11 @@ function compute_blended_pmodel_photosynthesis(
         ξ_c4,
     ) = AccVars
     ca_pp = c_co2_air * P_air # partial pressure of co2
-    VPD = max(
-        Thermodynamics.vapor_pressure_deficit(
-            thermo_params,
-            T_air,
-            P_air,
-            q_air,
-        ),
-        sqrt(eps(FT)),
+    VPD = Thermodynamics.vapor_pressure_deficit(
+        thermo_params,
+        T_air,
+        P_air,
+        q_air,
     )
     APAR_canopy_moles = compute_APAR_canopy_moles(
         fAPAR,
@@ -996,8 +1028,22 @@ function compute_blended_pmodel_photosynthesis(
         constants.ΔHΓstar,
         constants.Γstar25,
     )
-    ci_c3 = intercellular_co2_pmodel(ξ_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_c4, ca_pp, Γstar, VPD)
+    ci_c3 = intercellular_co2_pmodel(
+        ξ_c3,
+        ca_pp,
+        Γstar,
+        VPD,
+        constants.vpd_ratio_min,
+        constants.Γ_ratio_max,
+    )
+    ci_c4 = intercellular_co2_pmodel(
+        ξ_c4,
+        ca_pp,
+        Γstar,
+        VPD,
+        constants.vpd_ratio_min,
+        constants.Γ_ratio_max,
+    )
     Kmm = compute_Kmm(
         T_canopy,
         P_air,
@@ -1047,13 +1093,13 @@ function compute_blended_pmodel_photosynthesis(
     Vcmax_opt_c3 = Vcmax25_c3 * inst_temp_scaling_Vcmax_factor
     Vcmax_opt_c4 = Vcmax25_c4 * inst_temp_scaling_Vcmax_factor
 
-    Ac_c3 = Vcmax_opt_c3 * c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm)
-    Ac_c4 = Vcmax_opt_c4 * c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm)
+    Ac_c3 = Vcmax_c3 * c3_compute_mc(Γstar, ci_c3, Kmm)
+    Ac_c4 = Vcmax_c4 * c4_compute_mc(Γstar, ci_c4, Kmm)
 
     # light limited assimilation rate
     # c3 or c4 is reflected in the value of mj and J
-    Aj_c3 = J_c3 / 4 * c3_compute_mj(Γstar, ca_pp, ci_c3, VPD)
-    Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ca_pp, ci_c4, VPD)
+    Aj_c3 = J_c3 / 4 * c3_compute_mj(Γstar, ci_c3)
+    Aj_c4 = J_c4 / 4 * c4_compute_mj(Γstar, ci_c4)
 
     # dark respiration
     # Here we make an assumption about how to relate Rd25 to Vcmax25_opt
@@ -1444,15 +1490,21 @@ end
 Computes the intercellular co2 concentration (`ci`) as a function of the
 optimal `ξ` (sensitivity to dryness), `ca_pp` (ambient CO2 partial pressure),
 `Γstar` (CO2 compensation point), and `VPD` (vapor pressure deficit).
+
+To prevent ci = ca, we limit both √VPD/ξ and Γ⋆/ca_pp. 
 """
 function intercellular_co2_pmodel(
     ξ::FT,
     ca_pp::FT,
     Γstar::FT,
     VPD::FT,
+    vpd_ratio_min::FT,
+    Γ_ratio_max::FT,
 ) where {FT}
-    # VPD has been regularized already (VPD >= eps)
-    return (ξ * ca_pp + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
+    # Guard ξ = 0 (e.g. before the optimal ξ is initialized); the ξ→0 limit is ci = Γstar
+    x = max(sqrt(VPD) / max(ξ, eps(FT)), vpd_ratio_min)
+    y = min(Γstar / ca_pp, Γ_ratio_max)
+    return ca_pp * (1 + y * x) / (1 + x)
 end
 
 """
@@ -1575,8 +1627,22 @@ function compute_A0_daily(
     βm::FT,
 ) where {FT}
     (; cstar, β_c3, β_c4) = parameters
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Mc, oi, ρ_water) =
-        constants
+    (;
+        R,
+        Kc25,
+        Ko25,
+        To,
+        ΔHkc,
+        ΔHko,
+        Drel,
+        ΔHΓstar,
+        Γstar25,
+        Mc,
+        oi,
+        ρ_water,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    ) = constants
 
     # Convert ca from mol/mol to partial pressure (Pa)
     ca_pp = ca * P_air
@@ -1588,13 +1654,27 @@ function compute_A0_daily(
     Kmm = compute_Kmm(T_air, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
 
     # Compute optimal ξ and intercellular CO2
-    ξ_opt_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
-    ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c4, ca_pp, Γstar, VPD)
+    ξ_c3 = sqrt(β_c3 * (Kmm + Γstar) / (Drel * ηstar))
+    ξ_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
+    ci_c3 = intercellular_co2_pmodel(
+        ξ_c3,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    ci_c4 = intercellular_co2_pmodel(
+        ξ_c4,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
 
     # Compute mj and m' (with Jmax limitation)
-    mj_c3, mj_c4 = compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
+    mj_c3, mj_c4 = compute_mj(Γstar, ci_c3, ci_c4)
     mprime_c3 = compute_mj_with_jmax_limitation(mj_c3, cstar)
     mprime_c4 = compute_mj_with_jmax_limitation(mj_c4, cstar)
 
@@ -1641,8 +1721,21 @@ function compute_chi(
     fractional_c3::FT = FT(1),
 ) where {FT}
     (; β_c3, β_c4) = pmodel_parameters
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, oi, ρ_water) =
-        pmodel_constants
+    (;
+        R,
+        Kc25,
+        Ko25,
+        To,
+        ΔHkc,
+        ΔHko,
+        Drel,
+        ΔHΓstar,
+        Γstar25,
+        oi,
+        ρ_water,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    ) = pmodel_constants
 
     ca_pp = ca * P_air
 
@@ -1656,9 +1749,22 @@ function compute_chi(
     ξ_opt_c4 = sqrt(β_c4 * (Kmm + Γstar) / (Drel * ηstar))
 
     # Compute ci and chi
-    VPD_safe = max(VPD, eps(FT))
-    ci_c3 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
-    ci_c4 = intercellular_co2_pmodel(ξ_opt_c3, ca_pp, Γstar, VPD_safe)
+    ci_c3 = intercellular_co2_pmodel(
+        ξ_c3,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
+    ci_c4 = intercellular_co2_pmodel(
+        ξ_c4,
+        ca_pp,
+        Γstar,
+        VPD,
+        vpd_ratio_min,
+        Γ_ratio_max,
+    )
     return clamp(blend(ci_c3, ci_c4, fractional_c3) / ca_pp, FT(0), FT(1))
 end
 
@@ -1787,20 +1893,17 @@ Computes the unitless factor `mj = (ci - Γstar)/(ci+2Γstar)` (for C3 plants)
 and `mj = 1` for C4 plants, where the rubisco assimilation rate is Ac = Vcmax*mj
 for both c3 and c4.
 """
-function compute_mj(Γstar, ca_pp, ci_c3, ci_c4, VPD)
-    return (
-        c3_compute_mj(Γstar, ca_pp, ci_c3, VPD),
-        c4_compute_mj(Γstar, ca_pp, ci_c4, VPD),
-    )
+function compute_mj(Γstar, ci_c3, ci_c4)
+    return (c3_compute_mj(Γstar, ci_c3), c4_compute_mj(Γstar, ci_c4))
 end
 
 
-function c3_compute_mj(Γstar::FT, ca_pp::FT, ci::FT, VPD::FT) where {FT}
+function c3_compute_mj(Γstar::FT, ci::FT) where {FT}
     mj = (ci - Γstar) / (ci + 2 * Γstar) # eqn 11 in Stocker et al. (2020)
     return mj
 end
 
-function c4_compute_mj(::FT, ::FT, ::FT, ::FT) where {FT}
+function c4_compute_mj(::FT, ::FT) where {FT}
     return FT(1.0)
 end
 
@@ -1811,25 +1914,16 @@ Computes the unitless factor `mc = (ci - Γstar)/(ci+Kmm)` (for C3 plants)
 and `mj = 1` for C4 plants, where the light assimilation rate is Aj = J/4 mj
 for both c3 and c4.
 """
-function compute_mc(Γstar, ca_pp, ci_c3, ci_c4, VPD, Kmm)
-    return (
-        c3_compute_mc(Γstar, ca_pp, ci_c3, VPD, Kmm),
-        c4_compute_mc(Γstar, ca_pp, ci_c4, VPD, Kmm),
-    )
+function compute_mc(Γstar, ci_c3, ci_c4, Kmm)
+    return (c3_compute_mc(Γstar, ci_c3, Kmm), c4_compute_mc(Γstar, ci_c4, Kmm))
 end
 
-function c3_compute_mc(
-    Γstar::FT,
-    ca_pp::FT,
-    ci::FT,
-    VPD::FT,
-    Kmm::FT,
-) where {FT}
+function c3_compute_mc(Γstar::FT, ci::FT, Kmm::FT) where {FT}
     mc = (ci - Γstar) / (ci + Kmm) # eqn 7 in Stocker et al. (2020)
     return mc
 end
 
-function c4_compute_mc(::FT, ::FT, ::FT, ::FT, ::FT) where {FT}
+function c4_compute_mc(::FT, ::FT, ::FT) where {FT}
     return FT(1)
 end
 
