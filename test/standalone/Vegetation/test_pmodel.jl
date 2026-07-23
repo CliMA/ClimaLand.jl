@@ -93,7 +93,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa0_c4,
         ϕa1_c4,
         ϕa2_c4,
-        α = FT(0),
+        α = FT(1),
     )
 end
 
@@ -283,7 +283,7 @@ end
             ϕa0_c4 = FT(-0.352 * 0.087),
             ϕa1_c4 = FT(0.022 * 0.087),
             ϕa2_c4 = FT(-0.00034 * 0.087),
-            α = FT(0),
+            α = FT(1),
         )
         constants = PModelConstants(toml_dict)
 
