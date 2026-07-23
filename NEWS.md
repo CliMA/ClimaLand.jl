@@ -14,12 +14,6 @@ v1.10.3
 - ![][badge-🐛bugfix] Fix a C4 typo in `compute_chi`: the C4 intercellular CO2 used the C3
   dryness sensitivity `ξ_c3` instead of `ξ_c4`, biasing the blended χ (and hence the
   optimal-LAI water-limitation term) at C4 and mixed C3/C4 cells. PR [#1805](https://github.com/CliMA/ClimaLand.jl/pull/1805)
-- ![][badge-🐛bugfix] Build the leaderboard/calibration MODIS `lai` obs
-  (`get_modis_lai_obs_var`) as a calendar-monthly mean instead of a month-start
-  snapshot, matching the model's monthly-mean `lai` diagnostic. The snapshot led
-  the mean by ~half a month, biasing the seasonal cycle of prescribed-LAI runs.
-  Also shifts the LAI calibration target by up to ~0.2 m² m⁻².
-  PR [#1806](https://github.com/CliMA/ClimaLand.jl/pull/1806)
 
 v1.10.2
 -----
