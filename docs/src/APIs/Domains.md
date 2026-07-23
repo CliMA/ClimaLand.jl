@@ -10,6 +10,7 @@ ClimaLand.Domains.SphericalShell
 ClimaLand.Domains.SphericalSurface
 ClimaLand.Domains.HybridBox
 ClimaLand.Domains.Column
+ClimaLand.Domains.ColumnEnsemble
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
 ClimaLand.Domains.global_domain
