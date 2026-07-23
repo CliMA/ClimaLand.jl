@@ -78,6 +78,9 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
 
+      - label: "ERA5 Column vs ColumnEnsemble"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/era5/column_ensemble_comparison.jl"
+
       - label: "niwot_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
         artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
