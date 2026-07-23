@@ -264,7 +264,7 @@ end
 end
 
 
-@testset "Test update_optimal_EMA optimality computation" begin
+@testset "Test update_pmodel_state optimality computation" begin
     rtol = 1e-5
     atol = 1e-6
 
@@ -305,7 +305,7 @@ end
             APAR,
         )
 
-        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+        @testset "Test update_pmodel_state optimality computation for $FT" begin
             dummy_OptVars = (;
                 ξ_opt_c3 = FT(0),
                 ξ_opt_c4 = FT(0),
@@ -314,7 +314,7 @@ end
                 Jmax25_opt_c3 = FT(0),
                 Jmax25_opt_c4 = FT(0),
             )
-            outputs_from_EMA = update_optimal_EMA(
+            outputs_from_EMA = update_pmodel_state(
                 parameters,
                 constants,
                 dummy_OptVars,
