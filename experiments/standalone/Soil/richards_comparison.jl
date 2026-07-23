@@ -8,7 +8,7 @@ import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -46,7 +46,11 @@ outdir = generate_output_path(
         zmax = FT(0)
         zmin = FT(-1.5)
         nelems = 150
-        soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+        soil_domain = ColumnEnsemble(;
+            zlim = (zmin, zmax),
+            nelements = nelems,
+            longlat = (FT(0), FT(0)),
+        )
         z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
         top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
@@ -143,7 +147,11 @@ end
         zmax = FT(0)
         zmin = FT(-1.5)
         nelems = 150
-        soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+        soil_domain = ColumnEnsemble(;
+            zlim = (zmin, zmax),
+            nelements = nelems,
+            longlat = (FT(0), FT(0)),
+        )
         z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
         top_state_bc = MoistureStateBC((p, t) -> 0.267)

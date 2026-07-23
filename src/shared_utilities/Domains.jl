@@ -1543,7 +1543,8 @@ function global_box_domain(
     return domain
 end
 export AbstractDomain
-export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
+export Column,
+    ColumnEnsemble, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
     obtain_surface_space,
     obtain_surface_domain,

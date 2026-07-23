@@ -12,7 +12,7 @@ using ClimaCore
 using Dates
 
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 using ClimaLand.Snow
 import ClimaLand
@@ -56,7 +56,12 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
-domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
+domain = ColumnEnsemble(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple,
+    longlat = (long, lat),
+)
 
 # Set up the timestepping information for the simulation
 dt = Float64(600)

@@ -3,7 +3,7 @@ import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Simulations: LandSimulation, solve!
@@ -51,7 +51,11 @@ boundary_fluxes = (;
 zmax = FT(0)
 zmin = FT(-0.5)
 nelems = 25
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+soil_domain = ColumnEnsemble(;
+    zlim = (zmin, zmax),
+    nelements = nelems,
+    longlat = (FT(0), FT(0)),
+)
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
 # Soil model, and create the prognostic vector Y and cache p:

@@ -7,7 +7,7 @@ using Statistics
 using Dates
 
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
@@ -105,7 +105,7 @@ for float_type in (Float32, Float64)
     )
 
     # Set up the domain for the simulation
-    land_domain = Column(;
+    land_domain = ColumnEnsemble(;
         zlim = (zmin, zmax),
         nelements = nelements,
         dz_tuple = dz_tuple,

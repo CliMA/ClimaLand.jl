@@ -3,7 +3,7 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Soil.Biogeochemistry: MicrobeProduction
@@ -48,7 +48,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     zmin = FT(-1)
     nelems = 20
 
-    domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    domain = ColumnEnsemble(;
+        zlim = (zmin, zmax),
+        nelements = nelems,
+        longlat = (FT(0), FT(0)),
+    )
 
     top_flux_bc_w = Soil.WaterFluxBC((p, t) -> -0.00001)
     bot_flux_bc_w = Soil.FreeDrainage()

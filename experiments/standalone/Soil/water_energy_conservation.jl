@@ -10,7 +10,7 @@ import ClimaLand.Parameters as LP
 
 using ClimaLand
 using ClimaLand.Soil
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 
@@ -42,7 +42,11 @@ params = Soil.EnergyHydrologyParameters(
 zmax = FT(0)
 zmin = FT(-1.0)
 nelems = 50
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
+soil_domain = ColumnEnsemble(;
+    zlim = (zmin, zmax),
+    nelements = nelems,
+    longlat = (FT(0), FT(0)),
+);
 surface_water_flux = WaterFluxBC((p, t) -> 0.0)
 bottom_water_flux = WaterFluxBC((p, t) -> 0.0);
 

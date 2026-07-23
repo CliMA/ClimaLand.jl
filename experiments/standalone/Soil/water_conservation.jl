@@ -8,7 +8,7 @@ using DelimitedFiles
 
 using ClimaLand
 using ClimaLand.Soil
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaLand.Simulations: LandSimulation, solve!
 
@@ -63,7 +63,11 @@ for FT in (Float32, Float64)
         S_s = S_s,
         θ_r = θ_r,
     )
-    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    soil_domain = ColumnEnsemble(;
+        zlim = (zmin, zmax),
+        nelements = nelems,
+        longlat = (FT(0), FT(0)),
+    )
     sources = ()
 
     # Set flux boundary conditions (used for calculating mass balance)

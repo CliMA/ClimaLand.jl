@@ -12,7 +12,7 @@ using Dates
 using Insolation
 
 using ClimaLand
-using ClimaLand.Domains: Column
+using ClimaLand.Domains: ColumnEnsemble
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
@@ -82,7 +82,7 @@ site_ID_val = FluxnetSimulations.replace_hyphen(site_ID)
 ) = FluxnetSimulations.get_parameters(FT, Val(site_ID_val))
 
 # Construct the ClimaLand domain to run the simulation on
-land_domain = Column(;
+land_domain = ColumnEnsemble(;
     zlim = (zmin, zmax),
     nelements = nelements,
     dz_tuple = dz_tuple,

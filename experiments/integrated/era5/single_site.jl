@@ -112,7 +112,7 @@ longlat = FT.((5.0, 25.0))
 zlim = FT.((-15, 0))
 nelements = 15
 dz_tuple = FT.((3, 0.05))
-domain = ClimaLand.Domains.Column(; zlim, longlat, nelements, dz_tuple);
+domain = ClimaLand.Domains.ColumnEnsemble(; zlim, longlat, nelements, dz_tuple);
 toml_dict = LP.create_toml_dict(FT)
 
 model = setup_model(FT, start_date, stop_date, Δt, domain, toml_dict);
