@@ -28,7 +28,7 @@ using ClimaCore
             @test params.z ≈ FT(21.4)
             @test params.sigma ≈ FT(0.939)
             @test params.alpha ≈ FT(0.0701)  # ~14 days of memory
-            @test params.tau_long_term ≈ FT(3.1536e7)  # 1 year
+            @test params.tau_long_term ≈ FT(6.3072e7)  # 2 years
 
             @test eltype(params) == FT
         end

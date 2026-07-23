@@ -307,9 +307,6 @@ ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
 # calculation; `AccVars_inst` is the instantaneous optimum (recomputed every step)
 # that the `RunningMean` relaxes toward, weighted onto local solar noon so the
 # acclimation samples midday conditions (see `make_compute_exp_tendency`).
-# `prognostic_vars` is declared explicitly (it
-# is called every implicit-tendency evaluation, so must stay cheap); the tendency
-# builds its spec from `_pmodel_tivs`.
 _pmodel_tivs(component::PModel{FT}) where {FT} = (
     ClimaLand.TimeIntegratedVariable(;
         name = :AccVars,
@@ -319,10 +316,14 @@ _pmodel_tivs(component::PModel{FT}) where {FT} = (
         element_type = _pmodel_accvars_type(FT),
     ),
 )
-ClimaLand.prognostic_vars(::PModel) = (:AccVars,)
-ClimaLand.prognostic_types(::PModel{FT}) where {FT} =
-    (_pmodel_accvars_type(FT),)
-ClimaLand.prognostic_domain_names(::PModel) = (:surface,)
+# `prognostic_vars` (and `_types` / `_domain_names`) derive from the `_pmodel_tivs`
+# metadata, keeping the declaration in one place.
+ClimaLand.prognostic_vars(m::PModel) =
+    ClimaLand.time_integrated_prognostic_vars(_pmodel_tivs(m))
+ClimaLand.prognostic_types(m::PModel) =
+    ClimaLand.time_integrated_prognostic_types(_pmodel_tivs(m))
+ClimaLand.prognostic_domain_names(m::PModel) =
+    ClimaLand.time_integrated_prognostic_domain_names(_pmodel_tivs(m))
 
 
 """
@@ -738,9 +739,14 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         βm,
         APAR_canopy_moles,
     )
-    # seed the prognostic AccVars (and its cache mirror) at the initial optimum
-    Y0.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
-    p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
+    # Warm-start the prognostic acclimated `AccVars` (and its cache mirror) at the
+    # initial optimum — but only on a fresh start, when `Y` is still zero-initialized,
+    # so a checkpoint/restart (which loads `Y` from file) is not overwritten. On
+    # restart, `update_cache!` has already mirrored the restored `Y.AccVars` into `p`.
+    if all(iszero, parent(Y0.canopy.photosynthesis.AccVars))
+        Y0.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
+        p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
+    end
 end
 
 # Normalization for the solar-noon acclimation window `exp(κ (cosθ - 1))`: its daily
@@ -820,15 +826,11 @@ function ClimaLand.make_compute_exp_tendency(
         nothing
     end
     ω = FT(2π) / seconds_in_a_day
-    accvars_tiv = ClimaLand.TimeIntegratedVariable(;
-        name = base.name,
-        reduction = base.reduction,
-        timescale = base.timescale,
-        domain_name = base.domain_name,
-        element_type = base.element_type,
-        compute_instantaneous! = (dst, Y, p, t) ->
-            (dst .= p.canopy.photosynthesis.AccVars_inst; nothing),
-        weight! = (Y, p, t) -> begin
+    accvars_tiv = ClimaLand.TimeIntegratedVariable(
+        base;
+        compute_instantaneous = (Y, p, t) ->
+            p.canopy.photosynthesis.AccVars_inst,
+        weight = (Y, p, t) -> begin
             tod = _seconds_of_day_utc(t, start_date, FT)
             @. lazy(exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
         end,

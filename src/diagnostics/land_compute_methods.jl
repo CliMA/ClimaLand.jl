@@ -292,7 +292,7 @@ end
 
 # precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
 # limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
-@with_error function compute_precip_annual!(
+function compute_precip_annual!(
     out,
     Y,
     p,

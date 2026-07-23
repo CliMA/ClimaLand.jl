@@ -482,7 +482,7 @@ ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
 #   `A0_daily`      1-day potential-GPP total (RunningSum, τ = 1 day),
 #   `A0_annual`     smoothed 1-year potential-GPP total (RunningMean, τ = `tau_long_term`),
 #   `precip_annual` smoothed 1-year precipitation total (RunningMean, τ = `tau_long_term`),
-#   `LAI`           the Zhou et al. Eq. 16 acclimation lag (RunningMean, τ = 1 day / α),
+#   `LAI`           the Zhou et al. (2025) Eq. 16 acclimation lag (RunningMean, τ = 1 day / α),
 #                   relaxing toward the instantaneous optimal target `L_opt`.
 # The annual totals are a RunningMean of the *annualized* instantaneous rate
 # (`year_ref × rate`), so `tau_long_term` sets only the smoothing — the magnitude is a
@@ -515,14 +515,14 @@ function optimal_lai_tivs(component::ZhouOptimalLAIModel{FT}) where {FT}
         ),
     )
 end
-# `prognostic_vars` is declared explicitly (it is called every implicit-tendency
-# evaluation, so must stay cheap); the tendency builds its specs from `optimal_lai_tivs`.
-ClimaLand.prognostic_vars(::ZhouOptimalLAIModel) =
-    (:A0_daily, :A0_annual, :precip_annual, :LAI)
-ClimaLand.prognostic_types(::ZhouOptimalLAIModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
-ClimaLand.prognostic_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface, :surface)
+# `prognostic_vars` (and the matching `_types` / `_domain_names`) are derived from the
+# spec metadata in `optimal_lai_tivs`, so the declaration lives in one place.
+ClimaLand.prognostic_vars(m::ZhouOptimalLAIModel) =
+    ClimaLand.time_integrated_prognostic_vars(optimal_lai_tivs(m))
+ClimaLand.prognostic_types(m::ZhouOptimalLAIModel) =
+    ClimaLand.time_integrated_prognostic_types(optimal_lai_tivs(m))
+ClimaLand.prognostic_domain_names(m::ZhouOptimalLAIModel) =
+    ClimaLand.time_integrated_prognostic_domain_names(optimal_lai_tivs(m))
 
 """
     update_biomass!(
@@ -582,39 +582,30 @@ function ClimaLand.make_compute_exp_tendency(
     component::ZhouOptimalLAIModel{FT},
     canopy,
 ) where {FT}
-    # mol H2O m^-3, converts precip volume flux (m/s) to molar flux (mol m^-2 s^-1)
-    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)
-    # Reference year (s): scales an instantaneous rate to a one-year total, so the
-    # `A0_annual`/`precip_annual` RunningMeans hold a one-year total independent of τ.
+    ρ_m_liq = LP.ρ_m_liq(canopy.earth_param_set)  # mol H2O m^-3 (precip volume flux → molar flux)
+    # Fixed 365-day reference year (s) that annualizes an instantaneous rate, so the
+    # `A0_annual`/`precip_annual` running means hold a one-year total for any `τ`.
     year = FT(365) * IP.day(IP.InsolationParameters(FT))
-    # The instantaneous quantity `f` for each spec, attached by name to the metadata
-    # (reduction / timescale / element type) declared in `optimal_lai_tivs`.
+    # Instantaneous quantity `f` for each spec (a field or `lazy` broadcast), attached to
+    # the metadata declared in `optimal_lai_tivs` via the copy constructor below.
     computes = (;
-        A0_daily = (dst, Y, p, t) ->
-            (dst .= p.canopy.biomass.A0_inst; nothing),
-        A0_annual = (dst, Y, p, t) ->
-            (@. dst = year * p.canopy.biomass.A0_inst; nothing),
-        precip_annual = (dst, Y, p, t) -> begin
-            # P_liq and P_snow are negative-downward volume fluxes (m/s), so negate
-            # for a positive total; × year gives a one-year total at steady state.
-            @. dst = year * -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq
-            return nothing
-        end,
-        LAI = (dst, Y, p, t) -> compute_LAI_target!(dst, Y, p, canopy),
+        A0_daily = (Y, p, t) -> p.canopy.biomass.A0_inst,
+        A0_annual = (Y, p, t) -> (@. lazy(year * p.canopy.biomass.A0_inst)),
+        # P_liq/P_snow are negative-downward volume fluxes (m/s); negate for a positive total.
+        precip_annual = (Y, p, t) -> (@. lazy(
+            year * -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
+        )),
+        LAI = (Y, p, t) -> compute_LAI_target(Y, p, canopy),
     )
     specs = map(optimal_lai_tivs(component)) do s
-        ClimaLand.TimeIntegratedVariable(;
-            name = s.name,
-            reduction = s.reduction,
-            timescale = s.timescale,
-            domain_name = s.domain_name,
-            element_type = s.element_type,
-            compute_instantaneous! = getproperty(computes, s.name),
+        ClimaLand.TimeIntegratedVariable(
+            s;
+            compute_instantaneous = getproperty(computes, s.name),
         )
     end
     function compute_exp_tendency!(dY, Y, p, t)
-        # Compute the instantaneous potential GPP once (drivers, `par_d`, and `βm`
-        # are fresh here, after `update_aux`); both A0 running sums read it.
+        # Compute the instantaneous potential GPP once (drivers, `par_d`, `βm` fresh
+        # after `update_aux`); both A0 reductions read it.
         compute_A0_inst!(p.canopy.biomass.A0_inst, p, canopy)
         ClimaLand.time_integrated_tendency!(
             dY.canopy.biomass,
@@ -626,6 +617,30 @@ function ClimaLand.make_compute_exp_tendency(
         )
     end
     return compute_exp_tendency!
+end
+
+"""
+    set_canopy_biomass_ic!(Y, model::AbstractBiomassModel)
+
+Seed the biomass component's prognostic initial state in `Y` from its climatology.
+Called from `set_ic!`, so all of `Y` is initialized in one place; a checkpoint/restart
+(whose `set_ic!` loads `Y` from file) does not call it and so is not overwritten. A
+no-op for biomass models with no prognostic state (e.g. prescribed LAI).
+"""
+set_canopy_biomass_ic!(Y, ::AbstractBiomassModel) = nothing
+
+function set_canopy_biomass_ic!(Y, model::ZhouOptimalLAIModel{FT}) where {FT}
+    inputs = model.optimal_lai_inputs
+    seconds_per_day = IP.day(IP.InsolationParameters(FT))
+    year_ref = FT(365) * seconds_per_day
+    # LAI starts from MODIS observations; A0_annual/precip_annual from the 1-year
+    # climatology (their steady state, independent of τ); A0_daily at the daily share.
+    Y.canopy.biomass.LAI .= inputs.lai_init
+    Y.canopy.biomass.A0_annual .= inputs.A0_annual
+    Y.canopy.biomass.precip_annual .= inputs.precip_annual
+    Y.canopy.biomass.A0_daily .=
+        inputs.A0_annual .* (seconds_per_day / year_ref)
+    return nothing
 end
 
 """
@@ -648,35 +663,21 @@ spin-up time and matches observed vegetation patterns.
 - f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
 """
 function set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
-    parameters = model.parameters
     optimal_lai_inputs = model.optimal_lai_inputs
-    FT = eltype(parameters)
 
-    # Get spatially varying data from optimal_lai_inputs
-    GSL = optimal_lai_inputs.GSL
-    A0_annual = optimal_lai_inputs.A0_annual
-    precip_annual = optimal_lai_inputs.precip_annual  # in mol H2O m^-2 yr^-1
-    vpd_gs = optimal_lai_inputs.vpd_gs  # in Pa
-    lai_init = optimal_lai_inputs.lai_init  # MODIS first timestep
-    f0 = optimal_lai_inputs.f0  # spatially varying f0 from Zhou et al.
+    # The optimal-LAI prognostic state (LAI, A0_daily, A0_annual, precip_annual) is
+    # seeded in `set_ic!` via `set_canopy_biomass_ic!`. Repeat it here only on a fresh
+    # start — when `Y` is still zero-initialized — as a fallback for IC paths that do
+    # not run the file-based `set_ic!` (e.g. standalone canopy setups); a restart's `Y`
+    # (loaded from file, non-zero) is left untouched.
+    if all(iszero, parent(Y0.canopy.biomass.LAI))
+        set_canopy_biomass_ic!(Y0, model)
+    end
+    # Mirror the prognostic LAI into the cache area index (also done in `update_aux`).
+    p.canopy.biomass.area_index.leaf .= Y0.canopy.biomass.LAI
 
-    # LAI, A0_daily, A0_annual, and precip_annual are prognostic time-integrated
-    # variables in Y; seed their initial states. LAI starts from MODIS observations.
-    # The cache holds only static inputs (GSL, vpd_gs, f0) and the LAI mirror.
-    Y0.canopy.biomass.LAI .= lai_init
-    p.canopy.biomass.area_index.leaf .= lai_init
-
-    # A0_annual and precip_annual are smoothed 1-year totals: seed them directly from
-    # the 1-year climatology (their steady state, independent of tau_long_term).
-    # A0_daily is the 1-day total, seeded at the daily share of the annual climatology.
-    seconds_per_day = IP.day(IP.InsolationParameters(FT))
-    year_ref = FT(365) * seconds_per_day
-    Y0.canopy.biomass.A0_annual .= A0_annual
-    Y0.canopy.biomass.precip_annual .= precip_annual
-    Y0.canopy.biomass.A0_daily .= A0_annual .* (seconds_per_day / year_ref)
-
-    # Static cache inputs
-    p.canopy.biomass.GSL .= GSL
-    p.canopy.biomass.vpd_gs .= vpd_gs
-    p.canopy.biomass.f0 .= f0
+    # Static cache inputs (not part of Y; rebuilt every setup, including on restart).
+    p.canopy.biomass.GSL .= optimal_lai_inputs.GSL
+    p.canopy.biomass.vpd_gs .= optimal_lai_inputs.vpd_gs
+    p.canopy.biomass.f0 .= optimal_lai_inputs.f0
 end

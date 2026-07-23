@@ -29,9 +29,9 @@ Base.@kwdef struct OptimalLAIParameters{FT <: AbstractFloat}
     In arid regions, f0 can be lower: f0 = 0.65 * exp(-0.604 * ln^2(AI/1.9)) where AI is aridity index.
     Default value 0.65 assumes optimal water use efficiency."""
     f0::FT
-    """Long-term memory timescale (s) of the A0 and precipitation running-sum totals
-    that set LAI_max and the steady-state LAI. Default 1 year; a longer value filters
-    the seasonal cycle more strongly."""
+    """Long-term memory timescale (s) of the A0 and precipitation running-mean annual
+    totals that set LAI_max and the steady-state LAI. Default 2 years; a longer value
+    filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle."""
     tau_long_term::FT
 end
 
@@ -423,17 +423,17 @@ function compute_A0_inst!(dst, p, canopy)
 end
 
 """
-    compute_LAI_target!(dst, Y, p, canopy)
+    compute_LAI_target(Y, p, canopy)
 
-Write the instantaneous steady-state LAI target `L_opt` (Zhou et al. 2025 Eqs.
-11-15) into `dst`, from the prognostic trailing daily and annual potential-GPP
-totals (`A0_daily`, `A0_annual`) and annual precipitation (`precip_annual`) in `Y`,
-plus the growing-season water-limitation inputs held in the cache. The prognostic
-`LAI` (a `RunningMean`) relaxes toward this target in the biomass
-`compute_exp_tendency!`, applying the Eq. 16 acclimation lag continuously through
-the time-stepper.
+Return (as a `lazy` broadcast) the instantaneous steady-state LAI target `L_opt`
+(Zhou et al. 2025 Eqs. 11-15), from the prognostic trailing daily and annual
+potential-GPP totals (`A0_daily`, `A0_annual`) and annual precipitation
+(`precip_annual`) in `Y`, plus the growing-season water-limitation inputs held in
+the cache. The prognostic `LAI` (a `RunningMean`) relaxes toward this target in the
+biomass `compute_exp_tendency!`, applying the Eq. 16 acclimation lag continuously
+through the time-stepper.
 """
-function compute_LAI_target!(dst, Y, p, canopy)
+function compute_LAI_target(Y, p, canopy)
     parameters = canopy.biomass.parameters
     pmodel_parameters = canopy.photosynthesis.parameters
     pmodel_constants = canopy.photosynthesis.constants
@@ -452,18 +452,19 @@ function compute_LAI_target!(dst, Y, p, canopy)
             fractional_c3,
         ),
     )
-    @. dst = compute_L_steady_target(
-        Y.canopy.biomass.A0_daily,
-        parameters.k,
-        Y.canopy.biomass.A0_annual,
-        parameters.z,
-        p.canopy.biomass.GSL,
-        parameters.sigma,
-        Y.canopy.biomass.precip_annual,
-        p.canopy.biomass.f0,
-        ca * P_air,  # ca_pa: CO2 partial pressure (Pa)
-        chi,
-        p.canopy.biomass.vpd_gs,
+    return @. lazy(
+        compute_L_steady_target(
+            Y.canopy.biomass.A0_daily,
+            parameters.k,
+            Y.canopy.biomass.A0_annual,
+            parameters.z,
+            p.canopy.biomass.GSL,
+            parameters.sigma,
+            Y.canopy.biomass.precip_annual,
+            p.canopy.biomass.f0,
+            ca * P_air,  # ca_pa: CO2 partial pressure (Pa)
+            chi,
+            p.canopy.biomass.vpd_gs,
+        ),
     )
-    return nothing
 end

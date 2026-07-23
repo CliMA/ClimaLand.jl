@@ -18,7 +18,7 @@ ClimaLand.Canopy.OptimalLAIParameters{FT}(toml_dict::CP.ParamDict) where {FT}
 ClimaLand.Canopy.compute_A0_daily
 ClimaLand.Canopy.compute_A0_inst!
 ClimaLand.Canopy.compute_L_steady_target
-ClimaLand.Canopy.compute_LAI_target!
+ClimaLand.Canopy.compute_LAI_target
 ClimaLand.Canopy.compute_L_max
 ClimaLand.Canopy.compute_m
 ClimaLand.Canopy.compute_steady_state_LAI

@@ -460,6 +460,9 @@ function make_set_initial_state_from_file(
             Y.canopy.energy.T .= p.drivers.T
         end
 
+        # Canopy biomass IC (optimal-LAI prognostic state); no-op for prescribed LAI.
+        ClimaLand.Canopy.set_canopy_biomass_ic!(Y, land.canopy.biomass)
+
         # Lake IC
         if !isnothing(land.lake)
             set_lake_initial_conditions!(Y, p, t0, land.lake)
@@ -569,6 +572,9 @@ function make_set_initial_state_from_file(
         if land.canopy.energy isa ClimaLand.Canopy.BigLeafEnergyModel
             Y.canopy.energy.T .= p.drivers.T
         end
+
+        # Canopy biomass IC (optimal-LAI prognostic state); no-op for prescribed LAI.
+        ClimaLand.Canopy.set_canopy_biomass_ic!(Y, land.canopy.biomass)
     end
     return set_ic!
 end

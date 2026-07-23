@@ -131,9 +131,9 @@ description = "Fraction of annual precipitation available for transpiration (dim
 tag = "OptimalLAIModel"
 
 ["optimal_lai_tau_long_term"]
-value = 3.1536e7
+value = 6.3072e7
 type = "float"
-description = "Long-term memory timescale (s) of the A0 and precipitation running-sum totals that set LAI_max and the steady-state LAI. Default 1 year (3.1536e7 s). A longer value filters the seasonal cycle more strongly."
+description = "Long-term memory timescale (s) of the A0 and precipitation running-mean annual totals that set LAI_max and the steady-state LAI. Default 2 years (6.3072e7 s); a longer value filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle into the smoothed totals."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters

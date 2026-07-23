@@ -76,15 +76,13 @@ ClimaLand.prognostic_domain_names(m::NTModel) =
             name = :precip_annual,
             reduction = RunningSum(),
             timescale = FT(365 * 86400),
-            compute_instantaneous! = (dst, Y, p, t) ->
-                (@. dst = p.drivers.P_liq),
+            compute_instantaneous = (Y, p, t) -> p.drivers.P_liq,
         ),
         TimeIntegratedVariable(;
             name = :T_annual,
             reduction = RunningMean(),
             timescale = FT(365 * 86400),
-            compute_instantaneous! = (dst, Y, p, t) ->
-                (@. dst = p.drivers.T),
+            compute_instantaneous = (Y, p, t) -> p.drivers.T,
         ),
     )
     m, Y, p = build(specs)
@@ -105,7 +103,7 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
+        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
     m, Y, p0 = build((spec,))
     ff = similar(Y.tiv.X)
@@ -139,7 +137,7 @@ end
         name = :X,
         reduction = RunningSum(),
         timescale = τ,
-        compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
+        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
     m, Y, _ = build((spec,))
     ff = similar(Y.tiv.X)
@@ -162,7 +160,7 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
+        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
     m2, Y2, _ = build((mean_spec,))
     ff2 = similar(Y2.tiv.X)
@@ -187,7 +185,7 @@ end
         name = :X,
         reduction = TimeIntegral(),
         timescale = FT(1.0),  # ignored
-        compute_instantaneous! = (dst, Y, p, t) -> (@. dst = p.drivers.f),
+        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
     m, Y, _ = build((spec,))
     ff = similar(Y.tiv.X)
@@ -211,8 +209,7 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous! = (dst, Y, p, t) ->
-            (@. dst = A * sin(ω * t)),
+        compute_instantaneous = (Y, p, t) -> A * sin(ω * t),
     )
     m, Y, _ = build((spec,))
     p = (;)
@@ -247,7 +244,7 @@ end
         name = :A0_annual,
         reduction = RunningSum(),
         timescale = year,
-        compute_instantaneous! = (dst, Y, p, t) -> (@. dst = inst(t)),
+        compute_instantaneous = (Y, p, t) -> inst(t),
     )
     m, Y, _ = build((spec,))
     p = (;)
@@ -301,13 +298,17 @@ end
         reduction = RunningMean(),
         timescale = τ,
         element_type = accvars_type,
-        compute_instantaneous! = (dst, Y, p, t) ->
-            (dst.a .= fa; dst.b .= fb; nothing),
+        # return the instantaneous field (like `AccVars_inst` in the cache)
+        compute_instantaneous = (Y, p, t) -> p.finst,
     )
     m = NTModel{FT, typeof(col), typeof((spec,))}(col, (spec,))
     # the structured element type is carried through the declaration helper
     @test ClimaLand.prognostic_types(m) == (accvars_type,)
-    Y, p, _ = initialize(m)
+    Y, _, _ = initialize(m)
+    finst = similar(Y.nt.X)
+    finst.a .= fa
+    finst.b .= fb
+    p = (; finst = finst)
     Y.nt.X.a .= FT(1.0)
     Y.nt.X.b .= FT(2.0)
     dY = similar(Y)
@@ -330,8 +331,14 @@ end
     col = Column(; zlim = (FT(-1), FT(0)), nelements = 2)
     fa, fb, τ = FT(6.0), FT(9.0), FT(100.0)
     nt_type = NamedTuple{(:a, :b), Tuple{FT, FT}}
-    inst! = (dst, Y, p, t) -> (dst.a .= fa; dst.b .= fb; nothing)
     ntmodel(specs) = NTModel{FT, typeof(col), typeof(specs)}(col, specs)
+    # instantaneous NamedTuple target field, filled once and returned each step
+    fill_inst!(Y) = begin
+        finst = similar(Y.nt.X)
+        finst.a .= fa
+        finst.b .= fb
+        finst
+    end
 
     # (A) a constant weight `c` scales the reduction rate by exactly `c` on both
     # NamedTuple components — exercises `⊠` on a structured (NamedTuple-valued) field.
@@ -341,10 +348,11 @@ end
         reduction = RunningMean(),
         timescale = τ,
         element_type = nt_type,
-        compute_instantaneous! = inst!,
-        weight! = (Y, p, t) -> fill!(similar(Y.nt.X.a), c),
+        compute_instantaneous = (Y, p, t) -> p.finst,
+        weight = (Y, p, t) -> fill!(similar(Y.nt.X.a), c),
     )
-    Y, p, _ = initialize(ntmodel((spec_c,)))
+    Y, _, _ = initialize(ntmodel((spec_c,)))
+    p = (; finst = fill_inst!(Y))
     Y.nt.X.a .= FT(1.0)
     Y.nt.X.b .= FT(2.0)
     dY = similar(Y)
@@ -358,8 +366,8 @@ end
         reduction = RunningMean(),
         timescale = τ,
         element_type = nt_type,
-        compute_instantaneous! = inst!,
-        weight! = (Y, p, t) -> fill!(similar(Y.nt.X.a), FT(0)),
+        compute_instantaneous = (Y, p, t) -> p.finst,
+        weight = (Y, p, t) -> fill!(similar(Y.nt.X.a), FT(0)),
     )
     time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec_0,))
     @test Array(parent(dY.nt.X.a))[1] == FT(0)
@@ -375,11 +383,12 @@ end
         reduction = RunningMean(),
         timescale = τ,
         element_type = nt_type,
-        compute_instantaneous! = inst!,
-        weight! = (Y, p, t) ->
+        compute_instantaneous = (Y, p, t) -> p.finst,
+        weight = (Y, p, t) ->
             fill!(similar(Y.nt.X.a), FT(1) + cos(FT(2π) * t / P)),
     )
-    Yw, pw, _ = initialize(ntmodel((spec_w,)))
+    Yw, _, _ = initialize(ntmodel((spec_w,)))
+    pw = (; finst = fill_inst!(Yw))
     Yw.nt.X.a .= FT(1.0)
     dYw = similar(Yw)
     Δt = P / FT(2000)
