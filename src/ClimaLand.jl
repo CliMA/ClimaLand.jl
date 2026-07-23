@@ -445,8 +445,6 @@ include("integrated/lake_land_interactions.jl")
 include("integrated/soil_canopy_root_interactions.jl")
 include("integrated/land_radiation.jl")
 
-include("shared_utilities/show_methods.jl")
-
 # Diagnostics
 include(joinpath("diagnostics", "Diagnostics.jl"))
 import .Diagnostics: default_diagnostics

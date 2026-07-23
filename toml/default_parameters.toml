@@ -289,18 +289,6 @@ description = "The SWE for which a snowpack is considered gone (m), or the start
 tag = "ConstantResetAlbedo"
 
 # P model parameters
-["pmodel_vpd_ratio"]
-value = 0.05
-type = "float"
-description = "Minimum value for the ratio of sqrt(vpd) and the pmdodel xi"
-tag = "PModelParameters"
-
-["pmodel_gamma_ratio"]
-value = 0.99
-type = "float"
-description = "Maximum value for the ratio of Gamma star over the partial pressure of CO2 in the atmosphere"
-tag = "PModelParameters"
-
 ["pmodel_cstar"]
 value = 0.43
 type = "float"

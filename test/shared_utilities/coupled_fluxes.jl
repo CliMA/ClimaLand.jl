@@ -62,7 +62,7 @@ land = LandModel{FT}(
 Y, p, cds = ClimaLand.initialize(land)
 # Set drivers (We assume the coupler will have done this)
 p.drivers.T .= FT(289)
-p.drivers.q .= FT(0.009)
+p.drivers.q .= FT(0)
 p.drivers.P .= FT(101325)
 p.drivers.P_liq .= FT(0)
 p.drivers.P_snow .= FT(0)
