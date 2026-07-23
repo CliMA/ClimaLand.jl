@@ -472,6 +472,8 @@ function get_possible_diagnostics(model::EnergyHydrology)
         "precip",
         "tair",
         "sdr",
+        "soilshf",
+        "soillhf"
     ]
 
     # Add diagnostics based on the top boundary condition type and runoff model
@@ -635,7 +637,7 @@ end
 Return a shortened list of highlighted diagnostics for the given model.
 """
 function get_short_diagnostics(model::EnergyHydrology)
-    return ["swc", "si", "sie", "tsoil"]
+    return ["swc", "si", "sie", "tsoil",]
 end
 function get_short_diagnostics(model::SoilCO2Model)
     return ["sco2", "hr", "so2"]
