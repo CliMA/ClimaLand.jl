@@ -31,9 +31,9 @@ We follow the scheme of Mengoli et al., (2022) who propose updating optimal para
 ```
 where $\bar{x}$ is the acclimated parameter, $x$ is the optimal parameter computed at local noon, $\alpha = \dfrac{\Delta t}{\tau}$ and $\tau$ is the timescale of acclimation. Since we update this equation every local noon, $\Delta t$ is 1 day and $\tau = 15$ days corresponds to $\alpha = \dfrac{1}{15} \approx 0.067$ (the default timescale used in Mengoli 2022). The acclimated variables $\bar{x}$ are stored in the model cache in `p.canopy.photosynthesis.AccVars`.  
 
-At every model timestep, the latest acclimated values $V_{c\max 25}^{\mathrm{opt}}$, $J_{\max 25}^{\mathrm{opt}}$, are then adjusted via modified-Arrhenius type functions of form 
+At every model timestep, the latest optimal values $V_{c\max 25}^{\mathrm{opt}}$, $J_{\max 25}^{\mathrm{opt}}$, are then adjusted via modified-Arrhenius type functions of form 
 ```math
-V_{c\max} = V_{c\max 25}^{\mathrm{opt}} \cdot \underbrace{ \exp \left( \dfrac{\Delta H_{a}(T - T_{0})}{T_{0} TR} \right) }_{ \text{activation (Arrhenius)} } \cdot \underbrace{ \dfrac{1 + e^{(T_{0}\Delta S - \Delta H_{d})/RT_{0}}}{1 + e^{(T\Delta S - \Delta H_{d})/RT}}  }_{ \text{deactivation} }
+V_{c\max}^{\mathrm{opt}} = V_{c\max 25}^{\mathrm{opt}} \cdot \underbrace{ \exp \left( \dfrac{\Delta H_{a}(T - T_{0})}{T_{0} TR} \right) }_{ \text{activation (Arrhenius)} } \cdot \underbrace{ \dfrac{1 + e^{(T_{0}\Delta S - \Delta H_{d})/RT_{0}}}{1 + e^{(T\Delta S - \Delta H_{d})/RT}}  }_{ \text{deactivation} }
 ```
 where $\Delta H_{a}$, $\Delta H_{d}$ are standard enthalpies of activation and deactivation, $T_{0} = 298.15$ K is the reference temperature, and $\Delta S$ is the entropy change in deactivation. The acclimated $\xi^\mathrm{opt}$ is used to compute the instantaneous intercellular CO2 concentration $c_{i}$
 ```math
