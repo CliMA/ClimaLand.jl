@@ -66,7 +66,7 @@ function get_calibration_prior()
         EKP.constrained_gaussian("pmodel_β_c3", 68.2139, 40.0, 10.0, 300.0),
         # pmodel_β_c4 prior posterior 39.575 hit upper bound 40 -> expand to 80
         EKP.constrained_gaussian("pmodel_β_c4", 39.575, 5.0, 5.0, 80.0),
-        EKP.constrained_gaussian("pmodel_α",0.035885, 0.02, 0.001, 0.15),
+        EKP.constrained_gaussian("pmodel_α", 0.035885, 0.02, 0.001, 0.15),
         EKP.constrained_gaussian(
             "moisture_stress_c",
             0.377838,

@@ -289,14 +289,7 @@ ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
     NamedTuple{
-        (
-            :ξ_c3,
-            :ξ_c4,
-            :Vcmax25_c3,
-            :Vcmax25_c4,
-            :Jmax25_c3,
-            :Jmax25_c4,
-        ),
+        (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
 )
@@ -565,14 +558,7 @@ function update_pmodel_state(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT},
     AccVars::NamedTuple{
-        (
-            :ξ_c3,
-            :ξ_c4,
-            :Vcmax25_c3,
-            :Vcmax25_c4,
-            :Jmax25_c3,
-            :Jmax25_c4,
-        ),
+        (:ξ_c3, :ξ_c4, :Vcmax25_c3, :Vcmax25_c4, :Jmax25_c3, :Jmax25_c4),
         Tuple{FT, FT, FT, FT, FT, FT},
     },
     T_canopy::FT,
@@ -997,14 +983,7 @@ function compute_blended_pmodel_photosynthesis(
     thermo_params,
     FT,
 )
-    (;
-        Vcmax25_c3,
-        Vcmax25_c4,
-        Jmax25_c3,
-        Jmax25_c4,
-        ξ_c3,
-        ξ_c4,
-    ) = AccVars
+    (; Vcmax25_c3, Vcmax25_c4, Jmax25_c3, Jmax25_c4, ξ_c3, ξ_c4) = AccVars
     ca_pp = c_co2_air * P_air # partial pressure of co2
     VPD = Thermodynamics.vapor_pressure_deficit(
         thermo_params,
