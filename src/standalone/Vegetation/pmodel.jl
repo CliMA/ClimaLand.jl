@@ -1153,13 +1153,13 @@ get_An_leaf(p, m::PModel) = @. lazy(
 get_GPP(p, m::PModel) = p.canopy.photosynthesis.InstVars.GPP
 
 function get_J_over_Jmax(Y, p, canopy, m::PModel)
-    Jmax_c3, Jmax_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
+    Jmax_opt_c3, Jmax_opt_c4 = compute_Jmax_canopy(Y, p, canopy, m) # lazy
     J_c3, J_c4 = compute_J_canopy(Y, p, canopy, m) # lazy
     FT = eltype(m.constants)
     return @. lazy(
         blend(
-            J_c3 / max(Jmax_c3, sqrt(eps(FT))),
-            J_c4 / max(Jmax_c4, sqrt(eps(FT))),
+            J_c3 / max(Jmax_opt_c3, sqrt(eps(FT))),
+            J_c4 / max(Jmax_opt_c4, sqrt(eps(FT))),
             m.fractional_c3,
         ),
     )
