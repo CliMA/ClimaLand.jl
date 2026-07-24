@@ -29,7 +29,7 @@ We follow the scheme of Mengoli et al., (2022) who propose updating optimal para
 ```math
 \tau \dfrac{ d\bar{x}}{dt} = \bar{x} - x \implies \bar{x}_{t+1} = (1-\alpha) \bar{x}_{t} + \alpha x_{t+1}
 ```
-where $\bar{x}$ is the acclimated parameter, $x$ is the parameter computed at local noon, $\alpha = 1 - \dfrac{\Delta t}{\tau}$ and $\tau$ is the timescale of acclimation. Since we update this equation every local noon, $\Delta t$ is 1 day and $\tau = 15$ days corresponds to $\alpha = \dfrac{1}{15} \approx 0.067$ (the default timescale used in Mengoli 2022). The optimal variables $\bar{x}$ are stored in the model cache in `p.canopy.photosynthesis.OptVars`.  
+where $\bar{x}$ is the acclimated parameter, $x$ is the optimal parameter computed at local noon, $\alpha = \dfrac{\Delta t}{\tau}$ and $\tau$ is the timescale of acclimation. Since we update this equation every local noon, $\Delta t$ is 1 day and $\tau = 15$ days corresponds to $\alpha = \dfrac{1}{15} \approx 0.067$ (the default timescale used in Mengoli 2022). The acclimate variables $\bar{x}$ are stored in the model cache in `p.canopy.photosynthesis.AccVars`.  
 
 At every model timestep, the latest acclimated values $V_{c\max 25}^{\mathrm{opt}}$, $J_{\max 25}^{\mathrm{opt}}$, are then adjusted via modified-Arrhenius type functions of form 
 ```math
