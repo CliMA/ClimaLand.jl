@@ -544,7 +544,7 @@ Args:
 - `fractional_c3`: Photosynthesis mechanism (1 for C3, 0 for C4)
 - `parameters`: PModelParameters object containing the model parameters.
 - `constants`: PModelConstants object containing the model constants.
-- `AccVars`: NamedTuple containing the current optimal values of ξ, Vcmax25, and Jmax25.
+- `AccVars`: NamedTuple containing the current acclimated values of ξ, Vcmax25, and Jmax25.
 - `T_canopy`: Canopy temperature (K).
 - `P_air`: Ambient air pressure (Pa).
 - `VPD`: Vapor pressure deficit (Pa).
