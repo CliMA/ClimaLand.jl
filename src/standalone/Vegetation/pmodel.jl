@@ -281,7 +281,7 @@ and dark respiration at the canopy level (`Rd`), and
 
 - `AccVars`: a NamedTuple with keys `:ξ_c3`, `:ξ_c4`, `:Vcmax25_c3`,
     `:Vcmax25_c4`, `Jmax25_c3`, and `:Jmax25_c4` containing the
-    acclimated optimal values of ξ, Vcmax25 (c3 and c4 variant), and Jmax25 (c3
+    acclimated values of ξ, Vcmax25 (c3 and c4 variant), and Jmax25 (c3
     and c4 variant), respectively. These are updated using an exponential moving
     average (EMA) at local noon.
 """
