@@ -370,15 +370,17 @@ end
 An implementation of the optimal LAI model from Zhou et al. (2025) as a biomass model.
 
 This model computes LAI dynamically based on optimality principles, balancing energy and
-water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf`, consistent with
-`PrescribedBiomassModel`.
+water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is mirrored into
+`p.canopy.biomass.area_index.leaf` for the rest of the canopy, consistent with
+`PrescribedBiomassModel`. Its initial state, and that of the trailing totals it depends
+on, is set by `ClimaLand.Simulations.set_canopy_biomass_initial_conditions!`.
 
 # Fields
 - `parameters`: Required parameters for the optimal LAI model
-- `optimal_lai_inputs`: NamedTuple with spatially varying GSL (growing season length in days),
-  A0_annual (annual potential GPP in mol CO2 m^-2 yr^-1), precip_annual (mol H2O m^-2 yr^-1),
-  vpd_gs (Pa), lai_init (initial LAI from MODIS), and f0 (fraction of precip for transpiration),
-  typically created using `optimal_lai_initial_conditions`.
+- `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI_max and
+  steady-state-LAI formulas: GSL (growing season length in days), vpd_gs (growing-season
+  mean VPD in Pa), and f0 (fraction of precip for transpiration). Typically created using
+  `optimal_lai_initial_conditions`, which reads them alongside the initial conditions.
 - `SAI`: Prescribed stem area index (m^2 m^-2)
 - `RAI`: Prescribed root area index (m^2 m^-2)
 - `rooting_depth`: Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies
@@ -398,7 +400,7 @@ struct ZhouOptimalLAIModel{
 } <: AbstractBiomassModel{FT}
     "Required parameters for the optimal LAI model"
     parameters::OLPT
-    "Spatially varying initial conditions (GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0)"
+    "Spatially varying inputs of the LAI formulas (GSL, vpd_gs, f0)"
     optimal_lai_inputs::GD
     "Prescribed stem area index (m^2 m^-2), scalar or Field"
     SAI::FS
@@ -426,7 +428,7 @@ Outer constructor for the ZhouOptimalLAIModel struct.
 
 # Arguments
 - `parameters`: OptimalLAIParameters for the model
-- `optimal_lai_inputs`: NamedTuple with spatially varying GSL, A0_annual, precip_annual, vpd_gs, lai_init, f0 fields,
+- `optimal_lai_inputs`: NamedTuple with the spatially varying GSL, vpd_gs and f0 fields,
   typically created using `optimal_lai_initial_conditions`.
 - `SAI`: Prescribed stem area index (m^2 m^-2); scalar or spatially-varying Field
 - `RAI`: Prescribed root area index (m^2 m^-2); scalar or spatially-varying Field
@@ -586,8 +588,11 @@ function ClimaLand.make_compute_exp_tendency(
     # Fixed 365-day reference year (s) that annualizes an instantaneous rate, so the
     # `A0_annual`/`precip_annual` running means hold a one-year total for any `τ`.
     year = FT(365) * IP.day(IP.InsolationParameters(FT))
-    # Instantaneous quantity `f` for each spec (a field or `lazy` broadcast), attached to
-    # the metadata declared in `optimal_lai_tivs` via the copy constructor below.
+    specs = optimal_lai_tivs(component)
+    # Instantaneous quantity `f` for each variable declared in `optimal_lai_tivs`
+    # (a field or `lazy` broadcast). These close over the parent `canopy`, which is
+    # only in scope here, so they are supplied to the tendency rather than declared
+    # with the variables.
     computes = (;
         A0_daily = (Y, p, t) -> p.canopy.biomass.A0_inst,
         A0_annual = (Y, p, t) -> (@. lazy(year * p.canopy.biomass.A0_inst)),
@@ -597,12 +602,6 @@ function ClimaLand.make_compute_exp_tendency(
         )),
         LAI = (Y, p, t) -> compute_LAI_target(Y, p, canopy),
     )
-    specs = map(optimal_lai_tivs(component)) do s
-        ClimaLand.TimeIntegratedVariable(
-            s;
-            compute_instantaneous = getproperty(computes, s.name),
-        )
-    end
     function compute_exp_tendency!(dY, Y, p, t)
         # Compute the instantaneous potential GPP once (drivers, `par_d`, `βm` fresh
         # after `update_aux`); both A0 reductions read it.
@@ -614,70 +613,31 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             t,
             specs,
+            computes,
         )
     end
     return compute_exp_tendency!
 end
 
 """
-    set_canopy_biomass_ic!(Y, model::AbstractBiomassModel)
+    set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
 
-Seed the biomass component's prognostic initial state in `Y` from its climatology.
-Called from `set_ic!`, so all of `Y` is initialized in one place; a checkpoint/restart
-(whose `set_ic!` loads `Y` from file) does not call it and so is not overwritten. A
-no-op for biomass models with no prognostic state (e.g. prescribed LAI).
-"""
-set_canopy_biomass_ic!(Y, ::AbstractBiomassModel) = nothing
+Copies the optimal-LAI model's static spatially-varying inputs into the cache, where
+the `LAI_max` and steady-state-LAI formulas read them: the growing season length
+`GSL` (days), the growing-season mean VPD `vpd_gs` (Pa) used in the water-limitation
+WUE factor, and the fraction of precipitation available for transpiration `f0`. They
+are taken from `model.optimal_lai_inputs`, typically built by
+`optimal_lai_initial_conditions`, and are rebuilt at every setup, including on
+restart.
 
-function set_canopy_biomass_ic!(Y, model::ZhouOptimalLAIModel{FT}) where {FT}
-    inputs = model.optimal_lai_inputs
-    seconds_per_day = IP.day(IP.InsolationParameters(FT))
-    year_ref = FT(365) * seconds_per_day
-    # LAI starts from MODIS observations; A0_annual/precip_annual from the 1-year
-    # climatology (their steady state, independent of τ); A0_daily at the daily share.
-    Y.canopy.biomass.LAI .= inputs.lai_init
-    Y.canopy.biomass.A0_annual .= inputs.A0_annual
-    Y.canopy.biomass.precip_annual .= inputs.precip_annual
-    Y.canopy.biomass.A0_daily .=
-        inputs.A0_annual .* (seconds_per_day / year_ref)
-    return nothing
-end
-
-"""
-    set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy; A0_daily)
-
-The optimal LAI model requires initialization of LAI and A0 values before the simulation.
-
-GSL, A0_annual, precip_annual, vpd_gs, lai_init, and f0 are taken from `model.optimal_lai_inputs`, which
-contains spatially varying fields typically created using `optimal_lai_initial_conditions`.
-
-LAI is initialized from MODIS satellite observations (`lai_init`) rather than computing
-equilibrium from model equations. This provides a realistic starting point that reduces
-spin-up time and matches observed vegetation patterns.
-
-# Notes
-- precip_annual is in mol H2O m^-2 yr^-1 (converted from ERA5 kg m^-2 s^-1 in optimal_lai_inputs.jl)
-  to match Zhou et al. (2025) formulation for water limitation.
-- vpd_gs is the mean VPD during growing season (Pa), used in the WUE factor for water limitation.
-- lai_init comes from MODIS first timestep, providing spatially-varying initial conditions.
-- f0 is the spatially varying fraction of precipitation for transpiration from Zhou et al.
+The model's prognostic state (`LAI`, `A0_daily`, `A0_annual`, `precip_annual`) is not
+touched here; it is initialized with the rest of `Y` by
+`ClimaLand.Simulations.set_canopy_biomass_initial_conditions!` in `set_ic!`.
 """
 function set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
     optimal_lai_inputs = model.optimal_lai_inputs
-
-    # The optimal-LAI prognostic state (LAI, A0_daily, A0_annual, precip_annual) is
-    # seeded in `set_ic!` via `set_canopy_biomass_ic!`. Repeat it here only on a fresh
-    # start — when `Y` is still zero-initialized — as a fallback for IC paths that do
-    # not run the file-based `set_ic!` (e.g. standalone canopy setups); a restart's `Y`
-    # (loaded from file, non-zero) is left untouched.
-    if all(iszero, parent(Y0.canopy.biomass.LAI))
-        set_canopy_biomass_ic!(Y0, model)
-    end
-    # Mirror the prognostic LAI into the cache area index (also done in `update_aux`).
-    p.canopy.biomass.area_index.leaf .= Y0.canopy.biomass.LAI
-
-    # Static cache inputs (not part of Y; rebuilt every setup, including on restart).
     p.canopy.biomass.GSL .= optimal_lai_inputs.GSL
     p.canopy.biomass.vpd_gs .= optimal_lai_inputs.vpd_gs
     p.canopy.biomass.f0 .= optimal_lai_inputs.f0
+    return nothing
 end

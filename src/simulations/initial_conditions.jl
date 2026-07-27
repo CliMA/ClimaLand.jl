@@ -329,6 +329,64 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
 end
 
 """
+    set_canopy_biomass_initial_conditions!(Y, model::ClimaLand.Canopy.AbstractBiomassModel)
+
+Sets the initial state of the canopy biomass component in `Y`. Biomass models
+without prognostic state, such as `PrescribedBiomassModel`, have nothing to set.
+"""
+set_canopy_biomass_initial_conditions!(
+    Y,
+    model::ClimaLand.Canopy.AbstractBiomassModel,
+) = nothing
+
+"""
+    set_canopy_biomass_initial_conditions!(
+        Y,
+        model::ClimaLand.Canopy.ZhouOptimalLAIModel{FT},
+        ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+            context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+        ),
+    ) where {FT}
+
+Sets the optimal-LAI prognostic state — the leaf area index `LAI` and the trailing
+potential-GPP and precipitation totals `A0_daily`, `A0_annual`, `precip_annual`,
+stored in `Y.canopy.biomass` — using the values in the netCDF file at `ic_path`,
+which must contain the variables `lai_init`, `a0_annual` and `precip_annual` on a
+(lon, lat) grid.
+
+`LAI` starts from the MODIS observation, which reduces spin-up relative to the model
+equilibrium and matches observed vegetation patterns. The annual totals start at
+their climatological values, which are their steady state and are independent of the
+smoothing timescale `tau_long_term`; `A0_daily`, a one-day total, starts at the
+corresponding daily share of the annual total.
+"""
+function set_canopy_biomass_initial_conditions!(
+    Y,
+    model::ClimaLand.Canopy.ZhouOptimalLAIModel{FT},
+    ic_path = ClimaLand.Artifacts.optimal_lai_initial_conditions_path(;
+        context = ClimaComms.context(axes(Y.canopy.biomass.LAI)),
+    ),
+) where {FT}
+    surface_space = axes(Y.canopy.biomass.LAI)
+    surface_bc = (Interpolations.Periodic(), Interpolations.Flat())
+    ic_field(varname) = SpaceVaryingInput(
+        ic_path,
+        varname,
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (;
+            extrapolation_bc = surface_bc,
+            interpolation_method,
+        ),
+    )
+    Y.canopy.biomass.LAI .= ic_field("lai_init")
+    Y.canopy.biomass.A0_annual .= ic_field("a0_annual")
+    Y.canopy.biomass.precip_annual .= ic_field("precip_annual")
+    Y.canopy.biomass.A0_daily .= Y.canopy.biomass.A0_annual ./ FT(365)
+    return nothing
+end
+
+"""
     make_set_initial_state_from_file(ic_path, land::LandModel{FT}; enforce_constraints=false) where {FT}
 
 Returns a function which takes (Y,p,t0,land) as arguments, and updates
@@ -461,7 +519,7 @@ function make_set_initial_state_from_file(
         end
 
         # Canopy biomass IC (optimal-LAI prognostic state); no-op for prescribed LAI.
-        ClimaLand.Canopy.set_canopy_biomass_ic!(Y, land.canopy.biomass)
+        set_canopy_biomass_initial_conditions!(Y, land.canopy.biomass)
 
         # Lake IC
         if !isnothing(land.lake)
@@ -574,7 +632,7 @@ function make_set_initial_state_from_file(
         end
 
         # Canopy biomass IC (optimal-LAI prognostic state); no-op for prescribed LAI.
-        ClimaLand.Canopy.set_canopy_biomass_ic!(Y, land.canopy.biomass)
+        set_canopy_biomass_initial_conditions!(Y, land.canopy.biomass)
     end
     return set_ic!
 end
@@ -942,6 +1000,9 @@ function make_set_initial_state_from_atmos_and_parameters(
         end
 
         Y.canopy.hydraulics.ϑ_l .= land.canopy.hydraulics.parameters.ν
+
+        # Canopy biomass IC (optimal-LAI prognostic state); no-op for prescribed LAI.
+        set_canopy_biomass_initial_conditions!(Y, land.canopy.biomass)
 
         # Lake IC
         if !isnothing(land.lake)

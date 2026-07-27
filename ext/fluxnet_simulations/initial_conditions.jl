@@ -166,7 +166,8 @@ end
 Sets Y.canopy.energy.T to the air temperature at the observation date closest to the start
 date of the model; sets the potential in the stem and leaf to -0.1 and -0.2 MPa, respectively,
 and the computes the resulting water content Y.canopy.hydraulics.ϑ_l using the retention curve
-of the plant.
+of the plant. If the biomass model carries prognostic state (the optimal-LAI model), that is
+set from its climatology.
 """
 function set_fluxnet_ic!(
     Y,
@@ -201,6 +202,10 @@ function set_fluxnet_ic!(
             hydraulics.parameters.ν,
             S_l_ini,
         )
+    ClimaLand.Simulations.set_canopy_biomass_initial_conditions!(
+        Y,
+        model.biomass,
+    )
 end
 
 """

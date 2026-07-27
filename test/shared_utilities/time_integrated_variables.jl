@@ -37,8 +37,9 @@ function build(specs; FT = Float64)
 end
 
 # Integrate `m.specs` in place with explicit Euler, returning the time series of
-# the (scalar) variable named `var`. `forcing!` may mutate `p` before each step.
-function euler!(m, Y, p, var, Δt, N; t0 = 0.0)
+# the (scalar) variable named `var`. `computes` gives the instantaneous quantity of
+# each spec, as it is supplied by a model's `make_compute_exp_tendency`.
+function euler!(m, Y, p, var, Δt, N, computes; t0 = 0.0)
     Xf = getproperty(Y.tiv, var)
     dY = similar(Y)
     dXf = getproperty(dY.tiv, var)
@@ -46,7 +47,7 @@ function euler!(m, Y, p, var, Δt, N; t0 = 0.0)
     series = Vector{FT}(undef, N)
     t = FT(t0)
     for n in 1:N
-        time_integrated_tendency!(dY.tiv, Y.tiv, Y, p, t, m.specs)
+        time_integrated_tendency!(dY.tiv, Y.tiv, Y, p, t, m.specs, computes)
         @. Xf = Xf + FT(Δt) * dXf
         series[n] = scalar(Xf)
         t += FT(Δt)
@@ -76,13 +77,11 @@ ClimaLand.prognostic_domain_names(m::NTModel) =
             name = :precip_annual,
             reduction = RunningSum(),
             timescale = FT(365 * 86400),
-            compute_instantaneous = (Y, p, t) -> p.drivers.P_liq,
         ),
         TimeIntegratedVariable(;
             name = :T_annual,
             reduction = RunningMean(),
             timescale = FT(365 * 86400),
-            compute_instantaneous = (Y, p, t) -> p.drivers.T,
         ),
     )
     m, Y, p = build(specs)
@@ -103,8 +102,8 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
+    computes = (; X = (Y, p, t) -> p.drivers.f)
     m, Y, p0 = build((spec,))
     ff = similar(Y.tiv.X)
     ff .= f
@@ -113,7 +112,7 @@ end
 
     Δt = FT(1.0)
     N = 250
-    series = euler!(m, Y, p, :X, Δt, N)
+    series = euler!(m, Y, p, :X, Δt, N, computes)
     X_num = series[end]
 
     # Explicit-Euler of dX/dt=(f-X)/τ is exactly the P-model blend X ← αX+(1-α)f.
@@ -137,8 +136,8 @@ end
         name = :X,
         reduction = RunningSum(),
         timescale = τ,
-        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
+    computes = (; X = (Y, p, t) -> p.drivers.f)
     m, Y, _ = build((spec,))
     ff = similar(Y.tiv.X)
     ff .= f
@@ -147,12 +146,12 @@ end
 
     Δt = FT(1.0)
     N = 250
-    series = euler!(m, Y, p, :X, Δt, N)
+    series = euler!(m, Y, p, :X, Δt, N, computes)
     X_exact = τ * f * (1 - exp(-N * Δt / τ))
     @test series[end] ≈ X_exact rtol = 2e-2
 
     # long-run steady state → τ·f
-    euler!(m, Y, p, :X, Δt, 2000)
+    euler!(m, Y, p, :X, Δt, 2000, computes)
     @test scalar(Y.tiv.X) ≈ τ * f rtol = 1e-3
 
     # RunningSum is exactly τ × RunningMean (same forcing, both start at 0)
@@ -160,7 +159,6 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
     m2, Y2, _ = build((mean_spec,))
     ff2 = similar(Y2.tiv.X)
@@ -172,8 +170,8 @@ end
     ff3 .= f
     p3 = (; drivers = (; f = ff3))
     Y3.tiv.X .= 0
-    mean_series = euler!(m2, Y2, p2, :X, Δt, N)
-    int_series = euler!(m3, Y3, p3, :X, Δt, N)
+    mean_series = euler!(m2, Y2, p2, :X, Δt, N, computes)
+    int_series = euler!(m3, Y3, p3, :X, Δt, N, computes)
     @test int_series[end] ≈ τ * mean_series[end] rtol = 1e-12
 end
 
@@ -185,8 +183,8 @@ end
         name = :X,
         reduction = TimeIntegral(),
         timescale = FT(1.0),  # ignored
-        compute_instantaneous = (Y, p, t) -> p.drivers.f,
     )
+    computes = (; X = (Y, p, t) -> p.drivers.f)
     m, Y, _ = build((spec,))
     ff = similar(Y.tiv.X)
     ff .= f
@@ -195,7 +193,7 @@ end
 
     Δt = FT(0.5)
     N = 100
-    series = euler!(m, Y, p, :X, Δt, N)
+    series = euler!(m, Y, p, :X, Δt, N, computes)
     @test series[end] ≈ X0 + f * N * Δt rtol = 1e-12  # exact for constant f
 end
 
@@ -209,15 +207,15 @@ end
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
-        compute_instantaneous = (Y, p, t) -> A * sin(ω * t),
     )
+    computes = (; X = (Y, p, t) -> A * sin(ω * t))
     m, Y, _ = build((spec,))
     p = (;)
     Y.tiv.X .= 0
 
     Δt = FT(0.05)
     N = round(Int, 600 / Δt)  # integrate past the transient (~5τ)
-    series = euler!(m, Y, p, :X, Δt, N)
+    series = euler!(m, Y, p, :X, Δt, N, computes)
 
     # steady oscillation amplitude matches the first-order transfer function
     nper = round(Int, period / Δt)
@@ -244,12 +242,12 @@ end
         name = :A0_annual,
         reduction = RunningSum(),
         timescale = year,
-        compute_instantaneous = (Y, p, t) -> inst(t),
     )
+    computes = (; A0_annual = (Y, p, t) -> inst(t))
     m, Y, _ = build((spec,))
     p = (;)
     Y.tiv.A0_annual .= 0
-    tiv_series = euler!(m, Y, p, :A0_annual, Δt, N)
+    tiv_series = euler!(m, Y, p, :A0_annual, Δt, N, computes)
 
     # --- current scheme: accumulate daily, snap the 365-day sum, reset ---
     cur_series = Vector{FT}(undef, N)
@@ -298,9 +296,9 @@ end
         reduction = RunningMean(),
         timescale = τ,
         element_type = accvars_type,
-        # return the instantaneous field (like `AccVars_inst` in the cache)
-        compute_instantaneous = (Y, p, t) -> p.finst,
     )
+    # return the instantaneous field (like `AccVars_inst` in the cache)
+    computes = (; X = (Y, p, t) -> p.finst)
     m = NTModel{FT, typeof(col), typeof((spec,))}(col, (spec,))
     # the structured element type is carried through the declaration helper
     @test ClimaLand.prognostic_types(m) == (accvars_type,)
@@ -315,7 +313,7 @@ end
     Δt = FT(1.0)
     N = 300
     for _ in 1:N
-        time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec,))
+        time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec,), computes)
         Y.nt.X.a .= Y.nt.X.a .+ Δt .* dY.nt.X.a
         Y.nt.X.b .= Y.nt.X.b .+ Δt .* dY.nt.X.b
     end
@@ -340,36 +338,48 @@ end
         finst
     end
 
-    # (A) a constant weight `c` scales the reduction rate by exactly `c` on both
-    # NamedTuple components — exercises `⊠` on a structured (NamedTuple-valued) field.
-    c = FT(0.25)
-    spec_c = TimeIntegratedVariable(;
+    spec = TimeIntegratedVariable(;
         name = :X,
         reduction = RunningMean(),
         timescale = τ,
         element_type = nt_type,
-        compute_instantaneous = (Y, p, t) -> p.finst,
-        weight = (Y, p, t) -> fill!(similar(Y.nt.X.a), c),
     )
-    Y, _, _ = initialize(ntmodel((spec_c,)))
+    computes = (; X = (Y, p, t) -> p.finst)
+
+    # (A) a constant weight `c` scales the reduction rate by exactly `c` on both
+    # NamedTuple components — exercises `⊠` on a structured (NamedTuple-valued) field.
+    c = FT(0.25)
+    weights_c = (; X = (Y, p, t) -> fill!(similar(Y.nt.X.a), c))
+    Y, _, _ = initialize(ntmodel((spec,)))
     p = (; finst = fill_inst!(Y))
     Y.nt.X.a .= FT(1.0)
     Y.nt.X.b .= FT(2.0)
     dY = similar(Y)
-    time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec_c,))
+    time_integrated_tendency!(
+        dY.nt,
+        Y.nt,
+        Y,
+        p,
+        FT(0),
+        (spec,),
+        computes;
+        weights = weights_c,
+    )
     @test Array(parent(dY.nt.X.a))[1] ≈ c * (fa - FT(1.0)) / τ
     @test Array(parent(dY.nt.X.b))[1] ≈ c * (fb - FT(2.0)) / τ
 
     # (B) a zero weight freezes the variable (no acclimation at night).
-    spec_0 = TimeIntegratedVariable(;
-        name = :X,
-        reduction = RunningMean(),
-        timescale = τ,
-        element_type = nt_type,
-        compute_instantaneous = (Y, p, t) -> p.finst,
-        weight = (Y, p, t) -> fill!(similar(Y.nt.X.a), FT(0)),
+    weights_0 = (; X = (Y, p, t) -> fill!(similar(Y.nt.X.a), FT(0)))
+    time_integrated_tendency!(
+        dY.nt,
+        Y.nt,
+        Y,
+        p,
+        FT(0),
+        (spec,),
+        computes;
+        weights = weights_0,
     )
-    time_integrated_tendency!(dY.nt, Y.nt, Y, p, FT(0), (spec_0,))
     @test Array(parent(dY.nt.X.a))[1] == FT(0)
     @test Array(parent(dY.nt.X.b))[1] == FT(0)
 
@@ -378,16 +388,11 @@ end
     # of w(t) = 1 + cos(2π t/P) is exactly the elapsed time, so X reproduces the plain
     # EMA. Confirms the daily-mean-1 normalization the noon window relies on.
     P = τ / FT(20)
-    spec_w = TimeIntegratedVariable(;
-        name = :X,
-        reduction = RunningMean(),
-        timescale = τ,
-        element_type = nt_type,
-        compute_instantaneous = (Y, p, t) -> p.finst,
-        weight = (Y, p, t) ->
-            fill!(similar(Y.nt.X.a), FT(1) + cos(FT(2π) * t / P)),
+    weights_w = (;
+        X = (Y, p, t) ->
+            fill!(similar(Y.nt.X.a), FT(1) + cos(FT(2π) * t / P))
     )
-    Yw, _, _ = initialize(ntmodel((spec_w,)))
+    Yw, _, _ = initialize(ntmodel((spec,)))
     pw = (; finst = fill_inst!(Yw))
     Yw.nt.X.a .= FT(1.0)
     dYw = similar(Yw)
@@ -395,7 +400,16 @@ end
     N = 2000 * 10   # 10 whole periods
     t = FT(0)
     for _ in 1:N
-        time_integrated_tendency!(dYw.nt, Yw.nt, Yw, pw, t, (spec_w,))
+        time_integrated_tendency!(
+            dYw.nt,
+            Yw.nt,
+            Yw,
+            pw,
+            t,
+            (spec,),
+            computes;
+            weights = weights_w,
+        )
         Yw.nt.X.a .= Yw.nt.X.a .+ Δt .* dYw.nt.X.a
         t += Δt
     end

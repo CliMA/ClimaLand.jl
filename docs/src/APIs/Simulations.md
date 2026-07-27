@@ -11,4 +11,5 @@ ClimaLand.Simulations.solve!
 ClimaLand.Simulations.make_set_initial_state_from_file
 ClimaLand.Simulations.make_set_subseasonal_initial_conditions
 ClimaLand.Simulations.make_set_initial_state_from_atmos_and_parameters
+ClimaLand.Simulations.set_canopy_biomass_initial_conditions!
 ```

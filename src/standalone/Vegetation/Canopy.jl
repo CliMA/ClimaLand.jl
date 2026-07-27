@@ -424,15 +424,16 @@ Creates a ZhouOptimalLAIModel (optimal LAI based on Zhou et al. 2025) on the pro
 using parameters from `toml_dict`.
 
 The optimal LAI model computes LAI dynamically based on optimality principles, balancing
-energy and water constraints. LAI is stored in `p.canopy.biomass.area_index.leaf`.
+energy and water constraints. LAI is prognostic, in `Y.canopy.biomass.LAI`, and is
+mirrored into `p.canopy.biomass.area_index.leaf`.
 
 # Arguments
 - `domain`: The model domain
 - `toml_dict`: Parameter dictionary containing optimal LAI parameters
 
 # Keyword Arguments
-- `optimal_lai_inputs`: NamedTuple with spatially varying initial conditions (GSL, A0_annual,
-  precip_annual, vpd_gs, lai_init, f0). Default loads from `optimal_lai_initial_conditions`.
+- `optimal_lai_inputs`: NamedTuple with the spatially varying inputs of the LAI formulas
+  (GSL, vpd_gs, f0). Default loads from `optimal_lai_initial_conditions`.
 - `SAI`: Stem area index (m2/m2), default from toml_dict
 - `RAI`: Root area index (m2/m2), default from toml_dict
 - `rooting_depth`: Rooting depth (m), default from CLM data
@@ -1408,11 +1409,14 @@ end
     ClimaLand.make_set_initial_cache(model::CanopyModel)
 
 Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
-is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which
-sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt.
+is the P-model, then `set_initial_cache!` will also run `set_historical_cache!`, which
+computes the optimal Vcmax25, Jmax25 and ξ of the initial environment, and
+`set_acclimated_state!`, which warm-starts the prognostic acclimated capacities at
+that optimum — the one piece of state that cannot be set in `set_ic!`, since it
+depends on the cache.
 
-For ZhouOptimalLAIModel, this also initializes the LAI and A0 fields via
-`set_historical_cache!(p, Y0, model.biomass, model)`.
+For ZhouOptimalLAIModel, this also copies the model's static spatially-varying inputs
+(GSL, vpd_gs, f0) into the cache.
 """
 function ClimaLand.make_set_initial_cache(model::CanopyModel)
     drivers = get_drivers(model)
@@ -1423,6 +1427,7 @@ function ClimaLand.make_set_initial_cache(model::CanopyModel)
         update_cache!(p, Y0, t0)
         set_historical_cache!(p, Y0, model.photosynthesis, model)
         set_historical_cache!(p, Y0, model.biomass, model)
+        set_acclimated_state!(Y0, p, model.photosynthesis, model)
     end
     return set_initial_cache!
 end
@@ -1445,6 +1450,18 @@ values, so this function sets the historical cache values for the photosynthesis
 However, for other photosynthesis models this is not needed, so do nothing by default.
 """
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return nothing
+end
+
+"""
+    set_acclimated_state!(Y0, p, m::AbstractPhotosynthesisModel, canopy)
+
+Sets the part of the initial state which acclimates to the initial environment, and
+so can only be set once the initial cache is known (namely the P-model's optimal
+capacities). All of the state that does not depend on the cache is set in `set_ic!`
+instead; photosynthesis models without acclimated state do nothing here.
+"""
+function set_acclimated_state!(Y0, p, m::AbstractPhotosynthesisModel, canopy)
     return nothing
 end
 

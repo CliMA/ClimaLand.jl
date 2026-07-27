@@ -280,5 +280,46 @@ using ClimaCore
                 end
             end
         end
+
+        @testset "set_canopy_biomass_initial_conditions! for FT = $FT" begin
+            # The prognostic state is set from the netCDF climatology at `set_ic!`
+            # time, i.e. from a file rather than from the model.
+            domain =
+                Point(; z_sfc = FT(0.0), longlat = (FT(-92.2), FT(38.7441)))
+            surface_space = domain.space.surface
+            model = Canopy.ZhouOptimalLAIModel{FT}(
+                domain,
+                toml_dict;
+                SAI = FT(0.0),
+                RAI = FT(1.0),
+                rooting_depth = FT(1.0),
+                height = FT(10.0),
+            )
+            biomass_state = NamedTuple(
+                var => ClimaCore.Fields.zeros(surface_space) for
+                var in Canopy.prognostic_vars(model)
+            )
+            Y = ClimaCore.Fields.FieldVector(;
+                canopy = (; biomass = biomass_state),
+            )
+            ClimaLand.Simulations.set_canopy_biomass_initial_conditions!(
+                Y,
+                model,
+            )
+            LAI = Array(parent(Y.canopy.biomass.LAI))[1]
+            A0_annual = Array(parent(Y.canopy.biomass.A0_annual))[1]
+            A0_daily = Array(parent(Y.canopy.biomass.A0_daily))[1]
+            precip_annual = Array(parent(Y.canopy.biomass.precip_annual))[1]
+            # LAI starts at the MODIS observation in the same file
+            @test LAI ≈ Array(parent(model.optimal_lai_inputs.lai_init))[1]
+            @test FT(0) < LAI < FT(15)
+            # the annual totals start at their (steady-state) climatology, and the
+            # one-day total at the corresponding daily share
+            @test A0_annual ≈
+                  Array(parent(model.optimal_lai_inputs.A0_annual))[1]
+            @test A0_daily ≈ A0_annual / FT(365)
+            @test precip_annual ≈
+                  Array(parent(model.optimal_lai_inputs.precip_annual))[1]
+        end
     end
 end

@@ -3,6 +3,7 @@ export PModelParameters,
     PModel,
     compute_full_pmodel_outputs,
     set_historical_cache!,
+    set_acclimated_state!,
     compute_optimal_capacities,
     compute_A0_daily
 
@@ -307,7 +308,7 @@ ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
 # calculation; `AccVars_inst` is the instantaneous optimum (recomputed every step)
 # that the `RunningMean` relaxes toward, weighted onto local solar noon so the
 # acclimation samples midday conditions (see `make_compute_exp_tendency`).
-_pmodel_tivs(component::PModel{FT}) where {FT} = (
+pmodel_tivs(component::PModel{FT}) where {FT} = (
     ClimaLand.TimeIntegratedVariable(;
         name = :AccVars,
         reduction = ClimaLand.RunningMean(),
@@ -316,14 +317,14 @@ _pmodel_tivs(component::PModel{FT}) where {FT} = (
         element_type = _pmodel_accvars_type(FT),
     ),
 )
-# `prognostic_vars` (and `_types` / `_domain_names`) derive from the `_pmodel_tivs`
-# metadata, keeping the declaration in one place.
+# `prognostic_vars` (and `_types` / `_domain_names`) derive from the `pmodel_tivs`
+# declaration, keeping it in one place.
 ClimaLand.prognostic_vars(m::PModel) =
-    ClimaLand.time_integrated_prognostic_vars(_pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_vars(pmodel_tivs(m))
 ClimaLand.prognostic_types(m::PModel) =
-    ClimaLand.time_integrated_prognostic_types(_pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_types(pmodel_tivs(m))
 ClimaLand.prognostic_domain_names(m::PModel) =
-    ClimaLand.time_integrated_prognostic_domain_names(_pmodel_tivs(m))
+    ClimaLand.time_integrated_prognostic_domain_names(pmodel_tivs(m))
 
 
 """
@@ -688,17 +689,10 @@ end
 """
     function set_historical_cache!(p, Y0, model::PModel, canopy)
 
-The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
-Before the simulation, we need to have some physically meaningful initial values for these variables,
-which live in p.canopy.photosynthesis.AccVars.
-
-This method assumes that the acclimation is to the initial conditions of the simulation. Note that
-if the initial condition is e.g., nighttime, then initially the optimal Vcmax and Jmax are
-zero, so it will take ~1 month (two e-folding timescales for α corresponding to 2 week acclimation
-timescale) for the model to reach a physically meaningful state.
-
-An alternative to this approach is to initialize the initial optimal values to some reasonable values
-based on a spun-up simulation.
+Computes the instantaneous optimal Vcmax25, Jmax25, and ξ of the initial environment,
+storing them in `p.canopy.photosynthesis.AccVars_inst`. These are the target the
+prognostic acclimated capacities relax toward, and are also what
+[`set_acclimated_state!`](@ref) warm-starts those capacities from.
 """
 function set_historical_cache!(p, Y0, model::PModel, canopy)
     parameters = model.parameters
@@ -739,14 +733,33 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         βm,
         APAR_canopy_moles,
     )
-    # Warm-start the prognostic acclimated `AccVars` (and its cache mirror) at the
-    # initial optimum — but only on a fresh start, when `Y` is still zero-initialized,
-    # so a checkpoint/restart (which loads `Y` from file) is not overwritten. On
-    # restart, `update_cache!` has already mirrored the restored `Y.AccVars` into `p`.
+    return nothing
+end
+
+"""
+    set_acclimated_state!(Y0, p, model::PModel, canopy)
+
+Warm-starts the prognostic acclimated capacities `Y.canopy.photosynthesis.AccVars`
+(and their cache mirror) at the initial optimum computed by `set_historical_cache!`,
+i.e. assumes the canopy is acclimated to the initial environment.
+
+Unlike the rest of the state this cannot be set in `set_ic!`: the optimum depends on
+the absorbed PAR and the soil moisture stress, so it is only known once the initial
+cache has been computed. Without it the capacities would start at zero, and with a
+two-week acclimation timescale it would take ~1 month to reach a physically
+meaningful state — as it also does when the simulation starts at night, when the
+optimum itself is zero.
+
+A checkpoint/restart, whose `set_ic!` loads `Y` from file, is left untouched: the
+restored capacities are non-zero, and `update_cache!` has already mirrored them
+into `p`.
+"""
+function set_acclimated_state!(Y0, p, model::PModel, canopy)
     if all(iszero, parent(Y0.canopy.photosynthesis.AccVars))
         Y0.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
         p.canopy.photosynthesis.AccVars .= p.canopy.photosynthesis.AccVars_inst
     end
+    return nothing
 end
 
 # Normalization for the solar-noon acclimation window `exp(κ (cosθ - 1))`: its daily
@@ -806,7 +819,7 @@ function ClimaLand.make_compute_exp_tendency(
     component::PModel{FT},
     canopy,
 ) where {FT}
-    base = only(_pmodel_tivs(component))
+    specs = pmodel_tivs(component)
     seconds_in_a_day = IP.day(IP.InsolationParameters(FT))
     # Per-column solar-noon time (seconds UTC) from longitude; neglects the equation of
     # time (≤ ~20 min error), matching the removed local-noon sampling of `main`.
@@ -826,14 +839,12 @@ function ClimaLand.make_compute_exp_tendency(
         nothing
     end
     ω = FT(2π) / seconds_in_a_day
-    accvars_tiv = ClimaLand.TimeIntegratedVariable(
-        base;
-        compute_instantaneous = (Y, p, t) ->
-            p.canopy.photosynthesis.AccVars_inst,
-        weight = (Y, p, t) -> begin
+    computes = (; AccVars = (Y, p, t) -> p.canopy.photosynthesis.AccVars_inst)
+    weights = (;
+        AccVars = (Y, p, t) -> begin
             tod = _seconds_of_day_utc(t, start_date, FT)
             @. lazy(exp(κ * (cos(ω * (tod - local_noon)) - 1)) * inv_norm)
-        end,
+        end
     )
     function compute_exp_tendency!(dY, Y, p, t)
         ClimaLand.time_integrated_tendency!(
@@ -842,7 +853,9 @@ function ClimaLand.make_compute_exp_tendency(
             Y,
             p,
             t,
-            (accvars_tiv,),
+            specs,
+            computes;
+            weights,
         )
     end
     return compute_exp_tendency!

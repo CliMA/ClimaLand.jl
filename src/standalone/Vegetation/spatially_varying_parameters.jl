@@ -390,9 +390,14 @@ end
         interpolation_method = Interpolations.Constant(),
     )
 
-Reads spatially varying initial conditions for the optimal LAI model from a NetCDF file,
-and regrids them to the grid defined by the `surface_space` of the Clima simulation.
-Returns a NamedTuple of ClimaCore Fields suitable for passing to `ZhouOptimalLAIModel`.
+Reads the spatially varying optimal LAI data from a NetCDF file, and regrids it to the
+grid defined by the `surface_space` of the Clima simulation. Returns a NamedTuple of
+ClimaCore Fields suitable for passing to `ZhouOptimalLAIModel`.
+
+The model reads `GSL`, `vpd_gs` and `f0` every step; the remaining fields are the
+climatology from which `ClimaLand.Simulations.set_canopy_biomass_initial_conditions!`
+sets the prognostic state (it reads them from the same file, so they need not be
+passed to the model).
 
 This function returns fields for:
 - `GSL`: Growing season length (days)
