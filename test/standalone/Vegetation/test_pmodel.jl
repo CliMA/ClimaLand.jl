@@ -93,7 +93,7 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa0_c4,
         ϕa1_c4,
         ϕa2_c4,
-        α = FT(0),
+        α = FT(1),
     )
 end
 
@@ -264,7 +264,7 @@ end
 end
 
 
-@testset "Test update_optimal_EMA optimality computation" begin
+@testset "Test update_pmodel_state optimality computation" begin
     rtol = 1e-5
     atol = 1e-6
 
@@ -283,7 +283,7 @@ end
             ϕa0_c4 = FT(-0.352 * 0.087),
             ϕa1_c4 = FT(0.022 * 0.087),
             ϕa2_c4 = FT(-0.00034 * 0.087),
-            α = FT(0),
+            α = FT(1),
         )
         constants = PModelConstants(toml_dict)
 
@@ -305,19 +305,19 @@ end
             APAR,
         )
 
-        @testset "Test update_optimal_EMA optimality computation for $FT" begin
-            dummy_OptVars = (;
-                ξ_opt_c3 = FT(0),
-                ξ_opt_c4 = FT(0),
-                Vcmax25_opt_c3 = FT(0),
-                Vcmax25_opt_c4 = FT(0),
-                Jmax25_opt_c3 = FT(0),
-                Jmax25_opt_c4 = FT(0),
+        @testset "Test update_pmodel_state optimality computation for $FT" begin
+            dummy_AccVars = (;
+                ξ_c3 = FT(0),
+                ξ_c4 = FT(0),
+                Vcmax25_c3 = FT(0),
+                Vcmax25_c4 = FT(0),
+                Jmax25_c3 = FT(0),
+                Jmax25_c4 = FT(0),
             )
-            outputs_from_EMA = update_optimal_EMA(
+            outputs_from_EMA = update_pmodel_state(
                 parameters,
                 constants,
-                dummy_OptVars,
+                dummy_AccVars,
                 T_canopy,
                 P_air,
                 VPD,
@@ -327,19 +327,19 @@ end
                 FT(1.0), # force update
             )
             @test isapprox(
-                outputs_from_EMA.ξ_opt_c3,
+                outputs_from_EMA.ξ_c3,
                 outputs_full.xi,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Vcmax25_opt_c3,
+                outputs_from_EMA.Vcmax25_c3,
                 outputs_full.vcmax25,
                 rtol = rtol,
                 atol = atol,
             )
             @test isapprox(
-                outputs_from_EMA.Jmax25_opt_c3,
+                outputs_from_EMA.Jmax25_c3,
                 outputs_full.jmax25,
                 rtol = rtol,
                 atol = atol,
