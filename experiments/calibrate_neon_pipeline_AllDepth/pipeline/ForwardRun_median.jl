@@ -388,7 +388,14 @@ used_in = ["Land"]
 
     # ── Diagnostics ──────────────────────────────────────────────────────────
     output_writer = ClimaDiagnostics.Writers.DictWriter()
-    output_vars = ["swc", "tsoil", "si", "sco2", "soc", "hr", "so2", "sco2_ppm", "scd", "scms", "tair", "airp"]
+    output_vars = ["swc", "tsoil", "si", "sco2", "soc", "hr", "so2", "sco2_ppm", "scd", "scms", "tair", "airp",
+        # Upward energy fluxes (surface, layer 1): outgoing longwave/shortwave
+        # radiation, total turbulent fluxes, and the soil- and canopy-component
+        # turbulent fluxes + soil net radiation. All are registered for LandModel
+        # (soilrn/soillhf/soilshf via the EnergyHydrology possible_diags addition
+        # in src/diagnostics/default_diagnostics.jl; lwu/swu via LandModel's
+        # additional_diagnostics).
+        "lwu", "swu", "lhf", "shf", "soilrn", "soillhf", "soilshf", "clhf", "cshf"]
     diags = ClimaLand.default_diagnostics(land, start_date;
         output_writer = output_writer, output_vars, reduction_period = :halfhourly)
 
@@ -496,6 +503,52 @@ used_in = ["Land"]
         return (isempty(daily_stds) ? NaN : mean(daily_stds),
                 isempty(daily_ranges) ? NaN : mean(daily_ranges))
     end
+
+    # ── Forcing daily series for the per-depth CSV export ────────────────────
+    # precipitation, air temperature and VPD are depth-independent (atmospheric
+    # forcing), so build their post-spinup DAILY series ONCE here and join them
+    # into each depth's optimized_vs_sensors CSV below. Obs come from the model-
+    # forcing columns (P_F accumulated precip mm → SUMMED per day; TA_F air temp
+    # °C → mean, converted to K to match the model; VPD_F hPa → mean). Model air
+    # T is the `tair` driver (K), daily-averaged via get_diag_layer.
+    function _obs_daily_agg(col, reducer)
+        col in names(obs_df) || return DataFrame(date = Date[], daily_mean = Float64[])
+        sub = DataFrame(date = obs_df.date, value = obs_df[!, col])
+        sub = filter(r -> r.date >= Date(spinup_date), sub)
+        daily = combine(groupby(sub, :date), :value => (x -> begin
+            v = Float64[]
+            for e in x
+                (ismissing(e) || isnan(Float64(e))) && continue
+                push!(v, Float64(e))
+            end
+            isempty(v) ? NaN : reducer(v)
+        end) => :daily_mean)
+        daily = filter(r -> !isnan(r.daily_mean), daily)
+        sort!(daily, :date)
+        return daily
+    end
+    precip_daily = _obs_daily_agg("P_F", sum)          # mm/day (summed accumulated P_F)
+    vpd_daily = _obs_daily_agg("VPD_F", mean)          # hPa (daily mean)
+    obs_tair_daily = _obs_daily_agg("TA_F", mean)      # °C → K below
+    nrow(obs_tair_daily) > 0 && (obs_tair_daily.daily_mean .+= 273.15)
+    model_tair_daily = get_diag_layer(simulation, "tair_30m_average", 1)  # K, surface air T
+
+    # Upward energy fluxes (all W m⁻², surface layer 1, depth-independent): built
+    # ONCE like the forcing series above and joined into every depth's CSV. Sign
+    # convention is ClimaLand's: lwu/swu = outgoing longwave/shortwave radiation;
+    # lhf/shf and their soil/canopy components are turbulent fluxes (upward =
+    # land→atmosphere loss); soilrn = net radiation at the soil surface.
+    flux_daily = Dict(
+        "lwu"     => get_diag_layer(simulation, "lwu_30m_average", 1),
+        "swu"     => get_diag_layer(simulation, "swu_30m_average", 1),
+        "lhf"     => get_diag_layer(simulation, "lhf_30m_average", 1),
+        "shf"     => get_diag_layer(simulation, "shf_30m_average", 1),
+        "soilrn"  => get_diag_layer(simulation, "soilrn_30m_average", 1),
+        "soillhf" => get_diag_layer(simulation, "soillhf_30m_average", 1),
+        "soilshf" => get_diag_layer(simulation, "soilshf_30m_average", 1),
+        "clhf"    => get_diag_layer(simulation, "clhf_30m_average", 1),
+        "cshf"    => get_diag_layer(simulation, "cshf_30m_average", 1),
+    )
 
     # ── Per-depth loop ───────────────────────────────────────────────────────
     # One iteration per calibrated depth code. Builds that depth's obs+model daily
@@ -682,6 +735,46 @@ used_in = ["Land"]
         xlims!(ax_co2, xl...); xlims!(ax_swc, xl...); xlims!(ax_t, xl...)
     end
     CairoMakie.save(joinpath(output_dir, "optimized_vs_sensors_$(site_id)_$(code).png"), fig_opt)
+
+    # ── CSV export of the optimized_vs_sensors data (this depth) ─────────────
+    # One row per date; the daily-mean series shown in the figure, joined on date
+    # (outerjoin → keep every date any series has). Obs CO₂/SWC/Tsoil are the
+    # sensor-averaged daily means (obs_daily / obs_swc_daily / obs_tsoil_daily,
+    # matching the figure's aggregated obs). precip/tair/vpd and the upward
+    # energy fluxes (lwu/swu/lhf/shf + soil/canopy components) are the depth-
+    # independent series built once above.
+    _sel(df, newcol) = nrow(df) == 0 ?
+        DataFrame(date = Date[], (newcol => Float64[])...) :
+        rename(df[:, [:date, :daily_mean]], :daily_mean => newcol)
+    csv_df = _sel(sco2_daily, :sco2_model_ppm)
+    for (df, name) in [
+        (obs_daily,          :sco2_obs_ppm),
+        (swc_daily,          :swc_model_m3m3),
+        (obs_swc_daily,      :swc_obs_m3m3),
+        (tsoil_daily,        :tsoil_model_K),
+        (obs_tsoil_daily,    :tsoil_obs_K),
+        (precip_daily,       :precip_obs_mm),
+        (obs_tair_daily,     :tair_obs_K),
+        (model_tair_daily,   :tair_model_K),
+        (vpd_daily,          :vpd_obs_hPa),
+        # Upward energy fluxes (model, W m⁻²): outgoing radiation, total,
+        # soil-component, canopy-component.
+        (flux_daily["lwu"],     :lwu_model_Wm2),
+        (flux_daily["swu"],     :swu_model_Wm2),
+        (flux_daily["lhf"],     :lhf_model_Wm2),
+        (flux_daily["shf"],     :shf_model_Wm2),
+        (flux_daily["soilrn"],  :soilrn_model_Wm2),
+        (flux_daily["soillhf"], :soillhf_model_Wm2),
+        (flux_daily["soilshf"], :soilshf_model_Wm2),
+        (flux_daily["clhf"],    :clhf_model_Wm2),
+        (flux_daily["cshf"],    :cshf_model_Wm2),
+    ]
+        csv_df = outerjoin(csv_df, _sel(df, name), on = :date)
+    end
+    sort!(csv_df, :date)
+    csv_out = joinpath(output_dir, "optimized_vs_sensors_$(site_id)_$(code).csv")
+    CSV.write(csv_out, csv_df)
+    println("Saved: $csv_out")
 
     # ── All-layer profile / O₂ figures: depth-code-independent, write ONCE ────
     if code == depth_codes[1]
