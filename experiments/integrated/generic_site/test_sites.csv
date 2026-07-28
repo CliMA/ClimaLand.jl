@@ -1,0 +1,25 @@
+# Standard single-site test battery for the unsupervised loop.
+# 20 coordinates spanning ecosystems + climate (wet/dry, hot/cold, C3/C4).
+# lon = degrees East. If single_site.jl needs 0-360, add 360 to negative lon.
+# Order matches single_site.jl: longlat = (lon, lat).
+lon,lat,biome,name
+-60,-3,tropical_rainforest,amazon_central
+23,1,tropical_rainforest,congo_basin
+114,1,tropical_rainforest,borneo
+17,13,tropical_savanna_C4,sahel
+-48,-15,tropical_savanna_C4,cerrado_brazil
+133,-14,tropical_savanna_C4,n_australia_savanna
+5,25,desert,sahara
+45,23,desert,arabian
+-116,35,desert,mojave_sw_us
+-92,39,temperate_deciduous_forest,ozark_us
+10,50,temperate_deciduous_forest,central_europe
+125,45,temperate_deciduous_forest,ne_china
+-100,40,temperate_grassland_C4,us_great_plains
+-63,-35,temperate_grassland,pampas_argentina
+-121,38,mediterranean,california_vaira
+0,41,mediterranean,iberia
+100,60,boreal_forest,central_siberia
+-105,55,boreal_forest,canada_boreal
+20,64,boreal_forest,fennoscandia
+-155,68,tundra,alaska_north_slope

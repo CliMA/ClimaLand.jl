@@ -64,7 +64,17 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
+# Optional RUN_TAG keeps concurrent config variants (e.g. z-cut vs default) in
+# separate output directories instead of clashing on one root_path.
+run_tag = get(ENV, "RUN_TAG", "")
+tag_suffix = isempty(run_tag) ? "" : "_$(run_tag)"
+# OUTPUT_ROOT relocates the (multi-GB) run output off the repo/home filesystem;
+# default "." preserves the in-place behavior. On Derecho, point it at scratch.
+output_root = get(ENV, "OUTPUT_ROOT", ".")
+root_path = joinpath(
+    output_root,
+    "snowy_land_pmodel$(lai_suffix)$(tag_suffix)_longrun_$(device_suffix)",
+)
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -121,23 +131,58 @@ function setup_model(
     return land
 end
 
-# If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-# If LONGER run, run for 19 years, with the correct forcing each year.
-# Note that since the Northern hemisphere's winter season is defined as DJF,
-# we simulate from and until the beginning of
-# March so that a full season is included in seasonal metrics.
+# If not LONGER_RUN, run for RUN_YEARS years (default 2); the forcing from 2008 is
+# repeated. Set RUN_YEARS higher to allow a multi-year spin-up before scoring (e.g. 3 =
+# 2-year spin-up + 1 scored year for the optimal-LAI running means). If LONGER run, run
+# for 19 years with the correct forcing each year. Note that since the Northern
+# hemisphere's winter season is defined as DJF, we simulate from and until the beginning
+# of March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+run_years = parse(Int, get(ENV, "RUN_YEARS", "2"))
+stop_date = LONGER_RUN ? DateTime("2019-03-01") : start_date + Year(run_years)
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
 
-if UNCALIBRATED
-    override_params_path = "toml/uncalibrated_parameters.toml"
-    toml_dict = LP.create_toml_dict(FT, override_files = [override_params_path])
-else
-    toml_dict = LP.create_toml_dict(FT)
+# Optional ENV parameter overrides (mirrors experiments/integrated/era5/single_site.jl)
+# so the global run can be launched with the optimal-LAI tuning knobs (online/band-pass
+# f0, energy-cap z) without editing the calibrated toml. Unset ENV = calibrated default.
+opt_overrides = Dict{String, FT}()
+for (key, envname) in (
+    ("optimal_lai_online_f0", "ONLINE_F0"),
+    ("optimal_lai_f0_scale", "F0_SCALE"),
+    ("optimal_lai_beta_in_A0", "BETA_IN_A0"),
+    ("optimal_lai_online_vpd_gs", "ONLINE_VPD_GS"),
+    ("optimal_lai_online_gsl", "ONLINE_GSL"),
+    ("optimal_lai_online_c3c4", "ONLINE_C3C4"),
+    ("optimal_lai_z", "OPT_Z"),
+    ("optimal_lai_z_c4", "OPT_Z_C4"),
+    ("optimal_lai_sigma", "OPT_SIGMA"),
+    ("optimal_lai_sigma_c4", "OPT_SIGMA_C4"),
+    ("optimal_lai_alpha", "OPT_ALPHA"),
+    ("optimal_lai_z_a0", "Z_A0"),
+)
+    ev = get(ENV, envname, "")
+    isempty(ev) || (opt_overrides[key] = parse(FT, ev))
 end
+
+override_files = String[]
+UNCALIBRATED && push!(override_files, "toml/uncalibrated_parameters.toml")
+if !isempty(opt_overrides)
+    mkpath(root_path)
+    override_path = joinpath(root_path, "override_params.toml")
+    open(override_path, "w") do io
+        for (k, v) in opt_overrides
+            println(io, "[\"$k\"]")
+            println(io, "value = $v")
+            println(io, "type = \"float\"")
+        end
+    end
+    push!(override_files, override_path)
+end
+toml_dict =
+    isempty(override_files) ? LP.create_toml_dict(FT) :
+    LP.create_toml_dict(FT; override_files)
 
 model = setup_model(
     FT,

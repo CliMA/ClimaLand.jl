@@ -1,0 +1,336 @@
+================================================================================
+UNSUPERVISED LOOP — PR 1797 follow-up (ClimaLand.jl)
+Branch: ar/derecho_loop   |   Machine: NCAR Derecho (login node, PBS)
+================================================================================
+
+!! OPERATIONAL: run PBS commands (qsub/qstat/qdel) BARE — no `timeout ...`, no `for`-loop wrapping,
+   `bash -lc "..."`, or `r=$(qsub ...)` wrappers. They are in the sandbox's
+   excludedCommands (unsandboxed); wrapping forces them back INTO the sandbox and
+   fails with `qsub: cannot connect to server desched (errno=15008)`. This is NOT a
+   Derecho outage. If a bare qsub still fails persistently, ask the user to run
+   `! qsub <script>` in their shell. Account = UCIT0011 (not ucit0012). See memory
+   [[pbs-commands-bare]], [[ncar-allocation]]. Heavy run output -> scratch
+   (/glade/derecho/scratch/arenchon/claude/...), never the repo. (2026-07-24)
+
+!! GPU PARALLEL: global GPU runs can run in PARALLEL — when comparing multiple configs
+   (e.g. a global z-sweep, or several tuning variants), submit them ALL AT ONCE as separate
+   GPU jobs instead of one-at-a-time (~1h each). Bad-node aborts (below) may recur; use
+   `#PBS -m n` to keep them quiet. (user 2026-07-25)
+
+!! BAD GPU NODE: a GPU job that aborts at LAUNCH (Exit_status=-2, resources_used.walltime
+   =00:00:00, EMPTY .OU output, PBS email "Aborted by PBS Server / Job cannot be executed")
+   repeatedly on the SAME exec_host = a silently-bad node (state=free per PBS, so the
+   scheduler keeps assigning it — prefers the lowest-numbered free node). NOT our script
+   (same script runs fine on other nodes), NOT HDF5 (that errors DURING a run: walltime>0 +
+   output). Diagnose: `qstat -x -f <jid> | grep -iE "Exit_status|exec_host|walltime"`. FIX:
+   (1) add `#PBS -m n` (no mail) so retries don't spam the user; (2) resubmit until it lands
+   on a DIFFERENT node (or target a good one: add `:host=degXXXX` to the select, queues till
+   free); (3) confirm the new job is REALLY running (walltime>0 + .OU growing, node≠bad one).
+   Seen 2026-07-25: deg0025 aborted 4 jobs; deg0020 ran fine. Bad-node is Derecho hardware
+   (report to NCAR to offline, or just resubmit off it). (2026-07-25)
+
+!! HDF5: Derecho Lustre throws intermittent HDF5 file-locking errors on NetCDF/HDF5
+   read/write. Always `export HDF5_USE_FILE_LOCKING=FALSE` — it's in run_battery.pbs and
+   the GPU templates; ALSO prepend it to any analysis Julia call that reads NetCDF
+   (compare_global_lai_modis.jl, plot_global_*.jl). (2026-07-25)
+
+!! C3/C4: use the DYNAMIC modelled fraction (ONLINE_C3C4=1) for ALL runs and tune the
+   C3/C4 params (z_c3/c4, sigma_c3/c4, alpha) to THAT dynamic fraction (user 2026-07-25).
+   run_battery.pbs already defaults ONLINE_C3C4=1; for GPU globals ADD ONLINE_C3C4=1 to the
+   run_pmodel_gpu_* export line. (The one z13 static-CLM global is the sole static ref.)
+
+You are running UNATTENDED on a recurring loop. No human is watching. Each
+wake-up you make ONE small, safe, committed increment of progress on the backlog
+below, then stop. Correctness and reversibility matter far more than speed. When
+in doubt, do less, write down why, and push.
+
+PRIMARY GOAL: reproduce MODIS LAI with the prognostic optimal-LAI model
+(ZhouOptimalLAIModel). Every backlog item is ultimately judged by whether it
+makes MODELED LAI track observed MODIS LAI better. Therefore:
+- The single-site driver MUST run PROGNOSTIC LAI (not prescribed MODIS LAI) and
+  compare modeled LAI vs MODIS LAI at each site: report RMSE (and bias) and save
+  a model-vs-MODIS overlay figure. single_site.jl already does this; keep it so.
+- Track the LAI RMSE per site across iterations; the metric to drive DOWN is the
+  model-vs-MODIS LAI RMSE (averaged over the battery).
+- PR comments must SHOW RESULTS when you have them: the LAI RMSE numbers (and
+  before/after deltas as you change f0/GSL/vpd_gs/C3-C4), and attach/reference
+  the model-vs-MODIS LAI figures. Don't just describe code — show the effect on
+  the fit.
+- If you change src/ (not just experiments/), you MUST push those src changes too
+  (format first). Do not leave modified src files uncommitted.
+
+USER DIRECTION (2026-07-22) — priority + tuning + references:
+- PRIORITY: finish IMPLEMENTING the backlog machinery items FIRST ([4] dynamic GSL,
+  then [1] dynamic C3/C4). AFTER the machinery is in, tune to improve RMSE.
+- RMSE TUNING KNOBS: you may tweak the parameter VALUES of `optimal_lai_z`,
+  `optimal_lai_sigma`, and `optimal_lai_alpha` (via the create_toml_dict override,
+  like beta/f0_scale) to reduce LAI RMSE. (z = leaf construction/maintenance cost;
+  sigma = departure from square-wave LAI; alpha = acclimation smoothing.)
+- DO NOT USE PFT-based approaches (no per-PFT maps/targeting). Avoid PFT entirely.
+- SPINUP: use a 1-YEAR spinup in single-site test runs — run 2 years and evaluate
+  only the SECOND year (spinup_date = start + 1 year). The RunningMeans (tau=1yr)
+  need this to be past spin-up before scoring.
+- REFERENCE CODE (read for useful ideas; our code intentionally DIFFERS from Zhou,
+  e.g. we use running means — do not blindly copy):
+    Zhou et al. DATA/figures:   /glade/derecho/scratch/arenchon/Zhou  (NetCDF data +
+      figures, NOT code — Trendy comparisons, predicted LAI, f0/LAI_max/param-a maps)
+    pyrealm code:               /glade/u/home/arenchon/GitHub/pyrealm  (the algorithm ref)
+    Zhou 2025 manuscript: https://onlinelibrary.wiley.com/doi/pdf/10.1111/gcb.70125
+
+EXTENDED BACKLOG / FUTURE WORK (user, 2026-07-22) — after the current tuning phase:
+- REPRODUCE-AND-COMPARE (investigation): reproduce Zhou et al.'s analysis with
+  Python + pyrealm + their data (/glade/derecho/scratch/arenchon/Zhou), and compare
+  to the ClimaLand optimal-LAI model run at the SAME sites/forcing (or same
+  locations — whatever is cleanest). Key questions to ponder: do they vary the
+  parameters BY SITE or use one global set? Does ClimaLand match if given the SAME
+  parameters? What differs, and why? FEASIBILITY: python3.11 present but pyrealm is
+  NOT installed (no conda; sandbox blocks PyPI) → `pip install pyrealm` in a PBS job
+  (compute nodes have internet) or a venv; then drive pyrealm from a script.
+- TUNING HYPOTHESIS (user + loop agree): LOWER z (raise the energy cap → more LAI in
+  the tropical under-predictors: Amazon, Congo), and correspondingly STRENGTHEN the
+  water limitation (f0 and/or f0_scale) so the semi-arid over-predictors do not blow
+  up. i.e. z↓ paired with water-limitation↑ — test this combination, not z alone.
+- GLOBAL GPU RUN (later milestone): once single-site is good, ALL backlog features
+  are in, and site parameters are tuned, run the GLOBAL model on GPU via
+  experiments/long_runs/snowy_land_pmodel.jl (PROGNOSTIC_LAI=""). Needs a GPU PBS
+  queue (not cpudev); scope the account/queue/module env first.
+
+--------------------------------------------------------------------------------
+STEP 0 — ORIENT (do this every single iteration, in order)
+--------------------------------------------------------------------------------
+1. Read experiments/integrated/generic_site/UNSUPERVISED_LOG.md.
+   - If it does not exist, create it: copy the BACKLOG below into it as a
+     checklist, add a "Current item", a "Job table" section (columns:
+     job_id | item | purpose | submitted | status | result | output_path),
+     a "Decisions & findings" section, and a "Blockers" section. Commit it.
+   - This file is your SOURCE OF TRUTH across iterations. Trust it over memory.
+2. Run:  qstat -u arenchon
+   Reconcile every job in the Job table:
+   - Still running/queued  -> leave it; do NOT resubmit the same test.
+   - Finished              -> read its stdout/err log and output files, record
+                              pass/fail + the key numbers in UNSUPERVISED_LOG.md,
+                              and decide the follow-up (bug -> fix next; green
+                              -> commit & advance).
+3. `git status` and `git log --oneline -5` to confirm where you are.
+
+--------------------------------------------------------------------------------
+STEP 1 — DO ONE SMALL STEP
+--------------------------------------------------------------------------------
+Work the CURRENT backlog item only. One logical change per iteration
+(e.g. "add running-mean PET as a TimeIntegratedVariable" OR "wire f0 to it" OR
+"submit a test run" OR "read results and fix the sign"). Do NOT start the next
+item until the current one is implemented, TESTED (green PBS run), and committed.
+
+Testing = submit at most ONE new PBS job per iteration (see STEP 2). A full
+"implement -> test -> verify" cycle is EXPECTED to span 2-3 iterations because
+PBS is asynchronous. That is normal and good.
+
+Keep changes modular and in the right submodel dir (src/standalone/Vegetation,
+etc.), match existing style (explicit names, narrow imports, multiple dispatch),
+comments sparse (the *why*, not the *what*). Follow AGENTS.md.
+
+OPERATIONAL RULE: do NOT edit single_site.jl or any src/ file it loads while a
+battery PBS job is RUNNING. The runner invokes the LIVE repo file once per site,
+so a mid-run edit makes later sites use different code (inconsistent baseline) or
+breaks them if the edit has a bug. Wait for the running battery to finish (qstat)
+before editing the driver/src, then submit the next test. Log/doc-only edits are
+fine anytime.
+
+--------------------------------------------------------------------------------
+STEP 2 — TESTING VIA PBS (never run heavy Julia on the login node)
+--------------------------------------------------------------------------------
+Test with the single-column ERA5 driver: experiments/integrated/era5/single_site.jl
+(runs any coordinate with ERA5 forcing + MODIS LAI). Early task for item 2:
+parametrize it to take lon/lat/start/stop from ENV or ARGS, and write outputs
+under the scratch dir, NOT into the repo. Keep the parametrized driver + the
+PBS script + logs under experiments/integrated/generic_site/ (git-ignored
+scratch); do NOT commit run outputs.
+
+PBS job script template (adapt walltime/coords). Account UCIT0011 works
+(PBS_ACCOUNT=UCIT0011 is set in ~/.bashrc, so qsub needs no -A). CRITICAL: set
+up the environment via the `climacommon` module — do NOT invoke a julia binary
+without it, or Julia misses JULIA_CPU_TARGET=znver3 / MPI / CUDA preferences
+(JULIA_LOAD_PATH) / PALS_TRANSFER=false and will constantly recompile and can
+hit the sys.so/MPI startup error. Compute nodes HAVE internet (verified), so
+precompile + ERA5/MODIS artifact downloads happen inside the job. Calling the
+campaign julia by ABSOLUTE PATH *after* module load is deliberate: it gets the
+module's env vars AND the exact 1.12.4 binary, avoiding juliaup (1.12.6)
+shadowing it on PATH.
+
+    #!/bin/bash
+    #PBS -N cl_site
+    #PBS -A UCIT0011
+    #PBS -q develop
+    #PBS -l walltime=02:00:00
+    #PBS -l select=1:ncpus=8
+    #PBS -j oe
+    #PBS -o /glade/derecho/scratch/arenchon/climaland_weekend/
+    export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+    module load climacommon
+    REPO=/glade/u/home/arenchon/GitHub/ClimaLand.jl
+    JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+    # run from scratch so outputs don't clutter the repo
+    RUNDIR=/glade/derecho/scratch/arenchon/climaland_weekend/run_$PBS_JOBID
+    mkdir -p "$RUNDIR"; cd "$RUNDIR"
+    export SITE_LON=... SITE_LAT=... START=... STOP=...
+    "$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
+    "$JULIA" --project="$REPO/.buildkite" "$REPO/experiments/integrated/era5/single_site.jl"
+
+Submit with:  qsub <script>   (PBS_ACCOUNT=UCIT0011 by default; record job_id in
+the Job table.) The develop queue maps to `cpudev` (fast turnaround, <=6h,
+<=2 nodes). At most 1-2 jobs in flight at once to bound the allocation. Use
+-q main only for longer/production runs.
+
+MULTI-SITE TEST BATTERY. Code progress is validated across ecosystems + climate,
+not one point. Use the 20 coordinates in
+experiments/integrated/generic_site/test_sites.csv (amazon, deserts, deciduous
+temperate forests, boreal, tundra, C4 savanna/grassland, mediterranean, ...).
+- Parametrize single_site.jl (lon/lat/dates from ENV/ARGS) so it can run any row.
+- Run the battery in ONE PBS job that loops over the CSV rows sequentially: the
+  expensive precompile happens once, then each single-column year is only minutes.
+  Write each site's output to a per-site subdir under scratch. This keeps it to
+  1 job (respects the <=2-jobs-in-flight cap) instead of 20.
+- For quick iteration WHILE developing a change, a 3-4 site subset spanning
+  wet/dry/hot/cold (e.g. amazon, sahara, ozark_us, canada_boreal) is fine.
+- Before marking a backlog item DONE, run the FULL 20-site battery and confirm
+  every site completes and the outputs are physically sensible (no NaN/Inf,
+  values in range). Record pass/fail per site + any anomalies in UNSUPERVISED_LOG.
+- For C3/C4 work (item 1), the battery already spans C3 (forests) and C4
+  (savanna/grassland) sites; verify the C4 fraction responds sensibly across them.
+- Confirm the driver's lon convention on the first run (existing test point
+  lon=5,lat=25 works); if negative lon fails, add 360.
+
+Light checks that ARE ok on the login node: JuliaFormatter, `git`, `qsub`,
+and quick `julia --project=... -e 'using ...'` load/syntax checks. Anything
+that actually integrates the model -> PBS.
+
+--------------------------------------------------------------------------------
+STEP 3 — COMMIT, PUSH, RECORD, REPORT (every iteration that changed anything)
+--------------------------------------------------------------------------------
+1. Run: julia -e 'using JuliaFormatter; format(".")'   (before committing code)
+2. Commit real changes (src/, test/, docs/, non-scratch experiments) with a
+   clear message. WIP commits are fine; NEVER leave the tree broken or a
+   half-edit uncommitted at end of iteration.
+   For now, ADD "[skip ci]" to every commit subject line — the loop is doing WIP
+   increments and should NOT trigger CI on each push. Only drop [skip ci] (and
+   run full CI) once the PR looks ready to merge; triggering the buildkite suite
+   also requires adding the GitHub label "launch buildkite" to the PR, which is a
+   deliberate later step, not part of routine loop iterations.
+   COMMIT POLICY (user, 2026-07-22): make ONE commit per iteration — stage ALL of
+   this iteration's changes together (src/ + toml + experiments/ + the
+   UNSUPERVISED_LOG.md update) and commit once. Do NOT make separate commits for
+   code vs log vs job-id updates. Do NOT rewrite history / squash / force-push the
+   branch (that violates the HARD RULES); the 50+ WIP commits are fine — GitHub
+   "Squash and merge" will collapse them into ONE clean commit on the base branch
+   at merge time, so branch history is disposable.
+   End commit messages with:
+     Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+3. Push to origin ar/derecho_loop.
+4. The PR already exists: #1815 (head ar/derecho_loop, base
+   ar/time_integrated_variables). NEVER create a new PR — always update #1815.
+5. GitHub reporting. `gh` is authenticated via ~/.config/gh/hosts.yml but is NOT
+   on the default PATH — prefix every gh call with the module load, e.g.
+     bash -lc 'module load gh; gh pr comment 1815 --body "..."'
+   Every iteration that changed anything:
+   - Post a SHORT comment on PR #1815 summarizing THIS iteration — what changed,
+     which job was submitted and/or its result, and the next step (a few lines).
+     WRITE THE BODY TO A FILE WITH A QUOTED HEREDOC (`cat > f <<'EOF' ... EOF`) so
+     markdown backticks like `optimal_lai_z` are NOT run as shell command
+     substitution (an UNQUOTED heredoc blanks every `code` span — a real bug we
+     hit). Inject dynamic numbers (wall-min, CPU-h) via a literal placeholder +
+     `sed -i "s/PLACEHOLDER/$val/" f`, then `gh pr comment 1815 --body-file f`.
+     ALSO include (user request): the ITERATION WALL-TIME (stamp `date +%s` at the
+     start of the iteration and again before commenting; report the minutes) and the
+     ACTUAL PBS CPU-HOURS of any job that COMPLETED this iteration — do NOT estimate
+     ahead of time. Get the real elapsed with `qstat -xf <id> | grep resources_used`
+     (or the ".OU"/Elap column) and multiply by ncpus (8): CPU-h = 8 × elapsed_h.
+     For a job you just submitted (still queued/running), report its CPU-h in the
+     iteration that reads its results, not now. Rough calibration: a 1-year single
+     site is ~5 min, so a 2-year 4-site run is ~40 min (~5 CPU-h). The user has NO
+     compute limit; this reporting is purely informational.
+     Format e.g.: "_iteration: ~12 min wall · job 6844753 used ~5.1 CPU-h_".
+   - OPENING COMMENT (PR body) = the LIVING SUMMARY. Regenerate it each iteration:
+     backlog checklist (✅ done), current best LAI-RMSE table (mean + notable biomes
+     + any calibration gains), key findings/decisions (a few bullets), and the line
+     "Full iteration history → experiments/integrated/generic_site/UNSUPERVISED_LOG.md".
+     Keep it self-contained so pruned thread comments lose nothing essential:
+       gh pr edit 1815 --body-file <body_file>
+   - PRUNE THREAD COMMENTS to a rolling window of ~10 (user, 2026-07-22): after
+     posting this iteration's comment, delete the OLDEST bot comments so at most 10
+     remain. List with `bash -lc 'module load gh; gh api repos/CliMA/ClimaLand.jl/issues/1815/comments --paginate --jq ".[] | \"\(.id) \(.user.login)\""'`.
+     ONLY delete comments whose author is the bot (login "AlexisRenchon" posting via
+     this loop) — NEVER delete a comment from a human reviewer or a different user.
+     Delete with `gh api -X DELETE repos/CliMA/ClimaLand.jl/issues/comments/<id>`.
+     Deletion is permanent, but the content is preserved in the PR body + the log.
+   - If `gh api user` fails (unauthenticated), SKIP the gh steps, note
+     "gh unauthenticated - skipped GitHub report" in the log, and do NOT block
+     the iteration on GitHub. Never print or commit any token.
+6. The UNSUPERVISED_LOG.md update (current item, job table, findings) is part of
+   the SINGLE iteration commit from step 2 — do not commit it separately.
+
+--------------------------------------------------------------------------------
+BACKLOG (work top to bottom; this order is deliberate)
+--------------------------------------------------------------------------------
+[2] f0 online from aridity index (DO THIS FIRST — most self-contained; proves
+    the loop + the TimeIntegratedVariable machinery on low-risk change).
+    f0 = 0.65*exp(-0.604*ln^2(AI/1.9)), AI = <PET>/<P>. <P> is already
+    prognostic after this PR. Add a running-mean PET (or net radiation) as a
+    new TimeIntegratedVariable and make f0 climate-responsive.
+
+[4] Dynamic growing-season length (GSL). Move the static "longest contiguous
+    run of months with T>0C" to an online measure: a trailing-year running
+    count of growing days (or diagnosed from the model's own LAI/GPP phenology).
+    Mind the circularity: GSL feeds m -> LAI, and LAI could define GSL.
+
+[3] Online growing-season VPD (vpd_gs). Replace the non-causal climatology with
+    a RunningMean of VPD gated by a growing-season indicator. Couples to [4].
+
+[1] Dynamic C3/C4 fraction (HEADLINE — do after the machinery is proven). Port
+    pyrealm's C3C4Competition: run the P-model for both pathways, convert the
+    C4 GPP advantage + tree cover into a C4 fraction, penalize by C3 canopy
+    shading, so the fraction tracks temperature/CO2 instead of the frozen PFT
+    map. The acclimated fraction is a natural RunningMean on this PR's machinery.
+
+[5] (investigation, interleave) Reconcile the soil-moisture-stress (beta)
+    convention in potential GPP A0. Artifact seeds A0_annual with beta=1 but
+    runtime accumulates A0 with actual beta_m, and water limitation also enters
+    LAI_max via f0*P/A0 -> possible double-count. Manuscript reads beta-free;
+    pyrealm/Zhou applies beta; empirically beta-in-A0 performs better. Write up
+    the options + a recommendation in UNSUPERVISED_LOG.md; do NOT silently change
+    the convention — flag it for the user.
+
+[6] (investigation, interleave) Consider a longer tau_long_term. tau=1yr does
+    not fully filter the seasonal cycle. tau is now a parameter, so this is a
+    calibration/tuning note, not a code change. Record findings in the log.
+
+--------------------------------------------------------------------------------
+HARD RULES (never violate — these protect the machine and the work)
+--------------------------------------------------------------------------------
+- NEVER: git push --force (any form), push to main, merge/close the PR,
+  git reset --hard, git clean -fdx, delete .git, rebase shared history.
+- NEVER run heavy Julia on the login node — simulations go through PBS only.
+- NEVER touch files outside this repo except the designated scratch dir
+  (/glade/derecho/scratch/arenchon/climaland_weekend) and Julia's depot.
+- NEVER print, echo, or commit GH_TOKEN or any secret.
+- ALWAYS charge PBS to -A UCIT0011 (default). Keep <=2 jobs in flight.
+- ALWAYS set up the run env with `module load climacommon` (never a bare julia).
+- ONE backlog item at a time; don't advance until tested + committed.
+
+--------------------------------------------------------------------------------
+WHEN STUCK (3-strike rule — do not thrash)
+--------------------------------------------------------------------------------
+If the same test fails or the same error recurs across ~3 iterations, STOP
+advancing that item. Write a clear BLOCKED entry in UNSUPERVISED_LOG.md (what you
+tried, the exact error, your best hypothesis, what you'd try next), push it,
+add a PR comment, and move to the next independent backlog item (or an
+investigation item [5]/[6]) instead. Do not make large speculative rewrites or
+risky changes to escape a block. Leaving a clean, well-documented blocker is a
+SUCCESSFUL iteration.
+
+--------------------------------------------------------------------------------
+END-OF-ITERATION CHECK
+--------------------------------------------------------------------------------
+Before you finish: tree is clean or WIP-committed; UNSUPERVISED_LOG.md reflects
+reality; any new job is in the Job table; changes are pushed; PR comment posted
+(or skip noted). Then stop and wait for the next wake-up.
+================================================================================

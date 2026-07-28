@@ -1,0 +1,94 @@
+#!/bin/bash
+# Test battery runner for the parametrized single-column ERA5 driver.
+# Loops over experiments/integrated/generic_site/test_sites.csv, running
+# single_site.jl once per site with SITE_LON/SITE_LAT/SITE_NAME from the row.
+# Outputs go to scratch (never the repo). Optional SUBSET="name1,name2,..."
+# restricts to a subset of rows for quick iteration.
+#
+# qsub environment transfer (-v / -V) is disabled on Derecho, so configuration
+# is read from an optional sidecar file instead of the submit environment:
+#   $SCRATCH/climaland_weekend/battery.conf  (sets SUBSET / START / STOP)
+# Submit:  qsub experiments/integrated/generic_site/run_battery.pbs
+#   subset run: write battery.conf with e.g.
+#     SUBSET="amazon_central,sahara,ozark_us,canada_boreal"
+#   then qsub the script. With no conf file the full 20-site battery runs.
+#PBS -N cl_battery
+#PBS -A UCIT0011
+#PBS -q develop
+#PBS -l walltime=05:00:00
+#PBS -l select=1:ncpus=8:mem=80GB
+#PBS -j oe
+#PBS -o /glade/derecho/scratch/arenchon/climaland_weekend/
+export MODULEPATH="/glade/campaign/univ/ucit0011/ClimaModules-Derecho:$MODULEPATH"
+module load climacommon
+export HDF5_USE_FILE_LOCKING=FALSE   # avoid intermittent HDF5 file-locking errors on Derecho Lustre
+REPO=/glade/u/home/arenchon/GitHub/ClimaLand.jl
+JULIA=/glade/campaign/univ/ucit0011/software/julia/julia-1.12.4/bin/julia
+CSV=$REPO/experiments/integrated/generic_site/test_sites.csv
+DRIVER=$REPO/experiments/integrated/era5/single_site.jl
+RUNROOT=/glade/derecho/scratch/arenchon/climaland_weekend/battery_${PBS_JOBID:-local}
+mkdir -p "$RUNROOT"; cd "$RUNROOT"
+
+CONF=/glade/derecho/scratch/arenchon/climaland_weekend/battery.conf
+[[ -f "$CONF" ]] && source "$CONF"
+
+START="${START:-2000-09-01}"
+STOP="${STOP:-2001-09-01}"
+SUBSET="${SUBSET:-}"
+BETA_IN_A0="${BETA_IN_A0:-0}"   # 0 = β-free potential A0 (default); 1 = Zhou (βm in A0)
+F0="${F0:-}"                    # static f0 override for sensitivity runs (empty = default 0.65)
+ONLINE_F0="${ONLINE_F0:-1}"     # 1 = compute f0 online from aridity AI=<PET>/<P> (headline default); 0 = static artifact f0
+F0_SCALE="${F0_SCALE:-0.8}"     # multiplier on f0 over the semi-arid band (headline default 0.8, global-optimal vs MODIS; 1 = no-op)
+ONLINE_VPD_GS="${ONLINE_VPD_GS:-1}"  # 1 = A0-weighted running-mean vpd_gs; 0 = static artifact vpd_gs
+ONLINE_GSL="${ONLINE_GSL:-1}"        # 1 = trailing-year running-count GSL; 0 = static artifact GSL
+ONLINE_C3C4="${ONLINE_C3C4:-1}"    # 1 = dynamic modelled C3/C4 competition fractional_c3 (default; tune C3/C4 params to this); 0 = static CLM-prescribed
+OPT_Z="${OPT_Z:-}"; OPT_SIGMA="${OPT_SIGMA:-}"; OPT_ALPHA="${OPT_ALPHA:-}"
+OPT_Z_C4="${OPT_Z_C4:-}"; OPT_SIGMA_C4="${OPT_SIGMA_C4:-}"
+Z_A0="${Z_A0:-}"   # RMSE-tuning param overrides (empty = calibrated default)
+SPINUP_YEARS="${SPINUP_YEARS:-1}"   # years of spinup before scoring (score the remainder)
+
+# NPAR sites run concurrently (each single-column run is ~1 core + ~2-3 GB). Capped to
+# the allocated ncpus (NOT nproc, which can report the node's physical cores inside a
+# cpuset). Sites are independent (per-site output dir), so this fills the node instead
+# of leaving ncpus-1 cores idle on a serial loop. Keep mem in the PBS select >= NPAR*3 GB.
+NPAR="${NPAR:-8}"
+echo "BATTERY start=$START stop=$STOP subset='${SUBSET:-ALL}' beta_in_A0=$BETA_IN_A0 online_f0=$ONLINE_F0 f0_scale=$F0_SCALE online_vpd_gs=$ONLINE_VPD_GS online_gsl=$ONLINE_GSL f0='${F0:-default}' npar=$NPAR runroot=$RUNROOT"
+# Precompile once up front so the concurrent workers hit a warm cache (no races).
+"$JULIA" --project="$REPO/.buildkite" -e 'using Pkg; Pkg.instantiate()'
+"$JULIA" --project="$REPO/.buildkite" -e 'using ClimaLand' >/dev/null 2>&1 || true
+
+run_site() {
+    local lon="$1" lat="$2" name="$3"
+    local SITEDIR="$RUNROOT/$name"
+    mkdir -p "$SITEDIR"
+    if START="$START" STOP="$STOP" SITE_LON="$lon" SITE_LAT="$lat" \
+        SITE_NAME="$name" SITE_OUTDIR="$SITEDIR/out" BETA_IN_A0="$BETA_IN_A0" \
+        F0="$F0" ONLINE_F0="$ONLINE_F0" F0_SCALE="$F0_SCALE" \
+        ONLINE_VPD_GS="$ONLINE_VPD_GS" ONLINE_GSL="$ONLINE_GSL" ONLINE_C3C4="$ONLINE_C3C4" \
+        OPT_Z="$OPT_Z" OPT_SIGMA="$OPT_SIGMA" OPT_ALPHA="$OPT_ALPHA" Z_A0="$Z_A0" \
+        OPT_Z_C4="$OPT_Z_C4" OPT_SIGMA_C4="$OPT_SIGMA_C4" \
+        SPINUP_YEARS="$SPINUP_YEARS" \
+        "$JULIA" --project="$REPO/.buildkite" "$DRIVER" \
+        >"$SITEDIR/$name.log" 2>&1; then
+        echo "SITE_OK $name"; echo PASS >"$SITEDIR/.status"
+    else
+        echo "SITE_FAIL $name (see $SITEDIR/$name.log)"; echo FAIL >"$SITEDIR/.status"
+    fi
+}
+
+while IFS=, read -r lon lat biome name; do
+    [[ "$lon" =~ ^# ]] && continue
+    [[ "$lon" == "lon" ]] && continue
+    [[ -z "$lon" ]] && continue
+    if [[ -n "$SUBSET" ]]; then
+        case ",$SUBSET," in *",$name,"*) ;; *) continue ;; esac
+    fi
+    # throttle to NPAR concurrent site runs
+    while (( $(jobs -rp | wc -l) >= NPAR )); do wait -n; done
+    echo "=== LAUNCH $name ($lon,$lat) $biome ==="
+    run_site "$lon" "$lat" "$name" &
+done <"$CSV"
+wait
+npass=$(grep -rl '^PASS$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
+nfail=$(grep -rl '^FAIL$' "$RUNROOT"/*/.status 2>/dev/null | wc -l)
+echo "BATTERY_DONE pass=$npass fail=$nfail"
