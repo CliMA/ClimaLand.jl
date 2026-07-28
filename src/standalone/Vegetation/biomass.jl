@@ -473,17 +473,27 @@ Defines the auxiliary variables for the ZhouOptimalLAIModel:
 - `f0`: spatially varying fraction of precipitation for transpiration (dimensionless), from Zhou et al.
 """
 ClimaLand.auxiliary_vars(model::ZhouOptimalLAIModel) =
-    (:area_index, :A0_inst, :GSL, :vpd_gs, :f0)
+    (:area_index, :A0_inst, :GSL, :vpd_gs, :f0, :f0_base)
 ClimaLand.auxiliary_types(model::ZhouOptimalLAIModel{FT}) where {FT} =
-    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}, FT, FT, FT, FT)
+    (NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}, FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::ZhouOptimalLAIModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface)
 
-# The optimal-LAI model's prognostic state is four time-integrated variables in `Y`,
+# The optimal-LAI model's prognostic state is nine time-integrated variables in `Y`,
 # all advanced smoothly by the time-stepper (no callback, checkpoint/restart-safe):
 #   `A0_daily`      1-day potential-GPP total (RunningSum, τ = 1 day),
 #   `A0_annual`     smoothed 1-year potential-GPP total (RunningMean, τ = `tau_long_term`),
 #   `precip_annual` smoothed 1-year precipitation total (RunningMean, τ = `tau_long_term`),
+#   `PET_annual`    smoothed 1-year net-radiation potential-evap total (RunningMean,
+#                   τ = `tau_long_term`); over `precip_annual` it is the aridity index
+#                   driving the online `f0`,
+#   `VPDA0_annual`  smoothed 1-year total of VPD·A0 (RunningMean, τ = `tau_long_term`);
+#                   over `A0_annual` it is the A0-weighted growing-season VPD,
+#   `growing_days`  trailing-year count of growing days, air T > 0 °C (RunningMean,
+#                   τ = `tau_long_term`), the online growing-season length,
+#   `A0c3_annual`   smoothed 1-year C3 potential-GPP total (RunningMean, τ = `tau_long_term`),
+#   `A0c4_annual`   smoothed 1-year C4 potential-GPP total (RunningMean, τ = `tau_long_term`);
+#                   the C3/C4 pair drives the online competition for `fractional_c3`,
 #   `LAI`           the Zhou et al. (2025) Eq. 16 acclimation lag (RunningMean, τ = 1 day / α),
 #                   relaxing toward the instantaneous optimal target `L_opt`.
 # The annual totals are a RunningMean of the *annualized* instantaneous rate
@@ -507,6 +517,31 @@ function optimal_lai_tivs(component::ZhouOptimalLAIModel{FT}) where {FT}
         ),
         ClimaLand.TimeIntegratedVariable(;
             name = :precip_annual,
+            reduction = ClimaLand.RunningMean(),
+            timescale = tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :PET_annual,
+            reduction = ClimaLand.RunningMean(),
+            timescale = tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :VPDA0_annual,
+            reduction = ClimaLand.RunningMean(),
+            timescale = tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :growing_days,
+            reduction = ClimaLand.RunningMean(),
+            timescale = tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :A0c3_annual,
+            reduction = ClimaLand.RunningMean(),
+            timescale = tau_long_term,
+        ),
+        ClimaLand.TimeIntegratedVariable(;
+            name = :A0c4_annual,
             reduction = ClimaLand.RunningMean(),
             timescale = tau_long_term,
         ),
@@ -550,6 +585,59 @@ function update_biomass!(
     (; SAI, RAI) = component
     @. p.canopy.biomass.area_index.stem = SAI
     @. p.canopy.biomass.area_index.root = RAI
+    # Climate-responsive f0 from the online aridity index AI = <PET>/<P>, gated by
+    # `online_f0` (0 keeps the static artifact f0 already in the cache). Refreshed
+    # here in update_aux so compute_LAI_target reads the current f0.
+    online = component.parameters.online_f0
+    f0_scale = component.parameters.f0_scale
+    f0_precip_a = component.parameters.f0_precip_a
+    f0_precip_b = component.parameters.f0_precip_b
+    f0_precip_c = component.parameters.f0_precip_c
+    f0_precip_d = component.parameters.f0_precip_d
+    # f0 = f0_source · aridity-targeted f0_scale, where f0_source is the online AI-f0
+    # or the raw artifact f0_base. The f0_scale reduction is applied only over the
+    # semi-arid precip band [f0_precip_*], leaving the humid tropics/temperate and the
+    # deserts unchanged. Recomputed from f0_base each step, so it never compounds;
+    # f0_scale=1 is a no-op (== raw f0).
+    @. p.canopy.biomass.f0 = aridity_scaled_f0(
+        online * f0_from_aridity(
+            Y.canopy.biomass.PET_annual,
+            Y.canopy.biomass.precip_annual,
+        ) + (1 - online) * p.canopy.biomass.f0_base,
+        Y.canopy.biomass.precip_annual,
+        f0_scale,
+        f0_precip_a,
+        f0_precip_b,
+        f0_precip_c,
+        f0_precip_d,
+    )
+    # When online, recompute vpd_gs as the A0-weighted running mean
+    # VPDA0_annual/A0_annual; when static, keep the cache vpd_gs unchanged.
+    online_vpd = component.parameters.online_vpd_gs
+    @. p.canopy.biomass.vpd_gs =
+        online_vpd * (
+            Y.canopy.biomass.VPDA0_annual /
+            max(Y.canopy.biomass.A0_annual, eps(FT))
+        ) + (1 - online_vpd) * p.canopy.biomass.vpd_gs
+    # When online, GSL = the trailing-year growing-day count; else keep the
+    # cache GSL (static artifact) unchanged.
+    online_gsl = component.parameters.online_gsl
+    @. p.canopy.biomass.GSL =
+        online_gsl * Y.canopy.biomass.growing_days +
+        (1 - online_gsl) * p.canopy.biomass.GSL
+    # When online, overwrite the P-model's fractional_c3 cache with the dynamic
+    # C3/C4 competition value (from the running-mean per-pathway potential GPP);
+    # else leave it at the static value the P-model seeded. Read one step later.
+    online_c3c4 = component.parameters.online_c3c4
+    Mc = canopy.photosynthesis.constants.Mc
+    k = component.parameters.k
+    @. p.canopy.photosynthesis.fractional_c3 =
+        online_c3c4 * c3_fraction_from_competition(
+            Y.canopy.biomass.A0c3_annual,
+            Y.canopy.biomass.A0c4_annual,
+            Mc,
+            1 - exp(-k * Y.canopy.biomass.LAI),  # realized fAPAR
+        ) + (1 - online_c3c4) * p.canopy.photosynthesis.fractional_c3
     # Mirror the prognostic LAI (a RunningMean relaxing toward the instantaneous
     # optimal target) into the cache area index read by the rest of the canopy.
     @. p.canopy.biomass.area_index.leaf = Y.canopy.biomass.LAI
@@ -600,6 +688,31 @@ function ClimaLand.make_compute_exp_tendency(
         precip_annual = (Y, p, t) -> (@. lazy(
             year * -(p.drivers.P_liq + p.drivers.P_snow) * ρ_m_liq,
         )),
+        # Annualized so it matches `precip_annual`'s units and AI = PET/P is dimensionless.
+        PET_annual = (Y, p, t) -> begin
+            pet = compute_pet_inst(p, canopy)
+            @. lazy(year * pet)
+        end,
+        # The online `vpd_gs` is VPDA0_annual / A0_annual = <VPD·A0>/<A0>, a mean VPD
+        # weighted toward the productive period.
+        VPDA0_annual = (Y, p, t) -> begin
+            vpd_a0 = compute_vpd_a0_inst(p, canopy)
+            @. lazy(year * vpd_a0)
+        end,
+        # Growing-day indicator × 365, so its running mean is the trailing-year count
+        # of growing days (air T > 0 C) = the online growing-season length in days.
+        growing_days = (Y, p, t) ->
+            (@. lazy(ifelse(p.drivers.T > FT(273.15), FT(365), FT(0)))),
+        # Pure-C3 and pure-C4 potential GPP, annualized; the pair drives the C3/C4
+        # competition through the advantage (A0c4 - A0c3)/A0c3.
+        A0c3_annual = (Y, p, t) -> begin
+            a0_c3 = compute_A0_inst(p, canopy, one(FT))
+            @. lazy(year * a0_c3)
+        end,
+        A0c4_annual = (Y, p, t) -> begin
+            a0_c4 = compute_A0_inst(p, canopy, zero(FT))
+            @. lazy(year * a0_c4)
+        end,
         LAI = (Y, p, t) -> compute_LAI_target(Y, p, canopy),
     )
     function compute_exp_tendency!(dY, Y, p, t)
@@ -636,8 +749,11 @@ touched here; it is initialized with the rest of `Y` by
 """
 function set_historical_cache!(p, Y0, model::ZhouOptimalLAIModel, canopy)
     optimal_lai_inputs = model.optimal_lai_inputs
+    # `f0_base` holds the raw artifact f0; `update_biomass!` recomputes the f0 actually
+    # used as f0_source scaled over the semi-arid band each step, so nothing compounds.
     p.canopy.biomass.GSL .= optimal_lai_inputs.GSL
     p.canopy.biomass.vpd_gs .= optimal_lai_inputs.vpd_gs
+    p.canopy.biomass.f0_base .= optimal_lai_inputs.f0
     p.canopy.biomass.f0 .= optimal_lai_inputs.f0
     return nothing
 end

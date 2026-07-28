@@ -294,13 +294,16 @@ _pmodel_accvars_type(::Type{FT}) where {FT} = NamedTuple{
     NTuple{6, FT},
 }
 
-ClimaLand.auxiliary_vars(model::PModel) = (:InstVars, :AccVars, :AccVars_inst)
+ClimaLand.auxiliary_vars(model::PModel) =
+    (:InstVars, :AccVars, :AccVars_inst, :fractional_c3)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} = (
     NamedTuple{(:Rd, :GPP, :An, :gs_co2), Tuple{FT, FT, FT, FT}},
     _pmodel_accvars_type(FT),
     _pmodel_accvars_type(FT),
+    FT,
 )
-ClimaLand.auxiliary_domain_names(::PModel) = (:surface, :surface, :surface)
+ClimaLand.auxiliary_domain_names(::PModel) =
+    (:surface, :surface, :surface, :surface)
 
 # The P-model's prognostic variable is the acclimated optimal capacities `AccVars`,
 # a `RunningMean` time-integrated variable held in `Y` and advanced smoothly by the
@@ -733,6 +736,10 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         βm,
         APAR_canopy_moles,
     )
+    # Seed the (possibly dynamic) fractional_c3 cache at the model's static value.
+    # A dynamic-C3/C4 biomass model overwrites this each step; otherwise it holds
+    # this value and the P-model behaves exactly as before.
+    p.canopy.photosynthesis.fractional_c3 .= model.fractional_c3
     return nothing
 end
 
@@ -928,7 +935,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     AccVars = p.canopy.photosynthesis.AccVars
     @. InstVars = compute_blended_pmodel_photosynthesis(
         AccVars,
-        model.fractional_c3,
+        p.canopy.photosynthesis.fractional_c3,
         P_air,
         T_air,
         q_air,

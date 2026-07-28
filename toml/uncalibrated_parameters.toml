@@ -109,13 +109,25 @@ tag = "OptimalLAIModel"
 ["optimal_lai_z"]
 value = 12.227
 type = "float"
-description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1)"
+description = "Unit cost of constructing and maintaining leaves (mol m^-2 yr^-1) for C3 vegetation"
+tag = "OptimalLAIModel"
+
+["optimal_lai_z_c4"]
+value = 12.227
+type = "float"
+description = "Leaf-cost z (mol m^-2 yr^-1) for C4 vegetation; effective z = fc3*z + (1-fc3)*z_c4. Default equals optimal_lai_z."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_sigma"]
 value = 1.1
 type = "float"
-description = "Dimensionless parameter representing departure from square-wave LAI dynamics (Zhou et al. 2025)"
+description = "Dimensionless departure from square-wave LAI dynamics (Zhou et al. 2025) for C3 vegetation"
+tag = "OptimalLAIModel"
+
+["optimal_lai_sigma_c4"]
+value = 1.1
+type = "float"
+description = "Departure-from-square-wave sigma for C4 vegetation; effective sigma = fc3*sigma + (1-fc3)*sigma_c4. Default equals optimal_lai_sigma."
 tag = "OptimalLAIModel"
 
 ["optimal_lai_alpha"]
@@ -134,6 +146,42 @@ tag = "OptimalLAIModel"
 value = 6.3072e7
 type = "float"
 description = "Long-term memory timescale (s) of the A0 and precipitation running-mean annual totals that set LAI_max and the steady-state LAI. Default 2 years (6.3072e7 s); a longer value filters the seasonal cycle more strongly, avoiding aliasing of the annual cycle into the smoothed totals."
+tag = "OptimalLAIModel"
+
+["optimal_lai_beta_in_A0"]
+value = 0.0
+type = "float"
+description = "Whether soil-moisture stress betam enters the potential GPP A0: 1.0 = yes (as in Zhou et al.'s code), 0.0 = beta-free potential A0 (default; the potential GPP is a true potential with no moisture stress, and water limitation enters only once, through the f0*P/A0 term). beta-free is the physically principled convention (it avoids double-counting water and the circularity of a vegetation-dependent moisture stress in a 'potential' quantity); the 1.0 toggle reproduces Zhou et al.'s empirical choice."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_f0"]
+value = 0.0
+type = "float"
+description = "Whether f0 (fraction of precip for transpiration) is computed online from the model's own aridity index AI = <PET>/<P> each step (1.0) or held at the static spatially-varying artifact value (0.0, default). Online: f0 = 0.65*exp(-0.604*ln^2(AI/1.9)) with AI = PET_annual/precip_annual, so f0 tracks the evolving climate instead of a frozen map."
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0_scale"]
+value = 1.0
+type = "float"
+description = "Multiplier applied to the fraction of precipitation available for transpiration f0 (static or online). Default 1.0. A value <1 strengthens water limitation (lowers the water-limited fAPAR = f0*P/A0), which only affects water-limited sites; a calibration knob for the semi-arid LAI over-prediction against MODIS."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_vpd_gs"]
+value = 0.0
+type = "float"
+description = "Whether the growing-season VPD vpd_gs is computed online as an A0-weighted running-mean VPD (1.0) or held at the static artifact value (0.0, default). A0-weighting focuses the mean on the productive (high potential-GPP) period, correcting the artifact growing-season mean's dilution by the cool/wet season in seasonally-dry climates, which underestimates the water limitation and over-predicts LAI."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_c3c4"]
+value = 0.0
+type = "float"
+description = "Whether the C3 fraction (fractional_c3) is computed online from the C3/C4 competition on the running-mean per-pathway potential GPP (1.0) or held at the static value (0.0, default). Online: C4 GPP advantage (A0c4-A0c3)/A0c3 -> logistic -> C4 fraction, penalized by C3 tree-canopy shading (pyrealm/Lavergne, GPP-derived, no PFT)."
+tag = "OptimalLAIModel"
+
+["optimal_lai_online_gsl"]
+value = 0.0
+type = "float"
+description = "Whether the growing-season length GSL (days) is computed online as a trailing-year running count of growing days (air T > 0 C), 1.0, or held at the static spatially-varying artifact value (0.0, default). Online GSL = RunningMean(365*[T>273.15]), so it tracks the evolving climate instead of a frozen map."
 tag = "OptimalLAIModel"
 
 # Plant Hydraulics Parameters
@@ -725,3 +773,33 @@ value = 0.0001
 type = "float"
 description = "Roughness length for scalars over lake water/ice (m)"
 tag = "SlabLakeParameters"
+
+["optimal_lai_z_a0"]
+value = 0.0
+type = "float"
+description = "Slope (mol^-1 m^2 yr) mapping the leaf cost z down where annual potential GPP A0 is high, raising the energy-limited cap 1-z/(k*A0) in the most-productive forests while leaving temperate/boreal (A0 below ~220) unchanged. Default 0.0 = uniform z. Targets the wet-tropical LAI deficit vs MODIS without over-shooting other biomes; derived from A0, no PFT."
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0_precip_a"]
+value = 28000.0
+type = "float"
+description = "Lower trapezoid vertex (mol H2O m^-2 yr^-1, ~505 mm) below which the optimal_lai_f0_scale reduction is NOT applied. Start of the rising edge of the semi-arid f0-reduction band. Calibratable; require a<=b<=c<=d. See aridity_scaled_f0."
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0_precip_b"]
+value = 33000.0
+type = "float"
+description = "Upper end of the rising edge (mol H2O m^-2 yr^-1, ~595 mm); at/above this precip the f0_scale reduction is fully applied (until f0_precip_c). Calibratable. See aridity_scaled_f0."
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0_precip_c"]
+value = 58000.0
+type = "float"
+description = "Start of the falling edge (mol H2O m^-2 yr^-1, ~1045 mm); at/below this precip the f0_scale reduction is fully applied (from f0_precip_b). Calibratable. See aridity_scaled_f0."
+tag = "OptimalLAIModel"
+
+["optimal_lai_f0_precip_d"]
+value = 68000.0
+type = "float"
+description = "Upper trapezoid vertex (mol H2O m^-2 yr^-1, ~1225 mm) above which the optimal_lai_f0_scale reduction is NOT applied. End of the falling edge; protects the humid tropics. Calibratable. See aridity_scaled_f0."
+tag = "OptimalLAIModel"
