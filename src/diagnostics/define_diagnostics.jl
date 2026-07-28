@@ -377,6 +377,38 @@ function define_diagnostics!(land_model, possible_diags)
             compute_precip_annual!(out, Y, p, t, land_model),
     )
 
+    # The three climate-derived water-limitation inputs of the optimal-LAI model.
+    # Together with `lai`, `a0a` and `pra` these are what an optimal-LAI initial
+    # condition file holds, so writing them out lets a spun-up run be turned back
+    # into an IC (see `set_canopy_component_initial_conditions!`).
+    add_diagnostic_variable!(
+        short_name = "olf0",
+        long_name = "Optimal LAI Transpiration Fraction",
+        standard_name = "optimal_lai_transpiration_fraction",
+        units = "",
+        comments = "Fraction of precipitation available for transpiration, from the aridity index PET_annual/precip_annual.",
+        compute! = (out, Y, p, t) ->
+            compute_optimal_lai_f0!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "olvpd",
+        long_name = "Optimal LAI Growing-Season VPD",
+        standard_name = "optimal_lai_growing_season_vpd",
+        units = "Pa",
+        comments = "Potential-GPP-weighted mean vapor pressure deficit, VPDA0_annual/A0_annual.",
+        compute! = (out, Y, p, t) ->
+            compute_optimal_lai_vpd_gs!(out, Y, p, t, land_model),
+    )
+    add_diagnostic_variable!(
+        short_name = "olgsl",
+        long_name = "Optimal LAI Growing Season Length",
+        standard_name = "optimal_lai_growing_season_length",
+        units = "d",
+        comments = "Trailing-year count of growing days (air temperature above 0 C).",
+        compute! = (out, Y, p, t) ->
+            compute_optimal_lai_gsl!(out, Y, p, t, land_model),
+    )
+
     # Fraction of C3 photosynthesis (dynamic C3/C4 competition when enabled)
     add_diagnostic_variable!(
         short_name = "fc3",

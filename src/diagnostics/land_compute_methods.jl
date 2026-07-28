@@ -302,6 +302,27 @@ end
     CanopyModel,
 } p.canopy.photosynthesis.fractional_c3
 
+# The climate-derived water-limitation inputs, recomputed each step in
+# `update_biomass!` from the trailing totals in `Y`. Written out so a spun-up run
+# can be turned back into an optimal-LAI initial condition file.
+@diagnostic_compute "optimal_lai_f0" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.f0
+
+@diagnostic_compute "optimal_lai_vpd_gs" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.vpd_gs
+
+@diagnostic_compute "optimal_lai_gsl" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.biomass.GSL
+
 # precip_annual is stored in molar units (mol H2O m^-2 yr^-1) for the Zhou water-
 # limitation formula; report it as an SI depth (m yr^-1) via the molar liquid density.
 function compute_precip_annual!(

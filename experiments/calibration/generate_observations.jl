@@ -8,17 +8,54 @@ import ClimaCore
 import EnsembleKalmanProcesses as EKP
 import JLD2
 
-# Access CalibrateConfig
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "calibration",
-        "run_calibration.jl",
-    ),
-)
+# Access CalibrateConfig, the config's CALIBRATE_CONFIG / NOISE_SCALARS, and
+# OUTPUT_DIR. Deliberately avoid include(run_calibration.jl): it pulls in
+# model_interface.jl -> observation_map.jl -> `using CairoMakie, GeoMakie`,
+# which is only needed for the calibration's plotting and (on Derecho) does not
+# reliably precompile. Generating the observation vector needs none of it, so we
+# include just api.jl (CalibrateConfig) and the config file directly, mirroring
+# run_calibration.jl's OUTPUT_DIR / config-file selection.
+include(joinpath(@__DIR__, "api.jl"))
+const TEST_CALIBRATION = haskey(ENV, "TEST_CALIBRATION")
+const OUTPUT_DIR =
+    length(ARGS) >= 1 ? ARGS[1] : "experiments/calibration/land_model"
+const CONFIG_FILE =
+    TEST_CALIBRATION ? "test.jl" :
+    get(ENV, "CALIBRATION_CONFIG", "energy_fluxes.jl")
+include(joinpath(@__DIR__, "configs", CONFIG_FILE))
 
 include("observation_utils.jl")
+
+# Path to the simulated-LAI validity mask produced by
+# build_model_lai_validity_mask.jl. The ClimaLand `lai` diagnostic is NaN over a
+# broader footprint than `make_ocean_mask` removes (interpolated diagnostics are
+# not mask-aware). Masking the `lai` observation by this footprint prevents obs
+# cells from surviving where the model returns NaN, which would otherwise leak
+# NaNs into the G ensemble and, via TransformUnscented (UKI), collapse every
+# parameter update to NaN. Regenerate the mask whenever `nelements` changes.
+const MODEL_LAI_VALIDITY_MASK_PATH =
+    joinpath(@__DIR__, "model_lai_validity_mask.jld2")
+
+"""
+    apply_model_validity_mask(var, short_name)
+
+For the `lai` target, mask `var` by the simulated-LAI validity footprint so the
+observation is NaN wherever the model returns NaN. No-op for other variables.
+Errors if the mask file is missing so a stale/absent mask cannot silently
+reintroduce the NaN leak.
+"""
+function apply_model_validity_mask(var, short_name)
+    short_name == "lai" || return var
+    isfile(MODEL_LAI_VALIDITY_MASK_PATH) || error(
+        "Model LAI validity mask not found at $MODEL_LAI_VALIDITY_MASK_PATH. " *
+        "Generate it first with:\n" *
+        "  julia --project=.buildkite experiments/calibration/build_model_lai_validity_mask.jl <reference_simdir>",
+    )
+    mask_var = JLD2.load_object(MODEL_LAI_VALIDITY_MASK_PATH)
+    mask_fn =
+        ClimaAnalysis.generate_lonlat_mask(mask_var, NaN, 1.0; threshold = 0.5)
+    return mask_fn(var)
+end
 
 # For now, we will reuse `data_sources.jl` that is used for making the
 # leaderboard, since it is the easiest option.
@@ -186,6 +223,12 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
     ocean_mask = make_ocean_mask(nelements)
     var = ocean_mask(var)
 
+    # Additionally drop cells where the simulated LAI diagnostic is NaN (a
+    # broader footprint than the ocean mask). Without this, obs-valid cells that
+    # the model returns as NaN leak NaNs into the G ensemble and the UKI update
+    # (see MODEL_LAI_VALIDITY_MASK_PATH above). No-op for non-lai targets.
+    var = apply_model_validity_mask(var, short_name)
+
     # To prevent double counting along the longitudes since -180 and 180 degrees
     # are the same point
     var = ClimaAnalysis.window(
@@ -203,6 +246,20 @@ function preprocess_single_obs_var(var::OutputVar, short_name, nelements)
         right = length(lats) - 1,
         by = ClimaAnalysis.Index(),
     )
+
+    # Force all time slices to share one NaN mask (the union of NaN locations
+    # across every season/year). The inversion obs have year/season-varying NaN
+    # coverage, so otherwise each yearly Observation flattens to a different
+    # length; EKP's minibatch update-group indexing assumes equal sample lengths
+    # and overruns get_obs (BoundsError in succ_gauss_analysis!, seen at iter 4).
+    time_idx = var.dim2index[ClimaAnalysis.time_name(var)]
+    common_nan_mask =
+        reduce((a, b) -> a .| b, eachslice(isnan.(var.data); dims = time_idx))
+    masked_data = copy(var.data)
+    for time_slice in eachslice(masked_data; dims = time_idx)
+        time_slice[common_nan_mask] .= eltype(masked_data)(NaN)
+    end
+    var = ClimaAnalysis.remake(var; data = masked_data)
 
     var = ClimaCalibrate.ObservationRecipe.change_data_type(var, Float32)
     var.attributes["short_name"] = short_name

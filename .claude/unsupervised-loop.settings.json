@@ -1,0 +1,71 @@
+{
+  "_note": "STAGED, NOT AUTO-LOADED. Safety config for the unattended LAI-calibration loop on Derecho. To activate: copy to .claude/settings.local.json and launch `claude --dangerously-skip-permissions`. PRE-REQS: (1) a working PBS allocation (UCIT0011). (2) For the bwrap OS sandbox, `socat` must be installed for the network proxy, else sandbox.enabled+failIfUnavailable blocks startup; either install socat, set failIfUnavailable=false, or drop the sandbox block and rely on --dangerously-skip-permissions + the PreToolUse guard hook. Filesystem isolation via bubblewrap works without socat; socat only backs network-domain enforcement. (3) For GitHub reporting, export GH_TOKEN (a PAT with PR write) in the launching shell; gh's session keyring is NOT reachable by Claude's subprocesses. (4) Update the hook path below to the absolute checkout path on the HPC. (5) ~/.julia must be writable: stage 2 writes the rebuilt optimal-LAI IC and an artifact Overrides.toml there.",
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "allowWrite": [
+        ".",
+        "~/.julia",
+        "/glade/derecho/scratch/arenchon",
+        "/tmp"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "*.githubusercontent.com",
+        "*.julialang.org",
+        "julialang-s3.julialang.org"
+      ]
+    },
+    "credentials": {
+      "files": [
+        { "path": "~/.ssh", "mode": "deny" },
+        { "path": "~/.aws", "mode": "deny" }
+      ]
+    },
+    "excludedCommands": [
+      "git",
+      "git *",
+      "gh",
+      "gh *",
+      "qsub",
+      "qsub *",
+      "qstat",
+      "qstat *",
+      "qdel",
+      "qdel *",
+      "qhist",
+      "qhist *"
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git rebase*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh pr close*)",
+      "Bash(sudo *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/glade/u/home/arenchon/GitHub/ClimaLand.jl/.claude/hooks/guard.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
