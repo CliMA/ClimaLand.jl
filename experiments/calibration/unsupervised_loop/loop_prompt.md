@@ -78,9 +78,10 @@ equilibrium. That is what this stage produces.
   2b. Run `experiments/long_runs/snowy_land_pmodel.jl` with PROGNOSTIC_LAI set,
       for 10 years, on GPU. The script honours these env vars:
         PROGNOSTIC_LAI=""   select the optimal-LAI model
-        RUN_YEARS=10        (if absent on this branch, extend stop_date instead)
+        RUN_YEARS=10        length in years
         OUTPUT_ROOT=/glade/derecho/scratch/$USER   keep multi-GB output off home
-      Request the diagnostics listed in 2c; the default set does NOT include them.
+      With PROGNOSTIC_LAI set the script already writes the six IC diagnostics
+      listed in 2c, on top of the short set — no extra flag needed.
 
   2c. The IC file needs SIX fields, and all six now have diagnostics:
         lai_init      <- `lai`

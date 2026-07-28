@@ -64,7 +64,13 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 lai_suffix = PROGNOSTIC_LAI ? "_opt_lai" : ""
-root_path = "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)"
+# OUTPUT_ROOT relocates the (multi-GB) output off the repo/home filesystem;
+# default "." keeps the in-place behavior. On an HPC, point it at scratch.
+output_root = get(ENV, "OUTPUT_ROOT", ".")
+root_path = joinpath(
+    output_root,
+    "snowy_land_pmodel$(lai_suffix)_longrun_$(device_suffix)",
+)
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -127,7 +133,13 @@ end
 # we simulate from and until the beginning of
 # March so that a full season is included in seasonal metrics.
 start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+# RUN_YEARS (default 2) sets the non-LONGER_RUN length. Raise it to spin the
+# optimal-LAI trailing totals up to equilibrium: they have a `tau_long_term`
+# memory (2 years by default), so a 10-year run is roughly what it takes to
+# produce an initial condition that no longer reflects the starting artifact.
+run_years = parse(Int, get(ENV, "RUN_YEARS", "2"))
+stop_date =
+    LONGER_RUN ? DateTime("2019-03-01") : start_date + Dates.Year(run_years)
 Δt = 900.0
 domain =
     ClimaLand.Domains.global_box_domain(FT; context, mask_threshold = FT(0.99))
@@ -148,7 +160,24 @@ model = setup_model(
     toml_dict;
     prognostic_lai = PROGNOSTIC_LAI,
 )
-simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
+# With prognostic LAI, also write the six fields an optimal-LAI initial
+# condition is built from (see `set_canopy_component_initial_conditions!`), so a
+# spun-up run can be turned back into the `optimal_lai_inputs` artifact.
+diagnostics = if PROGNOSTIC_LAI
+    ClimaLand.Diagnostics.default_diagnostics(
+        model,
+        start_date,
+        outdir;
+        output_vars = union(
+            ClimaLand.Diagnostics.get_short_diagnostics(model),
+            ["lai", "a0a", "pra", "olf0", "olvpd", "olgsl"],
+        ),
+    )
+else
+    ClimaLand.Diagnostics.default_diagnostics(model, start_date, outdir)
+end
+simulation =
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "LAI: $(PROGNOSTIC_LAI ? "prognostic (ZhouOptimalLAIModel)" : "prescribed (MODIS)")"
 @info "Resolution: $(domain.nelements)"
