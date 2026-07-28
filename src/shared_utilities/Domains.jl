@@ -931,16 +931,12 @@ end
     obtain_surface_space(cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace)
 
 Returns the top level (surface) face space of the multi-column center space `cs`,
-a `PointCloudSpace`.
+a `CenterMultiColumnFiniteDifferenceSpace`.
 """
 function obtain_surface_space(
     cs::ClimaCore.Spaces.CenterMultiColumnFiniteDifferenceSpace,
 )
-    fs = ClimaCore.Spaces.face_space(cs)
-    return ClimaCore.Spaces.level(
-        fs,
-        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
-    )
+    return Spaces.horizontal_space(cs)
 end
 
 """
