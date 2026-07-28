@@ -17,7 +17,7 @@ force a multi-year spinup on every ensemble member of every iteration.
 
 ## Files
 
-- `loop_prompt.txt` — the loop's instructions. Read this to understand the task.
+- `loop_prompt.md` — the loop's instructions. Read this to understand the task.
 - `STATE.md` — where the pipeline is. Rewritten and committed every iteration.
 - `LOG.md` — how it got there. One dated entry per iteration.
 
@@ -30,7 +30,7 @@ export GH_TOKEN=...                # PAT with PR write; gh's keyring is not
 claude --dangerously-skip-permissions
 ```
 
-Then feed it `loop_prompt.txt`.
+Then feed it `loop_prompt.md`.
 
 Before launching, check the prerequisites listed in the `_note` field of
 `.claude/unsupervised-loop.settings.json` — in particular the absolute path to

@@ -2,7 +2,7 @@
 
 Single source of truth for where the three-stage calibration pipeline is.
 The loop reads this first every iteration and commits it every iteration.
-See `loop_prompt.txt` for what each stage means and how it is gated.
+See `loop_prompt.md` for what each stage means and how it is gated.
 
 Status values: `not_started` | `running` | `done` | `failed`
 
